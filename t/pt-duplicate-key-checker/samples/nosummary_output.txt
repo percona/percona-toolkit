@@ -1,0 +1,14 @@
+# ########################################################################
+# test.dupe_key                                                           
+# ########################################################################
+
+# a is a left-prefix of a_2
+# Key definitions:
+#   KEY `a` (`a`),
+#   KEY `a_2` (`a`,`b`)
+# Column types:
+#	  `a` int(11) default null
+#	  `b` int(11) default null
+# To remove this duplicate index, execute:
+ALTER TABLE `test`.`dupe_key` DROP INDEX `a`;
+

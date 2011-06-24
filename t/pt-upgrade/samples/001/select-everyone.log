@@ -1,0 +1,22 @@
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+use test;
+select id, name, last_login from test.t where id=-1;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+select id, name, last_login from test.t where id=0;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+select id, name, last_login from test.t where id=1;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+select id, name, last_login from test.t where id=2;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+select id, name, last_login from test.t where id=3;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+select id, name, last_login from test.t where id=4;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+select id, name, last_login from test.t where id=5;

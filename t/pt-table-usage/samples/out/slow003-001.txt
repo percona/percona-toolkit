@@ -1,0 +1,6 @@
+Query_id: 0x7C6C08E1FA6D7E73.1
+SELECT country
+SELECT city
+JOIN city
+JOIN country
+

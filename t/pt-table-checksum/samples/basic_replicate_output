@@ -1,0 +1,2 @@
+DATABASE TABLE    CHUNK HOST      ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
+test     issue_21     0 127.0.0.1 InnoDB          5         b88b4eff    0 NULL NULL NULL

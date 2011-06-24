@@ -1,0 +1,16 @@
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+use test;
+select id from test.t where id > 3;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+insert into t values (9, 'nine', now());
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+update t set name='changed' where id=0;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+delete from t where id is not null;
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+truncate table t;

@@ -1,0 +1,4 @@
+Query_id: 0x1E0BF7001F0D58BB.1
+SELECT sakila.city
+WHERE sakila.city
+

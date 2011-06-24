@@ -1,0 +1,5 @@
+Differences on P=12346,h=127.0.0.1
+DB        TBL        CHUNK CNT_DIFF CRC_DIFF BOUNDARIES
+issue_560 buddy_list     7        0        1 `player_id` >= '301' AND `player_id` < '351'
+issue_560 buddy_list    10        0        1 `player_id` >= '451'
+

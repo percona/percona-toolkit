@@ -1,0 +1,13 @@
+
+# Query ID 0x3ABB67240C860825 at byte 0
+# NOTE COL.001 SELECT *.
+select * from tbl where id=42 order by col
+
+# Query ID 0xE6CB49B8022C078D at byte 0
+select col from tbl2 where id=52 order by col limit 10
+
+# Profile
+# Query ID           NOTE WARN CRIT Item
+# ================== ==== ==== ==== ==========================================
+# 0x3ABB67240C860825    1    0    0 select * from tbl where id=? order by col
+# 0xE6CB49B8022C078D    0    0    0 select col from tbl? where id=? order by col limit ?

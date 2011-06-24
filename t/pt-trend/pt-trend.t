@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
@@ -12,7 +12,10 @@ use English qw(-no_match_vars);
 use Test::More tests => 1;
 
 use MaatkitTest;
+require "$trunk/bin/pt-trend";
+ok(1, 'dummy test');
 
-ok(1, 'ok');
-
+# #############################################################################
+# Done.
+# #############################################################################
 exit;

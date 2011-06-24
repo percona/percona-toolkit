@@ -1,0 +1,4 @@
+
+ALTER TABLE `sakila`.`film_text` DROP KEY `PRIMARY`; -- type:primary key
+
+ALTER TABLE `sakila`.`film_text` DROP KEY `idx_title_description`; -- type:non-unique

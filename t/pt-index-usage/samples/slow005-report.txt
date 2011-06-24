@@ -1,0 +1,2 @@
+
+ALTER TABLE `sakila`.`inventory` DROP KEY `idx_fk_film_id`, DROP KEY `idx_store_id_film_id`; -- type:non-unique

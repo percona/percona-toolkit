@@ -1,0 +1,18 @@
+-- START SESSION 103374
+
+insert into test1.tbl6 (day, tbl5, misccol9type, misccol9, metric11, metric12, secs) values (convert_tz(current_timestamp,'EST5EDT','PST8PDT'), '239', 'foo', 'bar', 1, '1', '16.3574378490448') on duplicate key update metric11 = metric11 + 1, metric12 = metric12 + values(metric12), secs = secs + values(secs)
+
+update test2.tbl8 set last2metric1 = last1metric1, last2time = last1time, last1metric1 = last0metric1, last1time = last0time, last0metric1 = ondeckmetric1, last0time = now() where tbl8 in (10800712)
+
+-- START SESSION 104168
+
+BEGIN
+
+use test1
+
+update test3.tblo as o inner join test3.tbl2 as e on o.animal = e.animal and o.oid = e.oid set e.tblo = o.tblo, e.col3 = o.col3 where e.tblo is null
+
+replace into test4.tbl9(tbl5, day, todo, comment) select distinct o.tbl5, date(o.col3), 'misc', right('foo', 50) from test3.tblo as o inner join test3.tbl2 as e on o.animal = e.animal and o.oid = e.oid where e.tblo is not null and o.col1 > 0 and o.tbl2 is null and o.col3 >= date_sub(current_date, interval 30 day)
+
+update test3.tblo as o inner join test3.tbl2 as e on o.animal = e.animal and o.oid = e.oid set o.tbl2 = e.tbl2, e.col9 = now() where o.tbl2 is null
+

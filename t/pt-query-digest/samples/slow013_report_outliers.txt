@@ -1,0 +1,58 @@
+
+# ########################################################################
+# Report grouped by user
+# ########################################################################
+
+# Item 1: 2 QPS, 0.15x concurrency, ID 0x4F1658C9B243995F at byte 174 ____
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.15
+# Query_time sparkline: |^    ^  |
+# Time range: 2008-11-27 08:51:20 to 08:51:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         40       2
+# Exec time     99   149ms     5us   149ms    75ms   149ms   106ms    75ms
+# Lock time    100    70us       0    70us    35us    70us    49us    35us
+# Rows sent    100     226       0     226     113     226  159.81     113
+# Rows examine 100     226       0     226     113     226  159.81     113
+# Query size    50      38      11      27      19      27   11.31      19
+# String:
+# Databases    test
+# Hosts
+# Query_time distribution
+#   1us  ################################################################
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+mytopuser
+
+# Item 2: 0 QPS, 0x concurrency, ID 0x8F4C76E92F07EABE at byte 600 _______
+# This item is included in the report because it matches --outliers.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: | ^      |
+# Time range: all events occurred at 2008-11-27 08:51:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         60       3
+# Exec time      0    97us    15us    67us    32us    66us    24us    14us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    50      38       6      16   12.67   15.25    4.48   15.25
+# String:
+# Databases    abc
+# Hosts
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+foo_app

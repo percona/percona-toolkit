@@ -1,0 +1,12 @@
+DEPENDENT SUBQUERY
++- Filter with WHERE
+|  +- Index lookup
+|     key            film_actor->PRIMARY
+|     possible_keys  PRIMARY
+|     key_len        2
+|     ref            actor.actor_id
+|     rows           13
++- Index scan
+   key            actor->PRIMARY
+   key_len        2
+   rows           200

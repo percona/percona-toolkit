@@ -1,0 +1,20 @@
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 1
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+UPDATE t1 AS a JOIN t2 AS b USING (id) SET a.foo="bar" WHERE b.foo IS NOT NULL;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 2
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+UPDATE t1 AS a JOIN t2 AS b USING (id) SET a.foo="bar", b.foo="bat" WHERE a.id=1;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 3
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+UPDATE t1 INNER JOIN t2 USING (id) SET t1.foo="bar" WHERE t2.id=1;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 4
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+insert into t1 (a, b, c) select x, y, z from t2 where x is not null;
+# Time: 071218 11:48:27
+# Thread_id: 10  Query_id: 5
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+insert into t (a, b, c) select a.x, a.y, b.z from a, b where a.id=b.id;

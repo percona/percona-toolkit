@@ -1,0 +1,13 @@
+# ########################################################################
+# issue_1192.issue_1192                                                   
+# ########################################################################
+
+# a is a duplicate of PRIMARY
+# Key definitions:
+#   KEY `a` (`a`),
+#   PRIMARY KEY (`a`),
+# Column types:
+#	  `a` int(11) not null default '0'
+# To remove this duplicate index, execute:
+ALTER TABLE `issue_1192`.`issue_1192` DROP INDEX `a`;
+

@@ -1,0 +1,8 @@
+# Time: 071218 00:00:00
+# User@Host: bob @ host1 [bob]
+# Query_time: 0.040312  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+non sql statement;
+# Time: 071218 00:00:02
+# User@Host: jill @ host1 [jill]
+# Query_time: 0.090012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+***GARBLE*** \#garble ``````````````````````bork~!;

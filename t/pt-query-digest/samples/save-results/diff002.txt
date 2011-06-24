@@ -1,0 +1,13 @@
+2c2
+< # Overall: 8 total, 7 unique, 0 QPS, 0x concurrency ______________________
+---
+> # Overall: 8 total, 1 unique, 0 QPS, 0x concurrency ______________________
+24c24
+< # Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+---
+> # Scores: Apdex = NS [0.0]*, V/M = 0.00
+68,69c68
+< #    1 0x66825DDC008FFA89  0.7261 95.3%     1 0.7261 1.00  0.00 UPDATE db?.tuningdetail_?_? db?.gonzo
+< # MISC 0xMISC              0.0360  4.7%     7 0.0051   NS   0.0 <6 ITEMS>
+---
+> #    1 0x66825DDC008FFA89  0.7261 95.3%     1 0.7261   NS  0.00 UPDATE db?.tuningdetail_?_? db?.gonzo

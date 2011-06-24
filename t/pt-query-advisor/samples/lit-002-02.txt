@@ -1,0 +1,8 @@
+
+# Query ID 0xE6F50A59C746B888 at byte 0
+SELECT c FROM tbl WHERE c=20100215
+
+# Profile
+# Query ID           NOTE WARN CRIT Item
+# ================== ==== ==== ==== ===========================
+# 0xE6F50A59C746B888    0    0    0 select c from tbl where c=?

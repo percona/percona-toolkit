@@ -1,0 +1,122 @@
+=====================================
+070913 17:13:09 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 20 seconds
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 49, signal count 49
+Mutex spin waits 0, rounds 980, OS waits 0
+RW-shared spins 27, OS waits 13; RW-excl spins 43, OS waits 36
+------------------------
+LATEST FOREIGN KEY ERROR
+------------------------
+070913 11:06:03 Error in foreign key constraint of table test/child:
+there is no index in referenced table which would contain
+the columns as the first columns, or the data types in the
+referenced table do not match to the ones in table. Constraint:
+,
+  CONSTRAINT child_ibfk_1 FOREIGN KEY (parent_id) REFERENCES parent (parent_id)
+The index in the foreign key in table is parent_id
+See http://dev.mysql.com/doc/refman/5.0/en/innodb-foreign-key-constraints.html
+for correct foreign key definition.
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+070913 11:14:21
+*** (1) TRANSACTION:
+TRANSACTION 0 3793488, ACTIVE 2 sec, process no 5488, OS thread id 1141287232 starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 4 lock struct(s), heap size 1216
+MySQL thread id 11, query id 350 localhost baron Updating
+update test.innotop_dl set a = 0 where a <> 0
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 0 page no 3662 n bits 72 index `GEN_CLUST_INDEX` of table `test/innotop_dl` trx id 0 3793488 lock_mode X waiting
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 6; hex 000000000501; asc       ;; 1: len 6; hex 00000039e24f; asc    9 O;; 2: len 7; hex 8000000e490110; asc     I  ;; 3: len 4; hex 80000000; asc     ;;
+
+*** (2) TRANSACTION:
+TRANSACTION 0 3793489, ACTIVE 2 sec, process no 5488, OS thread id 1141422400 starting index read, thread declared inside InnoDB 500
+mysql tables in use 1, locked 1
+4 lock struct(s), heap size 1216
+MySQL thread id 12, query id 351 localhost baron Updating
+update test.innotop_dl set a = 1 where a <> 1
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 0 page no 3662 n bits 72 index `GEN_CLUST_INDEX` of table `test/innotop_dl` trx id 0 3793489 lock mode S
+Record lock, heap no 1 PHYSICAL RECORD: n_fields 1; compact format; info bits 0
+ 0: len 8; hex 73757072656d756d; asc supremum;;
+
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 6; hex 000000000501; asc       ;; 1: len 6; hex 00000039e24f; asc    9 O;; 2: len 7; hex 8000000e490110; asc     I  ;; 3: len 4; hex 80000000; asc     ;;
+
+Record lock, heap no 3 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 6; hex 000000000502; asc       ;; 1: len 6; hex 00000039e24f; asc    9 O;; 2: len 7; hex 8000000e49011f; asc     I  ;; 3: len 4; hex 80000001; asc     ;;
+
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 0 page no 3662 n bits 72 index `GEN_CLUST_INDEX` of table `test/innotop_dl` trx id 0 3793489 lock_mode X waiting
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 6; hex 000000000501; asc       ;; 1: len 6; hex 00000039e24f; asc    9 O;; 2: len 7; hex 8000000e490110; asc     I  ;; 3: len 4; hex 80000000; asc     ;;
+
+*** WE ROLL BACK TRANSACTION (2)
+------------
+TRANSACTIONS
+------------
+Trx id counter 0 3793495
+Purge done for trx's n:o < 0 3793493 undo n:o < 0 0
+History list length 13
+Total number of lock structs in row lock hash table 0
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 0 0, not started, process no 5488, OS thread id 1141152064
+MySQL thread id 17, query id 532 localhost baron
+show innodb status
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: waiting for i/o request (read thread)
+I/O thread 3 state: waiting for i/o request (write thread)
+Pending normal aio reads: 0, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+509 OS file reads, 163 OS file writes, 77 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 0.00 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 134, seg size 136,
+0 inserts, 0 merged recs, 0 merges
+Hash table size 17393, used cells 0, node heap has 1 buffer(s)
+0.00 hash searches/s, 0.00 non-hash searches/s
+---
+LOG
+---
+Log sequence number 1 313053848
+Log flushed up to   1 313053848
+Last checkpoint at  1 313053848
+0 pending log writes, 0 pending chkp writes
+49 log i/o's done, 0.00 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 20866970; in additional pool allocated 1048576
+Buffer pool size   512
+Free buffers       1
+Database pages     510
+Modified db pages  0
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages read 628, created 0, written 210
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+No buffer pool page gets since the last printout
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+1 read views open inside InnoDB
+Main thread process no. 5488, id 1140881728, state: waiting for server activity
+Number of rows inserted 5, updated 1, deleted 0, read 214062
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================

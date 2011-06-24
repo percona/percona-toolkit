@@ -1,0 +1,32 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x66825DDC008FFA89 at byte 332 ______
+#              pct   total     min     max     avg     95%  stddev  median
+# Count         12       1
+# Exec time     95   726ms   726ms   726ms   726ms   726ms       0   726ms
+# Lock time     29    91us    91us    91us    91us    91us       0    91us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows exam    100  61.48k  61.48k  61.48k  61.48k  61.48k       0  61.48k
+# Users          1 [SQL_SLAVE]
+# Databases      1     db1
+# Time range
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db2` LIKE 'tuningdetail_21_265507'\G
+#    SHOW CREATE TABLE `db2`.`tuningdetail_21_265507`\G
+#    SHOW TABLE STATUS FROM `db1` LIKE 'gonzo'\G
+#    SHOW CREATE TABLE `db1`.`gonzo`\G
+update db2.tuningdetail_21_265507 n
+      inner join db1.gonzo a using(gonzo) 
+      set n.column1 = a.column1, n.word3 = a.word3\G
+# Converted for EXPLAIN
+# EXPLAIN
+select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507 n
+      inner join db1.gonzo a using(gonzo) \G

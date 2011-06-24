@@ -1,0 +1,3 @@
+# Time: 071015 21:43:52
+# Query_time: 2  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select * from film_text;

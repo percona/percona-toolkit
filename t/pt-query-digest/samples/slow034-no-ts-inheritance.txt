@@ -1,0 +1,60 @@
+# Time: 090805 11:00:27
+# Thread_id: 1
+# Query_time: 0.726052  Lock_time: 0.100091  Rows_sent: 9  Rows_examined: 51
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db1;
+SELECT * FROM foo;
+# Query_time: 1.726052  Lock_time: 0.010093  Rows_sent: 1  Rows_examined: 1
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db1;
+SELECT id FROM tbl WHERE id = 1;
+# Query_time: 9.000052  Lock_time: 0.000001  Rows_sent: 900  Rows_examined: 10000
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: Yes  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: Yes  Merge_passes: 1
+# No InnoDB statistics available for this query
+use db1;
+SELECT COUNT(*) FROM blah WHERE col > 2;
+# Time: 090805 12:00:27
+# Thread_id: 2
+# Query_time: 0.726052  Lock_time: 0.100091  Rows_sent: 9  Rows_examined: 51
+# QC_Hit: Yes  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db1;
+SELECT * FROM foo;
+# Query_time: 0.726052  Lock_time: 0.100091  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db2;
+INSERT INTO tbl VALUES ('a', 'b');
+# Query_time: 0.000052  Lock_time: 0.010091  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db2;
+INSERT INTO tbl VALUES ('c', 'd');
+# Time: 090805 13:00:27
+# Thread_id: 3
+# Query_time: 1349.000052  Lock_time: 1349.000091  Rows_sent: 0  Rows_examined: 1928472
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: Yes  Disk_tmp_table: Yes
+# Filesort: Yes  Disk_filesort: Yes  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db3;
+DELETE FROM forest WHERE animal = 'dead';
+# Query_time: 0.926052  Lock_time: 0.097091  Rows_sent: 8  Rows_examined: 50
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db3;
+SELECT * FROM foo;
+# Query_time: 0.526052  Lock_time: 0.037091  Rows_sent: 7  Rows_examined: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db3;
+SELECT * FROM foo;

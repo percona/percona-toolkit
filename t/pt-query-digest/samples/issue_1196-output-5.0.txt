@@ -1,0 +1,60 @@
+
+# Profile
+# Rank Query ID           Response time Calls R/Call Apdx V/M   EXPLAIN Item
+# ==== ================== ============= ===== ====== ==== ===== ======= ========
+#    1 0xD4B6A5CD2F2F485C 0.2148 100.0%     1 0.2148 1.00  0.00 TF>aa   SELECT t
+
+# Query 1: 0 QPS, 0x concurrency, ID 0xD4B6A5CD2F2F485C at byte 0 ________
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# EXPLAIN sparkline: TF>aa
+# Query_time sparkline: |     ^  |
+# Time range: all events occurred at 2010-12-14 16:12:28
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count        100       1
+# Exec time    100   215ms   215ms   215ms   215ms   215ms       0   215ms
+# Lock time     99   162us   162us   162us   162us   162us       0   162us
+# Rows sent    100      10      10      10      10      10       0      10
+# Rows examine 100   1.96k   1.96k   1.96k   1.96k   1.96k       0   1.96k
+# Query size   100      82      82      82      82      82       0      82
+# String:
+# Databases    issue_1196
+# Hosts        localhost
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `issue_1196` LIKE 't'\G
+#    SHOW CREATE TABLE `issue_1196`.`t`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+select t.a, count(*) from t join t t2 using(a) group by 1 order by 2 desc limit 10\G
+# *************************** 1. row ***************************
+#            id: 1
+#   select_type: SIMPLE
+#         table: t
+#          type: ALL
+# possible_keys: NULL
+#           key: NULL
+#       key_len: NULL
+#           ref: NULL
+#          rows: 14
+#         Extra: Using temporary; Using filesort
+# *************************** 2. row ***************************
+#            id: 1
+#   select_type: SIMPLE
+#         table: t2
+#          type: ALL
+# possible_keys: NULL
+#           key: NULL
+#       key_len: NULL
+#           ref: NULL
+#          rows: 14
+#         Extra: Using where

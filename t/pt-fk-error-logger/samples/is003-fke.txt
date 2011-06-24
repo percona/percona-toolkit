@@ -1,0 +1,4 @@
+Error in foreign key constraint of table test/#sql-1452_9:
+foreign key (a) references t4(a):
+Cannot resolve table name close to:
+(a)

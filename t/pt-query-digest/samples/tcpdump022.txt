@@ -1,0 +1,66 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0xC30A1A850F4E510F at byte 0 ________
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: |  ^     |
+# Time range: all events occurred at 2009-12-08 13:41:12.811188
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time     61   303us   303us   303us   303us   303us       0   303us
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size    47      46      46      46      46      46       0      46
+# Warning coun   0       0       0       0       0       0       0       0
+# String:
+# Errors       none
+# Hosts        127.0.0.1
+# Statement id 2
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `d` LIKE 't2'\G
+#    SHOW CREATE TABLE `d`.`t2`\G
+PREPARE SELECT i,j FROM d.t2 WHERE i=? AND j=?\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT i,j FROM d.t2 WHERE i=? AND j=?\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0x26EEAE2EADD904A1 at byte 1330 _____
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: |  ^     |
+# Time range: all events occurred at 2009-12-08 13:41:12.811591
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       1
+# Exec time     38   186us   186us   186us   186us   186us       0   186us
+# Rows affecte   0       0       0       0       0       0       0       0
+# Query size    52      51      51      51      51      51       0      51
+# Warning coun   0       0       0       0       0       0       0       0
+# String:
+# Errors       none
+# Hosts        127.0.0.1
+# Statement id 2
+# Query_time distribution
+#   1us
+#  10us
+# 100us  ################################################################
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `d` LIKE 't2'\G
+#    SHOW CREATE TABLE `d`.`t2`\G
+EXECUTE SELECT i,j FROM d.t2 WHERE i=NULL AND j="5"\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT i,j FROM d.t2 WHERE i=NULL AND j="5"\G

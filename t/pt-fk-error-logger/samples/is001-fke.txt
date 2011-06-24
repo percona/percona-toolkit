@@ -1,0 +1,9 @@
+Error in foreign key constraint of table test/child:
+there is no index in referenced table which would contain
+the columns as the first columns, or the data types in the
+referenced table do not match to the ones in table. Constraint:
+,
+  CONSTRAINT child_ibfk_1 FOREIGN KEY (parent_id) REFERENCES parent (parent_id)
+The index in the foreign key in table is parent_id
+See http://dev.mysql.com/doc/refman/5.0/en/innodb-foreign-key-constraints.html
+for correct foreign key definition.

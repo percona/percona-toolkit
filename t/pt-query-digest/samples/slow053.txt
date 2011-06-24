@@ -1,0 +1,93 @@
+
+# Query 1: 2 QPS, 1.90x concurrency, ID 0xA4EAD36B5CEB1C13 at byte 1044 __
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.01
+# Query_time sparkline: |     ^^ |
+# Time range: 2011-02-08 12:00:09 to 12:00:10
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       2
+# Exec time     97      2s   900ms      1s   950ms      1s    71ms   950ms
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    25      78      39      39      39      39       0      39
+# String:
+# arg crc      839
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS LIKE 'blah'\G
+#    SHOW CREATE TABLE `blah`\G
+# CRC 839
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM blah WHERE id IS NOT NULL\G
+
+# Query 2: 1.50 QPS, 0.03x concurrency, ID 0xAC0EC652760FEEB3 at byte 913
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.03
+# Query_time sparkline: | ^  _   |
+# Time range: 2011-02-08 12:00:06 to 12:00:08
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         30       3
+# Exec time      2    50ms    12us    50ms    17ms    48ms    23ms    11us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    28      87      29      29      29      29       0      29
+# String:
+# arg crc      685 (2/66%), 159 (1/33%)
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms  ################################
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS LIKE 'bar'\G
+#    SHOW CREATE TABLE `bar`\G
+# CRC 159
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM bar WHERE id=12\G
+
+# Query 3: 1.25 QPS, 0.00x concurrency, ID 0xBB11C6B7F3BAAB30 at byte 521
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: | ^      |
+# Time range: 2011-02-08 12:00:01 to 12:00:05
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         50       5
+# Exec time      0    60us    12us    12us    12us    12us       0    12us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    45     140      28      28      28      28       0      28
+# String:
+# arg crc      108 (1/20%), 306 (1/20%), 353 (1/20%)... 2 more
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS LIKE 'foo'\G
+#    SHOW CREATE TABLE `foo`\G
+# CRC 887
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM foo WHERE id=5\G

@@ -1,0 +1,19 @@
+# ########################################################################
+# test.dupe_key                                                           
+# ########################################################################
+
+# a is a left-prefix of a_2
+# Key definitions:
+#   KEY `a` (`a`),
+#   KEY `a_2` (`a`,`b`)
+# Column types:
+#	  `a` int(11) default null
+#	  `b` int(11) default null
+
+# ########################################################################
+# Summary of indexes                                                      
+# ########################################################################
+
+# Size Duplicate Indexes   0
+# Total Duplicate Indexes  1
+# Total Indexes            2

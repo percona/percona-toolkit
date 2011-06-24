@@ -1,0 +1,20 @@
+# ########################################################################
+# test.UPPER_TEST                                                         
+# ########################################################################
+
+# A is a duplicate of PRIMARY
+# Key definitions:
+#   KEY `A` (`A`)
+#   PRIMARY KEY  (`A`),
+# Column types:
+#	  `a` int(11) not null default '0'
+# To remove this duplicate index, execute:
+ALTER TABLE `test`.`UPPER_TEST` DROP INDEX `A`;
+
+# ########################################################################
+# Summary of indexes                                                      
+# ########################################################################
+
+# Size Duplicate Indexes   0
+# Total Duplicate Indexes  1
+# Total Indexes            2

@@ -1,0 +1,12 @@
+-- START SESSION 42
+
+use db1
+
+SELECT foo FROM tbl WHERE col=12345 ORDER BY col
+
+-- START SESSION 11
+
+use my_webstats
+
+SELECT DISTINCT col FROM tbl WHERE foo=20061219
+

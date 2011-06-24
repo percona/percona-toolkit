@@ -1,0 +1,16 @@
+# WARN delay_key_write: MyISAM index blocks are never flushed until necessary.
+
+# WARN innodb_log_file_size: The InnoDB log file size is set to its default value, which is not usable on production systems.
+
+# NOTE log_warnings-2: Log_warnings must be set greater than 1 to log unusual events such as aborted connections.
+
+# NOTE max_connect_errors: max_connect_errors should probably be set as large as your platform allows.
+
+# NOTE port: The server is listening on a non-default port.
+
+# WARN slave_net_timeout: This variable is set too high.
+
+# NOTE innodb_data_file_path: Auto-extending InnoDB files can consume a lot of disk space that is very difficult to reclaim later.
+
+# NOTE innodb_flush_method: Most production database servers that use InnoDB should set innodb_flush_method to O_DIRECT to avoid double-buffering, unless the I/O system is very low performance.
+

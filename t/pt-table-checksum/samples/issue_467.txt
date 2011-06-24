@@ -1,0 +1,5 @@
+DATABASE TABLE     CHUNK HOST  ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
+test     issue_122     1 127.1 MyISAM          2         45e6c489    0    0 NULL NULL
+test     issue_122     3 127.1 MyISAM          2         45e6c489    0    0 NULL NULL
+test     issue_122     5 127.1 MyISAM          2         b7905e9e    0    0 NULL NULL
+test     issue_94      0 127.1 MyISAM       NULL       2609439684    0    0 NULL NULL

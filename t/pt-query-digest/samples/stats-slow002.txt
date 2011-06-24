@@ -1,0 +1,7 @@
+
+# Statistic                              Count %/Events
+# ====================================== ===== ========
+# events_read                                8   100.00
+# events_parsed                              8   100.00
+# events_aggregated                          8   100.00
+# pipeline_restarted_after_SlowLogParser     1    12.50

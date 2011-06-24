@@ -1,0 +1,6 @@
+# Time: 101214 16:12:28
+# User@Host: root[root] @ localhost [127.0.0.1]
+# Query_time: 0.214821 Lock_time: 0.000162 Rows_sent: 10 Rows_examined: 2009
+use issue_1196;
+SET timestamp=1292361148;
+select t.a, count(*) from t join t t2 using(a) group by 1 order by 2 desc limit 10;

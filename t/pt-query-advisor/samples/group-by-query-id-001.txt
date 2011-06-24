@@ -1,0 +1,22 @@
+
+0x01BF72F436E936F1 RES.001
+
+0x52BAD5F0BF97EA19 RES.001
+
+0x63C84ABE631F3CD0 CLA.001 COL.001
+
+0xADCE32553F5D5859 CLA.001 COL.001
+
+0xB79802214165F670 COL.002
+
+0xEEA4D551871CCDC4 COL.002
+
+# Profile
+# Query ID           NOTE WARN CRIT Item
+# ================== ==== ==== ==== ==========================================
+# 0x01BF72F436E936F1    0    1    0 select x, y, z from foo where id>? group by x, y
+# 0x52BAD5F0BF97EA19    0    1    0 select a, b, c from x where id<? group by a, b
+# 0x63C84ABE631F3CD0    1    1    0 select * from tbl order by a
+# 0xADCE32553F5D5859    1    1    0 select * from tbl
+# 0xB79802214165F670    1    0    0 insert into tbl values(?+)
+# 0xEEA4D551871CCDC4    1    0    0 replace into tbl? values(?+)

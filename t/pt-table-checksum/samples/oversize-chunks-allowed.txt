@@ -1,0 +1,6 @@
+DATABASE TABLE CHUNK HOST  ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
+osc      t         0 127.1 MyISAM          0             NULL    0    0 NULL NULL
+osc      t         1 127.1 MyISAM         23         54a0c224    0    0 NULL NULL
+osc      t         2 127.1 MyISAM          0             NULL    0    0 NULL NULL
+osc      t         3 127.1 MyISAM          3         16533cd7    0    0 NULL NULL
+osc      t         4 127.1 MyISAM          0             NULL    0    0 NULL NULL

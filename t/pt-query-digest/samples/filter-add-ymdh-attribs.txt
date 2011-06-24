@@ -1,0 +1,24 @@
+# Set year, month, hour and day attributes in event.
+my ($year, $month, $day, $hour);
+if ( $event->{ts} ) {
+   # ts are formatted like: 071015 21:43:52
+   ($year, $month, $day, $hour)
+      = $event->{ts} =~ /^(\d\d)(\d\d)(\d\d)\s+(\d\d):/;
+}
+MKDEBUG && _d('ymdh:', $year, $month, $day, $hour);
+$event->{year}  = $year  || 0;
+$event->{month} = $month || 0;
+$event->{day}   = $day   || 0;
+$event->{hour}  = $hour  || 24;  # 0 is a valid hour
+
+# Filter event by year, month, hour and day if any corresponding
+# environment variables are set.
+my $ok = 1;
+foreach my $filter ( qw(YEAR MONTH HOUR DAY) ) {
+   if ( $ENV{$filter} && $event->{lc $filter} != $ENV{$filter} ) {
+      MKDEBUG && _d('Event does not match', $filter, '=', $ENV{$filter});
+      $ok = 0;
+      last;
+   }
+}
+$ok

@@ -1,0 +1,18 @@
+# WARN delay_key_write: MyISAM index blocks are never flushed until necessary.
+
+# WARN innodb_log_file_size: The InnoDB log file size is set to its default value, which is not usable on production systems.
+
+# NOTE log_warnings-2: Log_warnings must be set greater than 1 to log unusual events such as aborted connections.
+
+# NOTE max_connect_errors: max_connect_errors should probably be set as large as your platform allows.
+
+# NOTE port: The server is listening on a non-default port.
+
+# WARN slave_net_timeout: This variable is set too high.
+
+# NOTE innodb_data_file_path: Auto-extending InnoDB files can consume a lot of disk space that is very difficult to reclaim later.
+
+# WARN myisam_recover_options: myisam_recover_options should be set to some value such as BACKUP,FORCE to ensure that table corruption is noticed.
+
+# WARN sync_binlog: Binary logging is enabled, but sync_binlog isn't configured so that every transaction is flushed to the binary log for durability.
+

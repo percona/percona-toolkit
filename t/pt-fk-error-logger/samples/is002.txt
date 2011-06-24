@@ -1,0 +1,93 @@
+=====================================
+070915 15:34:37 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 24 seconds
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 7, signal count 7
+Mutex spin waits 0, rounds 60, OS waits 0
+RW-shared spins 14, OS waits 7; RW-excl spins 1, OS waits 0
+------------------------
+LATEST FOREIGN KEY ERROR
+------------------------
+070915 15:10:24 Transaction:
+TRANSACTION 0 3358, ACTIVE 0 sec, process no 5202, OS thread id 1141152064 inserting, thread declared inside InnoDB 500
+mysql tables in use 1, locked 1
+3 lock struct(s), heap size 368, undo log entries 1
+MySQL thread id 6, query id 162 localhost root update
+insert into t2(a) values(1)
+Foreign key constraint fails for table `test/t2`:
+,
+  CONSTRAINT `t2_ibfk_1` FOREIGN KEY (`a`) REFERENCES `t1` (`a`)
+Trying to add in child table, in index `a` tuple:
+DATA TUPLE: 2 fields;
+ 0: len 4; hex 80000001; asc     ;; 1: len 6; hex 000000000200; asc       ;;
+
+But in parent table `test/t1`, in index `PRIMARY`,
+the closest match we can find is record:
+PHYSICAL RECORD: n_fields 1; compact format; info bits 0
+ 0: len 8; hex 696e66696d756d00; asc infimum ;;
+
+------------
+TRANSACTIONS
+------------
+Trx id counter 0 3359
+Purge done for trx's n:o < 0 3357 undo n:o < 0 0
+History list length 8
+Total number of lock structs in row lock hash table 0
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 0 0, not started, process no 5202, OS thread id 1141152064
+MySQL thread id 8, query id 169 localhost root
+show innodb status
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: waiting for i/o request (read thread)
+I/O thread 3 state: waiting for i/o request (write thread)
+Pending normal aio reads: 0, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+42 OS file reads, 63 OS file writes, 55 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 0.00 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 0, seg size 2,
+0 inserts, 0 merged recs, 0 merges
+Hash table size 17393, used cells 0, node heap has 1 buffer(s)
+0.00 hash searches/s, 0.00 non-hash searches/s
+---
+LOG
+---
+Log sequence number 0 68906
+Log flushed up to   0 68906
+Last checkpoint at  0 68906
+0 pending log writes, 0 pending chkp writes
+31 log i/o's done, 0.00 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 20556394; in additional pool allocated 713728
+Buffer pool size   512
+Free buffers       480
+Database pages     31
+Modified db pages  0
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages read 33, created 15, written 54
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+No buffer pool page gets since the last printout
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+1 read views open inside InnoDB
+Main thread process no. 5202, id 1140881728, state: waiting for server activity
+Number of rows inserted 0, updated 0, deleted 0, read 0
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================

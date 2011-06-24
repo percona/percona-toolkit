@@ -1,0 +1,21 @@
+# ########################################################################
+# issue_331.issue_331_t2                                                  
+# ########################################################################
+
+# FOREIGN KEY fk_1 (`id`) REFERENCES `issue_331`.`issue_331_t1` (`t1_id`) is a duplicate of FOREIGN KEY fk_2 (`id`) REFERENCES `issue_331`.`issue_331_t1` (`t1_id`)
+# Key definitions:
+#   CONSTRAINT `fk_1` FOREIGN KEY (`id`) REFERENCES `issue_331_t1` (`t1_id`)
+#   CONSTRAINT `fk_2` FOREIGN KEY (`id`) REFERENCES `issue_331_t1` (`t1_id`)
+# Column types:
+#	  `id` bigint(20) not null default '0'
+# To remove this duplicate foreign key, execute:
+ALTER TABLE `issue_331`.`issue_331_t2` DROP FOREIGN KEY `fk_1`;
+
+# MySQL uses the PRIMARY index for this foreign key constraint
+
+# ########################################################################
+# Summary of indexes                                                      
+# ########################################################################
+
+# Total Duplicate Indexes  1
+# Total Indexes            4

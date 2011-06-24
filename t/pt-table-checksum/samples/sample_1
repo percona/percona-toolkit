@@ -1,0 +1,6 @@
+DATABASE TABLE         CHUNK HOST      ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
+sakila   actor             0 localhost InnoDB       NULL       3596356558    0    0 NULL NULL
+sakila   address           0 localhost InnoDB       NULL       3083097758    0    0 NULL NULL
+DATABASE TABLE         CHUNK HOST      ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
+sakila2  actor             0 localhost InnoDB       NULL       3596356559    0    0 NULL NULL
+sakila2  address           0 localhost InnoDB       NULL       3083097758    0    0 NULL NULL

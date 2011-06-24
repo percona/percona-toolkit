@@ -1,0 +1,17 @@
+DROP DATABASE IF EXISTS db1;
+CREATE DATABASE db1;
+USE db1;
+CREATE TABLE db1.t1 (i INT NOT NULL, UNIQUE INDEX (i));
+DELIMITER |
+CREATE TRIGGER mytrg BEFORE INSERT ON db1.t1
+  FOR EACH ROW BEGIN
+    -- This trigger doesn't have to do anything, it just needs to exist.
+  END;
+|
+DELIMITER ;
+
+DROP DATABASE IF EXISTS db2;
+CREATE DATABASE db2;
+USE db2;
+CREATE TABLE db2.t1 (i INT NOT NULL, UNIQUE INDEX (i));
+INSERT INTO db2.t1 VALUES (1), (2), (3), (4), (5);

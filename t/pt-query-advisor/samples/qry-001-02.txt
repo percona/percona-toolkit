@@ -1,0 +1,9 @@
+
+# Query ID 0x9DEC61FB7711A48B at byte 0
+# NOTE COL.002 Blind INSERT.
+replace into foo values ("bar")
+
+# Profile
+# Query ID           NOTE WARN CRIT Item
+# ================== ==== ==== ==== ===========================
+# 0x9DEC61FB7711A48B    1    0    0 replace into foo values(?+)

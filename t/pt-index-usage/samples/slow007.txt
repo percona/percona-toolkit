@@ -1,0 +1,17 @@
+# Time: 101010 00:00:01
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 100  Rows_examined: 0
+use sakila;
+select * from sakila.actor where actor_id>10;
+# Time: 101010 00:0002
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 100  Rows_examined: 0
+select * from sakila.actor where actor_id>10;
+# Time: 101010 00:0003
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 100  Rows_examined: 0
+select * from sakila.actor where last_name like 'A%';
+# Time: 101010 00:0004
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 100  Rows_examined: 0
+select * from sakila.actor where last_name like 'A%' order by actor_id;

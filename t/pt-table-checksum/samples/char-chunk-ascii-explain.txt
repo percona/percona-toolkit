@@ -1,0 +1,9 @@
+test     ascii SELECT /*test.ascii:1/8*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `c`)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `test`.`ascii` FORCE INDEX (`c`) WHERE (`c` < ')')
+test     ascii `c` < ')'
+test     ascii `c` >= ')' AND `c` < '1'
+test     ascii `c` >= '1' AND `c` < '9'
+test     ascii `c` >= '9' AND `c` < 'A'
+test     ascii `c` >= 'A' AND `c` < 'I'
+test     ascii `c` >= 'I' AND `c` < 'Q'
+test     ascii `c` >= 'Q' AND `c` < 'Y'
+test     ascii `c` >= 'Y'

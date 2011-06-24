@@ -1,0 +1,3 @@
+read `db2`.`foo`
+write `db`.`tbl`
+read `db1`.`foo`

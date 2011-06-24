@@ -1,0 +1,33 @@
+127.0.0.1:12345
+Version
+Server ID       12345
+Uptime
+Replication     Is not a slave, has 1 slaves connected, is not read_only
+Filters         
+Binary logging  STATEMENT
+Slave status    
+Slave mode      STRICT
+Auto-increment  increment 1, offset 1
+InnoDB version  BUILTIN
++- 127.0.0.1:12346
+   Version
+   Server ID       12346
+   Uptime
+   Replication     Is a slave, has 1 slaves connected, is read_only
+   Filters         
+   Binary logging  STATEMENT
+   Slave status    0 seconds behind, running, no errors
+   Slave mode      STRICT
+   Auto-increment  increment 1, offset 1
+   InnoDB version  BUILTIN
+   +- 127.0.0.1:12347
+      Version
+      Server ID       12347
+      Uptime
+      Replication     Is a slave, has 0 slaves connected, is read_only
+      Filters         
+      Binary logging  STATEMENT
+      Slave status    0 seconds behind, running, no errors
+      Slave mode      STRICT
+      Auto-increment  increment 1, offset 1
+      InnoDB version  BUILTIN

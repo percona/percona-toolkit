@@ -1,0 +1,112 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0x31DA25F95494CA95 at byte 174 ______
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: |     ^  |
+# Time range: all events occurred at 2008-11-27 08:51:20
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       1
+# Exec time     99   149ms   149ms   149ms   149ms   149ms       0   149ms
+# Lock time    100    70us    70us    70us    70us    70us       0    70us
+# Rows sent    100     226     226     226     226     226       0     226
+# Rows examine 100     226     226     226     226     226       0     226
+# Query size    14      11      11      11      11      11       0      11
+# String:
+# Databases    test
+# Hosts
+# Users        mytopuser
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+SHOW STATUS\G
+
+# Query 2: 0 QPS, 0x concurrency, ID 0x3AEAAD0E15D725B5 at byte 600 ______
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: | ^      |
+# Time range: all events occurred at 2008-11-27 08:51:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         40       2
+# Exec time      0    82us    15us    67us    41us    67us    36us    41us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    42      32      16      16      16      16       0      16
+# String:
+# Databases    abc
+# Hosts
+# Users        foo_app
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+SET autocommit=0\G
+
+# Query 3: 0 QPS, 0x concurrency, ID 0x813031B8BBC3B329 at byte 782 ______
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: | ^      |
+# Time range: all events occurred at 2008-11-27 08:51:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       1
+# Exec time      0    15us    15us    15us    15us    15us       0    15us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size     7       6       6       6       6       6       0       6
+# String:
+# Databases    abc
+# Hosts
+# Users        foo_app
+# Query_time distribution
+#   1us
+#  10us  ################################################################
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+commit\G
+
+# Query 4: 0 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 385 ______
+# This item is included in the report because it matches --limit.
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Query_time sparkline: |^       |
+# Time range: all events occurred at 2008-11-27 08:51:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         20       1
+# Exec time      0     5us     5us     5us     5us     5us       0     5us
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Query size    35      27      27      27      27      27       0      27
+# String:
+# Databases    test
+# Hosts
+# Users        mytopuser
+# Query_time distribution
+#   1us  ################################################################
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+administrator command: Quit\G

@@ -1,0 +1,3 @@
+# Syncing P=12346,h=127.1,p=...,u=msandbox
+# DELETE REPLACE INSERT UPDATE ALGORITHM START    END      EXIT DATABASE.TABLE
+#      0       0      0      0 Chunk     00:00:00 00:00:00 0    issue_644.t

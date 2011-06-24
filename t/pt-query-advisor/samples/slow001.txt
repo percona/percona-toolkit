@@ -1,0 +1,14 @@
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from tbl;
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from tbl;
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from tbl order by a;
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+insert into tbl values (null, 1, 'foo');
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+replace into tbl2 values (1, '2', 'bar');
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select a, b, c from x where id<1000 group by a, b;
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select x, y, z from foo where id>1000 group by x, y;

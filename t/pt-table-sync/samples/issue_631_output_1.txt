@@ -1,0 +1,9 @@
+# Syncing D=d2,P=12345,h=127.1,p=...,t=t,u=msandbox
+# DELETE REPLACE INSERT UPDATE ALGORITHM START    END      EXIT DATABASE.TABLE
+INSERT INTO `d2`.`t`(`x`) VALUES ('1');
+#      0       0      1      0 GroupBy   00:00:00 00:00:00 2    d1.t
+# Syncing D=d3,P=12345,h=127.1,p=...,t=t,u=msandbox
+# DELETE REPLACE INSERT UPDATE ALGORITHM START    END      EXIT DATABASE.TABLE
+INSERT INTO `d3`.`t`(`x`) VALUES ('1');
+INSERT INTO `d3`.`t`(`x`) VALUES ('2');
+#      0       0      2      0 GroupBy   00:00:00 00:00:00 2    d1.t

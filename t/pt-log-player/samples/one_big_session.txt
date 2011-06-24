@@ -1,0 +1,61 @@
+-- ONE SESSION
+USE `mk_log_player_1`
+
+SELECT a FROM tbl1
+
+USE `mk_log_player_2`
+
+SELECT a FROM mk_log_player_2.tbl2
+
+USE `mk_log_player_1`
+
+UPDATE mk_log_player_1.tbl1 SET a = 100 WHERE a = 1
+
+SELECT a FROM tbl1 WHERE a < 10
+
+SELECT * FROM tbl1 WHERE a IS NOT NULL
+
+USE `mk_log_player_2`
+
+SELECT * FROM tbl2 WHERE a > 2
+
+SELECT * FROM tbl2 WHERE a < 1 AND a > 10
+
+SELECT * FROM mk_log_player_1.tbl1 AS t1 LEFT JOIN mk_log_player_2.tbl2 AS t2 ON t1.a = t2.a
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+USE `mk_log_player_1`
+
+UPDATE mk_log_player_1.tbl1 SET a = 100 WHERE a = 1
+
+SELECT a FROM tbl1 WHERE a < 10
+
+SELECT * FROM tbl1 WHERE a IS NOT NULL
+
+USE `mk_log_player_2`
+
+SELECT * FROM tbl2 WHERE a > 2
+
+SELECT * FROM tbl2 WHERE a < 1 AND a > 10
+
+SELECT * FROM mk_log_player_1.tbl1 AS t1 LEFT JOIN mk_log_player_2.tbl2 AS t2 ON t1.a = t2.a
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+
+SELECT a FROM tbl2
+

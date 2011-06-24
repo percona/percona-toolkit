@@ -1,0 +1,3 @@
+SELECT /*!40001 SQL_NO_CACHE */ `film_id`,`title`,`description`,`release_year`,`language_id`,`original_language_id`,`rental_duration`,`rental_rate`,`length`,`replacement_cost`,`rating`,`special_features`,`last_update` FROM `sakila`.`film` FORCE INDEX(`PRIMARY`) WHERE (film_id < 100) AND (`film_id` < '1000') LIMIT 1
+SELECT /*!40001 SQL_NO_CACHE */ `film_id`,`title`,`description`,`release_year`,`language_id`,`original_language_id`,`rental_duration`,`rental_rate`,`length`,`replacement_cost`,`rating`,`special_features`,`last_update` FROM `sakila`.`film` FORCE INDEX(`PRIMARY`) WHERE (film_id < 100) AND (`film_id` < '1000') AND ((`film_id` >= ?)) LIMIT 1
+DELETE FROM `sakila`.`film` WHERE (`film_id` = ?)

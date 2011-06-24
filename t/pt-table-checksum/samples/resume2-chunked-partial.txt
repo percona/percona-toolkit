@@ -1,0 +1,6 @@
+DATABASE TABLE  CHUNK HOST      ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
+test     resume     0 127.0.0.1 InnoDB          3         f4dbdf21    0    0 NULL NULL
+test     resume     0 127.1     InnoDB          3         f4dbdf21    0    0 NULL NULL
+test     resume     1 127.0.0.1 InnoDB          3         6abf4a82    0    0 NULL NULL
+test     resume     1 127.1     InnoDB          3         6abf4a82    0    0 NULL NULL
+test     resume     2 127.0.0.1 InnoDB          4         bce55ff5    0    0 NULL NULL

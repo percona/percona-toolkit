@@ -1,0 +1,175 @@
+
+# Query 1: 0 QPS, 0x concurrency, ID 0xABE9508269335CD1 at byte 1830 _____
+# Scores: Apdex = 0.00 [1.0]*, V/M = 0.00
+# Lock_time sparkline: |       ^|
+# Time range: all events occurred at 2009-08-05 13:00:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         11       1
+# Exec time     98   1349s   1349s   1349s   1349s   1349s       0   1349s
+# Lock time     99   1349s   1349s   1349s   1349s   1349s       0   1349s
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine  99   1.84M   1.84M   1.84M   1.84M   1.84M       0   1.84M
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    16      40      40      40      40      40       0      40
+# Boolean:
+# Disk filesor 100% yes,   0% no
+# Disk tmp tab 100% yes,   0% no
+# Filesort     100% yes,   0% no
+# Full scan    100% yes,   0% no
+# Tmp table    100% yes,   0% no
+# String:
+# Databases    db3
+# Lock_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `db3` LIKE 'forest'\G
+#    SHOW CREATE TABLE `db3`.`forest`\G
+DELETE FROM forest WHERE animal = 'dead'\G
+# Converted for EXPLAIN
+# EXPLAIN /*!50100 PARTITIONS*/
+select * from  forest WHERE animal = 'dead'\G
+
+# Query 2: 0.00 QPS, 0.00x concurrency, ID 0xAC1BF726F2AB10C5 at byte 916
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.03
+# Lock_time sparkline: |    _^  |
+# Time range: 2009-08-05 11:00:27 to 13:00:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         44       4
+# Exec time      0      3s   526ms   926ms   726ms   900ms   141ms   705ms
+# Lock time      0   334ms    37ms   100ms    84ms    95ms    26ms    95ms
+# Rows sent      3      33       7       9    8.25    8.91    0.83    8.91
+# Rows examine   0     152      50      51   50.67   49.17       0   49.17
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    27      68      17      17      17      17       0      17
+# Boolean:
+# Full scan    100% yes,   0% no
+# QC Hit        25% yes,  75% no
+# String:
+# Databases    db1 (2/50%), db3 (2/50%)
+# Lock_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  #####################
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db1` LIKE 'foo'\G
+#    SHOW CREATE TABLE `db1`.`foo`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM foo\G
+
+# Query 3: 0 QPS, 0x concurrency, ID 0xB79802214165F670 at byte 1243 _____
+# Scores: Apdex = 1.00 [1.0]*, V/M = 0.73
+# Lock_time sparkline: |    ^^  |
+# Time range: all events occurred at 2009-08-05 12:00:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         22       2
+# Exec time      0   726ms    52us   726ms   363ms   726ms   513ms   363ms
+# Lock time      0   110ms    10ms   100ms    55ms   100ms    64ms    55ms
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0       0       0       0       0       0       0       0
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    27      66      33      33      33      33       0      33
+# Boolean:
+# Full scan    100% yes,   0% no
+# String:
+# Databases    db2
+# Lock_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ################################################################
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db2` LIKE 'tbl'\G
+#    SHOW CREATE TABLE `db2`.`tbl`\G
+INSERT INTO tbl VALUES ('a', 'b')\G
+
+# Query 4: 0 QPS, 0x concurrency, ID 0x1F9B2F47A843D460 at byte 327 ______
+# Scores: Apdex = 0.50 [1.0]*, V/M = 0.00
+# Lock_time sparkline: |    ^   |
+# Time range: all events occurred at 2009-08-05 11:00:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         11       1
+# Exec time      0      2s      2s      2s      2s      2s       0      2s
+# Lock time      0    10ms    10ms    10ms    10ms    10ms       0    10ms
+# Rows sent      0       1       1       1       1       1       0       1
+# Rows examine   0       1       1       1       1       1       0       1
+# Merge passes   0       0       0       0       0       0       0       0
+# Query size    12      31      31      31      31      31       0      31
+# String:
+# Databases    db1
+# Lock_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ################################################################
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db1` LIKE 'tbl'\G
+#    SHOW CREATE TABLE `db1`.`tbl`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT id FROM tbl WHERE id = 1\G
+
+# Query 5: 0 QPS, 0x concurrency, ID 0x3F1024B96D9D469E at byte 613 ______
+# Scores: Apdex = 0.00 [1.0]*, V/M = 0.00
+# Lock_time sparkline: |^       |
+# Time range: all events occurred at 2009-08-05 11:00:27
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         11       1
+# Exec time      0      9s      9s      9s      9s      9s       0      9s
+# Lock time      0     1us     1us     1us     1us     1us       0     1us
+# Rows sent     96     900     900     900     900     900       0     900
+# Rows examine   0   9.77k   9.77k   9.77k   9.77k   9.77k       0   9.77k
+# Merge passes 100       1       1       1       1       1       0       1
+# Query size    15      39      39      39      39      39       0      39
+# Boolean:
+# Disk filesor 100% yes,   0% no
+# Full scan    100% yes,   0% no
+# Tmp table    100% yes,   0% no
+# String:
+# Databases    db1
+# Lock_time distribution
+#   1us  ################################################################
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `db1` LIKE 'blah'\G
+#    SHOW CREATE TABLE `db1`.`blah`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT COUNT(*) FROM blah WHERE col > 2\G
+
+# Profile
+# Rank Query ID           Response time   Calls R/Call    Apdx V/M   Item
+# ==== ================== =============== ===== ========= ==== ===== =====
+#    1 0xABE9508269335CD1 1349.0001 98.9%     1 1349.0001 0.00  0.00 DELETE forest
+#    2 0xAC1BF726F2AB10C5    2.9042  0.2%     4    0.7261 1.00  0.03 SELECT foo
+#    3 0xB79802214165F670    0.7261  0.1%     2    0.3631 1.00  0.73 INSERT tbl
+#    4 0x1F9B2F47A843D460    1.7261  0.1%     1    1.7261 0.50  0.00 SELECT tbl
+#    5 0x3F1024B96D9D469E    9.0001  0.7%     1    9.0001 0.00  0.00 SELECT blah

@@ -1,0 +1,27 @@
+2c2
+< # Overall: 15 total, 10 unique, 0.00 QPS, 0.00x concurrency ______________
+---
+> # Overall: 15 total, 4 unique, 0.00 QPS, 0.00x concurrency _______________
+24c24
+< # Scores: Apdex = 0.50 [1.0]*, V/M = 0.00
+---
+> # Scores: Apdex = NS [0.0]*, V/M = 0.00
+37d36
+< # Databases    foo
+50,51c49,50
+< #    SHOW TABLE STATUS FROM `foo` LIKE 'a'\G
+< #    SHOW CREATE TABLE `foo`.`a`\G
+---
+> #    SHOW TABLE STATUS LIKE 'a'\G
+> #    SHOW CREATE TABLE `a`\G
+57c56
+< # Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+---
+> # Scores: Apdex = NS [0.0]*, V/M = 0.00
+101,103c100,101
+< #    1 0x182FF6A853858893  2.0000 72.4%     1 2.0000 0.50  0.00 SELECT a
+< #    2 0x66825DDC008FFA89  0.7261 26.3%     1 0.7261 1.00  0.00 UPDATE db?.tuningdetail_?_? db?.gonzo
+< # MISC 0xMISC              0.0361  1.3%    13 0.0028   NS   0.0 <8 ITEMS>
+---
+> #    1 0x182FF6A853858893  2.0000 72.4%     1 2.0000   NS  0.00 SELECT a
+> #    2 0x66825DDC008FFA89  0.7261 26.3%     1 0.7261   NS  0.00 UPDATE db?.tuningdetail_?_? db?.gonzo

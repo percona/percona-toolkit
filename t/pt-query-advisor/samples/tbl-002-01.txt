@@ -1,0 +1,11 @@
+
+# Query ID 0x75364D6054FA40ED at byte 0
+# NOTE ALI.001 Aliasing without the AS keyword.
+# WARN ALI.002 Aliasing the '*' wildcard.
+# NOTE COL.001 SELECT *.
+SELECT tbl.* foo, bar FROM tbl WHERE id=1
+
+# Profile
+# Query ID           NOTE WARN CRIT Item
+# ================== ==== ==== ==== =========================================
+# 0x75364D6054FA40ED    2    1    0 select tbl.* foo, bar from tbl where id=?
