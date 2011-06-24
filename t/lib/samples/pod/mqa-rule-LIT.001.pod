@@ -1,0 +1,71 @@
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+mk-query-advisor - Scrutinize queries.
+
+=head1 SYNOPSIS
+
+This POD sample simulates special POD stuff used by mk-query-advisor.  The
+format used here is not the same actually used in mk-query-advisor.  This POD
+sample is, therore, just for testing.
+
+=head1 RULES
+
+These are the check that mk-advisor can perform on a query.  There are several
+classes of checks, each described in its own seciton.  You can add new checks
+by adding new entires like the ones below.  Read L<"CHECK SYNTAX"> to learn
+the structure of these checks.
+
+=over
+
+=item LIT.001
+
+severity: note
+
+IP address used as string.  The string literal looks like an IP
+address but is not used inside INET_ATON().  WHERE ip='127.0.0.1'
+is better as ip=INET_ATON('127.0.0.1') if the column is numeric.
+
+=back
+
+=head1 OPTIONS
+
+=over
+
+=item --define
+
+type: array
+
+Define these check IDs.  If L<"--verbose"> is zero (i.e. not specified) then
+a terse definition is given.  If one then a fuller definition is given.  If
+two then the complete definition is given.
+
+=item --ignore-checks
+
+type: array
+
+Ignore these L<"CHECKS">.
+
+=item --verbose
+
+cumulative; default: 0
+
+Print more information.
+
+=back
+
+=head1 ENVIRONMENT
+
+The environment variable C<MKDEBUG> enables verbose debugging output in all of the
+Maatkit tools:
+
+   MKDEBUG=1 mk-....
+
+=head1 VERSION
+
+This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 1929 $.
+
+=cut

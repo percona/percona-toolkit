@@ -1,0 +1,37 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 498006722
+#071207 12:02:50 server id 21  end_log_pos 498006652 	Query	thread_id=104168	exec_time=20664	error_code=0
+insert into foo values (12)/*!*/;
+# at 498006789
+#071207 12:59:07 server id 21  end_log_pos 278 	Query	thread_id=104168	exec_time=20675	error_code=0
+insert into foo values (12)/*!*/;
+# at 498007067
+#071207 13:02:08 server id 21  end_log_pos 836 	Query	thread_id=104168	exec_time=20704	error_code=0
+insert into foo values (13)/*!*/;
+# at 498007625
+#071207 13:02:09 server id 21  end_log_pos 1161 	Query	thread_id=104168	exec_time=20664	error_code=0
+insert into foo values (13)/*!*/;
+# at 498007950
+#071207 13:02:10 server id 21  end_log_pos 498007840 	Query	thread_id=103374	exec_time=20661	error_code=0
+insert into foo values (13)/*!*/;
+# at 498007977
+#071207 18:02:53 server id 21  end_log_pos 417 	Query	thread_id=103374	exec_time=20661	error_code=0
+insert into foo values (18)/*!*/;
+# at 498008394
+#071207 23:02:53 server id 21  end_log_pos 498008284 	Query	thread_id=103374	exec_time=20661	error_code=0
+insert into foo values (23)/*!*/;
+# at 498008421
+#071208 08:00:00 server id 21  end_log_pos 314 	Query	thread_id=103374	exec_time=20661	error_code=0
+insert into bar values (8)/*!*/;
+# at 498008735
+#071208 10:02:53 server id 21  end_log_pos 498008625 	Query	thread_id=103374	exec_time=20661	error_code=0
+insert into bar values (10)/*!*/;
+# at 498008762
+#071208 12:12:12 server id 21  end_log_pos 28  Query	thread_id=103374	exec_time=20661	error_code=0
+insert into bar values (12)/*!*/;
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

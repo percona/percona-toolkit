@@ -1,0 +1,23 @@
+2008 Jan  9 16:16:34 hostname postgres[30059]: [12-1] LOG:  duration: 3617.465 ms
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-1] LOG:  duration: 3617.465 ms  statement:                                              select
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-2]  t.tid,t.title,m.name,gn.name,to_char( t.retail_reldate, 'mm-dd-yy' ) as retail_reldate,coalesce(s0c100r0.units,0) as
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-3]  w0c100r0units,'NA' as w0c100r0dollars,'NA' as w0c100r0arp,coalesce(s0c1r0.units,0) as w0c1r0units,'NA' as w0c1r0dollars,'NA' as
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-4]  w0c1r0arp,coalesce(s0c2r0.units,0) as w0c2r0units,coalesce(s0c2r0.dollars,0) as w0c2r0dollars,arp(s0c2r0.dollars, s0c2r0.units)
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-5]  as w0c2r0arp from title t left outer join sublabel sl on t.sublabel_rel = sl.key left outer join label s on sl.lid = s.id left
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-6]  outer join label d on s.did = d.id left outer join sale_200601 s0c100r0 on t.tid = s0c100r0.tid and s0c100r0.week = 200601 and
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-7]  s0c100r0.channel = 100 and s0c100r0.region = 0 left outer join sale_200601 s0c1r0 on t.tid = s0c1r0.tid and s0c1r0.week =
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-8]  200601 and s0c1r0.channel = 1 and s0c1r0.region = 0 left outer join sale_200601 s0c2r0 on t.tid = s0c2r0.tid and s0c2r0.week =
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-9]  200601 and s0c2r0.channel = 2 and s0c2r0.region = 0 left outer join media m on t.media = m.key left outer join genre_n gn on
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-10]  t.genre_n = gn.key where ((((upper(t.title) like '%MATRIX%' or upper(t.artist) like '%MATRIX%') ))) and t.blob in ('L', 'M',
+2008 Jan  9 16:16:34 hostname postgres[30059]: [13-11]  'R') and t.source_dvd != 'IN' order by t.title asc limit 100
+2008 Jan  9 16:16:34 hostname postgres[30059]: [14-1] LOG:  duration: 3.358 ms
+2008 Jan  9 16:16:36 hostname postgres[30059]: [15-1] LOG:  duration: 1982.460 ms
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-1] LOG:  duration: 1982.460 ms  statement:                                              select sum(coalesce(s0c100r0.units,0)) as
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-2]  w0c100r0units,'' as w0c100r0dollars,'' as w0c100r0arp,sum(coalesce(s0c1r0.units,0)) as w0c1r0units,'' as w0c1r0dollars,'' as
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-3]  w0c1r0arp,sum(coalesce(s0c2r0.units,0)) as w0c2r0units,sum(coalesce(s0c2r0.dollars,0)) as w0c2r0dollars,NULL as w0c2r0arp from
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-4]  title t left outer join sublabel sl on t.sublabel_rel = sl.key left outer join label s on sl.lid = s.id left outer join label d
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-5]  on s.did = d.id left outer join sale_200601 s0c100r0 on t.tid = s0c100r0.tid and s0c100r0.week = 200601 and s0c100r0.channel =
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-6]  100 and s0c100r0.region = 0 left outer join sale_200601 s0c1r0 on t.tid = s0c1r0.tid and s0c1r0.week = 200601 and
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-7]  s0c1r0.channel = 1 and s0c1r0.region = 0 left outer join sale_200601 s0c2r0 on t.tid = s0c2r0.tid and s0c2r0.week = 200601 and
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-8]  s0c2r0.channel = 2 and s0c2r0.region = 0 where ((((upper(t.title) like '%MATRIX%' or upper(t.artist) like '%MATRIX%') ))) and
+2008 Jan  9 16:16:36 hostname postgres[30059]: [16-9]  t.blob in ('L', 'M', 'R') and t.source_dvd != 'IN'

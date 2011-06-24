@@ -1,0 +1,38 @@
+test.a
+CREATE TABLE `a` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL
+);
+
+test.b
+CREATE TABLE `b` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL,
+  `c3` varchar(45) NOT NULL,
+);
+
+test2.a
+CREATE TABLE `a` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL
+);
+
+test.a
+CREATE TABLE `a` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL
+);
+
+test.b
+CREATE TABLE `b` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL,
+  `c3` varchar(45) NOT NULL,
+);
+
+test2.a
+CREATE TABLE `a` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL
+);
+

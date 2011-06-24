@@ -1,0 +1,29 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#091021 21:25:55 server id 11  end_log_pos 98   Start: binlog v 4, server v 5.0.84-percona-highperf-b18-log created 091021 21:25:55
+# at 571891091
+#091022  0:00:00 server id 11  end_log_pos 571891160    Query   thread_id=140839791     exec_time=0     error_code=0
+SET TIMESTAMP=1256194800/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=1, @@session.unique_checks=1/*!*/;
+SET @@session.sql_mode=0/*!*/;
+/*!\C latin1 *//*!*/;
+SET @@session.character_set_client=8,@@session.collation_connection=8,@@session.collation_server=8/*!*/;
+BEGIN
+/*!*/;
+# at 571891160
+#091022  0:00:00 server id 11  end_log_pos 571891286    Query   thread_id=140839791     exec_time=0     error_code=0
+use db/*!*/;
+SET TIMESTAMP=1256194800/*!*/;
+DELETE FROM `foo` WHERE `id` = 42
+/*!*/;
+# at 572080896
+#091022  0:00:03 server id 11  end_log_pos 572081114    Query   thread_id=131294991     exec_time=0     error_code=0
+SET TIMESTAMP=1256194803/*!*/;
+SET @@session.time_zone='SYSTEM'/*!*/;
+insert ignore into user (id,f_id,c_date) values (17, 18, now())
+/*!*/;
+# at 572081114
+#091022  0:00:03 server id 11  end_log_pos 572081141    Xid = 1243150725
+COMMIT/*!*/;

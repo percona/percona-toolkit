@@ -1,0 +1,16 @@
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 5  Schema: db1
+# Query_time: 0.000002  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+# No InnoDB statistics available for this query
+# administrator command: Quit;
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 6  Schema: db2 
+# Query_time: 0.000899  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+# No InnoDB statistics available for this query
+use db;
+SET NAMES utf8;
+# User@Host: meow[meow] @  [1.2.3.8]
+# Thread_id: 6  Schema: db2
+# Query_time: 0.018799  Lock_time: 0.009453  Rows_sent: 0  Rows_examined: 0
+# No InnoDB statistics available for this query
+SELECT MIN(id),MAX(id) FROM tbl;

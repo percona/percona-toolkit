@@ -1,0 +1,9 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 498008762
+#071208 12:12:12 server id 21  end_log_pos 28  Query	thread_id=103374	exec_time=20661	error_code=0
+delete from test2.t where a=1/*!*/;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

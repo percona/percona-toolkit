@@ -1,0 +1,14 @@
+-- START SESSION 5
+
+use db1
+
+SELECT * FROM foo WHERE bar = 'bar'
+
+use db
+
+INSERT INTO tbl VALUES (1), (2), (3)
+
+use db2
+
+SELECT * FROM foo
+

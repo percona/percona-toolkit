@@ -1,0 +1,243 @@
+080517  4:20:13 [Note] /usr/sbin/mysqld: ready for connections.
+Version: '5.0.58-enterprise-gpl-mpb-log'  socket: '/var/lib/mysql/mysql.sock'  port: 3306  MySQL Enterprise Server (MPB ed.) (GPL)
+
+Status information:
+
+Current dir: /var/lib/mysql/
+Running threads: 16  Stack size: 262144
+Current locks:
+lock: 0x29a90d0:
+
+lock: 0x26fb910:
+
+lock: 0x28f2ae0:
+
+lock: 0x2921e10:
+
+lock: 0x22ea900:
+
+lock: 0x272b840:
+
+lock: 0x2337f80:
+
+lock: 0x42ff310:
+
+lock: 0x26b35f0:
+
+lock: 0x23861f0:
+
+lock: 0x26a5ee0:
+
+lock: 0x2b02f60:
+
+lock: 0x29d37e0:
+
+lock: 0x29d2f80:
+
+lock: 0x2706e90:
+
+lock: 0x22ee350:
+
+lock: 0x39bd8b0:
+
+lock: 0x28ec500:
+
+lock: 0x2a5e8a0:
+
+lock: 0x271fd60:
+
+lock: 0x39f2c80:
+
+lock: 0x29c2730:
+
+lock: 0x25227f0:
+
+lock: 0x41b6dc0:
+
+lock: 0x4207cd0:
+
+lock: 0x24a0360:
+
+lock: 0x22edcd0:
+
+lock: 0x29cd590:
+
+lock: 0x29c0140:
+
+lock: 0x3a75bf0:
+
+lock: 0x390f530:
+
+lock: 0x390fd00:
+
+lock: 0x3921110:
+
+lock: 0x41d6cd0:
+
+lock: 0x2346100:
+
+lock: 0x22ec870:
+
+lock: 0x23a8ea0:
+
+lock: 0x26fec60:
+
+lock: 0x23878d0:
+
+lock: 0x2652ca0:
+
+lock: 0x3fe7240:
+
+lock: 0x24f5b80:
+
+lock: 0x2614a60:
+
+lock: 0x41b6550:
+
+lock: 0x4199a30:
+
+lock: 0x41ba150:
+
+lock: 0x4192430:
+
+lock: 0x418fcc0:
+
+lock: 0x236a480:
+
+lock: 0x25bf440:
+
+lock: 0x25bbd00:
+
+lock: 0x28207b0:
+
+lock: 0x2ee33b0:
+
+lock: 0x2e1ab50:
+
+lock: 0x442f6f0:
+
+lock: 0x3ed6fe0:
+
+lock: 0x3ed69f0:
+
+lock: 0x25c2100:
+
+lock: 0x25d3840:
+
+lock: 0x3a7c920:
+
+lock: 0x3a7d8d0:
+
+lock: 0x258f080:
+
+lock: 0x2e81d00:
+
+lock: 0x3ef3380:
+
+lock: 0x408e610:
+
+lock: 0x41e1aa0:
+
+lock: 0x2561980:
+
+lock: 0x41c9c50:
+
+lock: 0x3f64c70:
+
+lock: 0x252b2f0:
+
+lock: 0x252dca0:
+
+lock: 0x2e043c0:
+
+lock: 0x3fb2e60:
+
+lock: 0x3eead10:
+
+lock: 0x41a30f0:
+
+lock: 0x4155b50:
+
+lock: 0x41978f0:
+
+lock: 0x28408a0:
+
+lock: 0x429bd80:
+
+lock: 0x4078490:
+
+lock: 0x4195df0:
+
+lock: 0x3ac61a0:
+
+lock: 0x4172470:
+
+lock: 0x3ac4100:
+
+lock: 0x41811d0:
+
+lock: 0x417ea00:
+
+lock: 0x4177730:
+
+lock: 0x4175220:
+
+lock: 0x416dd20:
+
+lock: 0x3a88440:
+
+lock: 0x416b3f0:
+
+lock: 0x4169e40:
+
+lock: 0x4163520:
+
+lock: 0x4162200:
+
+lock: 0x415f540:
+
+lock: 0x4157b60:
+
+lock: 0x4156e60:
+
+lock: 0x40f9970:
+
+lock: 0x3a85800:
+
+lock: 0x28c4b00:
+
+
+Key caches:
+default
+Buffer_size:      67108864
+Block_size:           1024
+Division_limit:        100
+Age_limit:             300
+blocks used:         53585
+not flushed:             0
+w_requests:       18891286
+writes:            1329532
+r_requests:      173889204
+reads:              462708
+
+
+handler status:
+read_key:     31268733
+read_next:  2781246802
+read_rnd      37994506
+read_first:     377959
+write:       292954339
+delete          128239
+update:       34140006
+
+Table status:
+Opened tables:       2427
+Open tables:         1024
+Open files:          1630
+Open streams:           0
+
+Alarm status:
+Active alarms:   16
+Max used alarms: 46
+Next alarm time: 28699
+080522  8:41:31 [Warning] 'db' entry 'test nagios@4fa060606e2d579a' ignored in --skip-name-resolve mode.

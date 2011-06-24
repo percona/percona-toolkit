@@ -1,0 +1,12 @@
+# administrator command: Quit;
+# Time: 091205 19:55:11
+# User@Host: chessguest[chessguest] @ localhost []
+# Thread_id: 58027  Schema: 
+# Query_time: 0.000613  Lock_time: 0.000107  Rows_sent: 230  Rows_examined: 230
+# Rows_affected: 0  Rows_read: 230
+show /*!50002 GLOBAL */ status;
+# User@Host: chessguest[chessguest] @ localhost []
+# Thread_id: 58027  Schema: 
+# Query_time: 0.000002  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+# Rows_affected: 0  Rows_read: 0
+# administrator command: Quit;

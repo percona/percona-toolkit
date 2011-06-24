@@ -1,0 +1,47 @@
+--
+-- Host: localhost    Database: test
+-- ------------------------------------------------------
+-- Server version	5.1.53-log
+
+DROP TABLE IF EXISTS `data_report`;
+CREATE TABLE `data_report` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `date` date DEFAULT NULL,
+  `posted` datetime DEFAULT NULL,
+  `acquired` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `date` (`date`,`posted`,`acquired`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `entity`;
+CREATE TABLE `entity` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `entity_property_1` varchar(16) DEFAULT NULL,
+  `entity_property_2` varchar(16) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `entity_property_1` (`entity_property_1`,`entity_property_2`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `data`;
+CREATE TABLE `data` (
+  `data_report` int(11) NOT NULL DEFAULT '0',
+  `hour` tinyint(4) NOT NULL DEFAULT '0',
+  `entity` int(11) NOT NULL DEFAULT '0',
+  `data_1` varchar(16) DEFAULT NULL,
+  `data_2` varchar(16) DEFAULT NULL,
+  PRIMARY KEY (`data_report`,`hour`,`entity`),
+  KEY `entity` (`entity`),
+  CONSTRAINT `data_ibfk_1` FOREIGN KEY (`data_report`) REFERENCES `data_report` (`id`),
+  CONSTRAINT `data_ibfk_2` FOREIGN KEY (`entity`) REFERENCES `entity` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+DROP TABLE IF EXISTS `raw_data`;
+CREATE TABLE `raw_data` (
+  `date` date NOT NULL DEFAULT '0000-00-00',
+  `hour` tinyint(4) NOT NULL DEFAULT '0',
+  `entity_property_1` varchar(16) NOT NULL DEFAULT '',
+  `entity_property_2` varchar(16) NOT NULL DEFAULT '',
+  `data_1` varchar(16) DEFAULT NULL,
+  `data_2` varchar(16) DEFAULT NULL,
+  PRIMARY KEY (`date`,`hour`,`entity_property_1`,`entity_property_2`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;

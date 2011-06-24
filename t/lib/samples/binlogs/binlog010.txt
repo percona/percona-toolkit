@@ -1,0 +1,143 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#101108 13:21:08 server id 1234  end_log_pos 106 	Start: binlog v 4, server v 5.1.50-log created 101108 13:21:08 at startup
+ROLLBACK/*!*/;
+# at 106
+#101108 13:21:40 server id 1234  end_log_pos 320 	Query	thread_id=15	exec_time=0	error_code=0
+use test/*!*/;
+SET TIMESTAMP=1289247700/*!*/;
+SET @@session.pseudo_thread_id=15/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=1, @@session.unique_checks=1, @@session.autocommit=1/*!*/;
+SET @@session.sql_mode=0/*!*/;
+SET @@session.auto_increment_increment=1, @@session.auto_increment_offset=1/*!*/;
+/*!\C latin1 *//*!*/;
+SET @@session.character_set_client=8,@@session.collation_connection=8,@@session.collation_server=33/*!*/;
+SET @@session.lc_time_names=0/*!*/;
+SET @@session.collation_database=DEFAULT/*!*/;
+CREATE TABLE `test1` (
+  `kwid` int(10) unsigned NOT NULL default '0',
+  `keyword` varchar(80) NOT NULL default ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+/*!*/;
+# at 320
+#101108 13:21:40 server id 1234  end_log_pos 388 	Query	thread_id=15	exec_time=0	error_code=0
+SET TIMESTAMP=1289247700/*!*/;
+BEGIN
+/*!*/;
+# at 388
+#101108 13:21:40 server id 1234  end_log_pos 545 	Query	thread_id=15	exec_time=0	error_code=0
+SET TIMESTAMP=1289247700/*!*/;
+INSERT INTO `test1` VALUES
+(1,'watching'),(2,'poet'),(3,'просмотра'),(4,'Поэту')
+/*!*/;
+# at 545
+#101108 13:21:40 server id 1234  end_log_pos 572 	Xid = 10
+COMMIT/*!*/;
+# at 572
+#101108 13:21:40 server id 1234  end_log_pos 788 	Query	thread_id=15	exec_time=1	error_code=0
+SET TIMESTAMP=1289247700/*!*/;
+CREATE TABLE `test2` (
+  `kwid` int(10) unsigned NOT NULL default '0',
+  `keyword` varchar(80) NOT NULL default ''
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+/*!*/;
+# at 788
+#101108 13:21:41 server id 1234  end_log_pos 856 	Query	thread_id=15	exec_time=0	error_code=0
+SET TIMESTAMP=1289247701/*!*/;
+BEGIN
+/*!*/;
+# at 856
+#101108 13:21:41 server id 1234  end_log_pos 1013 	Query	thread_id=15	exec_time=0	error_code=0
+SET TIMESTAMP=1289247701/*!*/;
+INSERT INTO `test2` VALUES
+(1,'watching'),(2,'poet'),(3,'просмотра'),(4,'Поэту')
+/*!*/;
+# at 1013
+#101108 13:21:41 server id 1234  end_log_pos 1040 	Xid = 12
+COMMIT/*!*/;
+# at 1040
+#101108 13:26:28 server id 1234  end_log_pos 1108 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289247988/*!*/;
+BEGIN
+/*!*/;
+# at 1108
+#101108 13:26:28 server id 1234  end_log_pos 1265 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289247988/*!*/;
+INSERT INTO `test1` VALUES (1,'watching'),(2,'poet'),(3,'просмотра'),(4,'Поэту')
+/*!*/;
+# at 1265
+#101108 13:26:28 server id 1234  end_log_pos 1292 	Xid = 112
+COMMIT/*!*/;
+# at 1292
+#101108 13:26:28 server id 1234  end_log_pos 1360 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289247988/*!*/;
+BEGIN
+/*!*/;
+# at 1360
+#101108 13:26:28 server id 1234  end_log_pos 1517 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289247988/*!*/;
+INSERT INTO `test2` VALUES (1,'watching'),(2,'poet'),(3,'просмотра'),(4,'Поэту')
+/*!*/;
+# at 1517
+#101108 13:26:28 server id 1234  end_log_pos 1544 	Xid = 114
+COMMIT/*!*/;
+# at 1544
+#101108 13:26:39 server id 1234  end_log_pos 1623 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289247999/*!*/;
+drop table test1
+/*!*/;
+# at 1623
+#101108 13:26:39 server id 1234  end_log_pos 1702 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289247999/*!*/;
+drop table test2
+/*!*/;
+# at 1702
+#101108 13:26:40 server id 1234  end_log_pos 1916 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289248000/*!*/;
+CREATE TABLE `test1` (
+  `kwid` int(10) unsigned NOT NULL DEFAULT '0',
+  `keyword` varchar(80) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+/*!*/;
+# at 1916
+#101108 13:26:40 server id 1234  end_log_pos 1984 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289248000/*!*/;
+BEGIN
+/*!*/;
+# at 1984
+#101108 13:26:40 server id 1234  end_log_pos 2141 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289248000/*!*/;
+INSERT INTO `test1` VALUES (1,'watching'),(2,'poet'),(3,'просмотра'),(4,'Поэту')
+/*!*/;
+# at 2141
+#101108 13:26:40 server id 1234  end_log_pos 2168 	Xid = 118
+COMMIT/*!*/;
+# at 2168
+#101108 13:26:40 server id 1234  end_log_pos 2384 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289248000/*!*/;
+CREATE TABLE `test2` (
+  `kwid` int(10) unsigned NOT NULL DEFAULT '0',
+  `keyword` varchar(80) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+/*!*/;
+# at 2384
+#101108 13:26:40 server id 1234  end_log_pos 2452 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289248000/*!*/;
+BEGIN
+/*!*/;
+# at 2452
+#101108 13:26:40 server id 1234  end_log_pos 2609 	Query	thread_id=167	exec_time=0	error_code=0
+SET TIMESTAMP=1289248000/*!*/;
+INSERT INTO `test2` VALUES (1,'watching'),(2,'poet'),(3,'просмотра'),(4,'Поэту')
+/*!*/;
+# at 2609
+#101108 13:26:40 server id 1234  end_log_pos 2636 	Xid = 120
+COMMIT/*!*/;
+# at 2636
+#101108 13:28:55 server id 1234  end_log_pos 2655 	Stop
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

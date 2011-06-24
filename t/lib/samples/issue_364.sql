@@ -1,0 +1,8 @@
+CREATE TABLE `issue_364` (
+  `ID` bigint(20) NOT NULL,
+  `SKI_BASE_KID_ID` bigint(20) default NULL,
+  `BASE_KID_ID` bigint(20) default NULL,
+  PRIMARY KEY  (`ID`),
+  KEY `FKE4364A9EBC366E50` (`SKI_BASE_KID_ID`),
+  KEY `BASE_KID_ID` (`BASE_KID_ID`,`ID`)
+) ENGINE=InnoDB

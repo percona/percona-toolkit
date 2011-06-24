@@ -1,0 +1,15 @@
+CREATE TABLE `gpu` (
+  `g_id` bigint(20) unsigned NOT NULL,
+  `p_id` bigint(20) unsigned NOT NULL,
+  `date_added` int(10) unsigned NOT NULL,
+  `p_o_id` bigint(20) unsigned NOT NULL,
+  `g_o_id` bigint(20) unsigned NOT NULL,
+  `in_order` tinyint(3) unsigned NOT NULL,
+  `date_update` int(10) unsigned NOT NULL,
+  `comment` text collate utf8_unicode_ci NOT NULL,
+  `is_v` tinyint(3) unsigned NOT NULL,
+  UNIQUE KEY `by_p_id` (`p_id`,`g_id`),
+  KEY `by_p_o` (`p_o_id`,`g_id`),
+  KEY `by_activity` (`p_id`,`date_added`),
+  KEY `by_count` (`p_o_id`,`is_v`,`p_id`)
+) ENGINE=InnoDB

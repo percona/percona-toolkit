@@ -1,0 +1,5 @@
+Feb  8 09:52:41 debian postgres[7622]: [15-1] 2010-02-08 09:52:41.526 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select * from pg_stat_bgwriter;
+Feb  8 09:52:41 debian postgres[7622]: [16-1] 2010-02-08 09:52:41.533 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 8.309 ms
+Feb  8 09:52:57 debian postgres[7622]: [17-1] 2010-02-08 09:52:57.807 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: create index ix_a on foo (a);
+Feb  8 09:52:57 debian postgres[7622]: [18-1] 2010-02-08 09:52:57.864 EST c=4b701056.1dc6,u=fred,D=fred ERROR:  relation "ix_a" already exists
+Feb  8 09:52:57 debian postgres[7622]: [18-2] 2010-02-08 09:52:57.864 EST c=4b701056.1dc6,u=fred,D=fred STATEMENT:  create index ix_a on foo (a);

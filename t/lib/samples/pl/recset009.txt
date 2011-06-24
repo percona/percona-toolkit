@@ -1,0 +1,3 @@
+Id	User	Host	db	Command	Time	State	Info
+21	msandbox	localhost:54732	NULL	Binlog Dump	3081	Has sent all binlog to slave; waiting for binlog to be updated	NULL
+41	msandbox	localhost	NULL	Query	0	NULL	show full processlist

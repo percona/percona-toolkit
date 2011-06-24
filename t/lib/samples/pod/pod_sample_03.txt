@@ -1,0 +1,74 @@
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+mk-heartbeat - Monitor MySQL replication delay.
+
+=head1 SYNOPSIS
+
+This POD sample is nonsensical. Its purpose is to test every option
+attribute. What are not test here are option rules (mutually exclusive,
+etc.)--those are tested in pod_sample_02.txt.
+
+=head1 OPTIONS
+
+=over
+
+=back
+
+=head1 ENVIRONMENT
+
+The environment variable C<MKDEBUG> enables verbose debugging output in all of the
+Maatkit tools:
+
+   MKDEBUG=1 mk-....
+
+=head1 SYSTEM REQUIREMENTS
+
+You need Perl, DBI, DBD::mysql, and some core packages that ought to be
+installed in any reasonably new version of Perl.
+
+=head1 SEE ALSO
+
+See also L<mk-slave-delay> and L<mk-slave-restart>.
+
+=head1 BUGS
+
+Please use the Sourceforge bug tracker, forums, and mailing lists to request
+support or report bugs: L<http://sourceforge.net/projects/maatkit/>.
+
+Please include the complete command-line used to reproduce the problem you are
+seeing, the version of all MySQL servers involved, the complete output of the
+tool when run with L<"--version">, and if possible, debugging output produced by
+running with the C<MKDEBUG=1> environment variable.
+
+=head1 COPYRIGHT, LICENSE AND WARRANTY
+
+This program is copyright (c) 2006 Proven Scaling LLC and SixApart Ltd, and
+(c) 2007 Baron Schwartz.  Feedback and improvements are welcome.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 AUTHOR
+
+Proven Scaling LLC, SixApart Ltd, and Baron Schwartz.
+
+=head1 VERSION
+
+This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 1929 $.
+
+=cut

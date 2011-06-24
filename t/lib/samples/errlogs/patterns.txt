@@ -1,0 +1,7 @@
+pattern1
+info
+^foo
+
+pattern2
+error
+mysql got signal \d

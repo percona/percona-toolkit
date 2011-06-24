@@ -1,0 +1,16 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --bar=m  Time.  Optional suffix s=seconds, m=minutes, h=hours, d=days; if no
+           suffix, m is used.
+  --foo=m  Time.  Optional suffix s=seconds, m=minutes, h=hours, d=days; if no
+           suffix, s is used.
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Options and values after processing arguments:
+
+  --bar    (No value)
+  --foo    (No value)

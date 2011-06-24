@@ -1,0 +1,3 @@
+CREATE TABLE a (
+  a int(11) default NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1

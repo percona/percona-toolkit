@@ -1,0 +1,33 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --bar=d  DSN bar
+  --foo=d  DSN foo
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Rules:
+
+  DSN values in --foo default to values in --bar if COPY is yes.
+
+DSN syntax is key=value[,key=value...]  Allowable DSN keys:
+
+  KEY  COPY  MEANING
+  ===  ====  =============================================
+  A    yes   Default character set
+  D    yes   Database to use
+  F    yes   Only read default options from the given file
+  P    yes   Port number to use for connection
+  S    yes   Socket file to use for connection
+  h    yes   Connect to host
+  p    yes   Password to use when connecting
+  u    yes   User for login if not current user
+
+  If the DSN is a bareword, the word is treated as the 'h' key.
+
+Options and values after processing arguments:
+
+  --bar    D=DB,h=localhost,u=USER
+  --foo    D=DB,h=otherhost,u=USER

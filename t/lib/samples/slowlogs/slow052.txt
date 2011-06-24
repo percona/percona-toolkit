@@ -1,0 +1,600 @@
+# User@Host: root[root] @ localhost []
+# Query_time: 4.765938  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.042398  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.577478  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.087132  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.351167  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.029704  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.974657  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.072865  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.209116  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.069327  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.567589  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.058662  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.901424  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.053108  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.926692  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.054159  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.696605  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.027544  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.858745  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.028479  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.745919  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.037497  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.984665  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.010883  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.940977  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.046653  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.986475  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.094941  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.995091  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.044960  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.026655  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.021263  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.820996  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.033280  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.875766  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.041760  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.340638  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.003460  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.351340  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.036953  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.665263  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.071882  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.510792  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.053913  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.645677  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.042274  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.204431  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.006872  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.945183  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.061213  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.444670  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.075292  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.175973  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.031337  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.760166  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.099251  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.720641  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.083117  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.267014  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.002507  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.403520  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.098151  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.404196  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.026524  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.263792  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.073829  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.760398  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.080491  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.708265  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.021008  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.589934  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.062981  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.993419  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.069652  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.715058  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.089832  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.323327  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.000522  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.591265  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.033431  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.184336  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.028634  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.234495  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.093235  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.513573  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.092781  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.150256  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.042680  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.873342  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.087805  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.852896  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.039057  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.246940  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.046935  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.319314  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.010200  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.965265  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.001554  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.898570  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.003556  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.512460  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.027607  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.723019  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.072190  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.749676  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.020892  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.275898  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.090329  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.958415  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.018261  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.015610  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.014022  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.870861  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.015623  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.201552  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.095317  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.668650  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.095480  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.485934  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.000165  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.250699  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.011874  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.419038  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.088867  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.664539  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.036110  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.562398  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.075720  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.546103  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.015955  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.028883  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.062499  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.114683  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.069300  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.396282  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.024015  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.429722  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.022172  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.310091  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.037356  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.253912  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.013703  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.752540  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.078061  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.314632  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.057037  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.771743  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.033752  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.657710  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.046450  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.112986  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.000174  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.100775  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.095179  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.161931  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.056807  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.787723  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.034973  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.197561  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.063706  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.102933  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.093342  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.274460  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.061839  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.618523  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.025364  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.035150  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.093580  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.527067  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.027984  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.132077  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.025006  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.675335  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.021664  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.266200  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.048194  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.693862  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.089288  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.488217  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.059629  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.956980  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.009343  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 2.535166  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.054269  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.665366  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.079818  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.577592  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.086698  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.987807  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.073185  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.631611  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.038358  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.012646  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.089552  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 3.659177  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.089254  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 4.636913  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.034896  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.464536  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select very_variable_column from unsteady_table;
+# User@Host: root[root] @ localhost []
+# Query_time: 1.033955  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select less_variable_column from steady_table;

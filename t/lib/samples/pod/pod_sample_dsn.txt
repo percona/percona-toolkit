@@ -1,0 +1,82 @@
+
+=pod
+
+=head1 NAME
+
+mk-heartbeat - Monitor MySQL replication delay.
+
+=head1 OPTIONS
+
+=over
+
+=item --verbose
+
+type: int
+
+Verbose.
+
+=back
+
+=head1 DSN OPTIONS
+
+These are DSN options.
+
+=over
+
+=item * A
+
+dsn: charset; copy: yes
+
+Default character set.
+
+=item * D
+
+dsn: database; copy: yes
+
+Default database.
+
+=item * F
+
+dsn: mysql_read_default_file; copy: yes
+
+Only read default options from the given file
+
+=item * h
+
+dsn: host; copy: yes
+
+Connect to host.
+
+=item * p
+
+dsn: password; copy: yes
+
+Password to use when connecting.
+
+=item * P
+
+dsn: port; copy: yes
+
+Port number to use for connection.
+
+=item * S
+
+dsn: mysql_socket; copy: yes
+
+Socket file to use for connection.
+
+=item * u
+
+dsn: user; copy: yes
+
+User for login if not current user.
+
+=item * z
+
+copy: no
+
+Don't copy opt.
+
+=back
+
+=cut

@@ -1,0 +1,21 @@
+CREATE TABLE `film` (
+  `film_id` smallint(5) unsigned NOT NULL auto_increment,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `release_year` year(4) default NULL,
+  `language_id` tinyint(3) unsigned NOT NULL,
+  `original_language_id` tinyint(3) unsigned default NULL,
+  `rental_duration` tinyint(3) unsigned NOT NULL default '3',
+  `rental_rate` decimal(4,2) NOT NULL default '4.99',
+  `length` smallint(5) unsigned default NULL,
+  `replacement_cost` decimal(5,2) NOT NULL default '19.99',
+  `rating` enum('G','PG','PG-13','R','NC-17') default 'G',
+  `special_features` set('Trailers','Commentaries','Deleted Scenes','Behind the Scenes') default NULL,
+  `last_update` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+  PRIMARY KEY  (`film_id`),
+  KEY `idx_title` (`title`),
+  KEY `idx_fk_language_id` (`language_id`),
+  KEY `idx_fk_original_language_id` (`original_language_id`),
+  CONSTRAINT `fk_film_language` FOREIGN KEY (`language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_film_language_original` FOREIGN KEY (`original_language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8

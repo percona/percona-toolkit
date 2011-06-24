@@ -1,0 +1,18 @@
+
+=pod
+
+=head1 NAME
+
+mk-heartbeat - Monitor MySQL replication delay.
+
+=head1 OPTIONS
+
+=over
+
+=item --verbose
+
+culumative: yes; default: 0; type: int
+
+Verbose.
+
+=back

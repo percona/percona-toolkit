@@ -1,0 +1,74 @@
+# ############################################################################
+
+=pod
+
+=head1 OPTIONS
+
+=over
+
+=item --report-format
+
+type: Array; default: drop_unused_indexes
+
+Right now there is only one report: drop_unused_indexes.
+
+=item --save-results-database
+
+type: DSN
+
+Save results to tables in this database.
+
+The tables have the following CREATE TABLE definitions:
+
+MAGIC_create_indexes:
+
+  CREATE TABLE IF NOT EXISTS indexes (
+    db           VARCHAR(64) NOT NULL,
+    tbl          VARCHAR(64) NOT NULL,
+    idx          VARCHAR(64) NOT NULL,
+    cnt          BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY  (db, tbl, idx)
+  )
+
+MAGIC_create_queries:
+
+  CREATE TABLE IF NOT EXISTS queries (
+    query_id     BIGINT UNSIGNED NOT NULL,
+    fingerprint  TEXT NOT NULL,
+    sample       TEXT NOT NULL,
+    PRIMARY KEY  (query_id)
+  )
+
+The view names are the strings after the C<MAGIC_view_> prefix.
+
+Question: which queries sometimes use different indexes, and what fraction of
+the time is each index chosen?  MAGIC_view_query_uses_several_indexes:
+
+ SELECT iu.query_id, CONCAT_WS('.', iu.db, iu.tbl, iu.idx) AS idx,
+  variations, iu.cnt, iu.cnt / total_cnt * 100 AS pct
+ FROM index_usage AS iu
+ INNER JOIN (
+  SELECT query_id, db, tbl, SUM(cnt) AS total_cnt,
+  COUNT(*) AS variations
+  FROM index_usage
+  GROUP BY query_id, db, tbl
+  HAVING COUNT(*) > 1
+ ) AS qv USING(query_id, db, tbl);
+
+Question: which indexes have lots of alternatives, i.e. are chosen instead of
+other indexes, and for what queries?  MAGIC_view_index_has_alternates:
+
+ SELECT CONCAT_WS('.', db, tbl, idx) AS idx_chosen,
+ GROUP_CONCAT(DISTINCT alt_idx) AS alternatives,
+ GROUP_CONCAT(DISTINCT query_id) AS queries, SUM(cnt) AS cnt
+ FROM index_alternatives
+ GROUP BY db, tbl, idx
+ HAVING COUNT(*) > 1;
+
+=item --set-vars
+
+type: string; default: wait_timeout=10000
+
+Set these MySQL variables.
+
+=back

@@ -1,0 +1,24 @@
+DROP DATABASE IF EXISTS d1;
+DROP DATABASE IF EXISTS d2;
+DROP DATABASE IF EXISTS d3;
+
+CREATE DATABASE d1;
+CREATE DATABASE d2;
+CREATE DATABASE d3;
+
+CREATE TABLE d1.t1 (
+   i int
+) ENGINE=MyISAM CHARSET=utf8;
+INSERT INTO d1.t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9);
+CREATE TABLE d1.t2 (
+   c varchar(255)
+) ENGINE=InnoDB;
+CREATE TABLE d1.t3 (
+   i int
+) ENGINE=MEMORY;
+
+CREATE TABLE d2.t1 (
+   i int
+);
+
+-- d3 is an empty database.

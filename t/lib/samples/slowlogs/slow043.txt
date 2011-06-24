@@ -1,0 +1,4 @@
+# Time: 071015 21:43:52
+# User@Host: root[root] @ localhost []
+# Query_time: 2  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select * from t where c = 'the %d looks like a sprintf code';

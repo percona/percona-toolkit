@@ -1,0 +1,10 @@
+LOG:  duration: 1.565 ms  statement: SELECT * FROM users WHERE user_id='692'
+LOG:  duration: 1.640 ms  statement: SELECT groups.group_name,groups.unix_group_name,
+			groups.type_id,users.user_name,users.realname,
+			news_bytes.forum_id,news_bytes.summary,news_bytes.post_date,news_bytes.details 
+			FROM users,news_bytes,groups 
+			WHERE news_bytes.is_approved=1 
+			AND users.user_id=news_bytes.submitted_by 
+			AND news_bytes.group_id=groups.group_id 
+			ORDER BY post_date DESC LIMIT 5 OFFSET 0
+LOG:  duration: 0.529 ms  statement: SELECT total FROM forum_group_list_vw WHERE group_forum_id='4606'

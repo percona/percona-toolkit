@@ -1,0 +1,174 @@
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+mk-heartbeat - Monitor MySQL replication delay.
+
+=head1 OPTIONS
+
+Specify at least one of L<"--stop">, --update, --monitor, or --check.
+
+--update, --monitor, and --check are mutually exclusive.
+
+--daemonize and --check are mutually exclusive.
+
+=over
+
+=item --array
+
+type: array
+
+An array.
+
+=item --askpass
+
+negatable: true
+
+Prompts the user for a password when connecting to MySQL.
+
+=item --charset
+
+short form: -A; type: string
+
+Default character set.
+
+Enables character set settings in Perl and MySQL.  If the value is C<utf8>, sets
+Perl's binmode on STDOUT to utf8, passes the C<mysql_enable_utf8> option to
+DBD::mysql, and runs C<SET NAMES UTF8> after connecting to MySQL.  Any other
+value sets binmode on STDOUT without the utf8 layer, and runs C<SET NAMES> after
+connecting to MySQL.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
+
+=item --interval
+
+short form: -i; type: time; default: 1s
+
+Interval L<"between"> C<updates> and checks.
+Second line.
+
+The updates and checks will happen when the Unix time (seconds since epoch) is
+an even multiple of this value.  The default is one second.  The suffix is
+similar to L<"--frames">.
+
+=item --setvars
+
+type: string; default: wait_timeout=10000
+
+Set these MySQL variables.
+
+Specify any variables you want to be set immediately after connecting to MySQL.
+These will be included in a C<SET> command.
+
+=item --size
+
+short form: -s; type: size
+
+Size.
+
+=item --skew
+
+short form: -k; type: int; default: 0
+
+Delay --monitor checks this many usec.
+
+How long to delay checks, in milliseconds.  The default is to delay checks one
+half second.  Since the update happens as soon as possible after the beginning
+of the second on the master, this allows one half second of replication delay
+before reporting that the slave lags the master by one second.  If your clocks
+are not completely accurate or there is some other reason you'd like to delay
+the slave more or less, you can tweak this value.  Try setting the C<MKDEBUG>
+environment variable to see the effect this has.
+
+=item --verbose
+
+short form: -v; cumulative: yes
+
+Verbosity.
+
+=item --hash
+
+type: hash
+
+Hash option
+
+=item --hash2
+
+type: Hash
+
+Hash option forced.
+
+=back
+
+=head1 OTHER
+
+The following options should not be parsed.
+
+=over
+
+=item --not-done-yet
+
+This item is not part of the main option list and should not be read.
+
+=back
+
+=head1 ENVIRONMENT
+
+The environment variable C<MKDEBUG> enables verbose debugging output in all of the
+Maatkit tools:
+
+   MKDEBUG=1 mk-....
+
+=head1 SYSTEM REQUIREMENTS
+
+You need Perl, DBI, DBD::mysql, and some core packages that ought to be
+installed in any reasonably new version of Perl.
+
+=head1 SEE ALSO
+
+See also L<mk-slave-delay> and L<mk-slave-restart>.
+
+=head1 BUGS
+
+Please use the Sourceforge bug tracker, forums, and mailing lists to request
+support or report bugs: L<http://sourceforge.net/projects/maatkit/>.
+
+Please include the complete command-line used to reproduce the problem you are
+seeing, the version of all MySQL servers involved, the complete output of the
+tool when run with L<"--version">, and if possible, debugging output produced by
+running with the C<MKDEBUG=1> environment variable.
+
+=head1 COPYRIGHT, LICENSE AND WARRANTY
+
+This program is copyright (c) 2006 Proven Scaling LLC and SixApart Ltd, and
+(c) 2007 Baron Schwartz.  Feedback and improvements are welcome.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 AUTHOR
+
+Proven Scaling LLC, SixApart Ltd, and Baron Schwartz.
+
+=head1 VERSION
+
+This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 1929 $.
+
+=cut

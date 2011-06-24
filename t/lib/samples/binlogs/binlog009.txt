@@ -1,0 +1,11 @@
+DELIMITER /*!*/;
+# at 498008760
+#100429 08:23:10 server id 12345  end_log_pos 28  Query	thread_id=10	exec_time=0  error_code=0
+use test2/*!*/;
+insert into t values (1,2,3)/*!*/;
+# at 498008762
+#100429 08:23:12 server id 12345  end_log_pos 28  Query	thread_id=10	exec_time=0  error_code=0
+insert into test2.t values (1,2,3)/*!*/;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

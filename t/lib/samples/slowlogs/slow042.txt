@@ -1,0 +1,16 @@
+# Time: 091205 19:55:11
+# User@Host: chessguest[chessguest] @ 123.123.123.121 []
+# Query_time: 0.000613  Lock_time: 0.000107  Rows_sent: 230  Rows_examined: 230
+# Rows_affected: 0  Rows_read: 230
+select foo;
+# Time: 091205 19:55:11
+# User@Host: chessguest[chessguest] @ 123.123.123.122 []
+# Query_time: 0.000613  Lock_time: 0.000107  Rows_sent: 230  Rows_examined: 230
+# Rows_affected: 0  Rows_read: 230
+select foo;
+# Time: 091205 19:55:11
+# User@Host: chessguest[chessguest] @ 123.123.123.123 []
+# Query_time: 0.000613  Lock_time: 0.000107  Rows_sent: 230  Rows_examined: 230
+# Rows_affected: 0  Rows_read: 230
+select foo;
+

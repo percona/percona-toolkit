@@ -1,0 +1,37 @@
+091205  4:49:04InnoDB: Assertion failure in thread 1525901664 in file srv0srv.c line 2093
+InnoDB: We intentionally generate a memory trap.
+InnoDB: Submit a detailed bug report to http://bugs.mysql.com.
+InnoDB: If you get repeated assertion failures or crashes, even
+InnoDB: immediately after the mysqld startup, there may be
+InnoDB: corruption in the InnoDB tablespace. Please refer to
+InnoDB: http://dev.mysql.com/doc/refman/5.0/en/forcing-recovery.html
+InnoDB: about forcing recovery.
+091205  4:49:04 - mysqld got signal 11;
+This could be because you hit a bug. It is also possible that this binary
+or one of the libraries it was linked against is corrupt, improperly built,
+or misconfigured. This error can also be caused by malfunctioning hardware.
+We will try our best to scrape up some info that will hopefully help diagnose
+the problem, but since we have already crashed, something is definitely wrong
+and this may fail.
+
+key_buffer_size=16777216
+read_buffer_size=1044480
+max_used_connections=2101
+max_connections=2100
+threads_connected=207
+It is possible that mysqld could use up to 
+key_buffer_size + (read_buffer_size + sort_buffer_size)*max_connections = 6459167 K
+bytes of memory
+Hope that's ok; if not, decrease some variables in the equation.
+
+thd=(nil)
+Attempting backtrace. You can use the following information to find out
+where mysqld died. If you see no messages after this, something went
+terribly wrong...
+frame pointer is NULL, did you compile with
+-fomit-frame-pointer? Aborting backtrace!
+The manual page at http://www.mysql.com/doc/en/Crashing.html contains
+information that should help you find out what is causing the crash.
+
+Number of processes running now: 0
+091205 04:49:10  mysqld restarted

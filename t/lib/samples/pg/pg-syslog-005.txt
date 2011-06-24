@@ -1,0 +1,5 @@
+Feb 10 09:03:26 debian postgres[3329]: [3-1] 2010-02-10 09:03:26.918 EST c=4b72bcae.d01,u=[unknown],D=[unknown] LOG:  connection received: host=[local]
+Feb 10 09:03:26 debian postgres[3329]: [4-1] 2010-02-10 09:03:26.922 EST c=4b72bcae.d01,u=fred,D=fred LOG:  connection authorized: user=fred database=fred
+Feb 10 09:03:36 debian postgres[3329]: [7-1] 2010-02-10 09:03:36.645 EST c=4b72bcae.d01,u=fred,D=fred LOG:  duration: 0.627 ms  statement: select 1;
+Feb 10 09:03:39 debian postgres[3329]: [8-1] 2010-02-10 09:03:39.075 EST c=4b72bcae.d01,u=fred,D=fred LOG:  disconnection: session time: 0:00:12.159 user=fred
+Feb 10 09:03:39 debian postgres[3329]: [8-2]  database=fred host=[local]

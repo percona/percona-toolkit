@@ -1,0 +1,11 @@
+Feb 12 06:00:54 debian postgres[2735]: [8-1] 2010-02-12 06:00:54.566 EST s=12345,u=fred,D=fred LOG:  duration: 39.219 ms  statement: select 'a very long sentence a
+Feb 12 06:00:54 debian postgres[2735]: [8-2]  very long sentence a very long sentence a very long sentence a very long sentence a very long sentence a very long sentence ;
+Feb 12 06:00:54 debian postgres[2735]: [8-3] #011';
+Feb 12 06:01:09 debian postgres[2735]: [9-1] 2010-02-12 06:01:09.854 EST s=12345,u=fred,D=fred LOG:  duration: 0.589 ms  statement: select
+Feb 12 06:01:09 debian postgres[2735]: [9-2]  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Feb 12 06:01:09 debian postgres[2735]: [9-3] aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Feb 12 06:01:09 debian postgres[2735]: [9-4] aaaaaaaaaaaaaaaa';
+Feb 12 06:01:22 debian postgres[2735]: [10-1] 2010-02-12 06:01:22.860 EST s=12345,u=fred,D=fred LOG:  duration: 0.556 ms  statement: select '
+Feb 12 06:01:22 debian postgres[2735]: [10-2] #011hello';
+Feb 12 06:03:14 debian postgres[2735]: [12-1] 2010-02-12 06:03:14.307 EST s=12345,u=fred,D=fred ERROR:  unrecognized configuration parameter "foobar"
+Feb 12 06:03:14 debian postgres[2735]: [12-2] 2010-02-12 06:03:14.307 EST s=12345,u=fred,D=fred STATEMENT:  show foobar;

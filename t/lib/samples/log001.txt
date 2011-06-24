@@ -1,0 +1,16 @@
+/usr/sbin/mysqld, Version: 5.0.38-Ubuntu_0ubuntu1-log (Ubuntu 7.04 distribution). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+071002  7:11:56	      7 Quit       
+071002  8:08:13	      8 Connect     baron@localhost on 
+		      8 Query       select @@version_comment limit 1
+071002  8:08:23	      8 Quit       
+071002  8:08:25	      9 Connect     baron@localhost on test
+		      9 Query       show databases
+		      9 Query       show tables
+		      9 Field List  transport_backup 
+		      9 Init DB     test
+		      9 Query       CREATE TABLE `t1` (
+  `a` int(11) default NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1
+071002  8:08:53	      9 Quit       

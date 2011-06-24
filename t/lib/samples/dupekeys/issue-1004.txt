@@ -1,0 +1,8 @@
+CREATE TABLE `r_def_r_sk` (
+  `r_def_id` bigint(20) NOT NULL,
+  `skFoo_id` bigint(20) NOT NULL,
+  UNIQUE KEY `skFoo_id` (`skFoo_id`),
+  KEY `FK6421479DB0C79C87` (`r_def_id`),
+  CONSTRAINT `FK6421479D19872119` FOREIGN KEY (`skFoo_id`) REFERENCES `r_sk` (`id`),
+  CONSTRAINT `FK6421479DB0C79C87` FOREIGN KEY (`r_def_id`) REFERENCES `r_def` (`id`)
+) ENGINE=InnoDB

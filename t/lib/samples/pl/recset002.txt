@@ -1,0 +1,18 @@
+*************************** 1. row ***************************
+     Id: 1
+   User: user1
+   Host: 1.2.3.4:3333
+     db: foo
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select * from foo1;
+*************************** 2. row ***************************
+     Id: 2
+   User: user1
+   Host: 1.2.3.4:5455
+     db: foo
+Command: Query
+   Time: 5
+  State: Locked
+   Info: select * from foo2;

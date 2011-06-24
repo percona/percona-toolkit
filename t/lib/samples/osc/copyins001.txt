@@ -1,0 +1,2 @@
+INSERT IGNORE INTO osc.__new_t (id, c) SELECT id, c FROM osc.t WHERE (id < 4) LOCK IN SHARE MODE
+INSERT IGNORE INTO osc.__new_t (id, c) SELECT id, c FROM osc.t WHERE (id >= 4 AND id < 6) LOCK IN SHARE MODE

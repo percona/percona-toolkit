@@ -1,0 +1,8 @@
+080816  7:53:17 [ERROR] Cannot find table
+exampledb/exampletable from the internal data dictionary
+of InnoDB though the .frm file for the table exists. Maybe you
+have deleted and recreated InnoDB data files but have forgotten
+to delete the corresponding .frm files of InnoDB tables, or you
+have moved .frm files to another database?
+See http://dev.mysql.com/doc/refman/5.0/en/innodb-troubleshooting.html
+how you can resolve the problem.

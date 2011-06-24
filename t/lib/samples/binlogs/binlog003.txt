@@ -1,0 +1,64 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 263
+#090911  9:24:52 server id 12345  end_log_pos 349 	Query	thread_id=3	exec_time=0	error_code=0
+SET TIMESTAMP=1252682692/*!*/;
+insert into t (i) values (1)
+/*!*/;
+# at 349
+#090911  9:25:06 server id 12345  end_log_pos 434 	Query	thread_id=3	exec_time=0	error_code=0
+use test1/*!*/;
+SET TIMESTAMP=1252682706/*!*/;
+delete from t where i=1
+/*!*/;
+# at 434
+#090911 11:37:23 server id 12345  end_log_pos 520 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690643/*!*/;
+insert into t (i) values (1)
+/*!*/;
+# at 520
+#090911 11:37:25 server id 12345  end_log_pos 606 	Query	thread_id=7	exec_time=0	error_code=0
+use test2/*!*/;
+SET TIMESTAMP=1252690645/*!*/;
+insert into t (i) values (2)
+/*!*/;
+# at 606
+#090911 11:37:46 server id 12345  end_log_pos 721 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690666/*!*/;
+insert into t (i) values (3),(4),(5),(6),(7),(8),(9),(10)
+/*!*/;
+# at 721
+#090911 11:37:57 server id 12345  end_log_pos 817 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690677/*!*/;
+delete from t where i = 3 or i = 5
+/*!*/;
+# at 817
+#090911 11:38:05 server id 12345  end_log_pos 911 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690685/*!*/;
+update t set i = 11 where i = 10
+/*!*/;
+# at 911
+#090911 11:38:16 server id 12345  end_log_pos 1013 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690696/*!*/;
+insert into t (i) values (13),(14),(15),(16)
+/*!*/;
+# at 1013
+#090911 11:38:23 server id 12345  end_log_pos 1100 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690703/*!*/;
+delete from t where i < 5
+/*!*/;
+# at 1100
+#090911 11:38:37 server id 12345  end_log_pos 1178 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690717/*!*/;
+truncate table t
+/*!*/;
+# at 1178
+#090911 11:38:40 server id 12345  end_log_pos 1252 	Query	thread_id=7	exec_time=0	error_code=0
+SET TIMESTAMP=1252690720/*!*/;
+drop table t
+/*!*/;
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

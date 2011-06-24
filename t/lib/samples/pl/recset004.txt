@@ -1,0 +1,459 @@
+*************************** 1. row ***************************
+     Id: 52589
+   User: user1
+   Host: 0.1.2.21:33338
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: update tree set partnermasterid='BNZ', lon=null, lat=null, lockedby=null, closure=null, timestamp=null, qcnstreecode=null, matchcount=1, singlevariant=0, isactive=0, poolinstanceid=600, treestatustypeid=null, treematchtypeid=2, qcnscityid=1052474, qcnsstatusid=null, qcnscrsid=null, qcnscountryid=54, qcnsclassificationid=null, partnerid=6, qcnsrating=null where treeid=144349
+*************************** 2. row ***************************
+     Id: 54226
+   User: user1
+   Host: 0.1.2.21:54553
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select count(tree0_.treeid) as col_0_0_ from tree tree0_ where tree0_.poolinstanceid=601 and tree0_.treestatustypeid=3 and (exists (select 1 from treeCODE treecode1_ where tree0_.treeid=treeid))
+*************************** 3. row ***************************
+     Id: 54519
+   User: user1
+   Host: 0.1.2.21:33707
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select count(tree0_.treeid) as col_0_0_ from tree tree0_ where tree0_.poolinstanceid=601 and tree0_.treestatustypeid=3 and (exists (select 1 from treeCODE treecode1_ where tree0_.treeid=treeid))
+*************************** 4. row ***************************
+     Id: 54579
+   User: user1
+   Host: 0.1.2.11:35877
+     db: forest
+Command: Query
+   Time: 25
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='MET2')))
+*************************** 5. row ***************************
+     Id: 54584
+   User: user1
+   Host: 0.1.2.12:34777
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='BUD' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='GLO')))
+*************************** 6. row ***************************
+     Id: 54592
+   User: user1
+   Host: 0.1.2.12:42887
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='PNA' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='TRY')))
+*************************** 7. row ***************************
+     Id: 54593
+   User: user1
+   Host: 0.1.2.12:45236
+     db: forest
+Command: Query
+   Time: 24
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=788013)) and treeaddit0_.additionaltypeid=2 and tree4_.partnerid=2
+*************************** 8. row ***************************
+     Id: 54595
+   User: user1
+   Host: 0.1.2.11:40605
+     db: forest
+Command: Query
+   Time: 29
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='MET')))
+*************************** 9. row ***************************
+     Id: 54598
+   User: user1
+   Host: 0.1.2.11:59597
+     db: forest
+Command: Query
+   Time: 25
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='PAR' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='LAN1')))
+*************************** 10. row ***************************
+     Id: 54602
+   User: user1
+   Host: 0.1.2.11:35344
+     db: forest
+Command: Query
+   Time: 25
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='PAR' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='LAN')))
+*************************** 11. row ***************************
+     Id: 54607
+   User: user1
+   Host: 0.1.2.12:38646
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='LAR1')))
+*************************** 12. row ***************************
+     Id: 54613
+   User: user1
+   Host: 0.1.2.11:39892
+     db: forest
+Command: Query
+   Time: 25
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='MET1')))
+*************************** 13. row ***************************
+     Id: 54620
+   User: user1
+   Host: 0.1.2.12:54136
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='LIS' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='MUN')))
+*************************** 14. row ***************************
+     Id: 54624
+   User: user1
+   Host: 0.1.2.12:38544
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='CEQ' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='ETR')))
+*************************** 15. row ***************************
+     Id: 54628
+   User: user1
+   Host: 0.1.2.12:43557
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='LAR')))
+*************************** 16. row ***************************
+     Id: 54630
+   User: user1
+   Host: 0.1.2.12:34557
+     db: forest
+Command: Query
+   Time: 26
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='LAR2')))
+*************************** 17. row ***************************
+     Id: 54634
+   User: user1
+   Host: 0.1.2.12:46583
+     db: forest
+Command: Query
+   Time: 24
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=788013)) and treeaddit0_.additionaltypeid=4 and tree4_.partnerid=4
+*************************** 18. row ***************************
+     Id: 54637
+   User: user1
+   Host: 0.1.2.12:51682
+     db: forest
+Command: Query
+   Time: 22
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=806497)) and treeaddit0_.additionaltypeid=2 and tree4_.partnerid=2
+*************************** 19. row ***************************
+     Id: 54642
+   User: user1
+   Host: 0.1.2.12:48268
+     db: forest
+Command: Query
+   Time: 22
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=806497)) and treeaddit0_.additionaltypeid=4 and tree4_.partnerid=4
+*************************** 20. row ***************************
+     Id: 54651
+   User: user1
+   Host: 0.1.2.12:53982
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='EN210166' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 21. row ***************************
+     Id: 54656
+   User: user1
+   Host: 0.1.2.12:41199
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='IT164679' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 22. row ***************************
+     Id: 54657
+   User: user1
+   Host: 0.1.2.12:54317
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='ES151397' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 23. row ***************************
+     Id: 54659
+   User: user1
+   Host: 0.1.2.12:43387
+     db: forest
+Command: Query
+   Time: 4
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='ABA5')))
+*************************** 24. row ***************************
+     Id: 54660
+   User: user1
+   Host: 0.1.2.11:34467
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='TH100861' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 25. row ***************************
+     Id: 54661
+   User: user1
+   Host: 0.1.2.11:57182
+     db: forest
+Command: Query
+   Time: 3
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='IT165895' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 26. row ***************************
+     Id: 54662
+   User: user1
+   Host: 0.1.2.12:48267
+     db: forest
+Command: Query
+   Time: 4
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='ABA3')))
+*************************** 27. row ***************************
+     Id: 54663
+   User: user1
+   Host: 0.1.2.12:49209
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='FR108405' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 28. row ***************************
+     Id: 54664
+   User: user1
+   Host: 0.1.2.11:41317
+     db: forest
+Command: Query
+   Time: 9
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=806497)) and treeaddit0_.additionaltypeid=2 and tree4_.partnerid=2
+*************************** 29. row ***************************
+     Id: 54665
+   User: user1
+   Host: 0.1.2.11:35961
+     db: forest
+Command: Query
+   Time: 2
+  State: Locked
+   Info: select tree0_.treeid as treeid7_0_, tree0_.partnermasterid as partnerm2_7_0_, tree0_.name as name7_0_, tree0_.lon as lon7_0_, tree0_.lat as lat7_0_, tree0_.lockedby as lockedby7_0_, tree0_.closure as closure7_0_, tree0_.rawtreeinfo as rawhote12_7_0_, tree0_.timestamp as timestamp7_0_, tree0_.qcnstreecode as qcnshot14_7_0_, tree0_.matchcount as matchcount7_0_, tree0_.singlevariant as singlev16_7_0_, tree0_.isactive as isactive7_0_, tree0_.poolinstanceid as poolins18_7_0_, tree0_.treestatustypeid as treest19_7_0_, tree0_.treematchtypeid as treema20_7_0_, tree0_.qcnscityid as qcnscityid7_0_, tree0_.qcnsstatusid as qcnssta22_7_0_, tree0_.qcnscrsid as qcnscrsid7_0_, tree0_.qcnscountryid as qcnscou24_7_0_, tree0_.qcnsclassificationid as qcnscla25_7_0_, tree0_.partnerid as partnerid7_0_, tree0_.qcnsrating as qcnsrating7_0_ from tree tree0_ where tree0_.treeid=59999
+*************************** 30. row ***************************
+     Id: 54666
+   User: user1
+   Host: 0.1.2.12:52169
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='TN100117' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 31. row ***************************
+     Id: 54667
+   User: user1
+   Host: 0.1.2.11:40514
+     db: forest
+Command: Query
+   Time: 3
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='TN100086' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 32. row ***************************
+     Id: 54668
+   User: user1
+   Host: 0.1.2.11:33130
+     db: forest
+Command: Query
+   Time: 3
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='BIA' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='CAS')))
+*************************** 33. row ***************************
+     Id: 54669
+   User: user1
+   Host: 0.1.2.11:55581
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='ES150729' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 34. row ***************************
+     Id: 54670
+   User: user1
+   Host: 0.1.2.11:54208
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='AT130780' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 35. row ***************************
+     Id: 54671
+   User: user1
+   Host: 0.1.2.11:33554
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='TH100940' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 36. row ***************************
+     Id: 54672
+   User: user1
+   Host: 0.1.2.11:53315
+     db: forest
+Command: Query
+   Time: 3
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='VEN')))
+*************************** 37. row ***************************
+     Id: 54673
+   User: user1
+   Host: 0.1.2.11:34803
+     db: forest
+Command: Query
+   Time: 3
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='IT164714' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 38. row ***************************
+     Id: 54674
+   User: user1
+   Host: 0.1.2.11:47414
+     db: forest
+Command: Query
+   Time: 6
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=1053101)) and treeaddit0_.additionaltypeid=2 and tree4_.partnerid=2
+*************************** 39. row ***************************
+     Id: 54675
+   User: user1
+   Host: 0.1.2.11:44410
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='FR102266' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 40. row ***************************
+     Id: 54676
+   User: user1
+   Host: 0.1.2.12:57995
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='IT164050' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 41. row ***************************
+     Id: 54677
+   User: user1
+   Host: 0.1.2.12:36543
+     db: forest
+Command: Query
+   Time: 4
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='ABAN' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='ABA4')))
+*************************** 42. row ***************************
+     Id: 54678
+   User: user1
+   Host: 0.1.2.12:42459
+     db: forest
+Command: Query
+   Time: 6
+  State: preparing
+   Info: select distinct treeaddit0_.value as col_0_0_ from treeADDITIONALCONTENT treeaddit0_, treeCODE treecode1_, tree tree4_ where treecode1_.treeid=tree4_.treeid and treeaddit0_.treecodeid=treecode1_.treecodeid and (treecode1_.treeid in (select tree2_.treeid from tree tree2_ where tree2_.qcnscityid=1054874)) and treeaddit0_.additionaltypeid=2 and tree4_.partnerid=2
+*************************** 43. row ***************************
+     Id: 54679
+   User: user1
+   Host: 0.1.2.21:38701
+     db: forest
+Command: Query
+   Time: 3
+  State: Locked
+   Info: select count(tree0_.treeid) as col_0_0_ from tree tree0_ where tree0_.poolinstanceid=601 and tree0_.treestatustypeid=3 and (exists (select 1 from treeCODE treecode1_ where tree0_.treeid=treeid))
+*************************** 44. row ***************************
+     Id: 54680
+   User: user1
+   Host: 0.1.2.12:47389
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='FR107493' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 45. row ***************************
+     Id: 54681
+   User: user1
+   Host: 0.1.2.11:59686
+     db: forest
+Command: Query
+   Time: 2
+  State: Locked
+   Info: select tree0_.treeid as treeid7_0_, tree0_.partnermasterid as partnerm2_7_0_, tree0_.name as name7_0_, tree0_.lon as lon7_0_, tree0_.lat as lat7_0_, tree0_.lockedby as lockedby7_0_, tree0_.closure as closure7_0_, tree0_.rawtreeinfo as rawhote12_7_0_, tree0_.timestamp as timestamp7_0_, tree0_.qcnstreecode as qcnshot14_7_0_, tree0_.matchcount as matchcount7_0_, tree0_.singlevariant as singlev16_7_0_, tree0_.isactive as isactive7_0_, tree0_.poolinstanceid as poolins18_7_0_, tree0_.treestatustypeid as treest19_7_0_, tree0_.treematchtypeid as treema20_7_0_, tree0_.qcnscityid as qcnscityid7_0_, tree0_.qcnsstatusid as qcnssta22_7_0_, tree0_.qcnscrsid as qcnscrsid7_0_, tree0_.qcnscountryid as qcnscou24_7_0_, tree0_.qcnsclassificationid as qcnscla25_7_0_, tree0_.partnerid as partnerid7_0_, tree0_.qcnsrating as qcnsrating7_0_ from tree tree0_ where tree0_.treeid=54400
+*************************** 46. row ***************************
+     Id: 54682
+   User: user1
+   Host: 0.1.2.12:54611
+     db: forest
+Command: Query
+   Time: 4
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='CCF' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='DEL')))
+*************************** 47. row ***************************
+     Id: 54683
+   User: user1
+   Host: 0.1.2.11:47126
+     db: forest
+Command: Query
+   Time: 3
+  State: preparing
+   Info: select treecode0_.treecodeid as treecod1_64_, treecode0_.roomcomfortid as roomcomf2_64_, treecode0_.roomtypeid as roomtypeid64_, treecode0_.roomviewid as roomviewid64_, treecode0_.roomserviceid as roomserv5_64_, treecode0_.roomcategoryid as roomcate6_64_, treecode0_.mindays as mindays64_, treecode0_.partnercode as partnerc8_64_, treecode0_.originalname as original9_64_, treecode0_.isactive as isactive64_, treecode0_.`match` as match11_64_, treecode0_.treeid as treeid64_ from treeCODE treecode0_ where treecode0_.treecodeid in (select treeaddit1_.treecodeid from treeADDITIONALCONTENT treeaddit1_ where treeaddit1_.additionaltypeid=4 and treeaddit1_.value='FLR' and (treeaddit1_.treecodeid in (select treeaddit2_.treecodeid from treeADDITIONALCONTENT treeaddit2_ where treeaddit2_.additionaltypeid=3 and treeaddit2_.value='MED')))
+*************************** 48. row ***************************
+     Id: 54684
+   User: user1
+   Host: 0.1.2.12:38528
+     db: forest
+Command: Query
+   Time: 4
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='SE100116' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 49. row ***************************
+     Id: 54685
+   User: user1
+   Host: 0.1.2.12:54227
+     db: forest
+Command: Query
+   Time: 3
+  State: Locked
+   Info: select tree0_.treeid as col_0_0_, treecode1_.partnercode as col_1_0_, tree0_.partnerid as col_2_0_, tree0_.qcnscrsid as col_3_0_, tree0_.qcnscountryid as col_4_0_, tree0_.qcnscityid as col_5_0_, treecode1_.isactive as col_6_0_, resachain2_.isactive as col_7_0_, tree0_.name as col_8_0_ from tree tree0_, RESACHAIN resachain2_, treeCODE treecode1_, POOLINSTANCE poolinstan3_ where tree0_.poolinstanceid=poolinstan3_.poolinstanceid and tree0_.qcnscrsid=resachain2_.qcnscrsid and tree0_.isactive=1 and tree0_.qcnstreecode='FR103544' and poolinstan3_.pooltemplateid=17 and tree0_.treestatustypeid=1 and (tree0_.qcnsstatusid in (1671 , 1673)) and (tree0_.partnerid in (1 , 2 , 3 , 4)) and tree0_.treeid=treecode1_.treeid
+*************************** 50. row ***************************
+     Id: 54686
+   User: root
+   Host: localhost
+     db: NULL
+Command: Query
+   Time: 0
+  State: NULL
+   Info: show full processlist
+*************************** 51. row ***************************
+     Id: 54687
+   User: user1
+   Host: 0.1.2.11:45026
+     db: forest
+Command: Query
+   Time: 1
+  State: Locked
+   Info: select tree0_.treeid as treeid7_0_, tree0_.partnermasterid as partnerm2_7_0_, tree0_.name as name7_0_, tree0_.lon as lon7_0_, tree0_.lat as lat7_0_, tree0_.lockedby as lockedby7_0_, tree0_.closure as closure7_0_, tree0_.rawtreeinfo as rawhote12_7_0_, tree0_.timestamp as timestamp7_0_, tree0_.qcnstreecode as qcnshot14_7_0_, tree0_.matchcount as matchcount7_0_, tree0_.singlevariant as singlev16_7_0_, tree0_.isactive as isactive7_0_, tree0_.poolinstanceid as poolins18_7_0_, tree0_.treestatustypeid as treest19_7_0_, tree0_.treematchtypeid as treema20_7_0_, tree0_.qcnscityid as qcnscityid7_0_, tree0_.qcnsstatusid as qcnssta22_7_0_, tree0_.qcnscrsid as qcnscrsid7_0_, tree0_.qcnscountryid as qcnscou24_7_0_, tree0_.qcnsclassificationid as qcnscla25_7_0_, tree0_.partnerid as partnerid7_0_, tree0_.qcnsrating as qcnsrating7_0_ from tree tree0_ where tree0_.treeid=51646

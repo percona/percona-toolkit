@@ -1,0 +1,8 @@
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-1] LOG:  query: SELECT groups.group_name,groups.unix_group_name,
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-2] ^I^Igroups.type,users.user_name,users.realname,
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-3] ^I^Inews_bytes.forum_id,news_bytes.summary,news_bytes.date,news_bytes.details 
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-4] ^I^IFROM users,news_bytes,groups 
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-5] ^I^IWHERE news_bytes.is_approved=1 
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-6] ^I^IAND users.user_id=news_bytes.submitted_by 
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-7] ^I^IAND news_bytes.group_id=groups.group_id 
+Feb 25 04:02:19 rubyforge postgres[4625]: [2835-8] ^I^IORDER BY date DESC LIMIT 10 OFFSET 0

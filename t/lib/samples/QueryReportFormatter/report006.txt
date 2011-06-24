@@ -1,0 +1,8 @@
+# Overall: 3 total, 2 unique, 3 QPS, 10.00x concurrency __________________
+# Time range: 2007-10-15 21:43:52 to 21:43:53
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time            10s      1s      8s      3s      8s      3s   992ms
+# Lock time          455us   109us   201us   151us   194us    35us   144us
+# Rows sent              2       0       1    0.67    0.99    0.47    0.99
+# Rows examine           3       0       2       1    1.96    0.80    0.99

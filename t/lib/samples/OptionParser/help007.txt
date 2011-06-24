@@ -1,0 +1,20 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --books=a     -b  books optional
+  --columns=H   -C  cols required
+  --databases=A -d  databases required
+  --foo=A           foo (default a,b,c)
+  --tables=h    -t  tables optional
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Options and values after processing arguments:
+
+  --books           o,p
+  --columns         a,b
+  --databases       f,g
+  --foo             a,b,c
+  --tables          d,e

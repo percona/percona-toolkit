@@ -1,0 +1,4 @@
+# Time: 081116 15:07:11 # User@Host: user[user] @ host [10.1.65.120]
+# Query_time: 18446744073708.796870.000036  Lock_time: 0.000036  Rows_sent: 1  Rows_examined: 127
+use mydb;
+SELECT * FROM mytbl;

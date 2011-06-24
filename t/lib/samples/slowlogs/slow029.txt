@@ -1,0 +1,15 @@
+# User@Host: root[root] @ localhost []
+# Thread_id: 1530316  Schema: mysql
+# Query_time: 4.352063  Lock_time: 0.000000  Rows_sent: 249  Rows_examined: 249
+use mysql;
+SET timestamp=1241453102;
+show status;
+# Time: 090504  9:07:24 # User@Host: dbuser[dbuser] @ x03-s00342.x03.domain.com [1.2.3.87]
+# Thread_id: 1695747  Schema: pro
+# Query_time: 2.156031  Lock_time: 0.000000  Rows_sent: 21  Rows_examined: 26876
+use pro;
+SELECT * FROM `events`     WHERE (`events`.`id` IN (51118,51129,50893,50567,50817,50834,50608,50815,51023,50903,50820,50003,50890,50673,50596,50553,50618,51103,50578,50732,51021));
+# User@Host: dbuser[dbuser] @ x03-s00339.x03.domain.com [1.2.3.84]
+# Thread_id: 1695268  Schema: pro
+# Query_time: 2.060030  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 106242
+SELECT * FROM `users`     WHERE (email = NULL or new_email = NULL);

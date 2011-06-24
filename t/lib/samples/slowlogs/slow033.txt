@@ -1,0 +1,25 @@
+# Time: 090725 11:19:27 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 1  Schema: db1
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo;
+# Time: 090726 11:19:28 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 1
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo;
+# Time: 090727 11:19:30 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 2
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM bar;
+# Time: 090727 11:19:31 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 2
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use db2;
+SELECT * FROM bar;
+# Time: 090727 11:30:00 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 1  Schema: db1
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo;
+# Time: 090728 18:00:00 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 1  Schema: db1
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo;

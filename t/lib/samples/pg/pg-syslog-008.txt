@@ -1,0 +1,123 @@
+Feb  8 09:52:41 debian postgres[7622]: [15-1] 2010-02-08 09:52:41.526 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select * from pg_stat_bgwriter;
+Feb  8 09:52:41 debian postgres[7622]: [16-1] 2010-02-08 09:52:41.533 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 8.309 ms
+Feb  8 09:52:57 debian postgres[7622]: [17-1] 2010-02-08 09:52:57.807 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: create index ix_a on foo (a);
+Feb  8 09:52:57 debian postgres[7622]: [18-1] 2010-02-08 09:52:57.864 EST c=4b701056.1dc6,u=fred,D=fred ERROR:  relation "ix_a" already exists
+Feb  8 09:52:57 debian postgres[7622]: [18-2] 2010-02-08 09:52:57.864 EST c=4b701056.1dc6,u=fred,D=fred STATEMENT:  create index ix_a on foo (a);
+Feb  8 09:53:25 debian postgres[7622]: [19-1] 2010-02-08 09:53:25.236 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select * from foo;
+Feb  8 09:53:25 debian postgres[7622]: [20-1] 2010-02-08 09:53:25.282 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 46.352 ms
+Feb  8 09:53:51 debian postgres[7622]: [21-1] 2010-02-08 09:53:51.724 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT n.nspname as "Schema",
+Feb  8 09:53:51 debian postgres[7622]: [21-2] #011  c.relname as "Name",
+Feb  8 09:53:51 debian postgres[7622]: [21-3] #011  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN
+Feb  8 09:53:51 debian postgres[7622]: [21-4]  'special' END as "Type",
+Feb  8 09:53:51 debian postgres[7622]: [21-5] #011  r.rolname as "Owner"
+Feb  8 09:53:51 debian postgres[7622]: [21-6] #011FROM pg_catalog.pg_class c
+Feb  8 09:53:51 debian postgres[7622]: [21-7] #011     JOIN pg_catalog.pg_roles r ON r.oid = c.relowner
+Feb  8 09:53:51 debian postgres[7622]: [21-8] #011     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+Feb  8 09:53:51 debian postgres[7622]: [21-9] #011WHERE c.relkind IN ('r','v','S','')
+Feb  8 09:53:51 debian postgres[7622]: [21-10] #011  AND n.nspname <> 'pg_catalog'
+Feb  8 09:53:51 debian postgres[7622]: [21-11] #011  AND n.nspname !~ '^pg_toast'
+Feb  8 09:53:51 debian postgres[7622]: [21-12] #011  AND pg_catalog.pg_table_is_visible(c.oid)
+Feb  8 09:53:51 debian postgres[7622]: [21-13] #011ORDER BY 1,2;
+Feb  8 09:53:51 debian postgres[7622]: [22-1] 2010-02-08 09:53:51.867 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 150.472 ms
+Feb  8 09:53:57 debian postgres[7622]: [23-1] 2010-02-08 09:53:57.370 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT n.nspname as "Schema",
+Feb  8 09:53:57 debian postgres[7622]: [23-2] #011  c.relname as "Name",
+Feb  8 09:53:57 debian postgres[7622]: [23-3] #011  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN
+Feb  8 09:53:57 debian postgres[7622]: [23-4]  'special' END as "Type",
+Feb  8 09:53:57 debian postgres[7622]: [23-5] #011  r.rolname as "Owner"
+Feb  8 09:53:57 debian postgres[7622]: [23-6] #011FROM pg_catalog.pg_class c
+Feb  8 09:53:57 debian postgres[7622]: [23-7] #011     JOIN pg_catalog.pg_roles r ON r.oid = c.relowner
+Feb  8 09:53:57 debian postgres[7622]: [23-8] #011     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+Feb  8 09:53:57 debian postgres[7622]: [23-9] #011WHERE c.relkind IN ('r','')
+Feb  8 09:53:57 debian postgres[7622]: [23-10] #011  AND n.nspname <> 'pg_catalog'
+Feb  8 09:53:57 debian postgres[7622]: [23-11] #011  AND n.nspname !~ '^pg_toast'
+Feb  8 09:53:57 debian postgres[7622]: [23-12] #011  AND pg_catalog.pg_table_is_visible(c.oid)
+Feb  8 09:53:57 debian postgres[7622]: [23-13] #011ORDER BY 1,2;
+Feb  8 09:53:57 debian postgres[7622]: [24-1] 2010-02-08 09:53:57.385 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 15.592 ms
+Feb  8 09:54:00 debian postgres[7622]: [25-1] 2010-02-08 09:54:00.594 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT n.nspname as "Schema",
+Feb  8 09:54:00 debian postgres[7622]: [25-2] #011  c.relname as "Name",
+Feb  8 09:54:00 debian postgres[7622]: [25-3] #011  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN
+Feb  8 09:54:00 debian postgres[7622]: [25-4]  'special' END as "Type",
+Feb  8 09:54:00 debian postgres[7622]: [25-5] #011  r.rolname as "Owner"
+Feb  8 09:54:00 debian postgres[7622]: [25-6] #011FROM pg_catalog.pg_class c
+Feb  8 09:54:00 debian postgres[7622]: [25-7] #011     JOIN pg_catalog.pg_roles r ON r.oid = c.relowner
+Feb  8 09:54:00 debian postgres[7622]: [25-8] #011     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+Feb  8 09:54:00 debian postgres[7622]: [25-9] #011WHERE c.relkind IN ('r','')
+Feb  8 09:54:00 debian postgres[7622]: [25-10] #011  AND n.nspname <> 'pg_catalog'
+Feb  8 09:54:00 debian postgres[7622]: [25-11] #011  AND n.nspname !~ '^pg_toast'
+Feb  8 09:54:00 debian postgres[7622]: [25-12] #011  AND c.relname ~ '^(foo)$'
+Feb  8 09:54:00 debian postgres[7622]: [25-13] #011  AND pg_catalog.pg_table_is_visible(c.oid)
+Feb  8 09:54:00 debian postgres[7622]: [25-14] #011ORDER BY 1,2;
+Feb  8 09:54:00 debian postgres[7622]: [26-1] 2010-02-08 09:54:00.636 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 42.600 ms
+Feb  8 09:54:04 debian postgres[7622]: [27-1] 2010-02-08 09:54:04.117 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT n.nspname as "Schema",
+Feb  8 09:54:04 debian postgres[7622]: [27-2] #011  c.relname as "Name",
+Feb  8 09:54:04 debian postgres[7622]: [27-3] #011  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN
+Feb  8 09:54:04 debian postgres[7622]: [27-4]  'special' END as "Type",
+Feb  8 09:54:04 debian postgres[7622]: [27-5] #011  r.rolname as "Owner",
+Feb  8 09:54:04 debian postgres[7622]: [27-6] #011  pg_catalog.obj_description(c.oid, 'pg_class') as "Description"
+Feb  8 09:54:04 debian postgres[7622]: [27-7] #011FROM pg_catalog.pg_class c
+Feb  8 09:54:04 debian postgres[7622]: [27-8] #011     JOIN pg_catalog.pg_roles r ON r.oid = c.relowner
+Feb  8 09:54:04 debian postgres[7622]: [27-9] #011     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+Feb  8 09:54:04 debian postgres[7622]: [27-10] #011WHERE c.relkind IN ('r','')
+Feb  8 09:54:04 debian postgres[7622]: [27-11] #011  AND n.nspname <> 'pg_catalog'
+Feb  8 09:54:04 debian postgres[7622]: [27-12] #011  AND n.nspname !~ '^pg_toast'
+Feb  8 09:54:04 debian postgres[7622]: [27-13] #011  AND c.relname ~ '^(foo)$'
+Feb  8 09:54:04 debian postgres[7622]: [27-14] #011  AND pg_catalog.pg_table_is_visible(c.oid)
+Feb  8 09:54:04 debian postgres[7622]: [27-15] #011ORDER BY 1,2;
+Feb  8 09:54:04 debian postgres[7622]: [28-1] 2010-02-08 09:54:04.187 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 70.996 ms
+Feb  8 09:54:10 debian postgres[7622]: [29-1] 2010-02-08 09:54:10.990 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT d.datname as "Name",
+Feb  8 09:54:10 debian postgres[7622]: [29-2] #011       r.rolname as "Owner",
+Feb  8 09:54:10 debian postgres[7622]: [29-3] #011       pg_catalog.pg_encoding_to_char(d.encoding) as "Encoding"
+Feb  8 09:54:10 debian postgres[7622]: [29-4] #011FROM pg_catalog.pg_database d
+Feb  8 09:54:10 debian postgres[7622]: [29-5] #011  JOIN pg_catalog.pg_roles r ON d.datdba = r.oid
+Feb  8 09:54:10 debian postgres[7622]: [29-6] #011ORDER BY 1;
+Feb  8 09:54:11 debian postgres[7622]: [30-1] 2010-02-08 09:54:11.017 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 27.806 ms
+Feb  8 09:54:14 debian postgres[7622]: [31-1] 2010-02-08 09:54:14.827 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT n.nspname as "Schema",
+Feb  8 09:54:14 debian postgres[7622]: [31-2] #011  c.relname as "Name",
+Feb  8 09:54:14 debian postgres[7622]: [31-3] #011  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN
+Feb  8 09:54:14 debian postgres[7622]: [31-4]  'special' END as "Type",
+Feb  8 09:54:14 debian postgres[7622]: [31-5] #011  r.rolname as "Owner"
+Feb  8 09:54:14 debian postgres[7622]: [31-6] #011FROM pg_catalog.pg_class c
+Feb  8 09:54:14 debian postgres[7622]: [31-7] #011     JOIN pg_catalog.pg_roles r ON r.oid = c.relowner
+Feb  8 09:54:14 debian postgres[7622]: [31-8] #011     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+Feb  8 09:54:14 debian postgres[7622]: [31-9] #011WHERE c.relkind IN ('r','v','S','s','')
+Feb  8 09:54:14 debian postgres[7622]: [31-10] #011  AND n.nspname = 'pg_catalog'
+Feb  8 09:54:14 debian postgres[7622]: [31-11] #011  AND pg_catalog.pg_table_is_visible(c.oid)
+Feb  8 09:54:14 debian postgres[7622]: [31-12] #011ORDER BY 1,2;
+Feb  8 09:54:14 debian postgres[7622]: [32-1] 2010-02-08 09:54:14.855 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 28.255 ms
+Feb  8 09:55:05 debian postgres[7622]: [33-1] 2010-02-08 09:55:05.155 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select 'a very long statement that will surely
+Feb  8 09:55:05 debian postgres[7622]: [33-2]  break a very long statement that will surely break a very long statement that will surely break a very long statement that will
+Feb  8 09:55:05 debian postgres[7622]: [33-3]  surely break a very long statement that will surely break a very long statement that will surely break a very long statement
+Feb  8 09:55:05 debian postgres[7622]: [33-4]  that will surely break a very long statement that will surely break a very long statement that will surely break a very long
+Feb  8 09:55:05 debian postgres[7622]: [33-5]  statement that will surely break a very long statement that will surely break a very long statement that will surely break a
+Feb  8 09:55:05 debian postgres[7622]: [33-6]  very long statement that will surely break a very long statement that will surely break a very long statement that will surely
+Feb  8 09:55:05 debian postgres[7622]: [33-7]  break a very long statement that will surely break a very long statement that will surely break a very long statement that will
+Feb  8 09:55:05 debian postgres[7622]: [33-8]  surely break a very long statement that will surely break a very long statement that will surely break a very long statement
+Feb  8 09:55:05 debian postgres[7622]: [33-9]  that will surely break a very long statement that will surely break a very long statement that will surely break a very long
+Feb  8 09:55:05 debian postgres[7622]: [33-10]  statement that will surely break a very long statement that will surely break a very long statement that will surely break';
+Feb  8 09:55:05 debian postgres[7622]: [34-1] 2010-02-08 09:55:05.163 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 7.922 ms
+Feb  8 09:55:34 debian postgres[7622]: [35-1] 2010-02-08 09:55:34.302 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select 'a statement with a
+Feb  8 09:55:34 debian postgres[7622]: [35-2] #011embedded newline';
+Feb  8 09:55:34 debian postgres[7622]: [36-1] 2010-02-08 09:55:34.303 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 3.144 ms
+Feb  8 09:56:09 debian postgres[7622]: [37-1] 2010-02-08 09:56:09.955 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select 'a statement#011with an embedded tab';
+Feb  8 09:56:09 debian postgres[7622]: [38-1] 2010-02-08 09:56:09.958 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 3.439 ms
+Feb  8 09:56:22 debian postgres[7622]: [39-1] 2010-02-08 09:56:22.335 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: select
+Feb  8 09:56:22 debian postgres[7622]: [39-2] #0111;
+Feb  8 09:56:22 debian postgres[7622]: [40-1] 2010-02-08 09:56:22.344 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 8.951 ms
+Feb  8 09:56:35 debian postgres[7622]: [41-1] 2010-02-08 09:56:35.674 EST c=4b701056.1dc6,u=fred,D=fred LOG:  disconnection: session time: 1:33:01.690 user=fred
+Feb  8 09:56:35 debian postgres[7622]: [41-2]  database=fred host=[local]
+Feb  8 09:56:39 debian postgres[9180]: [3-1] 2010-02-08 09:56:39.689 EST c=4b702627.23dc,u=[unknown],D=[unknown] LOG:  connection received: host=[local]
+Feb  8 09:56:39 debian postgres[9180]: [4-1] 2010-02-08 09:56:39.693 EST c=4b702627.23dc,u=fred,D=fred LOG:  connection authorized: user=fred database=fred
+Feb  8 09:56:43 debian postgres[9180]: [5-1] 2010-02-08 09:56:43.111 EST c=4b702627.23dc,u=fred,D=fred LOG:  disconnection: session time: 0:00:03.421 user=fred
+Feb  8 09:56:43 debian postgres[9180]: [5-2]  database=fred host=[local]
+Feb  8 09:57:28 debian postgres[9184]: [3-1] 2010-02-08 09:57:28.332 EST c=4b702658.23e0,u=[unknown],D=[unknown] LOG:  connection received: host=[local]
+Feb  8 09:57:28 debian postgres[9184]: [4-1] 2010-02-08 09:57:28.335 EST c=4b702658.23e0,u=fred,D=fred LOG:  connection authorized: user=fred database=fred
+Feb  8 09:57:31 debian postgres[9186]: [3-1] 2010-02-08 09:57:31.233 EST c=4b70265b.23e2,u=[unknown],D=[unknown] LOG:  connection received: host=[local]
+Feb  8 09:57:31 debian postgres[9186]: [4-1] 2010-02-08 09:57:31.237 EST c=4b70265b.23e2,u=fred,D=fred LOG:  connection authorized: user=fred database=fred
+Feb  8 09:57:44 debian postgres[9186]: [5-1] 2010-02-08 09:57:44.987 EST c=4b70265b.23e2,u=fred,D=fred LOG:  statement: select 'something from terminal 1';
+Feb  8 09:57:44 debian postgres[9186]: [6-1] 2010-02-08 09:57:44.995 EST c=4b70265b.23e2,u=fred,D=fred LOG:  duration: 10.931 ms
+Feb  8 09:57:53 debian postgres[9184]: [5-1] 2010-02-08 09:57:53.160 EST c=4b702658.23e0,u=fred,D=fred LOG:  statement: select 'something from terminal 2';
+Feb  8 09:57:53 debian postgres[9184]: [6-1] 2010-02-08 09:57:53.168 EST c=4b702658.23e0,u=fred,D=fred LOG:  duration: 10.253 ms
+Feb  8 09:57:54 debian postgres[9184]: [7-1] 2010-02-08 09:57:54.352 EST c=4b702658.23e0,u=fred,D=fred LOG:  disconnection: session time: 0:00:26.022 user=fred
+Feb  8 09:57:54 debian postgres[9184]: [7-2]  database=fred host=[local]
+Feb  8 09:58:08 debian postgres[9186]: [7-1] 2010-02-08 09:58:08.414 EST c=4b70265b.23e2,u=fred,D=fred LOG:  disconnection: session time: 0:00:37.183 user=fred
+Feb  8 09:58:08 debian postgres[9186]: [7-2]  database=fred host=[local]

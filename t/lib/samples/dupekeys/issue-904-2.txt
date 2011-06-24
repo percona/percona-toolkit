@@ -1,0 +1,13 @@
+CREATE TABLE `ppui` (
+  `p_id` bigint(20) unsigned NOT NULL,
+  `o_id` int(20) unsigned NOT NULL,
+  `n_id` int(20) unsigned NOT NULL,
+  `added_by_id` int(20) unsigned NOT NULL,
+  `date_create` int(10) unsigned NOT NULL,
+  `p_perms` tinyint(3) NOT NULL default '0',
+  PRIMARY KEY  (`p_id`,`n_id`),
+  KEY `tag_by_id` (`added_by_id`,`n_id`),
+  KEY `person_id` (`n_id`,`p_perms`,`date_create`),
+  KEY `date_create` (`date_create`),
+  KEY `o_id` (`o_id`,`p_id`)
+) ENGINE=InnoDB

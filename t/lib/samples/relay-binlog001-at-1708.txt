@@ -1,0 +1,32 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 1708
+#090910  8:26:23 server id 12345  end_log_pos 1898 	Query	thread_id=3	exec_time=0	error_code=0
+use issue_96/*!*/;
+SET TIMESTAMP=1252592783/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=1, @@session.unique_checks=1/*!*/;
+SET @@session.sql_mode=0/*!*/;
+/*!\C latin1 *//*!*/;
+SET @@session.character_set_client=8,@@session.collation_connection=8,@@session.collation_server=8/*!*/;
+INSERT INTO t2 VALUES
+   (1,'ABC','lo'),
+   (NULL,'CHY','ch'),
+   (2,'BFN','na'),
+   (NULL,NULL,'gl'),
+   (12,'TTT','ty'),
+   (4,'CPR','zz'),  
+   (8,'CSX','dz'),
+   (9,NULL,NULL),
+   (NULL,NULL,NULL),
+   (11,'PBR',NULL),
+   (NULL,'THR',NULL),
+   (6,NULL,'jr')
+/*!*/;
+# at 2035
+#090910  8:26:23 server id 12345  end_log_pos 1925 	Xid = 18
+COMMIT/*!*/;
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

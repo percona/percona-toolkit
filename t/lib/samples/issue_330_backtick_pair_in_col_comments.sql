@@ -1,0 +1,3 @@
+CREATE TABLE `issue_330` (
+  `a` int(11) DEFAULT NULL COMMENT 'issue_330 `alex`'
+) ENGINE=MyISAM DEFAULT CHARSET=latin1

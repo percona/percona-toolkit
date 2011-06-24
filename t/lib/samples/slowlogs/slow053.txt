@@ -1,0 +1,30 @@
+# Time: 110208 12:00:01
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo WHERE id=1;
+# Time: 110208 12:00:02
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo WHERE id=2;
+# Time: 110208 12:00:03
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo WHERE id=3;
+# Time: 110208 12:00:04
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo WHERE id=4;
+# Time: 110208 12:00:05
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM foo WHERE id=5;
+# Time: 110208 12:00:06
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM bar WHERE id=11;
+# Time: 110208 12:00:07
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM bar WHERE id=11;
+# Time: 110208 12:00:08
+# Query_time: 0.050012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM bar WHERE id=12;
+# Time: 110208 12:00:09
+# Query_time: 1.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM blah WHERE id IS NOT NULL;
+# Time: 110208 12:00:10
+# Query_time: 0.900012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM blah WHERE id IS NOT NULL;

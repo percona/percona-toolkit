@@ -1,0 +1,4 @@
+# Time: 071015 21:43:52
+# User@Host: root[root] @ localhost []
+# Query_time: 2  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+SELECT foo -- file: /user.php, line: 417, url: d217d035a34ac9e693b41d4c2&limit=500&offset=0;

@@ -1,0 +1,13 @@
+postmaster starting
+LOG:  could not create IPv6 socket: Address family not supported by protocol
+LOG:  database system was shut down at 2005-11-14 17:24:02 EST
+LOG:  checkpoint record is at 0/47730338
+LOG:  redo record is at 0/47730338; undo record is at 0/0; shutdown TRUE
+LOG:  next transaction ID: 2353967; next OID: 4050075
+LOG:  next MultiXactId: 1; next MultiXactOffset: 0
+LOG:  database system is ready
+LOG:  transaction ID wrap limit is 1075718294, limited by database "gforge"
+LOG:  duration: 2.991 ms  statement: SELECT plugin_id, plugin_name FROM plugins
+LOG:  received smart shutdown request
+LOG:  shutting down
+LOG:  database system is shut down

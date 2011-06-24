@@ -1,0 +1,12 @@
+-- START SESSION 10
+
+use foo
+
+SELECT col FROM foo_tbl
+
+SELECT col FROM foo_tbl
+
+use bar
+
+SELECT col FROM bar_tbl
+

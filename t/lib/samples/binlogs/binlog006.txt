@@ -1,0 +1,6 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 498006722
+#071207 12:02:50 server id 21  end_log_pos 498006652 	Pontificate thread_id=104168	exec_time=20664	error_code=0
+insert into foo values (12)/*!*/;

@@ -1,0 +1,4 @@
+# Time: 071218 11:48:27
+# Client: 127.0.0.1:12345
+# Query_time: 0.000000  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+select * from foo;

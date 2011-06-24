@@ -1,0 +1,16 @@
+2004-05-07 12:01:06 LOG:  query: SELECT plugin_id, plugin_name FROM plugins
+2004-05-07 12:01:06 LOG:  duration: 0.002161 sec
+2004-05-07 12:01:06 LOG:  query: SELECT 
+					groups.type,
+					news_bytes.details 
+				FROM 
+					news_bytes,
+					groups 
+				WHERE 
+					news_bytes.group_id=groups.group_id 
+				ORDER BY 
+					date 
+				DESC LIMIT 30 OFFSET 0
+2004-05-07 12:01:06 ERROR:  No such attribute groups.type
+2004-05-07 12:01:06 LOG:  query: SELECT plugin_id, plugin_name FROM plugins
+2004-05-07 12:01:06 LOG:  duration: 0.002161 sec

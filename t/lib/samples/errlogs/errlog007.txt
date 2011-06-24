@@ -1,0 +1,2444 @@
+091121 13:17:58InnoDB: Warning: cannot find a free slot for an undo log. Do you have too
+InnoDB: many active transactions running concurrently?
+091121 13:17:58InnoDB: Warning: cannot find a free slot for an undo log. Do you have too
+InnoDB: many active transactions running concurrently?
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 242.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 242.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 242.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 242.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 242.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 242.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 242.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 242.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 274.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 274.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 274.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 274.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 274.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 274.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 274.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 274.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 306.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 306.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 306.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 306.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 306.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 306.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 306.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 306.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 338.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 338.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 338.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 338.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 338.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 338.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 338.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 338.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 370.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 370.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 370.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 370.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 370.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 370.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 370.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 370.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 402.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 402.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 402.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 402.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 402.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 402.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 402.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 402.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 434.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 434.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 434.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 434.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 434.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 434.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 434.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 434.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 466.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 466.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 466.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 466.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 466.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 466.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 466.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 466.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 498.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 498.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 498.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 498.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 498.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 498.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 498.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 498.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 530.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 530.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 530.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 530.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 530.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 530.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 530.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 530.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 562.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 562.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 562.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 562.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 562.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 562.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 562.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 562.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 594.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 594.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 594.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 594.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 594.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 594.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 594.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 594.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 626.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 626.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 626.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 626.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 626.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 626.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 626.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 626.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 661.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 661.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 661.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 661.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 661.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 661.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 661.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 661.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 693.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 693.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 693.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 693.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 693.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 693.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 693.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 693.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 725.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 725.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 725.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 725.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 725.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 725.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 725.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 725.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 757.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 757.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 757.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 757.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 757.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 757.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 757.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 757.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Warning: a long semaphore wait:
+--Thread 1808345440 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1799514464 has waited at btr0sea.c line 489 for 789.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1536391520 has waited at lock0lock.c line 3093 for 789.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1829017952 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598609760 has waited at btr0sea.c line 746 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1515411808 has waited at srv0srv.c line 1952 for 789.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1564289376 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1597606240 has waited at btr0sea.c line 1383 for 789.00 seconds the semaphore:
+X-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628715360 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1539602784 has waited at btr0sea.c line 916 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1598810464 has waited at btr0sea.c line 746 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1795098976 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1565895008 has waited at btr0sea.c line 916 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1634335072 has waited at row0sel.c line 3326 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1582954848 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1548433760 has waited at btr0sea.c line 746 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1640958304 has waited at btr0sea.c line 916 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: Warning: a long semaphore wait:
+--Thread 1642764640 has waited at trx0trx.c line 715 for 789.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1602824544 has waited at trx0trx.c line 371 for 789.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1643567456 has waited at trx0trx.c line 1609 for 789.00 seconds the semaphore:
+Mutex at 0x2a96d8f2b8 created file srv0srv.c line 872, lock var 1
+waiters flag 1
+InnoDB: Warning: a long semaphore wait:
+--Thread 1628916064 has waited at btr0sea.c line 1127 for 789.00 seconds the semaphore:
+S-lock on RW-latch at 0x2a96d920b8 created in file btr0sea.c line 139
+a writer (thread id 1799514464) has reserved it in mode  wait exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr0sea.c line 746
+Last time write locked in file btr0cur.c line 2184
+InnoDB: ###### Starts InnoDB Monitor for 30 secs to print diagnostic info:
+InnoDB: Pending preads 0, pwrites 0
+InnoDB: ###### Diagnostic info printed to the standard error stream
+InnoDB: Error: semaphore wait has lasted > 600 seconds
+InnoDB: We intentionally crash the server, because it appears to be hung.
+091205  4:49:04InnoDB: Assertion failure in thread 1525901664 in file srv0srv.c line 2093
+InnoDB: We intentionally generate a memory trap.
+InnoDB: Submit a detailed bug report to http://bugs.mysql.com.
+InnoDB: If you get repeated assertion failures or crashes, even
+InnoDB: immediately after the mysqld startup, there may be
+InnoDB: corruption in the InnoDB tablespace. Please refer to
+InnoDB: http://dev.mysql.com/doc/refman/5.0/en/forcing-recovery.html
+InnoDB: about forcing recovery.

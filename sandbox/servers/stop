@@ -1,0 +1,40 @@
+#!/bin/sh
+
+PIDFILE="/tmp/PORT/data/mysql_sandboxPORT.pid"
+BASEDIR="PERCONA_TOOLKIT_SANDBOX"
+
+sandbox_is_alive() {
+   local pid=`cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null`
+   if [ -z "$pid" ]; then
+      return 0
+   fi
+   kill -0 $pid
+   local ps_alive=$?
+
+   $BASEDIR/bin/mysqladmin --defaults-file="/tmp/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
+   local mysql_alive=$?
+
+   if [ $ps_alive -eq 0 ] && [ $mysql_alive -eq 0 ]; then
+      return 1  # sandbox is alive
+   else
+      return 0
+   fi
+}
+
+exit_status=0
+
+echo -n "Stopping Maatkit sandbox PORT... "
+
+sandbox_is_alive
+if [ $? -eq 1 ]; then
+   $BASEDIR/bin/mysqladmin --defaults-file=/tmp/PORT/my.sandbox.cnf shutdown
+   exit_status=$?
+fi
+
+if [ $exit_status -eq 0 ]; then
+   echo "done."
+else
+   echo "failed!"
+fi
+
+exit $exit_status

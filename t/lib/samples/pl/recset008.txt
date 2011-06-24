@@ -1,0 +1,10 @@
+*************************** 1. row ***************************
+     Id: 7
+   User: msandbox
+   Host: localhost:53246
+     db: NULL
+Command: Binlog Dump
+   Time: 1174
+  State: Has sent all binlog to slave; waiting for binlog to be updated
+   Info: NULL
+

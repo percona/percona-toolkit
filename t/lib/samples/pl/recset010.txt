@@ -1,0 +1,63 @@
+*************************** 1. row ***************************
+     Id: 1
+   User: user1
+   Host: 1.2.3.4:3333
+     db: foo
+Command: Query
+   Time: 10
+  State: executing
+   Info: select c /* abc */from t where id='foo';
+*************************** 2. row ***************************
+     Id: 2
+   User: user1
+   Host: 1.2.3.4:5455
+     db: foo
+Command: Query
+   Time: 9
+  State: executing
+   Info: select c/* def */ from t where id='foo';
+*************************** 3. row ***************************
+     Id: 3
+   User: user1
+   Host: 1.2.3.4:5455
+     db: foo
+Command: Query
+   Time: 9
+  State: executing
+   Info: select c from t where id='foo';
+*************************** 4. row ***************************
+     Id: 4
+   User: root
+   Host: 1.2.3.4:5455
+     db: foo
+Command: Query
+   Time: 5
+  State: executing
+   Info: select c from t where id='foo';
+*************************** 5. row ***************************
+     Id: 4
+   User: user1
+   Host: 1.2.3.4:3333
+     db: foo
+Command: Query
+   Time: 2
+  State: executing
+   Info: select c from t where id='bar';
+ *************************** 6. row ***************************
+     Id: 29
+   User: remote
+   Host: 1.2.3.152:57973
+     db: happy
+Command: Sleep
+   Time: 6
+  State:
+   Info: NULL
+*************************** 7. row ***************************
+     Id: 30
+   User: root
+   Host: localhost
+     db: NULL
+Command: Query
+   Time: 0
+  State: NULL
+   Info: show full processlist

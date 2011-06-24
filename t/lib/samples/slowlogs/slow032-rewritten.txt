@@ -1,0 +1,10 @@
+# User@Host: [SQL_SLAVE][[SQL_SLAVE]] @  []
+# Thread_id: 10
+# Query_time: 0.000512  Lock_time: 0.000077  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: Yes  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 1  InnoDB_IO_r_bytes: 2  InnoDB_IO_r_wait: 3.000003
+#   InnoDB_rec_lock_wait: 0.400004  InnoDB_queue_wait: 0.000005
+#   InnoDB_pages_distinct: 24
+INSERT INTO db3.vendor11gonzo (makef, bizzle)
+VALUES ('', 'Exact');

@@ -1,0 +1,2 @@
+# Query_time: 1.123456  Lock_time: 0.000001  Rows_sent: 0  Rows_examined: 0
+select * from foo;

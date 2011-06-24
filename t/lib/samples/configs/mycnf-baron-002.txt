@@ -1,0 +1,99 @@
+[client]
+port            = 3306
+socket          = /tmp/mysql.sock
+
+[mysqld_safe]
+log-error=/mnt/data-store/mysql/mysql.err
+group=mysql
+
+[mysqld]
+user            = mysql
+pid-file        = /mnt/data-store/mysql/data/mysql.pid
+basedir         = /usr
+datadir         = /mnt/data-store/mysql/data
+
+port            = 3306
+socket          = /tmp/mysql.sock
+#tmpdir          = /mnt/tmp
+
+innodb_autoinc_lock_mode=0
+slave_exec_mode = IDEMPOTENT
+
+skip-locking
+concurrent_insert=2
+key_buffer = 150M
+max_allowed_packet = 100M
+table_open_cache = 2000
+
+# Decreasing sort_buffer_size as per CR 404011
+sort_buffer_size = 8M
+max_connections         = 1500
+read_buffer_size = 16M
+read_rnd_buffer_size = 16M
+myisam_sort_buffer_size = 64M
+thread_cache_size = 8
+query_cache_size= 0
+tmp_table_size = 784M
+max_heap_table_size = 784M
+thread_concurrency = 8
+log-slow-queries = /mnt/data-store/mysql/logs/slowquery.log
+log-queries-not-using-indexes
+long_query_time=0.5
+min_examined_row_limit=10000
+query_cache_type=0
+
+innodb_flush_log_at_trx_commit = 2
+# flush to cache to save disk I/O
+# only lose transactions if no battery backed RAM cache
+
+innodb_data_home_dir    = /mnt/data-store/mysql/data
+innodb_data_file_path   = ibdata1:10M:autoextend
+innodb_log_group_home_dir = /mnt/data-store/mysql/data
+innodb_buffer_pool_size = 43G
+innodb_additional_mem_pool_size = 500M
+innodb_log_file_size    = 2000M
+innodb_log_files_in_group = 2
+innodb_log_buffer_size = 10M
+innodb_thread_concurrency = 16
+innodb_file_per_table
+
+net_write_timeout=120
+
+#REPLICATION
+server-id       = 2171234
+log-bin=/mnt/data-store/mysql/logs/mysql-bin
+binlog_format = MIXED
+max_binlog_size=500M
+
+expire_logs_days=3
+
+binlog-ignore-db=avail1
+binlog-ignore-db=avail2
+binlog-ignore-db=avail3
+binlog-ignore-db=avail4
+binlog-ignore-db=avail5
+binlog-ignore-db=avail6
+binlog-ignore-db=avail7
+binlog-ignore-db=avail8
+binlog-ignore-db=avail9
+binlog-ignore-db=avail10
+binlog-ignore-db=avail11
+binlog-ignore-db=avail12
+binlog-ignore-db=avail13
+
+auto_increment_offset = 2
+auto_increment_increment = 4
+relay-log=/mnt/data-store/mysql/logs/mysql-relay
+log-slave-updates
+
+# set the general log file, but it should be off at first
+general_log_file        = /mnt/mysql/general.log
+general_log             = 0
+
+log-error=/mnt/data-store/mysql/mysql.err
+
+innodb_support_xa = 0
+innodb_adaptive_hash_index = 0
+tmpdir=/mnt/tmp
+slave-load-tmpdir=/mnt/tmp
+

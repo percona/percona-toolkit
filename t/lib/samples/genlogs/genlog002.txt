@@ -1,0 +1,16 @@
+100211  0:55:24      51 Query       SELECT category_id
+                FROM auction_category_map 
+                WHERE auction_id = '3015563'
+                     51 Query       SELECT auction_id, auction_title_en AS title, close_time,
+                                         number_of_items_per_lot, 
+                                         replace (replace (thumbnail_url,  'sm_thumb', 'carousel'), 'small_thumb', 'carousel') as thumbnail_url,
+                                         replace (replace (thumbnail_url,  'sm_thumb', 'tiny_thumb'), 'small_thumb', 'tiny_thumb') as tinythumb_url,
+                                         current_bid
+                FROM   auction_search
+                WHERE  platform_flag_1 = 1
+                AND    close_flag = 0 
+                AND    close_time >= NOW()
+                AND    marketplace = 'AR'
+                AND auction_id IN (3015562,3028764,3015564,3019075,3015574,2995142,3040162,3015573,2995135,3015578)
+                ORDER BY close_time ASC
+                LIMIT 500

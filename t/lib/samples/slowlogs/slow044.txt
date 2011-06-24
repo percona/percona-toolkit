@@ -1,0 +1,9 @@
+# Time: 100525 10:22:00
+# User@Host: foo[foo] @ [host]
+# Thread_id: 342 Schema:  Last_errno: 1 Killed: 2
+# Query_time: 0.000173 Lock_time: 0.000048 Rows_sent: 18 Rows_examined: 18
+select /*this is only parsable by slowlog-to-outfile, not by mqd*/ foo;
+# User@Host: foo[foo] @ [host]
+# Thread_id: 342 Schema:  Last_errno: 3 Killed: 4
+# Query_time: 0.000173 Lock_time: 0.000048 Rows_sent: 19 Rows_examined: 19
+select /*this is only parsable by slowlog-to-outfile, not by mqd*/ foo;

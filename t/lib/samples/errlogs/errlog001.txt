@@ -1,0 +1,62 @@
+080721 03:03:57  mysqld started
+080721  3:04:00 [Warning] option 'log_slow_rate_limit': unsigned value 0 adjusted to 1
+080721  3:04:01 [ERROR] /usr/sbin/mysqld: unknown variable 'ssl-key=/opt/mysql.pdns/.cert/server-key.pem'
+080721 03:04:01  mysqld ended
+
+080721 03:10:57  mysqld started
+080721  3:10:58 [Warning] No argument was provided to --log-bin, and --log-bin-index was not used; so replication may break when this MySQL server acts as a master and has his hostname changed!! Please use '--log-bin=/var/run/mysqld/mysqld-bin' to avoid this problem.
+080721  3:11:08  InnoDB: Started; log sequence number 1 3703096531
+080721  3:11:12 [Warning] Neither --relay-log nor --relay-log-index were used; so replication may break when this MySQL server acts as a slave and has his hostname changed!! Please use '--relay-log=/var/run/mysqld/mysqld-relay-bin' to avoid this problem.
+080721  3:11:12 [ERROR] Failed to open the relay log './srv-relay-bin.000001' (relay_log_pos 4)
+080721  3:11:12 [ERROR] Could not find target log during relay log initialization
+080721  3:11:12 [ERROR] Failed to initialize the master info structure
+080721  3:11:12 [Note] /usr/libexec/mysqld: ready for connections.
+Version: '5.0.45-log'  socket: '/mnt/data/mysql/mysql.sock'  port: 3306  Source distribution
+080721  9:22:14 [Note] /usr/libexec/mysqld: Normal shutdown
+
+080721  9:22:17  InnoDB: Starting shutdown...
+080721  9:22:20  InnoDB: Shutdown completed; log sequence number 1 3703096531
+080721  9:22:20 [Note] /usr/libexec/mysqld: Shutdown complete
+
+080721 09:22:22  mysqld ended
+
+080721 09:22:31  mysqld started
+Version: '5.0.45-log'  socket: '/mnt/data/mysql/mysql.sock'  port: 3306  Source distribution
+080721  9:34:22 [ERROR] bdb:  log_archive: DB_ARCH_ABS: DB_NOTFOUND: No matching key/data pair found
+
+080721 09:39:09  mysqld started
+080721  9:39:14  InnoDB: Started; log sequence number 1 3703096531
+080821 19:14:12  mysqld started
+080821 19:14:12  InnoDB: Database was not shut down normally!
+InnoDB: Starting crash recovery.
+InnoDB: Reading tablespace information from the .ibd files...
+InnoDB: Restoring possible half-written data pages from the doublewrite
+InnoDB: buffer...
+080821 19:14:13  InnoDB: Starting log scan based on checkpoint at
+InnoDB: log sequence number 1 3703467071.
+InnoDB: Doing recovery: scanned up to log sequence number 1 3703467081
+InnoDB: Last MySQL binlog file position 0 804759240, file name ./srv-bin.000012
+080821 19:14:13  InnoDB: Started; log sequence number 1 3703467081
+080821 19:14:13 [Note] Recovering after a crash using srv-bin
+080821 19:14:23 [Note] Starting crash recovery...
+080821 19:14:23 [Note] Crash recovery finished.
+Version: '5.0.45-log'  socket: '/mnt/data/mysql/mysql.sock'  port: 3306  Source distribution
+080911 18:04:40 [Note] Found 5 of 0 rows when repairing './test/a3'
+
+081101  9:17:53 [Note] /usr/libexec/mysqld: ready for connections.
+Version: '5.0.45-log'  socket: '/mnt/data/mysql/mysql.sock'  port: 3306  Source distribution
+
+Number of processes running now: 0
+081117 16:15:07  mysqld restarted
+081117 16:15:16  InnoDB: Error: cannot allocate 268451840 bytes of
+InnoDB: memory with malloc! Total allocated memory
+InnoDB: by InnoDB 8074720 bytes. Operating system errno: 12
+InnoDB: Check if you should increase the swap file or
+InnoDB: ulimits of your operating system.
+InnoDB: On FreeBSD check you have compiled the OS with
+InnoDB: a big enough maximum process size.
+InnoDB: Note that in most 32-bit computers the process
+InnoDB: memory space is limited to 2 GB or 4 GB.
+InnoDB: We keep retrying the allocation for 60 seconds...
+InnoDB: Fatal error: cannot allocate the memory for the buffer pool
+081117 16:32:55 [Note] /usr/libexec/mysqld: ready for connections.

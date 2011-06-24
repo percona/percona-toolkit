@@ -1,0 +1,2 @@
+1	a	some text	3.14	5.08	Here's more complex text that has "quotes", and maybe a comma.	2009-08-19 08:48:08	2009-08-19 08:48:08
+2		the char and text are blank, the	\N	5.09		2009-08-19 08:49:17	2009-08-19 08:49:17

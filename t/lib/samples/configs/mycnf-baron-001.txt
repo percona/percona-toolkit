@@ -1,0 +1,16 @@
+[client]
+user     = root
+port     = 5150
+protocol = tcp
+socket   = /home/baron/etc/mysql/server/5.1.50/data/mysql.sock
+[mysql]
+prompt   = "5150> "
+[mysqld]
+datadir  = /home/baron/etc/mysql/server/5.1.50/data/
+port     = 5150
+socket   = /home/baron/etc/mysql/server/5.1.50/data/mysql.sock
+language = ./share/english
+basedir  = /home/baron/etc/mysql/server/5.1.50
+log-bin
+ignore-builtin-innodb
+plugin-load=innodb=ha_innodb_plugin.so.0;innodb_trx=ha_innodb_plugin.so.0;innodb_locks=ha_innodb_plugin.so.0;innodb_cmp=ha_innodb_plugin.so.0;innodb_cmp_reset=ha_innodb_plugin.so.0;innodb_cmpmem=ha_innodb_plugin.so.0;innodb_cmpmem_reset=ha_innodb_plugin.so.0

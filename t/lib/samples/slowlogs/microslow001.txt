@@ -1,0 +1,8 @@
+# Time: 071015 21:43:52
+# User@Host: root[root] @ localhost []
+# Query_time: 0.000652  Lock_time: 0.000109  Rows_sent: 1  Rows_examined: 1
+SELECT id FROM users WHERE name='baouong';
+# Time: 071015 21:43:52
+# User@Host: root[root] @ localhost []
+# Query_time: 0.001943  Lock_time: 0.000145  Rows_sent: 0  Rows_examined: 0
+INSERT IGNORE INTO articles (id, body,)VALUES(3558268,'sample text');

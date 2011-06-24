@@ -1,0 +1,13 @@
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 0
+# Query_time: 0.000000  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 0
+INSERT INTO db.v (m, b) VALUES ('', 'Exact');
+# User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000000  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM blah WHERE something = 'important';

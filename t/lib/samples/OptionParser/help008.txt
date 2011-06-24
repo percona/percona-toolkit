@@ -1,0 +1,42 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --algorithm=s         Checksum algorithm (ACCUM|CHECKSUM|BIT_XOR)
+  --schema              Checksum SHOW CREATE TABLE intead of table data
+
+Connection:
+
+  --defaults-file=s -F  Only read mysql options from the given file
+
+Filter:
+
+  --databases=h     -d  Only checksum this comma-separated list of databases
+
+Help:
+
+  --explain-hosts       Explain hosts
+  --help                Show help and exit
+  --version             Show version and exit
+
+Output:
+
+  --tab                 Print tab-separated output, not column-aligned output
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Rules:
+
+  --schema is restricted to option groups Connection, Filter, Output, Help.
+
+Options and values after processing arguments:
+
+  --algorithm           (No value)
+  --databases           (No value)
+  --defaults-file       (No value)
+  --explain-hosts       FALSE
+  --help                FALSE
+  --schema              FALSE
+  --tab                 FALSE
+  --version             FALSE

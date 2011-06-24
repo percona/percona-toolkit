@@ -1,0 +1,24 @@
+# User@Host: foo_app[foo_app] @  [10.1.250.19]
+# Thread_id: 39796  Schema: abc
+# Query_time: 0.000015  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SET autocommit=1;
+# Time: 081127  8:51:20
+# User@Host: mytopuser[mytopuser] @  [10.1.12.201]
+# Thread_id: 39947  Schema: test
+# Query_time: 0.149435  Lock_time: 0.000070  Rows_sent: 226  Rows_examined: 226
+use test;
+SHOW STATUS;
+# Time: 081127  8:51:21
+# User@Host: mytopuser[mytopuser] @  [10.1.12.201]
+# Thread_id: 39947  Schema: test
+# Query_time: 0.000005  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+# administrator command: Quit;
+# User@Host: foo_app[foo_app] @  [10.1.250.19]
+# Thread_id: 39796  Schema: abc
+# Query_time: 0.000067  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use abc;
+SET autocommit=0;
+# User@Host: foo_app[foo_app] @  [10.1.250.19]
+# Thread_id: 39796  Schema: abc
+# Query_time: 0.000015  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+commit;

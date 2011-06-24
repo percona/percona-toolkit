@@ -1,0 +1,45 @@
+#!/bin/sh
+
+err() {
+   echo
+   for msg; do
+      echo $msg
+   done
+   echo "See http://code.google.com/p/maatkit/wiki/Testing for more information."
+   echo
+}
+
+# ###########################################################################
+# Sanity check the cmd line options.
+# ###########################################################################
+if [ $# -lt 1 ]; then
+   err "Usage: load-sakila-db port"
+   exit 1
+fi
+
+PORT=$1
+
+if [ ! -d "/tmp/$PORT" ]; then
+   err "Sandbox does not exist: /tmp/$PORT"
+   exit 1
+fi
+
+# ###########################################################################
+# Sanity check the environment.
+# ###########################################################################
+if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
+   err "PERCONA_TOOLKIT_BRANCH environment variable is not set."
+   exit 1
+fi
+
+if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
+   err "Invalid Maakit trunk directory: $PERCONA_TOOLKIT_BRANCH"
+   exit 1
+fi
+
+cd $PERCONA_TOOLKIT_BRANCH/sandbox
+
+/tmp/$PORT/use < sakila-db/sakila-schema.sql
+/tmp/$PORT/use < sakila-db/sakila-data.sql
+
+exit 0

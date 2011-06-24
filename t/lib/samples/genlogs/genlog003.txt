@@ -1,0 +1,10 @@
+051007   21:55:24	     42 Connect     root@localhost on db1
+		                 42 Query       SELECT foo 
+                         FROM tbl
+                         WHERE col=12345
+                         ORDER BY col
+		                 42 Quit
+               	     11 Connect     root@localhost on  
+		                 11 Init DB     my_webstats
+		                 11 Query       SELECT DISTINCT col FROM tbl WHERE foo=20061219
+               	     11 Quit       

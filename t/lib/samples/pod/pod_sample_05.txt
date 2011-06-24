@@ -1,0 +1,73 @@
+=pod
+
+=head1 NAME
+
+mk-table-checksum - Perform an online replication consistency check, or
+checksum MySQL tables efficiently on one or many servers.
+
+=head1 OPTIONS
+
+L<"--schema"> is restricted to option groups Connection, Filter, Output, Help.
+
+=over
+
+=item --algorithm
+
+type: string
+
+Checksum algorithm (ACCUM|CHECKSUM|BIT_XOR).
+
+=item --databases
+
+short form: -d; type: hash; group: Filter
+
+Only checksum this comma-separated list of databases.
+
+=item --defaults-file
+
+short form: -F; type: string; group: Connection
+
+Only read mysql options from the given file.
+
+=item --explain-hosts
+
+group: Help
+
+Explain hosts.
+
+=item --help
+
+group: Help
+
+Show help and exit.
+
+=item --schema
+
+Checksum C<SHOW CREATE TABLE> intead of table data.
+
+This option is only allowed with options from the following groups
+(MAGIC_schema_groups):
+
+   Connection Filter Output Help
+
+Options from other groups, like L<"--slave-lag">, are not allowed.
+
+=item --tab
+
+group: Output
+
+Print tab-separated output, not column-aligned output.
+
+=item --version
+
+group: Help
+
+Show version and exit.
+
+=back
+
+=head1 VERSION
+
+This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 3535 $.
+
+=cut

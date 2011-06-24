@@ -1,0 +1,14 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --database=s      -D  Specify the database for all tables
+  --[no]nouniquechecks  Set UNIQUE_CHECKS=0 before LOAD DATA INFILE
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Options and values after processing arguments:
+
+  --database            (No value)
+  --nouniquechecks      FALSE

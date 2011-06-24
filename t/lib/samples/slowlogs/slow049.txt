@@ -1,0 +1,30 @@
+# Time: 100624 11:48:00
+# Query_time: 10  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT zero FROM zero WHERE id=?;
+# Time: 100624 11:48:21
+# Query_time: 10  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT one FROM one WHERE id=?;
+# Time: 100624 11:48:22
+# Query_time: 10  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT one FROM one WHERE id=?;
+# Time: 100624 11:48:23
+# Query_time: 10  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT one FROM one WHERE id=?;
+# Time: 100624 11:48:24
+# Query_time: 10  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT one FROM one WHERE id=?;
+# Time: 100624 11:48:25
+# Query_time: 10  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT one FROM one WHERE id=?;
+# Time: 100624 11:48:34
+# Query_time: 500  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT two FROM two WHERE id=?;
+# Time: 100624 11:48:35
+# Query_time: 500  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT two FROM two WHERE id=?;
+# Time: 100624 11:48:35
+# Query_time: 500  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT three FROM three WHERE id=?;
+# Time: 100624 11:48:35
+# Query_time: 300  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT four FROM four WHERE id=?;

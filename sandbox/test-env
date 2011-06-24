@@ -1,0 +1,395 @@
+#!/bin/sh
+
+# This script controls the Maatkit test environment.  The mk test env is
+# a master-slave pair on ports 12345 and 12346, running from respective
+# directories in /tmp.  This script attempts to ensure that all environment
+# vars like PERCONA_TOOLKIT_BRANCH and PERCONA_TOOLKIT_SANDBOX are correct.  The
+# exit status is 0 on success and 1 on any failure.  There's no option to
+# disable output, so just >/dev/null if you only care about the exit status.
+
+_d() {
+   if [ -z "$MKDEBUG" ]; then
+      return 0
+   fi
+
+   # Is there a way to echo directly to STDERR?
+   # This is my hackish way.
+   for msg; do
+      echo "$msg" 1>/dev/null 1>&2
+   done
+}
+
+err() {
+   echo
+   for msg; do
+      echo "$msg"
+   done
+   echo "See http://code.google.com/p/maatkit/wiki/Testing for more information."
+   echo
+}
+
+usage() {
+   err "Usage: mk-test-env start|stop|restart|status|checkconfig|reset|kill" \
+       ""                                                               \
+       "  start       Start Maatkit test environment (mk test env)"     \
+       "  stop        Stop and remove mk test env"                      \
+       "  restart     Stop and start mk test env"                       \
+       "  status      Check and display status of mk test env"          \
+       "  checkconfig Check and display configuration of mk test env"   \
+       "  reset       Reset mk test env master/slave bin logs"          \
+       "  kill        Kill mk test env (use if stop fails)"             \
+       "" 
+}
+
+mysql_basedir_ok() {
+   local basedir=$1
+   _d "basedir=$basedir"
+   if [ ! -d "$basedir" ] || [ ! -d "$basedir/bin" ]; then
+      _d "basedir invalid"
+      return 0
+   fi
+   if [ ! -x "$basedir/bin/mysqld_safe" ]; then
+      _d "$basedir/bin/mysqld_safe doesn't exist"
+      return 0
+   fi
+   _d "basedir ok"
+   return 1  # basedir is ok
+}
+
+set_mysql_basedir() {
+   # Auto-detect basedir if its not explicitly set.
+   if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
+      BASEDIR_AUTO_DETECTED=1
+      mysqld=`which mysqld 2>/dev/null`
+      if [ -n "$mysqld" ]; then
+         _d "Found mysqld: $mysqld"
+         PERCONA_TOOLKIT_SANDBOX=`$mysqld --verbose --help 2>/dev/null | grep 'basedir ' | awk '{print $2}'`
+         if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then      
+            _d "$mysqld --verbose --help | grep | ask failed"
+            return 0
+         fi
+      else
+         _d "Could not find mysqld"
+         return 0
+      fi
+   else
+      if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
+         mysqld="$PERCONA_TOOLKIT_SANDBOX/bin/mysqld"
+      elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
+         mysqld="$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld"
+      elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
+         mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
+      else
+         err "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
+         return 0
+      fi
+   fi
+   mysql_basedir_ok $PERCONA_TOOLKIT_SANDBOX
+   local basedir_ok=$?
+   if [ $basedir_ok -eq 1 ]; then
+      export PERCONA_TOOLKIT_SANDBOX=$PERCONA_TOOLKIT_SANDBOX
+   fi
+   return $basedir_ok
+}
+
+checkconfig() {
+   local print_conf=$1
+   local stat=""
+   conf_err=0
+
+   if [ -z "$PERCONA_TOOLKIT_BRANCH" ] || [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
+      conf_err=1
+      stat="INVALID"
+   else
+      stat="ok"
+   fi
+   if [ $print_conf ]; then
+      echo "PERCONA_TOOLKIT_BRANCH=$PERCONA_TOOLKIT_BRANCH - $stat"
+   fi
+
+   set_mysql_basedir
+   if [ $? -ne 1  ]; then
+      conf_err=1
+      stat="INVALID"
+   else
+      stat="ok"
+   fi
+   if [ $print_conf ]; then
+      echo -n "PERCONA_TOOLKIT_SANDBOX=$PERCONA_TOOLKIT_SANDBOX - $stat"
+      if [ -n "$BASEDIR_AUTO_DETECTED" ]; then
+         echo " (auto-detected)"
+      else
+         echo
+      fi
+   fi
+
+   return $conf_err
+}
+
+sandbox_status() {
+   local type=$1
+   local port=$2
+   local master_port=$3
+   local status=0  # sandbox is ok, no problems
+
+   echo "Maatkit sandbox $type $port:"
+
+   echo -n "  PID file exists - "
+   if [ -f "/tmp/$port/data/mysql_sandbox$port.pid" ]; then
+      echo "yes"
+      echo -n "  PID file has a PID - "
+      local pid=`cat /tmp/$port/data/mysql_sandbox$port.pid 2>/dev/null`
+      _d "$type $port PID: $pid"
+      if [ -n "$pid" ]; then
+         echo "yes"
+         echo -n "  process $pid is alive - "
+         kill -0 $pid >/dev/null 2>&1
+         if [ $? -eq 0 ]; then
+            echo "yes"
+         else
+            echo "NO"
+            status=1
+         fi
+      else
+         echo "NO"
+         status=1
+      fi
+   else
+      echo "NO"
+      status=1
+   fi
+
+   echo -n "  MySQL is alive - "
+   $PERCONA_TOOLKIT_SANDBOX/bin/mysqladmin --defaults-file="/tmp/$port/my.sandbox.cnf" ping >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      echo "yes"
+
+      if [ "$version" != "4.0" ] && [ "$version" != "4.1" ]; then
+         echo -n "  sakila db is loaded - "
+         /tmp/$port/use -e 'show databases like "sakila"' 2>/dev/null | grep sakila >/dev/null 2>&1
+         if [ $? -eq 0 ]; then
+            echo "yes"
+         else
+            echo "NO"
+            status=1
+         fi
+      fi
+
+      if [ "$type" = "slave" ]; then
+         echo -n "  slave is running - "
+         # Slave status should show:
+         #   Slave_IO_Running: Yes
+         #   Slave_SQL_Running: Yes
+         local slave_running=`/tmp/$port/use -e 'show slave status\G' 2>/dev/null | grep Running | grep -c Yes`
+         if [ $slave_running -eq 2 ]; then
+            echo "yes"
+         else
+            echo "NO"
+            status=1
+         fi
+
+         if [ -n "$master_port" ]; then
+            echo -n "  slave to master $master_port - "
+            local mp=`/tmp/$port/use -e 'show slave status\G' 2>/dev/null | grep Master_Port | awk '{print $2}'`
+            if [ "$mp" = "$master_port" ]; then
+               echo "yes"
+            else
+               echo "NO"
+               status=1
+            fi
+         fi
+      fi
+   else
+      echo "NO"
+      status=1
+   fi
+   return $status
+}
+
+sandbox_is_running() {
+   local p=$1
+   ps axw | grep mysqld | grep /tmp/$p >/dev/null
+}
+
+kill_sandbox() {
+   local p=$1
+   local rmdir=1
+
+   # See if the sandbox server is running.
+   sandbox_is_running $p
+   if [ $? -eq 0 ]; then
+      # Try to kill it with mysqladmin shutdown.  We try different
+      # user/pass because sometimes a test can bork acct privs.
+      mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
+      mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
+      mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
+
+      # See if the sandbox server is still running.
+      sandbox_is_running $p 
+      if [ $? -eq 0 ]; then
+         # Kill both mysqld_safe and mysqld.
+         pid1=`ps axw | grep mysqld_safe | grep /tmp/$p | awk '{print $1}'`
+         pid2=`ps axw | grep mysqld | grep -v mysqld_safe | grep /tmp/$p | awk '{print $1}'`
+         kill -9 $pid1  # Die, damn you, die!
+         kill -9 $pid2
+         sleep 1
+
+         # Third and finaly check if the sandbox server is running.
+         sandbox_is_running $p
+         if [ $? -eq 0 ]; then
+            err "Failed to kill sandbox $p (PID $pid1, $pid2)"
+            rmdir=0
+         else 
+            echo "Killed sandbox $p (PID $pid1, $pid2)"
+         fi
+      else
+         echo "Killed sandbox $p"
+      fi
+   fi
+
+   if [ $rmdir -eq 1 ] && [ -d "/tmp/$p" ]; then
+      rm -rf /tmp/$p
+      echo "Removed /tmp/$p"
+   fi
+
+   return
+}
+
+print_sandbox_version() {
+   if [ -n "$1" ]; then
+      echo -n "Maatkit sandboxes running MySQL version "
+   fi
+   if [ -d /tmp/12345 ] && [ -f /tmp/12345/use ]; then
+      /tmp/12345/use -N -e "select version()" | head -n 2 | tail -n 1 | cut -d'.' -f1,2
+   fi
+}
+
+# ###########################################################################
+# Sanity check the cmd line options.
+# ###########################################################################
+if [ $# -lt 1 ]; then
+   usage
+   exit 1
+fi
+
+opt=$1
+
+# ###########################################################################
+# Process the option.
+# ###########################################################################
+
+exit_status=0
+
+# Print some debug info about this run.
+_d "" "`date`" "cwd: `pwd`" "`env | grep PATH`" "$0 $*"
+
+if [ $opt = 'checkconfig' ]; then
+   checkconfig 1
+   echo -n "Maatkit test environment config is "
+   if [ $conf_err -eq 0 ]; then
+      echo "ok!"
+      exit 0
+   else
+      echo "invalid."
+      exit 1
+   fi
+else
+   checkconfig
+   if [ $conf_err -eq 1 ]; then
+      err "The Maatkit test environment config is invalid." \
+          "Run '$0 checkconfig' to see the current configuration."
+      exit 1      
+   fi
+fi
+
+# Determine the MySQL version.
+# bin/mysqld -V should print something like:
+#  /usr/bin/mysqld  Ver 5.1.34 for linux-gnu on x86_64 (MySQL Community Server)
+version=`$mysqld -V | awk '{print $3}' | cut -d. -f 1,2`;
+if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
+   err "Maatkit sandbox server version $version does not exists."
+   exit 1
+fi
+
+case $opt in
+   start)
+      cd $PERCONA_TOOLKIT_BRANCH/sandbox
+      ./start-sandbox master 12345
+      exit_status=$?
+      if [ $exit_status -eq 0 ]; then
+         ./start-sandbox slave 12346 12345
+         exit_status=$?
+         if [ "$version" != "4.0" ] && [ "$version" != "4.1" ]; then
+            if [ $? -eq 0 ]; then
+               echo "Loading sakila database..."
+               ./load-sakila-db 12345
+               exit_status=$?
+            fi
+         fi
+      fi
+      if [ $exit_status -eq 0 ]; then
+         echo "Maatkit test environment started!"
+      else
+         # Stop but don't remove the sandboxes.  The mysql error log
+         # may say why MySQL failed to start.
+         ./stop-sandbox all >/dev/null 2>&1
+         err "There was an error starting the Maatkit test environment."
+      fi
+      print_sandbox_version 1
+      ;;
+   stop)
+      cd $PERCONA_TOOLKIT_BRANCH/sandbox
+      ./stop-sandbox remove all
+      exit_status=$?
+      if [ $exit_status -eq 0 ]; then
+         echo "Maatkit test environment stopped."
+      else
+         err "There was an error stopping the Maatkit test environment." \
+             "The Maatkit sandboxes may still be running."
+      fi
+      ;;
+   kill)
+      # This is a blunt approach for killing the entire mk test env
+      # when a polite stop fails.  It uses kill -9 as a last resort.
+      for port in 12345 12346 12347 12348 12349 2900 2901 2902 2903; do
+         kill_sandbox $port
+      done
+      ;;
+   restart)
+      $0 stop
+      $0 start
+      ;;
+   status)
+      sandbox_status 'master' '12345'
+      master_status=$?
+      sandbox_status 'slave' '12346' '12345'
+      slave_status=$?
+      echo -n "Maaktit test environment is "
+      if [ $master_status -eq 0 ] && [ $slave_status -eq 0 ]; then
+         echo "ok!"
+      else
+         echo "invalid."
+         exit_status=1
+      fi
+      ;;
+   reset)
+      # This resets the master and slave relay logs.  It's used in
+      # mk-table-sync/t/110_replicate_do_db.t.  It's not checked;
+      # user beware.
+      /tmp/12345/use -e "RESET MASTER"
+      /tmp/12346/use -e "RESET MASTER"
+      /tmp/12346/use -e "STOP SLAVE"
+      /tmp/12346/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12345, master_log_file='mysql-bin.000001', master_log_pos=0"
+      /tmp/12346/use -e "START SLAVE"
+      exit_status=0
+      ;;
+   version)
+      print_sandbox_version 
+      ;;
+   *)
+      usage
+      exit_status=1
+      ;;
+esac
+
+exit $exit_status

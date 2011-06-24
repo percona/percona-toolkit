@@ -1,0 +1,6 @@
+2004-05-07 12:00:01 LOG:  query: begin; select getdatabaseencoding(); commit
+2004-05-07 12:00:01 LOG:  duration: 0.000801 sec
+2004-05-07 12:00:01 LOG:  query: update users set unix_status = 'A' where user_id in (select
+distinct u.user_id from users u, user_group ug WHERE
+u.user_id=ug.user_id and ug.cvs_flags='1' and u.status='A')
+2004-05-07 12:00:01 LOG:  query: SELECT 1 FROM ONLY "public"."supported_languages" x WHERE "language_id" = $1 FOR UPDATE OF x

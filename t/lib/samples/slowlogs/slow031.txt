@@ -1,0 +1,9 @@
+D:\MySQL\MySQL Server 5.1\bin\mysqld, Version: 5.1.30-community-log (MySQL Community Server (GPL)). started with:
+TCP Port: 3306, Named Pipe: (null)
+Time                 Id Command    Argument
+# Time: 090127  1:23:34
+# User@Host: swuser[swuser] @ secure.myplace.co.uk [88.208.248.160]
+# Query_time: 0.453125  Lock_time: 0.000000 Rows_sent: 2160  Rows_examined: 2160
+use myplace;
+SET timestamp=1233019414;
+SELECT * FROM cottages;

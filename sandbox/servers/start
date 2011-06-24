@@ -1,0 +1,58 @@
+#!/bin/sh
+
+PIDFILE="/tmp/PORT/data/mysql_sandboxPORT.pid"
+SOCKETFILE="/tmp/PORT/mysql_sandboxPORT.sock"
+BASEDIR="PERCONA_TOOLKIT_SANDBOX"
+
+sandbox_is_alive() {
+   local pid=`cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null`
+   if [ -z "$pid" ]; then
+      return 0
+   fi
+   kill -0 $pid
+   local ps_alive=$?
+
+   $BASEDIR/bin/mysqladmin --defaults-file="/tmp/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
+   local mysql_alive=$?
+
+   if [ $ps_alive -eq 0 ] && [ $mysql_alive -eq 0 ]; then
+      return 1  # sandbox is alive
+   else
+      return 0
+   fi
+}
+
+if [ -f "$PIDFILE" ] || [ -S "$SOCKETFILE" ]; then
+   sandbox_is_alive
+   if [ $? -eq 1 ]; then
+      echo "Maatkit sandbox PORT is running."
+      exit 0
+   fi
+
+   # Sandbox exists but is not running.  Clear it and then start it.
+   /tmp/PORT/stop >/dev/null 2>&1
+   rm -rf $PIDFILE
+   rm -rf $SOCKETFILE
+fi
+
+PWD=`pwd`
+cd $BASEDIR
+$BASEDIR/bin/mysqld_safe --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>&1 &
+cd $PWD
+
+echo -n "Starting Maatkit sandbox PORT... "
+for i in 1 2 3 4 5 6 7 8 9 10; do
+   sleep 1
+   if [ -f $PIDFILE ] && [ -S $SOCKETFILE ]; then
+      break
+   fi
+done
+
+sandbox_is_alive
+if [ $? -eq 1 ]; then
+   echo "success!"
+   exit 0
+else
+   echo "failed."
+   exit 1
+fi

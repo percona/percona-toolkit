@@ -1,0 +1,10 @@
+# User@Host: root[root] @ localhost [127.0.0.1]
+# Thread_id: 6997  Schema: user_chos
+# Query_time: 0.000020  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Rows_read: 1
+use user_chos;
+USE `user_chos`;
+# User@Host: user_user[user_user] @ my-server.myplace.net [192.168.100.1]
+# Thread_id: 6996  Schema: user_sfn
+# Query_time: 0.000020  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Rows_read: 0
+use user_sfn;
+SELECT * FROM moderator;

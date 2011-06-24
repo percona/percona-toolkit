@@ -1,0 +1,9 @@
+Jan 13 20:22:44 www postgres[13014]: [5-1] LOG:  duration: 117.042 ms  statement: 
+Jan 13 20:22:44 www postgres[13014]: [5-2] ^Iinsert into weblog
+Jan 13 20:22:44 www postgres[13014]: [5-3]  (username,remoteid,generalsitearea,refererhost,refererfull,searchterms,cookie,useragent,query,requesteduri,bot,elapsedtime)
+Jan 13 20:22:44 www postgres[13014]: [5-4] ^Ivalues
+Jan 13 20:22:44 www postgres[13014]: [5-5]  (upper('asdfg'),upper('127.0.0.1'),upper(NULL),upper('localhost'),upper('<a href="http://localhost/nosymbol-Ameriprise-Financial-Inc-Fun" target="_new">http://localhost/nosymbol-Ameriprise-Financial-Inc-Fun</a>
+Jan 13 20:22:44 www postgres[13014]: [5-6] d-Buy-Sell-Own-zz-zi125340.html'),upper(NULL),upper('temp-id=s2ByrI6TKLEoDJXG3g3NEBoRWF6Z3t'),upper('Mozilla/4.0 (compatible;
+Jan 13 20:22:44 www postgres[13014]: [5-7]  MSIE 7.0; Windows NT 5.2; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR
+Jan 13 20:22:44 www postgres[13014]: [5-8]  3.0.04506.30)'),upper(''),upper('/AAON-Aaon-Inc-Stock-Buy-Sell-Own-zz-zs2331501.html'),'f','1')
+Jan 13 20:22:44 www postgres[13014]: [5-9] ^I

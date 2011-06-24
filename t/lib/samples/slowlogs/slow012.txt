@@ -1,0 +1,8 @@
+# User@Host: sabapp[sabapp] @  [10.1.250.19]
+# Thread_id: 39387  Schema: sab
+# Query_time: 0.000018  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SET autocommit=1;
+# User@Host: sabapp[sabapp] @  [10.1.250.19]
+# Thread_id: 39387  Schema: sab
+# Query_time: 0.000018  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SET autocommit=1;

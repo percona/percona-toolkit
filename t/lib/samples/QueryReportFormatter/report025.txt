@@ -1,0 +1,12 @@
+# *************************** 1. row ***************************
+#            id: 1
+#   select_type: SIMPLE
+#         table: t
+#    partitions: NULL
+#          type: const
+# possible_keys: PRIMARY
+#           key: PRIMARY
+#       key_len: 4
+#           ref: const
+#          rows: 1
+#         Extra: 

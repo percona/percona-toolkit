@@ -1,0 +1,31 @@
+/*!40019 SET @@session.max_insert_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#090722  7:21:41 server id 12345  end_log_pos 98 	Start: binlog v 4, server v 5.0.82-log created 090722  7:21:41 at startup
+# Warning: this binlog was not closed properly. Most probably mysqld crashed writing it.
+ROLLBACK/*!*/;
+# at 98
+#090722  7:21:59 server id 12345  end_log_pos 175 	Query	thread_id=3	exec_time=0	error_code=0
+SET TIMESTAMP=1248268919/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=1, @@session.unique_checks=1/*!*/;
+SET @@session.sql_mode=0/*!*/;
+/*!\C latin1 *//*!*/;
+SET @@session.character_set_client=8,@@session.collation_connection=8,@@session.collation_server=8/*!*/;
+create database d
+/*!*/;
+# at 175
+#090722  7:22:16 server id 12345  end_log_pos 259 	Query	thread_id=3	exec_time=0	error_code=0
+use d/*!*/;
+SET TIMESTAMP=1248268936/*!*/;
+create table foo (i int)
+/*!*/;
+# at 259
+#090722  7:22:24 server id 12345  end_log_pos 344 	Query	thread_id=3	exec_time=0	error_code=0
+SET TIMESTAMP=1248268944/*!*/;
+insert foo values (1),(2)
+/*!*/;
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;

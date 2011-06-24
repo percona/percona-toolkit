@@ -1,0 +1,720 @@
+*************************** 1. row ***************************
+Variable_name: auto_increment_increment
+        Value: 1
+*************************** 2. row ***************************
+Variable_name: auto_increment_offset
+        Value: 1
+*************************** 3. row ***************************
+Variable_name: automatic_sp_privileges
+        Value: ON
+*************************** 4. row ***************************
+Variable_name: back_log
+        Value: 50
+*************************** 5. row ***************************
+Variable_name: basedir
+        Value: /home/daniel/mysql_binaries/mysql-5.0.82-linux-x86_64-glibc23/
+*************************** 6. row ***************************
+Variable_name: binlog_cache_size
+        Value: 32768
+*************************** 7. row ***************************
+Variable_name: bulk_insert_buffer_size
+        Value: 8388608
+*************************** 8. row ***************************
+Variable_name: character_set_client
+        Value: latin1
+*************************** 9. row ***************************
+Variable_name: character_set_connection
+        Value: latin1
+*************************** 10. row ***************************
+Variable_name: character_set_database
+        Value: latin1
+*************************** 11. row ***************************
+Variable_name: character_set_filesystem
+        Value: binary
+*************************** 12. row ***************************
+Variable_name: character_set_results
+        Value: latin1
+*************************** 13. row ***************************
+Variable_name: character_set_server
+        Value: latin1
+*************************** 14. row ***************************
+Variable_name: character_set_system
+        Value: utf8
+*************************** 15. row ***************************
+Variable_name: character_sets_dir
+        Value: /home/daniel/mysql_binaries/mysql-5.0.82-linux-x86_64-glibc23/share/mysql/charsets/
+*************************** 16. row ***************************
+Variable_name: collation_connection
+        Value: latin1_swedish_ci
+*************************** 17. row ***************************
+Variable_name: collation_database
+        Value: latin1_swedish_ci
+*************************** 18. row ***************************
+Variable_name: collation_server
+        Value: latin1_swedish_ci
+*************************** 19. row ***************************
+Variable_name: completion_type
+        Value: 0
+*************************** 20. row ***************************
+Variable_name: concurrent_insert
+        Value: 1
+*************************** 21. row ***************************
+Variable_name: connect_timeout
+        Value: 10
+*************************** 22. row ***************************
+Variable_name: datadir
+        Value: /tmp/12345/data/
+*************************** 23. row ***************************
+Variable_name: date_format
+        Value: %Y-%m-%d
+*************************** 24. row ***************************
+Variable_name: datetime_format
+        Value: %Y-%m-%d %H:%i:%s
+*************************** 25. row ***************************
+Variable_name: default_week_format
+        Value: 0
+*************************** 26. row ***************************
+Variable_name: delay_key_write
+        Value: ON
+*************************** 27. row ***************************
+Variable_name: delayed_insert_limit
+        Value: 100
+*************************** 28. row ***************************
+Variable_name: delayed_insert_timeout
+        Value: 300
+*************************** 29. row ***************************
+Variable_name: delayed_queue_size
+        Value: 1000
+*************************** 30. row ***************************
+Variable_name: div_precision_increment
+        Value: 4
+*************************** 31. row ***************************
+Variable_name: keep_files_on_create
+        Value: OFF
+*************************** 32. row ***************************
+Variable_name: engine_condition_pushdown
+        Value: OFF
+*************************** 33. row ***************************
+Variable_name: expire_logs_days
+        Value: 0
+*************************** 34. row ***************************
+Variable_name: flush
+        Value: OFF
+*************************** 35. row ***************************
+Variable_name: flush_time
+        Value: 0
+*************************** 36. row ***************************
+Variable_name: ft_boolean_syntax
+        Value: + -><()~*:""&|
+*************************** 37. row ***************************
+Variable_name: ft_max_word_len
+        Value: 84
+*************************** 38. row ***************************
+Variable_name: ft_min_word_len
+        Value: 4
+*************************** 39. row ***************************
+Variable_name: ft_query_expansion_limit
+        Value: 20
+*************************** 40. row ***************************
+Variable_name: ft_stopword_file
+        Value: (built-in)
+*************************** 41. row ***************************
+Variable_name: group_concat_max_len
+        Value: 1024
+*************************** 42. row ***************************
+Variable_name: have_archive
+        Value: YES
+*************************** 43. row ***************************
+Variable_name: have_bdb
+        Value: NO
+*************************** 44. row ***************************
+Variable_name: have_blackhole_engine
+        Value: YES
+*************************** 45. row ***************************
+Variable_name: have_compress
+        Value: YES
+*************************** 46. row ***************************
+Variable_name: have_community_features
+        Value: YES
+*************************** 47. row ***************************
+Variable_name: have_profiling
+        Value: YES
+*************************** 48. row ***************************
+Variable_name: have_crypt
+        Value: YES
+*************************** 49. row ***************************
+Variable_name: have_csv
+        Value: YES
+*************************** 50. row ***************************
+Variable_name: have_dynamic_loading
+        Value: YES
+*************************** 51. row ***************************
+Variable_name: have_example_engine
+        Value: NO
+*************************** 52. row ***************************
+Variable_name: have_federated_engine
+        Value: YES
+*************************** 53. row ***************************
+Variable_name: have_geometry
+        Value: YES
+*************************** 54. row ***************************
+Variable_name: have_innodb
+        Value: YES
+*************************** 55. row ***************************
+Variable_name: have_isam
+        Value: NO
+*************************** 56. row ***************************
+Variable_name: have_merge_engine
+        Value: YES
+*************************** 57. row ***************************
+Variable_name: have_ndbcluster
+        Value: DISABLED
+*************************** 58. row ***************************
+Variable_name: have_openssl
+        Value: DISABLED
+*************************** 59. row ***************************
+Variable_name: have_ssl
+        Value: DISABLED
+*************************** 60. row ***************************
+Variable_name: have_query_cache
+        Value: YES
+*************************** 61. row ***************************
+Variable_name: have_raid
+        Value: NO
+*************************** 62. row ***************************
+Variable_name: have_rtree_keys
+        Value: YES
+*************************** 63. row ***************************
+Variable_name: have_symlink
+        Value: YES
+*************************** 64. row ***************************
+Variable_name: hostname
+        Value: dante
+*************************** 65. row ***************************
+Variable_name: init_connect
+        Value: 
+*************************** 66. row ***************************
+Variable_name: init_file
+        Value: 
+*************************** 67. row ***************************
+Variable_name: init_slave
+        Value: 
+*************************** 68. row ***************************
+Variable_name: innodb_additional_mem_pool_size
+        Value: 1048576
+*************************** 69. row ***************************
+Variable_name: innodb_autoextend_increment
+        Value: 8
+*************************** 70. row ***************************
+Variable_name: innodb_buffer_pool_awe_mem_mb
+        Value: 0
+*************************** 71. row ***************************
+Variable_name: innodb_buffer_pool_size
+        Value: 16777216
+*************************** 72. row ***************************
+Variable_name: innodb_checksums
+        Value: ON
+*************************** 73. row ***************************
+Variable_name: innodb_commit_concurrency
+        Value: 0
+*************************** 74. row ***************************
+Variable_name: innodb_concurrency_tickets
+        Value: 500
+*************************** 75. row ***************************
+Variable_name: innodb_data_file_path
+        Value: ibdata1:10M:autoextend
+*************************** 76. row ***************************
+Variable_name: innodb_data_home_dir
+        Value: /tmp/12345/data
+*************************** 77. row ***************************
+Variable_name: innodb_adaptive_hash_index
+        Value: ON
+*************************** 78. row ***************************
+Variable_name: innodb_doublewrite
+        Value: ON
+*************************** 79. row ***************************
+Variable_name: innodb_fast_shutdown
+        Value: 1
+*************************** 80. row ***************************
+Variable_name: innodb_file_io_threads
+        Value: 4
+*************************** 81. row ***************************
+Variable_name: innodb_file_per_table
+        Value: OFF
+*************************** 82. row ***************************
+Variable_name: innodb_flush_log_at_trx_commit
+        Value: 1
+*************************** 83. row ***************************
+Variable_name: innodb_flush_method
+        Value: 
+*************************** 84. row ***************************
+Variable_name: innodb_force_recovery
+        Value: 0
+*************************** 85. row ***************************
+Variable_name: innodb_lock_wait_timeout
+        Value: 50
+*************************** 86. row ***************************
+Variable_name: innodb_locks_unsafe_for_binlog
+        Value: OFF
+*************************** 87. row ***************************
+Variable_name: innodb_log_arch_dir
+        Value: 
+*************************** 88. row ***************************
+Variable_name: innodb_log_archive
+        Value: OFF
+*************************** 89. row ***************************
+Variable_name: innodb_log_buffer_size
+        Value: 1048576
+*************************** 90. row ***************************
+Variable_name: innodb_log_file_size
+        Value: 5242880
+*************************** 91. row ***************************
+Variable_name: innodb_log_files_in_group
+        Value: 2
+*************************** 92. row ***************************
+Variable_name: innodb_log_group_home_dir
+        Value: /tmp/12345/data
+*************************** 93. row ***************************
+Variable_name: innodb_max_dirty_pages_pct
+        Value: 90
+*************************** 94. row ***************************
+Variable_name: innodb_max_purge_lag
+        Value: 0
+*************************** 95. row ***************************
+Variable_name: innodb_mirrored_log_groups
+        Value: 1
+*************************** 96. row ***************************
+Variable_name: innodb_open_files
+        Value: 300
+*************************** 97. row ***************************
+Variable_name: innodb_rollback_on_timeout
+        Value: OFF
+*************************** 98. row ***************************
+Variable_name: innodb_support_xa
+        Value: ON
+*************************** 99. row ***************************
+Variable_name: innodb_sync_spin_loops
+        Value: 20
+*************************** 100. row ***************************
+Variable_name: innodb_table_locks
+        Value: ON
+*************************** 101. row ***************************
+Variable_name: innodb_thread_concurrency
+        Value: 8
+*************************** 102. row ***************************
+Variable_name: innodb_thread_sleep_delay
+        Value: 10000
+*************************** 103. row ***************************
+Variable_name: innodb_use_legacy_cardinality_algorithm
+        Value: ON
+*************************** 104. row ***************************
+Variable_name: interactive_timeout
+        Value: 28800
+*************************** 105. row ***************************
+Variable_name: join_buffer_size
+        Value: 131072
+*************************** 106. row ***************************
+Variable_name: key_buffer_size
+        Value: 16777216
+*************************** 107. row ***************************
+Variable_name: key_cache_age_threshold
+        Value: 300
+*************************** 108. row ***************************
+Variable_name: key_cache_block_size
+        Value: 1024
+*************************** 109. row ***************************
+Variable_name: key_cache_division_limit
+        Value: 100
+*************************** 110. row ***************************
+Variable_name: language
+        Value: /home/daniel/mysql_binaries/mysql-5.0.82-linux-x86_64-glibc23/share/mysql/english/
+*************************** 111. row ***************************
+Variable_name: large_files_support
+        Value: ON
+*************************** 112. row ***************************
+Variable_name: large_page_size
+        Value: 0
+*************************** 113. row ***************************
+Variable_name: large_pages
+        Value: OFF
+*************************** 114. row ***************************
+Variable_name: lc_time_names
+        Value: en_US
+*************************** 115. row ***************************
+Variable_name: license
+        Value: GPL
+*************************** 116. row ***************************
+Variable_name: local_infile
+        Value: ON
+*************************** 117. row ***************************
+Variable_name: locked_in_memory
+        Value: OFF
+*************************** 118. row ***************************
+Variable_name: log
+        Value: OFF
+*************************** 119. row ***************************
+Variable_name: log_bin
+        Value: ON
+*************************** 120. row ***************************
+Variable_name: log_bin_trust_function_creators
+        Value: OFF
+*************************** 121. row ***************************
+Variable_name: log_error
+        Value: 
+*************************** 122. row ***************************
+Variable_name: log_queries_not_using_indexes
+        Value: OFF
+*************************** 123. row ***************************
+Variable_name: log_slave_updates
+        Value: ON
+*************************** 124. row ***************************
+Variable_name: log_slow_queries
+        Value: OFF
+*************************** 125. row ***************************
+Variable_name: log_warnings
+        Value: 1
+*************************** 126. row ***************************
+Variable_name: long_query_time
+        Value: 10
+*************************** 127. row ***************************
+Variable_name: low_priority_updates
+        Value: OFF
+*************************** 128. row ***************************
+Variable_name: lower_case_file_system
+        Value: OFF
+*************************** 129. row ***************************
+Variable_name: lower_case_table_names
+        Value: 0
+*************************** 130. row ***************************
+Variable_name: max_allowed_packet
+        Value: 1048576
+*************************** 131. row ***************************
+Variable_name: max_binlog_cache_size
+        Value: 18446744073709547520
+*************************** 132. row ***************************
+Variable_name: max_binlog_size
+        Value: 1073741824
+*************************** 133. row ***************************
+Variable_name: max_connect_errors
+        Value: 10
+*************************** 134. row ***************************
+Variable_name: max_connections
+        Value: 100
+*************************** 135. row ***************************
+Variable_name: max_delayed_threads
+        Value: 20
+*************************** 136. row ***************************
+Variable_name: max_error_count
+        Value: 64
+*************************** 137. row ***************************
+Variable_name: max_heap_table_size
+        Value: 16777216
+*************************** 138. row ***************************
+Variable_name: max_insert_delayed_threads
+        Value: 20
+*************************** 139. row ***************************
+Variable_name: max_join_size
+        Value: 18446744073709551615
+*************************** 140. row ***************************
+Variable_name: max_length_for_sort_data
+        Value: 1024
+*************************** 141. row ***************************
+Variable_name: max_prepared_stmt_count
+        Value: 16382
+*************************** 142. row ***************************
+Variable_name: max_relay_log_size
+        Value: 0
+*************************** 143. row ***************************
+Variable_name: max_seeks_for_key
+        Value: 18446744073709551615
+*************************** 144. row ***************************
+Variable_name: max_sort_length
+        Value: 1024
+*************************** 145. row ***************************
+Variable_name: max_sp_recursion_depth
+        Value: 0
+*************************** 146. row ***************************
+Variable_name: max_tmp_tables
+        Value: 32
+*************************** 147. row ***************************
+Variable_name: max_user_connections
+        Value: 0
+*************************** 148. row ***************************
+Variable_name: max_write_lock_count
+        Value: 18446744073709551615
+*************************** 149. row ***************************
+Variable_name: multi_range_count
+        Value: 256
+*************************** 150. row ***************************
+Variable_name: myisam_data_pointer_size
+        Value: 6
+*************************** 151. row ***************************
+Variable_name: myisam_max_sort_file_size
+        Value: 9223372036853727232
+*************************** 152. row ***************************
+Variable_name: myisam_recover_options
+        Value: OFF
+*************************** 153. row ***************************
+Variable_name: myisam_repair_threads
+        Value: 1
+*************************** 154. row ***************************
+Variable_name: myisam_sort_buffer_size
+        Value: 8388608
+*************************** 155. row ***************************
+Variable_name: myisam_stats_method
+        Value: nulls_unequal
+*************************** 156. row ***************************
+Variable_name: ndb_autoincrement_prefetch_sz
+        Value: 1
+*************************** 157. row ***************************
+Variable_name: ndb_force_send
+        Value: ON
+*************************** 158. row ***************************
+Variable_name: ndb_use_exact_count
+        Value: ON
+*************************** 159. row ***************************
+Variable_name: ndb_use_transactions
+        Value: ON
+*************************** 160. row ***************************
+Variable_name: ndb_cache_check_time
+        Value: 0
+*************************** 161. row ***************************
+Variable_name: ndb_connectstring
+        Value: 
+*************************** 162. row ***************************
+Variable_name: net_buffer_length
+        Value: 16384
+*************************** 163. row ***************************
+Variable_name: net_read_timeout
+        Value: 30
+*************************** 164. row ***************************
+Variable_name: net_retry_count
+        Value: 10
+*************************** 165. row ***************************
+Variable_name: net_write_timeout
+        Value: 60
+*************************** 166. row ***************************
+Variable_name: new
+        Value: OFF
+*************************** 167. row ***************************
+Variable_name: old_passwords
+        Value: OFF
+*************************** 168. row ***************************
+Variable_name: open_files_limit
+        Value: 1024
+*************************** 169. row ***************************
+Variable_name: optimizer_prune_level
+        Value: 1
+*************************** 170. row ***************************
+Variable_name: optimizer_search_depth
+        Value: 62
+*************************** 171. row ***************************
+Variable_name: pid_file
+        Value: /tmp/12345/data/mysql_sandbox12345.pid
+*************************** 172. row ***************************
+Variable_name: plugin_dir
+        Value: 
+*************************** 173. row ***************************
+Variable_name: port
+        Value: 12345
+*************************** 174. row ***************************
+Variable_name: preload_buffer_size
+        Value: 32768
+*************************** 175. row ***************************
+Variable_name: profiling
+        Value: OFF
+*************************** 176. row ***************************
+Variable_name: profiling_history_size
+        Value: 15
+*************************** 177. row ***************************
+Variable_name: protocol_version
+        Value: 10
+*************************** 178. row ***************************
+Variable_name: query_alloc_block_size
+        Value: 8192
+*************************** 179. row ***************************
+Variable_name: query_cache_limit
+        Value: 1048576
+*************************** 180. row ***************************
+Variable_name: query_cache_min_res_unit
+        Value: 4096
+*************************** 181. row ***************************
+Variable_name: query_cache_size
+        Value: 0
+*************************** 182. row ***************************
+Variable_name: query_cache_type
+        Value: ON
+*************************** 183. row ***************************
+Variable_name: query_cache_wlock_invalidate
+        Value: OFF
+*************************** 184. row ***************************
+Variable_name: query_prealloc_size
+        Value: 8192
+*************************** 185. row ***************************
+Variable_name: range_alloc_block_size
+        Value: 4096
+*************************** 186. row ***************************
+Variable_name: read_buffer_size
+        Value: 131072
+*************************** 187. row ***************************
+Variable_name: read_only
+        Value: OFF
+*************************** 188. row ***************************
+Variable_name: read_rnd_buffer_size
+        Value: 262144
+*************************** 189. row ***************************
+Variable_name: relay_log
+        Value: mysql-relay-bin
+*************************** 190. row ***************************
+Variable_name: relay_log_index
+        Value: 
+*************************** 191. row ***************************
+Variable_name: relay_log_info_file
+        Value: relay-log.info
+*************************** 192. row ***************************
+Variable_name: relay_log_purge
+        Value: ON
+*************************** 193. row ***************************
+Variable_name: relay_log_space_limit
+        Value: 0
+*************************** 194. row ***************************
+Variable_name: rpl_recovery_rank
+        Value: 0
+*************************** 195. row ***************************
+Variable_name: secure_auth
+        Value: OFF
+*************************** 196. row ***************************
+Variable_name: secure_file_priv
+        Value: 
+*************************** 197. row ***************************
+Variable_name: server_id
+        Value: 12345
+*************************** 198. row ***************************
+Variable_name: skip_external_locking
+        Value: ON
+*************************** 199. row ***************************
+Variable_name: skip_networking
+        Value: OFF
+*************************** 200. row ***************************
+Variable_name: skip_show_database
+        Value: OFF
+*************************** 201. row ***************************
+Variable_name: slave_compressed_protocol
+        Value: OFF
+*************************** 202. row ***************************
+Variable_name: slave_load_tmpdir
+        Value: /tmp/
+*************************** 203. row ***************************
+Variable_name: slave_net_timeout
+        Value: 3600
+*************************** 204. row ***************************
+Variable_name: slave_skip_errors
+        Value: OFF
+*************************** 205. row ***************************
+Variable_name: slave_transaction_retries
+        Value: 10
+*************************** 206. row ***************************
+Variable_name: slow_launch_time
+        Value: 2
+*************************** 207. row ***************************
+Variable_name: socket
+        Value: /tmp/12345/mysql_sandbox12345.sock
+*************************** 208. row ***************************
+Variable_name: sort_buffer_size
+        Value: 2097144
+*************************** 209. row ***************************
+Variable_name: sql_big_selects
+        Value: ON
+*************************** 210. row ***************************
+Variable_name: sql_mode
+        Value: 
+*************************** 211. row ***************************
+Variable_name: sql_notes
+        Value: ON
+*************************** 212. row ***************************
+Variable_name: sql_warnings
+        Value: OFF
+*************************** 213. row ***************************
+Variable_name: ssl_ca
+        Value: 
+*************************** 214. row ***************************
+Variable_name: ssl_capath
+        Value: 
+*************************** 215. row ***************************
+Variable_name: ssl_cert
+        Value: 
+*************************** 216. row ***************************
+Variable_name: ssl_cipher
+        Value: 
+*************************** 217. row ***************************
+Variable_name: ssl_key
+        Value: 
+*************************** 218. row ***************************
+Variable_name: storage_engine
+        Value: MyISAM
+*************************** 219. row ***************************
+Variable_name: sync_binlog
+        Value: 0
+*************************** 220. row ***************************
+Variable_name: sync_frm
+        Value: ON
+*************************** 221. row ***************************
+Variable_name: system_time_zone
+        Value: MDT
+*************************** 222. row ***************************
+Variable_name: table_cache
+        Value: 64
+*************************** 223. row ***************************
+Variable_name: table_lock_wait_timeout
+        Value: 50
+*************************** 224. row ***************************
+Variable_name: table_type
+        Value: MyISAM
+*************************** 225. row ***************************
+Variable_name: thread_cache_size
+        Value: 0
+*************************** 226. row ***************************
+Variable_name: thread_stack
+        Value: 262144
+*************************** 227. row ***************************
+Variable_name: time_format
+        Value: %H:%i:%s
+*************************** 228. row ***************************
+Variable_name: time_zone
+        Value: SYSTEM
+*************************** 229. row ***************************
+Variable_name: timed_mutexes
+        Value: OFF
+*************************** 230. row ***************************
+Variable_name: tmp_table_size
+        Value: 33554432
+*************************** 231. row ***************************
+Variable_name: tmpdir
+        Value: /tmp/
+*************************** 232. row ***************************
+Variable_name: transaction_alloc_block_size
+        Value: 8192
+*************************** 233. row ***************************
+Variable_name: transaction_prealloc_size
+        Value: 4096
+*************************** 234. row ***************************
+Variable_name: tx_isolation
+        Value: REPEATABLE-READ
+*************************** 235. row ***************************
+Variable_name: updatable_views_with_limit
+        Value: YES
+*************************** 236. row ***************************
+Variable_name: version
+        Value: 5.0.82-log
+*************************** 237. row ***************************
+Variable_name: version_comment
+        Value: MySQL Community Server (GPL)
+*************************** 238. row ***************************
+Variable_name: version_compile_machine
+        Value: x86_64
+*************************** 239. row ***************************
+Variable_name: version_compile_os
+        Value: unknown-linux-gnu
+*************************** 240. row ***************************
+Variable_name: wait_timeout
+        Value: 28800

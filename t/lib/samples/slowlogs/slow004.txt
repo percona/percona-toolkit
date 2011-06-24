@@ -1,0 +1,7 @@
+/usr/sbin/mysqld, Version: 5.0.38-Ubuntu_0ubuntu1.1-log (Ubuntu 7.04 distribution). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+# Time: 071015 21:43:52
+# User@Host: root[root] @ localhost []
+# Query_time: 2  Lock_time: 0  Rows_sent: 1  Rows_examined: 0
+select 12_13_foo from (select 12foo from 123_bar) as 123baz;

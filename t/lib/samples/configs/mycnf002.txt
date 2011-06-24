@@ -1,0 +1,13 @@
+[mysqld]
+var1  = 16M
+var2  = 16MB
+var3  = 16m
+var4  = 16mb
+var5  = 16K
+var6  = 16KB
+var7  = 16k
+var8  = 16kb
+var9  = 1G
+var10 = 1GB
+var11 = 1g
+var12 = 1gb

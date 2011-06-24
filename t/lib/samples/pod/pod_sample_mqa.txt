@@ -1,0 +1,150 @@
+# ############################################################################
+
+=pod
+
+=head1 NAME
+
+mk-query-advisor - Scrutinize queries.
+
+=head1 SYNOPSIS
+
+This POD sample simulates special POD stuff used by mk-query-advisor.  The
+format used here is not the same actually used in mk-query-advisor.  This POD
+sample is, therore, just for testing.
+
+=head1 CHECKS
+
+These are the check that mk-advisor can perform on a query.  There are several
+classes of checks, each described in its own seciton.  You can add new checks
+by adding new entires like the ones below.  Read L<"CHECK SYNTAX"> to learn
+the structure of these checks.
+
+=head2 Literals
+
+id:    LIT.001
+level: note
+rule:  colval matches \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\.
+desc:  IP address used as string.  The string literal looks like an IP address
+       but is not used inside INET_ATON().  WHERE ip='127.0.0.1' is better as
+       ip=INET_ATON('127.0.0.1') if the column is numeric.
+
+id:    LIT.002
+level: warn
+rule:  colval matches (?:\d{2,4}-\d{1,2}-\d{1,2}|\d{4,6})
+desc:  Date literal is not quoted.  WHERE col<2010-02-12 is valid but wrong;
+       the date should be quoted.
+
+=head2 Table List
+
+id:    TBL.001
+level: note
+rule:  tbl matches *
+desc:  SELECT *.  Selecting specific columns is preferable to SELECT *.
+
+=head2 Clauses
+
+id:    CLA.001
+level: note
+rule:  query matches ORDER BY RAND
+desc:  ORDER BY RAND().  ORDER BY RAND() is not preferred.
+
+=head2 Query
+
+id:    QRY.001
+level: note
+rule:  INSERT without columns
+desc:  Blind INSERT.  The INSERT does not specify columns.  INSERT INTO tbl
+       (col1,col2) VALUES (1,2) is preferred to INSERT INTO tbl VALUES (1,2).
+
+id:    QRY.002
+level: note
+rule:  query matches SQL_CALC_FOUND_ROWS
+desc:  SQL_CALC_FOUND_ROWS does not scale.  SQL_CALC_FOUND_ROWS can cause
+       performance problems because it does not scale well.
+
+=head1 CHECK SYNTAX
+
+Each check is a single paragraph (blank line before and after) with the
+following attributes:
+
+  * id     A unique ID used by the tool to identify the check
+  * level  note, warn, or crit
+  * rule   A special syntax telling the tool how to perform the check
+  * desc   A terse, fuller and complete description of the check.
+
+The check is two parts: CCC.NNN where CCC is the class abbreviation and NNN
+is the next avaiable number.  The classes are shown above, LIT for Literals,
+TBL for Table List, etc.  The numbers should never overlap or change.
+
+The level is either note, warn or crit (for "critical").
+
+The rule is a special, limited syntax that the tool translateis into code.
+Each rule is a single sentence with a subject, verb and noun. These are:
+
+  SUBJECT    REFERS TO
+  =======    ================================================================
+  query      The whole text of the query (the SQL statement)
+  colval     Any column value for any column
+  tbl        Any table from anywhere
+  <DMS>      Any Data Manipulation Statement in caps: SELECT, INSERT, DELETE,
+             etc.  The rule only applies if the query is this type of
+             statement.
+  clause     One of these MAGIC_clauses:
+  
+               GROUP BY, ORDER BY, LIMIT
+
+  VERB       DOES
+  =======    ================================================================
+  matches    Perl regex match SUBJECT =~ m/NOUN/ims
+  with       <DMS> subject has NOUN part
+  without    <DMS> subject does not have NOUN part
+
+  NOUN       DESCRIBES
+  =======    ================================================================
+  where      WHERE clause, used only with <DMS> subjects
+  columns    Columns list of the query, used only with <DMS> subjects
+  <...>      Anything after the verb, used with most verbs.
+
+The description (desc) should have at least two period-terminate sentences.
+The first sentece should be the terse definition of the check.  The second
+sentence should be the fuller defintion.  Any more sentences are the complete
+defintion of the check.
+
+=head1 OPTIONS
+
+=over
+
+=item --define
+
+type: array
+
+Define these check IDs.  If L<"--verbose"> is zero (i.e. not specified) then
+a terse definition is given.  If one then a fuller definition is given.  If
+two then the complete definition is given.
+
+=item --ignore-checks
+
+type: array
+
+Ignore these L<"CHECKS">.
+
+=item --verbose
+
+cumulative; default: 0
+
+Print more information.
+
+=back
+
+=head1 ENVIRONMENT
+
+The environment variable C<MKDEBUG> enables verbose debugging output in all of the
+Maatkit tools:
+
+   MKDEBUG=1 mk-....
+
+=head1 VERSION
+
+This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 1929 $.
+
+=cut

@@ -1,0 +1,15 @@
+# Time: 100518 5:11:01
+# User@Host: foo[foo] @ [1.2.3.4]
+# Thread_id: 342 Schema: db1 Last_errno: 0 Killed: 0
+# Query_time: 0.000173 Lock_time: 0.000048 Rows_sent: 18 Rows_examined: 18 Rows_affected: 0 Rows_read: 18
+# Bytes_sent: 4152 Tmp_tables: 0 Tmp_disk_tables: 0 Tmp_table_sizes: 0
+# InnoDB_trx_id: 839DE234
+SET timestamp=1274159461;
+select /*not for mqd*/ col from tbl;
+# Time: 100518 5:11:01
+# User@Host: foo[foo] @ [1.2.3.4]
+# Thread_id: 342 Schema: db1 Last_errno: 0 Killed: 0
+# Query_time: 0.000019 Lock_time: 0.000000 Rows_sent: 0 Rows_examined: 0 Rows_affected: 0 Rows_read: 1
+# Bytes_sent: 11 Tmp_tables: 0 Tmp_disk_tables: 0 Tmp_table_sizes: 0
+SET timestamp=1274159461;
+commit;

@@ -1,0 +1,3 @@
+# Time: 071218 11:48:27
+# Query_time: 0.001000  Lock_time: 0.002000  Rows_sent: 3  Rows_examined: 4
+LOCK TABLES foo READ, bar WRITE;

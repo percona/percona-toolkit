@@ -1,0 +1,12 @@
+# Overall: 3 total, 1 unique, 3 QPS, 10.00x concurrency __________________
+# Time range: 2007-10-15 21:43:52 to 21:43:53
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time            10s      1s      8s      3s      8s      3s   992ms
+# Lock time            8ms     2ms     3ms     3ms     3ms   500us     2ms
+# InnoDB:
+# IO r bytes             7       2       3    2.33    2.90    0.44    1.96
+# pages distin          49      11      20   16.33   19.46    3.71   17.65
+# Boolean:
+# Filesort     100% yes,   0% no
+# QC Hit        66% yes,  33% no

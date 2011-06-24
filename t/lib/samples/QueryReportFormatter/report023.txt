@@ -1,0 +1,9 @@
+# Overall: 1 total, 1 unique, 0 QPS, 0x concurrency ______________________
+# Time range: all events occurred at 2007-10-15 21:43:52
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time             8s      8s      8s      8s      8s       0      8s
+# Lock time            2ms     2ms     2ms     2ms     2ms       0     2ms
+# InnoDB:
+# IO r bytes             2       2       2       2       2       0       2
+# pages distin          20      20      20      20      20       0      20

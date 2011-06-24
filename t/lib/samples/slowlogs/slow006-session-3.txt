@@ -1,0 +1,6 @@
+-- START SESSION 30
+
+use foo
+
+SELECT col FROM foo_tbl
+

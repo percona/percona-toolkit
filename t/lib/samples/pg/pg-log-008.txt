@@ -1,0 +1,3 @@
+2010-02-08 15:31:48 EST LOG:  connection received: host=[local]
+2010-02-08 15:31:48 EST LOG:  connection authorized: user=fred database=fred
+2010-02-08 15:32:06 EST LOG:  disconnection: session time: 0:00:18.304 user=fred database=fred host=[local]

@@ -1,0 +1,517 @@
+080523  7:26:27 [Warning] 'db' entry 'test nagios@4fa060606e2d579a' ignored in --skip-name-resolve mode.
+
+Memory status:
+Non-mmapped space allocated from system: 94777344
+Number of free chunks:			 1359
+Number of fastbin blocks:		 0
+Number of mmapped regions:		 17
+Space in mmapped regions:		 276152320
+Maximum total allocated space:		 0
+Space available in freed fastbin blocks: 0
+Total allocated space:			 41663312
+Total free space:			 53114032
+Top-most, releasable space:		 19783856
+Estimated memory (with thread stack):    375123968
+
+
+Status information:
+
+Current dir: /var/lib/mysql/
+Running threads: 18  Stack size: 262144
+Current locks:
+lock: 0x2892460:
+
+lock: 0x3a053a0:
+
+lock: 0x2534210:
+
+lock: 0x27d49e0:
+
+lock: 0x2300950:
+
+lock: 0x2b5f070:
+
+lock: 0x284c2c0:
+
+lock: 0x2607f30:
+
+lock: 0x28827c0:
+
+lock: 0x4388c80:
+
+lock: 0x39c2820:
+
+lock: 0x2b6c2d0:
+
+lock: 0x2d06870:
+
+lock: 0x24f1240:
+
+lock: 0x29ef700:
+
+lock: 0x2b709a0:
+
+lock: 0x3a746b0:
+
+lock: 0x2c21eb0:
+
+lock: 0x29de5a0:
+
+lock: 0x23af7f0:
+
+lock: 0x2e76160:
+
+lock: 0x3fde000:
+
+lock: 0x3a05c20:
+
+lock: 0x286a1f0:
+
+lock: 0x273a660:
+
+lock: 0x26d7250:
+
+lock: 0x24510a0:
+
+lock: 0xe2cdb0:
+
+lock: 0x2304710:
+
+lock: 0x265af50:
+
+lock: 0x30050c0:
+
+lock: 0x265a310:
+
+lock: 0x25ac7b0:
+
+lock: 0x25ab1b0:
+
+lock: 0x2a512f0:
+
+lock: 0x29a65a0:
+
+lock: 0x29460e0:
+
+lock: 0x27f0150:
+
+lock: 0x2cb0490:
+
+lock: 0x41b6e60:
+
+lock: 0x41b5da0:
+
+lock: 0x303c530:
+
+lock: 0x303bc70:
+
+lock: 0x23ba210:
+
+lock: 0x2d85210:
+
+lock: 0x413c6f0:
+
+lock: 0x41fa6e0:
+
+lock: 0x2face70:
+
+lock: 0x2408eb0:
+
+lock: 0x3fd7b30:
+
+lock: 0x41457e0:
+
+lock: 0x2aaad00deb50:
+
+lock: 0x2aaad00da840:
+
+lock: 0x2aaad00f1060:
+
+lock: 0x2aaad0147a10:
+
+lock: 0x2aaad00f26b0:
+
+lock: 0x3fd3940:
+
+lock: 0x3fd13f0:
+
+lock: 0x2d6a370:
+
+lock: 0x24f4270:
+
+lock: 0x4201700:
+
+lock: 0x26a5180:
+
+lock: 0x2406c90:
+
+lock: 0x2d83be0:
+
+lock: 0x2d83320:
+
+lock: 0x3eb7570:
+
+lock: 0x3eb5960:
+
+lock: 0x24f1b00:
+
+lock: 0x2f28220:
+
+lock: 0x2dcbdf0:
+
+lock: 0x2d8f880:
+
+lock: 0x2d8d380:
+
+lock: 0x3eb8b10:
+
+lock: 0x2a13550:
+
+lock: 0x2a10ef0:
+
+lock: 0x4285460:
+
+lock: 0x2a0b050:
+
+lock: 0x3ec41f0:
+
+lock: 0x3ec18c0:
+
+lock: 0x3ebeb00:
+
+lock: 0x3ebc540:
+
+lock: 0x2a07530:
+
+lock: 0x2a04500:
+
+lock: 0x2a00790:
+
+lock: 0x4058050:
+
+lock: 0x4054f80:
+
+lock: 0x4051dd0:
+
+lock: 0x404da00:
+
+lock: 0x404b5f0:
+
+lock: 0x4049270:
+
+lock: 0x4046400:
+
+lock: 0x4042a00:
+
+lock: 0x403ff50:
+
+lock: 0x403cd30:
+
+lock: 0x4294aa0:
+
+lock: 0x4292650:
+
+lock: 0x4290280:
+
+lock: 0x428d770:
+
+lock: 0x4289d50:
+
+lock: 0x42879a0:
+
+
+Key caches:
+default
+Buffer_size:      67108864
+Block_size:           1024
+Division_limit:        100
+Age_limit:             300
+blocks used:         53585
+not flushed:             0
+w_requests:        2297322
+writes:             214388
+r_requests:       22639665
+reads:               88496
+
+
+handler status:
+read_key:     37803208
+read_next:  3381798717
+read_rnd      43876818
+read_first:     446022
+write:       351416153
+delete          149508
+update:       39126089
+
+Table status:
+Opened tables:       3712
+Open tables:         1024
+Open files:          1711
+Open streams:           0
+
+Alarm status:
+Active alarms:   15
+Max used alarms: 46
+Next alarm time: 28515
+
+Thread database.table_name          Locked/Waiting        Lock_type
+
+341759  mpb_wordpress.wp_TABLE_STATILocked - write        Highest priority write lock
+
+
+
+
+Memory status:
+Non-mmapped space allocated from system: 94777344
+Number of free chunks:			 369
+Number of fastbin blocks:		 0
+Number of mmapped regions:		 17
+Space in mmapped regions:		 276152320
+Maximum total allocated space:		 0
+Space available in freed fastbin blocks: 0
+Total allocated space:			 40545216
+Total free space:			 54232128
+Top-most, releasable space:		 27398512
+Estimated memory (with thread stack):    375648256
+
+
+Status information:
+
+Current dir: /var/lib/mysql/
+Running threads: 17  Stack size: 262144
+Current locks:
+lock: 0x41c6080:
+
+lock: 0x2a7ab10:
+
+lock: 0x29f5ba0:
+
+lock: 0x2c56ed0:
+
+lock: 0x2d32a00:
+
+lock: 0x2810980:
+
+lock: 0x22f7980:
+
+lock: 0x2892460:
+
+lock: 0x3a053a0:
+
+lock: 0x2534210:
+
+lock: 0x27d49e0:
+
+lock: 0x2300950:
+
+lock: 0x2b5f070:
+
+lock: 0x284c2c0:
+
+lock: 0x2607f30:
+
+lock: 0x28827c0:
+
+lock: 0x4388c80:
+
+lock: 0x39c2820:
+
+lock: 0x2b6c2d0:
+
+lock: 0x2d06870:
+
+lock: 0x24f1240:
+
+lock: 0x29ef700:
+
+lock: 0x2b709a0:
+
+lock: 0x3a746b0:
+
+lock: 0x2c21eb0:
+
+lock: 0x29de5a0:
+
+lock: 0x23af7f0:
+
+lock: 0x2e76160:
+
+lock: 0x3fde000:
+
+lock: 0x3a05c20:
+
+lock: 0x286a1f0:
+
+lock: 0x273a660:
+
+lock: 0x26d7250:
+
+lock: 0x24510a0:
+
+lock: 0xe2cdb0:
+
+lock: 0x2304710:
+
+lock: 0x265af50:
+
+lock: 0x30050c0:
+
+lock: 0x265a310:
+
+lock: 0x25ac7b0:
+
+lock: 0x25ab1b0:
+
+lock: 0x2a512f0:
+
+lock: 0x29a65a0:
+
+lock: 0x29460e0:
+
+lock: 0x27f0150:
+
+lock: 0x2cb0490:
+
+lock: 0x41b6e60:
+
+lock: 0x41b5da0:
+
+lock: 0x303c530:
+
+lock: 0x303bc70:
+
+lock: 0x23ba210:
+
+lock: 0x2d85210:
+
+lock: 0x413c6f0:
+
+lock: 0x41fa6e0:
+
+lock: 0x2face70:
+
+lock: 0x2408eb0:
+
+lock: 0x3fd7b30:
+
+lock: 0x41457e0:
+
+lock: 0x2aaad00deb50:
+
+lock: 0x2aaad00da840:
+
+lock: 0x2aaad00f1060:
+
+lock: 0x2aaad0147a10:
+
+lock: 0x2aaad00f26b0:
+
+lock: 0x3fd3940:
+
+lock: 0x3fd13f0:
+
+lock: 0x2d6a370:
+
+lock: 0x24f4270:
+
+lock: 0x4201700:
+
+lock: 0x26a5180:
+
+lock: 0x2406c90:
+
+lock: 0x2d83be0:
+
+lock: 0x2d83320:
+
+lock: 0x3eb7570:
+
+lock: 0x3eb5960:
+
+lock: 0x24f1b00:
+
+lock: 0x2f28220:
+
+lock: 0x2dcbdf0:
+
+lock: 0x2d8f880:
+
+lock: 0x2d8d380:
+
+lock: 0x3eb8b10:
+
+lock: 0x2a13550:
+
+lock: 0x2a10ef0:
+
+lock: 0x4285460:
+
+lock: 0x2a0b050:
+
+lock: 0x3ec41f0:
+
+lock: 0x3ec18c0:
+
+lock: 0x3ebeb00:
+
+lock: 0x3ebc540:
+
+lock: 0x2a07530:
+
+lock: 0x2a04500:
+
+lock: 0x2a00790:
+
+lock: 0x4058050:
+
+lock: 0x4054f80:
+
+lock: 0x4051dd0:
+
+lock: 0x404da00:
+
+lock: 0x404b5f0:
+
+lock: 0x4049270:
+
+lock: 0x4046400:
+
+lock: 0x4042a00:
+
+lock: 0x403ff50:
+
+
+Key caches:
+default
+Buffer_size:      67108864
+Block_size:           1024
+Division_limit:        100
+Age_limit:             300
+blocks used:         53585
+not flushed:             0
+w_requests:        2300317
+writes:             216679
+r_requests:       22692159
+reads:               88527
+
+
+handler status:
+read_key:     37853941
+read_next:  3387042343
+read_rnd      43886662
+read_first:     446721
+write:       351827374
+delete          149708
+update:       39127779
+
+Table status:
+Opened tables:       3720
+Open tables:         1024
+Open files:          1725
+Open streams:           0
+
+Alarm status:
+Active alarms:   17
+Max used alarms: 46
+Next alarm time: 28463
+080523  7:26:27 [Warning] 'db' entry 'test nagios@4fa060606e2d579a' ignored in --skip-name-resolve mode.

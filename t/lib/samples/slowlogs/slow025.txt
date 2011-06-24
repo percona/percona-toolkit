@@ -1,0 +1,5 @@
+# Time: 081126 13:08:25
+# User@Host: root[root] @  [10.1.12.30]
+# Thread_id: 12342  Schema: 
+# Query_time: 17.737502  Lock_time: 0.000066  Rows_sent: 0  Rows_examined: 0
+SELECT missing_a_schema_above from crash_me;

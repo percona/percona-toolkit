@@ -1,0 +1,12 @@
+# Time: 100624 11:48:27
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM `products` ORDER BY name ASC, shape ASC;
+# Time: 100624 11:48:28
+# Query_time: 0.000013  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM `products` ORDER BY name, shape;
+# Time: 100624 11:48:29
+# Query_time: 0.000013  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM `products` ORDER BY name asc, shape;
+# Time: 100624 11:48:30
+# Query_time: 0.000013  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM `products` ORDER BY name, shape asc;

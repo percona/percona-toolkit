@@ -1,0 +1,83 @@
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+BEGIN;
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# No InnoDB statistics available for this query
+use db1;
+SET timestamp=1197996507;
+update db2.tuningdetail_21_265507 n
+      inner join db1.gonzo a using(gonzo) 
+      set n.column1 = a.column1, n.word3 = a.word3;
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.000512  Lock_time: 0.000077  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 24
+SET timestamp=1197996507;
+INSERT INTO db3.vendor11gonzo (makef, bizzle)
+VALUES ('', 'Exact');
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.033384  Lock_time: 0.000028  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 11
+UPDATE db4.vab3concept1upload
+SET    vab3concept1id = '91848182522'
+WHERE  vab3concept1upload='6994465';
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.000530  Lock_time: 0.000027  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 18
+SET insert_id=34484549,timestamp=1197996507;
+INSERT INTO db1.conch (word3, vid83)
+VALUES ('211', '18');
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.000530  Lock_time: 0.000027  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 18
+UPDATE foo.bar
+SET    biz = '91848182522';
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.000530  Lock_time: 0.000027  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 18
+SET timestamp=1197996508;
+UPDATE bizzle.bat
+SET    boop='bop: 899'
+WHERE  fillze='899';
+# User@Host: [SQL_SLAVE] @  []
+# Thread_id: 10
+# Query_time: 0.000530  Lock_time: 0.000027  Rows_sent: 0  Rows_examined: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Disk_tmp_table: No
+# Filesort: No  Disk_filesort: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_distinct: 18
+UPDATE foo.bar
+SET    biz = '91848182522';

@@ -1,0 +1,5 @@
+CREATE TABLE `UPPER_TEST` (
+  `A` int(11) NOT NULL default '0',
+  PRIMARY KEY  (`A`),
+  KEY `A` (`A`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1

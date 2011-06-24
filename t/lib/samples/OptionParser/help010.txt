@@ -1,0 +1,15 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --cat       cat option
+  --config=A  Read this comma-separated list of config files (must be the first
+              option on the command line).
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Options and values after processing arguments:
+
+  --cat       TRUE
+  --config    $trunk/t/lib/samples/empty

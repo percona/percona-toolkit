@@ -1,0 +1,24 @@
+--
+-- This is just a very simple, fake dump that is used to test SchemaQualifier.
+-- What's important is the duplicate column names c1 and c2 and the duplicate
+-- table names, test.a and test2.a.
+--
+-- Host: localhost    Database: test
+
+CREATE TABLE `a` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL
+);
+
+CREATE TABLE `b` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL,
+  `c3` varchar(45) NOT NULL,
+);
+
+-- Host: localhost    Database: test2
+
+CREATE TABLE `a` (
+  `c1` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `c2` varchar(45) NOT NULL
+);

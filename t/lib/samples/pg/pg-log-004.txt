@@ -1,0 +1,4 @@
+2010-02-10 08:39:56.835 EST c=4b72b72c.b44,u=[unknown],D=[unknown] LOG:  connection received: host=[local]
+2010-02-10 08:39:56.838 EST c=4b72b72c.b44,u=fred,D=fred LOG:  connection authorized: user=fred database=fred
+2010-02-10 08:40:34.681 EST c=4b72b72c.b44,u=fred,D=fred LOG:  duration: 1.308 ms  statement: select 1;
+2010-02-10 08:44:31.368 EST c=4b72b72c.b44,u=fred,D=fred LOG:  disconnection: session time: 0:04:34.534 user=fred database=fred host=[local]

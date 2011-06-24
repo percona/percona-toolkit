@@ -1,0 +1,29 @@
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use baz;
+SELECT * FROM old_tbl WHERE d < '2009-05-03 12:12:10';
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SELECT * FROM new_tbl WHERE d < '2009-01-01 12:12:10';
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+INSERT INTO tbl VALUES (1, 2, 3);
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+UPDATE tbl SET foo='bar' WHERE foo IS NULL;
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+SHOW FIELDS FROM tbl2;
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+DELETE FROM tbl3 WHERE 1=1;
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+BEGIN;
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use db5;
+SET NAMES utf8;
+# Time: 071218 11:48:27 # User@Host: [SQL_SLAVE] @  []
+# Query_time: 0.000012  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+INSERT INTO db6.tbl6 SELECT * FROM tbl7 WHERE id>1;

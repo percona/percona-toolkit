@@ -1,0 +1,6 @@
+090902 10:43:55 [ERROR] /usr/sbin/mysqld: Incorrect key file for table './bugs_eventum/eventum_note.MYI'; try to repair it
+090902 10:43:55 [ERROR] Slave SQL: Error 'Incorrect key file for table './bugs_eventum/eventum_note.MYI'; try to repair it' on query. Default database: 'bugs_eventum'. Query: 'DELETE FROM
+                    bugs_eventum.eventum_note
+                 WHERE
+                    not_iss_id IN (384, 385, 101056, 101057, 101058, 101067, 101070, 101156, 101163, 101164, 101175, 101232, 101309, 101433, 101434, 101435, 101436, 101437, 101454, 101476, 101488, 101490, 101506, 101507, 101530, 101531, 101573, 101574, 101575, 101583, 101586, 101587, 101588, 101589, 101590, 101729, 101730, 101791, 101865, 102382)', Error_code: 126
+090902 10:43:55 [Warning] Slave: Incorrect key file for table './bugs_eventum/eventum_note.MYI'; try to repair it Error_code: 126

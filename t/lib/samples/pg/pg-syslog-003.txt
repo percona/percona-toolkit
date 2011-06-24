@@ -1,0 +1,14 @@
+Feb  8 09:53:51 debian postgres[7622]: [21-1] 2010-02-08 09:53:51.724 EST c=4b701056.1dc6,u=fred,D=fred LOG:  statement: SELECT n.nspname as "Schema",
+Feb  8 09:53:51 debian postgres[7622]: [21-2] #011  c.relname as "Name",
+Feb  8 09:53:51 debian postgres[7622]: [21-3] #011  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN
+Feb  8 09:53:51 debian postgres[7622]: [21-4]  'special' END as "Type",
+Feb  8 09:53:51 debian postgres[7622]: [21-5] #011  r.rolname as "Owner"
+Feb  8 09:53:51 debian postgres[7622]: [21-6] #011FROM pg_catalog.pg_class c
+Feb  8 09:53:51 debian postgres[7622]: [21-7] #011     JOIN pg_catalog.pg_roles r ON r.oid = c.relowner
+Feb  8 09:53:51 debian postgres[7622]: [21-8] #011     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+Feb  8 09:53:51 debian postgres[7622]: [21-9] #011WHERE c.relkind IN ('r','v','S','')
+Feb  8 09:53:51 debian postgres[7622]: [21-10] #011  AND n.nspname <> 'pg_catalog'
+Feb  8 09:53:51 debian postgres[7622]: [21-11] #011  AND n.nspname !~ '^pg_toast'
+Feb  8 09:53:51 debian postgres[7622]: [21-12] #011  AND pg_catalog.pg_table_is_visible(c.oid)
+Feb  8 09:53:51 debian postgres[7622]: [21-13] #011ORDER BY 1,2;
+Feb  8 09:53:51 debian postgres[7622]: [22-1] 2010-02-08 09:53:51.867 EST c=4b701056.1dc6,u=fred,D=fred LOG:  duration: 150.472 ms

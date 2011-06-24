@@ -1,0 +1,18 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME <options>
+
+Options:
+
+  --ignore  -i  Use IGNORE for INSERT statements
+  --replace -r  Use REPLACE instead of INSERT statements
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Rules:
+
+  --ignore and --replace are mutually exclusive.
+
+Options and values after processing arguments:
+
+  --ignore      FALSE
+  --replace     FALSE

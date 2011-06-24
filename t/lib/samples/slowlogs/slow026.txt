@@ -1,0 +1,16 @@
+/usr/sbin/mysqld, Version: 5.0.77-percona-b13-log (MySQL Percona Edition (GPL)). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+# Time: 090311 18:11:50
+# User@Host: root[root] @ localhost []
+# Thread_id: 47  Schema: 
+# Query_time: 0.017850  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Rows_read: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+# administrator command: Refresh;
+# User@Host: root[root] @ localhost []
+# Thread_id: 47  Schema: 
+# Query_time: 0.000002  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0  Rows_affected: 0  Rows_read: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+# administrator command: Quit;

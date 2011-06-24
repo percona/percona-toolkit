@@ -1,0 +1,1017 @@
+ *************************** 1. row ***************************
+      Id: 29319424
+    User: remote
+    Host: 1.2.4.42:54442
+      db: happy
+ Command: Query
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 2. row ***************************
+      Id: 29392005
+    User: remote
+    Host: 1.2.3.148:49718
+      db: happy
+ Command: Sleep
+    Time: 17
+   State:
+    Info: NULL
+ *************************** 3. row ***************************
+      Id: 29392425
+    User: remote
+    Host: 1.2.3.150:40926
+      db: happy
+ Command: Sleep
+    Time: 13
+   State:
+    Info: NULL
+ *************************** 4. row ***************************
+      Id: 29392663
+    User: remote
+    Host: 1.2.3.146:43040
+      db: happy
+ Command: Sleep
+    Time: 1
+   State:
+    Info: NULL
+ *************************** 5. row ***************************
+      Id: 29393107
+    User: remote
+    Host: 1.2.3.152:57973
+      db: happy
+ Command: Sleep
+    Time: 6
+   State:
+    Info: NULL
+ *************************** 6. row ***************************
+      Id: 29393138
+    User: root
+    Host: localhost
+      db: NULL
+ Command: Query
+    Time: 0
+   State: NULL
+    Info: show full processlist
+ *************************** 7. row ***************************
+      Id: 29393304
+    User: remote
+    Host: 1.2.3.147:33115
+      db: happy
+ Command: Query
+    Time: 2
+   State: Sending data
+    Info: SELECT users.name, users.accountid, users.ppl_rank, users.level, users.id, ppls_ranks.name AS rankname FROM users, ppls_ranks WHERE users.ppl=385699 AND ppls_ranks.rank=users.ppl_rank AND ppls_ranks.ppl=385699 ORDER BY users.ppl_rank
+ *************************** 8. row ***************************
+      Id: 29393378
+    User: remote
+    Host: 1.2.3.131:50803
+      db: happy
+ Command: Query
+    Time: 3
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=3928 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2530338 ORDER BY level DESC
+ *************************** 9. row ***************************
+      Id: 29393416
+    User: remote
+    Host: 1.2.3.142:59384
+      db: happy
+ Command: Query
+    Time: 2
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=258 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2219764 ORDER BY level DESC
+ *************************** 10. row ***************************
+      Id: 29393424
+    User: remote
+    Host: 1.2.3.137:47940
+      db: happy
+ Command: Query
+    Time: 3
+   State: Sending data
+    Info: SELECT name,level,foo,foo_mod,def,def_mod,type FROM users WHERE ppl=202949 AND id<>2204829
+ *************************** 11. row ***************************
+      Id: 29393430
+    User: remote
+    Host: 1.2.3.130:35551
+      db: happy
+ Command: Query
+    Time: 2
+   State: Sending data
+    Info: SELECT name,level,foo,foo_mod,def,def_mod,type FROM users WHERE ppl=368919 AND id<>2301726
+ *************************** 12. row ***************************
+      Id: 29393446
+    User: remote
+    Host: 1.2.3.138:57387
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT name, flags FROM users WHERE id=2036674
+ *************************** 13. row ***************************
+      Id: 29393472
+    User: remote
+    Host: 1.2.3.131:50855
+      db: happy
+ Command: Sleep
+    Time: 2
+   State:
+    Info: NULL
+ *************************** 14. row ***************************
+      Id: 29393481
+    User: remote
+    Host: 1.2.3.139:38649
+      db: happy
+ Command: Sleep
+    Time: 2
+   State:
+    Info: NULL
+ *************************** 15. row ***************************
+      Id: 29393492
+    User: remote
+    Host: 1.2.3.142:42994
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sending data
+    Info: SELECT * FROM newforum WHERE pplid='379161' AND front='yes' ORDER BY id DESC LIMIT 0,5
+ *************************** 16. row ***************************
+      Id: 29393511
+    User: remote
+    Host: 1.2.3.131:50883
+      db: happy
+ Command: Sleep
+    Time: 2
+   State:
+    Info: NULL
+ *************************** 17. row ***************************
+      Id: 29393525
+    User: remote
+    Host: 1.2.3.144:38766
+      db: happy
+ Command: Query
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 18. row ***************************
+      Id: 29393534
+    User: remote
+    Host: 1.2.3.137:48007
+      db: happy
+ Command: Query
+    Time: 1
+   State: Sending data
+    Info: SELECT name,level,foo,foo_mod,def,def_mod,type FROM users WHERE ppl=235795 AND id<>2251520
+ *************************** 19. row ***************************
+      Id: 29393537
+    User: remote
+    Host: 1.2.3.145:32778
+      db: happy
+ Command: Query
+    Time: 1
+   State: Sending data
+    Info: SELECT name,level,foo,foo_mod,def,def_mod,type FROM users WHERE ppl=378898 AND id<>2375425
+ *************************** 20. row ***************************
+      Id: 29393541
+    User: remote
+    Host: 1.2.3.135:36411
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=4907 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2252958 ORDER BY level DESC
+ *************************** 21. row ***************************
+      Id: 29393567
+    User: remote
+    Host: 1.2.3.131:50935
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 22. row ***************************
+      Id: 29393571
+    User: remote
+    Host: 1.2.3.148:50326
+      db: happy
+ Command: Query
+    Time: 1
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=3928 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2510565 ORDER BY level DESC
+ *************************** 23. row ***************************
+      Id: 29393580
+    User: remote
+    Host: 1.2.3.131:50949
+      db: happy
+ Command: Query
+    Time: 1
+   State: Sending data
+    Info: SELECT name,level,foo,foo_mod,def,def_mod,type FROM users WHERE ppl=379411 AND id<>2490975
+ *************************** 24. row ***************************
+      Id: 29393585
+    User: remote
+    Host: 1.2.3.153:50585
+      db: happy
+ Command: Query
+    Time: 1
+   State: Sending data
+    Info: SELECT name,level,foo,foo_mod,def,def_mod,type FROM users WHERE ppl=379411 AND id<>2489145
+ *************************** 25. row ***************************
+      Id: 29393593
+    User: remote
+    Host: 1.2.3.150:41446
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 26. row ***************************
+      Id: 29393598
+    User: remote
+    Host: 1.2.3.154:59957
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=283 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2363298 ORDER BY level DESC
+ *************************** 27. row ***************************
+      Id: 29393600
+    User: remote
+    Host: 1.2.3.144:38780
+      db: happy
+ Command: Query
+    Time: 0
+   State: Copying to tmp table
+    Info: SELECT users.id,users.name FROM users, t WHERE t.accountid='22597' AND t.characterid=users.id ORDER BY users.name
+ *************************** 28. row ***************************
+      Id: 29393612
+    User: remote
+    Host: 1.2.3.143:59537
+      db: happy
+ Command: Query
+    Time: 0
+   State: Updating
+    Info: UPDATE users_rooms SET here=4502, date=UNIX_TIMESTAMP(), level='56' WHERE userid=1623270
+ *************************** 29. row ***************************
+      Id: 29393613
+    User: remote
+    Host: 1.2.3.134:53608
+      db: happy
+ Command: Query
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 30. row ***************************
+      Id: 29393618
+    User: remote
+    Host: 1.2.3.150:41465
+      db: happy
+ Command: Query
+    Time: 0
+   State: NULL
+    Info: SELECT atwarwith FROM ppls WHERE id = 327233
+ *************************** 31. row ***************************
+      Id: 29393619
+    User: remote
+    Host: 1.2.3.144:38785
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=7559 ORDER BY name
+ *************************** 32. row ***************************
+      Id: 29393617
+    User: remote
+    Host: 1.2.3.151:42241
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 33. row ***************************
+      Id: 29393622
+    User: remote
+    Host: 1.2.3.147:33249
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 34. row ***************************
+      Id: 29393623
+    User: remote
+    Host: 1.2.3.141:40708
+      db: happy
+ Command: Query
+    Time: 0
+   State: Copying to tmp table
+    Info: SELECT users.id,users.name FROM users, t WHERE t.accountid='5534' AND t.characterid=users.id ORDER BY users.name
+ *************************** 35. row ***************************
+      Id: 29393621
+    User: remote
+    Host: 1.2.3.150:41467
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=148 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2493875 ORDER BY level DESC
+ *************************** 36. row ***************************
+      Id: 29393624
+    User: remote
+    Host: 1.2.3.131:50993
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=4990 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 1242379 ORDER BY level DESC
+ *************************** 37. row ***************************
+      Id: 29393625
+    User: remote
+    Host: 1.2.3.135:36435
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 38. row ***************************
+      Id: 29393626
+    User: remote
+    Host: 1.2.3.144:38788
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 39. row ***************************
+      Id: 29393628
+    User: remote
+    Host: 1.2.3.134:53614
+      db: happy
+ Command: Query
+    Time: 0
+   State: query end
+    Info: SELECT count(*) FROM nospawn WHERE userid=2247865 AND spawnid=15723
+ *************************** 40. row ***************************
+      Id: 29393630
+    User: remote
+    Host: 1.2.3.148:50361
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=344959 ORDER BY name
+ *************************** 41. row ***************************
+      Id: 29393634
+    User: remote
+    Host: 1.2.3.138:57476
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=1897 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2362151 ORDER BY level DESC
+ *************************** 42. row ***************************
+      Id: 29393636
+    User: remote
+    Host: 1.2.3.131:51004
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT * FROM users_rooms WHERE here=3991 AND date > (UNIX_TIMESTAMP() - (60 * 5)) AND userid != 2227058 ORDER BY level DESC
+ *************************** 43. row ***************************
+      Id: 29393637
+    User: remote
+    Host: 1.2.3.138:57478
+      db: happy
+ Command: Killed
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 44. row ***************************
+      Id: 29393638
+    User: remote
+    Host: 1.2.3.142:58006
+      db: happy
+ Command: Query
+    Time: 0
+   State: end
+    Info: UPDATE users_rooms SET here=112, date=UNIX_TIMESTAMP(), level='63' WHERE userid=763910
+ *************************** 45. row ***************************
+      Id: 29393639
+    User: remote
+    Host: 1.2.3.148:50367
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT id,name,pic,type FROM users WHERE id=2346580
+ *************************** 46. row ***************************
+      Id: 29393640
+    User: remote
+    Host: 1.2.3.138:57480
+      db: happy
+ Command: Query
+    Time: 0
+   State: Updating
+    Info: UPDATE users_rooms SET here=1820, date=UNIX_TIMESTAMP(), level='25' WHERE userid=2494282
+ *************************** 47. row ***************************
+      Id: 29393641
+    User: remote
+    Host: 1.2.3.145:32843
+      db: happy
+ Command: Query
+    Time: 0
+   State: Copying to tmp table
+    Info: SELECT users.id,users.name FROM users, t WHERE t.accountid='5992' AND t.characterid=users.id ORDER BY users.name
+ *************************** 48. row ***************************
+      Id: 29393642
+    User: remote
+    Host: 1.2.3.137:48085
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 49. row ***************************
+      Id: 29393643
+    User: remote
+    Host: 1.2.3.141:40718
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT id,name FROM users WHERE accountid=201 ORDER BY name
+ *************************** 50. row ***************************
+      Id: 29393645
+    User: remote
+    Host: 1.2.3.139:38721
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sending data
+    Info: SELECT code FROM locks WHERE userid='2526702'
+ *************************** 51. row ***************************
+      Id: 29393646
+    User: remote
+    Host: 1.2.3.146:43422
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=14148 ORDER BY name
+ *************************** 52. row ***************************
+      Id: 29393644
+    User: remote
+    Host: 1.2.3.130:35719
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id=2484131 LIMIT 1
+ *************************** 53. row ***************************
+      Id: 29393647
+    User: remote
+    Host: 1.2.3.147:33258
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users_effects WHERE userid1=2206658
+ *************************** 54. row ***************************
+      Id: 29393648
+    User: remote
+    Host: 1.2.3.154:59989
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 55. row ***************************
+      Id: 29393649
+    User: remote
+    Host: 1.2.3.138:57482
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=57296 ORDER BY name
+ *************************** 56. row ***************************
+      Id: 29393650
+    User: remote
+    Host: 1.2.3.153:50612
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=3115 ORDER BY name
+ *************************** 57. row ***************************
+      Id: 29393651
+    User: remote
+    Host: 1.2.3.150:41491
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT id,name FROM users WHERE accountid=2044 ORDER BY name
+ *************************** 58. row ***************************
+      Id: 29393652
+    User: remote
+    Host: 1.2.3.138:57484
+      db: happy
+ Command: Query
+    Time: 0
+   State: Copying to tmp table
+    Info: SELECT users.id,users.name FROM users, t WHERE t.accountid='14247' AND t.characterid=users.id ORDER BY users.name
+ *************************** 59. row ***************************
+      Id: 29393653
+    User: remote
+    Host: 1.2.3.142:41909
+      db: happy
+ Command: Killed
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 60. row ***************************
+      Id: 29393654
+    User: remote
+    Host: 1.2.3.138:57485
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=592 ORDER BY name
+ *************************** 61. row ***************************
+      Id: 29393655
+    User: remote
+    Host: 1.2.3.149:34616
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 62. row ***************************
+      Id: 29393656
+    User: remote
+    Host: 1.2.3.130:35725
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=150 ORDER BY name
+ *************************** 63. row ***************************
+      Id: 29393658
+    User: remote
+    Host: 1.2.3.153:50614
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=306725 ORDER BY name
+ *************************** 64. row ***************************
+      Id: 29393657
+    User: remote
+    Host: 1.2.3.151:42255
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=140 ORDER BY name
+ *************************** 65. row ***************************
+      Id: 29393659
+    User: remote
+    Host: 1.2.3.134:53627
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT id,name FROM users WHERE accountid=3009 ORDER BY name
+ *************************** 66. row ***************************
+      Id: 29393661
+    User: remote
+    Host: 1.2.3.141:40725
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=420 ORDER BY name
+ *************************** 67. row ***************************
+      Id: 29393660
+    User: remote
+    Host: 1.2.3.130:35730
+      db: happy
+ Command: Query
+    Time: 0
+   State: Copying to tmp table
+    Info: SELECT users.id,users.name FROM users, t WHERE t.accountid='3745' AND t.characterid=users.id ORDER BY users.name
+ *************************** 68. row ***************************
+      Id: 29393662
+    User: remote
+    Host: 1.2.3.141:40726
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=215523 ORDER BY name
+ *************************** 69. row ***************************
+      Id: 29393663
+    User: remote
+    Host: 1.2.3.141:40727
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT count(id) FROM users WHERE ppl=371079
+ *************************** 70. row ***************************
+      Id: 29393664
+    User: remote
+    Host: 1.2.3.130:35735
+      db: happy
+ Command: Query
+    Time: 0
+   State: update
+    Info: INSERT INTO locks (userid, date, code) VALUES('2376802', UNIX_TIMESTAMP(), 10671)
+ *************************** 71. row ***************************
+      Id: 29393665
+    User: remote
+    Host: 1.2.3.131:51017
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=949 ORDER BY name
+ *************************** 72. row ***************************
+      Id: 29393667
+    User: remote
+    Host: 1.2.3.137:48091
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=222400 ORDER BY name
+ *************************** 73. row ***************************
+      Id: 29393669
+    User: remote
+    Host: 1.2.3.147:33262
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=1356 ORDER BY name
+ *************************** 74. row ***************************
+      Id: 29393668
+    User: remote
+    Host: 1.2.3.131:51020
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT id,name FROM users WHERE accountid=12765 ORDER BY name
+ *************************** 75. row ***************************
+      Id: 29393670
+    User: remote
+    Host: 1.2.3.141:40730
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=172 ORDER BY name
+ *************************** 76. row ***************************
+      Id: 29393673
+    User: remote
+    Host: 1.2.3.142:45746
+      db: happy
+ Command: Query
+    Time: 0
+   State: Copying to tmp table
+    Info: SELECT users.id,users.name FROM users, t WHERE t.accountid='252989' AND t.characterid=users.id ORDER BY users.name
+ *************************** 77. row ***************************
+      Id: 29393672
+    User: remote
+    Host: 1.2.3.147:33263
+      db: happy
+ Command: Quit
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 78. row ***************************
+      Id: 29393671
+    User: remote
+    Host: 1.2.3.141:40731
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT here FROM users_rooms WHERE userid=2269527
+ *************************** 79. row ***************************
+      Id: 29393674
+    User: remote
+    Host: 1.2.3.145:32856
+      db: happy
+ Command: Query
+    Time: 0
+   State: NULL
+    Info: NULL
+ *************************** 80. row ***************************
+      Id: 29393675
+    User: remote
+    Host: 1.2.3.153:50618
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sorting result
+    Info: SELECT id,name FROM users WHERE accountid=3821 ORDER BY name
+ *************************** 81. row ***************************
+      Id: 29393677
+    User: remote
+    Host: 1.2.3.141:40737
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT here FROM users_rooms WHERE userid=2324880
+ *************************** 82. row ***************************
+      Id: 29393676
+    User: remote
+    Host: 1.2.3.154:59999
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 83. row ***************************
+      Id: 29393678
+    User: remote
+    Host: 1.2.3.152:58112
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 84. row ***************************
+      Id: 29393679
+    User: remote
+    Host: 1.2.3.148:50383
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 85. row ***************************
+      Id: 29393681
+    User: remote
+    Host: 1.2.3.131:51033
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT here FROM users_rooms WHERE userid=1946930
+ *************************** 86. row ***************************
+      Id: 29393680
+    User: remote
+    Host: 1.2.3.153:50621
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT here FROM users_rooms WHERE userid=938446
+ *************************** 87. row ***************************
+      Id: 29393682
+    User: remote
+    Host: 1.2.3.137:48100
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2388374'
+ *************************** 88. row ***************************
+      Id: 29393685
+    User: remote
+    Host: 1.2.3.149:34626
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2273022'
+ *************************** 89. row ***************************
+      Id: 29393684
+    User: remote
+    Host: 1.2.3.149:34625
+      db: happy
+ Command: Query
+    Time: 0
+   State: Sending data
+    Info: SELECT * FROM users WHERE id='2504370'
+ *************************** 90. row ***************************
+      Id: 29393683
+    User: remote
+    Host: 1.2.3.139:38727
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 91. row ***************************
+      Id: 29393687
+    User: remote
+    Host: 1.2.3.134:53633
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2474583'
+ *************************** 92. row ***************************
+      Id: 29393686
+    User: remote
+    Host: 1.2.3.151:42261
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT here FROM users_rooms WHERE userid=2220266
+ *************************** 93. row ***************************
+      Id: 29393688
+    User: remote
+    Host: 1.2.3.147:33271
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 94. row ***************************
+      Id: 29393689
+    User: remote
+    Host: 1.2.3.143:59570
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2377624'
+ *************************** 95. row ***************************
+      Id: 29393690
+    User: remote
+    Host: 1.2.3.151:42265
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2190587'
+ *************************** 96. row ***************************
+      Id: 29393692
+    User: remote
+    Host: 1.2.3.149:34629
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2250873'
+ *************************** 97. row ***************************
+      Id: 29393691
+    User: remote
+    Host: 1.2.3.130:35754
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2329714'
+ *************************** 98. row ***************************
+      Id: 29393693
+    User: remote
+    Host: 1.2.3.149:34631
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2168007'
+ *************************** 99. row ***************************
+      Id: 29393694
+    User: remote
+    Host: 1.2.3.139:38730
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2287295'
+ *************************** 100. row ***************************
+      Id: 29393695
+    User: remote
+    Host: 1.2.3.130:35755
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2236325'
+ *************************** 101. row ***************************
+      Id: 29393696
+    User: remote
+    Host: 1.2.3.135:36457
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2218399'
+ *************************** 102. row ***************************
+      Id: 29393697
+    User: remote
+    Host: 1.2.3.146:43430
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2415489'
+ *************************** 103. row ***************************
+      Id: 29393698
+    User: remote
+    Host: 1.2.3.143:59573
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2359419'
+ *************************** 104. row ***************************
+      Id: 29393699
+    User: remote
+    Host: 1.2.3.130:35761
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2201863'
+ *************************** 105. row ***************************
+      Id: 29393700
+    User: remote
+    Host: 1.2.3.151:42269
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='750675'
+ *************************** 106. row ***************************
+      Id: 29393701
+    User: remote
+    Host: 1.2.3.147:33274
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 107. row ***************************
+      Id: 29393702
+    User: remote
+    Host: 1.2.3.141:40741
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2205406'
+ *************************** 108. row ***************************
+      Id: 29393705
+    User: remote
+    Host: 1.2.3.138:57506
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='904323'
+ *************************** 109. row ***************************
+      Id: 29393704
+    User: remote
+    Host: 1.2.3.141:40743
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2250677'
+ *************************** 110. row ***************************
+      Id: 29393703
+    User: remote
+    Host: 1.2.3.141:40742
+      db: happy
+ Command: Query
+    Time: 0
+   State: statistics
+    Info: SELECT * FROM users WHERE id='2061758'
+ *************************** 111. row ***************************
+      Id: 29393706
+    User: remote
+    Host: 1.2.3.148:50394
+      db: happy
+ Command: Sleep
+    Time: 0
+   State:
+    Info: NULL
+ *************************** 112. row ***************************
+      Id: 29393707
+    User: remote
+    Host: 1.2.3.145:32878
+      db: NULL
+ Command: Connect
+    Time: 0
+   State: Reading from net
+    Info: NULL
+ *************************** 113. row ***************************
+      Id: 29393708
+    User: remote
+    Host: 1.2.3.131:51040
+      db: NULL
+ Command: Connect
+    Time: NULL
+   State: Reading from net
+    Info: NULL

@@ -1,0 +1,18 @@
+/usr/libexec/mysqld  Ver 5.0.45-log for redhat-linux-gnu on x86_64 (Source distr
+ibution)
+Copyright (C) 2000 MySQL AB, by Monty and others
+This software comes with ABSOLUTELY NO WARRANTY. This is free software,
+and you are welcome to modify and redistribute it under the GPL license
+
+Starts the MySQL database server
+
+Usage: /usr/libexec/mysqld [OPTIONS]
+
+Default options are read from the following files in the given order:
+/etc/my.cnf ~/.my.cnf /etc/my.cnf 
+The following groups are read: mysqld server mysqld-5.0
+The following options may be given as the first argument:
+--print-defaults        Print the program argument list and exit
+--no-defaults           Don't read default options from any options file
+--defaults-file=#       Only read default options from the given file #
+--defaults-extra-file=# Read this file after the global files are read

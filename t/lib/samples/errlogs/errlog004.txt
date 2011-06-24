@@ -1,0 +1,73 @@
+090902 10:43:55 [ERROR] Error running query, slave SQL thread aborted. Fix the problem, and restart the slave SQL thread with "SLAVE START". We stopped at log 'mpb-bin.000534' position 47010998
+InnoDB: Unable to lock ./timer2/rates.ibd, error: 37
+090902 11:08:43  InnoDB: Assertion failure in thread 1312495936 in file fil/fil0fil.c line 752
+InnoDB: Failing assertion: ret
+InnoDB: We intentionally generate a memory trap.
+InnoDB: Submit a detailed bug report to http://bugs.mysql.com.
+InnoDB: If you get repeated assertion failures or crashes, even
+InnoDB: immediately after the mysqld startup, there may be
+InnoDB: corruption in the InnoDB tablespace. Please refer to
+InnoDB: http://dev.mysql.com/doc/refman/5.1/en/forcing-recovery.html
+InnoDB: about forcing recovery.
+090902 11:08:43 - mysqld got signal 6 ;
+This could be because you hit a bug. It is also possible that this binary
+or one of the libraries it was linked against is corrupt, improperly built,
+or misconfigured. This error can also be caused by malfunctioning hardware.
+We will try our best to scrape up some info that will hopefully help diagnose
+the problem, but since we have already crashed, something is definitely wrong
+and this may fail.
+
+key_buffer_size=67108864
+read_buffer_size=131072
+max_used_connections=2
+max_threads=128
+threads_connected=2
+It is possible that mysqld could use up to 
+key_buffer_size + (read_buffer_size + sort_buffer_size)*max_threads = 345366 K
+bytes of memory
+Hope that's ok; if not, decrease some variables in the equation.
+
+thd: 0xf95a8a0
+Attempting backtrace. You can use the following information to find out
+where mysqld died. If you see no messages after this, something went
+terribly wrong...
+stack_bottom = 0x4e3b0f20 thread_stack 0x40000
+/usr/sbin/mysqld(my_print_stacktrace+0x35)[0x83bd65]
+/usr/sbin/mysqld(handle_segfault+0x31d)[0x58dd4d]
+/lib64/libpthread.so.0[0x2b869c7984c0]
+/lib64/libc.so.6(gsignal+0x35)[0x2b869d2ad215]
+/lib64/libc.so.6(abort+0x110)[0x2b869d2aecc0]
+/usr/sbin/mysqld[0x741e55]
+/usr/sbin/mysqld[0x742078]
+/usr/sbin/mysqld[0x744b65]
+/usr/sbin/mysqld[0x7300a9]
+/usr/sbin/mysqld[0x728337]
+/usr/sbin/mysqld[0x7d135e]
+/usr/sbin/mysqld[0x7d1439]
+/usr/sbin/mysqld[0x7d1b18]
+/usr/sbin/mysqld[0x732e45]
+/usr/sbin/mysqld[0x73690b]
+/usr/sbin/mysqld[0x70b9b8]
+/usr/sbin/mysqld(_ZN7handler7ha_openEP8st_tablePKcii+0x3e)[0x66a50e]
+/usr/sbin/mysqld(_Z21open_table_from_shareP3THDP14st_table_sharePKcjjjP8st_tableb+0x597)[0x5e6cb7]
+/usr/sbin/mysqld[0x5db6fe]
+/usr/sbin/mysqld(_Z10open_tableP3THDP10TABLE_LISTP11st_mem_rootPbj+0x59c)[0x5dd0ac]
+/usr/sbin/mysqld(_Z11open_tablesP3THDPP10TABLE_LISTPjj+0x4cf)[0x5dddcf]
+/usr/sbin/mysqld(_Z28open_and_lock_tables_derivedP3THDP10TABLE_LISTb+0x67)[0x5de087]
+/usr/sbin/mysqld[0x684cef]
+/usr/sbin/mysqld(_Z17mysql_check_tableP3THDP10TABLE_LISTP15st_ha_check_opt+0x5e)[0x685cce]
+/usr/sbin/mysqld(_Z21mysql_execute_commandP3THD+0x28d8)[0x59d4e8]
+/usr/sbin/mysqld(_Z11mysql_parseP3THDPKcjPS2_+0x1dc)[0x5a07bc]
+/usr/sbin/mysqld(_Z16dispatch_command19enum_server_commandP3THDPcj+0xf98)[0x5a1778]
+/usr/sbin/mysqld(_Z10do_commandP3THD+0xe7)[0x5a1cd7]
+/usr/sbin/mysqld(handle_one_connection+0x592)[0x594c62]
+/lib64/libpthread.so.0[0x2b869c790367]
+/lib64/libc.so.6(clone+0x6d)[0x2b869d34ff7d]
+Trying to get some variables.
+Some pointers may be invalid and cause the dump to abort...
+thd->query at 0xf9b1670 = CHECK TABLE `rates`  FOR UPGRADE
+thd->thread_id=15
+thd->killed=NOT_KILLED
+The manual page at http://dev.mysql.com/doc/mysql/en/crashing.html contains
+information that should help you find out what is causing the crash.
+090902 11:08:43 mysqld_safe Number of processes running now: 0

@@ -1,0 +1,21 @@
+OptionParser.t parses command line options.  For more details, please use the --help option, or try 'perldoc $PROGRAM_NAME' for complete documentation.
+Usage: $PROGRAM_NAME [OPTIONS]
+
+Options:
+
+  --defaults-file=s -F  alignment test
+  --[no]defaultset      alignment test with a very long thing that is longer
+                        than 80 characters wide and must be wrapped
+  --dog=s           -D  Dogs are fun
+  --[no]foo             Foo
+  --love            -l  And peace
+
+Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time
+
+Options and values after processing arguments:
+
+  --defaults-file       (No value)
+  --defaultset          FALSE
+  --dog                 (No value)
+  --foo                 FALSE
+  --love                0
