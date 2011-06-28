@@ -14,8 +14,10 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# SQLParser package $Revision: 7565 $
+# ###########################################################################
 
-{
 # Package: SQLParser
 # SQLParser parses common MySQL SQL statements into data structures.
 # This parser is MySQL-specific and intentionally meant to handle only
@@ -34,6 +36,7 @@
 # This package differs from QueryParser because here we parse the entire SQL
 # statement (thus giving access to all its parts), whereas QueryParser extracts
 # just needed parts (and ignores all the rest).
+{
 package SQLParser;
 
 use strict;
@@ -1326,9 +1329,8 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-}; # package scope
 1;
-
+}
 # ###########################################################################
 # End SQLParser package
 # ###########################################################################

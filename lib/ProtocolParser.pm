@@ -17,11 +17,16 @@
 # ###########################################################################
 # ProtocolParser package $Revision: 7522 $
 # ###########################################################################
+
+# Package: ProtocolParser
+# ProtocolParser is a parent class for protocol-specific parsers.
+{
 package ProtocolParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 eval {
    require IO::Uncompress::Inflate;
@@ -32,8 +37,6 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -335,7 +338,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End ProtocolParser package
 # ###########################################################################

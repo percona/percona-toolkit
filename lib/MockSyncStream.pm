@@ -14,23 +14,20 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
-# ###########################################################################
-# MockSyncStream package $Revision: 5697 $
-# ###########################################################################
-package MockSyncStream;
 
-# This package implements a special, mock version of TableSyncStream.
+# Package: MockSyncStream
+# MockSyncStream simulates a <TableSyncStream> module.
 # It's used by mk-upgrade to quickly compare result sets for any differences.
 # If any are found, mk-upgrade writes all remaining rows to an outfile.
 # This causes RowDiff::compare_sets() to terminate early.  So we don't actually
 # sync anything.  Unlike TableSyncStream, we're not working with a table but an
 # arbitrary query executed on two servers.
+{
+package MockSyncStream;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -146,7 +143,4 @@ sub _d {
 }
 
 1;
-
-# ###########################################################################
-# End MockSyncStream package
-# ###########################################################################
+}

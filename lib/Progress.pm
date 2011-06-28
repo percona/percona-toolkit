@@ -17,17 +17,15 @@
 # ###########################################################################
 # Progress package $Revision: 7096 $
 # ###########################################################################
+
+# Package: Progress
+# Progress encapsulates a progress report.
+{
 package Progress;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # This module encapsulates a progress report.  To create a new object, pass in
@@ -203,7 +201,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Progress package
 # ###########################################################################

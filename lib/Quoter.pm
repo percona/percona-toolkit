@@ -21,12 +21,12 @@
 
 # Package: Quoter
 # Quoter handles value quoting, unquoting, escaping, etc.
+{
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # Sub: new
@@ -147,7 +147,7 @@ sub join_quote {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Quoter package
 # ###########################################################################

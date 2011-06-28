@@ -25,6 +25,7 @@
 # now() comes from a clock, a log timestamp, or wherever.  The creator of
 # Runtime object determines how, or from where, time is gotten so that the
 # caller of the object can simply ask, "What time is it?".
+{
 package Runtime;
 
 use strict;
@@ -205,7 +206,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Runtime package
 # ###########################################################################

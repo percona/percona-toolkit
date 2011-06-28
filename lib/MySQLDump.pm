@@ -18,13 +18,15 @@
 # ###########################################################################
 # MySQLDump package $Revision: 6345 $
 # ###########################################################################
+
+# Package: MySQLDump
+# MySQLDump gets CREATE TABLE defs from MySQL.
+{
 package MySQLDump;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 ( our $before = <<'EOF') =~ s/^   //gm;
@@ -316,7 +318,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MySQLDump package
 # ###########################################################################

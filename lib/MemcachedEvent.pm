@@ -17,26 +17,26 @@
 # ###########################################################################
 # MemcachedEvent package $Revision: 7096 $
 # ###########################################################################
-package MemcachedEvent;
 
-# This package creates events suitable for mk-query-digest
-# from psuedo-events created by MemcachedProtocolParser.
+# Package: MemcachedEvent
+# MemcachedEvent creates events from <MemcachedProtocolParser> data.
 # Since memcached is not strictly MySQL stuff, we have to
 # fabricate MySQL-like query events from memcached.
 # 
 # See http://code.sixapart.com/svn/memcached/trunk/server/doc/protocol.txt
 # for information about the memcached protocol.
+{
+package MemcachedEvent;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # cmds that we know how to handle.
 my %cmds = map { $_ => 1 } qw(
@@ -211,7 +211,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MemcachedEvent package
 # ###########################################################################

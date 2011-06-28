@@ -20,6 +20,7 @@
 
 # Package: Pipeline
 # Pipeline executes and controls a list of pipeline processes.
+{
 package Pipeline;
 
 use strict;
@@ -194,7 +195,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Pipeline package
 # ###########################################################################

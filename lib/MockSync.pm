@@ -16,11 +16,15 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 
-# A package to mock up a syncer.  Used by RowDiff.t.
+# Package: MockSync
+# MockSync simulates a table syncer module.  It's used by RowDiff.t.
+{
 package MockSync;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    return bless [], shift;
@@ -52,3 +56,4 @@ sub key_cols {
 }
 
 1;
+}

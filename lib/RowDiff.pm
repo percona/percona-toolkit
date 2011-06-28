@@ -18,12 +18,15 @@
 # ###########################################################################
 # RowDiff package $Revision: 5697 $
 # ###########################################################################
+
+# Package: RowDiff
+# RowDiff compares two sets of rows to find ones that are different.
+{
 package RowDiff;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # Required args:
@@ -248,7 +251,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End RowDiff package
 # ###########################################################################

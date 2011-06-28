@@ -18,7 +18,7 @@
 # SchemaIterator package $Revision: 7547 $
 # ###########################################################################
 
-# SchemaIterator
+# Package: SchemaIterator
 # SchemaIterator iterates schema objects.
 {
 package SchemaIterator;

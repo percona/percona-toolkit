@@ -18,13 +18,15 @@
 # ###########################################################################
 # QueryRewriter package $Revision: 7473 $
 # ###########################################################################
-use strict;
-use warnings FATAL => 'all';
 
+# Package: QueryRewriter
+# QueryRewriter rewrites and transforms queries.
+{
 package QueryRewriter;
 
+use strict;
+use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # A list of verbs that can appear in queries.  I know this is incomplete -- it
@@ -494,7 +496,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End QueryRewriter package
 # ###########################################################################

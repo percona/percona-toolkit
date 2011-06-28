@@ -26,7 +26,7 @@ our $DISTRIB = '@DISTRIB@';
 our $SVN_REV = sprintf("%d", (q$Revision: 7531 $ =~ m/(\d+)/g, 0));
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package (revision 7102)
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the SVN repository at,
 #   trunk/common/OptionParser.pm
@@ -3500,7 +3500,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_archiver;
+package pt_archiver;
 
 use English qw(-no_match_vars);
 use List::Util qw(max);

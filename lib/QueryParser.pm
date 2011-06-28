@@ -23,13 +23,14 @@
 # This package differs from SQLParser because it only extracts from a query
 # what is needed and only when that can be accomplished rather simply.  By
 # contrast, SQLParser parses the entire SQL statement no matter the complexity.
+{
 package QueryParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 our $tbl_ident = qr/(?:`[^`]+`|\w+)(?:\.(?:`[^`]+`|\w+))?/;
 # This regex finds things that look like database.table identifiers, based on
 # their proximity to keywords.  (?<!KEY\s) is a workaround for ON DUPLICATE KEY
@@ -521,7 +522,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End QueryParser package
 # ###########################################################################

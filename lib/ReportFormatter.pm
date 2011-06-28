@@ -17,7 +17,6 @@
 # ###########################################################################
 # ReportFormatter package $Revision: 7473 $
 # ###########################################################################
-package ReportFormatter;
 
 # Package: ReportFormatter
 # ReportFormatter makes columnized reports given variable-width data lines.
@@ -55,17 +54,19 @@ package ReportFormatter;
 # After these adjustments, get_report() calls _truncate_headers() and
 # _truncate_line_values().  These truncate output to the columns' final,
 # calculated widths.
+{
+package ReportFormatter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use List::Util qw(min max);
 use POSIX qw(ceil);
 
 eval { require Term::ReadKey };
 my $have_term = $EVAL_ERROR ? 0 : 1;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # Arguments:
 #  * underline_header     bool: underline headers with =
@@ -435,7 +436,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End ReportFormatter package
 # ###########################################################################

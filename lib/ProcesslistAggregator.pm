@@ -17,12 +17,15 @@
 # ###########################################################################
 # ProcesslistAggregator package $Revision: 6590 $
 # ###########################################################################
+
+# Package: ProcesslistAggregator
+# ProcesslistAggregator aggregates PROCESSLIST entires.
+{
 package ProcesslistAggregator;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -76,7 +79,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End ProcesslistAggregator package
 # ###########################################################################

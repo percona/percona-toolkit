@@ -17,9 +17,9 @@
 # ###########################################################################
 # MySQLProtocolParser package $Revision: 7522 $
 # ###########################################################################
-package MySQLProtocolParser;
 
-# This creates events suitable for mk-query-digest from raw MySQL packets.
+# Package: MySQLProtocolParser
+# MySQLProtocolParser parses MySQL events from tcpdump files.
 # The packets come from TcpdumpParser.  MySQLProtocolParse::parse_packet()
 # should be first in the callback chain because it creates events for
 # subsequent callbacks.  So the sequence is:
@@ -34,10 +34,13 @@ package MySQLProtocolParser;
 # At times MySQLProtocolParser::parse_packet() will not return an event
 # because it usually takes a few packets to create one event.  In such
 # cases, TcpdumpParser::parse_event() will not call the other callbacks.
+{
+package MySQLProtocolParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 eval {
    require IO::Uncompress::Inflate;
@@ -63,7 +66,6 @@ our @EXPORT_OK   = qw(
    parse_flags
 );
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 use constant {
    COM_SLEEP               => '00',
    COM_QUIT                => '01',
@@ -1552,7 +1554,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MySQLProtocolParser package
 # ###########################################################################

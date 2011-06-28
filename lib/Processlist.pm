@@ -21,6 +21,7 @@
 
 # Package: Processlist
 # Processlist makes events when used to poll SHOW FULL PROCESSLIST.
+{
 package Processlist;
 
 use strict;
@@ -571,7 +572,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Processlist package
 # ###########################################################################

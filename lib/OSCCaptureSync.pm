@@ -21,6 +21,7 @@
 # Package: OSCCaptureSync
 # OSCCaptureSync implements the capture and sync phases of an online schema
 # change.
+{
 package OSCCaptureSync;
 
 use strict;
@@ -132,7 +133,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OSCCaptureSync package
 # ###########################################################################

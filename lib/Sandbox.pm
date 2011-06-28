@@ -17,6 +17,10 @@
 # ###########################################################################
 # Sandbox package $Revision: 7140 $
 # ###########################################################################
+
+# Package: Sandbox
+# Sandbox is an API for the test suite to access and control sandbox servers.
+{
 package Sandbox;
 
 BEGIN {
@@ -28,7 +32,6 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -168,7 +171,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Sandbox package
 # ###########################################################################

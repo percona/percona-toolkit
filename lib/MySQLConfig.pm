@@ -33,13 +33,12 @@
 #
 # Only variables present in the input are saved in the MySQLConfig object.
 # So if <has()> returns false, then the variable did not appear in the input.
+{
 package MySQLConfig;
 
-{ # package scope
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 my %can_be_duplicate = (
@@ -531,9 +530,8 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-} # package scope
 1;
-
+}
 # ###########################################################################
 # End MySQLConfig package
 # ###########################################################################

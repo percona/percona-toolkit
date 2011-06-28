@@ -18,14 +18,21 @@
 # ###########################################################################
 # PgLogParser package $Revision: 5835 $
 # ###########################################################################
+
+# Package: PgLogParser
+# PgLogParser parses Postgres logs.
+{
 package PgLogParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Data::Dumper;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
 
 # This regex is partially inspired by one from pgfouine.  But there is no
 # documentation on the last capture in that regex, so I omit that.  (TODO: that
@@ -658,7 +665,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End PgLogParser package
 # ###########################################################################

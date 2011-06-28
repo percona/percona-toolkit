@@ -17,6 +17,10 @@
 # ###########################################################################
 # MemcachedProtocolParser package $Revision: 7521 $
 # ###########################################################################
+
+# Package: MemcachedProtocolParser
+# MemcachedProtocolParser parses memcached events from tcpdump files.
+{
 package MemcachedProtocolParser;
 
 use strict;
@@ -415,7 +419,7 @@ sub timestamp_diff {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MemcachedProtocolParser package
 # ###########################################################################

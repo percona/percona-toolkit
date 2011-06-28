@@ -20,17 +20,12 @@
 
 # Package: MySQLConfigComparer
 # MySQLConfigComparer compares and diffs C<MySQLConfig> objects. 
+{
 package MySQLConfigComparer;
 
-{ # package scope
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # Alternate values because a config file can have var=ON and then be shown
@@ -330,9 +325,8 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-} # package scope
 1;
-
+}
 # ###########################################################################
 # End MySQLConfigComparer package
 # ###########################################################################

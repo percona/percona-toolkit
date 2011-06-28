@@ -17,14 +17,15 @@
 # ###########################################################################
 # Outfile package $Revision: 5266 $
 # ###########################################################################
+
+# Package: Outfile
+# Outfile writes rows to a file in SELECT INTO OUTFILE format.
+{
 package Outfile;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
-use List::Util qw(min);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -64,6 +65,7 @@ sub _d {
 }
 
 1;
+}
 # ###########################################################################
 # End Outfile package
 # ###########################################################################

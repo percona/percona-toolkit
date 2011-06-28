@@ -18,20 +18,20 @@
 # QueryReview package $Revision: 7342 $
 # ###########################################################################
 
-package QueryReview;
-
+# Package: QueryReview
+# QueryReview is an API to a query review table.
 # This module is an interface to a "query review table" in which certain
 # historical information about classes of queries is stored.  See the docs on
 # mk-query-digest for context.
+{
+package QueryReview;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-Transformers->import(qw(make_checksum parse_timestamp));
-
-use Data::Dumper;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+Transformers->import(qw(make_checksum parse_timestamp));
 
 # These columns are the minimal set of columns for every review table.  TODO:
 # maybe it's possible to specify this in the tool's POD and pass it in so it's
@@ -222,6 +222,7 @@ sub _d {
 }
 
 1;
+}
 # ###########################################################################
 # End QueryReview package
 # ###########################################################################

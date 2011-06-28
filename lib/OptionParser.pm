@@ -58,14 +58,15 @@
 # The option's full name is given as the "=item".  The next, optional para
 # is the option's attributes.  And the next, required para is the option's
 # description (the first period-terminated sentence).
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -1337,7 +1338,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################

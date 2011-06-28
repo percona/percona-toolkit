@@ -17,6 +17,10 @@
 # ###########################################################################
 # QueryAdvisorRules package $Revision: 7473 $
 # ###########################################################################
+
+# Package: QueryAdvisorRules
+# QueryAdvisorRules encapsulates rules for checking queries.
+{
 package QueryAdvisorRules;
 use base 'AdvisorRules';
 
@@ -664,7 +668,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End QueryAdvisorRules package
 # ###########################################################################

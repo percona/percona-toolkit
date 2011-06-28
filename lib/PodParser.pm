@@ -17,16 +17,18 @@
 # ###########################################################################
 # PodParser package $Revision: 7053 $
 # ###########################################################################
-package PodParser;
 
+# Package: PodParser
+# PodParser parses sections of a POD.
 # This package wants to subclasses Pod::Parser but because some people
 # still run ancient systems on which even "core" modules are missing,
 # we have to roll our own pod parser.
+{
+package PodParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # List =item from these head1 sections will be parsed into a hash
@@ -222,7 +224,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End PodParser package
 # ###########################################################################

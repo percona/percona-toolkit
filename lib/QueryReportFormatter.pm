@@ -27,6 +27,7 @@
 # fully aggregated and $ea->calculate_statistical_metrics() already called.
 # Subreports "profile" and "prepared" require the ReportFormatter module,
 # which is also in mk-query-digest.
+{
 package QueryReportFormatter;
 
 use strict;
@@ -1410,7 +1411,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End QueryReportFormatter package
 # ###########################################################################
