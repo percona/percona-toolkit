@@ -2921,27 +2921,27 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-config-diff - Diff MySQL configuration files and server variables.
+pt-config-diff - Diff MySQL configuration files and server variables.
 
 =head1 SYNOPSIS
 
-Usage: mk-config-diff [OPTION...] CONFIG CONFIG [CONFIG...]
+Usage: pt-config-diff [OPTION...] CONFIG CONFIG [CONFIG...]
 
-mk-config-diff diffs MySQL configuration files and server variables.
+pt-config-diff diffs MySQL configuration files and server variables.
 CONFIG can be a filename or a DSN.  At least two CONFIG sources must be given.
 Like standard Unix diff, there is no output if there are no differences.
 
 Diff host1 config from SHOW VARIABLES against host2:
 
-  mk-config-diff h=host1 h=host2
+  pt-config-diff h=host1 h=host2
 
 Diff config from [mysqld] section in my.cnf against host1 config:
 
-  mk-config-diff /etc/my.cnf h=host1
+  pt-config-diff /etc/my.cnf h=host1
 
 Diff the [mysqld] section of two option files:
 
-   mk-config-diff /etc/my-small.cnf /etc/my-large.cnf
+   pt-config-diff /etc/my-small.cnf /etc/my-large.cnf
 
 =head1 RISKS
 
@@ -2950,7 +2950,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-config-diff reads MySQL's configuration and examines it and is thus very
+pt-config-diff reads MySQL's configuration and examines it and is thus very
 low risk.
 
 At the time of this release there are no known bugs that pose a serious risk.
@@ -2958,19 +2958,19 @@ At the time of this release there are no known bugs that pose a serious risk.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-config-diff>.
+L<http://www.maatkit.org/bugs/pt-config-diff>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-config-diff diffs MySQL configurations by examining the values of server
+pt-config-diff diffs MySQL configurations by examining the values of server
 system variables from two or more CONFIG sources specified on the command
 line.  A CONFIG source can be a DSN or a filename containing the output of
 C<mysqld --help --verbose>, C<my_print_defaults>, C<SHOW VARIABLES>, or
 an option file (e.g. my.cnf).
 
-For each DSN CONFIG, mk-config-diff connects to MySQL and gets variables
+For each DSN CONFIG, pt-config-diff connects to MySQL and gets variables
 and values by executing C<SHOW /*!40103 GLOBAL*/ VARIABLES>.  This is
 an "active config" because it shows what server values MySQL is
 actively (currently) running with.
@@ -2987,7 +2987,7 @@ Option file and DSN configs provide the best results.
 =head1 OUTPUT
 
 There is no output when there are no differences.  When there are differences,
-mk-config-diff prints a report to STDOUT that looks similar to the following:
+pt-config-diff prints a report to STDOUT that looks similar to the following:
 
   2 config differences
   Variable                  my.master.cnf   my.slave.cnf
@@ -3001,13 +3001,13 @@ comparison fails, the tool prints a warning to STDERR, such as the following:
 
   Comparing log_error values (mysqld.log, /tmp/12345/data/mysqld.log)
   caused an error: Argument "/tmp/12345/data/mysqld.log" isn't numeric
-  in numeric eq (==) at ./mk-config-diff line 2311.
+  in numeric eq (==) at ./pt-config-diff line 2311.
 
 Please report these warnings so the comparison functions can be improved.
 
 =head1 EXIT STATUS
 
-mk-config-diff exits with a zero exit status when there are no differences, and
+pt-config-diff exits with a zero exit status when there are no differences, and
 1 if there are.
 
 =head1 OPTIONS
@@ -3218,7 +3218,7 @@ You need the following Perl modules: DBI and DBD::mysql.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-config-diff>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-config-diff>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

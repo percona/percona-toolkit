@@ -3101,46 +3101,46 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-find - Find MySQL tables and execute actions, like GNU find.
+pt-find - Find MySQL tables and execute actions, like GNU find.
 
 =head1 SYNOPSIS
 
-Usage: mk-find [OPTION...] [DATABASE...]
+Usage: pt-find [OPTION...] [DATABASE...]
 
-mk-find searches for MySQL tables and executes actions, like GNU find.  The
+pt-find searches for MySQL tables and executes actions, like GNU find.  The
 default action is to print the database and table name.
 
 Find all tables created more than a day ago, which use the MyISAM engine, and
 print their names:
 
-  mk-find --ctime +1 --engine MyISAM
+  pt-find --ctime +1 --engine MyISAM
 
 Find InnoDB tables that haven't been updated in a month, and convert them to
 MyISAM storage engine (data warehousing, anyone?):
 
-  mk-find --mtime +30 --engine InnoDB --exec "ALTER TABLE %D.%N ENGINE=MyISAM"
+  pt-find --mtime +30 --engine InnoDB --exec "ALTER TABLE %D.%N ENGINE=MyISAM"
 
 Find tables created by a process that no longer exists, following the
 name_sid_pid naming convention, and remove them.
 
-  mk-find --connection-id '\D_\d+_(\d+)$' --server-id '\D_(\d+)_\d+$' --exec-plus "DROP TABLE %s"
+  pt-find --connection-id '\D_\d+_(\d+)$' --server-id '\D_(\d+)_\d+$' --exec-plus "DROP TABLE %s"
 
 Find empty tables in the test and junk databases, and delete them:
 
-  mk-find --empty junk test --exec-plus "DROP TABLE %s"
+  pt-find --empty junk test --exec-plus "DROP TABLE %s"
 
 Find tables more than five gigabytes in total size:
 
-  mk-find --tablesize +5G
+  pt-find --tablesize +5G
 
 Find all tables and print their total data and index size, and sort largest
 tables first (sort is a different program, by the way).
 
-  mk-find --printf "%T\t%D.%N\n" | sort -rn
+  pt-find --printf "%T\t%D.%N\n" | sort -rn
 
 As above, but this time, insert the data back into the database for posterity:
 
-  mk-find --noquote --exec "INSERT INTO sysdata.tblsize(db, tbl, size) VALUES('%D', '%N', %T)"
+  pt-find --noquote --exec "INSERT INTO sysdata.tblsize(db, tbl, size) VALUES('%D', '%N', %T)"
 
 =head1 RISKS
 
@@ -3149,7 +3149,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-find only reads and prints information by default, but L<"--exec"> and
+pt-find only reads and prints information by default, but L<"--exec"> and
 L<"--exec-plus"> can execute user-defined SQL.  You should be as careful with it
 as you are with any command-line tool that can execute queries against your
 database.
@@ -3160,29 +3160,29 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-find>.
+L<http://www.maatkit.org/bugs/pt-find>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-find looks for MySQL tables that pass the tests you specify, and executes
+pt-find looks for MySQL tables that pass the tests you specify, and executes
 the actions you specify.  The default action is to print the database and table
 name to STDOUT.
 
-mk-find is simpler than GNU find.  It doesn't allow you to specify
+pt-find is simpler than GNU find.  It doesn't allow you to specify
 complicated expressions on the command line.
 
-mk-find uses SHOW TABLES when possible, and SHOW TABLE STATUS when needed.
+pt-find uses SHOW TABLES when possible, and SHOW TABLE STATUS when needed.
 
 =head1 OPTION TYPES
 
 There are three types of options: normal options, which determine some behavior
 or setting; tests, which determine whether a table should be included in the
-list of tables found; and actions, which do something to the tables mk-find
+list of tables found; and actions, which do something to the tables pt-find
 finds.
 
-mk-find uses standard Getopt::Long option parsing, so you should use double
+pt-find uses standard Getopt::Long option parsing, so you should use double
 dashes in front of long option names, unlike GNU find.
 
 =head1 OPTIONS
@@ -3245,7 +3245,7 @@ Combine tests with OR, not AND.
 By default, tests are evaluated as though there were an AND between them.  This
 option switches it to OR.
 
-Option parsing is not implemented by mk-find itself, so you cannot specify
+Option parsing is not implemented by pt-find itself, so you cannot specify
 complicated expressions with parentheses and mixtures of OR and AND.
 
 =item --password
@@ -3315,7 +3315,7 @@ of k, M or G (1_024, 1_048_576, and 1_073_741_824 respectively).  All patterns
 are Perl regular expressions (see 'man perlre') unless specified as SQL LIKE
 patterns.
 
-Dates and times are all measured relative to the same instant, when mk-find
+Dates and times are all measured relative to the same instant, when pt-find
 first asks the database server what time it is.  All date and time manipulation
 is done in SQL, so if you say to find tables modified 5 days ago, that
 translates to SELECT DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY).  If you
@@ -3323,11 +3323,11 @@ specify L<"--day-start">, if course it's relative to CURRENT_DATE instead.
 
 However, table sizes and other metrics are not consistent at an instant in
 time.  It can take some time for MySQL to process all the SHOW queries, and
-mk-find can't do anything about that.  These measurements are as of the
+pt-find can't do anything about that.  These measurements are as of the
 time they're taken.
 
 If you need some test that's not in this list, file a bug report and I'll
-enhance mk-find for you.  It's really easy.
+enhance pt-find for you.  It's really easy.
 
 =over
 
@@ -3392,7 +3392,7 @@ a pattern.  The argument to this test must be a Perl regular expression that
 captures digits like this: (\d+).  If the table name matches the pattern,
 these captured digits are taken to be the MySQL connection ID of some process.
 If the connection doesn't exist according to SHOW FULL PROCESSLIST, the test
-returns true.  If the connection ID is greater than mk-find's own
+returns true.  If the connection ID is greater than pt-find's own
 connection ID, the test returns false for safety.
 
 Why would you want to do this?  If you use MySQL statement-based replication,
@@ -3406,7 +3406,7 @@ can assume the connection died without cleaning up its tables, and this table
 is a candidate for removal.
 
 This is how I manage scratch tables, and that's why I included this test in
-mk-find.
+pt-find.
 
 The argument I use to L<"--connection-id"> is "\D_(\d+)$".  That finds tables
 with a series of numbers at the end, preceded by an underscore and some
@@ -3414,9 +3414,9 @@ non-number character (the latter criterion prevents me from examining tables
 with a date at the end, which people tend to do: baron_scratch_2007_05_07 for
 example).  It's better to keep the scratch tables separate of course.
 
-If you do this, make sure the user mk-find runs as has the PROCESS privilege!
+If you do this, make sure the user pt-find runs as has the PROCESS privilege!
 Otherwise it will only see connections from the same user, and might think some
-tables are ready to remove when they're still in use.  For safety, mk-find
+tables are ready to remove when they're still in use.  For safety, pt-find
 checks this for you.
 
 See also L<"--server-id">.
@@ -3767,7 +3767,7 @@ You need the following Perl modules: DBI and DBD::mysql.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-find>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-find>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

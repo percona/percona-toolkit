@@ -1925,13 +1925,13 @@ sub _d {
 
 =head1 NAME
 
-mk-trend - Compute statistics over a set of time-series data points.
+pt-trend - Compute statistics over a set of time-series data points.
 
 =head1 SYNOPSIS
 
-Usage: mk-trend [OPTION...] [FILE ...]
+Usage: pt-trend [OPTION...] [FILE ...]
 
-mk-trend reads a slow query log and outputs statistics on it.
+pt-trend reads a slow query log and outputs statistics on it.
 
 =head1 RISKS
 
@@ -1940,7 +1940,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-trend simply reads files give on the command-line.  It should be very low-risk.
+pt-trend simply reads files give on the command-line.  It should be very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -1948,7 +1948,7 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-trend>.
+L<http://www.maatkit.org/bugs/pt-trend>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
@@ -2038,7 +2038,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-trend>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-trend>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

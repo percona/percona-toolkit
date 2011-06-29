@@ -3873,16 +3873,16 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-duplicate-key-checker - Find duplicate indexes and foreign keys on MySQL tables.
+pt-duplicate-key-checker - Find duplicate indexes and foreign keys on MySQL tables.
 
 =head1 SYNOPSIS
 
-Usage: mk-duplicate-key-checker [OPTION...] [DSN]
+Usage: pt-duplicate-key-checker [OPTION...] [DSN]
 
-mk-duplicate-key-checker examines MySQL tables for duplicate or redundant
+pt-duplicate-key-checker examines MySQL tables for duplicate or redundant
 indexes and foreign keys.  Connection options are read from MySQL option files.
 
-   mk-duplicate-key-checker --host host1
+   pt-duplicate-key-checker --host host1
 
 =head1 RISKS
 
@@ -3891,7 +3891,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-duplicate-key-checker is a read-only tool that executes SHOW CREATE TABLE and
+pt-duplicate-key-checker is a read-only tool that executes SHOW CREATE TABLE and
 related queries to inspect table structures, and thus is very low-risk.
 
 At the time of this release, there is an unconfirmed bug that causes the tool
@@ -3900,7 +3900,7 @@ to crash.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-duplicate-key-checker>.
+L<http://www.maatkit.org/bugs/pt-duplicate-key-checker>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
@@ -4213,7 +4213,7 @@ You need the following Perl modules: DBI and DBD::mysql.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-duplicate-key-checker>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-duplicate-key-checker>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

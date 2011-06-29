@@ -3049,21 +3049,21 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-log-player - Replay MySQL query logs.
+pt-log-player - Replay MySQL query logs.
 
 =head1 SYNOPSIS
 
-Usage: mk-log-player [OPTION...] [DSN]
+Usage: pt-log-player [OPTION...] [DSN]
 
-mk-log-player splits and plays slow log files.
+pt-log-player splits and plays slow log files.
 
 Split slow.log on Thread_id into 16 session files, save in ./sessions:
 
-  mk-log-player --split Thread_id --session-files 16 --base-dir ./sessions slow.log
+  pt-log-player --split Thread_id --session-files 16 --base-dir ./sessions slow.log
 
 Play all those sessions on host1, save results in ./results:
 
-  mk-log-player --play ./sessions --base-dir ./results h=host1
+  pt-log-player --play ./sessions --base-dir ./results h=host1
 
 Use L<mk-query-digest> to summarize the results:
 
@@ -3079,19 +3079,19 @@ tools) and those created by bugs.
 This tool is meant to load a server as much as possible, for stress-testing
 purposes.  It is not designed to be used on production servers.
 
-At the time of this release there is a bug which causes mk-log-player to
+At the time of this release there is a bug which causes pt-log-player to
 exceed max open files during L<"--split">.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-log-player>.
+L<http://www.maatkit.org/bugs/pt-log-player>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-log-player does two things: it splits MySQL query logs into session files
+pt-log-player does two things: it splits MySQL query logs into session files
 and it plays (executes) queries in session files on a MySQL server.  Only
 session files can be played; slow logs cannot be played directly without
 being split.
@@ -3102,7 +3102,7 @@ L<"--split">.  Multiple sessions are saved into a single session file.
 See L<"--session-files">, L<"--max-sessions">, L<"--base-file-name"> and
 L<"--base-dir">.  These session files are played with L<"--play">.
 
-mk-log-player will L<"--play"> session files in parallel using N number of
+pt-log-player will L<"--play"> session files in parallel using N number of
 L<"--threads">.  (They're not technically threads, but we call them that
 anyway.)  Each thread will play all the sessions in its given session files.
 The sessions are played as fast as possible--there are no delays--because the
@@ -3132,7 +3132,7 @@ queries grouped into sessions.  For example:
 
 The format of these session files is important: each query must be a single
 line separated by a single blank line.  And the "-- START SESSION" comment
-tells mk-log-player where individual sessions begin and end so that L<"--play">
+tells pt-log-player where individual sessions begin and end so that L<"--play">
 can correctly fake Thread_id in its result files.
 
 The result files written by L<"--play"> are in slow log format with a minimal
@@ -3295,7 +3295,7 @@ type: int; default: 5000000; group: Split
 
 Maximum number of sessions to L<"--split">.
 
-By default, C<mk-log-player> tries to split every session from the log file.
+By default, C<pt-log-player> tries to split every session from the log file.
 For huge logs, however, this can result in millions of sessions.  This
 option causes only the first N number of sessions to be saved.  All sessions
 after this number are ignored, but sessions split before this number will
@@ -3589,7 +3589,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-log-player>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-log-player>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

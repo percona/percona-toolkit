@@ -1186,22 +1186,22 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-profile-compact - Compact the output from mk-query-profiler.
+pt-profile-compact - Compact the output from mk-query-profiler.
 
 =head1 SYNOPSIS
 
-Usage: mk-profile-compact [OPTION...] [FILE...]
+Usage: pt-profile-compact [OPTION...] [FILE...]
 
-mk-profile-compact aligns query profiler results side by side for easy
+pt-profile-compact aligns query profiler results side by side for easy
 comparison.  With no FILE, or when FILE is -, read from standard input.
 
 To view queries 2, 4 and 6 side by side:
 
-   mk-profile-compact --queries 2,4,6 profile-results.txt
+   pt-profile-compact --queries 2,4,6 profile-results.txt
 
 To view summaries from two runs side by side:
 
-   mk-profile-compact --mode SUMMARY results-1.txt results-2.txt
+   pt-profile-compact --mode SUMMARY results-1.txt results-2.txt
 
 =head1 RISKS
 
@@ -1210,7 +1210,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-profile-compact is read-only and very low-risk.
+pt-profile-compact is read-only and very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -1218,13 +1218,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-profile-compact>.
+L<http://www.maatkit.org/bugs/pt-profile-compact>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-profile-compact slices and aligns the output from mk-query-profiler
+pt-profile-compact slices and aligns the output from mk-query-profiler
 so you can compare profile results side by side easily.  It prints the first
 profile result intact, but each subsequent result is trimmed to be as narrow
 as possible, then aligned next to the first.
@@ -1312,7 +1312,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-profile-compact>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-profile-compact>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

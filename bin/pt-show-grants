@@ -1684,7 +1684,7 @@ sub main {
 
    my ( $version, $ts ) = $dbh->selectrow_array("SELECT VERSION(), NOW()");
    print join("\n",
-      "-- Grants dumped by mk-show-grants $VERSION",
+      "-- Grants dumped by pt-show-grants $VERSION",
       "-- Dumped from server " . ($dbh->{mysql_hostinfo} || '')
       . ($o->get('timestamp') ? ", MySQL $version at $ts" : ", MySQL $version"),
       ), "\n" if $o->get('header');
@@ -1860,20 +1860,20 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-show-grants - Canonicalize and print MySQL grants so you can effectively
+pt-show-grants - Canonicalize and print MySQL grants so you can effectively
 replicate, compare and version-control them.
 
 =head1 SYNOPSIS
 
-Usage: mk-show-grants [OPTION...] [DSN]
+Usage: pt-show-grants [OPTION...] [DSN]
 
-mk-show-grants shows grants (user privileges) from a MySQL server.
+pt-show-grants shows grants (user privileges) from a MySQL server.
 
 Examples:
 
-   mk-show-grants
+   pt-show-grants
 
-   mk-show-grants --separate --revoke | diff othergrants.sql -
+   pt-show-grants --separate --revoke | diff othergrants.sql -
 
 =head1 RISKS
 
@@ -1882,7 +1882,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-show-grants is read-only by default, and very low-risk.  If you specify
+pt-show-grants is read-only by default, and very low-risk.  If you specify
 L<"--flush">, it will execute C<FLUSH PRIVILEGES>.
 
 At the time of this release, we know of no bugs that could cause serious harm to
@@ -1891,13 +1891,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-show-grants>.
+L<http://www.maatkit.org/bugs/pt-show-grants>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-show-grants extracts, orders, and then prints grants for MySQL user
+pt-show-grants extracts, orders, and then prints grants for MySQL user
 accounts.
 
 Why would you want this?  There are several reasons.
@@ -1925,10 +1925,10 @@ you'll get from running SHOW GRANTS, and avoids spurious changesets in version
 control.
 
 Third, if you want to diff grants across servers, it will be hard without
-"canonicalizing" them, which mk-show-grants does.  The output is fully
+"canonicalizing" them, which pt-show-grants does.  The output is fully
 diff-able.
 
-With the L<"--revoke">, L<"--separate"> and other options, mk-show-grants
+With the L<"--revoke">, L<"--separate"> and other options, pt-show-grants
 also makes it easy to revoke specific privileges from users.  This is tedious
 otherwise.
 
@@ -1991,7 +1991,7 @@ Print dump header.
 
 The header precedes the dumped grants.  It looks like:
 
-  -- Grants dumped by mk-show-grants 1.0.19
+  -- Grants dumped by pt-show-grants 1.0.19
   -- Dumped from server Localhost via UNIX socket, MySQL 5.0.82-log at 2009-10-26 10:01:04
 
 See also L<"--[no]timestamp">.
@@ -2176,7 +2176,7 @@ You need the following Perl modules: DBI and DBD::mysql.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-show-grants>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-show-grants>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

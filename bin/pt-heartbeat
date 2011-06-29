@@ -3281,7 +3281,7 @@ sub main {
       MKDEBUG && _d('Creating sentinel file', $sentinel);
       my $file = IO::File->new($sentinel, ">>")
          or die "Cannot open $sentinel: $OS_ERROR\n";
-      print $file "Remove this file to permit mk-heartbeat to run\n"
+      print $file "Remove this file to permit pt-heartbeat to run\n"
          or die "Cannot write to $sentinel: $OS_ERROR\n";
       close $file
          or die "Cannot close $sentinel: $OS_ERROR\n";
@@ -3399,7 +3399,7 @@ sub main {
                . "the heartbeat table $db_tbl uses the server_id column "
                . "for --update or --check but the server's master could "
                . "not be automatically determined.\n"
-               . "Please read the DESCRIPTION section of the mk-heartbeat POD.\n";
+               . "Please read the DESCRIPTION section of the pt-heartbeat POD.\n";
          }
          $pk_col = 'server_id';
          $pk_val = $master_server_id;
@@ -3429,13 +3429,13 @@ sub main {
                die "The heartbeat table is empty.\n"
                   . "At least one row must be inserted into the heartbeat "
                   . "table.\nPlease read the DESCRIPTION section of the "
-                  . "mk-heartbeat POD.\n";
+                  . "pt-heartbeat POD.\n";
            }
            else {
                die "No row found in heartbeat table for server_id $pk_val.\n"
                   . "At least one row must be inserted into the heartbeat "
                   . "table for server_id $pk_val.\nPlease read the "
-                  . "DESCRIPTION section of the mk-heartbeat POD.\n";
+                  . "DESCRIPTION section of the pt-heartbeat POD.\n";
            }
          }
       }
@@ -3833,29 +3833,29 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-heartbeat - Monitor MySQL replication delay.
+pt-heartbeat - Monitor MySQL replication delay.
 
 =head1 SYNOPSIS
 
-Usage: mk-heartbeat [OPTION...] [DSN] --update|--monitor|--check|--stop
+Usage: pt-heartbeat [OPTION...] [DSN] --update|--monitor|--check|--stop
 
-mk-heartbeat measures replication lag on a MySQL or PostgreSQL server.  You can
+pt-heartbeat measures replication lag on a MySQL or PostgreSQL server.  You can
 use it to update a master or monitor a replica.  If possible, MySQL connection
 options are read from your .my.cnf file.
 
 Start daemonized process to update test.heartbeat table on master:
 
-  mk-heartbeat -D test --update -h master-server --daemonize
+  pt-heartbeat -D test --update -h master-server --daemonize
 
 Monitor replication lag on slave:
 
-  mk-heartbeat -D test --monitor -h slave-server
+  pt-heartbeat -D test --monitor -h slave-server
 
-  mk-heartbeat -D test --monitor -h slave-server --dbi-driver Pg
+  pt-heartbeat -D test --monitor -h slave-server --dbi-driver Pg
 
 Check slave lag once and exit (using optional DSN to specify slave host):
 
-  mk-heartbeat -D test --check h=slave-server
+  pt-heartbeat -D test --check h=slave-server
 
 =head1 RISKS
 
@@ -3864,7 +3864,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-heartbeat merely reads and writes a single record in a table.  It should be
+pt-heartbeat merely reads and writes a single record in a table.  It should be
 very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
@@ -3873,24 +3873,24 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-heartbeat>.
+L<http://www.maatkit.org/bugs/pt-heartbeat>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-heartbeat is a two-part MySQL and PostgreSQL replication delay monitoring
+pt-heartbeat is a two-part MySQL and PostgreSQL replication delay monitoring
 system that measures delay by looking at actual replicated data.  This
 avoids reliance on the replication mechanism itself, which is unreliable.  (For
 example, C<SHOW SLAVE STATUS> on MySQL).
 
-The first part is an L<"--update"> instance of mk-heartbeat that connects to
+The first part is an L<"--update"> instance of pt-heartbeat that connects to
 a master and updates a timestamp ("heartbeat record") every L<"--interval">
 seconds.  Since the heartbeat table may contain records from multiple
 masters (see L<"MULTI-SLAVE HIERARCHY">), the server's ID (@@server_id) is
 used to identify records.
 
-The second part is a L<"--monitor"> or L<"--check"> instance of mk-heartbeat
+The second part is a L<"--monitor"> or L<"--check"> instance of pt-heartbeat
 that connects to a slave, examines the replicated heartbeat record from its
 immediate master or the specified L<"--master-server-id">, and computes the
 difference from the current system time.  If replication between the slave and
@@ -3907,7 +3907,7 @@ row is inserted if it doesn't exist.  This feature can be disabled with the
 L<"--[no]insert-heartbeat-row"> option in case the database user does not
 have INSERT privileges.
 
-mk-heartbeat depends only on the heartbeat record being replicated to the slave,
+pt-heartbeat depends only on the heartbeat record being replicated to the slave,
 so it works regardless of the replication mechanism (built-in replication, a
 system such as Continuent Tungsten, etc).  It works at any depth in the
 replication hierarchy; for example, it will reliably report how far a slave lags
@@ -3915,18 +3915,18 @@ its master's master's master.  And if replication is stopped, it will continue
 to work and report (accurately!) that the slave is falling further and further
 behind the master.
 
-mk-heartbeat has a maximum resolution of 0.01 second.  The clocks on the
+pt-heartbeat has a maximum resolution of 0.01 second.  The clocks on the
 master and slave servers must be closely synchronized via NTP.  By default,
 L<"--update"> checks happen on the edge of the second (e.g. 00:01) and
 L<"--monitor"> checks happen halfway between seconds (e.g. 00:01.5).
 As long as the servers' clocks are closely synchronized and replication
-events are propagating in less than half a second, mk-heartbeat will report
+events are propagating in less than half a second, pt-heartbeat will report
 zero seconds of delay.
 
-mk-heartbeat will try to reconnect if the connection has an error, but will
+pt-heartbeat will try to reconnect if the connection has an error, but will
 not retry if it can't get a connection when it first starts.
 
-The L<"--dbi-driver"> option lets you use mk-heartbeat to monitor PostgreSQL
+The L<"--dbi-driver"> option lets you use pt-heartbeat to monitor PostgreSQL
 as well.  It is reported to work well with Slony-1 replication.
 
 =head1 MULTI-SLAVE HIERARCHY
@@ -3945,16 +3945,16 @@ specify the L<"--master-server-id"> to use.
 For example, if the replication hierarchy is "master -> slave1 -> slave2"
 with corresponding server IDs 1, 2 and 3, you can:
 
-  mk-heartbeat --daemonize -D test --update -h master 
-  mk-heartbeat --daemonize -D test --update -h slave1
+  pt-heartbeat --daemonize -D test --update -h master 
+  pt-heartbeat --daemonize -D test --update -h slave1
 
 Then check (or monitor) the replication delay from master to slave2:
 
-  mk-heartbeat -D test --master-server-id 1 --check slave2
+  pt-heartbeat -D test --master-server-id 1 --check slave2
 
 Or check the replication delay from slave1 to slave2:
 
-  mk-heartbeat -D test --master-server-id 2 --check slave2
+  pt-heartbeat -D test --master-server-id 2 --check slave2
 
 Stopping the L<"--update"> instance one slave1 will not affect the instance
 on master.
@@ -4155,14 +4155,14 @@ Print all output to this file when daemonized.
 type: string
 
 Calculate delay from this master server ID for L<"--monitor"> or L<"--check">.
-If not given, mk-heartbeat attempts to connect to the server's master and
+If not given, pt-heartbeat attempts to connect to the server's master and
 determine its server id.
 
 =item --monitor
 
 Monitor slave delay continuously.
 
-Specifies that mk-heartbeat should check the slave's delay every second and
+Specifies that pt-heartbeat should check the slave's delay every second and
 report to STDOUT (or if L<"--file"> is given, to the file instead).  The output
 is the current delay followed by moving averages over the timeframe given in
 L<"--frames">.  For example,
@@ -4223,7 +4223,7 @@ Possible methods are:
 
 The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
 However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually mk-heartbeat does the right thing and finds
+port (not 3306).  Usually pt-heartbeat does the right thing and finds
 the slaves, but you may give a preferred method and it will be used first.
 If it doesn't find any slaves, the other methods will be tried.
 
@@ -4244,7 +4244,7 @@ Time to run before exiting.
 
 =item --sentinel
 
-type: string; default: /tmp/mk-heartbeat-sentinel
+type: string; default: /tmp/pt-heartbeat-sentinel
 
 Exit if this file exists.
 
@@ -4281,19 +4281,19 @@ Stop running instances by creating the sentinel file.
 
 This should have the effect of stopping all running
 instances which are watching the same sentinel file.  If none of
-L<"--update">, L<"--monitor"> or L<"--check"> is specified, C<mk-heartbeat>
+L<"--update">, L<"--monitor"> or L<"--check"> is specified, C<pt-heartbeat>
 will exit after creating the file.  If one of these is specified,
-C<mk-heartbeat> will wait the interval given by L<"--interval">, then remove
+C<pt-heartbeat> will wait the interval given by L<"--interval">, then remove
 the file and continue working.
 
 You might find this handy to stop cron jobs gracefully if necessary, or to
 replace one running instance with another.  For example, if you want to stop
-and restart C<mk-heartbeat> every hour (just to make sure that it is restarted
+and restart C<pt-heartbeat> every hour (just to make sure that it is restarted
 every hour, in case of a server crash or some other problem), you could use a
 C<crontab> line like this:
 
- 0 * * * * mk-heartbeat --update -D test --stop \
-   --sentinel /tmp/mk-heartbeat-hourly
+ 0 * * * * pt-heartbeat --update -D test --stop \
+   --sentinel /tmp/pt-heartbeat-hourly
 
 The non-default L<"--sentinel"> will make sure the hourly C<cron> job stops
 only instances previously started with the same options (that is, from the
@@ -4416,7 +4416,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-heartbeat>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-heartbeat>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

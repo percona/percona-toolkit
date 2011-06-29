@@ -2206,32 +2206,32 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-deadlock-logger - Extract and log MySQL deadlock information.
+pt-deadlock-logger - Extract and log MySQL deadlock information.
 
 =head1 SYNOPSIS
 
-Usage: mk-deadlock-logger [OPTION...] SOURCE_DSN
+Usage: pt-deadlock-logger [OPTION...] SOURCE_DSN
 
-mk-deadlock-logger extracts and saves information about the most recent deadlock
+pt-deadlock-logger extracts and saves information about the most recent deadlock
 in a MySQL server.
 
 Print deadlocks on SOURCE_DSN:
 
-   mk-deadlock-logger SOURCE_DSN
+   pt-deadlock-logger SOURCE_DSN
 
 Store deadlock information from SOURCE_DSN in test.deadlocks table on SOURCE_DSN
 (source and destination are the same host):
 
-   mk-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks
+   pt-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks
 
 Store deadlock information from SOURCE_DSN in test.deadlocks table on DEST_DSN
 (source and destination are different hosts):
 
-   mk-deadlock-logger SOURCE_DSN --dest DEST_DSN,D=test,t=deadlocks
+   pt-deadlock-logger SOURCE_DSN --dest DEST_DSN,D=test,t=deadlocks
 
 Daemonize and check for deadlocks on SOURCE_DSN every 30 seconds for 4 hours:
 
-   mk-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks --daemonize --run-time 4h --interval 30s
+   pt-deadlock-logger SOURCE_DSN --dest D=test,t=deadlocks --daemonize --run-time 4h --interval 30s
 
 =head1 RISKS
 
@@ -2240,7 +2240,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-deadlock-logger is a read-only tool unless you specify a L<"--dest"> table.
+pt-deadlock-logger is a read-only tool unless you specify a L<"--dest"> table.
 In some cases polling SHOW INNODB STATUS too rapidly can cause extra load on the
 server.  If you're using it on a production server under very heavy load, you
 might want to set L<"--interval"> to 30 seconds or more.
@@ -2251,13 +2251,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-deadlock-logger>.
+L<http://www.maatkit.org/bugs/pt-deadlock-logger>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-deadlock-logger extracts deadlock data from a MySQL server.  Currently only
+pt-deadlock-logger extracts deadlock data from a MySQL server.  Currently only
 InnoDB deadlock information is available.  You can print the information to
 standard output, store it in a database table, or both.  If neither
 L<"--print"> nor L<"--dest"> are given, then the deadlock information is
@@ -2287,7 +2287,7 @@ C<key=value,key=value> string. Keys are a single letter:
 
 If you omit any values from the destination host DSN, they are filled in with
 values from the source host, so you don't need to specify them in both places.
-C<mk-deadlock-logger> reads all normal MySQL option files, such as ~/.my.cnf, so
+C<pt-deadlock-logger> reads all normal MySQL option files, such as ~/.my.cnf, so
 you may not need to specify username, password and other common options at all.
 
 =head1 OUTPUT
@@ -2379,7 +2379,7 @@ in those columns.  It may also be the case that the deadlock output is so long
 
 Though there are usually two transactions involved in a deadlock, there are more
 locks than that; at a minimum, one more lock than transactions is necessary to
-create a cycle in the waits-for graph.  mk-deadlock-logger prints the
+create a cycle in the waits-for graph.  pt-deadlock-logger prints the
 transactions (always two in the InnoDB output, even when there are more
 transactions in the waits-for graph than that) and fills in locks.  It prefers
 waited-for over held when choosing lock information to output, but you can
@@ -2414,7 +2414,7 @@ type: string
 
 Use this table to create a small deadlock.  This usually has the effect of
 clearing out a huge deadlock, which otherwise consumes the entire output of
-C<SHOW INNODB STATUS>.  The table must not exist.  mk-deadlock-logger will
+C<SHOW INNODB STATUS>.  The table must not exist.  pt-deadlock-logger will
 create it with the following MAGIC_clear_deadlocks structure:
 
   CREATE TABLE test.deadlock_maker(a INT PRIMARY KEY) ENGINE=InnoDB;
@@ -2448,7 +2448,7 @@ first option on the command line.
 Create the table specified by L<"--dest">.
 
 Normally the L<"--dest"> table is expected to exist already.  This option
-causes mk-deadlock-logger to create the table automatically using the suggested
+causes pt-deadlock-logger to create the table automatically using the suggested
 table structure.
 
 =item --daemonize
@@ -2476,7 +2476,7 @@ By default, whitespace in the query column is left intact;
 use L<"--[no]collapse"> if you want whitespace collapsed.
 
 The following MAGIC_dest_table is suggested if you want to store all the
-information mk-deadlock-logger can extract about deadlocks:
+information pt-deadlock-logger can extract about deadlocks:
 
  CREATE TABLE deadlocks (
    server char(20) NOT NULL,
@@ -2516,7 +2516,7 @@ Connect to host.
 type: time
 
 How often to check for deadlocks.  If no L<"--run-time"> is specified,
-mk-deadlock-logger runs forever, checking for deadlocks at every interval.
+pt-deadlock-logger runs forever, checking for deadlocks at every interval.
 See also L<"--run-time">.
 
 =item --log
@@ -2565,7 +2565,7 @@ the last deadlock's fingerprint, then it is printed.
 
 type: time
 
-How long to run before exiting.  By default mk-deadlock-logger runs once,
+How long to run before exiting.  By default pt-deadlock-logger runs once,
 checks for deadlocks, and exits.  If L<"--run-time"> is specified but
 no L<"--interval"> is specified, a default 1 second interval will be used.
 
@@ -2691,7 +2691,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-deadlock-logger>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-deadlock-logger>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

@@ -6267,13 +6267,13 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-table-usage - Read queries from a log and analyze how they use tables.
+pt-table-usage - Read queries from a log and analyze how they use tables.
 
 =head1 SYNOPSIS
 
-Usage: mk-table-usage [OPTION...] [FILE...]
+Usage: pt-table-usage [OPTION...] [FILE...]
 
-mk-table-usage reads queries from slow query logs and analyzes how they use
+pt-table-usage reads queries from slow query logs and analyzes how they use
 tables.  If no FILE is specified, STDIN is read.  Table usage for every query
 is printed to STDOUT.
 
@@ -6289,13 +6289,13 @@ harm to users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-table-usage>.
+L<http://www.maatkit.org/bugs/pt-table-usage>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-table-usage reads queries from slow query logs and analyzes how they use
+pt-table-usage reads queries from slow query logs and analyzes how they use
 tables.  Table usage indicates more than just which tables are read from or
 written to by the query, it also indicates data flow: data in and data out.
 Data flow is determined by the contexts in which tables are used by the query.
@@ -6314,7 +6314,7 @@ L<"--explain-extended">.  If the slow log does not specify the database
 used by the query, then you can specify a default database with L<"--database">.
 There is no other way to know or guess the database, so the query will be
 skipped.  Secondly, if the database is known, then specifying
-L<"--explain-extended"> causes mk-table-usage to do C<EXPLAIN EXTENDED ...>
+L<"--explain-extended"> causes pt-table-usage to do C<EXPLAIN EXTENDED ...>
 C<SHOW WARNINGS> to get the fully qualified query as reported by MySQL
 (i.e. all identifiers are fully database- and/or table-qualified).  For
 best results, you should specify L<"--explain-extended"> and
@@ -6464,7 +6464,7 @@ in a full cartesian join as indicated by the TLIST context for each.
 
 =head1 EXIT STATUS
 
-mk-table-usage exits 1 on any kind of error, or 0 if no errors.
+pt-table-usage exits 1 on any kind of error, or 0 if no errors.
 
 =head1 OPTIONS
 
@@ -6840,7 +6840,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-table-usage>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-table-usage>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

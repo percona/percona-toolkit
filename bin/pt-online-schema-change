@@ -4720,31 +4720,31 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-online-schema-change - Perform online, non-blocking table schema changes.
+pt-online-schema-change - Perform online, non-blocking table schema changes.
 
 =head1 SYNOPSIS
 
-Usage: mk-online-schema-change [OPTION...] DSN
+Usage: pt-online-schema-change [OPTION...] DSN
 
-mk-online-schema-change performs online, non-blocking schema changes to a table.
+pt-online-schema-change performs online, non-blocking schema changes to a table.
 The table to change must be specified in the DSN C<t> part, like C<t=my_table>.
 The table can be database-qualified, or the database can be specified with the
 L<"--database"> option.
 
 Change the table's engine to InnoDB:
 
-  mk-online-schema-change                            \
+  pt-online-schema-change                            \
     h=127.1,t=db.tbl                                 \
     --alter-table "ALTER TABLE db.tbl ENGINE=InnoDB" \
     --drop-tmp-table
 
 Rebuild but do not alter the table, and keep the temporary table:
 
-  mk-online-schema-change h=127.1,t=tbl --database db
+  pt-online-schema-change h=127.1,t=tbl --database db
 
 Add column to parent table, update child table foreign key constraints:
 
-  mk-online-schema-change                                   \
+  pt-online-schema-change                                   \
     h=127.1,D=db,t=parent                                   \
     --alter-table 'ALTER TABLE parent ADD COLUMN (foo INT)' \
     --child-tables child1,child2                            \
@@ -4757,7 +4757,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-online-schema-change reads, writes, alters and drops tables.  Although
+pt-online-schema-change reads, writes, alters and drops tables.  Although
 it is tested, do not use it in production until you have thoroughly tested it
 in your environment!
 
@@ -4769,13 +4769,13 @@ At the time of this release there are no known bugs that pose a serious risk.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-online-schema-change>.
+L<http://www.maatkit.org/bugs/pt-online-schema-change>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-online-schema-change performs online, non-blocking schema changes to tables.
+pt-online-schema-change performs online, non-blocking schema changes to tables.
 Only one table can be altered at a time because triggers are used to capture
 and synchronize changes between the table and the temporary table that
 will take its place once it has been altered.  Since triggers are used, this
@@ -5252,7 +5252,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-online-schema-change>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-online-schema-change>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to
@@ -5295,12 +5295,12 @@ their version called C<OnlineSchemaChange.php> as explained by their blog
 post: L<http://tinyurl.com/32zeb86>.  Searching for "online schema change"
 will return other relevant pages about this concept.
 
-This implementation, C<mk-online-schema-change>, is a hybrid of Shlomi's
+This implementation, C<pt-online-schema-change>, is a hybrid of Shlomi's
 and Facebook's approach.  Shlomi's code is a full-featured tool with command
 line options, documentation, etc., but its continued development/support is
 not assured.  Facebook's tool has certain technical advantages, but it's not
 a full-featured tool; it's more a custom job by Facebook for Facebook.  And
-neither of those tools is tested.  C<mk-online-schema-change> is a
+neither of those tools is tested.  C<pt-online-schema-change> is a
 full-featured, tested tool with stable development and support.
 
 This tool was made possible by a generous client of Percona Inc.

@@ -2595,7 +2595,7 @@ sub main {
       MKDEBUG && _d('Creating sentinel file', $sentinel);
       my $file = IO::File->new($sentinel, ">>")
          or die "Cannot open $sentinel: $OS_ERROR\n";
-      print $file "Remove this file to permit mk-slave-restart to run\n"
+      print $file "Remove this file to permit pt-slave-restart to run\n"
          or die "Cannot write to $sentinel: $OS_ERROR\n";
       close $file
          or die "Cannot close $sentinel: $OS_ERROR\n";
@@ -2909,8 +2909,8 @@ sub watch_server {
 
       # Errors are very likely to follow each other in quick succession.  NOTE:
       # this policy has a side effect with respect to $sleep.  Suppose $sleep is
-      # 512 and mk-slave-restart finds an error; now $sleep is 256, but
-      # mk-slave-restart sleeps only 1 (the initial value of --sleep).  Suppose
+      # 512 and pt-slave-restart finds an error; now $sleep is 256, but
+      # pt-slave-restart sleeps only 1 (the initial value of --sleep).  Suppose
       # there is no error when it wakes up after 1 second, because 1 was too
       # short.  Now it doubles $sleep, back to 512.  $sleep has the same value
       # it did before the error was ever found.
@@ -2984,13 +2984,13 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-slave-restart - Watch and restart MySQL replication after errors.
+pt-slave-restart - Watch and restart MySQL replication after errors.
 
 =head1 SYNOPSIS
 
-Usage: mk-slave-restart [OPTION...] [DSN]
+Usage: pt-slave-restart [OPTION...] [DSN]
 
-mk-slave-restart watches one or more MySQL replication slaves for
+pt-slave-restart watches one or more MySQL replication slaves for
 errors, and tries to restart replication if it stops.
 
 =head1 RISKS
@@ -3000,7 +3000,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-slave-restart is a brute-force way to try to keep a slave server running when
+pt-slave-restart is a brute-force way to try to keep a slave server running when
 it is having problems with replication.  Don't be too hasty to use it unless you
 need to.  If you use this tool carelessly, you might miss the chance to really
 solve the slave server's problems.
@@ -3011,13 +3011,13 @@ C<CHANGE MASTER TO> statement to be executed.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-slave-restart>.
+L<http://www.maatkit.org/bugs/pt-slave-restart>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-slave-restart watches one or more MySQL replication slaves and tries to skip
+pt-slave-restart watches one or more MySQL replication slaves and tries to skip
 statements that cause errors.  It polls slaves intelligently with an
 exponentially varying sleep time.  You can specify errors to skip and run the
 slaves until a certain binlog position.
@@ -3031,12 +3031,12 @@ when I have an error I know I just need to skip past.
 
 =head1 OUTPUT
 
-If you specify L<"--verbose">, mk-slave-restart prints a line every time it sees
+If you specify L<"--verbose">, pt-slave-restart prints a line every time it sees
 the slave has an error.  See L<"--verbose"> for details.
 
 =head1 SLEEP
 
-mk-slave-restart sleeps intelligently between polling the slave.  The current
+pt-slave-restart sleeps intelligently between polling the slave.  The current
 sleep time varies.
 
 =over
@@ -3060,7 +3060,7 @@ L<"--max-sleep">.
 
 =item *
 
-Immediately after finding an error, mk-slave-restart assumes another error is
+Immediately after finding an error, pt-slave-restart assumes another error is
 very likely to happen next, so it sleeps the current sleep time or the initial
 sleep time, whichever is less.
 
@@ -3075,7 +3075,7 @@ servers to monitor.
 
 =head1 COMPATIBILITY
 
-mk-slave-restart should work on many versions of MySQL.  Lettercase of many
+pt-slave-restart should work on many versions of MySQL.  Lettercase of many
 output columns from SHOW SLAVE STATUS has changed over time, so it treats them
 all as lowercase.
 
@@ -3089,7 +3089,7 @@ L<"SYNOPSIS"> and usage information for details.
 =item --always
 
 Start slaves even when there is no error.  With this option enabled,
-mk-slave-restart will not let you stop the slave manually if you want to!
+pt-slave-restart will not let you stop the slave manually if you want to!
 
 =item --ask-pass
 
@@ -3111,7 +3111,7 @@ default: yes
 
 Check the last relay log file and position before checking for slave errors.
 
-By default mk-slave-restart will not doing anything (it will just sleep)
+By default pt-slave-restart will not doing anything (it will just sleep)
 if neither the relay log file nor the relay log position have changed since
 the last check.  This prevents infinite loops (i.e. restarting the same
 error in the same relay log file at the same relay log position).
@@ -3157,7 +3157,7 @@ length.  This can be useful to prevent wrapping on the terminal.
 
 type: hash
 
-Only restart this comma-separated list of errors.  Makes mk-slave-restart only
+Only restart this comma-separated list of errors.  Makes pt-slave-restart only
 try to restart if the error number is in this comma-separated list of errors.
 If it sees an error not in the list, it will exit.
 
@@ -3169,8 +3169,8 @@ type: string
 
 Only restart errors that match this pattern.  A Perl regular expression against
 which the error text, if any, is matched.  If the error text exists and matches,
-mk-slave-restart will try to restart the slave.  If it exists but doesn't match,
-mk-slave-restart will exit.
+pt-slave-restart will try to restart the slave.  If it exists but doesn't match,
+pt-slave-restart will exit.
 
 The error text is in the C<last_error> column of C<SHOW SLAVE STATUS>.
 
@@ -3196,8 +3196,8 @@ type: float; default: 64
 
 Maximum sleep seconds.
 
-The maximum time mk-slave-restart will sleep before polling the slave again.
-This is also the time that mk-slave-restart will wait for all other running
+The maximum time pt-slave-restart will sleep before polling the slave again.
+This is also the time that pt-slave-restart will wait for all other running
 instances to quit if both L<"--stop"> and L<"--monitor"> are specified.
 
 See L<"SLEEP">.
@@ -3206,7 +3206,7 @@ See L<"SLEEP">.
 
 type: float; default: 0.015625
 
-The minimum time mk-slave-restart will sleep before polling the slave again.
+The minimum time pt-slave-restart will sleep before polling the slave again.
 See L<"SLEEP">.
 
 =item --monitor
@@ -3250,11 +3250,11 @@ Watch slaves of the specified server, up to the specified number of servers deep
 in the hierarchy.  The default depth of 0 means "just watch the slave
 specified."
 
-mk-slave-restart examines C<SHOW PROCESSLIST> and tries to determine which
+pt-slave-restart examines C<SHOW PROCESSLIST> and tries to determine which
 connections are from slaves, then connect to them.  See L<"--recursion-method">.
 
 Recursion works by finding all slaves when the program starts, then watching
-them.  If there is more than one slave, C<mk-slave-restart> uses C<fork()> to
+them.  If there is more than one slave, C<pt-slave-restart> uses C<fork()> to
 monitor them.
 
 This also works if you have configured your slaves to show up in C<SHOW SLAVE
@@ -3277,7 +3277,7 @@ Possible methods are:
 
 The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
 However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually mk-slave-restart does the right thing and finds
+port (not 3306).  Usually pt-slave-restart does the right thing and finds
 the slaves, but you may give a preferred method and it will be used first.
 If it doesn't find any slaves, the other methods will be tried.
 
@@ -3285,13 +3285,13 @@ If it doesn't find any slaves, the other methods will be tried.
 
 type: time
 
-Time to run before exiting.  Causes mk-slave-restart to stop after the specified
+Time to run before exiting.  Causes pt-slave-restart to stop after the specified
 time has elapsed.  Optional suffix: s=seconds, m=minutes, h=hours, d=days; if no
 suffix, s is used.
 
 =item --sentinel
 
-type: string; default: /tmp/mk-slave-restart-sentinel
+type: string; default: /tmp/pt-slave-restart-sentinel
 
 Exit if this file exists.
 
@@ -3326,20 +3326,20 @@ Socket file to use for connection.
 
 Stop running instances by creating the sentinel file.
 
-Causes C<mk-slave-restart> to create the sentinel file specified by
+Causes C<pt-slave-restart> to create the sentinel file specified by
 L<"--sentinel">.  This should have the effect of stopping all running
 instances which are watching the same sentinel file.  If L<"--monitor"> isn't
-specified, C<mk-slave-restart> will exit after creating the file.  If it is
-specified, C<mk-slave-restart> will wait the interval given by
+specified, C<pt-slave-restart> will exit after creating the file.  If it is
+specified, C<pt-slave-restart> will wait the interval given by
 L<"--max-sleep">, then remove the file and continue working.
 
 You might find this handy to stop cron jobs gracefully if necessary, or to
 replace one running instance with another.  For example, if you want to stop
-and restart C<mk-slave-restart> every hour (just to make sure that it is
+and restart C<pt-slave-restart> every hour (just to make sure that it is
 restarted every hour, in case of a server crash or some other problem), you
 could use a C<crontab> line like this:
 
- 0 * * * * mk-slave-restart --monitor --stop --sentinel /tmp/mk-slave-restartup
+ 0 * * * * pt-slave-restart --monitor --stop --sentinel /tmp/pt-slave-restartup
 
 The non-default L<"--sentinel"> will make sure the hourly C<cron> job stops
 only instances previously started with the same options (that is, from the
@@ -3359,7 +3359,7 @@ the filename and position with a single comma and no space.
 
 This will also cause an UNTIL clause to be given to START SLAVE.
 
-After reaching this point, the slave should be stopped and mk-slave-restart
+After reaching this point, the slave should be stopped and pt-slave-restart
 will exit.
 
 =item --until-relay
@@ -3383,7 +3383,7 @@ short form: -v; cumulative: yes; default: 1
 Be verbose; can specify multiple times.  Verbosity 1 outputs connection
 information, a timestamp, relay_log_file, relay_log_pos, and last_errno.
 Verbosity 2 adds last_error.  See also L<"--error-length">.  Verbosity 3 prints
-the current sleep time each time mk-slave-restart sleeps.
+the current sleep time each time pt-slave-restart sleeps.
 
 =item --version
 
@@ -3483,7 +3483,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-slave-restart>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-slave-restart>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

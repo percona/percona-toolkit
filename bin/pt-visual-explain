@@ -2358,23 +2358,23 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-visual-explain - Format EXPLAIN output as a tree.
+pt-visual-explain - Format EXPLAIN output as a tree.
 
 =head1 SYNOPSIS
 
-Usage: mk-visual-explain [OPTION...] [FILE...]
+Usage: pt-visual-explain [OPTION...] [FILE...]
 
-mk-visual-explain transforms EXPLAIN output into a tree representation of
+pt-visual-explain transforms EXPLAIN output into a tree representation of
 the query plan.  If FILE is given, input is read from the file(s).  With no
 FILE, or when FILE is -, read standard input.
 
 Examples:
 
-  mk-visual-explain <file_containing_explain_output>
+  pt-visual-explain <file_containing_explain_output>
 
-  mk-visual-explain -c <file_containing_query>
+  pt-visual-explain -c <file_containing_query>
 
-  mysql -e "explain select * from mysql.user" | mk-visual-explain
+  mysql -e "explain select * from mysql.user" | pt-visual-explain
 
 =head1 RISKS
 
@@ -2383,7 +2383,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-visual-explain is read-only and very low-risk.
+pt-visual-explain is read-only and very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -2391,30 +2391,30 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-visual-explain>.
+L<http://www.maatkit.org/bugs/pt-visual-explain>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-visual-explain reverse-engineers MySQL's EXPLAIN output into a query
+pt-visual-explain reverse-engineers MySQL's EXPLAIN output into a query
 execution plan, which it then formats as a left-deep tree -- the same way the
 plan is represented inside MySQL.  It is possible to do this by hand, or to read
 EXPLAIN's output directly, but it requires patience and expertise.  Many people
 find a tree representation more understandable.
 
-You can pipe input into mk-visual-explain or specify a filename at the
+You can pipe input into pt-visual-explain or specify a filename at the
 command line, including the magical '-' filename, which will read from standard
 input.  It can do two things with the input: parse it for something that looks
 like EXPLAIN output, or connect to a MySQL instance and run EXPLAIN on the
 input.
 
-When parsing its input, mk-visual-explain understands three formats: tabular
+When parsing its input, pt-visual-explain understands three formats: tabular
 like that shown in the mysql command-line client, vertical like that created by
 using the \G line terminator in the mysql command-line client, and tab
 separated.  It ignores any lines it doesn't know how to parse.
 
-When executing the input, mk-visual-explain replaces everything in the input
+When executing the input, pt-visual-explain replaces everything in the input
 up to the first SELECT keyword with 'EXPLAIN SELECT,' and then executes the
 result.  You must specify L<"--connect"> to execute the input as a query.
 
@@ -2423,7 +2423,7 @@ output.  For the following query,
 
  select * from sakila.film_actor join sakila.film using(film_id);
 
-mk-visual-explain generates this query plan:
+pt-visual-explain generates this query plan:
 
  JOIN
  +- Bookmark lookup
@@ -2476,7 +2476,7 @@ functionality if you want.
 The ExplainParser package accepts a string and parses whatever it thinks looks
 like EXPLAIN output from it.  The synopsis is as follows:
 
- require "mk-visual-explain";
+ require "pt-visual-explain";
  my $p    = ExplainParser->new();
  my $rows = $p->parse("some text");
  # $rows is an arrayref of hashrefs.
@@ -2485,7 +2485,7 @@ The ExplainTree package accepts a set of rows and turns it into a tree.  For
 convenience, you can also have it delegate to ExplainParser and parse text for
 you.  Here's the synopsis:
 
- require "mk-visual-explain";
+ require "pt-visual-explain";
  my $e      = ExplainTree->new();
  my $tree   = $e->parse("some text", \%options);
  my $output = $e->pretty_print($tree);
@@ -2820,7 +2820,7 @@ from the type column of EXPLAIN.  The documentation says this is a "join type,"
 but I think "access type" is more accurate, because it's "how MySQL accesses
 rows."
 
-mk-visual-explain decorates the tree significantly more than just turning
+pt-visual-explain decorates the tree significantly more than just turning
 rows into nodes.  Each node may get a series of transformations that turn it
 into a subtree of more than one node.  For example, an index scan not marked
 with 'Using index' must do a bookmark lookup into the table rows; that is a
@@ -2864,7 +2864,7 @@ first option on the command line.
 
 Treat input as a query, and obtain EXPLAIN output by connecting to a MySQL
 instance and running EXPLAIN on the query.  When this option is given,
-mk-visual-explain uses the other connection-specific options such as
+pt-visual-explain uses the other connection-specific options such as
 L<"--user"> to connect to the MySQL instance.  If you have a .my.cnf file,
 it will read it, so you may not need to specify any connection-specific
 options.
@@ -3044,7 +3044,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-visual-explain>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-visual-explain>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

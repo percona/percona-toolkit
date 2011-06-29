@@ -3341,13 +3341,13 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-schema-advisor - Analyze schema and find inefficiencies.
+pt-schema-advisor - Analyze schema and find inefficiencies.
 
 =head1 SYNOPSIS
 
-Usage: mk-schema-advisor [OPTION...] FILE|DSN [FILE|DSN...]
+Usage: pt-schema-advisor [OPTION...] FILE|DSN [FILE|DSN...]
 
-mk-schema-advisor examines MySQL schema for inefficiencies.  Specify
+pt-schema-advisor examines MySQL schema for inefficiencies.  Specify
 either files or DSNs.  Files can contain multiple SHOW CREATE TABLE
 separated by blank lines. Or, schema objects are gotten from DSNs.
 
@@ -3358,7 +3358,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-schema-advisor merely reads schema information and should be very low-risk.
+pt-schema-advisor merely reads schema information and should be very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -3366,7 +3366,7 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-schema-advisor>.
+L<http://www.maatkit.org/bugs/pt-schema-advisor>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
@@ -3398,7 +3398,7 @@ type: hash
 
 Specify which built-in or audit modules to run.
 
-By default mk-schema-advisor runs all of its built-in audits.  You can override
+By default pt-schema-advisor runs all of its built-in audits.  You can override
 these audits or specify your own, external audit modules to use.  The built-in
 audits are:
 
@@ -3718,7 +3718,7 @@ You need the following Perl modules: DBI and DBD::mysql.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-schema-advisor>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-schema-advisor>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

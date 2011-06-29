@@ -2982,17 +2982,17 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-slave-find - Find and print replication hierarchy tree of MySQL slaves.
+pt-slave-find - Find and print replication hierarchy tree of MySQL slaves.
 
 =head1 SYNOPSIS
 
-Usage: mk-slave-find [OPTION...] MASTER-HOST
+Usage: pt-slave-find [OPTION...] MASTER-HOST
 
-mk-slave-find finds and prints a hierarchy tree of MySQL slaves.
+pt-slave-find finds and prints a hierarchy tree of MySQL slaves.
 
 Examples:
 
-   mk-slave-find --host master-host
+   pt-slave-find --host master-host
 
 =head1 RISKS
 
@@ -3001,7 +3001,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-slave-find is read-only and very low-risk.
+pt-slave-find is read-only and very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -3009,13 +3009,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-slave-find>.
+L<http://www.maatkit.org/bugs/pt-slave-find>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-slave-find connects to a MySQL replication master and finds its slaves.
+pt-slave-find connects to a MySQL replication master and finds its slaves.
 Currently the only thing it can do is print a tree-like view of the replication
 hierarchy.
 
@@ -3037,7 +3037,7 @@ C<1.2.3.4>), or a C<key=value,key=value> string. Keys are a single letter:
    p   Password to use when connecting
    F   Only read default options from the given file
 
-C<mk-slave-find> reads all normal MySQL option files, such as ~/.my.cnf, so
+C<pt-slave-find> reads all normal MySQL option files, such as ~/.my.cnf, so
 you may not need to specify username, password and other common options at all.
 
 =head1 EXIT STATUS
@@ -3145,7 +3145,7 @@ Possible methods are:
 
 The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
 However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually mk-slave-find does the right thing and finds
+port (not 3306).  Usually pt-slave-find does the right thing and finds
 the slaves, but you may give a preferred method and it will be used first.
 If it doesn't find any slaves, the other methods will be tried.
 
@@ -3308,7 +3308,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-slave-find>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-slave-find>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

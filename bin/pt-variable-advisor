@@ -3082,21 +3082,21 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-variable-advisor - Analyze MySQL variables and advise on possible problems.
+pt-variable-advisor - Analyze MySQL variables and advise on possible problems.
 
 =head1 SYNOPSIS
 
-Usage: mk-variable-advisor [OPTION...] [DSN]
+Usage: pt-variable-advisor [OPTION...] [DSN]
 
-mk-variable-advisor analyzes variables and advises on possible problems.
+pt-variable-advisor analyzes variables and advises on possible problems.
 
 Get SHOW VARIABLES from localhost:
 
-  mk-variable-advisor localhost
+  pt-variable-advisor localhost
 
 Get SHOW VARIABLES output saved in vars.txt:
 
-  mk-variable-advisor --source-of-variables vars.txt
+  pt-variable-advisor --source-of-variables vars.txt
 
 =head1 RISKS
 
@@ -3105,7 +3105,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-variable-advisor reads MySQL's configuration and examines it and is thus
+pt-variable-advisor reads MySQL's configuration and examines it and is thus
 very low risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
@@ -3114,23 +3114,23 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-variable-advisor>.
+L<http://www.maatkit.org/bugs/pt-variable-advisor>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-variable-advisor examines C<SHOW VARIABLES> for bad values and settings
+pt-variable-advisor examines C<SHOW VARIABLES> for bad values and settings
 according to the L<"RULES"> described below.  It reports on variables that
 match the rules, so you can find bad settings in your MySQL server.
 
-At the time of this release, mk-variable-advisor only examples
+At the time of this release, pt-variable-advisor only examples
 C<SHOW VARIABLES>, but other input sources are planned like C<SHOW STATUS>
 and C<SHOW SLAVE STATUS>.
 
 =head1 RULES
 
-These are the rules that mk-variable-advisor will apply to SHOW VARIABLES.
+These are the rules that pt-variable-advisor will apply to SHOW VARIABLES.
 Each rule has three parts: an ID, a severity, and a description.
 
 The rule's ID is a short, unique name for the rule.  It usually relates
@@ -3852,7 +3852,7 @@ You need the following Perl modules: DBI and DBD::mysql.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-variable-advisor>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-variable-advisor>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

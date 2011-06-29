@@ -2085,14 +2085,14 @@ exit main(@ARGV) unless caller;
 
 =head1 NAME
 
-mk-tcp-model - Transform tcpdump into metrics that permit performance and
+pt-tcp-model - Transform tcpdump into metrics that permit performance and
 scalability modeling.
 
 =head1 SYNOPSIS
 
-Usage: mk-tcp-model [OPTION...] [FILE]
+Usage: pt-tcp-model [OPTION...] [FILE]
 
-mk-tcp-model parses and analyzes tcpdump files.  With no FILE, or when
+pt-tcp-model parses and analyzes tcpdump files.  With no FILE, or when
 FILE is -, it read standard input.
 
 Dump TCP requests and responses to a file, capturing only the packet headers to
@@ -2109,7 +2109,7 @@ this from your tcpdump command.
 
 Extract individual response times, sorted by end time:
 
- mk-tcp-model /path/to/tcp-file.txt > requests.txt
+ pt-tcp-model /path/to/tcp-file.txt > requests.txt
 
 Sort the result by arrival time, for input to the next step:
 
@@ -2118,7 +2118,7 @@ Sort the result by arrival time, for input to the next step:
 Slice the result into 10-second intervals and emit throughput, concurrency, and
 response time metrics for each interval:
 
- mk-tcp-model --type=requests --run-time=10 sorted.txt > sliced.txt
+ pt-tcp-model --type=requests --run-time=10 sorted.txt > sliced.txt
 
 Transform the result for modeling with Aspersa's usl tool, discarding the first
 and last line of each file if you specify multiple files (the first and last
@@ -2135,7 +2135,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-tcp-model merely reads and transforms its input, printing it to the output.
+pt-tcp-model merely reads and transforms its input, printing it to the output.
 It should be very low risk.
 
 At the time of this release, we know of no bugs that could cause serious harm
@@ -2144,7 +2144,7 @@ to users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-tcp-model>.
+L<http://www.maatkit.org/bugs/pt-tcp-model>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
@@ -2355,7 +2355,7 @@ Show version and exit.
 
 type: string; default: 10.10.10.10:3306
 
-This option tells mk-tcp-model which server IP address and port (such as
+This option tells pt-tcp-model which server IP address and port (such as
 "10.0.0.1:3306") to watch when parsing tcpdump for L<"--type"> tcpdump.  If you
 don't specify it, the tool watches all servers by looking for any IP address
 using port 3306.  If you're watching a server with a non-standard port, this
@@ -2396,7 +2396,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-tcp-model>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-tcp-model>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

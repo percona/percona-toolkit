@@ -2286,14 +2286,14 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-query-profiler - Execute SQL statements and print statistics, or measure
+pt-query-profiler - Execute SQL statements and print statistics, or measure
 activity caused by other processes.
 
 =head1 SYNOPSIS
 
-Usage: mk-query-profiler [OPTION...] [FILE...]
+Usage: pt-query-profiler [OPTION...] [FILE...]
 
-mk-query-profiler reads and executes queries, and prints statistics about
+pt-query-profiler reads and executes queries, and prints statistics about
 MySQL server load.  Connection options are read from MySQL option files.
 If FILE is given, queries are read and executed from the file(s).  With no
 FILE, or when FILE is -, read standard input.  If --external is specified,
@@ -2301,23 +2301,23 @@ lines in FILE are executed by the shell.  You must specify - if no FILE and
 you want --external to read and execute from standard input.  Queries in
 FILE must be terminated with a semicolon and separated by a blank line.
 
-mk-query-profiler can profile the (semicolon-terminated, blank-line
+pt-query-profiler can profile the (semicolon-terminated, blank-line
 separated) queries in a file:
 
-   mk-query-profiler queries.sql
-   cat queries.sql | mk-query-profiler
-   mk-query-profiler -vv queries.sql
-   mk-query-profiler -v --separate --only 2,5,6 queries.sql
-   mk-query-profiler --tab queries.sql > results.csv
+   pt-query-profiler queries.sql
+   cat queries.sql | pt-query-profiler
+   pt-query-profiler -vv queries.sql
+   pt-query-profiler -v --separate --only 2,5,6 queries.sql
+   pt-query-profiler --tab queries.sql > results.csv
 
 It can also just observe what happens in the server:
 
-   mk-query-profiler --external
+   pt-query-profiler --external
 
 Or it can run shell commands from a file and measure the result:
 
-   mk-query-profiler --external commands.txt
-   mk-query-profiler --external - < commands.txt
+   pt-query-profiler --external commands.txt
+   pt-query-profiler --external - < commands.txt
 
 Read L<"HOW TO INTERPRET"> to learn what it all means.
 
@@ -2328,7 +2328,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-query-profiler is generally read-only and very low risk.  It will execute FLUSH TABLES if you specify L<"--flush">.
+pt-query-profiler is generally read-only and very low risk.  It will execute FLUSH TABLES if you specify L<"--flush">.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -2336,13 +2336,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-query-profiler>.
+L<http://www.maatkit.org/bugs/pt-query-profiler>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-query-profiler reads a file containing one or more SQL statements or shell
+pt-query-profiler reads a file containing one or more SQL statements or shell
 commands, executes them, and analyzes the output of SHOW STATUS afterwards.
 It then prints statistics about how the batch performed.  For example, it can
 show how many table scans the batch caused, how many page reads, how many
@@ -2354,18 +2354,18 @@ profiling an external program with the L<"--external"> option, or provide
 input to STDIN.
 
 If the file contains multiple statements, they must be separated by blank
-lines.  If you don't do that, mk-query-profiler won't be able to split the
+lines.  If you don't do that, pt-query-profiler won't be able to split the
 file into individual queries, and MySQL will complain about syntax errors.
 
 If the MySQL server version is before 5.0.2, you should make sure the server
 is completely unused before trying to profile a batch.  Prior to this version,
 SHOW STATUS showed only global status variables, so other queries will
-interfere and produce false results.  mk-query-profiler will try to detect
+interfere and produce false results.  pt-query-profiler will try to detect
 if anything did interfere, but there can be no guarantees.
 
 Prior to MySQL 5.0.2, InnoDB status variables are not available, and prior to
 version 5.0.3, InnoDB row lock status variables are not available.
-mk-query-profiler will omit any output related to these variables if they're not
+pt-query-profiler will omit any output related to these variables if they're not
 available.
 
 For more information about SHOW STATUS, read the relevant section of the MySQL
@@ -2405,7 +2405,7 @@ can see how much work SHOW STATUS itself causes.
 =item *
 
 If you specify L<"--verbose">, output includes every variable
-mk-query-profiler measures.  If not (default) it only includes variables where
+pt-query-profiler measures.  If not (default) it only includes variables where
 there was some difference from one column to the next.
 
 =back
@@ -2415,7 +2415,7 @@ there was some difference from one column to the next.
 If you don't specify --tab, you'll get a report formatted for human
 readability.  This is the default output format.
 
-mk-query-profiler can output a lot of information, as you've seen if you
+pt-query-profiler can output a lot of information, as you've seen if you
 ran the examples in the L<"SYNOPSIS">.  What does it all mean?
 
 First, there are two basic groups of information you might see: per-query and
@@ -2580,15 +2580,15 @@ pathname.
 Calibrate, then pause while an external program runs.
 
 This is typically useful while you run an external program.  When you press
-[enter] mk-query-profiler will stop sleeping and take another measurement, then
+[enter] pt-query-profiler will stop sleeping and take another measurement, then
 print statistics as usual.
 
-When there is a filename on the command line, mk-query-profiler executes
+When there is a filename on the command line, pt-query-profiler executes
 each line in the file as a shell command.  If you give - as the filename,
-mk-query-profiler reads from STDIN.
+pt-query-profiler reads from STDIN.
 
 Output from shell commands is printed to STDOUT and terminated with __BEGIN__,
-after which mk-query-profiler prints its own output.
+after which pt-query-profiler prints its own output.
 
 =item --flush
 
@@ -2597,7 +2597,7 @@ cumulative: yes
 Flush tables.  Specify twice to do between every query.
 
 Calls FLUSH TABLES before profiling.  If you are executing queries from a
-batch file, specifying --flush twice will cause mk-query-profiler to call
+batch file, specifying --flush twice will cause pt-query-profiler to call
 FLUSH TABLES between every query, not just once at the beginning.  Default is
 not to flush at all. See L<http://dev.mysql.com/doc/en/flush.html> for more
 information.
@@ -2798,7 +2798,7 @@ You need Perl, DBI, DBD::mysql, and some core modules.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-query-profiler>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-query-profiler>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

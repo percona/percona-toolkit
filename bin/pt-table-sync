@@ -8701,7 +8701,7 @@ sub filter_diffs {
 
 # Sub: disconnect
 #   Disconnect host dbhs created by <get_cxn()>.  To make sure all dbh
-#   are closed, mk-table-sync keeps track of the dbh it opens and this
+#   are closed, pt-table-sync keeps track of the dbh it opens and this
 #   sub helps keep track of the dbh that are closed.
 #
 # Parameters:
@@ -9008,13 +9008,13 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-table-sync - Synchronize MySQL table data efficiently.
+pt-table-sync - Synchronize MySQL table data efficiently.
 
 =head1 SYNOPSIS
 
-Usage: mk-table-sync [OPTION...] DSN [DSN...]
+Usage: pt-table-sync [OPTION...] DSN [DSN...]
 
-mk-table-sync synchronizes data efficiently between MySQL tables.
+pt-table-sync synchronizes data efficiently between MySQL tables.
 
 This tool changes data, so for maximum safety, you should back up your data
 before you use it.  When synchronizing a server that is a replication slave with
@@ -9028,36 +9028,36 @@ Please read the detailed documentation that follows to learn more about this.
 
 Sync db.tbl on host1 to host2:
 
-  mk-table-sync --execute h=host1,D=db,t=tbl h=host2
+  pt-table-sync --execute h=host1,D=db,t=tbl h=host2
 
 Sync all tables on host1 to host2 and host3:
 
-  mk-table-sync --execute host1 host2 host3
+  pt-table-sync --execute host1 host2 host3
 
 Make slave1 have the same data as its replication master:
 
-  mk-table-sync --execute --sync-to-master slave1
+  pt-table-sync --execute --sync-to-master slave1
 
 Resolve differences that L<mk-table-checksum> found on all slaves of master1:
 
-  mk-table-sync --execute --replicate test.checksum master1
+  pt-table-sync --execute --replicate test.checksum master1
 
 Same as above but only resolve differences on slave1:
 
-  mk-table-sync --execute --replicate test.checksum \
+  pt-table-sync --execute --replicate test.checksum \
     --sync-to-master slave1
 
 Sync master2 in a master-master replication configuration, where master2's copy
 of db.tbl is known or suspected to be incorrect:
 
-  mk-table-sync --execute --sync-to-master h=master2,D=db,t=tbl
+  pt-table-sync --execute --sync-to-master h=master2,D=db,t=tbl
 
 Note that in the master-master configuration, the following will NOT do what you
 want, because it will make changes directly on master2, which will then flow
 through replication and change master1's data:
 
   # Don't do this in a master-master setup!
-  mk-table-sync --execute h=master1,D=db,t=tbl master2
+  pt-table-sync --execute h=master1,D=db,t=tbl master2
 
 =head1 RISKS
 
@@ -9073,7 +9073,7 @@ will do, until you're familiar with its operation.  If you want to see which
 rows are different, without changing any data, use L<"--print"> instead of
 L<"--execute">.  
 
-Be careful when using mk-table-sync in any master-master setup.  Master-master
+Be careful when using pt-table-sync in any master-master setup.  Master-master
 replication is inherently tricky, and it's easy to make mistakes.  You need to
 be sure you're using the tool correctly for master-master replication.  See the
 L<"SYNOPSIS"> for the overview of the correct usage.
@@ -9093,13 +9093,13 @@ a bug using ROUND() across different platforms, and a bug mixing collations.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-table-sync>.
+L<http://www.maatkit.org/bugs/pt-table-sync>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-table-sync does one-way and bidirectional synchronization of table data.
+pt-table-sync does one-way and bidirectional synchronization of table data.
 It does B<not> synchronize table structures, indexes, or any other schema
 objects.  The following describes one-way synchronization.
 L<"BIDIRECTIONAL SYNCING"> is described later.
@@ -9131,22 +9131,22 @@ The following is the abbreviated logic:
          find tables, filtering with --databases etc, and sync each
          DSN to the first.
 
-mk-table-sync can run in one of two ways: with L<"--replicate"> or without.
-The default is to run without L<"--replicate"> which causes mk-table-sync
+pt-table-sync can run in one of two ways: with L<"--replicate"> or without.
+The default is to run without L<"--replicate"> which causes pt-table-sync
 to automatically find differences efficiently with one of several
 algorithms (see L<"ALGORITHMS">).  Alternatively, the value of
-L<"--replicate">, if specified, causes mk-table-sync to use the differences
+L<"--replicate">, if specified, causes pt-table-sync to use the differences
 already found by having previously ran L<mk-table-checksum> with its own
 C<--replicate> option.  Strictly speaking, you don't need to use
-L<"--replicate"> because mk-table-sync can find differences, but many
+L<"--replicate"> because pt-table-sync can find differences, but many
 people use L<"--replicate"> if, for example, they checksum regularly
-using L<mk-table-checksum> then fix differences as needed with mk-table-sync.
+using L<mk-table-checksum> then fix differences as needed with pt-table-sync.
 If you're unsure, read each tool's documentation carefully and decide for
 yourself, or consult with an expert.
 
 Regardless of whether L<"--replicate"> is used or not, you need to specify
 which hosts to sync.  There are two ways: with L<"--sync-to-master"> or
-without.  Specifying L<"--sync-to-master"> makes mk-table-sync expect
+without.  Specifying L<"--sync-to-master"> makes pt-table-sync expect
 one and only slave DSN on the command line.  The tool will automatically
 discover the slave's master and sync it so that its data is the same as
 its master.  This is accomplished by making changes on the master which
@@ -9162,10 +9162,10 @@ one source host.  If you do not also specify L<"--replicate">, then you
 must specify at least one other DSN as the destination host.  There
 can be one or more destination hosts.  Source and destination hosts
 must be independent; they cannot be in the same replication topology.
-mk-table-sync will die with an error if it detects that a destination
+pt-table-sync will die with an error if it detects that a destination
 host is a slave because changes are written directly to destination hosts
 (and it's not safe to write directly to slaves).  Or, if you specify
-L<"--replicate"> (but not L<"--sync-to-master">) then mk-table-sync expects
+L<"--replicate"> (but not L<"--sync-to-master">) then pt-table-sync expects
 one and only one master DSN on the command line.  The tool will automatically
 discover all the master's slaves and sync them to the master.  This is
 the only way to sync several (all) slaves at once (because
@@ -9176,10 +9176,10 @@ Each host on the command line is specified as a DSN.  The first DSN
 for other DSNs, whether those other DSNs are specified on the command line
 or auto-discovered by the tool.  So in this example,
 
-  mk-table-sync --execute h=host1,u=msandbox,p=msandbox h=host2
+  pt-table-sync --execute h=host1,u=msandbox,p=msandbox h=host2
 
 the host2 DSN inherits the C<u> and C<p> DSN parts from the host1 DSN.
-Use the L<"--explain-hosts"> option to see how mk-table-sync will interpret
+Use the L<"--explain-hosts"> option to see how pt-table-sync will interpret
 the DSNs given on the command line.
 
 =head1 OUTPUT
@@ -9202,7 +9202,7 @@ If you specify the L<"--print"> option, you'll see the actual SQL statements
 that the script uses to synchronize the table if L<"--execute"> is also
 specified.
 
-If you want to see the SQL statements that mk-table-sync is using to select
+If you want to see the SQL statements that pt-table-sync is using to select
 chunks, nibbles, rows, etc., then specify L<"--print"> once and L<"--verbose">
 twice.  Be careful though: this can print a lot of SQL statements.
 
@@ -9239,7 +9239,7 @@ just acts like an ordinary INSERT).
 If your table has unique keys, you should use the L<"--sync-to-master"> and/or
 L<"--replicate"> options to sync a slave to its master.  This will generally do
 the right thing.  When there is no unique key on the table, there is no choice
-but to change the data on the slave, and mk-table-sync will detect that you're
+but to change the data on the slave, and pt-table-sync will detect that you're
 trying to do so.  It will complain and die unless you specify
 C<--no-check-slave> (see L<"--[no]check-slave">).
 
@@ -9252,11 +9252,11 @@ source server and change the data there!
 The generally safe thing to do on a master-master pair is to use the
 L<"--sync-to-master"> option so you don't change the data on the destination
 server.  You will also need to specify C<--no-check-slave> to keep
-mk-table-sync from complaining that it is changing data on a slave.
+pt-table-sync from complaining that it is changing data on a slave.
 
 =head1 ALGORITHMS
 
-mk-table-sync has a generic data-syncing framework which uses different
+pt-table-sync has a generic data-syncing framework which uses different
 algorithms to find differences.  The tool automatically chooses the best
 algorithm for each table based on indexes, column types, and the algorithm
 preferences specified by L<"--algorithms">.  The following algorithms are
@@ -9366,7 +9366,7 @@ row's values.  In a bidirectional sync, however, the L<"--conflict-column">
 to determine which row is "correct" or "authoritative"; this row becomes
 the "source".
 
-To sync all three servers completely, two runs of mk-table-sync are required.
+To sync all three servers completely, two runs of pt-table-sync are required.
 The first run syncs c1 and r1, then syncs c1 and r2 including any changes
 from r1.  At this point c1 and r2 are completely in sync, but r1 is missing
 any changes from r2 because c1 didn't have these changes when it and r1
@@ -9377,11 +9377,11 @@ The tool does not sync N-ways, only bidirectionally between the first DSN
 given on the command line and each subsequent DSN in turn.  So the tool in
 this example would be ran twice like:
 
-  mk-table-sync --bidirectional h=c1 h=r1 h=r2
+  pt-table-sync --bidirectional h=c1 h=r1 h=r2
 
 The L<"--bidirectional"> option enables this feature and causes various
 sanity checks to be performed.  You must specify other options that tell
-mk-table-sync how to resolve conflicts for same but differing rows.
+pt-table-sync how to resolve conflicts for same but differing rows.
 These options are:
 
   * L<"--conflict-column">
@@ -9404,7 +9404,7 @@ the command line.
 =head1 EXIT STATUS
 
 The following are the exit statuses (also called return values, or return codes)
-when mk-table-sync finishes and exits.
+when pt-table-sync finishes and exits.
 
    STATUS  MEANING
    ======  =======================================================
@@ -9430,7 +9430,7 @@ type: string; default: Chunk,Nibble,GroupBy,Stream
 
 Algorithm to use when comparing the tables, in order of preference.
 
-For each table, mk-table-sync will check if the table can be synced with
+For each table, pt-table-sync will check if the table can be synced with
 the given algorithms in the order that they're given.  The first algorithm
 that can sync the table is used.  See L<"ALGORITHMS">.
 
@@ -9458,8 +9458,8 @@ Instruct MySQL to buffer queries in its memory.
 
 This option adds the C<SQL_BUFFER_RESULT> option to the comparison queries.
 This causes MySQL to execute the queries and place them in a temporary table
-internally before sending the results back to mk-table-sync.  The advantage of
-this strategy is that mk-table-sync can fetch rows as desired without using a
+internally before sending the results back to pt-table-sync.  The advantage of
+this strategy is that pt-table-sync can fetch rows as desired without using a
 lot of memory inside the Perl process, while releasing locks on the MySQL table
 (to reduce contention with other queries).  The disadvantage is that it uses
 more memory on the MySQL server instead.
@@ -9521,7 +9521,7 @@ Check whether the destination server is a slave.
 If the destination server is a slave, it's generally unsafe to make changes on
 it.  However, sometimes you have to; L<"--replace"> won't work unless there's a
 unique index, for example, so you can't make changes on the master in that
-scenario.  By default mk-table-sync will complain if you try to change data on
+scenario.  By default pt-table-sync will complain if you try to change data on
 a slave.  Specify C<--no-check-slave> to disable this check.  Use it at your own
 risk.
 
@@ -9694,7 +9694,7 @@ Sync only this comma-separated list of storage engines.
 
 Execute queries to make the tables have identical data.
 
-This option makes mk-table-sync actually sync table data by executing all
+This option makes pt-table-sync actually sync table data by executing all
 the queries that it created to resolve table differences.  Therefore, B<the
 tables will be changed!>  And unless you also specify L<"--verbose">, the
 changes will be made silently.  If this is not what you want, see
@@ -9704,7 +9704,7 @@ L<"--print"> or L<"--dry-run">.
 
 Print connection information and exit.
 
-Print out a list of hosts to which mk-table-sync will connect, with all
+Print out a list of hosts to which pt-table-sync will connect, with all
 the various connection options, and exit.
 
 =item --float-precision
@@ -9735,7 +9735,7 @@ type: string
 Which hash function you'd like to use for checksums.
 
 The default is C<CRC32>.  Other good choices include C<MD5> and C<SHA1>.  If you
-have installed the C<FNV_64> user-defined function, C<mk-table-sync> will detect
+have installed the C<FNV_64> user-defined function, C<pt-table-sync> will detect
 it and prefer to use it, because it is much faster than the built-ins.  You can
 also use MURMUR_HASH if you've installed that user-defined function.  Both of
 these are distributed with Maatkit.  See L<mk-table-checksum> for more
@@ -9800,14 +9800,14 @@ default: yes
 
 Add FORCE/USE INDEX hints to the chunk and row queries.
 
-By default C<mk-table-sync> adds a FORCE/USE INDEX hint to each SQL statement
+By default C<pt-table-sync> adds a FORCE/USE INDEX hint to each SQL statement
 to coerce MySQL into using the index chosen by the sync algorithm or specified
 by L<"--chunk-index">.  This is usually a good thing, but in rare cases the
 index may not be the best for the query so you can suppress the index hint
 by specifying C<--no-index-hint> and let MySQL choose the index.
 
 This does not affect the queries printed by L<"--print">; it only affects the
-chunk and row queries that C<mk-table-sync> uses to select and compare rows.
+chunk and row queries that C<pt-table-sync> uses to select and compare rows.
 
 =item --lock
 
@@ -9882,7 +9882,7 @@ Port number to use for connection.
 
 Print queries that will resolve differences.
 
-If you don't trust C<mk-table-sync>, or just want to see what it will do, this
+If you don't trust C<pt-table-sync>, or just want to see what it will do, this
 is a good way to be safe.  These queries are valid SQL and you can run them
 yourself if you want to sync the tables manually.
 
@@ -9901,7 +9901,7 @@ Possible methods are:
 
 The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
 However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually mk-table-sync does the right thing and finds
+port (not 3306).  Usually pt-table-sync does the right thing and finds
 the slaves, but you may give a preferred method and it will be used first.
 If it doesn't find any slaves, the other methods will be tried.
 
@@ -9919,7 +9919,7 @@ type: string
 
 Sync tables listed as different in this table.
 
-Specifies that C<mk-table-sync> should examine the specified table to find data
+Specifies that C<pt-table-sync> should examine the specified table to find data
 that differs.  The table is exactly the same as the argument of the same name to
 L<mk-table-checksum>.  That is, it contains records of which tables (and ranges
 of values) differ between the master and slave.
@@ -10003,11 +10003,11 @@ Most options that enable locking also disable transactions by default, so if
 you want to use transactional locking (via C<LOCK IN SHARE MODE> and C<FOR
 UPDATE>, you must specify C<--transaction> explicitly.
 
-If you don't specify C<--transaction> explicitly C<mk-table-sync> will decide on
+If you don't specify C<--transaction> explicitly C<pt-table-sync> will decide on
 a per-table basis whether to use transactions or table locks.  It currently
 uses transactions on InnoDB tables, and table locks on all others.
 
-If C<--no-transaction> is specified, then C<mk-table-sync> will not use
+If C<--no-transaction> is specified, then C<pt-table-sync> will not use
 transactions at all (not even for InnoDB tables) and locking is controlled
 by L<"--lock">.
 
@@ -10187,7 +10187,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see: L<http://www.maatkit.org/bugs/mk-table-sync>.
+For a list of known bugs see: L<http://www.maatkit.org/bugs/pt-table-sync>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to
@@ -10264,7 +10264,7 @@ also my own work.
 
 Another tool that can synchronize tables is the SQLyog Job Agent from webyog.
 Thanks to Rohit Nadhani, SJA's author, for the conversations about the general
-techniques.  There is a comparison of mk-table-sync and SJA at
+techniques.  There is a comparison of pt-table-sync and SJA at
 L<http://tinyurl.com/maatkit-vs-sqlyog>
 
 Thanks to the following people and organizations for helping in many ways:

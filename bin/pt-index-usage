@@ -5323,21 +5323,21 @@ sub _d {
 
 =head1 NAME
 
-mk-index-usage - Read queries from a log and analyze how they use indexes.
+pt-index-usage - Read queries from a log and analyze how they use indexes.
 
 =head1 SYNOPSIS
 
-Usage: mk-index-usage [OPTION...] [FILE...]
+Usage: pt-index-usage [OPTION...] [FILE...]
 
-mk-index-usage reads queries from logs and analyzes how they use indexes.
+pt-index-usage reads queries from logs and analyzes how they use indexes.
 
 Analyze queries in slow.log and print reports:
 
-  mk-index-usage /path/to/slow.log --host localhost
+  pt-index-usage /path/to/slow.log --host localhost
 
 Disable reports and save results to mk database for later analysis:
 
-  mk-index-usage slow.log --no-report --save-results-database mk
+  pt-index-usage slow.log --no-report --save-results-database mk
 
 =head1 RISKS
 
@@ -5356,7 +5356,7 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-index-usage>.
+L<http://www.maatkit.org/bugs/pt-index-usage>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
@@ -5496,7 +5496,7 @@ type: Hash; default: non-unique
 
 Suggest dropping only these types of unused indexes.
 
-By default mk-index-usage will only suggest to drop unused secondary indexes,
+By default pt-index-usage will only suggest to drop unused secondary indexes,
 not primary or unique indexes.  You can specify which types of unused indexes
 the tool suggests to drop: primary, unique, non-unique, all.
 
@@ -5602,7 +5602,7 @@ exist, it can be auto-created with L<"--create-save-results-database">.  In this
 case the connection is initially created with no default database, then after
 the database is created, it is USE'ed.
 
-mk-index-usage executes INSERT statements to save the results.  Therefore, you
+pt-index-usage executes INSERT statements to save the results.  Therefore, you
 should be careful if you use this feature on a production server.  It might
 increase load, or cause trouble if you don't want the server to be written to,
 or so on.
@@ -5885,7 +5885,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-index-usage>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-index-usage>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

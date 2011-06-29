@@ -11228,33 +11228,33 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-upgrade - Execute queries on multiple servers and check for differences.
+pt-upgrade - Execute queries on multiple servers and check for differences.
 
 =head1 SYNOPSIS
 
-Usage: mk-upgrade [OPTION...] DSN [DSN...] [FILE]
+Usage: pt-upgrade [OPTION...] DSN [DSN...] [FILE]
 
-mk-upgrade compares query execution on two hosts by executing queries in the
+pt-upgrade compares query execution on two hosts by executing queries in the
 given file (or STDIN if no file given) and examining the results, errors,
 warnings, etc.produced on each.
 
 Execute and compare all queries in slow.log on host1 to host2:
 
-  mk-upgrade slow.log h=host1 h=host2
+  pt-upgrade slow.log h=host1 h=host2
 
 Use mk-query-digest to get, execute and compare queries from tcpdump:
 
   tcpdump -i eth0 port 3306 -s 65535  -x -n -q -tttt     \
     | mk-query-digest --type tcpdump --no-report --print \
-    | mk-upgrade h=host1 h=host2
+    | pt-upgrade h=host1 h=host2
 
 Compare only query times on host1 to host2 and host3:
 
-  mk-upgrade slow.log h=host1 h=host2 h=host3 --compare query_times
+  pt-upgrade slow.log h=host1 h=host2 h=host3 --compare query_times
 
 Compare a single query, no slowlog needed:
 
-  mk-upgrade h=host1 h=host2 --query 'SELECT * FROM db.tbl'
+  pt-upgrade h=host1 h=host2 --query 'SELECT * FROM db.tbl'
 
 =head1 RISKS
 
@@ -11263,7 +11263,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-upgrade is a read-only tool that is meant to be used on non-production
+pt-upgrade is a read-only tool that is meant to be used on non-production
 servers.  It executes the SQL that you give it as input, which could cause
 undesired load on a production server.
 
@@ -11273,13 +11273,13 @@ and a bug that causes a deadlock.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-upgrade>.
+L<http://www.maatkit.org/bugs/pt-upgrade>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-upgrade executes queries from slowlogs on one or more MySQL server to find
+pt-upgrade executes queries from slowlogs on one or more MySQL server to find
 differences in query time, warnings, results, and other aspects of the querys'
 execution.  This helps evaluate upgrades, migrations and configuration
 changes.  The comparisons specified by L<"--compare"> determine what
@@ -11291,12 +11291,12 @@ the results to which the other DSNs are compared.  You can "compare" only one
 host, in which case there will be no differences but the output can be saved
 to be diffed later against the output of another single host "comparison".
 
-At present, mk-upgrade only reads slowlogs.  Use C<mk-query-digest --print> to
+At present, pt-upgrade only reads slowlogs.  Use C<mk-query-digest --print> to
 transform other log formats to slowlog.
 
-DSNs and slowlog files can be specified in any order.  mk-upgrade will
+DSNs and slowlog files can be specified in any order.  pt-upgrade will
 automatically determine if an argument is a DSN or a slowlog file.  If no
-slowlog files are given and L<"--query"> is not specified then mk-upgrade
+slowlog files are given and L<"--query"> is not specified then pt-upgrade
 will read from C<STDIN>.
 
 =head1 OUTPUT
@@ -11339,10 +11339,10 @@ default: yes
 Clear warnings before each warnings comparison.
 
 If comparing warnings (L<"--compare"> includes C<warnings>), this option
-causes mk-upgrade to execute a successful C<SELECT> statement which clears
+causes pt-upgrade to execute a successful C<SELECT> statement which clears
 any warnings left over from previous queries.  This requires a current
-database that mk-upgrade usually detects automatically, but in some cases
-it might be necessary to specify L<"--temp-database">.  If mk-upgrade can't
+database that pt-upgrade usually detects automatically, but in some cases
+it might be necessary to specify L<"--temp-database">.  If pt-upgrade can't
 auto-detect the current database, it will create a temporary table in the
 L<"--temp-database"> called C<mk_upgrade_clear_warnings>.
 
@@ -11465,7 +11465,7 @@ Discard events for which this Perl code doesn't return true.
 
 This option is a string of Perl code or a file containing Perl code that gets
 compiled into a subroutine with one argument: $event.  This is a hashref.
-If the given value is a readable file, then mk-upgrade reads the entire
+If the given value is a readable file, then pt-upgrade reads the entire
 file and uses its contents as the code.  The file should not contain
 a shebang (#!/usr/bin/perl) line.
 
@@ -11492,10 +11492,10 @@ filter.txt:
 
 Then specify C<--filter filter.txt> to read the code from filter.txt.
 
-If the filter code won't compile, mk-upgrade will die with an error.
+If the filter code won't compile, pt-upgrade will die with an error.
 If the filter code does compile, an error may still occur at runtime if the
 code tries to do something wrong (like pattern match an undefined value).
-mk-upgrade does not provide any safeguards so code carefully!
+pt-upgrade does not provide any safeguards so code carefully!
 
 An example filter that discards everything but SELECT statements:
 
@@ -11776,7 +11776,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-upgrade>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-upgrade>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

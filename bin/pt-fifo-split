@@ -1353,19 +1353,19 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-fifo-split - Split files and pipe lines to a fifo without really splitting.
+pt-fifo-split - Split files and pipe lines to a fifo without really splitting.
 
 =head1 SYNOPSIS
 
-Usage: mk-fifo-split [options] [FILE ...]
+Usage: pt-fifo-split [options] [FILE ...]
 
-mk-fifo-split splits FILE and pipes lines to a fifo.  With no FILE, or when FILE
+pt-fifo-split splits FILE and pipes lines to a fifo.  With no FILE, or when FILE
 is -, read standard input.
 
 Read hugefile.txt in chunks of a million lines without physically splitting it:
 
- mk-fifo-split --lines 1000000 hugefile.txt
- while [ -e /tmp/mk-fifo-split ]; do cat /tmp/mk-fifo-split; done
+ pt-fifo-split --lines 1000000 hugefile.txt
+ while [ -e /tmp/pt-fifo-split ]; do cat /tmp/pt-fifo-split; done
 
 =head1 RISKS
 
@@ -1374,7 +1374,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-fifo-split creates and/or deletes the L<"--fifo"> file.  Otherwise, no other
+pt-fifo-split creates and/or deletes the L<"--fifo"> file.  Otherwise, no other
 files are modified, and it merely reads lines from the file given on the
 command-line.  It should be very low-risk.
 
@@ -1384,13 +1384,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-fifo-split>.
+L<http://www.maatkit.org/bugs/pt-fifo-split>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-fifo-split lets you read from a file as though it contains only some of the
+pt-fifo-split lets you read from a file as though it contains only some of the
 lines in the file.  When you read from it again, it contains the next set of
 lines; when you have gone all the way through it, the file disappears.  This
 works only on Unix-like operating systems.
@@ -1414,7 +1414,7 @@ first option on the command line.
 
 =item --fifo
 
-type: string; default: /tmp/mk-fifo-split
+type: string; default: /tmp/pt-fifo-split
 
 The name of the fifo from which the lines can be read.
 
@@ -1495,7 +1495,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-fifo-split>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-fifo-split>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

@@ -1194,22 +1194,22 @@ exit $exit_status;
 
 =head1 NAME
 
-mk-checksum-filter - Filter checksums from mk-table-checksum.
+pt-checksum-filter - Filter checksums from mk-table-checksum.
 
 =head1 SYNOPSIS
 
-Usage: mk-checksum-filter [OPTION]... FILE
+Usage: pt-checksum-filter [OPTION]... FILE
 
-mk-checksum-filter filters checksums from mk-table-checksum and prints those
+pt-checksum-filter filters checksums from mk-table-checksum and prints those
 that differ.  With no FILE, or when FILE is -, read standard input.
 
 Examples:
 
-  mk-checksum-filter checksums.txt
+  pt-checksum-filter checksums.txt
 
-  mk-table-checksum host1 host2 | mk-checksum-filter
+  mk-table-checksum host1 host2 | pt-checksum-filter
 
-  mk-checksum-filter db1-checksums.txt db2-checksums.txt --ignore-databases
+  pt-checksum-filter db1-checksums.txt db2-checksums.txt --ignore-databases
 
 =head1 RISKS
 
@@ -1218,7 +1218,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-checksum-filter is read-only and very low-risk.
+pt-checksum-filter is read-only and very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm to
 users.
@@ -1226,7 +1226,7 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-checksum-filter>.
+L<http://www.maatkit.org/bugs/pt-checksum-filter>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
@@ -1237,7 +1237,7 @@ sorts it, then filters it so you only see lines that have different checksums
 or counts.
 
 You can pipe input directly into it from L<mk-table-checksum>, or you can
-save the mk-table-checksum's output and run mk-checksum-filter on the
+save the mk-table-checksum's output and run pt-checksum-filter on the
 resulting file(s).  If you run it against just one file, or pipe output
 directly into it, it'll output results during processing.  Processing multiple
 files is slightly more expensive, and you won't see any output until they're
@@ -1347,7 +1347,7 @@ reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-checksum-filter>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-checksum-filter>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

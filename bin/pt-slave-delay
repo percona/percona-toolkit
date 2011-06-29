@@ -2297,7 +2297,7 @@ sub info {
                     : print ts($now), " ", $message, "\n";
 }
 
-# Catches signals so mk-slave-delay can exit gracefully.
+# Catches signals so pt-slave-delay can exit gracefully.
 sub finish {
    my ($signal) = @_;
    print STDERR "Exiting on SIG$signal.\n";
@@ -2342,19 +2342,19 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-slave-delay - Make a MySQL slave server lag behind its master.
+pt-slave-delay - Make a MySQL slave server lag behind its master.
 
 =head1 SYNOPSIS
 
-Usage: mk-slave-delay [OPTION...] SLAVE-HOST [MASTER-HOST]
+Usage: pt-slave-delay [OPTION...] SLAVE-HOST [MASTER-HOST]
 
-mk-slave-delay starts and stops a slave server as needed to make it lag
+pt-slave-delay starts and stops a slave server as needed to make it lag
 behind the master.  The SLAVE-HOST and MASTER-HOST use DSN syntax, and
 values are copied from the SLAVE-HOST to the MASTER-HOST if omitted.
 
 To hold slavehost one minute behind its master for ten minutes:
 
-   mk-slave-delay --delay 1m --interval 15s --run-time 10m slavehost
+   pt-slave-delay --delay 1m --interval 15s --run-time 10m slavehost
 
 =head1 RISKS
 
@@ -2363,7 +2363,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-slave-delay is generally very low-risk.  It simply starts and stops the
+pt-slave-delay is generally very low-risk.  It simply starts and stops the
 replication SQL thread.  This might cause monitoring systems to think the slave
 is having trouble.
 
@@ -2373,13 +2373,13 @@ users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-slave-delay>.
+L<http://www.maatkit.org/bugs/pt-slave-delay>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-C<mk-slave-delay> watches a slave and starts and stops its replication SQL
+C<pt-slave-delay> watches a slave and starts and stops its replication SQL
 thread as necessary to hold it at least as far behind the master as you
 request.  In practice, it will typically cause the slave to lag between
 L<"--delay"> and L<"--delay">+L<"--interval"> behind the master.
@@ -2388,11 +2388,11 @@ It bases the delay on binlog positions in the slave's relay logs by default,
 so there is no need to connect to the master.  This works well if the IO
 thread doesn't lag the master much, which is typical in most replication
 setups; the IO thread lag is usually milliseconds on a fast network.  If your
-IO thread's lag is too large for your purposes, C<mk-slave-delay> can also
+IO thread's lag is too large for your purposes, C<pt-slave-delay> can also
 connect to the master for information about binlog positions.
 
 If the slave's I/O thread reports that it is waiting for the SQL thread to
-free some relay log space, C<mk-slave-delay> will automatically connect to the
+free some relay log space, C<pt-slave-delay> will automatically connect to the
 master to find binary log positions.  If L<"--ask-pass"> and L<"--daemonize">
 are given, it is possible that this could cause it to ask for a password while
 daemonized.  In this case, it exits.  Therefore, if you think your slave might
@@ -2401,23 +2401,23 @@ L<"--use-master"> explicitly when daemonizing, or don't specify L<"--ask-pass">.
 
 The SLAVE-HOST and optional MASTER-HOST are both DSNs.  See L<"DSN OPTIONS">.
 Missing MASTER-HOST values are filled in with values from SLAVE-HOST, so you
-don't need to specify them in both places.  C<mk-slave-delay> reads all normal
+don't need to specify them in both places.  C<pt-slave-delay> reads all normal
 MySQL option files, such as ~/.my.cnf, so you may not need to specify username,
 password and other common options at all.
 
-C<mk-slave-delay> tries to exit gracefully by trapping signals such as Ctrl-C.
+C<pt-slave-delay> tries to exit gracefully by trapping signals such as Ctrl-C.
 You cannot bypass L<"--[no]continue"> with a trappable signal.
 
 =head1 PRIVILEGES
 
-mk-slave-delay requires the following privileges: PROCESS, REPLICATION CLIENT,
+pt-slave-delay requires the following privileges: PROCESS, REPLICATION CLIENT,
 and SUPER.
 
 =head1 OUTPUT
 
 If you specify L<"--quiet">, there is no output.  Otherwise, the normal output
 is a status message consisting of a timestamp and information about what
-C<mk-slave-delay> is doing: starting the slave, stopping the slave, or just
+C<pt-slave-delay> is doing: starting the slave, stopping the slave, or just
 observing.
 
 =head1 OPTIONS
@@ -2455,7 +2455,7 @@ default: yes
 Continue replication normally on exit.  After exiting, restart the slave's SQL
 thread with no UNTIL condition, so it will run as usual and catch up to the
 master.  This is enabled by default and works even if you terminate
-C<mk-slave-delay> with Control-C.
+C<pt-slave-delay> with Control-C.
 
 =item --daemonize
 
@@ -2489,7 +2489,7 @@ Connect to host.
 
 type: time; default: 1m
 
-How frequently C<mk-slave-delay> should check whether the slave needs to be
+How frequently C<pt-slave-delay> should check whether the slave needs to be
 started or stopped.
 
 =item --log
@@ -2530,7 +2530,7 @@ Don't print informational messages about operation.  See L<OUTPUT> for details.
 
 type: time
 
-How long C<mk-slave-delay> should run before exiting.  The default is to run
+How long C<pt-slave-delay> should run before exiting.  The default is to run
 forever.
 
 =item --set-vars
@@ -2551,10 +2551,10 @@ Socket file to use for connection.
 Get binlog positions from master, not slave.  Don't trust the binlog positions
 in the slave's relay log.  Connect to the master and get binlog positions
 instead.  If you specify this option without giving a MASTER-HOST on the command
-line, C<mk-slave-delay> examines the slave's SHOW SLAVE STATUS to determine the
+line, C<pt-slave-delay> examines the slave's SHOW SLAVE STATUS to determine the
 hostname and port for connecting to the master.
 
-C<mk-slave-delay> uses only the MASTER_HOST and MASTER_PORT values from SHOW
+C<pt-slave-delay> uses only the MASTER_HOST and MASTER_PORT values from SHOW
 SLAVE STATUS for the master connection.  It does not use the MASTER_USER
 value.  If you want to specify a different username for the master than the
 one you use to connect to the slave, you should specify the MASTER-HOST option
@@ -2661,7 +2661,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-slave-delay>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-slave-delay>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to

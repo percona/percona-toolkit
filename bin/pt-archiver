@@ -3570,7 +3570,7 @@ sub main {
    if ( $o->get('stop') ) {
       my $sentinel_fh = IO::File->new($sentinel, ">>")
          or die "Cannot open $sentinel: $OS_ERROR\n";
-      print $sentinel_fh "Remove this file to permit mk-archiver to run\n"
+      print $sentinel_fh "Remove this file to permit pt-archiver to run\n"
          or die "Cannot write to $sentinel: $OS_ERROR\n";
       close $sentinel_fh
          or die "Cannot close $sentinel: $OS_ERROR\n";
@@ -4065,7 +4065,7 @@ sub main {
    my $bulkins_file;
    if ( $o->get('bulk-insert') ) {
       require File::Temp;
-      $bulkins_file = File::Temp->new( SUFFIX => 'mk-archiver' )
+      $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
          or die "Cannot open temp file: $OS_ERROR\n";
    }
 
@@ -4281,7 +4281,7 @@ sub main {
          $first_row        = $row ? [ @$row ] : undef;
 
          if ( $o->get('bulk-insert') ) {
-            $bulkins_file = File::Temp->new( SUFFIX => 'mk-archiver' )
+            $bulkins_file = File::Temp->new( SUFFIX => 'pt-archiver' )
                or die "Cannot open temp file: $OS_ERROR\n";
          }
       }  # no next row (do bulk operations)
@@ -4420,7 +4420,7 @@ sub main {
 # Subroutines.
 # ############################################################################
 
-# Catches signals so mk-archiver can exit gracefully.
+# Catches signals so pt-archiver can exit gracefully.
 sub finish {
    my ($signal) = @_;
    print STDERR "Exiting on SIG$signal.\n";
@@ -4575,13 +4575,13 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-mk-archiver - Archive rows from a MySQL table into another table or a file.
+pt-archiver - Archive rows from a MySQL table into another table or a file.
 
 =head1 SYNOPSIS
 
-Usage: mk-archiver [OPTION...] --source DSN --where WHERE
+Usage: pt-archiver [OPTION...] --source DSN --where WHERE
 
-mk-archiver nibbles records from a MySQL table.  The --source and --dest
+pt-archiver nibbles records from a MySQL table.  The --source and --dest
 arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value
 from --source.
 
@@ -4589,13 +4589,13 @@ Examples:
 
 Archive all rows from oltp_server to olap_server and to a file:
 
-  mk-archiver --source h=oltp_server,D=test,t=tbl --dest h=olap_server \
+  pt-archiver --source h=oltp_server,D=test,t=tbl --dest h=olap_server \
     --file '/var/log/archive/%Y-%m-%d-%D.%t'                           \
     --where "1=1" --limit 1000 --commit-each
 
 Purge (delete) orphan rows from child table:
 
-  mk-archiver --source h=host,D=db,t=child --purge \
+  pt-archiver --source h=host,D=db,t=child --purge \
     --where 'NOT EXISTS(SELECT * FROM parent WHERE col=child.col)'
 
 =head1 RISKS
@@ -4620,20 +4620,20 @@ L<"--bulk-insert"> that may cause data loss.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/mk-archiver>.
+L<http://www.maatkit.org/bugs/pt-archiver>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-mk-archiver is the tool I use to archive tables as described in
+pt-archiver is the tool I use to archive tables as described in
 L<http://tinyurl.com/mysql-archiving>.  The goal is a low-impact, forward-only
 job to nibble old data out of the table without impacting OLTP queries much.
 You can insert the data into another table, which need not be on the same
 server.  You can also write it to a file in a format suitable for LOAD DATA
 INFILE.  Or you can do neither, in which case it's just an incremental DELETE.
 
-mk-archiver is extensible via a plugin mechanism.  You can inject your own
+pt-archiver is extensible via a plugin mechanism.  You can inject your own
 code to add advanced archiving logic that could be useful for archiving
 dependent data, applying complex business rules, or building a data warehouse
 during the archiving process.
@@ -4648,12 +4648,12 @@ rows.  Specifying the index with the 'i' part of the L<"--source"> argument can
 be crucial for this; use L<"--dry-run"> to examine the generated queries and be
 sure to EXPLAIN them to see if they are efficient (most of the time you probably
 want to scan the PRIMARY key, which is the default).  Even better, profile
-mk-archiver with mk-query-profiler and make sure it is not scanning the whole
+pt-archiver with mk-query-profiler and make sure it is not scanning the whole
 table every query.
 
 You can disable the seek-then-scan optimizations partially or wholly with
 L<"--no-ascend"> and L<"--ascend-first">.  Sometimes this may be more efficient
-for multi-column keys.  Be aware that mk-archiver is built to start at the
+for multi-column keys.  Be aware that pt-archiver is built to start at the
 beginning of the index it chooses and scan it forward-only.  This might result
 in long table scans if you're trying to nibble from the end of the table by an
 index other than the one it prefers.  See L<"--source"> and read the
@@ -4663,16 +4663,16 @@ documentation on the C<i> part if this applies to you.
 
 If you specify L<"--progress">, the output is a header row, plus status output
 at intervals.  Each row in the status output lists the current date and time,
-how many seconds mk-archiver has been running, and how many rows it has
+how many seconds pt-archiver has been running, and how many rows it has
 archived.
 
-If you specify L<"--statistics">, C<mk-archiver> outputs timing and other
+If you specify L<"--statistics">, C<pt-archiver> outputs timing and other
 information to help you identify which part of your archiving process takes the
 most time.
 
 =head1 ERROR-HANDLING
 
-mk-archiver tries to catch signals and exit gracefully; for example, if you
+pt-archiver tries to catch signals and exit gracefully; for example, if you
 send it SIGTERM (Ctrl-C on UNIX-ish systems), it will catch the signal, print a
 message about the signal, and exit fairly normally.  It will not execute
 L<"--analyze"> or L<"--optimize">, because these may take a long time to finish.
@@ -4724,7 +4724,7 @@ Ascend only first column of index.
 
 If you do want to use the ascending index optimization (see L<"--no-ascend">),
 but do not want to incur the overhead of ascending a large multi-column index,
-you can use this option to tell mk-archiver to ascend only the leftmost column
+you can use this option to tell pt-archiver to ascend only the leftmost column
 of the index.  This can provide a significant performance boost over not
 ascending the index at all, while avoiding the cost of ascending the whole
 index.
@@ -4768,7 +4768,7 @@ will not be called.  Instead, its C<before_bulk_delete> method is called later.
 
 B<WARNING>: if you have a plugin on the source that sometimes doesn't return
 true from C<is_archivable()>, you should use this option only if you understand
-what it does.  If the plugin instructs C<mk-archiver> not to archive a row,
+what it does.  If the plugin instructs C<pt-archiver> not to archive a row,
 it will still be deleted by the bulk delete!
 
 =item --[no]bulk-delete-limit
@@ -4828,10 +4828,10 @@ default: yes
 
 Ensure L<"--source"> and L<"--dest"> have same columns.
 
-Enabled by default; causes mk-archiver to check that the source and destination
+Enabled by default; causes pt-archiver to check that the source and destination
 tables have the same columns.  It does not check column order, data type, etc.
 It just checks that all columns in the source exist in the destination and
-vice versa.  If there are any differences, mk-archiver will exit with an
+vice versa.  If there are any differences, pt-archiver will exit with an
 error.
 
 To disable this check, specify --no-check-columns.
@@ -4855,7 +4855,7 @@ short form: -c; type: array
 Comma-separated list of columns to archive.
 
 Specify a comma-separated list of columns to fetch, write to the file, and
-insert into the destination table.  If specified, mk-archiver ignores other
+insert into the destination table.  If specified, pt-archiver ignores other
 columns unless it needs to add them to the C<SELECT> statement for ascending an
 index or deleting rows.  It fetches and uses these extra columns internally, but
 does not write them to the file or to the destination table.  It I<does> pass
@@ -4877,7 +4877,7 @@ same value, but more importantly it avoids transactions being held open while
 searching for more rows.  For example, imagine you are archiving old rows from
 the beginning of a very large table, with L<"--limit"> 1000 and L<"--txn-size">
 1000.  After some period of finding and archiving 1000 rows at a time,
-mk-archiver finds the last 999 rows and archives them, then executes the next
+pt-archiver finds the last 999 rows and archives them, then executes the next
 SELECT to find more rows.  This scans the rest of the table, but never finds any
 more rows.  It has held open a transaction for a very long time, only to
 determine it is finished anyway.  You can use L<"--commit-each"> to avoid this.
@@ -4902,7 +4902,7 @@ type: DSN
 
 DSN specifying the table to archive to.
 
-This item specifies a table into which mk-archiver will insert rows
+This item specifies a table into which pt-archiver will insert rows
 archived from L<"--source">.  It uses the same key=val argument format as
 L<"--source">.  Most missing values default to the same values as
 L<"--source">, so you don't have to repeat options that are the same in
@@ -4910,21 +4910,21 @@ L<"--source"> and L<"--dest">.  Use the L<"--help"> option to see which values
 are copied from L<"--source">.
 
 B<WARNING>: Using a default options file (F) DSN option that defines a
-socket for L<"--source"> causes mk-archiver to connect to L<"--dest"> using
+socket for L<"--source"> causes pt-archiver to connect to L<"--dest"> using
 that socket unless another socket for L<"--dest"> is specified.  This
-means that mk-archiver may incorrectly connect to L<"--source"> when it
+means that pt-archiver may incorrectly connect to L<"--source"> when it
 connects to L<"--dest">.  For example:
 
   --source F=host1.cnf,D=db,t=tbl --dest h=host2
 
-When mk-archiver connects to L<"--dest">, host2, it will connect via the
+When pt-archiver connects to L<"--dest">, host2, it will connect via the
 L<"--source">, host1, socket defined in host1.cnf.
 
 =item --dry-run
 
 Print queries and exit without doing anything.
 
-Causes mk-archiver to exit after printing the filename and SQL statements
+Causes pt-archiver to exit after printing the filename and SQL statements
 it will use.
 
 =item --file
@@ -5035,7 +5035,7 @@ type: time; default: 1s
 
 Pause archiving if the slave given by L<"--check-slave-lag"> lags.
 
-This option causes mk-archiver to look at the slave every time it's about
+This option causes pt-archiver to look at the slave every time it's about
 to fetch another row.  If the slave's lag is greater than the option's value,
 or if the slave isn't running (so its lag is NULL), mk-table-checksum sleeps
 for L<"--check-interval"> seconds and then looks at the lag again.  It repeats
@@ -5047,7 +5047,7 @@ This option may eliminate the need for L<"--sleep"> or L<"--sleep-coef">.
 
 Do not use ascending index optimization.
 
-The default ascending-index optimization causes C<mk-archiver> to optimize
+The default ascending-index optimization causes C<pt-archiver> to optimize
 repeated C<SELECT> queries so they seek into the index where the previous query
 ended, then scan along it, rather than scanning from the beginning of the table
 every time.  This is enabled by default because it is generally a good strategy
@@ -5080,11 +5080,11 @@ interacts with plugins.
 
 Do not delete archived rows.
 
-Causes C<mk-archiver> not to delete rows after processing them.  This disallows
+Causes C<pt-archiver> not to delete rows after processing them.  This disallows
 L<"--no-ascend">, because enabling them both would cause an infinite loop.
 
 If there is a plugin on the source DSN, its C<before_delete> method is called
-anyway, even though C<mk-archiver> will not execute the delete.  See
+anyway, even though C<pt-archiver> will not execute the delete.  See
 L<"EXTENDING"> for more on plugins.
 
 =item --optimize
@@ -5191,15 +5191,15 @@ type: int; default: 1
 
 Number of retries per timeout or deadlock.
 
-Specifies the number of times mk-archiver should retry when there is an
+Specifies the number of times pt-archiver should retry when there is an
 InnoDB lock wait timeout or deadlock.  When retries are exhausted,
-mk-archiver will exit with an error.
+pt-archiver will exit with an error.
 
 Consider carefully what you want to happen when you are archiving between a
 mixture of transactional and non-transactional storage engines.  The INSERT to
 L<"--dest"> and DELETE from L<"--source"> are on separate connections, so they
 do not actually participate in the same transaction even if they're on the same
-server.  However, mk-archiver implements simple distributed transactions in
+server.  However, pt-archiver implements simple distributed transactions in
 code, so commits and rollbacks should happen as desired across the two
 connections.
 
@@ -5220,23 +5220,23 @@ default: yes
 
 Do not archive row with max AUTO_INCREMENT.
 
-Adds an extra WHERE clause to prevent mk-archiver from removing the newest
+Adds an extra WHERE clause to prevent pt-archiver from removing the newest
 row when ascending a single-column AUTO_INCREMENT key.  This guards against
 re-using AUTO_INCREMENT values if the server restarts, and is enabled by
 default.
 
 The extra WHERE clause contains the maximum value of the auto-increment column
 as of the beginning of the archive or purge job.  If new rows are inserted while
-mk-archiver is running, it will not see them.
+pt-archiver is running, it will not see them.
 
 =item --sentinel
 
-type: string; default: /tmp/mk-archiver-sentinel
+type: string; default: /tmp/pt-archiver-sentinel
 
 Exit if this file exists.
 
-The presence of the file specified by L<"--sentinel"> will cause mk-archiver to
-stop archiving and exit.  The default is /tmp/mk-archiver-sentinel.  You
+The presence of the file specified by L<"--sentinel"> will cause pt-archiver to
+stop archiving and exit.  The default is /tmp/pt-archiver-sentinel.  You
 might find this handy to stop cron jobs gracefully if necessary.  See also
 L<"--stop">.
 
@@ -5278,7 +5278,7 @@ type: float
 
 Calculate L<"--sleep"> as a multiple of the last SELECT time.
 
-If this option is specified, mk-archiver will sleep for the query time of the
+If this option is specified, pt-archiver will sleep for the query time of the
 last SELECT multiplied by the specified coefficient.
 
 This is a slightly more sophisticated way to throttle the SELECTs: sleep a
@@ -5296,7 +5296,7 @@ Socket file to use for connection.
 type: DSN
 
 DSN specifying the table to archive from (required).  This argument is a DSN.
-See L<DSN OPTIONS> for the syntax.  Most options control how mk-archiver
+See L<DSN OPTIONS> for the syntax.  Most options control how pt-archiver
 connects to MySQL, but there are some extended DSN options in this tool's
 syntax.  The D, t, and i options select a table to archive:
 
@@ -5308,14 +5308,14 @@ option specifies pluggable actions, which an external Perl module can provide.
 The only required part is the table; other parts may be read from various
 places in the environment (such as options files).
 
-The 'i' part deserves special mention.  This tells mk-archiver which index
+The 'i' part deserves special mention.  This tells pt-archiver which index
 it should scan to archive.  This appears in a FORCE INDEX or USE INDEX hint in
 the SELECT statements used to fetch archivable rows.  If you don't specify
-anything, mk-archiver will auto-discover a good index, preferring a C<PRIMARY
+anything, pt-archiver will auto-discover a good index, preferring a C<PRIMARY
 KEY> if one exists.  In my experience this usually works well, so most of the
 time you can probably just omit the 'i' part.
 
-The index is used to optimize repeated accesses to the table; mk-archiver
+The index is used to optimize repeated accesses to the table; pt-archiver
 remembers the last row it retrieves from each SELECT statement, and uses it to
 construct a WHERE clause, using the columns in the specified index, that should
 allow MySQL to start the next SELECT where the last one ended, rather than
@@ -5334,24 +5334,24 @@ purge job on the master and prevent it from happening on the slave using your
 method of choice.
 
 B<WARNING>: Using a default options file (F) DSN option that defines a
-socket for L<"--source"> causes mk-archiver to connect to L<"--dest"> using
+socket for L<"--source"> causes pt-archiver to connect to L<"--dest"> using
 that socket unless another socket for L<"--dest"> is specified.  This
-means that mk-archiver may incorrectly connect to L<"--source"> when it
+means that pt-archiver may incorrectly connect to L<"--source"> when it
 is meant to connect to L<"--dest">.  For example:
 
   --source F=host1.cnf,D=db,t=tbl --dest h=host2
 
-When mk-archiver connects to L<"--dest">, host2, it will connect via the
+When pt-archiver connects to L<"--dest">, host2, it will connect via the
 L<"--source">, host1, socket defined in host1.cnf.
 
 =item --statistics
 
 Collect and print timing statistics.
 
-Causes mk-archiver to collect timing statistics about what it does.  These
+Causes pt-archiver to collect timing statistics about what it does.  These
 statistics are available to the plugin specified by L<"--plugin">
 
-Unless you specify L<"--quiet">, C<mk-archiver> prints the statistics when it
+Unless you specify L<"--quiet">, C<pt-archiver> prints the statistics when it
 exits.  The statistics look like this:
 
  Started at 2008-07-18T07:18:53, ended at 2008-07-18T07:18:53
@@ -5386,7 +5386,7 @@ on reasonably new Perl releases.
 
 Stop running instances by creating the sentinel file.
 
-Causes mk-archiver to create the sentinel file specified by L<"--sentinel"> and
+Causes pt-archiver to create the sentinel file specified by L<"--sentinel"> and
 exit.  This should have the effect of stopping all running instances which are
 watching the same sentinel file.
 
@@ -5397,7 +5397,7 @@ type: int; default: 1
 Number of rows per transaction.
 
 Specifies the size, in number of rows, of each transaction. Zero disables
-transactions altogether.  After mk-archiver processes this many rows, it
+transactions altogether.  After pt-archiver processes this many rows, it
 commits both the L<"--source"> and the L<"--dest"> if given, and flushes the
 file given by L<"--file">.
 
@@ -5406,14 +5406,14 @@ server, which for example is doing heavy OLTP work, you need to choose a good
 balance between transaction size and commit overhead.  Larger transactions
 create the possibility of more lock contention and deadlocks, but smaller
 transactions cause more frequent commit overhead, which can be significant.  To
-give an idea, on a small test set I worked with while writing mk-archiver, a
+give an idea, on a small test set I worked with while writing pt-archiver, a
 value of 500 caused archiving to take about 2 seconds per 1000 rows on an
 otherwise quiet MySQL instance on my desktop machine, archiving to disk and to
 another table.  Disabling transactions with a value of zero, which turns on
 autocommit, dropped performance to 38 seconds per thousand rows.
 
 If you are not archiving from or to a transactional storage engine, you may
-want to disable transactions so mk-archiver doesn't try to commit.
+want to disable transactions so pt-archiver doesn't try to commit.
 
 =item --user
 
@@ -5444,16 +5444,16 @@ L<"--where"> 1=1.
 
 Print reason for exiting unless rows exhausted.
 
-Causes mk-archiver to print a message if it exits for any reason other than
+Causes pt-archiver to print a message if it exits for any reason other than
 running out of rows to archive.  This can be useful if you have a cron job with
-L<"--run-time"> specified, for example, and you want to be sure mk-archiver is
+L<"--run-time"> specified, for example, and you want to be sure pt-archiver is
 finishing before running out of time.
 
 If L<"--statistics"> is given, the behavior is changed slightly.  It will print
 the reason for exiting even when it's just because there are no more rows.
 
 This output prints even if L<"--quiet"> is given.  That's so you can put
-C<mk-archiver> in a C<cron> job and get an email if there's an abnormal exit.
+C<pt-archiver> in a C<cron> job and get an email if there's an abnormal exit.
 
 =back
 
@@ -5549,13 +5549,13 @@ User for login if not current user.
 
 =head1 EXTENDING
 
-mk-archiver is extensible by plugging in external Perl modules to handle some
+pt-archiver is extensible by plugging in external Perl modules to handle some
 logic and/or actions.  You can specify a module for both the L<"--source"> and
 the L<"--dest">, with the 'm' part of the specification.  For example:
 
    --source D=test,t=test1,m=My::Module1 --dest m=My::Module2,t=test2
 
-This will cause mk-archiver to load the My::Module1 and My::Module2 packages,
+This will cause pt-archiver to load the My::Module1 and My::Module2 packages,
 create instances of them, and then make calls to them during the archiving
 process.
 
@@ -5568,22 +5568,22 @@ The module must provide this interface:
 =item new(dbh => $dbh, db => $db_name, tbl => $tbl_name)
 
 The plugin's constructor is passed a reference to the database handle, the
-database name, and table name.  The plugin is created just after mk-archiver
+database name, and table name.  The plugin is created just after pt-archiver
 opens the connection, and before it examines the table given in the arguments.
 This gives the plugin a chance to create and populate temporary tables, or do
 other setup work.
 
 =item before_begin(cols => \@cols, allcols => \@allcols)
 
-This method is called just before mk-archiver begins iterating through rows
+This method is called just before pt-archiver begins iterating through rows
 and archiving them, but after it does all other setup work (examining table
 structures, designing SQL queries, and so on).  This is the only time
-mk-archiver tells the plugin column names for the rows it will pass the
+pt-archiver tells the plugin column names for the rows it will pass the
 plugin while archiving.
 
 The C<cols> argument is the column names the user requested to be archived,
 either by default or by the L<"--columns"> option.  The C<allcols> argument is
-the list of column names for every row mk-archiver will fetch from the source
+the list of column names for every row pt-archiver will fetch from the source
 table.  It may fetch more columns than the user requested, because it needs some
 columns for its own use.  When subsequent plugin functions receive a row, it is
 the full row containing all the extra columns, if any, added to the end.
@@ -5596,21 +5596,21 @@ If the method returns true, the row will be archived; otherwise it will be
 skipped.
 
 Skipping a row adds complications for non-unique indexes.  Normally
-mk-archiver uses a WHERE clause designed to target the last processed row as
+pt-archiver uses a WHERE clause designed to target the last processed row as
 the place to start the scan for the next SELECT statement.  If you have skipped
-the row by returning false from is_archivable(), mk-archiver could get into
+the row by returning false from is_archivable(), pt-archiver could get into
 an infinite loop because the row still exists.  Therefore, when you specify a
-plugin for the L<"--source"> argument, mk-archiver will change its WHERE clause
+plugin for the L<"--source"> argument, pt-archiver will change its WHERE clause
 slightly.  Instead of starting at "greater than or equal to" the last processed
 row, it will start "strictly greater than."  This will work fine on unique
 indexes such as primary keys, but it may skip rows (leave holes) on non-unique
 indexes or when ascending only the first column of an index.
 
-C<mk-archiver> will change the clause in the same way if you specify
+C<pt-archiver> will change the clause in the same way if you specify
 L<"--no-delete">, because again an infinite loop is possible.
 
 If you specify the L<"--bulk-delete"> option and return false from this method,
-C<mk-archiver> may not do what you want.  The row won't be archived, but it will
+C<pt-archiver> may not do what you want.  The row won't be archived, but it will
 be deleted, since bulk deletes operate on ranges of rows and don't know which
 rows the plugin selected to keep.
 
@@ -5675,20 +5675,20 @@ This method's return value etc is similar to the L<"custom_sth()"> method.
 
 =item after_finish()
 
-This method is called after mk-archiver exits the archiving loop, commits all
+This method is called after pt-archiver exits the archiving loop, commits all
 database handles, closes L<"--file">, and prints the final statistics, but
-before mk-archiver runs ANALYZE or OPTIMIZE (see L<"--analyze"> and
+before pt-archiver runs ANALYZE or OPTIMIZE (see L<"--analyze"> and
 L<"--optimize">).
 
 =back
 
-If you specify a plugin for both L<"--source"> and L<"--dest">, mk-archiver
+If you specify a plugin for both L<"--source"> and L<"--dest">, pt-archiver
 constructs, calls before_begin(), and calls after_finish() on the two plugins in
 the order L<"--source">, L<"--dest">.
 
-mk-archiver assumes it controls transactions, and that the plugin will NOT
+pt-archiver assumes it controls transactions, and that the plugin will NOT
 commit or roll back the database handle.  The database handle passed to the
-plugin's constructor is the same handle mk-archiver uses itself.  Remember
+plugin's constructor is the same handle pt-archiver uses itself.  Remember
 that L<"--source"> and L<"--dest"> are separate handles.
 
 A sample module might look like this:
@@ -5748,7 +5748,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/mk-archiver>.
+For a list of known bugs see L<http://www.maatkit.org/bugs/pt-archiver>.
 
 Please use Google Code Issues and Groups to report bugs or request support:
 L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to
