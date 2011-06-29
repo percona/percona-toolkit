@@ -2832,7 +2832,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_variable_advisor;
+package pt_variable_advisor;
 
 use strict;
 use warnings FATAL => 'all';

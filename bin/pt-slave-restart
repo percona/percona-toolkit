@@ -2539,7 +2539,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_slave_restart;
+package pt_slave_restart;
 
 use English qw(-no_match_vars);
 use IO::File;

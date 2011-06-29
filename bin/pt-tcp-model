@@ -1922,7 +1922,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_tcp_model;
+package pt_tcp_model;
 
 use English qw(-no_match_vars);
 use Time::Local qw(timelocal);

@@ -1807,7 +1807,7 @@ sub _d {
 # Check just above main() for the call to main() which actually runs the
 # program.
 # ###########################################################################
-package mk_trend;
+package pt_trend;
 
 use English qw(-no_match_vars);
 

@@ -1598,7 +1598,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_query_profiler;
+package pt_query_profiler;
 
 use English qw(-no_match_vars);
 use List::Util qw(sum min max first);

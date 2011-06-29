@@ -4680,7 +4680,7 @@ sub _d {
 # Check just above main() for the call to main() which actually runs the
 # program.
 # ###########################################################################
-package mk_index_usage;
+package pt_index_usage;
 
 use English qw(-no_match_vars);
 use Data::Dumper;

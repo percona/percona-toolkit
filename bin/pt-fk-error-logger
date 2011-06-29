@@ -1900,7 +1900,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_fk_error_logger;
+package pt_fk_error_logger;
 
 use English qw(-no_match_vars);
 use sigtrap qw(handler finish untrapped normal-signals);

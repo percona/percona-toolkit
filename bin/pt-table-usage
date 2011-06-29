@@ -5717,7 +5717,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_table_usage;
+package pt_table_usage;
 
 use English qw(-no_match_vars);
 use Data::Dumper;

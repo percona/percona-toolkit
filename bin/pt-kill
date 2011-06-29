@@ -3590,7 +3590,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_kill;
+package pt_kill;
 
 use English qw(-no_match_vars);
 use POSIX qw(setsid);

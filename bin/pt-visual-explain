@@ -2270,7 +2270,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_visual_explain;
+package pt_visual_explain;
 
 use English qw(-no_match_vars);
 use Getopt::Long;

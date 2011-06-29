@@ -2717,7 +2717,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_slave_find;
+package pt_slave_find;
 
 use strict;
 use warnings FATAL => 'all';

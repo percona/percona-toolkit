@@ -1598,7 +1598,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_show_grants;
+package pt_show_grants;
 
 use English qw(-no_match_vars);
 

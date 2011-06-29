@@ -3546,7 +3546,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # #############################################################################
-package mk_duplicate_key_checker;
+package pt_duplicate_key_checker;
 
 use English qw(-no_match_vars);
 use Getopt::Long;

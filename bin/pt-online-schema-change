@@ -4109,7 +4109,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_online_schema_change;
+package pt_online_schema_change;
 
 use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);

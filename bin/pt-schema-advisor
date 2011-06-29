@@ -3011,7 +3011,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_schema_advisor;
+package pt_schema_advisor;
 
 use strict;
 use warnings FATAL => 'all';

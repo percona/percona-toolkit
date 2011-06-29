@@ -1241,7 +1241,7 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package mk_fifo_split;
+package pt_fifo_split;
 
 use English qw(-no_match_vars);
 use POSIX qw(mkfifo);
