@@ -360,7 +360,7 @@ my $min_tbl = "CREATE TABLE query_review_history (
 $dbh->do($min_tbl);
 
 $output = output(
-   sub { mk_query_digest::main(
+   sub { pt_query_digest::main(
       '--review', 'h=127.1,u=msandbox,p=msandbox,P=12345,D=test,t=query_review',
       '--review-history', 't=query_review_history',
       qw(--no-report --no-continue-on-error),

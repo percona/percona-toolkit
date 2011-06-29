@@ -43,7 +43,7 @@ sub run {
    my ($src, $dst, $other) = @_;
    my $output = output(
       sub {
-         mk_table_sync::main(qw(--print --execute),
+         pt_table_sync::main(qw(--print --execute),
             "h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=$src",
             "h=127.1,P=12346,u=msandbox,p=msandbox,D=test,t=$dst",
             ($other ? split(" ", $other) : ())

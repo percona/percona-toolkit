@@ -50,7 +50,7 @@ SKIP: {
 $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 diag(`touch sentinel`);
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --why-quit --sentinel sentinel), "--source", "D=test,t=table_1,F=$cnf", qw(--purge)) },
+   sub { pt_archiver::main(qw(--where 1=1 --why-quit --sentinel sentinel), "--source", "D=test,t=table_1,F=$cnf", qw(--purge)) },
 );
 like($output, qr/because sentinel/, 'Exits because of sentinel');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
@@ -59,7 +59,7 @@ is($output + 0, 4, 'No rows were deleted');
 
 # Test --stop, which sets the sentinel
 $output = output(
-   sub { mk_archiver::main(qw(--sentinel sentinel --stop)) },
+   sub { pt_archiver::main(qw(--sentinel sentinel --stop)) },
 );
 like($output, qr/Successfully created file sentinel/, 'Created the sentinel OK');
 diag(`rm -f sentinel >/dev/null`);

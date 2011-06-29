@@ -21,7 +21,7 @@ my $sample = "$trunk/t/lib/samples/slowlogs/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, qw(--report-histogram Lock_time),
+      sub { pt_query_digest::main(@args, qw(--report-histogram Lock_time),
          qw(--order-by Lock_time:sum), $sample.'slow034.txt') },
       "t/pt-query-digest/samples/slow034-order-by-Locktime-sum-with-Locktime-distro.txt",
    ),

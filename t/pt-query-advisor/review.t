@@ -51,7 +51,7 @@ $dbh->do($review_tbl);
 
 # Make sure it handles an empty review table.
 $output = output(
-      sub { mk_query_advisor::main(@args) },
+      sub { pt_query_advisor::main(@args) },
 );
 is(
    $output,
@@ -66,7 +66,7 @@ $dbh->do('insert into test.query_review values
 
 ok(
    no_diff(
-      sub { mk_query_advisor::main(@args) },
+      sub { pt_query_advisor::main(@args) },
       "t/pt-query-advisor/samples/review001.txt",
    ),
    "--review with one bad query"
@@ -79,7 +79,7 @@ $dbh->do('insert into test.query_review values
 
 ok(
    no_diff(
-      sub { mk_query_advisor::main(@args) },
+      sub { pt_query_advisor::main(@args) },
       "t/pt-query-advisor/samples/review002.txt",
    ),
    "--review with 1 bad, 1 good query"
@@ -88,7 +88,7 @@ ok(
 # That that --where works.
 ok(
    no_diff(
-      sub { mk_query_advisor::main(@args, qw(--where checksum=1)) },
+      sub { pt_query_advisor::main(@args, qw(--where checksum=1)) },
       "t/pt-query-advisor/samples/review001.txt",
    ),
    "--review with --where"

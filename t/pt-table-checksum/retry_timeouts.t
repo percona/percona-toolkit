@@ -46,7 +46,7 @@ my $pid = fork();
 if ( !$pid ) {
    # child
    my $output = output(
-      sub { mk_table_checksum::main(@args) },
+      sub { pt_table_checksum::main(@args) },
       stderr => 1,
    );
    exit 0;
@@ -78,7 +78,7 @@ $pid = fork();
 if ( !$pid ) {
    # child
    my $output = output(
-      sub { mk_table_checksum::main(@args) },
+      sub { pt_table_checksum::main(@args) },
       stderr => 1,
       file   => $outfile,
    );

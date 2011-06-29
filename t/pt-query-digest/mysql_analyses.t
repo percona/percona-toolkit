@@ -24,7 +24,7 @@ my $sample = "$trunk/t/lib/samples/tcpdump/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump003.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump003.txt') },
       "t/pt-query-digest/samples/tcpdump003.txt"
    ),
    'Analysis for tcpdump003 with numeric Error_no'
@@ -32,7 +32,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump001.txt',
+      sub { pt_query_digest::main(@args, $sample.'tcpdump001.txt',
          qw(--watch-server 127.0.0.1)) },
       "t/pt-query-digest/samples/tcpdump001.txt",
    ),
@@ -41,7 +41,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump012.txt',
+      sub { pt_query_digest::main(@args, $sample.'tcpdump012.txt',
          qw(--watch-server 192.168.1.1:3307)) },
       "t/pt-query-digest/samples/tcpdump012.txt",
    ),
@@ -50,7 +50,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump012.txt',
+      sub { pt_query_digest::main(@args, $sample.'tcpdump012.txt',
          qw(--watch-server 192.168.1.1.3307)) },
       "t/pt-query-digest/samples/tcpdump012.txt",
    ),
@@ -62,7 +62,7 @@ ok(
 # #############################################################################
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump002.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump002.txt') },
       "t/pt-query-digest/samples/tcpdump002_report.txt"
    ),
    'Analysis for tcpdump002',
@@ -73,7 +73,7 @@ ok(
 # #############################################################################
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump017.txt',
+      sub { pt_query_digest::main(@args, $sample.'tcpdump017.txt',
          '--report-format', 'header,query_report,profile') },
       "t/pt-query-digest/samples/tcpdump017_report.txt"
    ),

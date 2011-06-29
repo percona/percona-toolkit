@@ -42,7 +42,7 @@ issue_519 t     `i` >= '10'
 ";
 
 $output = output(
-   sub { mk_table_checksum::main(@args) },
+   sub { pt_table_checksum::main(@args) },
 );
 
 is(
@@ -52,7 +52,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-index dog)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-index dog)) },
 );
 
 is(
@@ -62,7 +62,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-index myidx)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-index myidx)) },
 );
 
 is(
@@ -78,7 +78,7 @@ issue_519 t     `i` >= '10'
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-index y)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-index y)) },
 );
 
 is(
@@ -96,7 +96,7 @@ issue_519 t     `y` >= '2009'
 # Disabling the index hint with --no-use-index should not affect the
 # chunks.  It should only remove the FORCE INDEX clause from the SQL.
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-index y --no-use-index)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-index y --no-use-index)) },
 );
 
 is(
@@ -122,7 +122,7 @@ issue_519 t     `y` >= '2009'
 # Given the --where clause, MySQL will prefer the y index.
 
 $output = output(
-   sub { mk_table_checksum::main(@args, "--where", "y > 2009") },
+   sub { pt_table_checksum::main(@args, "--where", "y > 2009") },
 );
 
 is(

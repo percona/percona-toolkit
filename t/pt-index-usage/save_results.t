@@ -38,7 +38,7 @@ my $output;
 
 $sb->wipe_clean($dbh);
 
-mk_index_usage::main(@args, "$trunk/t/lib/samples/empty",
+pt_index_usage::main(@args, "$trunk/t/lib/samples/empty",
    qw(--empty-save-results --create-save-results-database --no-report),
    '-t', 'sakila.actor,sakila.address');
 
@@ -103,7 +103,7 @@ is_deeply(
 );
 
 # Now for the real test.
-mk_index_usage::main(@args, "$trunk/t/pt-index-usage/samples/slow007.txt",
+pt_index_usage::main(@args, "$trunk/t/pt-index-usage/samples/slow007.txt",
    qw(--empty-save-results --no-report), '-t', 'sakila.actor,sakila.address');
 
 $rows = $dbh->selectall_arrayref("select * from mk.tables order by db, tbl");
@@ -225,7 +225,7 @@ is_deeply(
 # #############################################################################
 # Run again to check that cnt vals are properly updated.
 # #############################################################################
-mk_index_usage::main(@args, "$trunk/t/pt-index-usage/samples/slow007.txt",
+pt_index_usage::main(@args, "$trunk/t/pt-index-usage/samples/slow007.txt",
    qw(--no-report), '-t', 'sakila.actor,sakila.address');
 
 $rows = $dbh->selectall_arrayref("select * from mk.tables order by db, tbl");

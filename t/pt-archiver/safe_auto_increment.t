@@ -36,7 +36,7 @@ $sb->create_dbs($dbh, ['test']);
 # Safe auto-increment behavior.
 $sb->load_file('master', 't/pt-archiver/samples/table12.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--purge --where 1=1), "--source", "D=test,t=table_12,F=$cnf") },
+   sub { pt_archiver::main(qw(--purge --where 1=1), "--source", "D=test,t=table_12,F=$cnf") },
 );
 is($output, '', 'Purge worked OK');
 $output = `/tmp/12345/use -N -e "select min(a),count(*) from test.table_12"`;
@@ -45,7 +45,7 @@ like($output, qr/^3\t1$/, 'Did not touch the max auto_increment');
 # Safe auto-increment behavior, disabled.
 $sb->load_file('master', 't/pt-archiver/samples/table12.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--no-safe-auto-increment --purge --where 1=1), "--source", "D=test,t=table_12,F=$cnf") },
+   sub { pt_archiver::main(qw(--no-safe-auto-increment --purge --where 1=1), "--source", "D=test,t=table_12,F=$cnf") },
 );
 is($output, '', 'Disabled safeautoinc worked OK');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_12"`;

@@ -49,7 +49,7 @@ is_deeply(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, '--execute', $cnf,
+      sub { pt_query_digest::main(@args, '--execute', $cnf,
          "$trunk/t/lib/samples/slowlogs/slow018.txt") },
       't/pt-query-digest/samples/slow018_execute_report_1.txt'
    ),
@@ -73,7 +73,7 @@ $cnf .= ',D=test';
 # are sufficient to see that it actually executed without errors.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, '--execute', $cnf,
+      sub { pt_query_digest::main(@args, '--execute', $cnf,
          "$trunk/t/lib/samples/slowlogs/slow018.txt") },
       't/pt-query-digest/samples/slow018_execute_report_2.txt',
       trf => 'tail -n 26',

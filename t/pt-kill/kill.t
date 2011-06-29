@@ -55,7 +55,7 @@ ok(
 );
 
 $output = output(
-   sub { mk_kill::main('-F', $cnf, qw(--kill --print --run-time 1 --interval 1),
+   sub { pt_kill::main('-F', $cnf, qw(--kill --print --run-time 1 --interval 1),
       '--match-info', 'select sleep\(4\)') },
 );
 like(
@@ -93,7 +93,7 @@ ok(
 );
 
 $output = output(
-   sub { mk_kill::main('-F', $cnf, qw(--kill-query --print --run-time 1 --interval 1),
+   sub { pt_kill::main('-F', $cnf, qw(--kill-query --print --run-time 1 --interval 1),
       '--match-info', 'select sleep\(5\)') },
 );
 like(

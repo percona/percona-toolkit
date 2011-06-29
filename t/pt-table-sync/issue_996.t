@@ -80,7 +80,7 @@ like(
 # 4 5-row sub-chunks.
 my $file = "/tmp/mts-output.txt";
 output(
-   sub { mk_table_sync::main(@args, qw(--chunk-size 5 -v -v)) },
+   sub { pt_table_sync::main(@args, qw(--chunk-size 5 -v -v)) },
    file => $file,
 );
 

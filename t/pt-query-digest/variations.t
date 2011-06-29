@@ -27,7 +27,7 @@ my @args = qw(--variations arg --limit 5 --report-format query_report);
 # #############################################################################
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$in/slow053.txt") },
+      sub { pt_query_digest::main(@args, "$in/slow053.txt") },
       "$out/slow053.txt"
    ),
    "Variations in slow053.txt"

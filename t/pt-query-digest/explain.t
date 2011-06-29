@@ -46,7 +46,7 @@ my @args   = ('--explain', 'h=127.1,P=12345,u=msandbox,p=msandbox,D=food', qw(--
 # The table has no rows so EXPLAIN will return NULL for most values.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args,
+      sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
       ($sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
                                  : "$sample/slow007_explain_1.txt")
@@ -59,7 +59,7 @@ $dbh->do('insert into trees values ("apple"),("orange"),("banana")');
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args,
+      sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
       ($sandbox_version ge '5.1' ? "$sample/slow007_explain_2-51.txt"
                                  : "$sample/slow007_explain_2.txt")
@@ -72,7 +72,7 @@ ok(
 # #############################################################################
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args,
+      sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt", qw(--report-format profile)) },
       "$sample/slow007_explain_4.txt",
    ),
@@ -86,7 +86,7 @@ $dbh->do('drop table trees');
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args,
+      sub { pt_query_digest::main(@args,
          '--report-format', 'query_report,profile',
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
       "t/pt-query-digest/samples/slow007_explain_3.txt",
@@ -103,7 +103,7 @@ $sb->load_file('master', "t/pt-query-digest/samples/issue_1196.sql");
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args,
+      sub { pt_query_digest::main(@args,
          '--report-format', 'profile,query_report',
          "$trunk/t/pt-query-digest/samples/issue_1196.log",)
       },

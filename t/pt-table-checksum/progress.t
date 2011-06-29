@@ -81,7 +81,7 @@ system("sleep 3 && /tmp/12347/use -e 'start slave sql_thread' >/dev/null 2>/dev/
 # should see slave2 come alive in 2 seconds then return before wait_for
 # dies.
 $output = output(
-   sub { mk_table_checksum::main(@args); },
+   sub { pt_table_checksum::main(@args); },
    stderr => 1,
 );
 

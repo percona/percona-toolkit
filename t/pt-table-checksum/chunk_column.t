@@ -42,7 +42,7 @@ issue_519 t     `i` >= '10'
 ";
 
 $output = output(
-   sub { mk_table_checksum::main(@args) },
+   sub { pt_table_checksum::main(@args) },
 );
 
 is(
@@ -52,7 +52,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-column batman)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-column batman)) },
 );
 
 is(
@@ -62,7 +62,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-column t)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-column t)) },
 );
 
 is(
@@ -72,7 +72,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-column i --chunk-index y)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-column i --chunk-index y)) },
 );
 
 is(
@@ -82,7 +82,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--chunk-column y)) },
+   sub { pt_table_checksum::main(@args, qw(--chunk-column y)) },
 );
 
 is(

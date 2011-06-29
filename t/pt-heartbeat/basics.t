@@ -48,7 +48,7 @@ $output = `$cmd -D test --monitor --run-time 1s --no-insert-heartbeat-row 2>&1`;
 like($output, qr/heartbeat table is empty/ms, 'Dies on empty heartbeat table with --monitor (issue 45)');
 
 $output = output(
-   sub { mk_heartbeat::main('-F', $cnf, qw(-D test --check)) },
+   sub { pt_heartbeat::main('-F', $cnf, qw(-D test --check)) },
 );
 my $row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
 is(

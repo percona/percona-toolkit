@@ -62,7 +62,7 @@ diag(`rm -rf /tmp/mk-query-digest.log`);
 # --run-time-mode event without a --run-time should result in the same output
 # as --run-time-mode clock because the log ts will be effectively ignored.
 my $before = output(
-   sub { mk_query_digest::main("$trunk/t/lib/samples/slowlogs/slow033.txt",
+   sub { pt_query_digest::main("$trunk/t/lib/samples/slowlogs/slow033.txt",
       '--report-format', 'query_report,profile')
    },
 );
@@ -70,7 +70,7 @@ my $before = output(
 @args = ('--report-format', 'query_report,profile', '--limit', '10');
 
 my $after = output(
-   sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+   sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
       qw(--run-time-mode event))
    },
 );
@@ -83,7 +83,7 @@ is(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode event --run-time 1h)) },
       "t/pt-query-digest/samples/slow033-rtm-event-1h.txt"
    ),
@@ -94,7 +94,7 @@ ok(
 # So runtime 1d should not include it.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode event --run-time 1d)) },
       "t/pt-query-digest/samples/slow033-rtm-event-1h.txt"
    ),
@@ -104,7 +104,7 @@ ok(
 # Now we'll get the 2nd event but not the 3rd.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode event --run-time 25h)) },
       "t/pt-query-digest/samples/slow033-rtm-event-25h.txt"
    ),
@@ -115,7 +115,7 @@ ok(
 push @args, qw(--iterations 0);
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode interval --run-time 1d)) },
       "t/pt-query-digest/samples/slow033-rtm-interval-1d.txt"
    ),
@@ -129,7 +129,7 @@ ok(
 # 30-60s interval.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode interval --run-time 30)) },
       "t/pt-query-digest/samples/slow033-rtm-interval-30s.txt"
    ),
@@ -140,7 +140,7 @@ ok(
 # within the same 30m interval.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode interval --run-time 30m)) },
       "t/pt-query-digest/samples/slow033-rtm-interval-30m.txt",
    ),
@@ -153,7 +153,7 @@ pop @args;
 # first 3 queries are gotten.
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
+      sub { pt_query_digest::main(@args, "$trunk/t/lib/samples/slowlogs/slow033.txt",
          qw(--run-time-mode interval --run-time 30 --iterations 3)) },
       "t/pt-query-digest/samples/slow033-rtm-interval-30s-3iter.txt"
    ),

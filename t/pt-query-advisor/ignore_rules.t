@@ -19,7 +19,7 @@ require "$trunk/bin/pt-query-advisor";
 my @args = qw(--print-all --report-format full --group-by none);
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          qw(--ignore-rules COL.001),
          '--query', 'SELECT * FROM tbl WHERE id=1') },
       't/pt-query-advisor/samples/tbl-001-01-ignored.txt',

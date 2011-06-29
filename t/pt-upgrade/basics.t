@@ -100,7 +100,7 @@ $dbh1->do('insert into test.t values (5)');
 
 ok(
    no_diff(
-      sub { mk_upgrade::main(@args,
+      sub { pt_upgrade::main(@args,
          'h=127.1,P=12345,u=msandbox,p=msandbox,D=test', 'P=12347,D=test',
          "$sample/002/no-db.log",
          qw(--compare-results-method rows --temp-database test)) },
@@ -115,7 +115,7 @@ $dbh1->do('insert into test.t values (5)');
 
 ok(
    no_diff(
-      sub { mk_upgrade::main(@args,
+      sub { pt_upgrade::main(@args,
          'h=127.1,P=12345,u=msandbox,p=msandbox,D=test', 'P=12347,D=test',
          "$sample/002/no-db.log",
          qw(--compare-results-method rows --temp-database tmp_db)) },

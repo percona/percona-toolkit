@@ -36,7 +36,7 @@ like(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'genlog001.txt') },
+      sub { pt_query_digest::main(@args, $sample.'genlog001.txt') },
       "t/pt-query-digest/samples/genlog001.txt"
    ),
    'Analysis for genlog001',
@@ -44,7 +44,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'genlog002.txt') },
+      sub { pt_query_digest::main(@args, $sample.'genlog002.txt') },
       "t/pt-query-digest/samples/genlog002.txt",
    ),
    'Analysis for genlog002',
@@ -52,7 +52,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'genlog003.txt') },
+      sub { pt_query_digest::main(@args, $sample.'genlog003.txt') },
       "t/pt-query-digest/samples/genlog003.txt"
    ),
    'Analysis for genlog003',

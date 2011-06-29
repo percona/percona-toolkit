@@ -48,7 +48,7 @@ wait_until(
 $slave_dbh->do('delete from test.ascii where c like "Zesus%"');
 
 $output = output(
-   sub { mk_table_sync::main(@args) },
+   sub { pt_table_sync::main(@args) },
 );
 
 like(

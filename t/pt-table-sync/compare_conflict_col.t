@@ -17,7 +17,7 @@ require "$trunk/bin/pt-table-sync";
 
 # Just for brevity.
 sub _cmp {
-   return mk_table_sync::cmp_conflict_col(@_);
+   return pt_table_sync::cmp_conflict_col(@_);
 }
 
 # These constants are from mk-table-sync, defined just
@@ -31,7 +31,7 @@ use constant FAILED_THRESHOLD =>  2;  # failed to exceed threshold
 # Sanity checks.
 # #############################################################################
 throws_ok(
-   sub { mk_table_sync::cmp_conflict_col(1, 2, 'bad') },
+   sub { pt_table_sync::cmp_conflict_col(1, 2, 'bad') },
    qr/Invalid comparison: bad/,
    'Dies on invalid comparison'
 );

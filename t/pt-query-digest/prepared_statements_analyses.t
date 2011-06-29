@@ -27,42 +27,42 @@ my $sample = "$trunk/t/lib/samples/tcpdump/";
 # #############################################################################
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump021.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump021.txt') },
       "t/pt-query-digest/samples/tcpdump021.txt"
    ),
    'Analysis for tcpdump021 with prepared statements'
 );
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump022.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump022.txt') },
       "t/pt-query-digest/samples/tcpdump022.txt"
    ),
    'Analysis for tcpdump022 with prepared statements'
 );
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump023.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump023.txt') },
       "t/pt-query-digest/samples/tcpdump023.txt"
    ),
    'Analysis for tcpdump023 with prepared statements'
 );
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump024.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump024.txt') },
       "t/pt-query-digest/samples/tcpdump024.txt"
    ),
    'Analysis for tcpdump024 with prepared statements'
 );
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump025.txt') },
+      sub { pt_query_digest::main(@args, $sample.'tcpdump025.txt') },
       "t/pt-query-digest/samples/tcpdump025.txt"
    ),
    'Analysis for tcpdump025 with prepared statements'
 );
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'tcpdump033.txt',
+      sub { pt_query_digest::main(@args, $sample.'tcpdump033.txt',
          '--report-format', 'header,query_report,profile,prepared') },
       "t/pt-query-digest/samples/tcpdump033.txt"
    ),

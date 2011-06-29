@@ -59,7 +59,7 @@ ok(
 );
 
 $output = output(
-   sub { mk_table_sync::main('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox', qw(-d issue_560 --print -v -v  --chunk-size 50 --replicate issue_560.checksum)) },
+   sub { pt_table_sync::main('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox', qw(-d issue_560 --print -v -v  --chunk-size 50 --replicate issue_560.checksum)) },
    trf => \&remove_traces,
 );
 $output =~ s/\d\d:\d\d:\d\d/00:00:00/g;

@@ -40,7 +40,7 @@ my @args = (qw(--dry-run --play), "$trunk/t/pt-log-player/samples/16sessions");
 for my $n ( 1..16 ) {
    ok(
       no_diff(
-         sub { mk_log_player::main(@args, '--threads', $n) },
+         sub { pt_log_player::main(@args, '--threads', $n) },
          "t/pt-log-player/samples/assigned16-$n.txt",
          trf => "sed -e 's!$trunk/t/pt-log-player/samples/16sessions/!!g'",
       ),

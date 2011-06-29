@@ -27,7 +27,7 @@ my $output = '';
 # ############################################################################
 ok(
    no_diff(
-      sub { mk_tcp_model::main(@args, "$in/simpletcp001.txt") },
+      sub { pt_tcp_model::main(@args, "$in/simpletcp001.txt") },
       "$out/simpletcp001.txt",
    ),
    'Analysis for simpletcp001.txt'

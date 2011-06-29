@@ -36,7 +36,7 @@ $sb->load_file('master', 't/pt-table-checksum/samples/issue_602.sql');
 
 $output = output(
    sub {
-      mk_table_checksum::main("F=$cnf", qw(-t issue_602.t --chunk-size 5)) },
+      pt_table_checksum::main("F=$cnf", qw(-t issue_602.t --chunk-size 5)) },
    stderr => 1,
 );
 

@@ -46,7 +46,7 @@ is_deeply(
 );
 
 throws_ok(
-   sub { mk_archiver::main(
+   sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--dest',    't=a',
       qw(--where 1=1 --purge))
@@ -56,7 +56,7 @@ throws_ok(
 );
 
 $output = output(
-   sub { mk_archiver::main(
+   sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--dest',    't=a',
       qw(--no-check-charset --where 1=1 --purge))
@@ -73,7 +73,7 @@ ok(
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
 
 $output = output(
-   sub { mk_archiver::main(
+   sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--dest',    't=a',
       qw(--where 1=1 --purge -A utf8)) # -A utf8 makes it work

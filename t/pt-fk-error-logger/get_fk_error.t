@@ -21,7 +21,7 @@ sub test_get_fk_error {
    my ( $file, $expected_ts, $expected_fke_file ) = @_;
    my $contents = load_file('t/pt-fk-error-logger/'.$file);
    chomp $contents;
-   my ($ts, $fke) = mk_fk_error_logger::get_fk_error($contents);
+   my ($ts, $fke) = pt_fk_error_logger::get_fk_error($contents);
    is(
       $ts,
       $expected_ts,

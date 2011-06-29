@@ -24,7 +24,7 @@ my $query;
 # #############################################################################
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT ip FROM tbl WHERE ip="127.0.0.1"') },
       't/pt-query-advisor/samples/lit-001.txt',
    ),
@@ -32,7 +32,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT c FROM tbl WHERE c < 2010-02-15') },
       't/pt-query-advisor/samples/lit-002-01.txt',
    ),
@@ -40,7 +40,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT c FROM tbl WHERE c=20100215') },
       't/pt-query-advisor/samples/lit-002-02.txt',
    ),
@@ -52,7 +52,7 @@ ok(
 # #############################################################################
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT * FROM tbl WHERE id=1') },
       't/pt-query-advisor/samples/tbl-001-01.txt',
    ),
@@ -60,7 +60,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT tbl.* FROM tbl WHERE id=2') },
       't/pt-query-advisor/samples/tbl-001-02.txt',
    ),
@@ -68,7 +68,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT tbl.* foo, bar FROM tbl WHERE id=1') },
       't/pt-query-advisor/samples/tbl-002-01.txt',
    ),
@@ -76,7 +76,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'SELECT tbl.* AS foo, bar FROM tbl WHERE id=2') },
       't/pt-query-advisor/samples/tbl-002-02.txt',
    ),
@@ -88,7 +88,7 @@ ok(
 # #############################################################################
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'insert into foo values ("bar")') },
       't/pt-query-advisor/samples/qry-001-01.txt',
    ),
@@ -96,7 +96,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'replace into foo values ("bar")') },
       't/pt-query-advisor/samples/qry-001-02.txt',
    ),
@@ -108,7 +108,7 @@ ok(
 # #############################################################################
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'select t from w where i=1 or i in (select * from j)') },
       't/pt-query-advisor/samples/sub-001-01.txt',
    ),
@@ -134,7 +134,7 @@ $query = "SELECT * FROM   `wibble_chapter`
       LIMIT  1";
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args, $query) },
+   no_diff(sub { pt_query_advisor::main(@args, $query) },
       't/pt-query-advisor/samples/joi-001-002-01.txt',
    ),
    'JOI.001 and JOI.002'
@@ -147,7 +147,7 @@ ok(
 # #############################################################################
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'select id from tbl1 join tbl2 using (a) group by tbl1.id, tbl2.id') },
       't/pt-query-advisor/samples/cla-006-01.txt',
    ),
@@ -155,7 +155,7 @@ ok(
 );
 
 ok(
-   no_diff(sub { mk_query_advisor::main(@args,
+   no_diff(sub { pt_query_advisor::main(@args,
          'select c1, c2 from t where i=1 order by c1 desc, c2 asc') },
       't/pt-query-advisor/samples/cla-007-01.txt',
    ),

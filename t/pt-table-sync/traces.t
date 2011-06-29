@@ -46,7 +46,7 @@ sleep 1;
 $slave_dbh->do('insert into onlythisdb.t values (5)');
 
 output(
-   sub { mk_table_sync::main(@args) },
+   sub { pt_table_sync::main(@args) },
 );
 
 my $binlog = $master_dbh->selectrow_arrayref('show master logs');

@@ -51,7 +51,7 @@ wait_until(
 );
 
 $output = output(
-   sub { mk_table_sync::main(@args) },
+   sub { pt_table_sync::main(@args) },
    trf => \&remove_traces,
 );
 

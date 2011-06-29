@@ -19,7 +19,7 @@ sub run {
    open OUTPUT, '>', \$output
       or die 'Cannot open output to variable';
    select OUTPUT;
-   mk_visual_explain::main(@_);
+   pt_visual_explain::main(@_);
    select STDOUT;
    close $output;
    return $output;

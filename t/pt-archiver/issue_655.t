@@ -38,7 +38,7 @@ $sb->create_dbs($dbh, ['test']);
 # #############################################################################
 $dbh->do('CREATE TABLE test.t (i int)');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1), "--source", "F=$cnf,D=test,t=t", qw(--purge --primary-key-only)) },
+   sub { pt_archiver::main(qw(--where 1=1), "--source", "F=$cnf,D=test,t=t", qw(--purge --primary-key-only)) },
 );
 unlike(
    $output,

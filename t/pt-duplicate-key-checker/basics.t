@@ -47,21 +47,21 @@ $sb->load_file('master', 't/lib/samples/dupe_key.sql', 'test');
 
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d test)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
       "$sample/basic_output.txt"),
    'Default output'
 );
 
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d test --nosql)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test --nosql)) },
       "$sample/nosql_output.txt"),
    '--nosql'
 );
 
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d test --nosummary)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test --nosummary)) },
       "$sample/nosummary_output.txt"),
    '--nosummary'
 );
@@ -70,7 +70,7 @@ $sb->load_file('master', 't/lib/samples/uppercase_names.sql', 'test');
 
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d test -t UPPER_TEST)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test -t UPPER_TEST)) },
       ($sandbox_version ge '5.1' ? "$sample/uppercase_names-51.txt"
                                  : "$sample/uppercase_names.txt")
    ),
@@ -81,7 +81,7 @@ $sb->load_file('master', 't/lib/samples/issue_269-1.sql', 'test');
 
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d test -t a)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test -t a)) },
       "$sample/issue_269.txt"),
    'No dupes for issue 269'
 );
@@ -90,7 +90,7 @@ $sb->wipe_clean($dbh);
 
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d test)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
       "$sample/nonexistent_db.txt"),
    'No results for nonexistent db'
 );

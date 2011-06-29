@@ -35,7 +35,7 @@ else {
 $sb->wipe_clean($dbh);
 $sb->load_file('master', 't/pt-table-sync/samples/issue_920.sql');
 
-mk_table_sync::main(qw(--execute -F /tmp/12345/my.sandbox.cnf),
+pt_table_sync::main(qw(--execute -F /tmp/12345/my.sandbox.cnf),
    'D=issue_920,t=PK_UK_test', 'D=issue_920,t=PK_UK_test_2');
 
 is_deeply(
@@ -54,7 +54,7 @@ is_deeply(
    'Flipped 1st table'
 );
 
-mk_table_sync::main(qw(--execute -F /tmp/12345/my.sandbox.cnf),
+pt_table_sync::main(qw(--execute -F /tmp/12345/my.sandbox.cnf),
    'D=issue_920,t=PK_UK_test', 'D=issue_920,t=PK_UK_test_2');
 
 

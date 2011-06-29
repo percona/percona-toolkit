@@ -36,7 +36,7 @@ $sb->load_file('master', 't/pt-table-checksum/samples/checksum_tbl.sql');
 # #############################################################################
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf", qw(--replicate=test.checksum --replicate-check=0)) },
+   sub { pt_table_checksum::main("F=$cnf", qw(--replicate=test.checksum --replicate-check=0)) },
    stderr => 1,
 );
 

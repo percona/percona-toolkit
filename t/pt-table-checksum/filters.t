@@ -37,7 +37,7 @@ $dbh->do('create table t1 (i int) engine=myisam');
 $dbh->do('create table t2 (i int) engine=innodb');
 
 $output = output(
-   sub { mk_table_checksum::main(@args,
+   sub { pt_table_checksum::main(@args,
          qw(--explain -d test --engines InnoDB)) },
 );
 
@@ -50,7 +50,7 @@ is(
 
 
 $output = output(
-   sub { mk_table_checksum::main(@args,
+   sub { pt_table_checksum::main(@args,
          qw(--explain -d mysql --tables-regex user)) },
 );
 like(
@@ -60,7 +60,7 @@ like(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args,
+   sub { pt_table_checksum::main(@args,
          qw(--explain -d mysql --ignore-tables-regex user)) },
 );
 unlike(
@@ -70,7 +70,7 @@ unlike(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args,
+   sub { pt_table_checksum::main(@args,
          qw(--explain -d mysql --ignore-databases-regex mysql)) },
 );
 is(

@@ -36,7 +36,7 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_631.sql`);
 
 $output = output(
-   sub { mk_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=d1,t=t', 'h=127.1,P=12345,D=d2,t=t', 'h=127.1,P=12345,D=d3,t=t', qw(--print -v --algorithms GroupBy)) },
+   sub { pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=d1,t=t', 'h=127.1,P=12345,D=d2,t=t', 'h=127.1,P=12345,D=d3,t=t', qw(--print -v --algorithms GroupBy)) },
    trf => \&remove_traces,
 );
 $output =~ s/\d\d:\d\d:\d\d/00:00:00/g;
@@ -50,7 +50,7 @@ ok(
 );
 
 $output = output(
-   sub { mk_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=d1,t=t', 'h=127.1,P=12345,D=d2,t=t', 'h=127.1,P=12345,D=d3,t=t', qw(--print -v --algorithms Stream)) },
+   sub { pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=d1,t=t', 'h=127.1,P=12345,D=d2,t=t', 'h=127.1,P=12345,D=d3,t=t', qw(--print -v --algorithms Stream)) },
    trf => \&remove_traces,
 );
 $output =~ s/\d\d:\d\d:\d\d/00:00:00/g;

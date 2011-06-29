@@ -34,7 +34,7 @@ my $in   = "$trunk/t/pt-table-usage/samples/in/";
 my $out  = "t/pt-table-usage/samples/out/";
 
 $output = output(
-   sub { mk_table_usage::main(@args, "$in/slow003.txt") },
+   sub { pt_table_usage::main(@args, "$in/slow003.txt") },
    stderr => 1,
 );
 
@@ -46,7 +46,7 @@ like(
 
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args, qw(-D sakila), "$in/slow003.txt") },
+      sub { pt_table_usage::main(@args, qw(-D sakila), "$in/slow003.txt") },
       "$out/slow003-002.txt",
    ),
    'EXPLAIN EXTENDED slow003.txt'

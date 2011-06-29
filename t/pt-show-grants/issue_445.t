@@ -44,7 +44,7 @@ like(
 
 eval {
    $output = output(
-      sub { mk_show_grants::main('-F', $cnf, '--revoke'); }
+      sub { pt_show_grants::main('-F', $cnf, '--revoke'); }
    );
 };
 is(

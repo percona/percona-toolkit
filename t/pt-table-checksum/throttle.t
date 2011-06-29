@@ -58,7 +58,7 @@ wait_until(  # slaves aren't lagging
       return 1;
    }, 0.5, 10);
 
-mk_table_checksum::main(@args);
+pt_table_checksum::main(@args);
 
 $row = $master_dbh->selectall_arrayref('select * from test.checksum');
 is(
@@ -85,7 +85,7 @@ is(
    local *STDERR;
    open  STDERR, ">/dev/null"
       or die "Cannot redirect STDERR to /dev/null: $OS_ERROR";
-   wait_for(sub { mk_table_checksum::main(@args); }, 2);
+   wait_for(sub { pt_table_checksum::main(@args); }, 2);
 }
 
 $row = $master_dbh->selectall_arrayref('select * from test.checksum');
@@ -118,7 +118,7 @@ system("sleep 2 && /tmp/12347/use -e 'start slave sql_thread' >/dev/null 2>/dev/
 # This time we do not need to capture STDERR because mk-table-checksum
 # should see slave2 come alive in 2 seconds then return before wait_for
 # dies.
-wait_for(sub { mk_table_checksum::main(@args); }, 5);
+wait_for(sub { pt_table_checksum::main(@args); }, 5);
 
 $row = $master_dbh->selectall_arrayref('select * from test.checksum');
 is(
@@ -147,7 +147,7 @@ is(
    'Stopped slave SQL thread on slave2'
 );
 
-wait_for(sub { mk_table_checksum::main(@args, qw(--check-slave-lag P=12346)); }, 2);
+wait_for(sub { pt_table_checksum::main(@args, qw(--check-slave-lag P=12346)); }, 2);
 
 $row = $master_dbh->selectall_arrayref('select * from test.checksum');
 is(
@@ -178,7 +178,7 @@ is(
    local *STDERR;
    open  STDERR, ">/dev/null"
       or die "Cannot redirect STDERR to /dev/null: $OS_ERROR";
-   wait_for(sub { mk_table_checksum::main(@args, qw(--check-slave-lag P=12346)); }, 2);
+   wait_for(sub { pt_table_checksum::main(@args, qw(--check-slave-lag P=12346)); }, 2);
 }
 
 $row = $master_dbh->selectall_arrayref('select * from test.checksum');
@@ -221,7 +221,7 @@ is(
 );
 
 # All slaves are stopped at this point.
-wait_for(sub { mk_table_checksum::main(@args, qw(--throttle-method none)) }, 2);
+wait_for(sub { pt_table_checksum::main(@args, qw(--throttle-method none)) }, 2);
 
 $row = $master_dbh->selectall_arrayref('select * from test.checksum');
 is(

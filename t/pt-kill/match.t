@@ -24,7 +24,7 @@ my $output;
 # Test match commands.
 # #############################################################################
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset001.txt", qw(--match-info show --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset001.txt", qw(--match-info show --print)); }
 );
 like(
    $output,
@@ -33,7 +33,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --print)); }
 );
 is(
    $output,
@@ -42,7 +42,7 @@ is(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --ignore-state), "''", "--print"); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --ignore-state), "''", "--print"); }
 );
 like(
    $output,
@@ -51,7 +51,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset003.txt", "--match-state", "Sorting result", "--print"); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset003.txt", "--match-state", "Sorting result", "--print"); }
 );
 like(
    $output,
@@ -60,7 +60,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset003.txt", qw(--match-state Updating --print --victims all)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset003.txt", qw(--match-state Updating --print --victims all)); }
 );
 like(
    $output,
@@ -69,7 +69,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset003.txt", qw(--ignore-user remote --match-command Query --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset003.txt", qw(--ignore-user remote --match-command Query --print)); }
 );
 like(
    $output,
@@ -78,7 +78,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 25 --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 25 --print)); }
 );
 like(
    $output,
@@ -87,7 +87,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 30 --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 30 --print)); }
 );
 is(
    $output,
@@ -96,7 +96,7 @@ is(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset005.txt", qw(--idle-time 15 --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset005.txt", qw(--idle-time 15 --print)); }
 );
 like(
    $output,
@@ -105,7 +105,7 @@ like(
 );
 
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset006.txt", qw(--match-state Locked --ignore-state), "''", qw(--busy-time 5 --print)); }
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset006.txt", qw(--match-state Locked --ignore-state), "''", qw(--busy-time 5 --print)); }
 );
 like(
    $output,
@@ -116,7 +116,7 @@ like(
 # The queries in recset002 are both State: Locked which is ignored
 # by default so nothing should match, not even for --match-all.
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset002.txt",
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt",
       qw(--match-all --print)); }
 );
 is(
@@ -127,7 +127,7 @@ is(
 
 # Now --match-all should match.
 $output = output(
-   sub { mk_kill::main("$trunk/t/lib/samples/pl/recset002.txt",
+   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt",
       qw(--match-all --victims all --print --ignore-state blahblah)); }
 );
 like(
@@ -149,7 +149,7 @@ SKIP: {
    my $repl_thd_ids = join("|", @repl_thds);
 
    $output = output(
-      sub { mk_kill::main(qw(-F /tmp/12346/my.sandbox.cnf --match-user system --print --run-time 1 --interval 1)); }
+      sub { pt_kill::main(qw(-F /tmp/12346/my.sandbox.cnf --match-user system --print --run-time 1 --interval 1)); }
    );
    is(
       $output,
@@ -158,7 +158,7 @@ SKIP: {
    );
 
    $output = output(
-      sub { mk_kill::main(qw(-F /tmp/12346/my.sandbox.cnf --match-user system --print --replication-threads --run-time 1 --interval 1)); }
+      sub { pt_kill::main(qw(-F /tmp/12346/my.sandbox.cnf --match-user system --print --replication-threads --run-time 1 --interval 1)); }
    );
    like(
       $output,

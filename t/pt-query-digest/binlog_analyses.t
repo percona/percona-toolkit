@@ -29,7 +29,7 @@ my $sample = "$trunk/t/lib/samples/binlogs/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'binlog001.txt') },
+      sub { pt_query_digest::main(@args, $sample.'binlog001.txt') },
       "t/pt-query-digest/samples/binlog001.txt"
    ),
    'Analysis for binlog001',
@@ -37,7 +37,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'binlog002.txt') },
+      sub { pt_query_digest::main(@args, $sample.'binlog002.txt') },
       "t/pt-query-digest/samples/binlog002.txt"
    ),
    'Analysis for binlog002',

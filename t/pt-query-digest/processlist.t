@@ -51,7 +51,7 @@ is(
 ) or print Dumper($rows);
 
 my $output = output(
-   sub { mk_query_digest::main(@args, qw(--run-time 5)); },
+   sub { pt_query_digest::main(@args, qw(--run-time 5)); },
 );
 
 ($exec) = $output =~ m/^(# Exec time.+?)$/ms;

@@ -63,7 +63,7 @@ ok(@times > 7 && @times < 12, 'Approximately 9 or 10 captures with --iterations 
 # --verbose
 # ############################################################################
 $output = output(
-   sub { mk_kill::main('-F', $cnf, qw(--run-time 2s --busy-time 1 --print),
+   sub { pt_kill::main('-F', $cnf, qw(--run-time 2s --busy-time 1 --print),
       qw(--verbose)) },
 );
 like(

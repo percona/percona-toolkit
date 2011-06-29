@@ -25,7 +25,7 @@ my $sample = "$trunk/t/pt-query-digest/samples/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'cannot-distill.log') },
+      sub { pt_query_digest::main(@args, $sample.'cannot-distill.log') },
       "t/pt-query-digest/samples/cannot-distill-profile.txt",
    ),
    'Distill nonsense and non-SQL'

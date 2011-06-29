@@ -42,7 +42,7 @@ my $output;
 ok(
    no_diff(
       sub {
-          mk_index_usage::main(@args,
+          pt_index_usage::main(@args,
             "$trunk/$samples/slow001.txt");
       },
       "$samples/slow001-report.txt"),
@@ -54,7 +54,7 @@ ok(
 ok(
    no_diff(
       sub {
-          mk_index_usage::main(@args, qw(--drop all),
+          pt_index_usage::main(@args, qw(--drop all),
             "$trunk/$samples/slow001.txt");
       },
       "$samples/slow001-report-drop-all.txt"),
@@ -65,7 +65,7 @@ ok(
 ok(
    no_diff(
       sub {
-          mk_index_usage::main(@args,
+          pt_index_usage::main(@args,
             "$trunk/$samples/slow002.txt");
       },
       "$samples/slow002-report.txt"),
@@ -76,7 +76,7 @@ ok(
 # look unused.  The output should be blank because dropping the
 # PK isn't suggested by default and there's no other unused indexes.
 $output = output(
-   sub { mk_index_usage::main(@args, "$trunk/$samples/slow003.txt") },
+   sub { pt_index_usage::main(@args, "$trunk/$samples/slow003.txt") },
 );
 is(
    $output,
@@ -89,7 +89,7 @@ is(
 ok(
    no_diff(
       sub {
-          mk_index_usage::main(@args,
+          pt_index_usage::main(@args,
             "$trunk/$samples/slow005.txt");
       },
       "$samples/slow005-report.txt"),
@@ -100,7 +100,7 @@ ok(
 # Capture errors, and ensure that statement blacklisting works OK.
 # #############################################################################
 $output = output(
-   sub { mk_index_usage::main(@args, "$trunk/$samples/slow004.txt") },
+   sub { pt_index_usage::main(@args, "$trunk/$samples/slow004.txt") },
    stderr => 1,
 );
 my @errs = $output =~ m/DBD::mysql::db selectall_arrayref failed/g;
@@ -117,7 +117,7 @@ is(
 ok(
    no_diff(
       sub {
-          mk_index_usage::main(@args, qw(-D sakila),
+          pt_index_usage::main(@args, qw(-D sakila),
             "$trunk/$samples/slow006.txt");
       },
       "$samples/slow006-report.txt"),
@@ -126,7 +126,7 @@ ok(
 
 $output = output(
    sub {
-      mk_index_usage::main(@args, qw(-q),
+      pt_index_usage::main(@args, qw(-q),
          "$trunk/$samples/slow006.txt");
    },
 );

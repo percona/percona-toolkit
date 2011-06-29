@@ -24,7 +24,7 @@ my $diff      = "";
 
 # Default results (95%).  From slow002 that's 1 query.
 diag(`rm -rf $resdir ; mkdir $resdir`);
-mk_query_digest::main(@args, '--save-results', "$resdir/r1",
+pt_query_digest::main(@args, '--save-results', "$resdir/r1",
    $sample.'slow002.txt');
 ok(
    -f "$resdir/r1",
@@ -40,7 +40,7 @@ is(
 
 # Change --limit to save more queries.
 diag(`rm -rf $resdir/*`);
-mk_query_digest::main(@args, '--save-results', "$resdir/r1",
+pt_query_digest::main(@args, '--save-results', "$resdir/r1",
    qw(--limit 3), $sample.'slow002.txt');
 $diff = `diff $ressample/slow002-limit-3.txt $resdir/r1 2>&1`;
 is(
@@ -51,7 +51,7 @@ is(
 
 # issue 1008: sprintf formatting in log events crashes it.
 diag(`rm -rf $resdir/*`);
-mk_query_digest::main(@args, '--save-results', "$resdir/r1",
+pt_query_digest::main(@args, '--save-results', "$resdir/r1",
    $sample.'slow043.txt');
 $diff = `diff $ressample/slow043.txt $resdir/r1 2>&1`;
 is(

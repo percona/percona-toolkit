@@ -21,7 +21,7 @@ my @args   = ();
 my $sample = "$trunk/t/lib/samples/";
 
 $output = output(
-   sub { mk_query_advisor::main(@args, "$sample/slowlogs/slow018.txt") },
+   sub { pt_query_advisor::main(@args, "$sample/slowlogs/slow018.txt") },
 );
 like(
    $output,
@@ -30,7 +30,7 @@ like(
 );
 
 $output = output(
-   sub { mk_query_advisor::main(@args, qw(--type genlog),
+   sub { pt_query_advisor::main(@args, qw(--type genlog),
       "$sample/genlogs/genlog001.txt") },
 );
 like(

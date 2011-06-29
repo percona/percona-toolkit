@@ -24,7 +24,7 @@ sub verify {
    my ( $mode, $time ) = @_;
    my $boundary;
    eval {
-      $boundary = mk_query_digest::verify_run_time(
+      $boundary = pt_query_digest::verify_run_time(
          run_mode => $mode,
          run_time => $time,
       );

@@ -103,7 +103,7 @@ my $proclist =
       },
    ];
 
-my $classes = mk_kill::group_queries(
+my $classes = pt_kill::group_queries(
    proclist      => $proclist,
    group_by      => 'Info',
    QueryRewriter => $qr,
@@ -237,7 +237,7 @@ $proclist = [
       },
    ];
 
-$classes = mk_kill::group_queries(
+$classes = pt_kill::group_queries(
    proclist      => $proclist,
    group_by      => 'Info',
    QueryRewriter => $qr,
@@ -281,7 +281,7 @@ is_deeply(
    "Group by Info with similar fingerprints"
 );
 
-$classes = mk_kill::group_queries(
+$classes = pt_kill::group_queries(
    proclist      => $proclist,
    group_by      => 'fingerprint',
    QueryRewriter => $qr,

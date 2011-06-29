@@ -27,7 +27,7 @@ my $output = '';
 # ############################################################################
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args, "$in/slow001.txt") },
+      sub { pt_table_usage::main(@args, "$in/slow001.txt") },
       "$out/slow001.txt",
    ),
    'Analysis for slow001.txt'
@@ -35,7 +35,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args, "$in/slow002.txt") },
+      sub { pt_table_usage::main(@args, "$in/slow002.txt") },
       "$out/slow002.txt",
    ),
    'Analysis for slow002.txt (issue 1237)'
@@ -43,7 +43,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args, '--query',
+      sub { pt_table_usage::main(@args, '--query',
          'DROP TABLE IF EXISTS t') },
       "$out/drop-table-if-exists.txt",
    ),
@@ -55,7 +55,7 @@ ok(
 # ############################################################################
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args, "$in/slow003.txt",
+      sub { pt_table_usage::main(@args, "$in/slow003.txt",
          qw(--id-attribute ts)) },
       "$out/slow003-003.txt",
    ),
@@ -66,7 +66,7 @@ ok(
 # --constant-data-value
 # ############################################################################
 $output = output(
-   sub { mk_table_usage::main('--query', 'INSERT INTO t VALUES (42)',
+   sub { pt_table_usage::main('--query', 'INSERT INTO t VALUES (42)',
       qw(--constant-data-value <const>)) },
 );
 like(
@@ -82,7 +82,7 @@ like(
 # The tables in the WHERE can't be resolved so there's no WHERE access listed.
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args, "$in/slow003.txt") },
+      sub { pt_table_usage::main(@args, "$in/slow003.txt") },
       "$out/slow003-001.txt",
    ),
    'Analysis for slow003.txt'

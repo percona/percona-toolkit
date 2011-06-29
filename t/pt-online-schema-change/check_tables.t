@@ -35,7 +35,7 @@ my $o       = new OptionParser();
 
 $o->get_specs("$trunk/bin/pt-online-schema-change");
 $o->get_opts();
-mk_online_schema_change::__set_quiet(1);
+pt_online_schema_change::__set_quiet(1);
 
 $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
 $dbh->do('use mkosc');
@@ -56,7 +56,7 @@ my %args = (
    MySQLDump     => $du,
 );
 
-my %tbl_info = mk_online_schema_change::check_tables(%args);
+my %tbl_info = pt_online_schema_change::check_tables(%args);
 is(
    $tbl_info{chunk_column},
    "i",
@@ -75,7 +75,7 @@ ok(
 );
 
 throws_ok(
-   sub { mk_online_schema_change::check_tables(
+   sub { pt_online_schema_change::check_tables(
       %args,
       tbl => 'does_not_exist'
    ) },
@@ -86,7 +86,7 @@ throws_ok(
 @ARGV = qw(--rename-tables);
 $o->get_opts();
 throws_ok(
-   sub { mk_online_schema_change::check_tables(
+   sub { pt_online_schema_change::check_tables(
       %args,
       old_tbl => 'a',
    ) },
@@ -95,7 +95,7 @@ throws_ok(
 );
 
 throws_ok(
-   sub { mk_online_schema_change::check_tables(
+   sub { pt_online_schema_change::check_tables(
       %args,
       tmp_tbl => 'a',
    ) },
@@ -105,7 +105,7 @@ throws_ok(
 
 $dbh->do('CREATE TRIGGER foo AFTER DELETE ON mkosc.a FOR EACH ROW DELETE FROM mkosc.a WHERE 0');
 throws_ok(
-   sub { mk_online_schema_change::check_tables(%args) },
+   sub { pt_online_schema_change::check_tables(%args) },
    qr/Table mkosc.a has triggers/,
    "Old table cannot have triggers"
 );
@@ -114,7 +114,7 @@ $dbh->do('DROP TRIGGER mkosc.foo');
 $dbh->do('ALTER TABLE mkosc.a DROP COLUMN i');
 my $tmp_struct = $tp->parse($du->get_create_table($dbh, $q, 'mkosc', 'a'));
 throws_ok(
-   sub { mk_online_schema_change::check_tables(
+   sub { pt_online_schema_change::check_tables(
       %args,
    ) },
    qr/Table mkosc.a cannot be chunked/,

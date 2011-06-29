@@ -24,7 +24,7 @@ my $sample = "$trunk/t/lib/samples/slowlogs/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'slow002.txt') },
+      sub { pt_query_digest::main(@args, $sample.'slow002.txt') },
       "t/pt-query-digest/samples/stats-slow002.txt"
    ),
    '--statistics for slow002.txt',

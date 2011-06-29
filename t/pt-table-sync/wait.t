@@ -74,7 +74,7 @@ if ( !$lag->{seconds_behind_master} ) {
 my $start = time;
 
 $output = output(
-   sub { mk_table_sync::main(@args, qw(-t test.t2)) },
+   sub { pt_table_sync::main(@args, qw(-t test.t2)) },
 );
 
 my $t = time - $start;
@@ -105,7 +105,7 @@ if ( !$lag->{seconds_behind_master} ) {
 $start = time;
 
 $output = output(
-   sub { mk_table_sync::main(@args, qw(-t test.t2 --wait 0)) },
+   sub { pt_table_sync::main(@args, qw(-t test.t2 --wait 0)) },
 );
 
 $t = time - $start;

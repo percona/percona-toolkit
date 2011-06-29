@@ -40,7 +40,7 @@ diag(`echo "replicate-ignore-db=foo" >> /tmp/12346/my.sandbox.cnf`);
 diag(`/tmp/12346/start >/dev/null`);
 
 $output = output(
-   sub { mk_table_checksum::main(@args, '--create-replicate-table') },
+   sub { pt_table_checksum::main(@args, '--create-replicate-table') },
    stderr => 1,
 );
 unlike(
@@ -60,7 +60,7 @@ like(
 # when no --replicate
 # #############################################################################
 $output = output(
-   sub { mk_table_checksum::main('h=127.1,P=12346,u=msandbox,p=msandbox',
+   sub { pt_table_checksum::main('h=127.1,P=12346,u=msandbox,p=msandbox',
       qw(-d sakila -t film --schema --no-check-replication-filters)) },
 );
 like(

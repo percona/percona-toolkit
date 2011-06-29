@@ -43,7 +43,7 @@ $sb->load_file('master', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 `/tmp/12345/use -D test < $trunk/t/pt-fk-error-logger/samples/fke.sql 1>/dev/null 2>/dev/null`;
 
 # Then get and save that fke.
-output(sub { mk_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
 
 # And then test that it was actually saved.
 my $today = $dbh->selectall_arrayref('SELECT NOW()')->[0]->[0];
@@ -63,7 +63,7 @@ like(
 
 # Check again to make sure that the same fke isn't saved twice.
 my $first_ts = $fke->[0]->[0];
-output(sub { mk_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
 $fke = $dbh->selectall_arrayref('SELECT * FROM test.foreign_key_errors');
 is(
    $fke->[0]->[0],  # Timestamp
@@ -83,7 +83,7 @@ $dbh->do('INSERT INTO child VALUES (1, 2)');
 eval {
    $dbh->do('DELETE FROM parent WHERE id = 2');  # Causes foreign key error.
 };
-output( sub { mk_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+output( sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
 $fke = $dbh->selectall_arrayref('SELECT * FROM test.foreign_key_errors');
 like(
    $fke->[1]->[1],  # Error
@@ -104,7 +104,7 @@ $dbh->do('USE test');
 eval {
    $dbh->do('DELETE FROM parent WHERE id = 2');  # Causes foreign key error.
 };
-$output = output(sub { mk_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox'); });
+$output = output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox'); });
 like(
    $output,
    qr/DELETE FROM parent WHERE id = 2/,

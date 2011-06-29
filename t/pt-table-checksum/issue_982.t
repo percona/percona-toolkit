@@ -68,7 +68,7 @@ diag(`/tmp/12345/start >/dev/null`);
 diag(`/tmp/12346/start >/dev/null`);
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf", qw(--no-check-replication-filters),
+   sub { pt_table_checksum::main("F=$cnf", qw(--no-check-replication-filters),
       qw(--replicate=test.checksum -d mysql -t user --empty-replicate-table))
    },
    stderr => 1,
@@ -114,7 +114,7 @@ $master_dbh = $sb->get_dbh_for('master');
 $slave_dbh  = $sb->get_dbh_for('slave1');
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf", qw(--no-check-replication-filters),
+   sub { pt_table_checksum::main("F=$cnf", qw(--no-check-replication-filters),
       qw(--replicate=test.checksum -d mysql -t user))
    },
    stderr => 1,
@@ -142,7 +142,7 @@ ok(
 );
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf", qw(--no-check-replication-filters),
+   sub { pt_table_checksum::main("F=$cnf", qw(--no-check-replication-filters),
       qw(--replicate=test.checksum -d mysql -t user),
       qw(--replicate-database test))
    },
@@ -181,7 +181,7 @@ sleep 1;
 my $it = "payment,rental,help_topic,help_keyword,inventory,film_actor";
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf",
+   sub { pt_table_checksum::main("F=$cnf",
       qw(--replicate=test.checksum), '--ignore-tables', $it, qw(--chunk-size 20k))
    },
    stderr => 1,
@@ -203,7 +203,7 @@ diag(`$trunk/sandbox/test-env reset`);
 sleep 1;
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf", qw(--replicate-database test),
+   sub { pt_table_checksum::main("F=$cnf", qw(--replicate-database test),
       qw(--replicate=test.checksum), '--ignore-tables', $it, qw(--chunk-size 20k))
    },
    stderr => 1,

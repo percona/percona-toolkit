@@ -53,7 +53,7 @@ diag(`$trunk/bin/pt-table-checksum --replicate issue_375.checksum h=127.1,P=1234
 
 # And now sync using the replicated checksum results/differences.
 $output = output(
-   sub { mk_table_sync::main('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox', qw(--replicate issue_375.checksum --print)) },
+   sub { pt_table_sync::main('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox', qw(--replicate issue_375.checksum --print)) },
    trf => \&remove_traces,
 );
 is(

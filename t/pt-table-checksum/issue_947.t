@@ -34,7 +34,7 @@ my $cnf = '/tmp/12345/my.sandbox.cnf';
 # #############################################################################
 
 $output = output(
-   sub { mk_table_checksum::main("F=$cnf", qw(-d mysql -t user)) },
+   sub { pt_table_checksum::main("F=$cnf", qw(-d mysql -t user)) },
    stderr => 1,
 );
 like(

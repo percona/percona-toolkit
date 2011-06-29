@@ -18,7 +18,7 @@ require "$trunk/bin/pt-query-advisor";
 
 ok(
    no_diff(
-      sub { mk_query_advisor::main(
+      sub { pt_query_advisor::main(
          qw(--group-by none),
          "$trunk/t/pt-query-advisor/samples/slow001.txt",) },
       "t/pt-query-advisor/samples/group-by-none-001.txt",
@@ -28,7 +28,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_advisor::main(
+      sub { pt_query_advisor::main(
          "$trunk/t/pt-query-advisor/samples/slow001.txt",) },
       "t/pt-query-advisor/samples/group-by-rule-id-001.txt",
    ),
@@ -37,7 +37,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_advisor::main(
+      sub { pt_query_advisor::main(
          qw(--group-by query_id),
          "$trunk/t/pt-query-advisor/samples/slow001.txt",) },
       "t/pt-query-advisor/samples/group-by-query-id-001.txt",

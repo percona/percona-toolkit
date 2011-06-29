@@ -32,7 +32,7 @@ my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 
 $output = output(
-   sub { mk_show_grants::main('-F', $cnf, qw(--drop --flush --revoke --separate)); }
+   sub { pt_show_grants::main('-F', $cnf, qw(--drop --flush --revoke --separate)); }
 );
 like(
    $output,
@@ -68,7 +68,7 @@ like(
 
 
 $output = output(
-   sub { mk_show_grants::main('-F', $cnf, qw(--no-timestamp --drop --flush --revoke --separate)); }
+   sub { pt_show_grants::main('-F', $cnf, qw(--no-timestamp --drop --flush --revoke --separate)); }
 );
 unlike(
    $output,
@@ -77,7 +77,7 @@ unlike(
 );
 
 $output = output(
-   sub { mk_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user'); }
+   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user'); }
 );
 unlike(
    $output,

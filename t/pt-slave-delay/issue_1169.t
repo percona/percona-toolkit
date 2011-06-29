@@ -47,7 +47,7 @@ is(
 );
 
 $output = output(
-   sub { mk_slave_delay::main(@args, qw(--interval 1 --run-time 1)) },
+   sub { pt_slave_delay::main(@args, qw(--interval 1 --run-time 1)) },
 );
 like(
    $output,

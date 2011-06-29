@@ -28,7 +28,7 @@ my $sample = "$trunk/t/lib/samples/pg/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'pg-log-009.txt') },
+      sub { pt_query_digest::main(@args, $sample.'pg-log-009.txt') },
       "t/pt-query-digest/samples/pg-sample1"
    ),
    'Analysis for pg-log-009.txt',
@@ -36,7 +36,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'pg-syslog-008.txt') },
+      sub { pt_query_digest::main(@args, $sample.'pg-syslog-008.txt') },
       "t/pt-query-digest/samples/pg-syslog-sample1"
    ),
    'Analysis for pg-syslog-008.txt',

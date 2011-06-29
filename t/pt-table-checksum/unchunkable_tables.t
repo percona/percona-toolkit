@@ -36,7 +36,7 @@ $dbh->do('alter table osc.t drop index `i`');
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args, qw(--chunk-size 10)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-size 10)) },
       "t/pt-table-checksum/samples/unchunkable-table.txt",
    ),
    "Skip unchunkable table"
@@ -44,7 +44,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args, qw(--chunk-size 1000)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-size 1000)) },
       "t/pt-table-checksum/samples/unchunkable-table-small.txt",
    ),
    "Chunk unchunable table if smaller than chunk size"

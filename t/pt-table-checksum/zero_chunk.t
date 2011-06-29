@@ -32,7 +32,7 @@ my $cnf='/tmp/12345/my.sandbox.cnf';
 my @args = ('-F', $cnf, 'h=127.1', qw(-t sakila.actor --explain --chunk-size 100));
 
 $output = output(
-   sub { mk_table_checksum::main(@args) },
+   sub { pt_table_checksum::main(@args) },
 );
 like(
    $output,
@@ -41,7 +41,7 @@ like(
 );
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--no-zero-chunk)) },
+   sub { pt_table_checksum::main(@args, qw(--no-zero-chunk)) },
 );
 unlike(
    $output,

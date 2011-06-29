@@ -40,7 +40,7 @@ $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', 't/pt-duplicate-key-checker/samples/issue_331.sql', 'test');
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d issue_331)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d issue_331)) },
       't/pt-duplicate-key-checker/samples/issue_331.txt',
    ),
    'Issue 331 crash on fks'

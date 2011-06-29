@@ -37,7 +37,7 @@ $sb->load_file('master', 't/pt-archiver/samples/issue_1152.sql');
 # #############################################################################
 
 $output = output(
-   sub { mk_archiver::main(
+   sub { pt_archiver::main(
       qw(--header --progress 1000 --statistics --limit 1000),
       qw(--commit-each --why-quit),
       '--source',  'h=127.1,P=12345,D=issue_1152,t=t,u=msandbox,p=msandbox',

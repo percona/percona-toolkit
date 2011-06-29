@@ -35,7 +35,7 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-checksum/samples/before.sql');
 
 # Test basic functionality with defaults
-$output = output(sub { mk_table_checksum::main(@args) } );
+$output = output(sub { pt_table_checksum::main(@args) } );
 like($output, qr/^DATABASE/m, 'The header row is there');
 like($output, qr/checksum_test/, 'The results row is there');
 
@@ -55,7 +55,7 @@ else {
 
 # Test that it works with locking
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--lock --slave-lag),
+   sub { pt_table_checksum::main(@args, qw(--lock --slave-lag),
          qw(--function sha1 --checksum --algorithm ACCUM)) }
 );
 like($output, qr/9c1c01dc3ac1445a500251fc34a15d3e75a849df/, 'Locks' );
@@ -65,41 +65,41 @@ SKIP: {
       unless $vp->version_ge($master_dbh, '4.1.0');
 
    $output = output(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--function CRC32 --checksum --algorithm ACCUM)) }
    );
    like($output, qr/00000001E9F5DC8E/, 'CRC32 ACCUM' );
 
    $output = output(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--function sha1 --checksum --algorithm ACCUM)) }
    );
    like($output, qr/9c1c01dc3ac1445a500251fc34a15d3e75a849df/, 'SHA1 ACCUM' );
 
    # same as sha1(1)
    $output = output(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--function sha1 --checksum --algorithm BIT_XOR)) }
    );
    like($output, qr/356a192b7913b04c54574d18c28d46e6395428ab/, 'SHA1 BIT_XOR' );
 
    # test that I get the same result with --no-optxor
    $output2 = output(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--function sha1 --no-optimize-xor --checksum --algorithm BIT_XOR)) }
    );
    is($output, $output2, 'Same result with --no-optxor');
 
    # same as sha1(1)
    $output = output(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--checksum --function MD5 --algorithm BIT_XOR)) }
    );
    like($output, qr/c4ca4238a0b923820dcc509a6f75849b/, 'MD5 BIT_XOR' );
 };
 
 $output = output(
-   sub { mk_table_checksum::main(@args, 
+   sub { pt_table_checksum::main(@args, 
       qw(--checksum --function MD5 --algorithm ACCUM)) }
 );
 like($output, qr/28c8edde3d61a0411511d3b1866f0636/, 'MD5 ACCUM' );
@@ -112,7 +112,7 @@ like($output, qr/28c8edde3d61a0411511d3b1866f0636/, 'MD5 ACCUM' );
 # Issue 1256: mk-tabe-checksum: if no rows are found in a chunk, don't perform the sleep
 my $t0 = time;
 output(
-   sub { mk_table_checksum::main("F=$cnf",
+   sub { pt_table_checksum::main("F=$cnf",
       qw(--sleep 5 -t mysql.user --chunk-size 100)) },
 );
 ok(

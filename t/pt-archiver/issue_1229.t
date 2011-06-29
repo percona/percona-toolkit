@@ -49,7 +49,7 @@ is_deeply(
 diag(`rm -rf $file >/dev/null`);
 
 $output = output(
-   sub { mk_archiver::main(
+   sub { pt_archiver::main(
       '--source',  'h=127.1,P=12345,D=issue_1225,t=t,u=msandbox,p=msandbox',
       '--file',    $file,
       qw(--where 1=1 -A UTF8)) # -A utf8 makes it work

@@ -38,7 +38,7 @@ $sb->load_file('master', "t/pt-query-advisor/samples/issue-950.sql", "test");
 
 my $query = "select c from L left join R on l_id = r_id where r_other is null";
 $output = output(
-  sub { mk_query_advisor::main(@args, '--query', $query) },
+  sub { pt_query_advisor::main(@args, '--query', $query) },
 );
 like(
    $output,
@@ -47,7 +47,7 @@ like(
 );
 
 $output = output(
-  sub { mk_query_advisor::main(@args, '--query', $query,
+  sub { pt_query_advisor::main(@args, '--query', $query,
    '--no-show-create-table') },
 );
 is(
@@ -57,7 +57,7 @@ is(
 );
 
 $output = output(
-  sub { mk_query_advisor::main(@args, '--query', $query,
+  sub { pt_query_advisor::main(@args, '--query', $query,
    '--no-show-create-table', '--print-all') },
 );
 is(

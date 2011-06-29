@@ -39,7 +39,7 @@ $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
 output(
-   sub { mk_archiver::main("--source", "F=$cnf,D=bri,t=t", qw(--dest t=t_arch --where 1=1 --bulk-insert --limit 3)) },
+   sub { pt_archiver::main("--source", "F=$cnf,D=bri,t=t", qw(--dest t=t_arch --where 1=1 --bulk-insert --limit 3)) },
 );
 
 my $t_rows      = $dbh->selectall_arrayref('select * from t order by id');

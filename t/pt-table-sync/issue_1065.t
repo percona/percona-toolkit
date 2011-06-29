@@ -40,7 +40,7 @@ my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
 $slave_dbh->do('delete from sakila.rental limit 1');
 
 $output = output(
-   sub { mk_table_sync::main(@args, qw(--algo chunk)) },
+   sub { pt_table_sync::main(@args, qw(--algo chunk)) },
 );
 like(
    $output,

@@ -35,7 +35,7 @@ diag(`/tmp/12345/use < $trunk/t/pt-table-checksum/samples/oversize-chunks.sql`);
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args) },
+      sub { pt_table_checksum::main(@args) },
       "t/pt-table-checksum/samples/oversize-chunks.txt",
    ),
    "Skip oversize chunk"
@@ -43,7 +43,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args, qw(--chunk-size-limit 0)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-size-limit 0)) },
       "t/pt-table-checksum/samples/oversize-chunks-allowed.txt"
    ),
    "Allow oversize chunk"

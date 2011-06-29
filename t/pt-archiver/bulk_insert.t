@@ -39,7 +39,7 @@ $sb->load_file('master', 't/pt-archiver/samples/table5.sql');
 $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
 
 $output = output(
-   sub { mk_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
+   sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
       qw(--bulk-delete --where 1=1 --statistics),
       '--source', "D=test,t=table_5,F=$cnf",
       '--dest',   "t=table_5_dest") },
@@ -64,7 +64,7 @@ like($output, qr/copy\s+$chks/, 'copy checksum');
 # ############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/bulk_regular_insert.sql');
 $output = output(
-   sub { mk_archiver::main(
+   sub { pt_archiver::main(
        '--where', "id < 8", qw(--limit 100000 --txn-size 1000),
        qw(--why-quit --statistics --bulk-insert),
       '--source', "D=bri,t=t,F=$cnf",

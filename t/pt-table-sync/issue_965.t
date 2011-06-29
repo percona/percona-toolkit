@@ -36,7 +36,7 @@ $sb->load_file('master', 't/pt-table-sync/samples/issue_965.sql');
 
 $output = output(
    sub {
-      mk_table_sync::main(qw(--trim --print --execute -F /tmp/12345/my.sandbox.cnf),
+      pt_table_sync::main(qw(--trim --print --execute -F /tmp/12345/my.sandbox.cnf),
          'D=issue_965,t=t1', 'D=issue_965,t=t2')
    },
    trf => \&remove_traces,

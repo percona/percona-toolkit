@@ -63,7 +63,7 @@ like(
 );
 
 output(
-   sub { mk_table_checksum::main('-F', $cnf,
+   sub { pt_table_checksum::main('-F', $cnf,
       qw(--create-replicate-table --replicate test.checksum 127.1)) },
    stderr => 0,
 );

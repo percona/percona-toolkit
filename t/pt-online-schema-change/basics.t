@@ -41,7 +41,7 @@ $dbh->do('use mkosc');
 # --check-tables-and-exit
 # #############################################################################
 eval {
-   $exit = mk_online_schema_change::main(@args,
+   $exit = pt_online_schema_change::main(@args,
       'D=mkosc,t=a', qw(--check-tables-and-exit --quiet))
 };
 
@@ -61,7 +61,7 @@ is(
 # --cleanup-and-exit
 # #############################################################################
 eval {
-   $exit = mk_online_schema_change::main(@args,
+   $exit = pt_online_schema_change::main(@args,
       'D=mkosc,t=a', qw(--cleanup-and-exit --quiet))
 };
 
@@ -82,7 +82,7 @@ is(
 # #############################################################################
 
 output(
-   sub { $exit = mk_online_schema_change::main(@args,
+   sub { $exit = pt_online_schema_change::main(@args,
       'D=mkosc,t=a', qw(--alter ENGINE=InnoDB)) },
 );
 
@@ -120,7 +120,7 @@ $dbh->do('drop table mkosc.__old_a');  # from previous run
 $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
 
 output(
-   sub { $exit = mk_online_schema_change::main(@args,
+   sub { $exit = pt_online_schema_change::main(@args,
       'D=mkosc,t=a', qw(--drop-old-table)) },
 );
 
@@ -171,7 +171,7 @@ my $orig_table_def = $dbh->selectrow_hashref('show create table mkosc.city')->{'
 # a foreign key constraint fails [for Statement "DROP TABLE
 # `mkosc`.`__old_country`"]
 output(
-   sub { $exit = mk_online_schema_change::main(@args,
+   sub { $exit = pt_online_schema_change::main(@args,
       'D=mkosc,t=country', qw(--child-tables auto_detect --drop-old-table),
       qw(--update-foreign-keys-method rebuild_constraints)) },
 );
@@ -208,7 +208,7 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/fk_tables_schema.sql
 $orig_table_def = $dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
 
 output(
-   sub { $exit = mk_online_schema_change::main(@args,
+   sub { $exit = pt_online_schema_change::main(@args,
       'D=mkosc,t=country', qw(--child-tables auto_detect),
       qw(--update-foreign-keys-method drop_old_table)) },
 );

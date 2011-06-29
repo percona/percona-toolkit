@@ -37,7 +37,7 @@ $sb->load_file('master', "t/lib/samples/issue_641.sql");
 # #############################################################################
 
 $output = output(
-   sub { mk_table_sync::main(@args) },
+   sub { pt_table_sync::main(@args) },
    trf => \&remove_traces,
 );
 
@@ -49,7 +49,7 @@ is(
 );
 
 $output = output(
-   sub { mk_table_sync::main(@args, '--no-hex-blob') },
+   sub { pt_table_sync::main(@args, '--no-hex-blob') },
    trf => \&remove_traces,
 );
 

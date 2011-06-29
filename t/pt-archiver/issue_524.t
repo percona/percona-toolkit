@@ -37,7 +37,7 @@ $sb->create_dbs($dbh, ['test']);
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_131.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --dry-run --no-delete), "--source",  "F=$cnf,D=test,t=issue_131_src", qw(--dest t=issue_131_dst)) },
+   sub { pt_archiver::main(qw(--where 1=1 --dry-run --no-delete), "--source",  "F=$cnf,D=test,t=issue_131_src", qw(--dest t=issue_131_dst)) },
 );
 unlike(
    $output,

@@ -21,7 +21,7 @@ my $sample = "$trunk/t/lib/samples/slowlogs/";
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'slow013.txt',
+      sub { pt_query_digest::main(@args, $sample.'slow013.txt',
             qw(--group-by user --outliers Query_time:.0000001:1)) },
       "t/pt-query-digest/samples/slow013_report_outliers.txt"
    ),
@@ -30,7 +30,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_query_digest::main(@args, $sample.'slow049.txt',
+      sub { pt_query_digest::main(@args, $sample.'slow049.txt',
             qw(--limit 2 --outliers Query_time:5:3),
             '--report-format', 'header,profile,query_report') },
       "t/pt-query-digest/samples/slow049.txt",

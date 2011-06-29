@@ -108,7 +108,7 @@ like(
 # #############################################################################
 
 $output = output(
-   sub { mk_table_checksum::main(@args, qw(--function sha1)) },
+   sub { pt_table_checksum::main(@args, qw(--function sha1)) },
 );
 $output2 = `/tmp/12345/use --skip-column-names -e "select this_crc from test.checksum where tbl='checksum_test'"`;
 my ($cnt, $crc) = $output =~ m/checksum_test *\d+ \S+ \S+ *(\d+|NULL) *(\w+)/;
@@ -133,7 +133,7 @@ SKIP: {
    set_tx_isolation('read committed');
 
    $output = output(
-      sub { mk_table_checksum::main(@args) },
+      sub { pt_table_checksum::main(@args) },
       stderr   => 1,
    );
    like(

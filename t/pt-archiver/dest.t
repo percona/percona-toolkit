@@ -37,7 +37,7 @@ $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 
 # Archive to another table.
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
+   sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
 is($output, '', 'No output for archiving to another table');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
@@ -48,7 +48,7 @@ is($output + 0, 4, 'Found rows in new table OK when archiving to another table')
 # Archive only some columns to another table.
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
-   sub { mk_archiver::main("-c", "b,c", qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
+   sub { pt_archiver::main("-c", "b,c", qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
 is($output, '', 'No output for archiving only some cols to another table');
 $rows = $dbh->selectall_arrayref("select * from test.table_1");
@@ -70,7 +70,7 @@ is_deeply(
 # Archive to another table with autocommit
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --txn-size 0), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
+   sub { pt_archiver::main(qw(--where 1=1 --txn-size 0), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
 is($output, '', 'Commit every 0 rows worked OK');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
@@ -81,7 +81,7 @@ is($output + 0, 4, 'Found rows in new table OK when archiving to another table w
 # Archive to another table with commit every 2 rows
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --txn-size 2), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
+   sub { pt_archiver::main(qw(--where 1=1 --txn-size 2), "--source", "D=test,t=table_1,F=$cnf", qw(--dest t=table_2)) },
 );
 is($output, '', 'Commit every 2 rows worked OK');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
@@ -92,7 +92,7 @@ is($output + 0, 4, 'Found rows in new table OK when archiving to another table w
 # Test that table with many rows can be archived to table with few
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --dest t=table_4 --no-check-columns), "--source", "D=test,t=table_1,F=$cnf") },
+   sub { pt_archiver::main(qw(--where 1=1 --dest t=table_4 --no-check-columns), "--source", "D=test,t=table_1,F=$cnf") },
 );
 $output = `/tmp/12345/use -N -e "select sum(a) from test.table_4"`;
 is($output + 0, 10, 'Rows got archived');

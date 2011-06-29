@@ -29,7 +29,7 @@ my $output = '';
 # Without --create-table-definitions, the tables wouldn't be db-qualified.
 ok(
    no_diff(
-      sub { mk_table_usage::main(@args,
+      sub { pt_table_usage::main(@args,
          '--query', 'select city from city where city="New York"',
          '--create-table-definitions',
             "$trunk/t/lib/samples/mysqldump-no-data/all-dbs.txt") },

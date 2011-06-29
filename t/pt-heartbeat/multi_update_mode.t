@@ -189,7 +189,7 @@ is(
 # First, the option should be optional.  If not given, the server's
 # immediate master should be used.
 $output = output(
-   sub { mk_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
+   sub { pt_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
       qw(-D test --check --print-master-server-id)) },
 );
 
@@ -200,7 +200,7 @@ like(
 );
 
 $output = output(
-   sub { mk_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
+   sub { pt_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
       qw(-D test --check --print-master-server-id --master-server-id 12346)) },
 );
 
@@ -211,7 +211,7 @@ like(
 );
 
 $output = output(
-   sub { mk_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
+   sub { pt_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
       qw(-D test --check --print-master-server-id --master-server-id 12345)) },
 );
 
@@ -222,7 +222,7 @@ like(
 );
 
 $output = output(
-   sub { mk_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
+   sub { pt_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
       qw(-D test --check --print-master-server-id --master-server-id 42),
       qw(--no-insert-heartbeat-row)) },
 );

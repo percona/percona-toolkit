@@ -39,7 +39,7 @@ my $retval;
 # ############################################################################
 
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       'h=127.1,P=12345,u=msandbox,p=msandbox', 'h=127.1')
    },
    stderr => 1,
@@ -59,7 +59,7 @@ is(
 
 # Diff master to slave1.  There should be several differences.
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       'h=127.1,P=12345,u=msandbox,p=msandbox', 'P=12346')
    },
    stderr => 1,
@@ -83,7 +83,7 @@ like(
 # ############################################################################
 
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       $cnf, 'h=127.1,P=12345,u=msandbox,p=msandbox')
    },
    stderr => 1,
@@ -103,7 +103,7 @@ is(
 
 # Compare master config to slave active/SHOW VARS
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       $cnf, 'h=127.1,P=12346,u=msandbox,p=msandbox')
    },
    stderr => 1,
@@ -126,7 +126,7 @@ like(
 # ############################################################################
 
 $output = output(
-   sub { $retval = mk_config_diff::main($cnf, $cnf) },
+   sub { $retval = pt_config_diff::main($cnf, $cnf) },
    stderr => 1,
 );
 
@@ -143,7 +143,7 @@ is(
 );
 
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       '/tmp/12345/my.sandbox.cnf',
       '/tmp/12346/my.sandbox.cnf',
    ) },

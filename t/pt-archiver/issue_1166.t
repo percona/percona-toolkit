@@ -39,7 +39,7 @@ $sb->load_file('master', 't/pt-archiver/samples/issue_131.sql');
 $sb->load_file('master', 't/pt-archiver/samples/issue_1166.sql');
 
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --dry-run --source),
+   sub { pt_archiver::main(qw(--where 1=1 --dry-run --source),
       "F=$cnf,D=test,t=issue_131_src", qw(--dest t=issue_131_dst)) }
 );
 like(
@@ -51,7 +51,7 @@ like(
 # With non-unique index LIMIT 1 should appear.
 
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --dry-run --source),
+   sub { pt_archiver::main(qw(--where 1=1 --dry-run --source),
       "F=$cnf,D=test,t=issue_1166", "--purge") }
 );
 like(
@@ -68,7 +68,7 @@ like(
 $sb->load_file('master', 't/pt-archiver/samples/issue_131.sql');
 
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1 --dry-run --source),
+   sub { pt_archiver::main(qw(--where 1=1 --dry-run --source),
       "F=$cnf,D=test,t=issue_131_src", qw(--bulk-delete --purge),
       qw(--no-bulk-delete-limit --limit 3)) }
 );

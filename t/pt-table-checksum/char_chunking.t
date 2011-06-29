@@ -36,7 +36,7 @@ $sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--chunk-size 20 --explain)) },
       "t/pt-table-checksum/samples/char-chunk-ascii-explain.txt",
    ),
@@ -45,7 +45,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--chunk-size 20)) },
       "t/pt-table-checksum/samples/char-chunk-ascii.txt",
    ),
@@ -54,7 +54,7 @@ ok(
 
 ok(
    no_diff(
-      sub { mk_table_checksum::main(@args,
+      sub { pt_table_checksum::main(@args,
          qw(--chunk-size 20 --chunk-size-limit 3)) },
       "t/pt-table-checksum/samples/char-chunk-ascii-oversize.txt",
    ),

@@ -37,7 +37,7 @@ my @args   = (qw(--verbose --print --sync-to-master), 'h=127.1,P=12346,u=msandbo
 # Issue 377: Make mk-table-sync print start/end times
 # #############################################################################
 $output = output(
-   sub { mk_table_sync::main(@args, qw(-t mysql.user)) }
+   sub { pt_table_sync::main(@args, qw(-t mysql.user)) }
 );
 like(
    $output,

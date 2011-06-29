@@ -129,7 +129,7 @@ is_deeply(
 );
 
 $output = output(
-   sub { mk_table_sync::main(@args, qw(--print --execute),
+   sub { pt_table_sync::main(@args, qw(--print --execute),
       qw(--conflict-column ts --conflict-comparison newest)) }
 );
 
@@ -168,7 +168,7 @@ my $err = '';
    local *STDERR;
    open STDERR, '>', \$err;
    $output = output(
-      sub { mk_table_sync::main(@args, qw(--print --execute),
+      sub { pt_table_sync::main(@args, qw(--print --execute),
          qw(--conflict-column ts --conflict-comparison newest),
          qw(--conflict-threshold 30m)) }
    );
@@ -251,7 +251,7 @@ load_bidi_data();
    local *STDERR;
    open STDERR, '>', \$err;
    $output = output(
-      sub { mk_table_sync::main(@args, qw(--print --execute),
+      sub { pt_table_sync::main(@args, qw(--print --execute),
          qw(--conflict-column ts --conflict-comparison newest),
          qw(--conflict-threshold 30m --conflict-error die)) }
    );
@@ -361,7 +361,7 @@ SKIP: {
       local *STDERR;
       open STDERR, '>', \$err;
       $output = output(
-         sub { mk_table_sync::main(@args, 'h=127.1,P=12348',
+         sub { pt_table_sync::main(@args, 'h=127.1,P=12348',
             qw(--print --execute --chunk-size 2),
             qw(--conflict-column ts --conflict-comparison newest)) }
       );
@@ -456,7 +456,7 @@ SKIP: {
       local *STDERR;
       open STDERR, '>', \$err;
       $output = output(
-         sub { mk_table_sync::main(@args, 'h=127.1,P=12348',
+         sub { pt_table_sync::main(@args, 'h=127.1,P=12348',
             qw(--print --execute --chunk-size 2),
             qw(--conflict-column ts --conflict-comparison newest)) }
       );

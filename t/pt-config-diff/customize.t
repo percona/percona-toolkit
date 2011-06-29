@@ -23,7 +23,7 @@ my $retval;
 # ############################################################################
 
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       '/tmp/12345/my.sandbox.cnf',
       '/tmp/12346/my.sandbox.cnf',
    ) },
@@ -37,7 +37,7 @@ like(
 );
 
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       '/tmp/12345/my.sandbox.cnf',
       '/tmp/12346/my.sandbox.cnf',
       '--ignore-variables', 'port',

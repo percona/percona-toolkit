@@ -36,7 +36,7 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 diag(`/tmp/12345/use -D test < $trunk/t/lib/samples/issue_96.sql`);
 sleep 1;
 $output = output(
-   sub { mk_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=issue_96,t=t', 'h=127.1,P=12345,D=issue_96,t=t2', qw(--algorithms Nibble --chunk-size 2 --print)) },
+   sub { pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=issue_96,t=t', 'h=127.1,P=12345,D=issue_96,t=t2', qw(--algorithms Nibble --chunk-size 2 --print)) },
    trf => \&remove_traces,
 );
 chomp $output;

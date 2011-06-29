@@ -36,7 +36,7 @@ my @args   = qw(F=/tmp/12345/my.sandbox.cnf);
 my $output = "";
 
 $output = output(
-   sub { mk_variable_advisor::main(@args) },
+   sub { pt_variable_advisor::main(@args) },
 );
 like(
    $output,
@@ -45,7 +45,7 @@ like(
 );
 
 $output = output(
-   sub { mk_variable_advisor::main(@args, qw(--source-of-variables MYSQL)) },
+   sub { pt_variable_advisor::main(@args, qw(--source-of-variables MYSQL)) },
 );
 like(
    $output,

@@ -36,7 +36,7 @@ $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 
 # Test basic functionality with defaults
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--purge)) },
+   sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--purge)) },
 );
 is($output, '', 'Basic test run did not die');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
@@ -45,7 +45,7 @@ is($output + 0, 0, 'Purged ok');
 # Test basic functionality with --commit-each
 $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--commit-each --limit 1 --purge)) },
+   sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--commit-each --limit 1 --purge)) },
 );
 is($output, '', 'Commit-each did not die');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
@@ -54,7 +54,7 @@ is($output + 0, 0, 'Purged ok with --commit-each');
 # Archive only part of the table
 $sb->load_file('master', 't/pt-archiver/samples/table1.sql');
 $output = output(
-   sub { mk_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--where a<4 --purge)) },
+   sub { pt_archiver::main(qw(--where 1=1), "--source", "D=test,t=table_1,F=$cnf", qw(--where a<4 --purge)) },
 );
 is($output, '', 'No output for archiving only part of a table');
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;

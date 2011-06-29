@@ -40,7 +40,7 @@ diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'localhost'"`);
 diag(`/tmp/12345/use -u root -e "GRANT USAGE ON *.* TO 'bob'\@'192.168.1.1'"`);
 
 $output = output(
-   sub { mk_show_grants::main('-F', $cnf, qw(--only bob --no-header)); }
+   sub { pt_show_grants::main('-F', $cnf, qw(--only bob --no-header)); }
 );
 is(
    $output,
@@ -55,7 +55,7 @@ GRANT USAGE ON *.* TO 'bob'\@'localhost';
 );
 
 $output = output(
-   sub { mk_show_grants::main('-F', $cnf, qw(--only bob@192.168.1.1 --no-header)); }
+   sub { pt_show_grants::main('-F', $cnf, qw(--only bob@192.168.1.1 --no-header)); }
 );
 is(
    $output,

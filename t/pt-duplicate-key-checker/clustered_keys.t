@@ -39,7 +39,7 @@ $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', 't/pt-duplicate-key-checker/samples/issue_295.sql', 'test');
 ok(
    no_diff(
-      sub { mk_duplicate_key_checker::main(@args, qw(-d issue_295)) },
+      sub { pt_duplicate_key_checker::main(@args, qw(-d issue_295)) },
       ($sandbox_version ge '5.1' ? "$sample/issue_295-51.txt"
                                  : "$sample/issue_295.txt")
    ),

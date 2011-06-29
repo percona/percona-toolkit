@@ -39,7 +39,7 @@ my $retval;
 # ############################################################################
 
 $output = output(
-   sub { $retval = mk_config_diff::main(
+   sub { $retval = pt_config_diff::main(
       'h=127.1,P=12345,u=msandbox,p=msandbox', 'P=12346',
       '--no-report')
    },
