@@ -12,6 +12,6 @@ use English qw(-no_match_vars);
 
 use MaatkitTest;
 
-system("$trunk/util/test-bash-tool pt-mysql-summary @ARGV");
+system("$trunk/util/test-bash-tool pt-pmp @ARGV");
 
 exit;
