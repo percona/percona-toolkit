@@ -1,0 +1,9 @@
+#!/bin/bash
+#parse_ethernet_controller_lspci
+
+cat <<EOF > $1
+  Controller | Broadcom Corporation NetXtreme II BCM5708 Gigabit Ethernet (rev 12)
+  Controller | Broadcom Corporation NetXtreme II BCM5708 Gigabit Ethernet (rev 12)
+EOF
+
+cat samples/lspci-001.txt > $2

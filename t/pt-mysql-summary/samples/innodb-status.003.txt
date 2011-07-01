@@ -1,0 +1,108 @@
+=====================================
+100904 10:24:51 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 34 seconds
+-----------------
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 15 1_second, 15 sleeps, 1 10_second, 6 background, 6 flush
+srv_master_thread log flush and writes: 16
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 4, signal count 4
+Mutex spin waits 0, rounds 0, OS waits 0
+RW-shared spins 4, OS waits 4; RW-excl spins 0, OS waits 0
+Spin rounds per wait: 0.00 mutex, 30.00 RW-shared, 0.00 RW-excl
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: waiting for i/o request (read thread)
+I/O thread 3 state: waiting for i/o request (read thread)
+I/O thread 4 state: waiting for i/o request (read thread)
+I/O thread 5 state: waiting for i/o request (read thread)
+I/O thread 6 state: waiting for i/o request (write thread)
+I/O thread 7 state: waiting for i/o request (write thread)
+I/O thread 8 state: waiting for i/o request (write thread)
+I/O thread 9 state: waiting for i/o request (write thread)
+Pending normal aio reads: 0, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+28 OS file reads, 19 OS file writes, 14 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 0.00 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 0, seg size 2,
+0 inserts, 0 merged recs, 0 merges
+Hash table size 553193, node heap has 1 buffer(s)
+0.00 hash searches/s, 0.00 non-hash searches/s
+---
+LOG
+---
+Log sequence number 64909
+Log flushed up to   64909
+Last checkpoint at  64909
+Max checkpoint age    7782360
+Checkpoint age target 7539162
+Modified age          0
+Checkpoint age        0
+0 pending log writes, 0 pending chkp writes
+15 log i/o's done, 0.00 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 136740864; in additional pool allocated 0
+Internal hash tables (constant factor + variable factor)
+    Adaptive hash index 2233316 	(2212772 + 20544)
+    Page hash           69556
+    Dictionary cache    576800 	(553912 + 22888)
+    File system         41896 	(41336 + 560)
+    Lock system         166756 	(166436 + 320)
+    Recovery system     0 	(0 + 0)
+    Threads             41612 	(41348 + 264)
+Dictionary memory allocated 22888
+Buffer pool size        8191
+Buffer pool size, bytes 134201344
+Free buffers            8172
+Database pages          18
+Old database pages      0
+Modified db pages       0
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 0, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 17, created 1, written 12
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s
+LRU len: 18, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+1 read views open inside InnoDB
+Main thread process no. 7809, id 2808687472, state: waiting for server activity
+Number of rows inserted 2, updated 0, deleted 0, read 6
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+------------
+TRANSACTIONS
+------------
+Trx id counter 908
+Purge done for trx's n:o < 905 undo n:o < 0
+History list length 11
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 907, ACTIVE 35 sec, process no 7809, OS thread id 3067652976
+2 lock struct(s), heap size 320, 3 row lock(s)
+MySQL thread id 1, query id 29 localhost 127.0.0.1 root
+show innodb status
+TABLE LOCK table `test`.`t` trx id 907 lock mode IX
+RECORD LOCKS space id 0 page no 50 n bits 72 index `GEN_CLUST_INDEX` of table `test`.`t` trx id 907 lock_mode X
+---TRANSACTION 3EA5449, not started, process no 11271, OS thread id 1211378000
+MySQL thread id 2541119, query id 76087240 10.32.0.60 vb_admin
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================

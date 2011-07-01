@@ -1,0 +1,27 @@
+#!/bin/bash
+#format_overall_db_stats
+
+cat <<EOF > $1
+
+  Database Tables Views SPs Trigs Funcs   FKs Partn
+  {chosen}      1                                  
+
+  Database InnoDB
+  {chosen}      1
+
+  Database BTREE
+  {chosen}     2
+
+             t   v
+             i   a
+             n   r
+             y   c
+             i   h
+             n   a
+             t   r
+  Database === ===
+  {chosen}   1   1
+
+EOF
+
+cp samples/mysql-schema-002.txt /tmp/aspersa-mysqldump

@@ -1,0 +1,23 @@
+Disk /dev/dm-0: 494.6 GB, 494609104896 bytes
+255 heads, 63 sectors/track, 60132 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Disk identifier: 0x00000000
+
+Disk /dev/dm-0 doesn't contain a valid partition table
+
+Disk /dev/dm-1: 5284 MB, 5284823040 bytes
+255 heads, 63 sectors/track, 642 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Disk identifier: 0x00000000
+
+Disk /dev/dm-1 doesn't contain a valid partition table
+
+Disk /dev/sda: 500.1 GB, 500107862016 bytes
+255 heads, 63 sectors/track, 60801 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Disk identifier: 0x76692ca8
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *           1          26      204800   83  Linux
+Partition 1 does not end on cylinder boundary.
+/dev/sda2              26       60801   488179201   8e  Linux LVM

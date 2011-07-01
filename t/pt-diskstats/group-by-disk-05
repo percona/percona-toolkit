@@ -1,0 +1,14 @@
+#!/bin/bash
+#group_by_disk /tmp/aspersa
+
+cat <<EOF > $1
+  #ts device    rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt    wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt busy in_prg
+  {1} ram0       1.0     1.0     0.0    50%    0.0     1.0     1.0     1.0     0.0    50%    0.0     1.0   0%      0
+EOF
+
+cat <<EOF > $2
+   1    0 ram0 0 0 0 0 0 0 0 0 0 0 0
+TS 1297205887.156653000
+   1    0 ram0 1 1 1 1 1 1 1 1 1 1 1
+TS 1297205888.161613000
+EOF

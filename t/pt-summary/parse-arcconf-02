@@ -1,0 +1,20 @@
+#!/bin/bash
+#parse_arcconf
+
+cat <<EOF > $1
+       Specs | Adaptec 3405, SAS/SATA, 128 MB cache, Optimal
+     Battery | 99%, 3d1h11m remaining, Optimal
+
+  LogicalDev Size      RAID Disks Stripe Status  Cache
+  ========== ========= ==== ===== ====== ======= =======
+  Raid10-A   571392 MB   10     4 256 KB Optimal On (WB)
+
+  PhysiclDev State   Speed         Vendor  Model        Size        Cache
+  ========== ======= ============= ======= ============ =========== =======
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+EOF
+
+cat samples/arcconf-002.txt > $2

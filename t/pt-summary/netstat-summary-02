@@ -1,0 +1,30 @@
+#!/bin/bash
+#parse_netstat
+
+cat <<EOF > $1
+  Connections from remote IP addresses
+    10.8.0.12           6
+    10.8.0.14           2
+    10.8.0.65           1
+    10.8.0.76          25
+    10.8.0.77           1
+    192.168.5.77        2
+  Connections to local IP addresses
+    10.8.0.75          35
+  Connections to top 10 local ports
+    22                  1
+    3306               25
+    37570               1
+    51071               1
+    51072               1
+    51073               1
+    51074               1
+    52300               1
+    60757               1
+  States of connections
+    ESTABLISHED        30
+    LISTEN              3
+    TIME_WAIT           3
+EOF
+
+cat samples/netstat-003.txt > $2

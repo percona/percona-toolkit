@@ -1,0 +1,805 @@
+Linux version 2.6.18-92.el5 (mockbuild@builder10.centos.org) (gcc version 4.1.2 20071124 (Red Hat 4.1.2-42)) #1 SMP Tue Jun 10 18:51:06 EDT 2008
+Command line: ro root=LABEL=/
+BIOS-provided physical RAM map:
+ BIOS-e820: 0000000000000000 - 0000000000099800 (usable)
+ BIOS-e820: 0000000000099800 - 00000000000a0000 (reserved)
+ BIOS-e820: 00000000000e4f20 - 0000000000100000 (reserved)
+ BIOS-e820: 0000000000100000 - 00000000bff90000 (usable)
+ BIOS-e820: 00000000bff9e000 - 00000000bffa0000 type 9
+ BIOS-e820: 00000000bffa0000 - 00000000bffae000 (ACPI data)
+ BIOS-e820: 00000000bffae000 - 00000000bffe0000 (ACPI NVS)
+ BIOS-e820: 00000000bffe0000 - 00000000c0000000 (reserved)
+ BIOS-e820: 00000000e0000000 - 00000000f0000000 (reserved)
+ BIOS-e820: 00000000fee00000 - 00000000fee01000 (reserved)
+ BIOS-e820: 00000000ffb00000 - 0000000100000000 (reserved)
+ BIOS-e820: 0000000100000000 - 0000001840000000 (usable)
+DMI present.
+ACPI: RSDP (v002 ACPIAM                                ) @ 0x00000000000fb1f0
+ACPI: XSDT (v001 080808 XSDT1448 0x20080808 MSFT 0x00000097) @ 0x00000000bffa0100
+ACPI: FADT (v004 080808 FACP1448 0x20080808 MSFT 0x00000097) @ 0x00000000bffa0290
+ACPI: MADT (v002 080808 APIC1448 0x20080808 MSFT 0x00000097) @ 0x00000000bffa0390
+ACPI: MCFG (v001 080808 OEMMCFG  0x20080808 MSFT 0x00000097) @ 0x00000000bffa04f0
+ACPI: OEMB (v001 080808 OEMB1448 0x20080808 MSFT 0x00000097) @ 0x00000000bffae040
+ACPI: HPET (v001 080808 OEMHPET  0x20080808 MSFT 0x00000097) @ 0x00000000bffa51c0
+ACPI: EINJ (v001  AMIER AMI_EINJ 0x20080808 MSFT 0x00000097) @ 0x00000000bffa5200
+ACPI: BERT (v001  AMIER AMI_BERT 0x20080808 MSFT 0x00000097) @ 0x00000000bffa5390
+ACPI: ERST (v001  AMIER AMI_ERST 0x20080808 MSFT 0x00000097) @ 0x00000000bffa53c0
+ACPI: HEST (v001  AMIER AMI_HEST 0x20080808 MSFT 0x00000097) @ 0x00000000bffa5570
+ACPI: DSDT (v002  1ADQT 1ADQT004 0x00000004 INTL 0x20051117) @ 0x0000000000000000
+No NUMA configuration found
+Faking a node at 0000000000000000-0000001840000000
+Bootmem setup node 0 0000000000000000-0000001840000000
+Memory for crash kernel (0x0 to 0x0) notwithin permissible range
+disabling kdump
+On node 0 totalpages: 24816616
+  DMA zone: 2592 pages, LIFO batch:0
+  DMA32 zone: 767944 pages, LIFO batch:31
+  Normal zone: 24046080 pages, LIFO batch:31
+ACPI: PM-Timer IO Port: 0x808
+ACPI: Local APIC address 0xfee00000
+ACPI: LAPIC (acpi_id[0x01] lapic_id[0x00] enabled)
+Processor #0 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x02] lapic_id[0x08] enabled)
+Processor #8 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x03] lapic_id[0x10] enabled)
+Processor #16 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x04] lapic_id[0x18] enabled)
+Processor #24 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x05] lapic_id[0x01] enabled)
+Processor #1 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x06] lapic_id[0x09] enabled)
+Processor #9 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x07] lapic_id[0x11] enabled)
+Processor #17 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x08] lapic_id[0x19] enabled)
+Processor #25 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x09] lapic_id[0x02] enabled)
+Processor #2 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x0a] lapic_id[0x0a] enabled)
+Processor #10 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x0b] lapic_id[0x12] enabled)
+Processor #18 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x0c] lapic_id[0x1a] enabled)
+Processor #26 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x0d] lapic_id[0x03] enabled)
+Processor #3 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x0e] lapic_id[0x0b] enabled)
+Processor #11 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x0f] lapic_id[0x13] enabled)
+Processor #19 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x10] lapic_id[0x1b] enabled)
+Processor #27 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x11] lapic_id[0x04] enabled)
+Processor #4 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x12] lapic_id[0x0c] enabled)
+Processor #12 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x13] lapic_id[0x14] enabled)
+Processor #20 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x14] lapic_id[0x1c] enabled)
+Processor #28 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x15] lapic_id[0x05] enabled)
+Processor #5 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x16] lapic_id[0x0d] enabled)
+Processor #13 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x17] lapic_id[0x15] enabled)
+Processor #21 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x18] lapic_id[0x1d] enabled)
+Processor #29 7:13 APIC version 20
+ACPI: LAPIC (acpi_id[0x19] lapic_id[0x98] disabled)
+ACPI: LAPIC (acpi_id[0x1a] lapic_id[0x99] disabled)
+ACPI: LAPIC (acpi_id[0x1b] lapic_id[0x9a] disabled)
+ACPI: LAPIC (acpi_id[0x1c] lapic_id[0x9b] disabled)
+ACPI: LAPIC (acpi_id[0x1d] lapic_id[0x9c] disabled)
+ACPI: LAPIC (acpi_id[0x1e] lapic_id[0x9d] disabled)
+ACPI: LAPIC (acpi_id[0x1f] lapic_id[0x9e] disabled)
+ACPI: LAPIC (acpi_id[0x20] lapic_id[0x9f] disabled)
+ACPI: LAPIC_NMI (acpi_id[0xff] dfl dfl lint[0x1])
+ACPI: IOAPIC (id[0x1e] address[0xfec00000] gsi_base[0])
+IOAPIC[0]: apic_id 30, version 32, address 0xfec00000, GSI 0-23
+ACPI: IOAPIC (id[0x1f] address[0xfec81000] gsi_base[24])
+IOAPIC[1]: apic_id 31, version 32, address 0xfec81000, GSI 24-47
+ACPI: INT_SRC_OVR (bus 0 bus_irq 0 global_irq 2 dfl dfl)
+ACPI: INT_SRC_OVR (bus 0 bus_irq 9 global_irq 9 high level)
+ACPI: IRQ0 used by override.
+ACPI: IRQ2 used by override.
+ACPI: IRQ9 used by override.
+Setting APIC routing to clustered
+ACPI: HPET id: 0x8086a201 base: 0xfed00000
+Using ACPI (MADT) for SMP configuration information
+Nosave address range: 0000000000099000 - 000000000009a000
+Nosave address range: 000000000009a000 - 00000000000a0000
+Nosave address range: 00000000000a0000 - 00000000000e5000
+Nosave address range: 00000000000e5000 - 0000000000100000
+Nosave address range: 00000000bff90000 - 00000000bff9e000
+Nosave address range: 00000000bff9e000 - 00000000bffa0000
+Nosave address range: 00000000bffa0000 - 00000000bffae000
+Nosave address range: 00000000bffae000 - 00000000bffe0000
+Nosave address range: 00000000bffe0000 - 00000000c0000000
+Nosave address range: 00000000c0000000 - 00000000e0000000
+Nosave address range: 00000000e0000000 - 00000000f0000000
+Nosave address range: 00000000f0000000 - 00000000fee00000
+Nosave address range: 00000000fee00000 - 00000000fee01000
+Nosave address range: 00000000fee01000 - 00000000ffb00000
+Nosave address range: 00000000ffb00000 - 0000000100000000
+Allocating PCI resources starting at c2000000 (gap: c0000000:20000000)
+SMP: Allowing 32 CPUs, 8 hotplug CPUs
+Built 1 zonelists.  Total pages: 24816616
+Kernel command line: ro root=LABEL=/
+Initializing CPU#0
+PID hash table entries: 4096 (order: 12, 32768 bytes)
+Console: colour VGA+ 80x25
+Dentry cache hash table entries: 16777216 (order: 15, 134217728 bytes)
+Inode-cache hash table entries: 8388608 (order: 14, 67108864 bytes)
+Checking aperture...
+PCI-DMA: Using software bounce buffering for IO (SWIOTLB)
+Placing software IO TLB between 0xd127000 - 0x11127000
+Memory: 98999900k/101711872k available (2457k kernel code, 1662536k reserved, 1246k data, 196k init)
+Calibrating delay using timer specific routine.. 4791.66 BogoMIPS (lpj=2395833)
+Security Framework v1.0.0 initialized
+SELinux:  Initializing.
+SELinux:  Starting in permissive mode
+selinux_register_security:  Registering secondary module capability
+Capability LSM initialized as secondary
+Mount-cache hash table entries: 256
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+using mwait in idle threads.
+CPU: Physical Processor ID: 0
+CPU: Processor Core ID: 0
+MCE: warning: using only 7 banks
+CPU0: Thermal monitoring enabled (TM2)
+SMP alternatives: switching to UP code
+ACPI: Core revision 20060707
+Using local APIC timer interrupts.
+result 9661174
+Detected 9.661 MHz APIC timer.
+SMP alternatives: switching to SMP code
+Booting processor 1/24 APIC 0x8
+Initializing CPU#1
+Calibrating delay using timer specific routine.. 4788.06 BogoMIPS (lpj=2394034)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 1
+CPU: Processor Core ID: 0
+MCE: warning: using only 7 banks
+CPU1: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 2/24 APIC 0x10
+Initializing CPU#2
+Calibrating delay using timer specific routine.. 4787.86 BogoMIPS (lpj=2393933)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 2
+CPU: Processor Core ID: 0
+MCE: warning: using only 7 banks
+CPU2: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 3/24 APIC 0x18
+Initializing CPU#3
+Calibrating delay using timer specific routine.. 4787.65 BogoMIPS (lpj=2393829)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 3
+CPU: Processor Core ID: 0
+MCE: warning: using only 7 banks
+CPU3: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 4/24 APIC 0x1
+Initializing CPU#4
+Calibrating delay using timer specific routine.. 4787.93 BogoMIPS (lpj=2393968)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 0
+CPU: Processor Core ID: 1
+MCE: warning: using only 7 banks
+CPU4: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 5/24 APIC 0x9
+Initializing CPU#5
+Calibrating delay using timer specific routine.. 4787.96 BogoMIPS (lpj=2393981)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 1
+CPU: Processor Core ID: 1
+MCE: warning: using only 7 banks
+CPU5: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 6/24 APIC 0x11
+Initializing CPU#6
+Calibrating delay using timer specific routine.. 4787.85 BogoMIPS (lpj=2393928)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 2
+CPU: Processor Core ID: 1
+MCE: warning: using only 7 banks
+CPU6: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 7/24 APIC 0x19
+Initializing CPU#7
+Calibrating delay using timer specific routine.. 4788.18 BogoMIPS (lpj=2394092)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 3
+CPU: Processor Core ID: 1
+MCE: warning: using only 7 banks
+CPU7: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 8/24 APIC 0x2
+Initializing CPU#8
+Calibrating delay using timer specific routine.. 4788.31 BogoMIPS (lpj=2394155)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 0
+CPU: Processor Core ID: 2
+MCE: warning: using only 7 banks
+CPU8: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 9/24 APIC 0xa
+Initializing CPU#9
+Calibrating delay using timer specific routine.. 4788.06 BogoMIPS (lpj=2394034)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 1
+CPU: Processor Core ID: 2
+MCE: warning: using only 7 banks
+CPU9: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 10/24 APIC 0x12
+Initializing CPU#10
+Calibrating delay using timer specific routine.. 4788.01 BogoMIPS (lpj=2394009)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 2
+CPU: Processor Core ID: 2
+MCE: warning: using only 7 banks
+CPU10: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 11/24 APIC 0x1a
+Initializing CPU#11
+Calibrating delay using timer specific routine.. 4788.19 BogoMIPS (lpj=2394099)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 3
+CPU: Processor Core ID: 2
+MCE: warning: using only 7 banks
+CPU11: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 12/24 APIC 0x3
+Initializing CPU#12
+Calibrating delay using timer specific routine.. 4788.52 BogoMIPS (lpj=2394261)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 0
+CPU: Processor Core ID: 3
+MCE: warning: using only 7 banks
+CPU12: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 13/24 APIC 0xb
+Initializing CPU#13
+Calibrating delay using timer specific routine.. 4788.07 BogoMIPS (lpj=2394038)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 1
+CPU: Processor Core ID: 3
+MCE: warning: using only 7 banks
+CPU13: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 14/24 APIC 0x13
+Initializing CPU#14
+Calibrating delay using timer specific routine.. 4788.19 BogoMIPS (lpj=2394096)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 2
+CPU: Processor Core ID: 3
+MCE: warning: using only 7 banks
+CPU14: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 15/24 APIC 0x1b
+Initializing CPU#15
+Calibrating delay using timer specific routine.. 4788.25 BogoMIPS (lpj=2394126)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 3
+CPU: Processor Core ID: 3
+MCE: warning: using only 7 banks
+CPU15: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 16/24 APIC 0x4
+Initializing CPU#16
+Calibrating delay using timer specific routine.. 4788.52 BogoMIPS (lpj=2394264)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 0
+CPU: Processor Core ID: 4
+MCE: warning: using only 7 banks
+CPU16: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 17/24 APIC 0xc
+Initializing CPU#17
+Calibrating delay using timer specific routine.. 4787.98 BogoMIPS (lpj=2393993)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 1
+CPU: Processor Core ID: 4
+MCE: warning: using only 7 banks
+CPU17: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 18/24 APIC 0x14
+Initializing CPU#18
+Calibrating delay using timer specific routine.. 4788.00 BogoMIPS (lpj=2394001)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 2
+CPU: Processor Core ID: 4
+MCE: warning: using only 7 banks
+CPU18: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 19/24 APIC 0x1c
+Initializing CPU#19
+Calibrating delay using timer specific routine.. 4788.43 BogoMIPS (lpj=2394215)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 3
+CPU: Processor Core ID: 4
+MCE: warning: using only 7 banks
+CPU19: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 20/24 APIC 0x5
+Initializing CPU#20
+Calibrating delay using timer specific routine.. 4788.53 BogoMIPS (lpj=2394267)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 0
+CPU: Processor Core ID: 5
+MCE: warning: using only 7 banks
+CPU20: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 21/24 APIC 0xd
+Initializing CPU#21
+Calibrating delay using timer specific routine.. 4788.34 BogoMIPS (lpj=2394173)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 1
+CPU: Processor Core ID: 5
+MCE: warning: using only 7 banks
+CPU21: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 22/24 APIC 0x15
+Initializing CPU#22
+Calibrating delay using timer specific routine.. 4787.88 BogoMIPS (lpj=2393944)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 2
+CPU: Processor Core ID: 5
+MCE: warning: using only 7 banks
+CPU22: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+SMP alternatives: switching to SMP code
+Booting processor 23/24 APIC 0x1d
+Initializing CPU#23
+Calibrating delay using timer specific routine.. 5106.49 BogoMIPS (lpj=2553248)
+CPU: L1 I cache: 32K, L1 D cache: 32K
+CPU: L2 cache: 3072K
+CPU: L3 cache: 12288K
+CPU: Physical Processor ID: 3
+CPU: Processor Core ID: 5
+MCE: warning: using only 7 banks
+CPU23: Thermal monitoring enabled (TM2)
+Intel(R) Xeon(R) CPU           E7450  @ 2.40GHz stepping 01
+Brought up 24 CPUs
+testing NMI watchdog ... OK.
+time.c: Using 14.318180 MHz WALL HPET GTOD HPET/TSC timer.
+time.c: Detected 2394.013 MHz processor.
+sizeof(vma)=176 bytes
+sizeof(page)=56 bytes
+sizeof(inode)=560 bytes
+sizeof(dentry)=216 bytes
+sizeof(ext3inode)=760 bytes
+sizeof(buffer_head)=96 bytes
+sizeof(skbuff)=240 bytes
+migration_cost=29,2267
+checking if image is initramfs... it is
+Freeing initrd memory: 2504k freed
+NET: Registered protocol family 16
+No dock devices found.
+ACPI: bus type pci registered
+PCI: Using MMCONFIG at e0000000
+PCI: Buses that can't use MMCONFIG will use type 1 PCI conf access.
+ACPI: Interpreter enabled
+ACPI: Using IOAPIC for interrupt routing
+ACPI: PCI Root Bridge [PCI0] (0000:00)
+PCI: Probing PCI hardware (bus 00)
+PCI: Ignoring BAR0-3 of IDE controller 0000:00:1f.1
+Boot video device is 0000:01:01.0
+PCI: Transparent bridge - 0000:00:1e.0
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPE1._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPES._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPES.SPE4._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPES.SPE4.SPE1._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPES.BMPX._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPE4._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.NPE6._PRT]
+ACPI: PCI Interrupt Routing Table [\_SB_.PCI0.SB_0._PRT]
+ACPI: PCI Interrupt Link [LNKA] (IRQs 3 4 5 6 7 *10 11 12 14 15)
+ACPI: PCI Interrupt Link [LNKB] (IRQs 3 4 *5 6 7 11 12 14 15)
+ACPI: PCI Interrupt Link [LNKC] (IRQs 3 4 5 6 7 *10 11 12 14 15)
+ACPI: PCI Interrupt Link [LNKD] (IRQs 3 4 *5 6 7 10 11 12 14 15)
+ACPI: PCI Interrupt Link [LNKE] (IRQs 3 4 5 6 7 10 *11 12 14 15)
+ACPI: PCI Interrupt Link [LNKF] (IRQs 3 4 5 6 7 10 11 12 14 15) *0, disabled.
+ACPI: PCI Interrupt Link [LNKG] (IRQs 3 4 5 6 7 10 11 12 14 15) *0, disabled.
+ACPI: PCI Interrupt Link [LNKH] (IRQs 3 4 5 6 *7 10 11 12 14 15)
+Linux Plug and Play Support v0.97 (c) Adam Belay
+pnp: PnP ACPI init
+pnp: PnP ACPI: found 15 devices
+usbcore: registered new driver usbfs
+usbcore: registered new driver hub
+PCI: Using ACPI for IRQ routing
+PCI: If a device doesn't work, try "pci=routeirq".  If it helps, post a report
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4
+NetLabel:  unlabeled traffic allowed by default
+hpet0: at MMIO 0xfed00000 (virtual 0xffffffffff5fe000), IRQs 2, 8, 0
+hpet0: 3 64-bit timers, 14318180 Hz
+PCI-GART: No AMD northbridge found.
+pnp: 00:09: ioport range 0xa00-0xa0f has been reserved
+PCI: Bridge: 0000:00:01.0
+  IO window: c000-cfff
+  MEM window: fdd00000-fdefffff
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:09:00.0
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:07:00.0
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:07:00.3
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:00:02.0
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:00:04.0
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:00:06.0
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:02:00.0
+  IO window: disabled.
+  MEM window: fd800000-fdcfffff
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:02:00.2
+  IO window: disabled.
+  MEM window: disabled.
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:00:1c.0
+  IO window: disabled.
+  MEM window: fd800000-fdcfffff
+  PREFETCH window: disabled.
+PCI: Bridge: 0000:00:1e.0
+  IO window: 9000-bfff
+  MEM window: fd700000-fd7fffff
+  PREFETCH window: cff00000-dfefffff
+GSI 16 sharing vector 0xA9 and IRQ 16
+ACPI: PCI Interrupt 0000:00:01.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:00:01.0 to 64
+ACPI: PCI Interrupt 0000:00:02.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:00:02.0 to 64
+ACPI: PCI Interrupt 0000:07:00.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:07:00.0 to 64
+PCI: Setting latency timer of device 0000:09:00.0 to 64
+PCI: Setting latency timer of device 0000:07:00.3 to 64
+ACPI: PCI Interrupt 0000:00:04.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:00:04.0 to 64
+ACPI: PCI Interrupt 0000:00:06.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:00:06.0 to 64
+ACPI: PCI Interrupt 0000:00:1c.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:00:1c.0 to 64
+PCI: Setting latency timer of device 0000:02:00.0 to 64
+PCI: Setting latency timer of device 0000:02:00.2 to 64
+PCI: Setting latency timer of device 0000:00:1e.0 to 64
+NET: Registered protocol family 2
+IP route cache hash table entries: 524288 (order: 10, 4194304 bytes)
+TCP established hash table entries: 262144 (order: 10, 4194304 bytes)
+TCP bind hash table entries: 65536 (order: 8, 1048576 bytes)
+TCP: Hash tables configured (established 262144 bind 65536)
+TCP reno registered
+audit: initializing netlink socket (disabled)
+audit(1248157199.413:1): initialized
+Total HugeTLB memory allocated, 0
+VFS: Disk quotas dquot_6.5.1
+Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+SELinux:  Registering netfilter hooks
+Initializing Cryptographic API
+ksign: Installing public key data
+Loading keyring
+- Added public key 52394A11B61A91
+- User ID: CentOS (Kernel Module GPG key)
+io scheduler noop registered
+io scheduler anticipatory registered
+io scheduler deadline registered
+io scheduler cfq registered (default)
+PCI: Setting latency timer of device 0000:00:01.0 to 64
+assign_interrupt_mode Found MSI capability
+Allocate Port Service[0000:00:01.0:pcie00]
+Allocate Port Service[0000:00:01.0:pcie01]
+PCI: Setting latency timer of device 0000:00:02.0 to 64
+assign_interrupt_mode Found MSI capability
+Allocate Port Service[0000:00:02.0:pcie00]
+Allocate Port Service[0000:00:02.0:pcie01]
+PCI: Setting latency timer of device 0000:00:04.0 to 64
+assign_interrupt_mode Found MSI capability
+Allocate Port Service[0000:00:04.0:pcie00]
+Allocate Port Service[0000:00:04.0:pcie01]
+PCI: Setting latency timer of device 0000:00:06.0 to 64
+assign_interrupt_mode Found MSI capability
+Allocate Port Service[0000:00:06.0:pcie00]
+Allocate Port Service[0000:00:06.0:pcie01]
+PCI: Setting latency timer of device 0000:00:1c.0 to 64
+assign_interrupt_mode Found MSI capability
+Allocate Port Service[0000:00:1c.0:pcie00]
+Allocate Port Service[0000:00:1c.0:pcie02]
+Allocate Port Service[0000:00:1c.0:pcie03]
+PCI: Setting latency timer of device 0000:07:00.0 to 64
+Allocate Port Service[0000:07:00.0:pcie10]
+Allocate Port Service[0000:07:00.0:pcie11]
+PCI: Setting latency timer of device 0000:09:00.0 to 64
+assign_interrupt_mode Found MSI capability
+Allocate Port Service[0000:09:00.0:pcie20]
+Allocate Port Service[0000:09:00.0:pcie21]
+pci_hotplug: PCI Hot Plug PCI Core version: 0.5
+Real Time Clock Driver v1.12ac
+hpet_resources: 0xfed00000 is busy
+Non-volatile memory driver v1.2
+Linux agpgart interface v0.101 (c) Dave Jones
+Serial: 8250/16550 driver $Revision: 1.90 $ 4 ports, IRQ sharing enabled
+serial8250: ttyS0 at I/O 0x3f8 (irq = 4) is a 16550A
+serial8250: ttyS1 at I/O 0x2f8 (irq = 3) is a 16550A
+00:06: ttyS0 at I/O 0x3f8 (irq = 4) is a 16550A
+00:07: ttyS1 at I/O 0x2f8 (irq = 3) is a 16550A
+RAMDISK driver initialized: 16 RAM disks of 16384K size 4096 blocksize
+Uniform Multi-Platform E-IDE driver Revision: 7.00alpha2
+ide: Assuming 33MHz system bus speed for PIO modes; override with idebus=xx
+ESB2: IDE controller at PCI slot 0000:00:1f.1
+GSI 17 sharing vector 0xE9 and IRQ 17
+ACPI: PCI Interrupt 0000:00:1f.1[A] -> GSI 18 (level, low) -> IRQ 233
+ESB2: chipset revision 9
+ESB2: not 100% native mode: will probe irqs later
+    ide0: BM-DMA at 0xffa0-0xffa7, BIOS settings: hda:pio, hdb:DMA
+    ide1: BM-DMA at 0xffa8-0xffaf, BIOS settings: hdc:pio, hdd:pio
+Probing IDE interface ide0...
+hdb: DVD-ROM UJDA780, ATAPI CD/DVD-ROM drive
+ide0 at 0x1f0-0x1f7,0x3f6 on irq 14
+Probing IDE interface ide1...
+Probing IDE interface ide1...
+ide-floppy driver 0.99.newide
+usbcore: registered new driver hiddev
+usbcore: registered new driver usbhid
+drivers/usb/input/hid-core.c: v2.6:USB HID core driver
+PNP: No PS/2 controller found. Probing ports directly.
+serio: i8042 KBD port at 0x60,0x64 irq 1
+serio: i8042 AUX port at 0x60,0x64 irq 12
+mice: PS/2 mouse device common for all mice
+md: md driver 0.90.3 MAX_MD_DEVS=256, MD_SB_DISKS=27
+md: bitmap version 4.39
+TCP bic registered
+Initializing IPsec netlink socket
+NET: Registered protocol family 1
+NET: Registered protocol family 17
+ACPI: (supports S0 S1 S4 S5)
+Freeing unused kernel memory: 196k freed
+Write protecting the kernel read-only data: 475k
+GSI 18 sharing vector 0x32 and IRQ 18
+ACPI: PCI Interrupt 0000:00:1d.7[A] -> GSI 23 (level, low) -> IRQ 50
+PCI: Setting latency timer of device 0000:00:1d.7 to 64
+ehci_hcd 0000:00:1d.7: EHCI Host Controller
+ehci_hcd 0000:00:1d.7: new USB bus registered, assigned bus number 1
+ehci_hcd 0000:00:1d.7: debug port 1
+PCI: cache line size of 32 is not supported by device 0000:00:1d.7
+ehci_hcd 0000:00:1d.7: irq 50, io mem 0xfdfff800
+ehci_hcd 0000:00:1d.7: USB 2.0 started, EHCI 1.00, driver 10 Dec 2004
+usb usb1: configuration #1 chosen from 1 choice
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 6 ports detected
+ohci_hcd: 2005 April 22 USB 1.1 'Open' Host Controller (OHCI) Driver (PCI)
+USB Universal Host Controller Interface driver v3.0
+ACPI: PCI Interrupt 0000:00:1d.0[A] -> GSI 23 (level, low) -> IRQ 50
+PCI: Setting latency timer of device 0000:00:1d.0 to 64
+uhci_hcd 0000:00:1d.0: UHCI Host Controller
+uhci_hcd 0000:00:1d.0: new USB bus registered, assigned bus number 2
+uhci_hcd 0000:00:1d.0: irq 50, io base 0x0000e080
+usb usb2: configuration #1 chosen from 1 choice
+hub 2-0:1.0: USB hub found
+hub 2-0:1.0: 2 ports detected
+GSI 19 sharing vector 0x3A and IRQ 19
+ACPI: PCI Interrupt 0000:00:1d.1[B] -> GSI 19 (level, low) -> IRQ 58
+PCI: Setting latency timer of device 0000:00:1d.1 to 64
+uhci_hcd 0000:00:1d.1: UHCI Host Controller
+uhci_hcd 0000:00:1d.1: new USB bus registered, assigned bus number 3
+uhci_hcd 0000:00:1d.1: irq 58, io base 0x0000e000
+usb usb3: configuration #1 chosen from 1 choice
+hub 3-0:1.0: USB hub found
+hub 3-0:1.0: 2 ports detected
+ACPI: PCI Interrupt 0000:00:1d.2[C] -> GSI 18 (level, low) -> IRQ 233
+PCI: Setting latency timer of device 0000:00:1d.2 to 64
+uhci_hcd 0000:00:1d.2: UHCI Host Controller
+uhci_hcd 0000:00:1d.2: new USB bus registered, assigned bus number 4
+uhci_hcd 0000:00:1d.2: irq 233, io base 0x0000dc00
+usb usb4: configuration #1 chosen from 1 choice
+hub 4-0:1.0: USB hub found
+hub 4-0:1.0: 2 ports detected
+SCSI subsystem initialized
+Adaptec aacraid driver 1.1-5[2453]
+ACPI: PCI Interrupt 0000:04:0e.0[A] -> GSI 18 (level, low) -> IRQ 233
+usb 1-6: new high speed USB device using ehci_hcd and address 3
+usb 1-6: configuration #1 chosen from 1 choice
+input: Peppercon AG Multidevice as /class/input/input0
+input: USB HID v1.01 Mouse [Peppercon AG Multidevice] on usb-0000:00:1d.7-6
+input: Peppercon AG Multidevice as /class/input/input1
+input: USB HID v1.01 Keyboard [Peppercon AG Multidevice] on usb-0000:00:1d.7-6
+AAC0: kernel 5.2-0[17304] May 20 2009
+AAC0: monitor 5.2-0[17304]
+AAC0: bios 5.2-0[17304]
+AAC0: serial 053018
+AAC0: Non-DASD support enabled.
+AAC0: 64bit support enabled.
+AAC0: 64 Bit DAC enabled
+scsi0 : aacraid
+  Vendor: Adaptec   Model: Raid10-A          Rev: V1.0
+  Type:   Direct-Access                      ANSI SCSI revision: 02
+SCSI device sda: 1170210816 512-byte hdwr sectors (599148 MB)
+sda: Write Protect is off
+sda: Mode Sense: 06 00 10 00
+SCSI device sda: drive cache: write back w/ FUA
+SCSI device sda: 1170210816 512-byte hdwr sectors (599148 MB)
+sda: Write Protect is off
+sda: Mode Sense: 06 00 10 00
+SCSI device sda: drive cache: write back w/ FUA
+ sda: sda1 sda2 sda3
+sd 0:0:0:0: Attached scsi removable disk sda
+  Vendor: SEAGATE   Model: ST3300655SS       Rev: 0002
+  Type:   Direct-Access                      ANSI SCSI revision: 05
+  Vendor: SEAGATE   Model: ST3300655SS       Rev: 0002
+  Type:   Direct-Access                      ANSI SCSI revision: 05
+  Vendor: SEAGATE   Model: ST3300655SS       Rev: 0002
+  Type:   Direct-Access                      ANSI SCSI revision: 05
+  Vendor: SEAGATE   Model: ST3300655SS       Rev: 0002
+  Type:   Direct-Access                      ANSI SCSI revision: 05
+usb 2-2: new low speed USB device using uhci_hcd and address 2
+  Vendor: ADAPTEC   Model: Virtual SGPIO  0  Rev: 0001
+  Type:   Enclosure                          ANSI SCSI revision: 05
+libata version 3.00 loaded.
+ata_piix 0000:00:1f.2: version 2.12
+ata_piix 0000:00:1f.2: MAP [ P0 P2 P1 P3 ]
+ACPI: PCI Interrupt 0000:00:1f.2[B] -> GSI 19 (level, low) -> IRQ 58
+PCI: Setting latency timer of device 0000:00:1f.2 to 64
+scsi1 : ata_piix
+scsi2 : ata_piix
+ata1: SATA max UDMA/133 cmd 0xec00 ctl 0xe880 bmdma 0xe400 irq 58
+ata2: SATA max UDMA/133 cmd 0xe800 ctl 0xe480 bmdma 0xe408 irq 58
+usb 2-2: configuration #1 chosen from 1 choice
+input: Key Tronic Keytronic USB Keyboard as /class/input/input2
+input: USB HID v1.10 Keyboard [Key Tronic Keytronic USB Keyboard] on usb-0000:00:1d.0-2
+Initializing USB Mass Storage driver...
+scsi3 : SCSI emulation for USB Mass Storage devices
+usb-storage: device found at 3
+usb-storage: waiting for device to settle before scanning
+scsi4 : SCSI emulation for USB Mass Storage devices
+usb-storage: device found at 3
+usb-storage: waiting for device to settle before scanning
+usbcore: registered new driver usb-storage
+USB Mass Storage support registered.
+  Vendor: PepperC   Model: Virtual Dis<5>  Vendor: PepperC   Model: Virtual Disc 2    Rev: 0.01
+  Type:   CD-ROM                             ANSI SCSI revision: 03
+c 1    Rev: 0.01
+  Type:   CD-ROM                             ANSI SCSI revision: 03
+usb-storage: device scan complete
+usb-storage: device scan complete
+kjournald starting.  Commit interval 5 seconds
+EXT3-fs: mounted filesystem with ordered data mode.
+SELinux:  Disabled at runtime.
+SELinux:  Unregistering netfilter hooks
+audit(1248157213.936:2): selinux=0 auid=4294967295 ses=4294967295
+input: PC Speaker as /class/input/input3
+sd 0:0:0:0: Attached scsi generic sg0 type 0
+scsi 0:1:0:0: Attached scsi generic sg1 type 0
+scsi 0:1:1:0: Attached scsi generic sg2 type 0
+scsi 0:1:2:0: Attached scsi generic sg3 type 0
+scsi 0:1:3:0: Attached scsi generic sg4 type 0
+scsi 0:3:0:0: Attached scsi generic sg5 type 13
+scsi 4:0:0:0: Attached scsi generic sg6 type 5
+scsi 3:0:0:0: Attached scsi generic sg7 type 5
+intel_rng: FWH not detected
+sr0: scsi-1 drive
+Uniform CD-ROM driver Revision: 3.20
+sr 4:0:0:0: Attached scsi CD-ROM sr0
+shpchp: Standard Hot Plug PCI Controller Driver version: 0.4
+Floppy drive(s): fd0 is 1.44M
+sr1: scsi-1 drive
+sr 3:0:0:0: Attached scsi CD-ROM sr1
+Intel(R) Gigabit Ethernet Network Driver - version 1.0.8-k2
+Copyright (c) 2007 Intel Corporation.
+ACPI: PCI Interrupt 0000:0b:00.0[A] -> GSI 16 (level, low) -> IRQ 169
+PCI: Setting latency timer of device 0000:0b:00.0 to 64
+FDC 0 is a post-1991 82077
+hdb: ATAPI 24X DVD-ROM drive, 2048kB Cache, UDMA(33)
+igb 0000:0b:00.0: Intel(R) Gigabit Ethernet Network Connection
+igb 0000:0b:00.0: eth0: (PCIe:2.5Gb/s:Width x4) 00:30:48:d0:cf:24
+igb 0000:0b:00.0: eth0: PBA No: ffffff-0ff
+igb 0000:0b:00.0: Using MSI-X interrupts. 1 rx queue(s), 1 tx queue(s)
+GSI 20 sharing vector 0x5A and IRQ 20
+ACPI: PCI Interrupt 0000:0b:00.1[B] -> GSI 17 (level, low) -> IRQ 90
+PCI: Setting latency timer of device 0000:0b:00.1 to 64
+igb 0000:0b:00.1: Intel(R) Gigabit Ethernet Network Connection
+igb 0000:0b:00.1: eth1: (PCIe:2.5Gb/s:Width x4) 00:30:48:d0:cf:25
+igb 0000:0b:00.1: eth1: PBA No: ffffff-0ff
+igb 0000:0b:00.1: Using MSI-X interrupts. 1 rx queue(s), 1 tx queue(s)
+ACPI: PCI Interrupt 0000:00:1f.3[B] -> GSI 19 (level, low) -> IRQ 58
+lp: driver loaded but no devices found
+ACPI: Power Button (FF) [PWRF]
+ACPI: Power Button (CM) [PWRB]
+ibm_acpi: ec object not found
+md: Autodetecting RAID arrays.
+md: autorun ...
+md: ... autorun DONE.
+device-mapper: uevent: version 1.0.3
+device-mapper: ioctl: 4.11.5-ioctl (2007-12-12) initialised: dm-devel@redhat.com
+device-mapper: multipath: version 1.0.5 loaded
+EXT3 FS on sda2, internal journal
+kjournald starting.  Commit interval 5 seconds
+EXT3 FS on sda1, internal journal
+EXT3-fs: mounted filesystem with ordered data mode.
+Adding 1052248k swap on /dev/sda3.  Priority:0 extents:1 across:1052248k
+

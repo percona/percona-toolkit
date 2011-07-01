@@ -1,0 +1,320 @@
+=====================================
+100831  8:56:28 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 1 seconds
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 2465097785, signal count 1048997206
+--Thread 1229429056 has waited at btr/btr0cur.c line 443 for 0.00 seconds the semaphore:
+X-lock on RW-latch at 0x2ab2c679a550 created in file buf/buf0buf.c line 550
+a writer (thread id 1229429056) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file btr/btr0cur.c line 443
+Last time write locked in file buf/buf0buf.c line 1823
+--Thread 1189288256 has waited at btr/btr0sea.c line 1024 for 0.00 seconds the semaphore:
+X-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+--Thread 1191496000 has waited at btr/btr0sea.c line 1024 for 0.00 seconds the semaphore:
+X-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+--Thread 1200527680 has waited at btr/btr0sea.c line 1170 for 0.00 seconds the semaphore:
+S-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+--Thread 1222805824 has waited at row/row0sel.c line 3495 for 0.00 seconds the semaphore:
+S-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+--Thread 1235851584 has waited at btr/btr0cur.c line 1501 for 0.00 seconds the semaphore:
+X-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+--Thread 1217386816 has waited at row/row0sel.c line 3495 for 0.00 seconds the semaphore:
+S-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+--Thread 1262946624 has waited at row/row0sel.c line 3495 for 0.00 seconds the semaphore:
+S-lock on RW-latch at 0x2aaab42120b8 created in file btr/btr0sea.c line 139
+a writer (thread id 1220999488) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1
+Last time read locked in file row/row0sel.c line 3495
+Last time write locked in file btr/btr0sea.c line 1024
+Mutex spin waits 0, rounds 170041380422, OS waits 1296480180
+RW-shared spins 876388672, OS waits 511031480; RW-excl spins 181873480, OS waits 47872283
+------------
+TRANSACTIONS
+------------
+Trx id counter 0 94997420
+Purge done for trx's n:o < 0 94888010 undo n:o < 0 0
+History list length 1282
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 0 94997419, not started, process no 14048, OS thread id 1237858624
+MySQL thread id 822933, query id 202969434 members 10.0.13.1 admin
+---TRANSACTION 0 94997414, not started, process no 14048, OS thread id 1252911424
+MySQL thread id 822931, query id 202969257 members 10.0.13.1 admin
+---TRANSACTION 0 0, not started, process no 14048, OS thread id 1216985408
+MySQL thread id 822930, query id 202967290 migrator 10.0.26.1 admin
+---TRANSACTION 0 94997358, not started, process no 14048, OS thread id 1250703680
+MySQL thread id 822929, query id 202966398 members 10.0.13.1 admin
+---TRANSACTION 0 0, not started, process no 14048, OS thread id 1240869184
+MySQL thread id 822928, query id 202965609 migrator 10.0.26.1 admin
+---TRANSACTION 0 94997334, not started, process no 14048, OS thread id 1229228352
+MySQL thread id 822927, query id 202965605 members 10.0.13.1 admin
+---TRANSACTION 0 94997044, not started, process no 14048, OS thread id 1199925568
+MySQL thread id 822923, query id 202961035 members 10.0.13.1 admin
+---TRANSACTION 0 94996559, not started, process no 14048, OS thread id 1255119168
+MySQL thread id 822915, query id 202960403 members 10.0.13.1 admin
+---TRANSACTION 0 94996504, not started, process no 14048, OS thread id 1186076992
+MySQL thread id 822911, query id 202959840 members 10.0.13.1 admin
+---TRANSACTION 0 94995858, not started, process no 14048, OS thread id 1206749504
+MySQL thread id 822898, query id 202953477 members 10.0.13.1 admin
+---TRANSACTION 0 94995209, not started, process no 14048, OS thread id 1184672064
+MySQL thread id 822870, query id 202941115 members 10.0.13.1 admin
+---TRANSACTION 0 94994818, not started, process no 14048, OS thread id 1205545280
+MySQL thread id 822845, query id 202933095 members 10.0.13.1 admin
+---TRANSACTION 0 94977561, not started, process no 14048, OS thread id 1191696704
+MySQL thread id 792702, query id 202848496 localhost 127.0.0.1 root
+---TRANSACTION 0 0, not started, process no 14048, OS thread id 1195710784
+MySQL thread id 822187, query id 202969437 localhost root
+SHOW ENGINE INNODB STATUS
+---TRANSACTION 0 0, not started, process no 14048, OS thread id 1203939648
+MySQL thread id 815163, query id 202963547 localhost root
+---TRANSACTION 0 94901346, not started, process no 14048, OS thread id 1233443136
+MySQL thread id 817976, query id 202692519 upload 10.0.16.1 admin
+---TRANSACTION 0 94662961, not started, process no 14048, OS thread id 1232439616
+MySQL thread id 808556, query id 201470632 upload 10.0.16.1 admin
+---TRANSACTION 0 94995114, not started, process no 14048, OS thread id 1227020608
+MySQL thread id 808555, query id 202940889 upload 10.0.16.1 admin
+---TRANSACTION 0 94640830, not started, process no 14048, OS thread id 1242675520
+MySQL thread id 806764, query id 201860402 upload 10.0.16.1 admin
+---TRANSACTION 0 0, not started, process no 14048, OS thread id 1189689664
+MySQL thread id 796435, query id 198775848 members 10.0.13.1 admin
+---TRANSACTION 0 94997398, not started, process no 14048, OS thread id 1247492416
+MySQL thread id 784296, query id 202968580 send 10.0.17.1 admin
+---TRANSACTION 0 94996472, not started, process no 14048, OS thread id 1192098112
+MySQL thread id 777117, query id 202959251 login 10.0.12.1 admin
+---TRANSACTION 0 94996475, not started, process no 14048, OS thread id 1214576960
+MySQL thread id 777109, query id 202959259 login 10.0.12.1 admin
+---TRANSACTION 0 94985838, not started, process no 14048, OS thread id 1231436096
+MySQL thread id 768894, query id 202930497 internal 10.0.11.1 admin
+---TRANSACTION 0 94993850, not started, process no 14048, OS thread id 1249098048
+MySQL thread id 768354, query id 202930700 internal 10.0.11.1 admin
+---TRANSACTION 0 94903583, not started, process no 14048, OS thread id 1243277632
+MySQL thread id 768192, query id 202701888 upload 10.0.16.1 admin
+---TRANSACTION 0 94900682, not started, process no 14048, OS thread id 1194907968
+MySQL thread id 768191, query id 202694470 upload 10.0.16.1 admin
+---TRANSACTION 0 94993821, not started, process no 14048, OS thread id 1211566400
+MySQL thread id 767848, query id 202930522 internal 10.0.11.1 admin
+---TRANSACTION 0 94993819, not started, process no 14048, OS thread id 1209559360
+MySQL thread id 767619, query id 202930514 internal 10.0.11.1 admin
+---TRANSACTION 0 94584507, not started, process no 14048, OS thread id 1194506560
+MySQL thread id 748023, query id 201048868 upload 10.0.16.1 admin
+---TRANSACTION 0 94832189, not started, process no 14048, OS thread id 1258932544
+MySQL thread id 742746, query id 202367113 upload 10.0.16.1 admin
+---TRANSACTION 0 94662950, not started, process no 14048, OS thread id 1231034688
+MySQL thread id 742744, query id 201470628 upload 10.0.16.1 admin
+---TRANSACTION 0 94997313, not started, process no 14048, OS thread id 1257326912
+MySQL thread id 742743, query id 202964760 upload 10.0.16.1 admin
+---TRANSACTION 0 94662958, not started, process no 14048, OS thread id 1261140288
+MySQL thread id 742742, query id 201470635 upload 10.0.16.1 admin
+---TRANSACTION 0 94584512, not started, process no 14048, OS thread id 1223407936
+MySQL thread id 742739, query id 201048840 upload 10.0.16.1 admin
+---TRANSACTION 0 94997388, not started, process no 14048, OS thread id 1232038208
+MySQL thread id 692780, query id 202968343 send 10.0.17.1 admin
+---TRANSACTION 0 94993852, not started, process no 14048, OS thread id 1249298752
+MySQL thread id 606360, query id 202930708 internal 10.0.11.1 admin
+---TRANSACTION 0 94993823, not started, process no 14048, OS thread id 1184069952
+MySQL thread id 586026, query id 202930529 internal 10.0.11.1 admin
+---TRANSACTION 0 94993825, not started, process no 14048, OS thread id 1230432576
+MySQL thread id 585086, query id 202930679 internal 10.0.11.1 admin
+---TRANSACTION 0 94662952, not started, process no 14048, OS thread id 1209960768
+MySQL thread id 424382, query id 201470631 upload 10.0.16.1 admin
+---TRANSACTION 0 94901870, not started, process no 14048, OS thread id 1238661440
+MySQL thread id 424379, query id 202695165 upload 10.0.16.1 admin
+---TRANSACTION 0 94584506, not started, process no 14048, OS thread id 1241270592
+MySQL thread id 424377, query id 201048849 upload 10.0.16.1 admin
+---TRANSACTION 0 94832190, not started, process no 14048, OS thread id 1247091008
+MySQL thread id 424373, query id 202367111 upload 10.0.16.1 admin
+---TRANSACTION 0 94831050, not started, process no 14048, OS thread id 1233242432
+MySQL thread id 415701, query id 202365679 upload 10.0.16.1 admin
+---TRANSACTION 0 94662954, not started, process no 14048, OS thread id 1203136832
+MySQL thread id 415699, query id 201470627 upload 10.0.16.1 admin
+---TRANSACTION 0 94584509, not started, process no 14048, OS thread id 1231837504
+MySQL thread id 414791, query id 201048882 upload 10.0.16.1 admin
+---TRANSACTION 0 94997391, not started, process no 14048, OS thread id 1262545216
+MySQL thread id 407618, query id 202968021 login 10.0.12.1 admin
+---TRANSACTION 0 94996545, not started, process no 14048, OS thread id 1194707264
+MySQL thread id 389431, query id 202960339 login 10.0.12.1 admin
+---TRANSACTION 0 94997387, not started, process no 14048, OS thread id 1192700224
+MySQL thread id 385591, query id 202967805 login 10.0.12.1 admin
+---TRANSACTION 0 94902533, not started, process no 14048, OS thread id 1185876288
+MySQL thread id 338583, query id 202698617 upload 10.0.16.1 admin
+---TRANSACTION 0 94831044, not started, process no 14048, OS thread id 1188284736
+MySQL thread id 192349, query id 202365675 upload 10.0.16.1 admin
+---TRANSACTION 0 94901808, not started, process no 14048, OS thread id 1193302336
+MySQL thread id 192348, query id 202694561 upload 10.0.16.1 admin
+---TRANSACTION 0 94997383, not started, process no 14048, OS thread id 1193703744
+MySQL thread id 176010, query id 202967747 login 10.0.12.1 admin
+---TRANSACTION 0 94996543, not started, process no 14048, OS thread id 1191897408
+MySQL thread id 8970, query id 202960317 login 10.0.12.1 admin
+---TRANSACTION 0 94996547, not started, process no 14048, OS thread id 1190291776
+MySQL thread id 316, query id 202960357 login 10.0.12.1 admin
+---TRANSACTION 0 94997389, not started, process no 14048, OS thread id 1189087552
+MySQL thread id 206, query id 202967893 login 10.0.12.1 admin
+---TRANSACTION 0 94996546, not started, process no 14048, OS thread id 1186478400
+MySQL thread id 48, query id 202960347 login 10.0.12.1 admin
+---TRANSACTION 0 94997417, ACTIVE 0 sec, process no 14048, OS thread id 1217386816 starting index read, thread declared inside InnoDB 499
+mysql tables in use 3, locked 0
+MySQL thread id 822926, query id 202969428 members 10.0.13.1 admin Sending data
+SELECT client.id
+FROM `client`, client_feature, edition_feature
+WHERE ( client.id = client_feature.client_id )
+AND ( client_feature.feature_id = '2' )
+AND ( edition_feature.client_edition_id = client.client_edition_id )
+AND ( edition_feature.feature_id = client_feature.feature_id )
+AND ( client_feature.is_enabled = 1 )
+Trx read view will not see trx with id >= 0 94997418, sees < 0 94886750
+---TRANSACTION 0 94997415, ACTIVE 0 sec, process no 14048, OS thread id 1200527680 fetching rows, thread declared inside InnoDB 383
+mysql tables in use 5, locked 0
+MySQL thread id 822849, query id 202969391 members 10.0.13.1 admin Copying to tmp table
+SELECT DISTINCT
+appointment.patient_id AS PId,
+visitor.first_name AS FName,
+visitor.last_name AS LName,
+DATE(appointment.datetime) AS Date,
+appointment.office_id AS OfficeId,
+0 AS ProcId,
+appointment.state AS Status,
+appointment.state_modified AS StatusChanged,
+time(appointment.datetime) AS RawTime,
+TIME_FORMAT(TIME(appointment.datetime), '%l:%i %p') AS Time,
+DATE_FORMAT(DATE(appointment.datetime), '%W, %M %e') AS DateFormated,
+office.name AS office_name
+FROM
+appointment
+LEFT JOIN visitor ON visitor.id = appointment.patient_id
+AND visitor.client_id = appointment
+Trx read view will not see trx with id >= 0 94997416, sees < 0 94886750
+---TRANSACTION 0 94997411, ACTIVE 0 sec, process no 14048, OS thread id 1262946624 starting index read, thread declared inside InnoDB 499
+mysql tables in use 3, locked 0
+MySQL thread id 822904, query id 202969248 members 10.0.13.1 admin Sending data
+SELECT client.id
+FROM `client`, client_feature, edition_feature
+WHERE ( client.id = client_feature.client_id )
+AND ( client_feature.feature_id = '1' )
+AND ( edition_feature.client_edition_id = client.client_edition_id )
+AND ( edition_feature.feature_id = client_feature.feature_id )
+AND ( client_feature.is_enabled = 1 )
+Trx read view will not see trx with id >= 0 94997412, sees < 0 94886750
+---TRANSACTION 0 94997408, ACTIVE 0 sec, process no 14048, OS thread id 1222805824 starting index read, thread declared inside InnoDB 247
+mysql tables in use 3, locked 0
+MySQL thread id 822918, query id 202969141 members 10.0.13.1 admin Sending data
+SELECT client.id
+FROM `client`, client_feature, edition_feature
+WHERE ( client.id = client_feature.client_id )
+AND ( client_feature.feature_id = '27' )
+AND ( edition_feature.client_edition_id = client.client_edition_id )
+AND ( edition_feature.feature_id = client_feature.feature_id )
+AND ( client_feature.is_enabled = 1 )
+Trx read view will not see trx with id >= 0 94997409, sees < 0 94886750
+---TRANSACTION 0 94996520, ACTIVE 2 sec, process no 14048, OS thread id 1220999488 starting index read, thread declared inside InnoDB 165
+mysql tables in use 2, locked 0
+MySQL thread id 822913, query id 202960047 members 10.0.13.1 admin Copying to tmp table
+SELECT h.client_id, l.time, (message like 'Filling initial.%') AS initial
+FROM grover_db.upload_log l
+LEFT JOIN grover_db.extractor_log_history h on (h.id=l.log_report_id)
+WHERE h.client_id in ('184', '587', '681') and (message like 'Filling initial.%' or  message like 'Filling diff.%') and l.time > now() - interval 1 day
+ORDER BY time desc
+LIMIT 3
+Trx read view will not see trx with id >= 0 94996521, sees < 0 94886750
+---TRANSACTION 0 94995889, ACTIVE 3 sec, process no 14048, OS thread id 1189288256 starting index read, thread declared inside InnoDB 387
+mysql tables in use 4, locked 0
+MySQL thread id 811143, query id 202954138 corp-stage 10.0.30.1 confluence_RO preparing
+select concat('[',cl_username,', cl_username,']') as username, h.client_id, l.time, l.message from upload_log l left join extractor_log_history h on (h.id=l.log_report_id) left join client c on (c.id=h.client_id) where h.client_id in (select client_id from upload_filling_status where status like '%prog%') and (message like 'Filling initial.%' or  message like 'Filling diff.%') order by time desc limit 3
+Trx read view will not see trx with id >= 0 94995890, sees < 0 94886750
+---TRANSACTION 0 94995850, ACTIVE 4 sec, process no 14048, OS thread id 1191496000 fetching rows, thread declared inside InnoDB 500
+mysql tables in use 1, locked 0
+19 lock struct(s), heap size 3024, 13 row lock(s), undo log entries 121
+MySQL thread id 490106, query id 202964809 upload 10.0.16.1 admin Sending data
+SELECT  T.id as id,    T.pms_id as pmsId FROM     `account` T WHERE    T.client_id = 681    AND T.pms_id IS NOT NULL
+Trx read view will not see trx with id >= 0 94995851, sees < 0 94886750
+---TRANSACTION 0 94892591, ACTIVE 254 sec, process no 14048, OS thread id 1229429056 updating or deleting, thread declared inside InnoDB 175
+mysql tables in use 2, locked 2
+2850 lock struct(s), heap size 325616, 581344 row lock(s), undo log entries 153341
+MySQL thread id 391236, query id 202790998 upload 10.0.16.1 admin deleting from reference tables
+DELETE `appointment` T FROM `appointment` T JOIN `appointment` T1 ON T1.id = T.id WHERE T1.client_id = 587  AND T1.pms_id IS NOT NULL
+Trx read view will not see trx with id >= 0 94892592, sees < 0 94886750
+---TRANSACTION 0 94886750, ACTIVE 263 sec, process no 14048, OS thread id 1235851584 updating or deleting, thread declared inside InnoDB 232
+mysql tables in use 4, locked 4
+2039 lock struct(s), heap size 227312, 140495 row lock(s), undo log entries 123335
+MySQL thread id 391259, query id 202960384 upload 10.0.16.1 admin
+UPDATE     visitor V    JOIN visitor V1 USE KEY (client_id) ON (V1.id = V.id)    LEFT JOIN address A ON (A.id = V1.address_id)    SET     V.address_id = V.address_id_in_pms   WHERE    V1.client_id = 184    AND (     A.pms_id IS NOT NULL      OR V1.address_id IS NULL    )
+Trx read view will not see trx with id >= 0 94886751, sees < 0 94833265
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: complete io for buf page (read thread) ev set
+I/O thread 3 state: waiting for i/o request (write thread)
+Pending normal aio reads: 48, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+11650986 OS file reads, 17995415 OS file writes, 9355984 OS fsyncs
+2 pending preads, 0 pending pwrites
+282.72 reads/s, 28078 avg bytes/read, 87.91 writes/s, 34.97 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 4171, free list len 14370, seg size 18542,
+4008650 inserts, 3383812 merged recs, 692645 merges
+Hash table size 70803119, node heap has 245401 buffer(s)
+96814.19 hash searches/s, 51484.52 non-hash searches/s
+---
+LOG
+---
+Log sequence number 208 1379356250
+Log flushed up to   208 1379193580
+Last checkpoint at  208 1281659055
+0 pending log writes, 0 pending chkp writes
+8704273 log i/o's done, 29.97 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 37642354530; in additional pool allocated 25036032
+Dictionary memory allocated 1584480
+Buffer pool size   2097152
+Free buffers       1
+Database pages     1851718
+Modified db pages  94787
+Pending reads 50
+Pending writes: LRU 0, flush list 0, single page 0
+Pages read 27173542, created 746585, written 17533226
+481.52 reads/s, 12.99 creates/s, 127.87 writes/s
+Buffer pool hit rate 999 / 1000
+--------------
+ROW OPERATIONS
+--------------
+9 queries inside InnoDB, 0 queries in queue
+10 read views open inside InnoDB
+Main thread process no. 14048, id 1182263616, state: sleeping
+Number of rows inserted 47542539, updated 90795809, deleted 38936739, read 62131178506
+48.95 inserts/s, 5760.24 updates/s, 67.93 deletes/s, 201454.55 reads/s
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================

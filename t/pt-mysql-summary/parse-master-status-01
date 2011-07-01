@@ -1,0 +1,9 @@
+#!/bin/bash
+#format_binlog_filters
+
+cat <<EOF > $1
+        binlog_do_db | foo
+    binlog_ignore_db | mysql,test
+EOF
+
+cp samples/mysql-show-master-status-001.txt /tmp/aspersa

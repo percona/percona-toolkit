@@ -1,0 +1,7 @@
+/dev/sda1 9.9G 3.2G 6.2G 34% / on / type ext3 (rw)
+/dev/sdb 414G 199M 393G 1% /mnt on /mnt type ext3 (rw)
+none 7.6G 0 7.6G 0% /dev/shm on /dev/pts type devpts (rw,gid=5,mode=620)
+none 7.6G 0 7.6G 0% /dev/shm on /dev/shm type tmpfs (rw)
+none 7.6G 0 7.6G 0% /dev/shm on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+none 7.6G 0 7.6G 0% /dev/shm on /proc type proc (rw)
+none 7.6G 0 7.6G 0% /dev/shm on /sys type sysfs (rw)

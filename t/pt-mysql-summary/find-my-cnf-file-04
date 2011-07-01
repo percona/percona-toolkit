@@ -1,0 +1,6 @@
+#!/bin/bash
+#find_my_cnf_file
+
+echo /tmp/12345/my.sandbox.cnf > $1
+
+cp samples/ps-mysqld-001.txt /tmp/aspersa

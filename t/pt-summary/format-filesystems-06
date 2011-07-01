@@ -1,0 +1,13 @@
+#!/bin/bash
+#parse_filesystems samples/df-mount-006.txt FreeBSD
+
+# This one is from FreeBSD.
+
+cat <<EOF > $1
+  Filesystem   Size Used Type  Opts                Mountpoint
+  /dev/ad0s1a  496M  32% ufs   local               /
+  /dev/ad0s1d  1.1G   1% ufs   local, soft-updates /var
+  /dev/ad0s1e  496M   0% ufs   local, soft-updates /tmp
+  /dev/ad0s1f   17G   9% ufs   local, soft-updates /usr
+  devfs        1.0K 100% devfs local               /dev
+EOF

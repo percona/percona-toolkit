@@ -1,0 +1,24 @@
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX: bytes  packets  errors  dropped overrun mcast   
+    3246978    26907    0       0       0       0      
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3246978    26907    0       0       0       0      
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 90:e6:ba:f3:9c:70 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    176275034  28646545 0       0       0       3012   
+    TX: bytes  packets  errors  dropped carrier collsns 
+    117557001  880398   0       0       3       0      
+3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP qlen 1000
+    link/ether 00:25:d3:e4:dc:62 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    49106414   81338    0       0       0       0      
+    TX: bytes  packets  errors  dropped carrier collsns 
+    19024970   94127    0       0       0       0      
+4: vboxnet0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN qlen 1000
+    link/ether 0a:00:27:00:00:00 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0      
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0      

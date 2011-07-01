@@ -1,0 +1,16 @@
+#!/bin/bash
+#aggregate_stacktrace 2 /tmp/aspersa
+
+cat > $1 <<EOF
+     35 pthread_cond_wait,end_thread
+     20 read,read
+     18 pthread_cond_wait,os_event_wait_low
+      3 select,os_thread_sleep
+      3 pthread_cond_wait,MYSQL_LOG::wait_for_update
+      1 select,handle_connections_sockets
+      1 do_sigwait,sigwait
+      1 btr_search_guess_on_hash,btr_cur_search_to_nth_level
+      1 btr_cur_search_to_nth_level,btr_estimate_n_rows_in_range
+EOF
+
+cp samples/stacktrace-003.txt $2

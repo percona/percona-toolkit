@@ -1,0 +1,13 @@
+#!/bin/bash
+#parse_mysqld_instances
+
+cat <<EOF > $1
+  Port  Data Directory             Socket
+  ===== ========================== ======
+        /var/db/mysql              
+EOF
+
+cat <<EOF > $2
+mysql   767  0.0  0.9  3492  1100  v0  I     3:01PM   0:00.07 /bin/sh /usr/local/bin/mysqld_safe --defaults-extra-file=/var/db/mysql/my.cnf --user=mysql --datadir=/var/db/mysql --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
+mysql   818  0.0 17.4 45292 20584  v0  I     3:01PM   0:02.28 /usr/local/libexec/mysqld --defaults-extra-file=/var/db/mysql/my.cnf --basedir=/usr/local --datadir=/var/db/mysql --user=mysql --log-error=/var/db/mysql/freebsd.hsd1.va.comcast.net..err --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
+EOF

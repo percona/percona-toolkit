@@ -1,0 +1,3 @@
+/dev/sda1 99M 12M 83M 13% /boot on /boot type ext3 (rw)
+/dev/sda2 540G 474G 61G 89% / on / type ext3 (rw)
+tmpfs 48G 0 48G 0% /dev/shm on /dev/shm type tmpfs (rw)

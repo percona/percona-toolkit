@@ -1,0 +1,65 @@
+[percona@pc-db2 Linux]$ sudo ./lsiutil.x86_64 -i -s
+
+LSI Logic MPT Configuration Utility, Version 1.62, January 14, 2009
+
+1 MPT Port found
+
+==============================================================================
+
+/proc/mpt/ioc0    LSI Logic SAS1068E B3    MPT 105   Firmware 00192f00   IOC 0
+
+Seg/Bus/Dev/Fun    Board Name       Board Assembly   Board Tracer
+ 0   1   0   0     SAS6IR                                            
+
+Current Port State
+------------------
+SAS1068E's links are 3.0 G, 3.0 G, 3.0 G, 3.0 G, down, down, down, down
+
+Software Version Information
+----------------------------
+Current active firmware version is 00192f00 (0.25.47)
+Firmware image's version is MPTFW-00.25.47.00-IE
+  LSI Logic
+x86 BIOS image's version is MPTBIOS-6.22.03.00 (2008.08.06)
+
+Firmware Settings
+-----------------
+SAS WWID:                       50024e805f4feb00
+Multi-pathing:                  Disabled
+SATA Native Command Queuing:    Enabled
+SATA Write Caching:             Enabled
+SATA Maximum Queue Depth:       8
+Device Missing Report Delay:    0 seconds
+Device Missing I/O Delay:       0 seconds
+Phy Parameters for Phynum:      0    1    2    3    4    5    6    7    
+  Link Enabled:                 Yes  Yes  Yes  Yes  Yes  Yes  Yes  Yes  
+  Link Min Rate:                1.5  1.5  1.5  1.5  1.5  1.5  1.5  1.5  
+  Link Max Rate:                3.0  3.0  3.0  3.0  3.0  3.0  3.0  3.0  
+  SSP Initiator Enabled:        Yes  Yes  Yes  Yes  Yes  Yes  Yes  Yes  
+  SSP Target Enabled:           No   No   No   No   No   No   No   No   
+  Port Configuration:           Auto Auto Auto Auto Auto Auto Auto Auto 
+Target IDs per enclosure:       1
+Persistent mapping:             Enabled
+Physical mapping type:          Enclosure/Slot
+Target ID 0 reserved for boot:  No
+Starting slot (direct attach):  0
+Target IDs (physical mapping):  8
+Interrupt Coalescing:           Enabled, timeout is 16 us, depth is 4
+
+Persistent Mappings
+-------------------
+No persistent entries found
+
+ B___T___L  Type       Vendor   Product          Rev      SASAddress     PhyNum
+ 0   0   0  Disk       Dell     VIRTUAL DISK     1028  
+ 0   2   0  Disk       Dell     VIRTUAL DISK     1028  
+ 0   8   0  EnclServ   DP       BACKPLANE        1.05  510240805f4feb00     8
+
+Hidden RAID Devices:
+
+ B___T    Device       Vendor   Product          Rev      SASAddress     PhyNum
+ 0   1  PhysDisk 0     SEAGATE  ST373455SS       S52A  5000c50012a8ac61     1
+ 0   9  PhysDisk 1     SEAGATE  ST373455SS       S52A  5000c50012a8a24d     0
+ 0   3  PhysDisk 2     SEAGATE  ST3146855SS      S52A  5000c500130fcaed     3
+ 0  10  PhysDisk 3     SEAGATE  ST3146855SS      S52A  5000c500131093f5     2
+

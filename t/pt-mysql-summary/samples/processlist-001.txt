@@ -1,0 +1,1503 @@
+*************************** 1. row ***************************
+     Id: 1531
+   User: repl
+   Host: 10.17.85.74:60991
+     db: NULL
+Command: Binlog Dump
+   Time: 9133994
+  State: Has sent all binlog to slave; waiting for binlog to be updated
+   Info: NULL
+*************************** 2. row ***************************
+     Id: 1016953721
+   User: goate
+   Host: 10.17.85.100:59127
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 3. row ***************************
+     Id: 2012242752
+   User: system user
+   Host: 
+     db: NULL
+Command: Connect
+   Time: 5245903
+  State: Waiting for master to send event
+   Info: NULL
+*************************** 4. row ***************************
+     Id: 2012242753
+   User: system user
+   Host: 
+     db: NULL
+Command: Connect
+   Time: 307608
+  State: Has read all relay log; waiting for the slave I/O thread to update it
+   Info: NULL
+*************************** 5. row ***************************
+     Id: 2874569215
+   User: goate
+   Host: 10.17.85.100:39918
+     db: aetecjc
+Command: Sleep
+   Time: 1
+  State: 
+   Info: NULL
+*************************** 6. row ***************************
+     Id: 2901339256
+   User: goate
+   Host: 10.17.85.100:54410
+     db: aetecjc
+Command: Sleep
+   Time: 1
+  State: 
+   Info: NULL
+*************************** 7. row ***************************
+     Id: 3474024420
+   User: ebace
+   Host: 10.17.85.90:52058
+     db: aetecjc
+Command: Sleep
+   Time: 19968
+  State: 
+   Info: NULL
+*************************** 8. row ***************************
+     Id: 3474613345
+   User: ebace
+   Host: 10.17.85.90:39850
+     db: aetecjc
+Command: Sleep
+   Time: 14294
+  State: 
+   Info: NULL
+*************************** 9. row ***************************
+     Id: 3474645687
+   User: ebace
+   Host: 10.17.85.90:33787
+     db: aetecjc
+Command: Sleep
+   Time: 13986
+  State: 
+   Info: NULL
+*************************** 10. row ***************************
+     Id: 3474719714
+   User: ebace
+   Host: 10.17.85.90:49635
+     db: aetecjc
+Command: Sleep
+   Time: 13278
+  State: 
+   Info: NULL
+*************************** 11. row ***************************
+     Id: 3474719909
+   User: ebace
+   Host: 10.17.85.90:49642
+     db: aetecjc
+Command: Sleep
+   Time: 13276
+  State: 
+   Info: NULL
+*************************** 12. row ***************************
+     Id: 3474842431
+   User: ebace
+   Host: 10.17.85.90:49236
+     db: aetecjc
+Command: Sleep
+   Time: 11977
+  State: 
+   Info: NULL
+*************************** 13. row ***************************
+     Id: 3474954194
+   User: ebace
+   Host: 10.17.85.90:39658
+     db: aetecjc
+Command: Sleep
+   Time: 10750
+  State: 
+   Info: NULL
+*************************** 14. row ***************************
+     Id: 3475091528
+   User: ebace
+   Host: 10.17.85.90:35662
+     db: aetecjc
+Command: Sleep
+   Time: 9173
+  State: 
+   Info: NULL
+*************************** 15. row ***************************
+     Id: 3475389888
+   User: goate
+   Host: 10.17.85.100:35803
+     db: aetecjc
+Command: Sleep
+   Time: 1
+  State: 
+   Info: NULL
+*************************** 16. row ***************************
+     Id: 3475482762
+   User: babeecc
+   Host: 10.14.82.202:34473
+     db: aetecjc
+Command: Sleep
+   Time: 4968
+  State: 
+   Info: NULL
+*************************** 17. row ***************************
+     Id: 3475503981
+   User: babeecc
+   Host: 10.14.82.202:48224
+     db: aetecjc
+Command: Sleep
+   Time: 4756
+  State: 
+   Info: NULL
+*************************** 18. row ***************************
+     Id: 3475643051
+   User: babeecc
+   Host: 10.14.82.202:46770
+     db: aetecjc
+Command: Sleep
+   Time: 3383
+  State: 
+   Info: NULL
+*************************** 19. row ***************************
+     Id: 3475659512
+   User: babeecc
+   Host: 10.14.82.202:52807
+     db: aetecjc
+Command: Sleep
+   Time: 3224
+  State: 
+   Info: NULL
+*************************** 20. row ***************************
+     Id: 3475771001
+   User: centous
+   Host: someserver.woozle.com14:53114
+     db: aetecjc
+Command: Sleep
+   Time: 107
+  State: 
+   Info: NULL
+*************************** 21. row ***************************
+     Id: 3475837956
+   User: babeecc
+   Host: 10.14.82.202:44081
+     db: aetecjc
+Command: Sleep
+   Time: 1532
+  State: 
+   Info: NULL
+*************************** 22. row ***************************
+     Id: 3475841373
+   User: ebace
+   Host: 10.17.85.90:50715
+     db: aetecjc
+Command: Sleep
+   Time: 1499
+  State: 
+   Info: NULL
+*************************** 23. row ***************************
+     Id: 3475843612
+   User: aecac
+   Host: 10.17.85.100:55452
+     db: aetecjc
+Command: Sleep
+   Time: 1476
+  State: 
+   Info: NULL
+*************************** 24. row ***************************
+     Id: 3475846614
+   User: babeecc
+   Host: 10.14.82.202:44318
+     db: aetecjc
+Command: Sleep
+   Time: 1449
+  State: 
+   Info: NULL
+*************************** 25. row ***************************
+     Id: 3475852934
+   User: qjveec
+   Host: someserver.woozle.com11:55801
+     db: aetecjc
+Command: Sleep
+   Time: 1388
+  State: 
+   Info: NULL
+*************************** 26. row ***************************
+     Id: 3475855712
+   User: ebace
+   Host: 10.17.85.90:51485
+     db: aetecjc
+Command: Sleep
+   Time: 1364
+  State: 
+   Info: NULL
+*************************** 27. row ***************************
+     Id: 3475883042
+   User: babeecc
+   Host: 10.14.82.202:39122
+     db: aetecjc
+Command: Sleep
+   Time: 1096
+  State: 
+   Info: NULL
+*************************** 28. row ***************************
+     Id: 3475885020
+   User: babeecc
+   Host: 10.14.82.202:39168
+     db: aetecjc
+Command: Sleep
+   Time: 1077
+  State: 
+   Info: NULL
+*************************** 29. row ***************************
+     Id: 3475885956
+   User: babeecc
+   Host: 10.14.82.202:39187
+     db: aetecjc
+Command: Sleep
+   Time: 1067
+  State: 
+   Info: NULL
+*************************** 30. row ***************************
+     Id: 3475897583
+   User: ebace
+   Host: 10.17.85.90:48777
+     db: aetecjc
+Command: Sleep
+   Time: 957
+  State: 
+   Info: NULL
+*************************** 31. row ***************************
+     Id: 3475925065
+   User: babeecc
+   Host: 10.14.82.202:53161
+     db: aetecjc
+Command: Sleep
+   Time: 694
+  State: 
+   Info: NULL
+*************************** 32. row ***************************
+     Id: 3475926419
+   User: babeecc
+   Host: 10.14.82.202:53202
+     db: aetecjc
+Command: Sleep
+   Time: 682
+  State: 
+   Info: NULL
+*************************** 33. row ***************************
+     Id: 3475928724
+   User: babeecc
+   Host: 10.14.82.202:53236
+     db: aetecjc
+Command: Sleep
+   Time: 660
+  State: 
+   Info: NULL
+*************************** 34. row ***************************
+     Id: 3475942699
+   User: babeecc
+   Host: 10.14.82.202:36223
+     db: aetecjc
+Command: Sleep
+   Time: 533
+  State: 
+   Info: NULL
+*************************** 35. row ***************************
+     Id: 3475945454
+   User: eanecj
+   Host: 10.17.85.86:53882
+     db: aetecjc
+Command: Sleep
+   Time: 508
+  State: 
+   Info: NULL
+*************************** 36. row ***************************
+     Id: 3475945456
+   User: etace
+   Host: 10.17.85.86:53883
+     db: aetecjc
+Command: Sleep
+   Time: 508
+  State: 
+   Info: NULL
+*************************** 37. row ***************************
+     Id: 3475946078
+   User: babeecc
+   Host: 10.14.82.202:36318
+     db: aetecjc
+Command: Sleep
+   Time: 503
+  State: 
+   Info: NULL
+*************************** 38. row ***************************
+     Id: 3475946525
+   User: babeecc
+   Host: 10.14.82.202:36330
+     db: aetecjc
+Command: Sleep
+   Time: 499
+  State: 
+   Info: NULL
+*************************** 39. row ***************************
+     Id: 3475946959
+   User: babeecc
+   Host: 10.14.82.202:36350
+     db: aetecjc
+Command: Sleep
+   Time: 495
+  State: 
+   Info: NULL
+*************************** 40. row ***************************
+     Id: 3475947287
+   User: eanecj
+   Host: 10.17.85.86:55818
+     db: aetecjc
+Command: Sleep
+   Time: 492
+  State: 
+   Info: NULL
+*************************** 41. row ***************************
+     Id: 3475947289
+   User: etace
+   Host: 10.17.85.86:55819
+     db: aetecjc
+Command: Sleep
+   Time: 492
+  State: 
+   Info: NULL
+*************************** 42. row ***************************
+     Id: 3475948014
+   User: acjcxx
+   Host: 10.17.85.86:56038
+     db: aetecjc
+Command: Sleep
+   Time: 486
+  State: 
+   Info: NULL
+*************************** 43. row ***************************
+     Id: 3475948016
+   User: eanecj
+   Host: 10.17.85.86:56039
+     db: aetecjc
+Command: Sleep
+   Time: 486
+  State: 
+   Info: NULL
+*************************** 44. row ***************************
+     Id: 3475948021
+   User: etace
+   Host: 10.17.85.86:56042
+     db: aetecjc
+Command: Sleep
+   Time: 486
+  State: 
+   Info: NULL
+*************************** 45. row ***************************
+     Id: 3475953643
+   User: eanecj
+   Host: 10.17.85.86:57515
+     db: aetecjc
+Command: Sleep
+   Time: 433
+  State: 
+   Info: NULL
+*************************** 46. row ***************************
+     Id: 3475953647
+   User: etace
+   Host: 10.17.85.86:57518
+     db: aetecjc
+Command: Sleep
+   Time: 433
+  State: 
+   Info: NULL
+*************************** 47. row ***************************
+     Id: 3475956178
+   User: goate
+   Host: 10.17.85.100:41395
+     db: aetecjc
+Command: Sleep
+   Time: 406
+  State: 
+   Info: NULL
+*************************** 48. row ***************************
+     Id: 3475959932
+   User: eanecj
+   Host: 10.36.34.66:60484
+     db: aetecjc
+Command: Sleep
+   Time: 372
+  State: 
+   Info: NULL
+*************************** 49. row ***************************
+     Id: 3475959936
+   User: etace
+   Host: 10.36.34.66:60485
+     db: aetecjc
+Command: Sleep
+   Time: 372
+  State: 
+   Info: NULL
+*************************** 50. row ***************************
+     Id: 3475960371
+   User: goate
+   Host: 10.17.85.100:41401
+     db: aetecjc
+Command: Sleep
+   Time: 366
+  State: 
+   Info: NULL
+*************************** 51. row ***************************
+     Id: 3475960427
+   User: etace
+   Host: 10.17.85.86:59365
+     db: aetecjc
+Command: Sleep
+   Time: 366
+  State: 
+   Info: NULL
+*************************** 52. row ***************************
+     Id: 3475960511
+   User: acjcxx
+   Host: 10.17.85.86:59387
+     db: aetecjc
+Command: Sleep
+   Time: 366
+  State: 
+   Info: NULL
+*************************** 53. row ***************************
+     Id: 3475960512
+   User: eanecj
+   Host: 10.17.85.86:59388
+     db: aetecjc
+Command: Sleep
+   Time: 366
+  State: 
+   Info: NULL
+*************************** 54. row ***************************
+     Id: 3475964890
+   User: goate
+   Host: 10.17.85.100:42791
+     db: aetecjc
+Command: Sleep
+   Time: 326
+  State: 
+   Info: NULL
+*************************** 55. row ***************************
+     Id: 3475968769
+   User: eanecj
+   Host: someserver.woozle.com:57993
+     db: aetecjc
+Command: Sleep
+   Time: 294
+  State: 
+   Info: NULL
+*************************** 56. row ***************************
+     Id: 3475968770
+   User: etace
+   Host: someserver.woozle.com:57994
+     db: aetecjc
+Command: Sleep
+   Time: 294
+  State: 
+   Info: NULL
+*************************** 57. row ***************************
+     Id: 3475969922
+   User: eanecj
+   Host: 10.36.34.66:34986
+     db: aetecjc
+Command: Sleep
+   Time: 283
+  State: 
+   Info: NULL
+*************************** 58. row ***************************
+     Id: 3475969923
+   User: etace
+   Host: 10.36.34.66:34987
+     db: aetecjc
+Command: Sleep
+   Time: 283
+  State: 
+   Info: NULL
+*************************** 59. row ***************************
+     Id: 3475970067
+   User: eanecj
+   Host: 10.36.34.66:35018
+     db: aetecjc
+Command: Sleep
+   Time: 282
+  State: 
+   Info: NULL
+*************************** 60. row ***************************
+     Id: 3475970068
+   User: etace
+   Host: 10.36.34.66:35019
+     db: aetecjc
+Command: Sleep
+   Time: 282
+  State: 
+   Info: NULL
+*************************** 61. row ***************************
+     Id: 3475971706
+   User: goate
+   Host: 10.17.85.100:42799
+     db: aetecjc
+Command: Sleep
+   Time: 265
+  State: 
+   Info: NULL
+*************************** 62. row ***************************
+     Id: 3475976295
+   User: etace
+   Host: 10.17.85.88:42806
+     db: aetecjc
+Command: Sleep
+   Time: 221
+  State: 
+   Info: NULL
+*************************** 63. row ***************************
+     Id: 3475977985
+   User: eanecj
+   Host: 10.36.34.66:39384
+     db: aetecjc
+Command: Sleep
+   Time: 205
+  State: 
+   Info: NULL
+*************************** 64. row ***************************
+     Id: 3475977990
+   User: etace
+   Host: 10.36.34.66:39386
+     db: aetecjc
+Command: Sleep
+   Time: 205
+  State: 
+   Info: NULL
+*************************** 65. row ***************************
+     Id: 3475978134
+   User: etace
+   Host: 10.17.85.88:42940
+     db: aetecjc
+Command: Sleep
+   Time: 203
+  State: 
+   Info: NULL
+*************************** 66. row ***************************
+     Id: 3475979464
+   User: eanecj
+   Host: 10.17.85.86:36159
+     db: aetecjc
+Command: Sleep
+   Time: 191
+  State: 
+   Info: NULL
+*************************** 67. row ***************************
+     Id: 3475979471
+   User: etace
+   Host: 10.17.85.86:36161
+     db: aetecjc
+Command: Sleep
+   Time: 191
+  State: 
+   Info: NULL
+*************************** 68. row ***************************
+     Id: 3475979869
+   User: etace
+   Host: 10.36.34.66:39840
+     db: aetecjc
+Command: Sleep
+   Time: 187
+  State: 
+   Info: NULL
+*************************** 69. row ***************************
+     Id: 3475979873
+   User: eanecj
+   Host: 10.36.34.66:39841
+     db: aetecjc
+Command: Sleep
+   Time: 187
+  State: 
+   Info: NULL
+*************************** 70. row ***************************
+     Id: 3475979960
+   User: eanecj
+   Host: 10.17.85.86:36309
+     db: aetecjc
+Command: Sleep
+   Time: 187
+  State: 
+   Info: NULL
+*************************** 71. row ***************************
+     Id: 3475979965
+   User: etace
+   Host: 10.17.85.86:36310
+     db: aetecjc
+Command: Sleep
+   Time: 187
+  State: 
+   Info: NULL
+*************************** 72. row ***************************
+     Id: 3475979977
+   User: eanecj
+   Host: 10.36.34.66:39870
+     db: aetecjc
+Command: Sleep
+   Time: 187
+  State: 
+   Info: NULL
+*************************** 73. row ***************************
+     Id: 3475979982
+   User: etace
+   Host: 10.36.34.66:39871
+     db: aetecjc
+Command: Sleep
+   Time: 187
+  State: 
+   Info: NULL
+*************************** 74. row ***************************
+     Id: 3475979984
+   User: etace
+   Host: someserver.woozle.com:55276
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 75. row ***************************
+     Id: 3475979992
+   User: eanecj
+   Host: 10.17.85.86:36319
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 76. row ***************************
+     Id: 3475979995
+   User: eanecj
+   Host: 10.17.85.86:36321
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 77. row ***************************
+     Id: 3475979996
+   User: etace
+   Host: 10.17.85.86:36322
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 78. row ***************************
+     Id: 3475980003
+   User: etace
+   Host: 10.17.85.86:36323
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 79. row ***************************
+     Id: 3475980006
+   User: eanecj
+   Host: someserver.woozle.com:55281
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 80. row ***************************
+     Id: 3475980012
+   User: eanecj
+   Host: someserver.woozle.com:55282
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 81. row ***************************
+     Id: 3475980016
+   User: etace
+   Host: someserver.woozle.com:55283
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 82. row ***************************
+     Id: 3475980021
+   User: eanecj
+   Host: someserver.woozle.com:55284
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 83. row ***************************
+     Id: 3475980025
+   User: etace
+   Host: someserver.woozle.com:55286
+     db: aetecjc
+Command: Sleep
+   Time: 186
+  State: 
+   Info: NULL
+*************************** 84. row ***************************
+     Id: 3475980194
+   User: eanecj
+   Host: 10.17.85.86:36373
+     db: aetecjc
+Command: Sleep
+   Time: 185
+  State: 
+   Info: NULL
+*************************** 85. row ***************************
+     Id: 3475980196
+   User: etace
+   Host: 10.17.85.86:36374
+     db: aetecjc
+Command: Sleep
+   Time: 185
+  State: 
+   Info: NULL
+*************************** 86. row ***************************
+     Id: 3475986456
+   User: babeecc
+   Host: 10.14.82.202:56444
+     db: aetecjc
+Command: Sleep
+   Time: 126
+  State: 
+   Info: NULL
+*************************** 87. row ***************************
+     Id: 3475989394
+   User: babeecc
+   Host: 10.14.82.202:56550
+     db: aetecjc
+Command: Sleep
+   Time: 89
+  State: 
+   Info: NULL
+*************************** 88. row ***************************
+     Id: 3475989624
+   User: etace
+   Host: someserver.woozle.com:58045
+     db: aetecjc
+Command: Sleep
+   Time: 88
+  State: 
+   Info: NULL
+*************************** 89. row ***************************
+     Id: 3475989723
+   User: etace
+   Host: someserver.woozle.com:58086
+     db: aetecjc
+Command: Sleep
+   Time: 88
+  State: 
+   Info: NULL
+*************************** 90. row ***************************
+     Id: 3475989782
+   User: etace
+   Host: someserver.woozle.com:58093
+     db: aetecjc
+Command: Sleep
+   Time: 88
+  State: 
+   Info: NULL
+*************************** 91. row ***************************
+     Id: 3475989822
+   User: etace
+   Host: someserver.woozle.com:58102
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 92. row ***************************
+     Id: 3475989830
+   User: etace
+   Host: someserver.woozle.com:58105
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 93. row ***************************
+     Id: 3475989852
+   User: etace
+   Host: someserver.woozle.com:58108
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 94. row ***************************
+     Id: 3475989893
+   User: etace
+   Host: 10.36.34.66:42906
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 95. row ***************************
+     Id: 3475989941
+   User: etace
+   Host: 10.36.34.66:42927
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 96. row ***************************
+     Id: 3475989977
+   User: etace
+   Host: someserver.woozle.com:58144
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 97. row ***************************
+     Id: 3475989979
+   User: etace
+   Host: 10.36.34.66:42941
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 98. row ***************************
+     Id: 3475990005
+   User: etace
+   Host: someserver.woozle.com:58155
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 99. row ***************************
+     Id: 3475990030
+   User: etace
+   Host: 10.36.34.66:42958
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 100. row ***************************
+     Id: 3475990038
+   User: etace
+   Host: 10.36.34.66:42962
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 101. row ***************************
+     Id: 3475990041
+   User: etace
+   Host: 10.36.34.66:42963
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 102. row ***************************
+     Id: 3475990042
+   User: etace
+   Host: 10.36.34.66:42964
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 103. row ***************************
+     Id: 3475990057
+   User: etace
+   Host: 10.17.85.86:39261
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 104. row ***************************
+     Id: 3475990070
+   User: etace
+   Host: 10.36.34.66:42968
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 105. row ***************************
+     Id: 3475990082
+   User: etace
+   Host: 10.36.34.66:42970
+     db: aetecjc
+Command: Sleep
+   Time: 87
+  State: 
+   Info: NULL
+*************************** 106. row ***************************
+     Id: 3475990124
+   User: etace
+   Host: someserver.woozle.com:58194
+     db: aetecjc
+Command: Sleep
+   Time: 86
+  State: 
+   Info: NULL
+*************************** 107. row ***************************
+     Id: 3475990131
+   User: etace
+   Host: someserver.woozle.com:58195
+     db: aetecjc
+Command: Sleep
+   Time: 86
+  State: 
+   Info: NULL
+*************************** 108. row ***************************
+     Id: 3475990180
+   User: etace
+   Host: 10.17.85.86:39325
+     db: aetecjc
+Command: Sleep
+   Time: 86
+  State: 
+   Info: NULL
+*************************** 109. row ***************************
+     Id: 3475990388
+   User: etace
+   Host: 10.17.85.88:46064
+     db: aetecjc
+Command: Sleep
+   Time: 85
+  State: 
+   Info: NULL
+*************************** 110. row ***************************
+     Id: 3475991089
+   User: etace
+   Host: 10.17.85.86:39839
+     db: aetecjc
+Command: Sleep
+   Time: 79
+  State: 
+   Info: NULL
+*************************** 111. row ***************************
+     Id: 3475991158
+   User: babeecc
+   Host: 10.14.82.202:56579
+     db: aetecjc
+Command: Sleep
+   Time: 78
+  State: 
+   Info: NULL
+*************************** 112. row ***************************
+     Id: 3475991962
+   User: etace
+   Host: someserver.woozle.com:58976
+     db: aetecjc
+Command: Sleep
+   Time: 70
+  State: 
+   Info: NULL
+*************************** 113. row ***************************
+     Id: 3475997218
+   User: etace
+   Host: 10.17.85.86:41566
+     db: aetecjc
+Command: Sleep
+   Time: 22
+  State: 
+   Info: NULL
+*************************** 114. row ***************************
+     Id: 3475997482
+   User: etace
+   Host: someserver.woozle.com:60551
+     db: aetecjc
+Command: Sleep
+   Time: 20
+  State: 
+   Info: NULL
+*************************** 115. row ***************************
+     Id: 3475997505
+   User: etace
+   Host: someserver.woozle.com:60557
+     db: aetecjc
+Command: Sleep
+   Time: 20
+  State: 
+   Info: NULL
+*************************** 116. row ***************************
+     Id: 3475997716
+   User: etace
+   Host: 10.17.85.86:41697
+     db: aetecjc
+Command: Sleep
+   Time: 18
+  State: 
+   Info: NULL
+*************************** 117. row ***************************
+     Id: 3475997718
+   User: etace
+   Host: 10.36.34.66:45408
+     db: aetecjc
+Command: Sleep
+   Time: 18
+  State: 
+   Info: NULL
+*************************** 118. row ***************************
+     Id: 3475997720
+   User: etace
+   Host: 10.17.85.86:41698
+     db: aetecjc
+Command: Sleep
+   Time: 18
+  State: 
+   Info: NULL
+*************************** 119. row ***************************
+     Id: 3475997739
+   User: etace
+   Host: 10.36.34.66:45415
+     db: aetecjc
+Command: Sleep
+   Time: 18
+  State: 
+   Info: NULL
+*************************** 120. row ***************************
+     Id: 3475997758
+   User: etace
+   Host: 10.17.85.86:41709
+     db: aetecjc
+Command: Sleep
+   Time: 18
+  State: 
+   Info: NULL
+*************************** 121. row ***************************
+     Id: 3475997884
+   User: babeecc
+   Host: 10.14.82.202:37463
+     db: aetecjc
+Command: Sleep
+   Time: 16
+  State: 
+   Info: NULL
+*************************** 122. row ***************************
+     Id: 3475997927
+   User: etace
+   Host: 10.36.34.66:45454
+     db: aetecjc
+Command: Sleep
+   Time: 16
+  State: 
+   Info: NULL
+*************************** 123. row ***************************
+     Id: 3475997981
+   User: etace
+   Host: 10.36.34.66:45468
+     db: aetecjc
+Command: Sleep
+   Time: 16
+  State: 
+   Info: NULL
+*************************** 124. row ***************************
+     Id: 3475998344
+   User: etace
+   Host: 10.36.34.66:45574
+     db: aetecjc
+Command: Sleep
+   Time: 12
+  State: 
+   Info: NULL
+*************************** 125. row ***************************
+     Id: 3475998381
+   User: etace
+   Host: 10.17.85.86:41850
+     db: aetecjc
+Command: Sleep
+   Time: 12
+  State: 
+   Info: NULL
+*************************** 126. row ***************************
+     Id: 3475998817
+   User: etace
+   Host: 10.17.85.86:41953
+     db: aetecjc
+Command: Sleep
+   Time: 8
+  State: 
+   Info: NULL
+*************************** 127. row ***************************
+     Id: 3475999073
+   User: etace
+   Host: someserver.woozle.com:60982
+     db: aetecjc
+Command: Sleep
+   Time: 6
+  State: 
+   Info: NULL
+*************************** 128. row ***************************
+     Id: 3475999074
+   User: etace
+   Host: someserver.woozle.com:60983
+     db: aetecjc
+Command: Sleep
+   Time: 6
+  State: 
+   Info: NULL
+*************************** 129. row ***************************
+     Id: 3475999145
+   User: etace
+   Host: 10.36.34.66:45772
+     db: aetecjc
+Command: Sleep
+   Time: 5
+  State: 
+   Info: NULL
+*************************** 130. row ***************************
+     Id: 3475999149
+   User: etace
+   Host: 10.17.85.86:42035
+     db: aetecjc
+Command: Sleep
+   Time: 5
+  State: 
+   Info: NULL
+*************************** 131. row ***************************
+     Id: 3475999156
+   User: etace
+   Host: 10.36.34.66:45777
+     db: aetecjc
+Command: Sleep
+   Time: 5
+  State: 
+   Info: NULL
+*************************** 132. row ***************************
+     Id: 3475999259
+   User: babeecc
+   Host: 10.14.82.202:37498
+     db: aetecjc
+Command: Sleep
+   Time: 4
+  State: 
+   Info: NULL
+*************************** 133. row ***************************
+     Id: 3475999269
+   User: etace
+   Host: 10.17.85.86:42066
+     db: aetecjc
+Command: Sleep
+   Time: 4
+  State: 
+   Info: NULL
+*************************** 134. row ***************************
+     Id: 3475999509
+   User: etace
+   Host: someserver.woozle.com:32867
+     db: aetecjc
+Command: Sleep
+   Time: 2
+  State: 
+   Info: NULL
+*************************** 135. row ***************************
+     Id: 3475999638
+   User: etace
+   Host: 10.36.34.66:45894
+     db: aetecjc
+Command: Sleep
+   Time: 1
+  State: 
+   Info: NULL
+*************************** 136. row ***************************
+     Id: 3475999716
+   User: etace
+   Host: 10.17.85.88:46779
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 137. row ***************************
+     Id: 3475999720
+   User: etace
+   Host: 10.17.85.88:46780
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 138. row ***************************
+     Id: 3475999730
+   User: etace
+   Host: someserver.woozle.com:32931
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 139. row ***************************
+     Id: 3475999738
+   User: crcpcpc
+   Host: 10.14.82.196:56792
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 140. row ***************************
+     Id: 3475999745
+   User: eanecj
+   Host: someserver.woozle.com:32934
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 141. row ***************************
+     Id: 3475999746
+   User: eanecj
+   Host: someserver.woozle.com:32935
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 142. row ***************************
+     Id: 3475999747
+   User: eanecj
+   Host: 10.36.34.66:45932
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 143. row ***************************
+     Id: 3475999748
+   User: etace
+   Host: someserver.woozle.com:32936
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 144. row ***************************
+     Id: 3475999754
+   User: etace
+   Host: 10.36.34.66:45935
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 145. row ***************************
+     Id: 3475999758
+   User: acjcxx
+   Host: someserver.woozle.com:32939
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 146. row ***************************
+     Id: 3475999763
+   User: eanecj
+   Host: 10.17.85.86:42183
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 147. row ***************************
+     Id: 3475999764
+   User: acjcxx
+   Host: someserver.woozle.com:32943
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 148. row ***************************
+     Id: 3475999766
+   User: eanecj
+   Host: 10.17.85.86:42184
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 149. row ***************************
+     Id: 3475999767
+   User: eanecj
+   Host: someserver.woozle.com:32944
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 150. row ***************************
+     Id: 3475999768
+   User: etace
+   Host: 10.17.85.86:42185
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 151. row ***************************
+     Id: 3475999769
+   User: eanecj
+   Host: someserver.woozle.com:32946
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 152. row ***************************
+     Id: 3475999770
+   User: etace
+   Host: someserver.woozle.com:32947
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 153. row ***************************
+     Id: 3475999772
+   User: etace
+   Host: 10.17.85.86:42186
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 154. row ***************************
+     Id: 3475999773
+   User: crgcp4c
+   Host: 10.14.82.196:56793
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 155. row ***************************
+     Id: 3475999775
+   User: etace
+   Host: someserver.woozle.com:32948
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 156. row ***************************
+     Id: 3475999776
+   User: eanecj
+   Host: someserver.woozle.com:32949
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 157. row ***************************
+     Id: 3475999777
+   User: centous
+   Host: 10.14.82.196:56794
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 158. row ***************************
+     Id: 3475999778
+   User: crgcp4c
+   Host: 10.14.82.196:56795
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 159. row ***************************
+     Id: 3475999779
+   User: eanecj
+   Host: 10.36.34.66:45939
+     db: aetecjc
+Command: Query
+   Time: 0
+  State: NULL
+   Info: NULL
+*************************** 160. row ***************************
+     Id: 3475999780
+   User: eanecj
+   Host: someserver.woozle.com:32950
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 161. row ***************************
+     Id: 3475999781
+   User: crgcp4c
+   Host: 10.14.82.196:56796
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 162. row ***************************
+     Id: 3475999782
+   User: eanecj
+   Host: someserver.woozle.com:32951
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 163. row ***************************
+     Id: 3475999783
+   User: crcpcpc
+   Host: 10.14.82.196:56797
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 164. row ***************************
+     Id: 3475999784
+   User: etace
+   Host: 10.36.34.66:45940
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 165. row ***************************
+     Id: 3475999785
+   User: etace
+   Host: someserver.woozle.com:32952
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 166. row ***************************
+     Id: 3475999786
+   User: eanecj
+   Host: 10.36.34.66:45941
+     db: aetecjc
+Command: Sleep
+   Time: 0
+  State: 
+   Info: NULL
+*************************** 167. row ***************************
+     Id: 3475999787
+   User: root
+   Host: localhost
+     db: NULL
+Command: Query
+   Time: 0
+  State: NULL
+   Info: show full processlist

@@ -1,0 +1,19 @@
+#!/bin/bash
+#format_innodb_status /tmp/aspersa-innodb-status
+
+cat <<'EOF' > $1
+      Checkpoint Age | 0k
+        InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
+  Oldest Transaction | 35 Seconds
+    History List Len | 11
+          Read Views | 1
+    Undo Log Entries | 0 transactions, 0 total undo, 0 max undo
+   Pending I/O Reads | 0 buf pool reads, 0 normal AIO, 0 ibuf AIO, 0 preads
+  Pending I/O Writes | 0 buf pool (0 LRU, 0 flush list, 0 page); 0 AIO, 0 sync, 0 log IO (0 log, 0 chkp); 0 pwrites
+ Pending I/O Flushes | 0 buf pool, 0 log
+  Transaction States | 1xACTIVE, 1xnot started
+Tables Locked
+      1 `test`.`t`
+EOF
+
+cp samples/innodb-status.003.txt /tmp/aspersa-innodb-status

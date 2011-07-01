@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+
+# This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# This program is part of Aspersa (http://code.google.com/p/aspersa/)
+
+# ########################################################################
+# This script aggregates GDB stack traces for a selected program.  By default it
+# does mysqld.
+#
+# Author: Baron Schwartz, based on a script by Domas Mituzas at
+# poormansprofiler.org
+#
+# This program is part of Percona Toolkit.
+# This program was forked from Aspersa (http://code.google.com/p/aspersa/)
+# in June, 2011.
+# ########################################################################
+
+# Print a usage message and exit.
+usage() {
+   if [ "${OPT_ERR}" ]; then
+      echo "${OPT_ERR}"
+   fi
+   cat <<-USAGE
+Usage: $0 [OPTIONS] [FILE]
+   $0 does two things: 1) get a GDB backtrace 2) aggregate it.
+   If you specify a FILE, then step 1) is not performed.
+Options:
+   -b BINARY      Which binary to trace (default mysqld)
+   -i ITERATIONS  How many traces to gather and aggregate (default 1)
+   -k KEEPFILE    Keep the raw traces in this file after aggregation
+   -l NUMBER      Aggregate only first NUMBER functions; 0=infinity (default 0)
+   -p PID         Process ID of the process to trace; overrides -b
+   -s SLEEPTIME   Number of seconds to sleep between iterations (default 0)
+	USAGE
+   exit 1
+}
+
+# Actually does the aggregation.  The arguments are the max number of functions
+# to aggregate, and the files to read.  If maxlen=0, it means infinity.  We have
+# to pass the maxlen argument into this function to make maxlen testable.
+aggregate_stacktrace() {
+   maxlen="$1";
+   cat > /tmp/aspersa.awk <<EOF
+      BEGIN {
+         s = "";
+      }
+      /^Thread/ {
+         if ( s != "" ) {
+            print s;
+         }
+         s = "";
+         c = 0;
+      }
+      /^\#/ {
+         if ( \$2 ~ /0x/ ) {
+            if ( \$4 ~/void|const/ ) {
+               targ = \$5;
+            }
+            else {
+               targ = \$4;
+            }
+            if ( targ ~ /[<\\(]/ ) {
+               targ = substr(\$0, index(\$0, " in ") + 4);
+               if ( targ ~ / from / ) {
+                  targ = substr(targ, 1, index(targ, " from ") - 1);
+               }
+               if ( targ ~ / at / ) {
+                  targ = substr(targ, 1, index(targ, " at ") - 1);
+               }
+               # Shorten C++ templates, e.g. in t/samples/stacktrace-004.txt
+               while ( targ ~ />::/ ) {
+                  if ( 0 == gsub(/<[^<>]*>/, "", targ) ) {
+                     break;
+                  }
+               }
+               # Further shorten argument lists.
+               while ( targ ~ /\\(/ ) {
+                  if ( 0 == gsub(/\\([^()]*\\)/, "", targ) ) {
+                     break;
+                  }
+               }
+               # Remove void and const decorators.
+               gsub(/ ?(void|const) ?/, "", targ);
+               gsub(/ /, "", targ);
+            }
+            else if ( targ ~ /\\?\\?/ && \$2 ~ /[1-9]/ ) {
+               # Substitute ?? by the name of the library.
+               targ = \$NF;
+               while ( targ ~ /\\// ) {
+                  targ = substr(targ, index(targ, "/") + 1);
+               }
+               targ = substr(targ, 1, index(targ, ".") - 1);
+               targ = targ "::??";
+            }
+         }
+         else {
+            targ = \$2;
+         }
+         # get rid of long symbol names such as 'pthread_cond_wait@@GLIBC_2.3.2'
+         if ( targ ~ /@@/ ) {
+            fname = substr(targ, 1, index(targ, "@@") - 1);
+         }
+         else {
+            fname = targ;
+         }
+         if ( ${maxlen:-0} == 0 || c < ${maxlen:-0} ) {
+            if (s != "" ) {
+               s = s "," fname;
+            }
+            else {
+               s = fname;
+            }
+         }
+         c++;
+      }
+      END {
+         print s
+      }
+EOF
+   awk -f /tmp/aspersa.awk "$2" | sort | uniq -c | sort -r -n -k 1,1
+   rm -f /tmp/aspersa
+}
+
+# The main program to run.
+main() {
+   rm -f /tmp/aspersa
+
+   # Get command-line options
+   for o; do
+      case "${o}" in
+         --)
+            shift; break;
+            ;;
+         --help)
+            usage;
+            ;;
+         -b)
+            shift; OPT_b="${1}"; shift;
+            ;;
+         -i)
+            shift; OPT_i="${1}"; shift;
+            ;;
+         -k)
+            shift; OPT_k="${1}"; shift;
+            ;;
+         -l)
+            shift; OPT_l="${1}"; shift;
+            ;;
+         -p)
+            shift; OPT_p="${1}"; shift;
+            ;;
+         -s)
+            shift; OPT_s="${1}"; shift;
+            ;;
+         -*)
+            OPT_ERR="Unknown option ${o}."
+            usage
+            ;;
+      esac
+   done
+   export OPT_i="${OPT_i:-1}";
+   export OPT_k="${OPT_k:-}";
+   export OPT_l="${OPT_l:-0}";
+   export OPT_b="${OPT_b:-mysqld}";
+   export OPT_p="${OPT_p:-}";
+   export OPT_s="${OPT_s:-0}";
+
+   if [ -z "${1}" ]; then
+      # There's no file to analyze, so we'll make one.
+      if [ -z "${OPT_p}" ]; then
+         OPT_p=$(pidof -s "${OPT_b}" 2>/dev/null);
+         if [ -z "${OPT_p}" ]; then
+            OPT_p=$(pgrep -o -x "${OPT_b}" 2>/dev/null)
+         fi
+         if [ -z "${OPT_p}" ]; then
+            OPT_p=$(ps -eaf | grep "${OPT_b}" | grep -v grep | awk '{print $2}' | head -n1);
+         fi
+      fi
+      date;
+      for x in $(seq 1 $OPT_i); do
+         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-/tmp/aspersa}"
+         date +'TS %N.%s %F %T' >> "${OPT_k:-/tmp/aspersa}"
+         sleep $OPT_s
+      done
+   fi
+
+   if [ $# -eq 0 ]; then
+      aggregate_stacktrace "${OPT_l}" "${OPT_k:-/tmp/aspersa}"
+      rm -f /tmp/aspersa
+   else
+      aggregate_stacktrace "${OPT_l}" "$@"
+   fi
+}
+
+# Execute the program if it was not included from another file.  This makes it
+# possible to include without executing, and thus test.
+if [ "$(basename "$0")" = "pmp" ] || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+    main "$@"
+fi

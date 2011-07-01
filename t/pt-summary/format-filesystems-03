@@ -1,0 +1,9 @@
+#!/bin/bash
+#parse_filesystems samples/df-mount-003.txt Linux
+
+cat <<EOF > $1
+  Filesystem  Size Used Type  Opts Mountpoint
+  /dev/sda1    99M  13% ext3  rw   /boot
+  /dev/sda2   540G  89% ext3  rw   /
+  tmpfs        48G   0% tmpfs rw   /dev/shm
+EOF

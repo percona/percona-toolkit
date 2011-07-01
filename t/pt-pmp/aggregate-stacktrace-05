@@ -1,0 +1,13 @@
+#!/bin/bash
+#aggregate_stacktrace 0 /tmp/aspersa
+
+cat > $1 <<EOF
+     32 read,vio_read_buff,libmysqlclient::??,my_net_read,cli_safe_read,libmysqlclient::??,mysql_real_query,Connection::run,Worker::work,thread_proxy,start_thread,clone,??
+      1 pthread_cond_wait,LogReader::work,thread_proxy,start_thread,clone,??
+      1 pthread_cond_wait,boost::thread::join,main
+      1 pthread_cond_wait,boost::condition_variable::wait,Worker::work,thread_proxy,start_thread,clone,??
+      1 pthread_cond_wait,boost::condition_variable::wait,Reporter::work,thread_proxy,start_thread,clone,??
+      1 pthread_cond_wait,boost::condition_variable::wait,Queue::push,Parser::work,thread_proxy,start_thread,clone,??
+EOF
+
+cp samples/stacktrace-005.txt $2

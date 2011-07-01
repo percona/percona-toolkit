@@ -1,0 +1,10 @@
+root      1690     1  0 12:52 ?        00:00:00 /bin/sh /usr/bin/mysqld_safe
+mysql     1729  1690  0 12:52 ?        00:00:22 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --user=mysql --pid-file=/var/run/mysqld/mysqld.pid --skip-external-locking --port=3306 --socket=/var/run/mysqld/mysqld.sock
+root      1730  1690  0 12:52 ?        00:00:00 logger -p daemon.err -t mysqld_safe -i -t mysqld
+baron     5529     1  0 15:20 pts/1    00:00:00 /bin/sh /usr/bin/mysqld_safe --defaults-file=/tmp/12345/my.sandbox.cnf
+baron     5559  5529  0 15:20 pts/1    00:00:07 /usr/sbin/mysqld --defaults-file=/tmp/12345/my.sandbox.cnf --basedir=/usr --datadir=/tmp/12345/data --pid-file=/tmp/12345/data/mysql_sandbox12345.pid --skip-external-locking --port=12345 --socket=/tmp/12345/mysql_sandbox12345.sock
+baron     5560  5529  0 15:20 pts/1    00:00:00 logger -p daemon.err -t mysqld_safe -i -t mysqld
+baron     5599     1  0 15:20 pts/1    00:00:00 /bin/sh /usr/bin/mysqld_safe --defaults-file=/tmp/12346/my.sandbox.cnf
+baron     5629  5599  0 15:20 pts/1    00:00:07 /usr/sbin/mysqld --defaults-file=/tmp/12346/my.sandbox.cnf --basedir=/usr --datadir=/tmp/12346/data --pid-file=/tmp/12346/data/mysql_sandbox12346.pid --skip-external-locking --port=12346 --socket=/tmp/12346/mysql_sandbox12346.sock
+baron     5630  5599  0 15:20 pts/1    00:00:00 logger -p daemon.err -t mysqld_safe -i -t mysqld
+baron     6100  5485  0 15:42 pts/1    00:00:00 grep mysqld

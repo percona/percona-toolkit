@@ -1,0 +1,8 @@
+#!/bin/bash
+#parse_virtualization_dmesg
+
+cat <<EOF > $1
+Xen
+EOF
+
+cat samples/dmesg-006.txt > $2

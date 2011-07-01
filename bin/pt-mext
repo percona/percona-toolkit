@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+
+# This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# This program is part of Aspersa (http://code.google.com/p/aspersa/)
+
+# ########################################################################
+# Author: Baron Schwartz
+#
+# This program is part of Percona Toolkit.
+# This program was forked from Aspersa (http://code.google.com/p/aspersa/)
+# in June, 2011.
+# ########################################################################
+
+usage() {
+   echo "Usage: $0 [-r] -- commandline"
+   echo "   -r     Relative: subtract each column from the previous column."
+   echo "   --     Option separator; after this, all arguments are passed"
+   echo "          to the program whose output mext will columnize."
+   echo "mext columnizes repeated output from a program like mysqladmin extended:"
+   echo "   mext -r -- mysqladmin ext -i10 -c3"
+   echo "You can also work with data from a file:"
+   echo "   mext -r -- cat mysqladmin-output.txt"
+   exit 1
+}
+
+if [ -z "$1" ]; then
+   usage;
+fi
+
+FILE=/tmp/mext_temp_file;
+NUM=0;
+REL=0;
+rm -f $FILE*;
+
+# Command-line parsing.
+args=`getopt -u -n mext r "$@"`;
+if [ "$?" = "1" ]; then
+   usage;
+fi
+set -- $args
+for o; do
+   case "$o" in
+      -r)   REL="1"; shift;;
+      --)   shift;   break;;
+   esac
+done
+
+if [ -z "$1" ]; then
+   usage;
+fi
+
+# Split the output on empty lines and put each into a different file; eliminate
+# lines that don't have "real" content.
+$@ | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
+   | while read line; do
+   if [ "$line" = "" ]; then
+      NUM=`expr $NUM + 1`;
+      echo "" > $FILE$NUM;
+   fi
+   echo "$line" >> $FILE$NUM;
+done
+
+# Count how many files there are and prepare to format the output
+SPEC="%-33s %13d"
+AWKS=""
+NUM=`ls $FILE* | wc -l`;
+# The last file will be empty...
+NUM=`expr $NUM - 3`;
+
+# Join each file with the next file, joining on the first field. Build a printf
+# spec and awk spec at the same time.
+for i in `seq 0 $NUM`; do
+   NEXTFILE=`expr $i + 1`;
+
+   # Sort each file and eliminate empty lines, so 'join' doesn't complain.
+   sort $FILE$i | grep . > $FILE$i.tmp;
+   mv $FILE$i.tmp $FILE$i;
+   sort $FILE${NEXTFILE} | grep . > $FILE${NEXTFILE}.tmp;
+   mv $FILE${NEXTFILE}.tmp $FILE${NEXTFILE};
+
+   # Join the files together.  This gets slow O(n^2) as we add more files, but
+   # this really shouldn't be performance critical.
+   join $FILE$i $FILE${NEXTFILE} | grep . > $FILE;
+
+   # Find the max length of the [numeric only] values in the file so we know how
+   # wide to make the columns
+   MAXLEN=`awk '{print $2}' $FILE${NEXTFILE} | grep -v '[^0-9]' | awk '{print length($1)}' | sort -rn | head -n1`
+   mv $FILE $FILE${NEXTFILE};
+   SPEC="$SPEC %${MAXLEN}d";
+   if [ "$REL" = "1" ]; then
+      AWKS="$AWKS, \$`expr $i + 3` - \$`expr $i + 2`";
+   else
+      AWKS="$AWKS, \$`expr $i + 3`";
+   fi
+done
+
+# Print output
+AWKCMD="printf(\"$SPEC\n\", \$1, \$2$AWKS);";
+awk "{$AWKCMD}" $FILE`expr $NUM + 1`;
+
+# Remove all temporary files.
+rm -f $FILE*;

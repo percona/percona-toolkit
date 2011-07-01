@@ -1,0 +1,810 @@
+[Thread debugging using libthread_db enabled]
+[New Thread 0x4ffe9940 (LWP 1267)]
+[New Thread 0x4f43b940 (LWP 1266)]
+[New Thread 0x4e9d2940 (LWP 1265)]
+[New Thread 0x4fb98940 (LWP 1263)]
+[New Thread 0x4fa53940 (LWP 1258)]
+[New Thread 0x5088b940 (LWP 1255)]
+[New Thread 0x4f2b5940 (LWP 1253)]
+[New Thread 0x4f337940 (LWP 1248)]
+[New Thread 0x501f1940 (LWP 1184)]
+[New Thread 0x4eee6940 (LWP 1182)]
+[New Thread 0x4eb58940 (LWP 1181)]
+[New Thread 0x510ec940 (LWP 1174)]
+[New Thread 0x4ecde940 (LWP 1172)]
+[New Thread 0x4f233940 (LWP 1171)]
+[New Thread 0x4fbd9940 (LWP 1168)]
+[New Thread 0x4de24940 (LWP 1167)]
+[New Thread 0x4fcdd940 (LWP 1165)]
+[New Thread 0x5043a940 (LWP 1162)]
+[New Thread 0x504bc940 (LWP 1160)]
+[New Thread 0x4f06c940 (LWP 1159)]
+[New Thread 0x50601940 (LWP 1156)]
+[New Thread 0x50c19940 (LWP 1151)]
+[New Thread 0x4e2b6940 (LWP 1150)]
+[New Thread 0x50a11940 (LWP 1147)]
+[New Thread 0x4f378940 (LWP 1142)]
+[New Thread 0x4ead6940 (LWP 1138)]
+[New Thread 0x5012e940 (LWP 1136)]
+[New Thread 0x4eb17940 (LWP 1133)]
+[New Thread 0x4e603940 (LWP 1130)]
+[New Thread 0x5057f940 (LWP 1123)]
+[New Thread 0x50d9f940 (LWP 1122)]
+[New Thread 0x50787940 (LWP 1120)]
+[New Thread 0x4df69940 (LWP 1118)]
+[New Thread 0x503b8940 (LWP 1114)]
+[New Thread 0x4e171940 (LWP 1108)]
+[New Thread 0x50b56940 (LWP 1103)]
+[New Thread 0x4e130940 (LWP 1090)]
+[New Thread 0x50683940 (LWP 1087)]
+[New Thread 0x4ea95940 (LWP 1085)]
+[New Thread 0x50b97940 (LWP 1071)]
+[New Thread 0x4ffa8940 (LWP 1063)]
+[New Thread 0x4f47c940 (LWP 1061)]
+[New Thread 0x4f1f2940 (LWP 1059)]
+[New Thread 0x4f4fe940 (LWP 1056)]
+[New Thread 0x4dfaa940 (LWP 1051)]
+[New Thread 0x4fb16940 (LWP 835)]
+[New Thread 0x5084a940 (LWP 31530)]
+[New Thread 0x4e950940 (LWP 31509)]
+[New Thread 0x4e3ba940 (LWP 31492)]
+[New Thread 0x5090d940 (LWP 31464)]
+[New Thread 0x4e1b2940 (LWP 27749)]
+[New Thread 0x4f90e940 (LWP 27744)]
+[New Thread 0x5053e940 (LWP 27716)]
+[New Thread 0x4ec9d940 (LWP 27702)]
+[New Thread 0x4ef27940 (LWP 17526)]
+[New Thread 0x500ac940 (LWP 5463)]
+[New Thread 0x4e02c940 (LWP 5455)]
+[New Thread 0x4e43c940 (LWP 27709)]
+[New Thread 0x4e234940 (LWP 27701)]
+[New Thread 0x4dde3940 (LWP 14620)]
+[New Thread 0x4dda2940 (LWP 14582)]
+[New Thread 0x4dd61940 (LWP 14581)]
+[New Thread 0x4d360940 (LWP 14580)]
+[New Thread 0x4c95f940 (LWP 14579)]
+[New Thread 0x4b55d940 (LWP 14543)]
+[New Thread 0x4ab5c940 (LWP 14542)]
+[New Thread 0x4a15b940 (LWP 14541)]
+[New Thread 0x4975a940 (LWP 14540)]
+[New Thread 0x48d59940 (LWP 14539)]
+[New Thread 0x48358940 (LWP 14538)]
+[New Thread 0x47957940 (LWP 14537)]
+[New Thread 0x46f56940 (LWP 14536)]
+[New Thread 0x46555940 (LWP 14535)]
+[New Thread 0x45b54940 (LWP 14534)]
+[New Thread 0x45153940 (LWP 14533)]
+[New Thread 0x44752940 (LWP 14532)]
+[New Thread 0x43d51940 (LWP 14531)]
+[New Thread 0x43350940 (LWP 14530)]
+[New Thread 0x4294f940 (LWP 14529)]
+[New Thread 0x41f4e940 (LWP 14528)]
+[New Thread 0x4154d940 (LWP 14527)]
+[New Thread 0x40b4c940 (LWP 14526)]
+0x0000003c460ccfc2 in select () from /lib64/libc.so.6
+
+Thread 83 (Thread 0x40b4c940 (LWP 14526)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478ce90, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=0, message1=0x40b4c0e0, message2=0x40b4c0d8, type=0x40b4c0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=0) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 82 (Thread 0x4154d940 (LWP 14527)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478cf10, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=1, message1=0x4154d0e0, message2=0x4154d0d8, type=0x4154d0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=1) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 81 (Thread 0x41f4e940 (LWP 14528)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478cf90, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=2, message1=0x41f4e0e0, message2=0x41f4e0d8, type=0x41f4e0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=2) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 80 (Thread 0x4294f940 (LWP 14529)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d010, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=3, message1=0x4294f0e0, message2=0x4294f0d8, type=0x4294f0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=3) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 79 (Thread 0x43350940 (LWP 14530)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d090, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=4, message1=0x433500e0, message2=0x433500d8, type=0x433500d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=4) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 78 (Thread 0x43d51940 (LWP 14531)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d110, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=5, message1=0x43d510e0, message2=0x43d510d8, type=0x43d510d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=5) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 77 (Thread 0x44752940 (LWP 14532)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d190, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=6, message1=0x447520e0, message2=0x447520d8, type=0x447520d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=6) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 76 (Thread 0x45153940 (LWP 14533)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d210, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=7, message1=0x451530e0, message2=0x451530d8, type=0x451530d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=7) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 75 (Thread 0x45b54940 (LWP 14534)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d290, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=8, message1=0x45b540e0, message2=0x45b540d8, type=0x45b540d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=8) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 74 (Thread 0x46555940 (LWP 14535)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d310, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=9, message1=0x465550e0, message2=0x465550d8, type=0x465550d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=9) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 73 (Thread 0x46f56940 (LWP 14536)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d390, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=10, message1=0x46f560e0, message2=0x46f560d8, type=0x46f560d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=10) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 72 (Thread 0x47957940 (LWP 14537)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d410, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=11, message1=0x479570e0, message2=0x479570d8, type=0x479570d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=11) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 71 (Thread 0x48358940 (LWP 14538)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d490, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=12, message1=0x483580e0, message2=0x483580d8, type=0x483580d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=12) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 70 (Thread 0x48d59940 (LWP 14539)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d510, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=13, message1=0x48d590e0, message2=0x48d590d8, type=0x48d590d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=13) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 69 (Thread 0x4975a940 (LWP 14540)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d590, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=14, message1=0x4975a0e0, message2=0x4975a0d8, type=0x4975a0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=14) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 68 (Thread 0x4a15b940 (LWP 14541)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d610, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=15, message1=0x4a15b0e0, message2=0x4a15b0d8, type=0x4a15b0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=15) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 67 (Thread 0x4ab5c940 (LWP 14542)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d690, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=16, message1=0x4ab5c0e0, message2=0x4ab5c0d8, type=0x4ab5c0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=16) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 66 (Thread 0x4b55d940 (LWP 14543)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000007843a5 in os_event_wait_low (event=0x478d710, reset_sig_count=<value optimized out>) at os0sync.c:420
+#2  0x0000000000787c70 in os_aio_simulated_handle (global_segment=17, message1=0x4b55d0e0, message2=0x4b55d0d8, type=0x4b55d0d0) at os0file.c:4217
+#3  0x000000000075179e in fil_aio_wait (segment=17) at fil0fil.c:4153
+#4  0x000000000069d2e8 in io_handler_thread (arg=<value optimized out>) at srv0start.c:446
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 65 (Thread 0x4c95f940 (LWP 14579)):
+#0  0x0000003c460ccfc2 in select () from /lib64/libc.so.6
+#1  0x00000000007847cf in os_thread_sleep (tm=<value optimized out>) at os0thread.c:274
+#2  0x000000000069ae45 in srv_lock_timeout_and_monitor_thread (arg=<value optimized out>) at srv0srv.c:2190
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 64 (Thread 0x4d360940 (LWP 14580)):
+#0  0x0000003c460ccfc2 in select () from /lib64/libc.so.6
+#1  0x00000000007847cf in os_thread_sleep (tm=<value optimized out>) at os0thread.c:274
+#2  0x000000000069b2b3 in srv_error_monitor_thread (arg=<value optimized out>) at srv0srv.c:2414
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 63 (Thread 0x4dd61940 (LWP 14581)):
+#0  0x0000003c460ccfc2 in select () from /lib64/libc.so.6
+#1  0x00000000007847cf in os_thread_sleep (tm=<value optimized out>) at os0thread.c:274
+#2  0x000000000069c6fd in srv_master_thread (arg=<value optimized out>) at srv0srv.c:2561
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 62 (Thread 0x4dda2940 (LWP 14582)):
+#0  0x0000003c4700e838 in do_sigwait () from /lib64/libpthread.so.0
+#1  0x0000003c4700e8dd in sigwait () from /lib64/libpthread.so.0
+#2  0x000000000056213b in signal_hand (arg=<value optimized out>) at mysqld.cc:2598
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 61 (Thread 0x4dde3940 (LWP 14620)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005e7527 in MYSQL_LOG::wait_for_update (this=<value optimized out>, thd=0x3a9073b0, is_slave=203) at log.cc:2518
+#2  0x0000000000668b4c in mysql_binlog_send (thd=0x3a9073b0, log_ident=<value optimized out>, pos=<value optimized out>, flags=<value optimized out>) at sql_repl.cc:638
+#3  0x0000000000582d7d in dispatch_command (command=COM_BINLOG_DUMP, thd=0x3a9073b0, packet=<value optimized out>, packet_length=<value optimized out>) at sql_parse.cc:2635
+#4  0x0000000000584462 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2109
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 60 (Thread 0x4e234940 (LWP 27701)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005e7527 in MYSQL_LOG::wait_for_update (this=<value optimized out>, thd=0x2ab4441d5e50, is_slave=205) at log.cc:2518
+#2  0x0000000000668b4c in mysql_binlog_send (thd=0x2ab4441d5e50, log_ident=<value optimized out>, pos=<value optimized out>, flags=<value optimized out>) at sql_repl.cc:638
+#3  0x0000000000582d7d in dispatch_command (command=COM_BINLOG_DUMP, thd=0x2ab4441d5e50, packet=<value optimized out>, packet_length=<value optimized out>) at sql_parse.cc:2635
+#4  0x0000000000584462 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2109
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 59 (Thread 0x4e43c940 (LWP 27709)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005e7527 in MYSQL_LOG::wait_for_update (this=<value optimized out>, thd=0x3ae835b0, is_slave=204) at log.cc:2518
+#2  0x0000000000668b4c in mysql_binlog_send (thd=0x3ae835b0, log_ident=<value optimized out>, pos=<value optimized out>, flags=<value optimized out>) at sql_repl.cc:638
+#3  0x0000000000582d7d in dispatch_command (command=COM_BINLOG_DUMP, thd=0x3ae835b0, packet=<value optimized out>, packet_length=<value optimized out>) at sql_parse.cc:2635
+#4  0x0000000000584462 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2109
+#5  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#6  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 58 (Thread 0x4e02c940 (LWP 5455)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab454ccd8f0, buf=0x2ab45482f950 "\005", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab454ccd8f0, buf=0x2ab45482f950 "\005", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab45424ccf0, complen=0x4e02bec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x9e) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 57 (Thread 0x500ac940 (LWP 5463)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab4485b8360, buf=0x2ab4481a9840 "\003SELECT `sports_gameperiodscore`.`id`, `sports_gameperiodscore`.`game_id`, `sports_gameperiodscore`.`team_id`, `sports_gameperiodscore`.`period`, `sports_gameperiodscore`.`score`, `sports_gameperiodsc"..., size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab4485b8360, buf=0x2ab4481a9840 "\003SELECT `sports_gameperiodscore`.`id`, `sports_gameperiodscore`.`game_id`, `sports_gameperiodscore`.`team_id`, `sports_gameperiodscore`.`period`, `sports_gameperiodscore`.`score`, `sports_gameperiodsc"..., size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4486ae160, complen=0x500abec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x27) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 56 (Thread 0x4ef27940 (LWP 17526)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44874cc70, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 55 (Thread 0x4ec9d940 (LWP 27702)):
+#0  0x00000000006f9942 in btr_cur_search_to_nth_level (index=0x2ab4401097e0, level=0, tuple=0x2ab448b5f7a0, mode=2, latch_mode=<value optimized out>, cursor=0x4ec95c60, has_search_latch=0, mtr=0x4ec95cd0) at btr0cur.c:511
+#1  0x00000000006fe73b in btr_estimate_n_rows_in_range (index=0x2ab4401097e0, tuple1=0x3e9, mode1=0, tuple2=0x2ab4484297b0, mode2=1) at btr0cur.c:2717
+#2  0x000000000062d799 in ha_innobase::records_in_range (this=0x2ab4487b1c20, keynr=<value optimized out>, min_key=0x4ec962f0, max_key=0x4ec962e0) at ha_innodb.cc:5423
+#3  0x0000000000615511 in check_quick_keys (param=0x4ec97170, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6130
+#4  0x0000000000615368 in check_quick_keys (param=0x2ab1bb6398b6, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6005
+#5  0x0000000000615368 in check_quick_keys (param=0x2ab1bb6398b6, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6005
+#6  0x0000000000615562 in check_quick_keys (param=0x4ec97170, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6147
+#7  0x0000000000615562 in check_quick_keys (param=0x4ec97170, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6147
+#8  0x0000000000615368 in check_quick_keys (param=0x2ab1bb6398b6, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6005
+#9  0x0000000000615368 in check_quick_keys (param=0x2ab1bb6398b6, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6005
+#10 0x0000000000615368 in check_quick_keys (param=0x2ab1bb6398b6, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6005
+#11 0x0000000000615562 in check_quick_keys (param=0x4ec97170, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6147
+#12 0x0000000000615562 in check_quick_keys (param=0x4ec97170, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6147
+#13 0x0000000000615368 in check_quick_keys (param=0x2ab1bb6398b6, idx=0, key_tree=<value optimized out>, min_key=0x4ec974c8 "v", <incomplete sequence \306>, min_key_flag=0, max_key=0x4ec983c6 "v", <incomplete sequence \306>, max_key_flag=0) at opt_range.cc:6005
+#14 0x0000000000615d0d in check_quick_select (param=0x2ab1bb6398b6, idx=0, tree=0x2ab44878bf48) at opt_range.cc:5926
+#15 0x0000000000615f8a in get_key_scans_params (param=0x4ec97170, tree=0x2ab44847d558, index_read_must_be_used=false, read_time=220667.27789165446) at opt_range.cc:3546
+#16 0x0000000000617019 in SQL_SELECT::test_quick_select (this=0x2ab4487d7cd8, thd=0x2ab4485c5710, keys_to_use=<value optimized out>, prev_tables=<value optimized out>, limit=<value optimized out>, force_quick_range=<value optimized out>) at opt_range.cc:2186
+#17 0x00000000005c6a5c in get_quick_record_count (join=0x2ab44852f698, tables_arg=0x2ab4486b52f8, conds=<value optimized out>, keyuse_array=0x2ab448530878) at sql_select.cc:2415
+#18 make_join_statistics (join=0x2ab44852f698, tables_arg=0x2ab4486b52f8, conds=<value optimized out>, keyuse_array=0x2ab448530878) at sql_select.cc:2813
+#19 0x00000000005c76f3 in JOIN::optimize (this=0x2ab44852f698) at sql_select.cc:938
+#20 0x00000000005cf3ad in mysql_select (thd=0x2ab4485c5710, rref_pointer_array=0x2ab4485c72d8, tables=0x2ab4486b52f8, wild_num=0, fields=..., conds=0x2ab448b4d198, og_num=2, order=0x2ab448527ba8, group=0x0, having=0x0, proc_param=0x0, select_options=2156677633, result=0x2ab44852f678, unit=0x2ab4485c6d08, select_lex=0x2ab4485c70b0) at sql_select.cc:2352
+#21 0x00000000005cfd45 in handle_select (thd=0x2ab4485c5710, lex=0x2ab4485c6c78, result=0x2ab44852f678, setup_tables_done_option=0) at sql_select.cc:257
+#22 0x000000000057d6a3 in mysql_execute_command (thd=0x2ab4485c5710) at sql_parse.cc:3418
+#23 0x000000000058208f in mysql_parse (thd=0x2ab4485c5710, inBuf=0x2ab44809a4a0 "SELECT DISTINCT `sports_game`.`id`, `sports_game`.`display_name`, `sports_game`.`season_id`, `sports_game`.`affiliate_sport_id`, `sports_game`.`venue_id`, `sports_game`.`description`, `sports_game`.`i"..., length=43993, found_semicolon=0x4ec9ca58) at sql_parse.cc:7030
+#24 0x0000000000582e51 in dispatch_command (command=COM_QUERY, thd=0x2ab4485c5710, packet=0x2ab448904031 "SELECT DISTINCT `sports_game`.`id`, `sports_game`.`display_name`, `sports_game`.`season_id`, `sports_game`.`affiliate_sport_id`, `sports_game`.`venue_id`, `sports_game`.`description`, `sports_game`.`i"..., packet_length=<value optimized out>) at sql_parse.cc:2431
+#25 0x0000000000584462 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2109
+#26 0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#27 0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 54 (Thread 0x5053e940 (LWP 27716)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4486c1f20, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 53 (Thread 0x4f90e940 (LWP 27744)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44821c030, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 52 (Thread 0x4e1b2940 (LWP 27749)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab454cfe1e0, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 51 (Thread 0x5090d940 (LWP 31464)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab449426d80, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 50 (Thread 0x4e3ba940 (LWP 31492)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4485c5710, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 49 (Thread 0x4e950940 (LWP 31509)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab458764690, buf=0x2ab4581077e0 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab458764690, buf=0x2ab4581077e0 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab458791070, complen=0x4e94fec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x39) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 48 (Thread 0x5084a940 (LWP 31530)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44821c030, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 47 (Thread 0x4fb16940 (LWP 835)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44891e060, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 46 (Thread 0x4dfaa940 (LWP 1051)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab45097fe50, buf=0x2ab450a29400 "09-23 00:00:00\023\062\060\061\060-09-10 20:40:28\003\063\060\060\001\060\001\060", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab45097fe50, buf=0x2ab450a29400 "09-23 00:00:00\023\062\060\061\060-09-10 20:40:28\003\063\060\060\001\060\001\060", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab45109f060, complen=0x4dfa9ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x17) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 45 (Thread 0x4f4fe940 (LWP 1056)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44844dd00, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 44 (Thread 0x4f1f2940 (LWP 1059)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab450723f80, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 43 (Thread 0x4f47c940 (LWP 1061)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44856c800, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 42 (Thread 0x4ffa8940 (LWP 1063)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4485f6580, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 41 (Thread 0x50b97940 (LWP 1071)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44817a750, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 40 (Thread 0x4ea95940 (LWP 1085)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab454a34c90, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 39 (Thread 0x50683940 (LWP 1087)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab44c30b180, buf=0x2ab44cc2d470 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab44c30b180, buf=0x2ab44cc2d470 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab44c97ac10, complen=0x50682ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x14) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 38 (Thread 0x4e130940 (LWP 1090)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab450861b10, buf=0x2ab450a19eb0 "\a", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab450861b10, buf=0x2ab450a19eb0 "\a", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab450a15ff0, complen=0x4e12fec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x36) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 37 (Thread 0x50b56940 (LWP 1103)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab448038e40, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 36 (Thread 0x4e171940 (LWP 1108)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab4486283e0, buf=0x2ab44811d2c0 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab4486283e0, buf=0x2ab44811d2c0 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab449426e40, complen=0x4e170ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x2d) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 35 (Thread 0x503b8940 (LWP 1114)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab444b5cf60, buf=0x2ab4444daac0 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab444b5cf60, buf=0x2ab4444daac0 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab444804850, complen=0x503b7ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x22) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 34 (Thread 0x4df69940 (LWP 1118)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab441280de0, buf=0x2ab4403f1d30 "0\373\373\373\373\023\062\060\061\060-10-08 19:00:00\373", <incomplete sequence \373>, size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab441280de0, buf=0x2ab4403f1d30 "0\373\373\373\373\023\062\060\061\060-10-08 19:00:00\373", <incomplete sequence \373>, size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab440695320, complen=0x4df68ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x32) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 33 (Thread 0x50787940 (LWP 1120)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4496bd330, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 32 (Thread 0x50d9f940 (LWP 1122)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab4486350a0, buf=0x2ab448b36650 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab4486350a0, buf=0x2ab448b36650 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4485852e0, complen=0x50d9eec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x30) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 31 (Thread 0x5057f940 (LWP 1123)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab458f97960, buf=0x2ab458392000 "atch\027Average Yards Per Catch\003AVG\001\060\tReceiving\001\060\001\060\001\060\001\060\001\060\001\060\001\060\001\060\001\061\003sum){{receive_yards}} / {{receive_completes}}\004%.1f\006\062\060\060\062\061\060\001\061\001\060\006\063\060\067\065\065\067\004\065\061\061\062\001\064\004Cody\005Panks\ncody-panks\373", <incomplete sequence \373>, size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab458f97960, buf=0x2ab458392000 "atch\027Average Yards Per Catch\003AVG\001\060\tReceiving\001\060\001\060\001\060\001\060\001\060\001\060\001\060\001\060\001\061\003sum){{receive_yards}} / {{receive_completes}}\004%.1f\006\062\060\060\062\061\060\001\061\001\060\006\063\060\067\065\065\067\004\065\061\061\062\001\064\004Cody\005Panks\ncody-panks\373", <incomplete sequence \373>, size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x3bde3ce0, complen=0x5057eec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x34) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 30 (Thread 0x4e603940 (LWP 1130)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab454f14e40, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 29 (Thread 0x4eb17940 (LWP 1133)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab44823a6c0, buf=0x2ab4480ed6d0 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab44823a6c0, buf=0x2ab4480ed6d0 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4485f6640, complen=0x4eb16ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x2f) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 28 (Thread 0x5012e940 (LWP 1136)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4485f6580, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 27 (Thread 0x4ead6940 (LWP 1138)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4483247d0, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 26 (Thread 0x4f378940 (LWP 1142)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4488c3110, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 25 (Thread 0x50a11940 (LWP 1147)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab448353f10, buf=0x2ab4487cb350 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab448353f10, buf=0x2ab4487cb350 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab448324890, complen=0x50a10ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x20) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 24 (Thread 0x4e2b6940 (LWP 1150)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab449559420, buf=0x2ab44830fcc0 "\003SELECT (IFNULL(ranking,9999999)) AS `biased_ranking`, (sports_school.name) AS `gt_school_name`, `sports_gameteam`.`id`, `sports_gameteam`.`team_id`, `sports_gameteam`.`score`, `sports_gameteam`.`scor"..., size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab449559420, buf=0x2ab44830fcc0 "\003SELECT (IFNULL(ranking,9999999)) AS `biased_ranking`, (sports_school.name) AS `gt_school_name`, `sports_gameteam`.`id`, `sports_gameteam`.`team_id`, `sports_gameteam`.`score`, `sports_gameteam`.`scor"..., size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab44844ddc0, complen=0x4e2b5ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x29) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 23 (Thread 0x50c19940 (LWP 1151)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4496bd330, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 22 (Thread 0x50601940 (LWP 1156)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44844dd00, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 21 (Thread 0x4f06c940 (LWP 1159)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4483247d0, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 20 (Thread 0x504bc940 (LWP 1160)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4485c5710, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 19 (Thread 0x5043a940 (LWP 1162)):
+#0  btr_search_guess_on_hash (index=0x2ab44012a620, info=0x2ab44012a948, tuple=0x2ab450c9e390, mode=2, latch_mode=1, cursor=0x2ab4502413a0, has_search_latch=0, mtr=0x504379e0) at btr0sea.c:892
+#1  0x00000000006f9829 in btr_cur_search_to_nth_level (index=0x2ab44012a620, level=0, tuple=0x2ab450c9e390, mode=2, latch_mode=<value optimized out>, cursor=0x2ab4502413a0, has_search_latch=0, mtr=0x504379e0) at btr0cur.c:316
+#2  0x00000000006d919a in btr_pcur_open_with_no_init (buf=0x2ab450df0b18 "zUG\t", mode=2, prebuilt=0x2ab450a88f10, match_mode=1, direction=0) at ./../include/btr0pcur.ic:535
+#3  row_search_for_mysql (buf=0x2ab450df0b18 "zUG\t", mode=2, prebuilt=0x2ab450a88f10, match_mode=1, direction=0) at row0sel.c:3408
+#4  0x0000000000630387 in ha_innobase::index_read (this=0x2ab451361320, buf=0x2ab450df0b18 "zUG\t", key_ptr=<value optimized out>, key_len=4, find_flag=HA_READ_KEY_EXACT) at ha_innodb.cc:4062
+#5  0x00000000005b779d in join_read_always_key (tab=0x2ab454622e28) at sql_select.cc:11466
+#6  0x00000000005c2b43 in sub_select (join=0x2ab45410f270, join_tab=0x2ab450f6e87b, end_of_records=true) at sql_select.cc:10874
+#7  0x00000000005c29f4 in evaluate_join_record (join=0x2ab45410f270, join_tab=0x2ab454622bd8, error=<value optimized out>, report_error=0x47a1e80 "\360!z\004") at sql_select.cc:11002
+#8  0x00000000005c2afb in sub_select (join=0x2ab45410f270, join_tab=0x2ab454622bd8, end_of_records=<value optimized out>) at sql_select.cc:10881
+#9  0x00000000005c29f4 in evaluate_join_record (join=0x2ab45410f270, join_tab=0x2ab454622988, error=<value optimized out>, report_error=0x47a1e80 "\360!z\004") at sql_select.cc:11002
+#10 0x00000000005c2afb in sub_select (join=0x2ab45410f270, join_tab=0x2ab454622988, end_of_records=<value optimized out>) at sql_select.cc:10881
+#11 0x00000000005c29f4 in evaluate_join_record (join=0x2ab45410f270, join_tab=0x2ab454622738, error=<value optimized out>, report_error=0x47a1e80 "\360!z\004") at sql_select.cc:11002
+#12 0x00000000005c2afb in sub_select (join=0x2ab45410f270, join_tab=0x2ab454622738, end_of_records=<value optimized out>) at sql_select.cc:10881
+#13 0x00000000005c29f4 in evaluate_join_record (join=0x2ab45410f270, join_tab=0x2ab4546224e8, error=<value optimized out>, report_error=0x47a1e80 "\360!z\004") at sql_select.cc:11002
+#14 0x00000000005c2afb in sub_select (join=0x2ab45410f270, join_tab=0x2ab4546224e8, end_of_records=<value optimized out>) at sql_select.cc:10881
+#15 0x00000000005c29f4 in evaluate_join_record (join=0x2ab45410f270, join_tab=0x2ab454622298, error=<value optimized out>, report_error=0x47a1e80 "\360!z\004") at sql_select.cc:11002
+#16 0x00000000005c2afb in sub_select (join=0x2ab45410f270, join_tab=0x2ab454622298, end_of_records=<value optimized out>) at sql_select.cc:10881
+#17 0x00000000005c2eb8 in do_select (join=0x2ab45410f270, fields=0x2ab44821dad8, table=0x0, procedure=0x0) at sql_select.cc:10638
+#18 0x00000000005cd60a in JOIN::exec (this=0x2ab45410f270) at sql_select.cc:2177
+#19 0x00000000005cf498 in mysql_select (thd=0x2ab44821c030, rref_pointer_array=0x2ab44821dbf8, tables=0x2ab444a344f0, wild_num=0, fields=<value optimized out>, conds=0x2ab4440770d0, og_num=0, order=0x0, group=0x0, having=0x0, proc_param=0x0, select_options=2156677632, result=0x2ab444078ba0, unit=0x2ab44821d628, select_lex=0x2ab44821d9d0) at sql_select.cc:2366
+#20 0x00000000005cfd45 in handle_select (thd=0x2ab44821c030, lex=0x2ab44821d598, result=0x2ab444078ba0, setup_tables_done_option=0) at sql_select.cc:257
+#21 0x000000000057d6a3 in mysql_execute_command (thd=0x2ab44821c030) at sql_parse.cc:3418
+#22 0x000000000058208f in mysql_parse (thd=0x2ab44821c030, inBuf=0x2ab4449ce9c0 "SELECT `sports_statisticplayerrollup`.`id`, `sports_statisticplayerrollup`.`statistic_id`, `sports_statisticplayerrollup`.`player_id`, `sports_statisticplayerrollup`.`player_group_id`, `sports_statist"..., length=3868, found_semicolon=0x50439a58) at sql_parse.cc:7030
+#23 0x0000000000582e51 in dispatch_command (command=COM_QUERY, thd=0x2ab44821c030, packet=0x2ab448372ba1 "_yards_carried_avg\025Rushing Yards Average\003AVG\001\060\aRushing\001\060\001\060\001\060\001\060\001\060\001\060\001\060\001\060\001\061\003sum\"{{rush_yards}} / {{rush_attempts}}\004%.1f\006\062\060\060\061\061\060\001\061\001\060\006\061\065\066\067\062\061\004\065\064\070\060\001\064\006Angelo\006Latora\rangelo-latora\373", <incomplete sequence \373>, packet_length=<value optimized out>) at sql_parse.cc:2431
+#24 0x0000000000584462 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2109
+#25 0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#26 0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 18 (Thread 0x4fcdd940 (LWP 1165)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab448038e40, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 17 (Thread 0x4de24940 (LWP 1167)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab448038e40, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 16 (Thread 0x4fbd9940 (LWP 1168)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab448038e40, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 15 (Thread 0x4f233940 (LWP 1171)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44844dd00, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 14 (Thread 0x4ecde940 (LWP 1172)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4496bd330, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 13 (Thread 0x510ec940 (LWP 1174)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab448612f70, buf=0x2ab4480500c0 "\005", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab448612f70, buf=0x2ab4480500c0 "\005", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4488d1390, complen=0x510ebec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x25) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 12 (Thread 0x4eb58940 (LWP 1181)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4541f9470, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 11 (Thread 0x4eee6940 (LWP 1182)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4486c1f20, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 10 (Thread 0x501f1940 (LWP 1184)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44874cc70, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 9 (Thread 0x4f337940 (LWP 1248)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab449559510, buf=0x2ab448796530 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab449559510, buf=0x2ab448796530 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4488c31d0, complen=0x4f336ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x2c) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 8 (Thread 0x4f2b5940 (LWP 1253)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4485c5710, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 7 (Thread 0x5088b940 (LWP 1255)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab4480057b0, buf=0x2ab448434b70 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab4480057b0, buf=0x2ab448434b70 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab44856c8c0, complen=0x5088aec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x24) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 6 (Thread 0x4fa53940 (LWP 1258)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab4541d9570, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 5 (Thread 0x4fb98940 (LWP 1263)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab448099430, buf=0x2ab449433ba0 "\003SELECT `content_gamesummary`.`id`, `content_gamesummary`.`posted_by_id`, `content_gamesummary`.`author_name`, `content_gamesummary`.`headline`, `content_gamesummary`.`game_id`, `content_gamesummary`."..., size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab448099430, buf=0x2ab449433ba0 "\003SELECT `content_gamesummary`.`id`, `content_gamesummary`.`posted_by_id`, `content_gamesummary`.`author_name`, `content_gamesummary`.`headline`, `content_gamesummary`.`game_id`, `content_gamesummary`."..., size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab44891e120, complen=0x4fb97ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x18) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 4 (Thread 0x4e9d2940 (LWP 1265)):
+#0  0x0000003c4700aee9 in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00000000005622ee in end_thread (thd=0x2ab44856c800, put_in_cache=true) at mysqld.cc:1746
+#2  0x0000000000583f49 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:1724
+#3  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#4  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 3 (Thread 0x4f43b940 (LWP 1266)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab45847dec0, buf=0x2ab4583dd360 "\023\062\060\060\071-09-01 21:29:13\373q", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab45847dec0, buf=0x2ab4583dd360 "\023\062\060\060\071-09-01 21:29:13\373q", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4588d3090, complen=0x4f43aec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x28) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 2 (Thread 0x4ffe9940 (LWP 1267)):
+#0  0x0000003c4700d91b in read () from /lib64/libpthread.so.0
+#1  0x00000000007c09f9 in read (vio=0x2ab4480f8550, buf=0x2ab44892c250 "\001", size=4) at /usr/include/bits/unistd.h:35
+#2  vio_read (vio=0x2ab4480f8550, buf=0x2ab44892c250 "\001", size=4) at viosocket.c:43
+#3  0x000000000055af39 in my_real_read (net=0x2ab4496bd3f0, complen=0x4ffe8ec0) at net_serv.cc:822
+#4  0x000000000055b3cd in my_net_read (net=0x2a) at net_serv.cc:1004
+#5  0x0000000000584425 in handle_one_connection (arg=<value optimized out>) at sql_parse.cc:2063
+#6  0x0000003c4700673d in start_thread () from /lib64/libpthread.so.0
+#7  0x0000003c460d3d1d in clone () from /lib64/libc.so.6
+
+Thread 1 (Thread 0x2b92c8c3f5f0 (LWP 14516)):
+#0  0x0000003c460ccfc2 in select () from /lib64/libc.so.6
+#1  0x00000000005640d6 in handle_connections_sockets (arg=<value optimized out>) at mysqld.cc:4410
+#2  0x0000000000567425 in main (argc=<value optimized out>, argv=<value optimized out>) at mysqld.cc:3937

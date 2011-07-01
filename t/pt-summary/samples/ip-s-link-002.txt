@@ -1,0 +1,24 @@
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX: bytes  packets  errors  dropped overrun mcast   
+    3672252213 341949241 0       0       0       0      
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3672252213 341949241 0       0       0       0      
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
+    link/ether 00:30:48:d0:cf:24 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1863567224 1242160956 0       0       0       4961   
+    TX: bytes  packets  errors  dropped carrier collsns 
+    3414253990 711297408 0       0       0       0      
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
+    link/ether 00:30:48:d0:cf:25 brd ff:ff:ff:ff:ff:ff
+    RX: bytes  packets  errors  dropped overrun mcast   
+    1174170824 55543521 0       0       0       2641899
+    TX: bytes  packets  errors  dropped carrier collsns 
+    949719203  52996911 0       0       0       0      
+4: sit0: <NOARP> mtu 1480 qdisc noop 
+    link/sit 0.0.0.0 brd 0.0.0.0
+    RX: bytes  packets  errors  dropped overrun mcast   
+    0          0        0       0       0       0      
+    TX: bytes  packets  errors  dropped carrier collsns 
+    0          0        0       0       0       0      

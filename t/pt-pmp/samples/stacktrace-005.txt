@@ -1,0 +1,559 @@
+[Thread debugging using libthread_db enabled]
+[New Thread 0x7f9c2c7f3710 (LWP 3886)]
+[New Thread 0x7f9c2d1f4710 (LWP 3885)]
+[New Thread 0x7f9c2dbf5710 (LWP 3884)]
+[New Thread 0x7f9c2e5f6710 (LWP 3883)]
+[New Thread 0x7f9c2eff7710 (LWP 3882)]
+[New Thread 0x7f9c2f9f8710 (LWP 3881)]
+[New Thread 0x7f9c303f9710 (LWP 3880)]
+[New Thread 0x7f9c30dfa710 (LWP 3879)]
+[New Thread 0x7f9c317fb710 (LWP 3878)]
+[New Thread 0x7f9c321fc710 (LWP 3877)]
+[New Thread 0x7f9c32bfd710 (LWP 3876)]
+[New Thread 0x7f9c335fe710 (LWP 3875)]
+[New Thread 0x7f9c33fff710 (LWP 3874)]
+[New Thread 0x7f9c38dfa710 (LWP 3873)]
+[New Thread 0x7f9c397fb710 (LWP 3872)]
+[New Thread 0x7f9c3a1fc710 (LWP 3871)]
+[New Thread 0x7f9c3abfd710 (LWP 3870)]
+[New Thread 0x7f9c3b5fe710 (LWP 3869)]
+[New Thread 0x7f9c3bfff710 (LWP 3868)]
+[New Thread 0x7f9c58a27710 (LWP 3867)]
+[New Thread 0x7f9c59428710 (LWP 3866)]
+[New Thread 0x7f9c5abfd710 (LWP 3865)]
+[New Thread 0x7f9c5b5fe710 (LWP 3864)]
+[New Thread 0x7f9c5bfff710 (LWP 3863)]
+[New Thread 0x7f9c611f5710 (LWP 3862)]
+[New Thread 0x7f9c61ffa710 (LWP 3861)]
+[New Thread 0x7f9c629fb710 (LWP 3860)]
+[New Thread 0x7f9c633fc710 (LWP 3859)]
+[New Thread 0x7f9c63fff710 (LWP 3858)]
+[New Thread 0x7f9c69327710 (LWP 3857)]
+[New Thread 0x7f9c69e29710 (LWP 3856)]
+[New Thread 0x7f9c59e29710 (LWP 3855)]
+[New Thread 0x7f9c6a82a710 (LWP 3854)]
+[New Thread 0x7f9c6b22b710 (LWP 3853)]
+[New Thread 0x7f9c6bc2c710 (LWP 3852)]
+[New Thread 0x7f9c6c62d710 (LWP 3851)]
+0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+
+Thread 37 (Thread 0x7f9c6c62d710 (LWP 3851)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000042415c in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000425593 in Reporter::work() ()
+#3  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#4  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#5  0x00000033272de77d in clone () from /lib64/libc.so.6
+#6  0x0000000000000000 in ?? ()
+
+Thread 36 (Thread 0x7f9c6bc2c710 (LWP 3852)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 35 (Thread 0x7f9c6b22b710 (LWP 3853)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 34 (Thread 0x7f9c6a82a710 (LWP 3854)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 33 (Thread 0x7f9c59e29710 (LWP 3855)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 32 (Thread 0x7f9c69e29710 (LWP 3856)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 31 (Thread 0x7f9c69327710 (LWP 3857)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 30 (Thread 0x7f9c63fff710 (LWP 3858)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 29 (Thread 0x7f9c633fc710 (LWP 3859)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 28 (Thread 0x7f9c629fb710 (LWP 3860)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 27 (Thread 0x7f9c61ffa710 (LWP 3861)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 26 (Thread 0x7f9c611f5710 (LWP 3862)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 25 (Thread 0x7f9c5bfff710 (LWP 3863)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 24 (Thread 0x7f9c5b5fe710 (LWP 3864)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 23 (Thread 0x7f9c5abfd710 (LWP 3865)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 22 (Thread 0x7f9c59428710 (LWP 3866)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 21 (Thread 0x7f9c58a27710 (LWP 3867)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 20 (Thread 0x7f9c3bfff710 (LWP 3868)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 19 (Thread 0x7f9c3b5fe710 (LWP 3869)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 18 (Thread 0x7f9c3abfd710 (LWP 3870)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 17 (Thread 0x7f9c3a1fc710 (LWP 3871)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 16 (Thread 0x7f9c397fb710 (LWP 3872)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 15 (Thread 0x7f9c38dfa710 (LWP 3873)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 14 (Thread 0x7f9c33fff710 (LWP 3874)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 13 (Thread 0x7f9c335fe710 (LWP 3875)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 12 (Thread 0x7f9c32bfd710 (LWP 3876)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 11 (Thread 0x7f9c321fc710 (LWP 3877)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 10 (Thread 0x7f9c317fb710 (LWP 3878)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 9 (Thread 0x7f9c30dfa710 (LWP 3879)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 8 (Thread 0x7f9c303f9710 (LWP 3880)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 7 (Thread 0x7f9c2f9f8710 (LWP 3881)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 6 (Thread 0x7f9c2eff7710 (LWP 3882)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 5 (Thread 0x7f9c2e5f6710 (LWP 3883)):
+#0  0x00000033272d171d in read () from /lib64/libc.so.6
+#1  0x0000003f8d054cf9 in vio_read_buff () from /usr/lib64/mysql/libmysqlclient.so.16
+#2  0x0000003f8d055e5f in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#3  0x0000003f8d056265 in my_net_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#4  0x0000003f8d050782 in cli_safe_read () from /usr/lib64/mysql/libmysqlclient.so.16
+#5  0x0000003f8d050f49 in ?? () from /usr/lib64/mysql/libmysqlclient.so.16
+#6  0x0000003f8d04f28c in mysql_real_query () from /usr/lib64/mysql/libmysqlclient.so.16
+#7  0x000000000041f4a0 in Connection::run(Query const&, Result&) ()
+#8  0x0000000000427395 in Worker::work() ()
+#9  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 4 (Thread 0x7f9c2dbf5710 (LWP 3884)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000042415c in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x000000000042732b in Worker::work() ()
+#3  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#4  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#5  0x00000033272de77d in clone () from /lib64/libc.so.6
+#6  0x0000000000000000 in ?? ()
+
+Thread 3 (Thread 0x7f9c2d1f4710 (LWP 3885)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000042415c in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x000000000042470a in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::push(Query const&) ()
+#3  0x0000000000426302 in Parser::work() ()
+#4  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#5  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#6  0x00000033272de77d in clone () from /lib64/libc.so.6
+#7  0x0000000000000000 in ?? ()
+
+Thread 2 (Thread 0x7f9c2c7f3710 (LWP 3886)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x0000000000422bca in LogReader::work() ()
+#2  0x00007f9c730e8670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#3  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#4  0x00000033272de77d in clone () from /lib64/libc.so.6
+#5  0x0000000000000000 in ?? ()
+
+Thread 1 (Thread 0x7f9c730d17e0 (LWP 3850)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00007f9c730e975b in boost::thread::join() () from /usr/lib64/libboost_thread-mt.so.5
+#2  0x000000000042337b in main ()

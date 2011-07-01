@@ -1,0 +1,38 @@
+#!/bin/bash
+#parse_lsi_megaraid_bbu_status
+
+cat <<EOF > $1
+         BBU | 100% Charged, Temperature 18C, isSOHGood=Yes
+EOF
+
+cat <<EOF > $2
+BBU status for Adapter: 0
+
+BatteryType: BBU
+Voltage: 4072 mV
+Current: 0 mA
+Temperature: 18 C
+Firmware Status: 00000000
+
+Battery state: 
+
+GasGuageStatus:
+  Fully Discharged        : No
+  Fully Charged           : Yes
+  Discharging             : Yes
+  Initialized             : Yes
+  Remaining Time Alarm    : No
+  Remaining Capacity Alarm: No
+  Discharge Terminated    : No
+  Over Temperature        : No
+  Charging Terminated     : No
+  Over Charged            : No
+
+Relative State of Charge: 100 %
+Charger Status: Complete
+Remaining Capacity: 867 mAh
+Full Charge Capacity: 867 mAh
+isSOHGood: Yes
+
+Exit Code: 0x00
+EOF

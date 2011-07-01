@@ -1,0 +1,9 @@
+#!/bin/bash
+#get_mysql_uptime
+
+cat <<EOF > $1
+2010-05-27 11:38 (up 0+02:08:52)
+EOF
+
+cp samples/mysql-status-001.txt /tmp/aspersa-mysql-status
+echo "2010-05-27 11:38" > /tmp/aspersa

@@ -1,0 +1,11 @@
+#!/bin/bash
+#parse_filesystems samples/df-mount-005.txt Linux
+
+cat <<EOF > $1
+  Filesystem                         Size Used Type  Opts       Mountpoint
+  /dev/cciss/c0d0p1                   99M  24% ext3  rw         /boot
+  /dev/mapper/VolGroup00-LogVol00    194G  58% ext3  rw         /
+  /dev/mapper/VolGroup00-mysql_log   191G   4% ext3  rw         /data/mysql-log
+  /dev/mapper/VolGroup01-mysql_data 1008G  44% ext3  rw,noatime /data/mysql-data
+  tmpfs                               48G   0% tmpfs rw         /dev/shm
+EOF

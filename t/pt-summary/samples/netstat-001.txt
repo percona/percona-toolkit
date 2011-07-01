@@ -1,0 +1,20 @@
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name   
+tcp        0      0 127.0.0.1:199               0.0.0.0:*                   LISTEN      2778/snmpd          
+tcp        0      0 0.0.0.0:3306                0.0.0.0:*                   LISTEN      25057/mysqld        
+tcp        0      0 0.0.0.0:111                 0.0.0.0:*                   LISTEN      2544/rpcbind        
+tcp        0      0 0.0.0.0:10000               0.0.0.0:*                   LISTEN      3160/perl           
+tcp        0      0 127.0.0.1:631               0.0.0.0:*                   LISTEN      3072/cupsd          
+tcp        0      0 127.0.0.1:25                0.0.0.0:*                   LISTEN      2926/sendmail: acce 
+tcp        0      0 0.0.0.0:58430               0.0.0.0:*                   LISTEN      2564/rpc.statd      
+tcp        0    614 192.168.243.71:3306         192.168.243.81:37193        ESTABLISHED 25057/mysqld        
+tcp        0      0 192.168.243.71:3306         192.168.243.81:37191        ESTABLISHED 25057/mysqld        
+tcp        0      0 192.168.243.71:3306         192.168.243.72:57201        ESTABLISHED 25057/mysqld        
+tcp        0      0 :::10080                    :::*                        LISTEN      2799/xinetd         
+tcp        0      0 :::10081                    :::*                        LISTEN      2799/xinetd         
+tcp        0      0 :::5666                     :::*                        LISTEN      2799/xinetd         
+tcp        0      0 :::80                       :::*                        LISTEN      2957/httpd          
+tcp        0      0 :::21                       :::*                        LISTEN      2903/proftpd: (acce 
+tcp        0      0 :::22                       :::*                        LISTEN      2789/sshd           
+tcp        0      0 :::443                      :::*                        LISTEN      2957/httpd          
+tcp        0    576 ::ffff:76.74.243.71:22      ::ffff:74.86.244.122:45626  ESTABLISHED 27156/sshd: percona 

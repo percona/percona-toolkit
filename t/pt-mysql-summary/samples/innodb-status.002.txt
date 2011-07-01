@@ -1,0 +1,888 @@
+=====================================
+100320 15:46:24 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 19 seconds
+----------
+BACKGROUND THREAD
+----------
+srv_master_thread loops: 378592 1_second, 378591 sleeps, 37855 10_second, 3675 background, 3675 flush
+srv_master_thread log flush and writes: 382584
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 20669512, signal count 42085038
+--Thread 2145843520 has waited at ./include/log0log.ic line 322 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b6c0d0 '&log_sys->mutex', lock var 0
+waiters flag 0
+--Thread 2142648640 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 0
+waiters flag 0
+--Thread 2018580800 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 0
+waiters flag 0
+--Thread 1262725440 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 0
+waiters flag 0
+--Thread 1254738240 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1874544960 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1967196480 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 0
+waiters flag 0
+--Thread 1278167360 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 0
+waiters flag 0
+--Thread 2070763840 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 2077419840 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 1292011840 has waited at lock/lock0lock.c line 3770 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 1280031040 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 1235302720 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 1919805760 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 1280297280 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1790945600 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1641851200 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 2010327360 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2115758400 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 2136258880 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 2133596480 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1741158720 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 1
+waiters flag 0
+--Thread 2039347520 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2080614720 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2001275200 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1884662080 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1276569920 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1865759040 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1958144320 has waited at trx/trx0trx.c line 1033 for 0.0000 seconds the semaphore:
+Mutex at 0x48ace40 '&kernel_mutex', lock var 0
+waiters flag 0
+--Thread 1762990400 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1922201920 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2067568960 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1828751680 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1287485760 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2022308160 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2069698880 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1289881920 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2127472960 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2077952320 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2050529600 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2130135360 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2084075840 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2081413440 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2100582720 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1880934720 has waited at trx/trx0trx.c line 1888 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1263790400 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1267517760 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1999677760 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 1872947520 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+--Thread 2138921280 has waited at trx/trx0undo.c line 1796 for 0.0000 seconds the semaphore:
+Mutex at 0x2abf68b76a18 '&rseg->mutex', lock var 1
+waiters flag 1
+Mutex spin waits 402818050, rounds 1525643142, OS waits 15710890
+RW-shared spins 17524902, OS waits 3416443; RW-excl spins 4524539, OS waits 1014358
+Spin rounds per wait: 3.79 mutex, 9.61 RW-shared, 36.88 RW-excl
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: waiting for i/o request (read thread)
+I/O thread 3 state: waiting for i/o request (read thread)
+I/O thread 4 state: waiting for i/o request (read thread)
+I/O thread 5 state: waiting for i/o request (read thread)
+I/O thread 6 state: waiting for i/o request (write thread)
+I/O thread 7 state: waiting for i/o request (write thread)
+I/O thread 8 state: waiting for i/o request (write thread)
+I/O thread 9 state: waiting for i/o request (write thread)
+Pending normal aio reads: 0, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 0; buffer pool: 0
+2352019 OS file reads, 969591788 OS file writes, 6092093 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 1488.34 writes/s, 13.05 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 0, seg size 2,
+0 inserts, 0 merged recs, 0 merges
+Hash table size 169998233, node heap has 114634 buffer(s)
+3143.15 hash searches/s, 42587.23 non-hash searches/s
+---
+LOG
+---
+Log sequence number 897148773600
+Log flushed up to   897148278010
+Last checkpoint at  896783925619
+Max checkpoint age    434154333
+Checkpoint age target 420587011
+Modified age          364847981
+Checkpoint age        364847981
+0 pending log writes, 0 pending chkp writes
+879615445 log i/o's done, 1281.51 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 88038440960; in additional pool allocated 0
+Internal hash tables (constant factor + variable factor)
+    Adaptive hash index 3238153528 	(1359985864 + 1878167664)
+    Page hash           84999896
+    Dictionary cache    340055096 	(339997936 + 57160)
+    File system         86488 	(82672 + 3816)
+    Lock system         213044664 	(212498744 + 545920)
+    Recovery system     0 	(0 + 0)
+    Threads             407416 	(406936 + 480)
+Dictionary memory allocated 57160
+Buffer pool size        5242880
+Buffer pool size, bytes 85899345920
+Free buffers            1759475
+Database pages          3368771
+Old database pages      1243530
+Modified db pages       70261
+Pending reads 0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 0, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 2352002, created 1016769, written 108235268
+0.00 reads/s, 1.26 creates/s, 248.30 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s
+LRU len: 3368771, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+583 read views open inside InnoDB
+Main thread process no. 3907, id 1201703232, state: sleeping
+Number of rows inserted 331220762, updated 780093431, deleted 205176124, read 38634161513
+437.24 inserts/s, 1173.20 updates/s, 271.93 deletes/s, 105181.10 reads/s
+------------
+TRANSACTIONS
+------------
+Trx id counter 7C6E3DD1
+Purge done for trx's n:o < 7C6E35C9 undo n:o < 0
+History list length 426
+... truncated...
+46 n bits 208 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3B00 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3B00 lock mode IX
+RECORD LOCKS space id 149 page no 340704 n bits 240 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3B00 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AFE, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1956813120
+2 lock struct(s), heap size 368, 1 row lock(s), undo log entries 1
+MySQL thread id 136941, query id 10041436150 10.4.223.80 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AFF, sees < 7C6E3A09
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3AFE lock mode IX
+RECORD LOCKS space id 147 page no 890345 n bits 80 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3AFE lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AF8, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1987963200
+2 lock struct(s), heap size 368, 0 row lock(s), undo log entries 2
+MySQL thread id 140338, query id 10041432937 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AF9, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AF8 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AF8 lock mode IX
+---TRANSACTION 7C6E3AF7, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2063042880
+2 lock struct(s), heap size 368, 2 row lock(s), undo log entries 2
+MySQL thread id 141000, query id 10041436824 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AF8, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3AF7 lock mode IX
+RECORD LOCKS space id 147 page no 1146358 n bits 96 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3AF7 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AF5, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1106262336
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140147, query id 10041438028 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AF6, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AF5 lock mode IX
+RECORD LOCKS space id 148 page no 388588 n bits 488 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AF5 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AF5 lock mode IX
+RECORD LOCKS space id 149 page no 46904 n bits 352 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AF5 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AF0, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1949092160
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140390, query id 10041432713 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AF1, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AF0 lock mode IX
+RECORD LOCKS space id 146 page no 25610 n bits 168 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AF0 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AF0 lock mode IX
+RECORD LOCKS space id 149 page no 155182 n bits 392 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AF0 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AEE, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2115225920
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140503, query id 10041432749 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AEF, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AEE lock mode IX
+RECORD LOCKS space id 146 page no 25135 n bits 168 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AEE lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AEE lock mode IX
+RECORD LOCKS space id 149 page no 330586 n bits 376 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AEE lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AED, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1252874560
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140571, query id 10041433295 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AEE, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AED lock mode IX
+RECORD LOCKS space id 146 page no 19001 n bits 184 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AED lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AED lock mode IX
+RECORD LOCKS space id 149 page no 279638 n bits 368 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AED lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AEC, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2121615680
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 141072, query id 10041433144 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AED, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AEC lock mode IX
+RECORD LOCKS space id 146 page no 21995 n bits 200 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AEC lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AEC lock mode IX
+RECORD LOCKS space id 149 page no 722927 n bits 240 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AEB lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AE9, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2058783040
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139638, query id 10041436093 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AEA, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AE9 lock mode IX
+RECORD LOCKS space id 146 page no 14160 n bits 248 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AE9 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AE9 lock mode IX
+RECORD LOCKS space id 149 page no 288378 n bits 336 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AE9 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AE8, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1253673280
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139948, query id 10041432812 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AE9, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AE8 lock mode IX
+RECORD LOCKS space id 146 page no 1761 n bits 184 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AE8 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AE8 lock mode IX
+RECORD LOCKS space id 149 page no 335533 n bits 384 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AE8 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AE7, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1944832320
+2 lock struct(s), heap size 368, 1 row lock(s), undo log entries 1
+MySQL thread id 139353, query id 10041432624 10.4.223.90 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AE8, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3AE7 lock mode IX
+RECORD LOCKS space id 147 page no 1321995 n bits 96 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3AE7 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AE6, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1642117440
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140224, query id 10041432635 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AE7, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AE6 lock mode IX
+RECORD LOCKS space id 146 page no 575 n bits 224 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AE6 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AE6 lock mode IX
+RECORD LOCKS space id 149 page no 473054 n bits 304 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AE6 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AE5, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1880934720
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 141212, query id 10041432655 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AE6, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AE5 lock mode IX
+RECORD LOCKS space id 146 page no 15618 n bits 232 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AE5 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AE5 lock mode IX
+RECORD LOCKS space id 149 page no 754751 n bits 232 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AE5 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AE0, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1268582720
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140547, query id 10041435147 10.4.223.90 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AE1, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AE0 lock mode IX
+RECORD LOCKS space id 146 page no 21941 n bits 184 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AE0 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AE0 lock mode IX
+RECORD LOCKS space id 149 page no 145185 n bits 320 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ADD lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3ADD lock mode IX
+RECORD LOCKS space id 147 page no 974477 n bits 88 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3ADD lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_contracts` trx id 7C6E3ADD lock mode IX
+RECORD LOCKS space id 150 page no 17857 n bits 408 index `PRIMARY` of table `citydb`.`player_contracts` trx id 7C6E3ADD lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3ADB, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2088335680
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139305, query id 10041434991 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ADC, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3ADB lock mode IX
+RECORD LOCKS space id 146 page no 1888 n bits 216 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ADB lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ADB lock mode IX
+RECORD LOCKS space id 149 page no 42490 n bits 232 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ADB lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3ADA, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2035620160
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140585, query id 10041433028 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ADB, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3ADA lock mode IX
+RECORD LOCKS space id 146 page no 18824 n bits 200 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ADA lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ADA lock mode IX
+RECORD LOCKS space id 149 page no 508370 n bits 368 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ADA lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AD9, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2049464640
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140467, query id 10041432481 10.4.223.80 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ADA, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AD9 lock mode IX
+RECORD LOCKS space id 146 page no 18824 n bits 200 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ADA lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ADA lock mode IX
+RECORD LOCKS space id 149 page no 508370 n bits 368 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ADA lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AD9, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2049464640
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140467, query id 10041432481 10.4.223.80 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ADA, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AD9 lock mode IX
+RECORD LOCKS space id 146 page no 5906 n bits 224 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AD9 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AD9 lock mode IX
+RECORD LOCKS space id 149 page no 818257 n bits 320 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AD9 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AD8, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1928857920
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 141173, query id 10041432674 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AD9, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AD8 lock mode IX
+RECORD LOCKS space id 146 page no 24990 n bits 176 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AD8 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AD8 lock mode IX
+RECORD LOCKS space id 149 page no 16707 n bits 328 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AD8 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AD7, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1272043840
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140468, query id 10041439769 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AD8, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AD7 lock mode IX
+RECORD LOCKS space id 148 page no 647119 n bits 536 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AD7 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AD7 lock mode IX
+RECORD LOCKS space id 149 page no 486470 n bits 368 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AD7 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AD3, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2008197440
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140221, query id 10041438807 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AD4, sees < 7C6E39D9
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AD3 lock mode IX
+RECORD LOCKS space id 148 page no 445005 n bits 552 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AD3 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AD3 lock mode IX
+RECORD LOCKS space id 149 page no 678758 n bits 288 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AD3 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3ACE, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2067568960
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 138718, query id 10041432668 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ACF, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3ACE lock mode IX
+RECORD LOCKS space id 146 page no 187 n bits 224 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ACE lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ACE lock mode IX
+RECORD LOCKS space id 149 page no 382096 n bits 376 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ACE lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3ACB, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1287485760
+5 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 3
+MySQL thread id 141312, query id 10041432927 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ACC, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_contracts` trx id 7C6E3ACB lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3ACB lock mode IX
+RECORD LOCKS space id 146 page no 13690 n bits 272 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ACB lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ACB lock mode IX
+RECORD LOCKS space id 149 page no 31584 n bits 248 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ACB lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3ACA, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1992755520
+2 lock struct(s), heap size 368, 0 row lock(s), undo log entries 2
+MySQL thread id 139191, query id 10041432427 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ACB, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3ACA lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ACA lock mode IX
+---TRANSACTION 7C6E3AC9, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1282959680
+5 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 141296, query id 10041437771 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ACA, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AC9 lock mode IX
+RECORD LOCKS space id 148 page no 160459 n bits 600 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AC9 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC9 lock mode IX
+RECORD LOCKS space id 149 page no 144341 n bits 288 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC9 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AC9, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1282959680
+5 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 141296, query id 10041437771 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ACA, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AC9 lock mode IX
+RECORD LOCKS space id 148 page no 160459 n bits 600 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AC9 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC9 lock mode IX
+RECORD LOCKS space id 149 page no 144341 n bits 288 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC9 lock_mode X locks rec but not gap
+RECORD LOCKS space id 149 page no 144345 n bits 352 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC9 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AC8, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1810114880
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 141181, query id 10041432666 10.36.63.93 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AC9, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AC8 lock mode IX
+RECORD LOCKS space id 146 page no 3930 n bits 160 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AC8 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC8 lock mode IX
+RECORD LOCKS space id 149 page no 444704 n bits 400 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC8 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AC6, ACTIVE 4 sec, process no 3907, OS thread id 1275771200
+5 lock struct(s), heap size 1216, 1 row lock(s), undo log entries 46
+MySQL thread id 141270, query id 10041442923 10.4.223.80 citydbuser
+update player_buildings set building_id=121, leisure_start=null, state='clean', state_date='2010-03-20 15:46:20.0', growth_start=null where player_id=100000180864920 and corner=32382
+Trx read view will not see trx with id >= 7C6E3AC7, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC6 lock mode IX
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AC6 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AC6 lock mode IX
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3AC6 lock mode IX
+RECORD LOCKS space id 149 page no 337504 n bits 368 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC6 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AC5, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2020444480
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140844, query id 10041438885 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AC6, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AC5 lock mode IX
+RECORD LOCKS space id 146 page no 12145 n bits 176 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AC5 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC5 lock mode IX
+RECORD LOCKS space id 149 page no 148090 n bits 296 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC5 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AC3, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2055321920
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140546, query id 10041437998 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AC4, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AC3 lock mode IX
+RECORD LOCKS space id 148 page no 577596 n bits 568 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AC3 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC3 lock mode IX
+RECORD LOCKS space id 149 page no 279328 n bits 400 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC3 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AC1, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1249147200
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 141019, query id 10041437002 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AC2, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AC1 lock mode IX
+RECORD LOCKS space id 148 page no 725383 n bits 576 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AC1 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC1 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AC0 lock mode IX
+RECORD LOCKS space id 149 page no 627162 n bits 360 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AC0 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3AC0 lock mode IX
+---TRANSACTION 7C6E3ABE, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1944033600
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140411, query id 10041438183 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ABF, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3ABE lock mode IX
+RECORD LOCKS space id 146 page no 19859 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ABB lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ABB lock mode IX
+RECORD LOCKS space id 149 page no 368561 n bits 288 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ABB lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3ABA, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1964267840
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 137688, query id 10041432858 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3ABB, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3ABA lock mode IX
+RECORD LOCKS space id 146 page no 12691 n bits 176 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3ABA lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3ABA lock mode IX
+RECORD LOCKS space id 149 page no 700885 n bits 384 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3ABA lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AB7, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2129070400
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 138599, query id 10041432539 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AB8, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AB7 lock mode IX
+RECORD LOCKS space id 146 page no 5136 n bits 176 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AB7 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AB7 lock mode IX
+RECORD LOCKS space id 149 page no 545493 n bits 344 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AB7 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AB6, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2081413440
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 141202, query id 10041439173 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AB7, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AB6 lock mode IX
+RECORD LOCKS space id 148 page no 654350 n bits 296 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AB6 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AB6 lock mode IX
+RECORD LOCKS space id 149 page no 374159 n bits 376 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AB6 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AB4, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1890253120
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139625, query id 10041432790 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AB5, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AB4 lock mode IX
+RECORD LOCKS space id 148 page no 654350 n bits 296 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AB6 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AB6 lock mode IX
+RECORD LOCKS space id 149 page no 374159 n bits 376 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AB6 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AB4, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1890253120
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139625, query id 10041432790 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AB5, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AB4 lock mode IX
+RECORD LOCKS space id 146 page no 8040 n bits 232 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AB4 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AB4 lock mode IX
+RECORD LOCKS space id 149 page no 713787 n bits 360 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AB4 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AB2, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2145843520
+5 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 3
+MySQL thread id 139231, query id 10041436726 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AB3, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_achievements` trx id 7C6E3AB2 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AB2 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AB1 lock mode IX
+RECORD LOCKS space id 149 page no 77084 n bits 256 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AB1 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AAE, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1964001600
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 141157, query id 10041436499 10.36.63.93 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AAF, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3AAE lock mode IX
+RECORD LOCKS space id 148 page no 581986 n bits 568 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3AAE lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AAE lock mode IX
+RECORD LOCKS space id 149 page no 714932 n bits 392 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AAE lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AAC, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2140252480
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 138751, query id 10041432715 10.4.223.90 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AAD, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AAC lock mode IX
+RECORD LOCKS space id 146 page no 23844 n bits 160 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AAC lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AAC lock mode IX
+RECORD LOCKS space id 149 page no 576782 n bits 384 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AAC lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AA2, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2077952320
+2 lock struct(s), heap size 368, 1 row lock(s), undo log entries 1
+MySQL thread id 141161, query id 10041431695 10.4.223.90 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AA3, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3AA2 lock mode IX
+RECORD LOCKS space id 147 page no 1217570 n bits 88 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3AA2 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3AA0, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1261660480 committing
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139387, query id 10041432365 10.36.63.91 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3AA2, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3AA0 lock mode IX
+RECORD LOCKS space id 146 page no 7599 n bits 248 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3AA0 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3AA0 lock mode IX
+RECORD LOCKS space id 149 page no 296912 n bits 400 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3AA0 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A9B, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1979976000
+2 lock struct(s), heap size 368, 1 row lock(s), undo log entries 1
+MySQL thread id 141164, query id 10041431661 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A9C, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A9B lock mode IX
+RECORD LOCKS space id 147 page no 1349411 n bits 80 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A9B lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A9A, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2094725440
+2 lock struct(s), heap size 368, 1 row lock(s), undo log entries 1
+MySQL thread id 136976, query id 10041431690 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A9B, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A9A lock mode IX
+RECORD LOCKS space id 146 page no 13794 n bits 224 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A9A lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A95, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2118953280
+5 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 3
+MySQL thread id 138705, query id 10041437804 10.36.63.95 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A96, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_contracts` trx id 7C6E3A95 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A95 lock mode IX
+RECORD LOCKS space id 146 page no 23462 n bits 168 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A95 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A95 lock mode IX
+RECORD LOCKS space id 149 page no 717725 n bits 392 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A95 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A91, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1259796800
+2 lock struct(s), heap size 368, 2 row lock(s), undo log entries 2
+MySQL thread id 141140, query id 10041431736 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A92, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A91 lock mode IX
+RECORD LOCKS space id 147 page no 1085138 n bits 104 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A91 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A90, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1884662080
+2 lock struct(s), heap size 368, 2 row lock(s), undo log entries 2
+MySQL thread id 140466, query id 10041431819 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A91, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A90 lock mode IX
+RECORD LOCKS space id 147 page no 313005 n bits 104 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A90 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A8E, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2032691520
+5 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 3
+MySQL thread id 138248, query id 10041432049 10.36.63.91 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A8F, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_contracts` trx id 7C6E3A8E lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A8E lock mode IX
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A8D lock mode IX
+RECORD LOCKS space id 149 page no 532707 n bits 384 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A8C lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A8B, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2127739200
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 139959, query id 10041432252 10.36.63.93 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A8C, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A8B lock mode IX
+RECORD LOCKS space id 146 page no 11183 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A8B lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A8B lock mode IX
+RECORD LOCKS space id 149 page no 301679 n bits 304 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A8B lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A8A, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2044672320
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140454, query id 10041432691 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A8B, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A8A lock mode IX
+RECORD LOCKS space id 146 page no 11183 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A8B lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A8B lock mode IX
+RECORD LOCKS space id 149 page no 751030 n bits 352 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A8A lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A88, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2135193920
+6 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 139975, query id 10041432799 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A89, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A88 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A88 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A88 lock mode IX
+RECORD LOCKS space id 149 page no 751030 n bits 352 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A8A lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A88, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2135193920
+6 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 139975, query id 10041432799 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A89, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A88 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A88 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A88 lock mode IX
+RECORD LOCKS space id 146 page no 12837 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A88 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A88 lock mode IX
+---TRANSACTION 7C6E3A88, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2135193920
+6 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 139975, query id 10041432799 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A89, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A88 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A88 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A88 lock mode IX
+RECORD LOCKS space id 146 page no 12837 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A88 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A88 lock mode IX
+RECORD LOCKS space id 147 page no 956053 n bits 104 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A88 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A87, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1245153600
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140402, query id 10041432521 10.36.63.91 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A88, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A87 lock mode IX
+RECORD LOCKS space id 146 page no 22146 n bits 176 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A85 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A85 lock mode IX
+RECORD LOCKS space id 149 page no 234256 n bits 192 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A85 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A83, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1251010880
+6 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 8
+MySQL thread id 140492, query id 10041432941 10.4.223.80 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A84, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A83 lock mode IX
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A83 lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A83 lock mode IX
+RECORD LOCKS space id 146 page no 17898 n bits 272 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A83 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A83 lock mode IX
+RECORD LOCKS space id 147 page no 1444510 n bits 96 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A83 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A7E, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1946163520
+2 lock struct(s), heap size 368, 1 row lock(s), undo log entries 1
+MySQL thread id 141218, query id 10041431475 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A7F, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A7E lock mode IX
+RECORD LOCKS space id 146 page no 17362 n bits 208 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A7D lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A7D lock mode IX
+RECORD LOCKS space id 147 page no 1006502 n bits 88 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A7D lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A7C, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1981573440
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 137411, query id 10041432313 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A7D, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A7C lock mode IX
+RECORD LOCKS space id 146 page no 1404 n bits 240 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A7C lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A7C lock mode IX
+RECORD LOCKS space id 147 page no 1125366 n bits 96 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A77 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A75, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1868155200
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140549, query id 10041431548 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A76, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A75 lock mode IX
+RECORD LOCKS space id 146 page no 16343 n bits 240 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A75 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A75 lock mode IX
+RECORD LOCKS space id 149 page no 441769 n bits 360 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A75 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A74, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2006333760
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140931, query id 10041432177 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A75, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A74 lock mode IX
+RECORD LOCKS space id 146 page no 20055 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A74 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A74 lock mode IX
+RECORD LOCKS space id 149 page no 441769 n bits 360 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A75 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A74, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2006333760
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140931, query id 10041432177 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A75, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A74 lock mode IX
+RECORD LOCKS space id 146 page no 20055 n bits 192 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A74 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A74 lock mode IX
+RECORD LOCKS space id 149 page no 741120 n bits 360 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A74 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A72, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2073426240
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 137829, query id 10041439927 10.36.63.91 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A73, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A72 lock mode IX
+RECORD LOCKS space id 148 page no 190427 n bits 504 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3A72 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A72 lock mode IX
+RECORD LOCKS space id 149 page no 132839 n bits 384 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A70 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A6F, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1936312640
+5 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 3
+MySQL thread id 140199, query id 10041431837 10.36.63.91 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A70, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_contracts` trx id 7C6E3A6F lock mode IX
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A6F lock mode IX
+RECORD LOCKS space id 146 page no 315 n bits 232 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A6F lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A6F lock mode IX
+RECORD LOCKS space id 149 page no 14483 n bits 336 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A6F lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A6E, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1675663680
+2 lock struct(s), heap size 368, 2 row lock(s), undo log entries 2
+MySQL thread id 140458, query id 10041431316 10.36.63.91 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A6F, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A6E lock mode IX
+RECORD LOCKS space id 147 page no 377681 n bits 88 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A6E lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A6C, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1973320000
+8 lock struct(s), heap size 1216, 4 row lock(s), undo log entries 4
+MySQL thread id 135567, query id 10041431452 10.4.223.84 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A6D, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A6C lock mode IX
+RECORD LOCKS space id 146 page no 19699 n bits 184 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A6C lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A6C lock mode IX
+RECORD LOCKS space id 149 page no 720419 n bits 272 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A6C lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_stats` trx id 7C6E3A6C lock mode IX
+RECORD LOCKS space id 147 page no 279999 n bits 96 index `PRIMARY` of table `citydb`.`player_stats` trx id 7C6E3A6C lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_contracts` trx id 7C6E3A6C lock mode IX
+RECORD LOCKS space id 150 page no 16624 n bits 368 index `PRIMARY` of table `citydb`.`player_contracts` trx id 7C6E3A6C lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A6B, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2007398720
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 5
+MySQL thread id 136949, query id 10041432437 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A6C, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A6B lock mode IX
+RECORD LOCKS space id 148 page no 215729 n bits 576 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3A6B lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A6B lock mode IX
+RECORD LOCKS space id 149 page no 176228 n bits 384 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A68 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A65, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 1106528576
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 141168, query id 10041431454 10.4.223.82 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A66, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A65 lock mode IX
+RECORD LOCKS space id 148 page no 114612 n bits 552 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3A60 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A60 lock mode IX
+RECORD LOCKS space id 149 page no 621059 n bits 360 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A60 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A5C, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2103245120
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140413, query id 10041431481 10.36.63.89 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A5D, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A5C lock mode IX
+RECORD LOCKS space id 146 page no 14450 n bits 224 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A5C lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A5C lock mode IX
+RECORD LOCKS space id 149 page no 104627 n bits 264 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A5C lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A5B, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2097920320
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 141096, query id 10041431887 10.4.223.90 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A5C, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A5B lock mode IX
+RECORD LOCKS space id 148 page no 224668 n bits 584 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3A44 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A44 lock mode IX
+RECORD LOCKS space id 149 page no 734030 n bits 296 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A5B lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A44, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2100582720
+4 lock struct(s), heap size 1216, 3 row lock(s), undo log entries 5
+MySQL thread id 140004, query id 10041432649 10.4.223.88 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A45, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`city_grid` trx id 7C6E3A44 lock mode IX
+RECORD LOCKS space id 148 page no 224668 n bits 584 index `PRIMARY` of table `citydb`.`city_grid` trx id 7C6E3A44 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A44 lock mode IX
+RECORD LOCKS space id 149 page no 12101 n bits 376 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A26 lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A0F, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2141583680
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 140452, query id 10041423369 10.36.63.93 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A10, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A0F lock mode IX
+RECORD LOCKS space id 146 page no 3580 n bits 216 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A0A lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A0A lock mode IX
+RECORD LOCKS space id 149 page no 804858 n bits 376 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A0A lock_mode X
+RECORD LOCKS space id 149 page no 804863 n bits 136 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A0A lock_mode X locks rec but not gap
+---TRANSACTION 7C6E3A09, ACTIVE (PREPARED) 4 sec, process no 3907, OS thread id 2075289920
+4 lock struct(s), heap size 1216, 2 row lock(s), undo log entries 2
+MySQL thread id 138208, query id 10041423401 10.4.223.86 citydbuser
+commit
+Trx read view will not see trx with id >= 7C6E3A0A, sees < 7C6E39B2
+TABLE LOCK table `citydb`.`players` trx id 7C6E3A09 lock mode IX
+RECORD LOCKS space id 146 page no 18321 n bits 184 index `PRIMARY` of table `citydb`.`players` trx id 7C6E3A09 lock_mode X locks rec but not gap
+TABLE LOCK table `citydb`.`player_buildings` trx id 7C6E3A09 lock mode IX
+RECORD LOCKS space id 149 page no 759584 n bits 352 index `PRIMARY` of table `citydb`.`player_buildings` trx id 7C6E3A09 lock_mode X locks rec but not gap

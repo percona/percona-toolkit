@@ -1,0 +1,8 @@
+#!/bin/bash
+#parse_raid_controller_dmesg
+
+cat <<EOF > $1
+AACRAID
+EOF
+
+cat samples/dmesg-002.txt > $2

@@ -1,0 +1,995 @@
+=====================================
+100318 17:35:58 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 9 seconds
+----------
+BACKGROUND THREAD
+----------
+srv_master_thread loops: 1419631 1_second, 1141696 sleeps, 141916 10_second, 1576 background, 1576 flush
+srv_master_thread log flush and writes: 1214905
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 12433146, signal count 56397470
+--Thread 139960404199760 has waited at lock/lock0lock.c line 3224 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 140055933507920 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+X-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960931486032 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+a writer (thread id 139960676096336) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 1109
+--Thread 139959725922640 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960809515344 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960542411088 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139961218296144 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960561580368 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file row/row0sel.c line 3549
+Last time write locked in file btr/btr0sea.c line 1109
+--Thread 139960921368912 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139959701428560 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139961187412304 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055956670800 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960790612304 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 140055849642320 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960388491600 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+X-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960671570256 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960775436624 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960653199696 has waited at fsp/fsp0fsp.c line 3395 for 9.0000 seconds the semaphore:
+X-lock on RW-latch at 0x90078f10 '&space->latch'
+a writer (thread id 139960969292112) has reserved it in mode  exclusive
+number of readers 0, waiters flag 0, lock_word: fffffffffff00000
+Last time read locked in file not yet reserved line 0
+Last time write locked in file fsp/fsp0fsp.c line 2856
+--Thread 139960417511760 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960691804496 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+wait has ended
+--Thread 139960937077072 has waited at lock/lock0lock.c line 5316 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960534956368 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139960949856592 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055916202320 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139961194867024 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90a42ca0 '&new_index->lock'
+a writer (thread id 139960404199760) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960418576720 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960563976528 has waited at trx/trx0trx.c line 738 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960912050512 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90a42ca0 '&new_index->lock'
+a writer (thread id 139960404199760) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960519780688 has waited at btr/btr0sea.c line 1032 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file row/row0sel.c line 3549
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 140055924988240 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139959744559440 has waited at lock/lock0lock.c line 3249 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960378906960 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055956404560 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 1, waiters flag 0, lock_word: fffff
+Last time read locked in file btr/btr0cur.c line 672
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139961200458064 has waited at lock/lock0lock.c line 3224 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960806054224 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 140055930313040 has waited at lock/lock0lock.c line 5316 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960701921616 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90a42ca0 '&new_index->lock'
+a writer (thread id 139960404199760) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055923657040 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960951187792 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961176496464 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960685414736 has waited at lock/lock0lock.c line 5163 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139959712078160 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file row/row0sel.c line 3549
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139960503007568 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961058515280 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file row/row0sel.c line 3549
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 140055948683600 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960935479632 has waited at lock/lock0lock.c line 4944 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960821762384 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file row/row0sel.c line 3549
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139960693401936 has waited at btr/btr0sea.c line 1032 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139959715539280 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 140056007313744 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960651336016 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90a42ca0 '&new_index->lock'
+a writer (thread id 139960404199760) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961179425104 has waited at lock/lock0lock.c line 5316 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960650803536 has waited at btr/btr0cur.c line 672 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139960930687312 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 140055871207760 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960165583184 has waited at ./include/btr0btr.ic line 53 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bd0a8c8d0 '&block->lock'
+a writer (thread id 139960165583184) has reserved it in mode  wait exclusive
+number of readers 3, waiters flag 0, lock_word: fffffffffffffffd
+Last time read locked in file btr/btr0cur.c line 523
+Last time write locked in file btr/btr0pcur.c line 260
+--Thread 139961202587984 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960409790800 has waited at btr/btr0cur.c line 450 for 0.0000 seconds the semaphore:
+X-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960397011280 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 140055974242640 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960798865744 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139961065171280 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960683551056 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961050794320 has waited at lock/lock0lock.c line 4944 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139961058781520 has waited at trx/trx0trx.c line 1621 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960965298512 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960778365264 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139960830814544 has waited at btr/btr0cur.c line 457 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139959740565840 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960514455888 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 140055944690000 has waited at row/row0sel.c line 4574 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960567171408 has waited at lock/lock0lock.c line 4944 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 139960380238160 has waited at lock/lock0lock.c line 4944 for 0.0000 seconds the semaphore:
+Mutex at 0xf89ab0 '&kernel_mutex', lock var 1
+waiters flag 1
+--Thread 140055895169360 has waited at row/row0sel.c line 3549 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90075530 '&btr_search_latch'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0sea.c line 856
+Last time write locked in file btr/btr0sea.c line 609
+--Thread 139960666245456 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960680622416 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4c0d3abba8 '&block->lock'
+number of readers 6, waiters flag 0, lock_word: ffffa
+Last time read locked in file btr/btr0cur.c line 523
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055894636880 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055958268240 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bfc558040 '&block->lock'
+a writer (thread id 139961215367504) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 523
+Last time write locked in file buf/buf0buf.c line 3062
+--Thread 139960911251792 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961219893584 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961174899024 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960380770640 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x90fe1c80 '&new_index->lock'
+number of readers 0, waiters flag 0, lock_word: 100000
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960532560208 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961077152080 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961214302544 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960672901456 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960389822800 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139959752546640 has waited at btr/btr0cur.c line 523 for 13.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960390621520 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961208179024 has waited at btr/btr0cur.c line 523 for 12.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055899695440 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960559982928 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960669174096 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960371186000 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055885052240 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960684616016 has waited at btr/btr0cur.c line 523 for 12.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960643348816 has waited at btr/btr0cur.c line 523 for 12.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960562645328 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139959728851280 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960411654480 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961179691344 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960516585808 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055897033040 has waited at btr/btr0cur.c line 523 for 11.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961180223824 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960387426640 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961067301200 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960522443088 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960939206992 has waited at btr/btr0cur.c line 457 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961175697744 has waited at btr/btr0cur.c line 523 for 9.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055866415440 has waited at btr/btr0cur.c line 457 for 8.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960663583056 has waited at btr/btr0cur.c line 457 for 8.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139959737370960 has waited at btr/btr0cur.c line 457 for 8.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055936969040 has waited at btr/btr0cur.c line 457 for 8.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960419641680 has waited at btr/btr0cur.c line 523 for 10.000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961193802064 has waited at btr/btr0cur.c line 457 for 8.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055972112720 has waited at btr/btr0cur.c line 457 for 8.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961050528080 has waited at btr/btr0cur.c line 457 for 7.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960793540944 has waited at btr/btr0cur.c line 457 for 7.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055934572880 has waited at btr/btr0cur.c line 457 for 7.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960932817232 has waited at btr/btr0cur.c line 457 for 7.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960566106448 has waited at btr/btr0cur.c line 523 for 7.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960957311312 has waited at btr/btr0cur.c line 523 for 7.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055907416400 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960801794384 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960909654352 has waited at btr/btr0cur.c line 523 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960528832848 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960941070672 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960384498000 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960828684624 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960965032272 has waited at btr/btr0cur.c line 457 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960650004816 has waited at btr/btr0cur.c line 523 for 6.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960397277520 has waited at btr/btr0cur.c line 457 for 5.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960660920656 has waited at btr/btr0cur.c line 457 for 5.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960826022224 has waited at btr/btr0cur.c line 457 for 5.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960519248208 has waited at btr/btr0cur.c line 457 for 5.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055963593040 has waited at btr/btr0cur.c line 457 for 5.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055891175760 has waited at btr/btr0cur.c line 457 for 5.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961079282000 has waited at btr/btr0cur.c line 523 for 4.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055848843600 has waited at btr/btr0cur.c line 457 for 4.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961063573840 has waited at btr/btr0cur.c line 457 for 4.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960418044240 has waited at btr/btr0cur.c line 457 for 4.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960679557456 has waited at btr/btr0cur.c line 523 for 4.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960536553808 has waited at btr/btr0cur.c line 523 for 3.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961072359760 has waited at btr/btr0cur.c line 457 for 3.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961055054160 has waited at btr/btr0cur.c line 457 for 3.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960521378128 has waited at btr/btr0cur.c line 457 for 3.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960657459536 has waited at btr/btr0cur.c line 523 for 3.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139960700324176 has waited at btr/btr0cur.c line 457 for 2.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960907258192 has waited at btr/btr0cur.c line 457 for 2.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139961207912784 has waited at btr/btr0cur.c line 457 for 2.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960529631568 has waited at btr/btr0cur.c line 457 for 2.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960926959952 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055942560080 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960966629712 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055958800720 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960959441232 has waited at btr/btr0cur.c line 523 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139961183951184 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960513390928 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960924031312 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 139960959174992 has waited at btr/btr0cur.c line 457 for 1.0000 seconds the semaphore:
+S-lock on RW-latch at 0x905d33d0 '&new_index->lock'
+a writer (thread id 139960165583184) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0cur.c line 457
+Last time write locked in file btr/btr0cur.c line 450
+--Thread 140055980632400 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 139959747754320 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055943625040 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+--Thread 140055978502480 has waited at btr/btr0cur.c line 523 for 0.0000 seconds the semaphore:
+S-lock on RW-latch at 0x7f4bedbf8810 '&block->lock'
+a writer (thread id 139960567171408) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file btr/btr0pcur.c line 260
+Last time write locked in file btr/btr0cur.c line 523
+Mutex spin waits 217635758, rounds 189376110, OS waits 1270716
+RW-shared spins 32034008, OS waits 7368549; RW-excl spins 4795269, OS waits 3653871
+Spin rounds per wait: 0.87 mutex, 9.69 RW-shared, 40.94 RW-excl
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for i/o request (insert buffer thread)
+I/O thread 1 state: waiting for i/o request (log thread)
+I/O thread 2 state: doing file i/o (read thread) ev set
+I/O thread 3 state: doing file i/o (read thread) ev set
+I/O thread 4 state: waiting for i/o request (read thread)
+I/O thread 5 state: doing file i/o (read thread) ev set
+I/O thread 6 state: waiting for i/o request (read thread)
+I/O thread 7 state: doing file i/o (read thread) ev set
+I/O thread 8 state: waiting for i/o request (read thread)
+I/O thread 9 state: waiting for i/o request (read thread)
+I/O thread 10 state: waiting for i/o request (read thread)
+I/O thread 11 state: waiting for i/o request (read thread)
+I/O thread 12 state: waiting for i/o request (read thread)
+I/O thread 13 state: doing file i/o (read thread) ev set
+I/O thread 14 state: doing file i/o (read thread) ev set
+I/O thread 15 state: waiting for i/o request (read thread)
+I/O thread 16 state: waiting for i/o request (read thread)
+I/O thread 17 state: waiting for i/o request (read thread)
+I/O thread 18 state: waiting for i/o request (write thread)
+I/O thread 19 state: waiting for i/o request (write thread)
+I/O thread 20 state: waiting for i/o request (write thread)
+I/O thread 21 state: waiting for i/o request (write thread)
+Pending normal aio reads: 6, aio writes: 0,
+ ibuf aio reads: 0, log i/o's: 0, sync i/o's: 0
+Pending flushes (fsync) log: 1; buffer pool: 0
+44694496 OS file reads, 205801724 OS file writes, 60488220 OS fsyncs
+23 pending preads, 0 pending pwrites
+4.67 reads/s, 16384 avg bytes/read, 0.11 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 5, seg size 7,
+6753634 inserts, 6753686 merged recs, 5360150 merges
+Hash table size 178498087, node heap has 574721 buffer(s)
+201.42 hash searches/s, 757.92 non-hash searches/s
+---
+LOG
+---
+Log sequence number 6558240284218
+Log flushed up to   6558240260937
+Last checkpoint at  6558239649930
+Max checkpoint age    325436314
+Checkpoint age target 315266430
+Modified age          634288
+Checkpoint age        634288
+1 pending log writes, 0 pending chkp writes
+56914822 log i/o's done, 0.11 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total memory allocated 92440363008; in additional pool allocated 0
+Internal hash tables (constant factor + variable factor)
+    Adaptive hash index 10844414376 	(1427984696 + 9416429680)
+    Page hash           89249816
+    Dictionary cache    362162856 	(356997584 + 5165272)
+    File system         83520 	(82672 + 848)
+    Lock system         223469256 	(223123336 + 345920)
+    Recovery system     0 	(0 + 0)
+    Threads             475896 	(406936 + 68960)
+Dictionary memory allocated 5165272
+Buffer pool size        5505023
+Buffer pool size, bytes 90194296832
+Free buffers            0
+Database pages          4930290
+Old database pages      1819950
+Modified db pages       2221
+Pending reads 14
+Pending writes: LRU 63, flush list 0, single page 0
+Pages made young 78175589, not young 0
+156000.00 youngs/s, 0.00 non-youngs/s
+Pages read 49717874, created 2178629, written 172720484
+98000.00 reads/s, 4000.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 74000.00/s
+LRU len: 4930290, unzip_LRU len: 0
+I/O sum[10426]:cur[59], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+23 read views open inside InnoDB
+Main thread process no. 28376, id 139961255549264, state: flushing log
+Number of rows inserted 184627770, updated 153132976, deleted 34372372, read 410934459732
+16.89 inserts/s, 7.89 updates/s, 2.67 deletes/s, 46474.17 reads/s
+------------
+TRANSACTIONS
+------------
+Trx id counter FC593C7D1
+Purge done for trx's n:o < FC593B63D undo n:o < 0
+History list length 255
+---TRANSACTION FC593C34E, ACTIVE 3 sec, process no 28376, OS thread id 139960819632464 estimating records in index range
+mysql tables in use 1, locked 0
+MySQL thread id 1853546, query id 1127695932 foo.pos.net 10.66.209.223 user_foo statistics
+SELECT SUM(quantity) FROM basket_item WHERE session_id='1993053150409986204'
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================

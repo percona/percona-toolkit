@@ -1,0 +1,14 @@
+#!/bin/bash
+#parse_fdisk
+
+cat <<EOF > $1
+Device       Type      Start        End               Size
+============ ==== ========== ========== ==================
+/dev/dm-0    Disk                             494609104896
+/dev/dm-1    Disk                               5284823040
+/dev/sda     Disk                             500107862016
+/dev/sda1    Part          1         26          205632000
+/dev/sda2    Part         26      60801       499891392000
+EOF
+
+cp samples/fdisk-01.txt $2

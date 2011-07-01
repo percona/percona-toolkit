@@ -1,0 +1,550 @@
+[Thread debugging using libthread_db enabled]
+[New Thread 0x7f4d45fef710 (LWP 11148)]
+[New Thread 0x7f4d469f0710 (LWP 11147)]
+[New Thread 0x7f4d473f1710 (LWP 11146)]
+[New Thread 0x7f4d47df2710 (LWP 11145)]
+[New Thread 0x7f4d487f3710 (LWP 11144)]
+[New Thread 0x7f4d491f4710 (LWP 11143)]
+[New Thread 0x7f4d49bf5710 (LWP 11142)]
+[New Thread 0x7f4d4a5f6710 (LWP 11141)]
+[New Thread 0x7f4d4aff7710 (LWP 11140)]
+[New Thread 0x7f4d4b9f8710 (LWP 11139)]
+[New Thread 0x7f4d4c3f9710 (LWP 11138)]
+[New Thread 0x7f4d4cdfa710 (LWP 11137)]
+[New Thread 0x7f4d4d7fb710 (LWP 11136)]
+[New Thread 0x7f4d4e1fc710 (LWP 11135)]
+[New Thread 0x7f4d4ebfd710 (LWP 11134)]
+[New Thread 0x7f4d4f5fe710 (LWP 11133)]
+[New Thread 0x7f4d4ffff710 (LWP 11132)]
+[New Thread 0x7f4d54dfa710 (LWP 11131)]
+[New Thread 0x7f4d557fb710 (LWP 11130)]
+[New Thread 0x7f4d561fc710 (LWP 11129)]
+[New Thread 0x7f4d56bfd710 (LWP 11128)]
+[New Thread 0x7f4d575fe710 (LWP 11127)]
+[New Thread 0x7f4d57fff710 (LWP 11126)]
+[New Thread 0x7f4d5d3f7710 (LWP 11125)]
+[New Thread 0x7f4d5ddf8710 (LWP 11124)]
+[New Thread 0x7f4d5e9fb710 (LWP 11123)]
+[New Thread 0x7f4d5f5fe710 (LWP 11122)]
+[New Thread 0x7f4d5ffff710 (LWP 11121)]
+[New Thread 0x7f4d7cdbb710 (LWP 11120)]
+[New Thread 0x7f4d7dabf710 (LWP 11119)]
+[New Thread 0x7f4d7e5c1710 (LWP 11118)]
+[New Thread 0x7f4d7f4c7710 (LWP 11117)]
+[New Thread 0x7f4d7fec8710 (LWP 11116)]
+[New Thread 0x7f4d808c9710 (LWP 11115)]
+[New Thread 0x7f4d812ca710 (LWP 11114)]
+[New Thread 0x7f4d81ccb710 (LWP 11113)]
+0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+
+Thread 37 (Thread 0x7f4d81ccb710 (LWP 11113)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000453095 in Queue<Result, Result, QueueReadStrategy<Result>, QueueWriteStrategy<Result> >::pop(Result&) ()
+#3  0x0000000000451a5b in Reporter::work() ()
+#4  0x00000000004572cb in boost::_mfi::mf0<void, Reporter>::operator()(Reporter*) const ()
+#5  0x0000000000457144 in void boost::_bi::list1<boost::_bi::value<Reporter*> >::operator()<boost::_mfi::mf0<void, Reporter>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Reporter>&, boost::_bi::list0&, int) ()
+#6  0x0000000000457019 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Reporter>, boost::_bi::list1<boost::_bi::value<Reporter*> > >::operator()() ()
+#7  0x0000000000456f46 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Reporter>, boost::_bi::list1<boost::_bi::value<Reporter*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 36 (Thread 0x7f4d812ca710 (LWP 11114)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 35 (Thread 0x7f4d808c9710 (LWP 11115)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 34 (Thread 0x7f4d7fec8710 (LWP 11116)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 33 (Thread 0x7f4d7f4c7710 (LWP 11117)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 32 (Thread 0x7f4d7e5c1710 (LWP 11118)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 31 (Thread 0x7f4d7dabf710 (LWP 11119)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 30 (Thread 0x7f4d7cdbb710 (LWP 11120)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 29 (Thread 0x7f4d5ffff710 (LWP 11121)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 28 (Thread 0x7f4d5f5fe710 (LWP 11122)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 27 (Thread 0x7f4d5e9fb710 (LWP 11123)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 26 (Thread 0x7f4d5ddf8710 (LWP 11124)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 25 (Thread 0x7f4d5d3f7710 (LWP 11125)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 24 (Thread 0x7f4d57fff710 (LWP 11126)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 23 (Thread 0x7f4d575fe710 (LWP 11127)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 22 (Thread 0x7f4d56bfd710 (LWP 11128)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 21 (Thread 0x7f4d561fc710 (LWP 11129)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 20 (Thread 0x7f4d557fb710 (LWP 11130)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 19 (Thread 0x7f4d54dfa710 (LWP 11131)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 18 (Thread 0x7f4d4ffff710 (LWP 11132)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 17 (Thread 0x7f4d4f5fe710 (LWP 11133)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 16 (Thread 0x7f4d4ebfd710 (LWP 11134)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 15 (Thread 0x7f4d4e1fc710 (LWP 11135)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 14 (Thread 0x7f4d4d7fb710 (LWP 11136)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 13 (Thread 0x7f4d4cdfa710 (LWP 11137)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 12 (Thread 0x7f4d4c3f9710 (LWP 11138)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 11 (Thread 0x7f4d4b9f8710 (LWP 11139)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 10 (Thread 0x7f4d4aff7710 (LWP 11140)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 9 (Thread 0x7f4d4a5f6710 (LWP 11141)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 8 (Thread 0x7f4d49bf5710 (LWP 11142)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 7 (Thread 0x7f4d491f4710 (LWP 11143)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 6 (Thread 0x7f4d487f3710 (LWP 11144)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 5 (Thread 0x7f4d47df2710 (LWP 11145)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 4 (Thread 0x7f4d473f1710 (LWP 11146)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x0000000000452123 in Queue<Query, Query, QueueReadStrategy<Query>, QueueWriteStrategy<Query> >::pop(Query&) ()
+#3  0x000000000044f40e in Worker::work() ()
+#4  0x000000000045746f in boost::_mfi::mf0<void, Worker>::operator()(Worker*) const ()
+#5  0x000000000045723a in void boost::_bi::list1<boost::_bi::value<Worker*> >::operator()<boost::_mfi::mf0<void, Worker>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Worker>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570f1 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > >::operator()() ()
+#7  0x0000000000456fa6 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Worker>, boost::_bi::list1<boost::_bi::value<Worker*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 3 (Thread 0x7f4d469f0710 (LWP 11147)):
+#0  0x000000000044fcaa in StringBuilder::length() const ()
+#1  0x00000000004516f4 in Parser::add() ()
+#2  0x00000000004514e9 in Parser::try_parse_query() ()
+#3  0x000000000045148e in Parser::parse_block() ()
+#4  0x00000000004509c5 in Parser::work() ()
+#5  0x0000000000457357 in boost::_mfi::mf0<void, Parser>::operator()(Parser*) const ()
+#6  0x0000000000457196 in void boost::_bi::list1<boost::_bi::value<Parser*> >::operator()<boost::_mfi::mf0<void, Parser>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, Parser>&, boost::_bi::list0&, int) ()
+#7  0x0000000000457061 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, Parser>, boost::_bi::list1<boost::_bi::value<Parser*> > >::operator()() ()
+#8  0x0000000000456f66 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, Parser>, boost::_bi::list1<boost::_bi::value<Parser*> > > >::run() ()
+#9  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#10 0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#11 0x00000033272de77d in clone () from /lib64/libc.so.6
+#12 0x0000000000000000 in ?? ()
+
+Thread 2 (Thread 0x7f4d45fef710 (LWP 11148)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x000000000044d522 in boost::condition_variable::wait(boost::unique_lock<boost::mutex>&) ()
+#2  0x000000000044dbee in Queue<Block, Block, QueueReadStrategy<Block>, QueueWriteStrategy<Block> >::push(Block const&) ()
+#3  0x000000000044ce77 in LogReader::work() ()
+#4  0x00000000004573e3 in boost::_mfi::mf0<void, LogReader>::operator()(LogReader*) const ()
+#5  0x00000000004571e8 in void boost::_bi::list1<boost::_bi::value<LogReader*> >::operator()<boost::_mfi::mf0<void, LogReader>, boost::_bi::list0>(boost::_bi::type<void>, boost::_mfi::mf0<void, LogReader>&, boost::_bi::list0&, int) ()
+#6  0x00000000004570a9 in boost::_bi::bind_t<void, boost::_mfi::mf0<void, LogReader>, boost::_bi::list1<boost::_bi::value<LogReader*> > >::operator()() ()
+#7  0x0000000000456f86 in boost::detail::thread_data<boost::_bi::bind_t<void, boost::_mfi::mf0<void, LogReader>, boost::_bi::list1<boost::_bi::value<LogReader*> > > >::run() ()
+#8  0x00007f4d88786670 in thread_proxy () from /usr/lib64/libboost_thread-mt.so.5
+#9  0x0000003327e06a3a in start_thread () from /lib64/libpthread.so.0
+#10 0x00000033272de77d in clone () from /lib64/libc.so.6
+#11 0x0000000000000000 in ?? ()
+
+Thread 1 (Thread 0x7f4d8876f7e0 (LWP 11110)):
+#0  0x0000003327e0b04c in pthread_cond_wait@@GLIBC_2.3.2 () from /lib64/libpthread.so.0
+#1  0x00007f4d8878775b in boost::thread::join() () from /usr/lib64/libboost_thread-mt.so.5
+#2  0x000000000044fb1e in LogReader::wait() ()
+#3  0x0000000000451db2 in Replay::wait() ()
+#4  0x000000000044e6f0 in main ()

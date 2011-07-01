@@ -1,0 +1,487 @@
+#!/usr/bin/env bash
+
+# This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+
+# ########################################################################
+# This script browses the files created by the collect tool.
+#
+# Author: Baron Schwartz
+#
+# This program is part of Percona Toolkit.
+# This program was forked from Aspersa (http://code.google.com/p/aspersa/)
+# in June, 2011.
+# ########################################################################
+
+# Show current help and settings
+print_help() {
+   cat <<-HELP
+   You can control this program with key presses.
+                  ---  COMMANDS  ---
+      1  Default action: summarize files
+      0  Minimal action: list files
+      *  View all the files in less
+      d  Invoke 'diskstats' on the disk performance data
+      i  View the first INNODB STATUS sample in 'less'
+      m  Invoke 'mext' to show the SHOW STATUS counters side by side
+      n  Summarize the 'netstat -antp' status data
+                  --- NAVIGATION ---
+      j  Select the next timestamp
+      k  Select the previous timestamp
+      q  Quit the program
+	HELP
+}
+
+usage() {
+   if [ "${OPT_ERR}" ]; then
+      echo "${OPT_ERR}"
+   fi
+   cat <<-USAGE
+Usage: $0 [OPTIONS] [FILE|PREFIX|DIRECTORY]
+   $0 helps you browse the files written by the collect tool.
+   If you specify a FILE or PREFIX, it browses only files with that prefix.  If you
+   specify a DIRECTORY, then it browses all files within that directory.
+	USAGE
+   exit 1
+}
+
+# The main code that runs by default.  Arguments are the command-line options.
+main() {
+
+   # If there's a command-line arg, figure out if it's a file, directory, or
+   # prefix.  The outcome of this block of code should be that BASEDIR is the
+   # directory where the files live, without a trailing slash; and PREFIX is
+   # either empty or a timestamp, such as "2011_02_08_16_58_07".
+   ARG="${1:-.}"
+   if [ -d "${ARG}" ]; then
+      BASEDIR="$(echo "${ARG}" | sed -e 's!/$!!')"
+   elif [ -f "${ARG}" -o -f "${ARG}-df" -o -f "${ARG}df" ]; then
+      BASEDIR="$(dirname "${ARG}")"
+      PREFIX="$(echo "${ARG}" | sed -e 's/-[a-z1]*$//' -e 's!^.*/!!')"
+   else
+      echo "Error: ${ARG} doesn't look like a directory, file, or file prefix"
+      exit 1
+   fi
+
+   # If the programs we need don't exist, try to get them.
+   for prog in align diskstats pmp mext; do
+      if which $prog >/dev/null 2>&1 ; then
+         eval "PR_$prog"="$(which $prog)"
+      elif [ -f $prog -a -x $prog ]; then
+         eval "PR_$prog"="./$prog"
+      elif [ -f "${BASEDIR}/$prog" -a -x "${BASEDIR}/$prog" ]; then
+         eval "PR_$prog"="${BASEDIR}/$prog"
+      else
+         echo "Fetching $prog"
+         curl http://aspersa.googlecode.com/svn/trunk/$prog > "$prog" && chmod +x "$prog"
+         eval "PR_$prog"="./$prog"
+      fi
+   done
+
+   # We need to generate a list of timestamps, and ask the user to choose one if
+   # there is no PREFIX yet.  NOTE: we rely on the "-df" files here.
+   ls "${BASEDIR}" | grep -- '-df$' | cut -d- -f1 | sort > /tmp/aspersa.sift-prefixes
+   if [ -z "${PREFIX}" ]; then
+      if [ "$(grep -c . /tmp/aspersa.sift-prefixes)" = "1" ]; then
+         # If there is only one sample, we use it as the prefix.
+         PREFIX="$(cat /tmp/aspersa.sift-prefixes)"
+      fi
+   fi
+   if [ -z "${PREFIX}" ]; then
+      echo
+      i=0
+      cat /tmp/aspersa.sift-prefixes | while read line; do
+         i=$(($i + 1))
+         echo -n "  $line"
+         if [ "${i}" = "3" ]; then
+            echo
+            i=0
+         fi
+      done
+      # We might have ended mid-line or we might have printed a newline; print a
+      # newline if required to end the list of timestamp prefixes.
+      awk 'BEGIN { i = 0 } { i++ } END { if ( i % 3 != 0 ) { print "" } }' /tmp/aspersa.sift-prefixes
+      echo
+      while [ -z "${PREFIX}" -o "$(grep -c "${PREFIX}" /tmp/aspersa.sift-prefixes)" -ne 1 ]; do
+         DEFAULT="$(tail -1 /tmp/aspersa.sift-prefixes)"
+         read -e -p "Select a timestamp from the list [${DEFAULT}] " ARG
+         ARG="${ARG:-${DEFAULT}}"
+         if [ "$(grep -c "${ARG}" /tmp/aspersa.sift-prefixes)" -eq 1 ]; then
+            PREFIX="$(grep "${ARG}" /tmp/aspersa.sift-prefixes)"
+         fi
+      done
+   fi
+
+   KEY=""
+   ACTION="DEFAULT"
+   while [ "${KEY}" != "q" ]; do
+
+      if [ "${ACTION}" != "INVALID" ]; then
+         # Print the current host, timestamp and action.  Figure out if we're at
+         # the first or last sample, to make it easy to navigate.
+         PAGE="$(awk "/./{i++} /${PREFIX}/{c=i} END{print c, \"of\", i}" /tmp/aspersa.sift-prefixes)"
+         HOST="$(cat "${BASEDIR}/${PREFIX}-hostname" 2>/dev/null)"
+         echo -e "======== ${HOST:-unknown} at \033[34m${PREFIX} \033[31m${ACTION}\033[0m (${PAGE}) ========"
+      fi
+
+      # Take an action based on the current $ACTION
+      case "${ACTION}" in
+
+         # Format a brief report: busiest device's disk stats, CPU stats
+         DEFAULT)
+            echo "--diskstats--"
+
+            $PR_diskstats -g disk "${BASEDIR}/${PREFIX}-diskstats" \
+               | awk '
+                  /ts/ { header = $0 }
+                  /[0-9]/ {
+                     io  = $3 + $6;
+                     if ( io >= mio ) {
+                        mio   = io;
+                        mseen = $0;
+                     }
+                  }
+                  END {
+                     print header;
+                     print mseen;
+                  }'
+
+            # Find out which device was the busiest.
+            mdev="$($PR_diskstats -g disk "${BASEDIR}/${PREFIX}-diskstats" \
+               | awk '
+                  /[0-9]/ {
+                     io  = $3 + $6;
+                     if ( io >= mio ) {
+                        mio   = io;
+                        mdev  = $2;
+                     }
+                  }
+                  END {
+                     print mdev;
+                  }')"
+
+            # Print the busy% for that device, rounded to the nearest N%, with
+            # "." as a marker for a repeated value.
+            $PR_diskstats -g sample "${BASEDIR}/${PREFIX}-diskstats" \
+               | awk "
+                  BEGIN {
+                     fuzz = 5;
+                     printf \" ${mdev} \"
+                  }
+                  \$1 = \"${mdev}\" {
+                     busy_rounded = fuzz * sprintf(\"%d\", substr(\$9, 1, length(\$9) - 1) / fuzz);
+                     if ( printed == 1 && prev == busy_rounded ) {
+                        printf \" .\";
+                     }
+                     else {
+                        printf \" %d%%\", busy_rounded;
+                        prev    = busy_rounded;
+                        printed = 1;
+                     }
+                  }"
+            echo
+
+            echo "--vmstat--"
+            tail -n 3 "${BASEDIR}/${PREFIX}-vmstat-overall" | $PR_align
+
+            # Figure out which column is 'wa' and print this, similar to the
+            # busy% for disks above.
+            wa_col="$(awk '/swpd/{for(i=1;i<=NF;++i){if($i=="wa"){print i; exit}}}' "${BASEDIR}/${PREFIX}-vmstat")"
+            awk "
+               BEGIN {
+                  fuzz = 5;
+                  printf \"wa\"
+               }
+               /[0-9]/ {
+                  wa_rounded = fuzz * sprintf(\"%d\", \$${wa_col} / fuzz);
+                  if ( printed == 1 && prev == wa_rounded ) {
+                     printf \" .\";
+                  }
+                  else {
+                     printf \" %d%%\", wa_rounded;
+                     prev    = wa_rounded;
+                     printed = 1;
+                  }
+               }" "${BASEDIR}/${PREFIX}-vmstat"
+            echo
+
+            echo "--innodb--"
+            awk '
+               /queries inside/ {
+                  inside = $0;
+               }
+               /Main thread/ {
+                  main_state = substr($0, index($0, ":") + 2);
+               }
+               /Pending normal/ {
+                  pending_reads += substr($5, 1, length($5) - 1);
+                  pending_reads += substr($NF, 1, length($NF) - 1);
+               }
+               /ibuf aio reads/ {
+                  pending_reads += substr($4, 1, length($4) - 1);
+                  pending_reads += substr($7, 1, length($7) - 1);
+                  pending_reads += $NF;
+               }
+               /Pending flushes/ {
+                  pending_flushes = substr($5, 1, length($5) - 1) + $NF;
+               }
+               /pending preads/ {
+                  pending_reads += $1;
+                  pending_writes += $4;
+               }
+               /pending log writes/ {
+                  pending_writes += $1 + $5;
+               }
+               /Pending reads/ {
+                  pending_reads += $NF;
+               }
+               /Pending writes/ {
+                  pending_writes += substr($4, 1, length($4) - 1);
+                  pending_writes += substr($7, 1, length($7) - 1);
+                  pending_writes += $NF;
+               }
+               /Log sequence number/ {
+                  if ( $NF == 5 ) {
+                     lsn = ($4 * (2^32)) + $5;
+                  }
+                  else {
+                     lsn = $4;
+                  }
+               }
+               /Last checkpoint at/ {
+                  if ( $NF == 5 ) {
+                     chkp = ($4 * (2^32)) + $5;
+                  }
+                  else {
+                     chkp = $4;
+                  }
+               }
+               /END OF INNODB/ {
+                  complete = 1;
+               }
+               /^TRANSACTIONS$/ {
+                  tseen = 1;
+               }
+               /^---TRANSACTION/ {
+                  if ( tseen == 1 ) {
+                     if ( $2 ~ /,/ ) {
+                        status = $3;
+                        time   = $4;
+                     }
+                     else {
+                        status = $4;
+                        time   = $5;
+                     }
+                     txns[status]++;
+                     if ( time > txntime[status] ) {
+                        txntime[status] = time;
+                     }
+                  }
+               }
+               /LOCK WAIT/ {
+                  if ( tseen == 1 ) {
+                     txns["LOCK WAIT"]++;
+                     if ( $3 > txntime["LOCK WAIT"] ) {
+                        txntime["LOCK WAIT"] = $3;
+                     }
+                  }
+               }
+               END {
+                  if ( complete != 1 ) {
+                     print "    (innodb status is incomplete)";
+                  }
+                  printf "    txns:";
+                  for ( i in txns ) {
+                     printf " %dx%s (%ds)", txns[i], i, txntime[i];
+                  }
+                  print "";
+                  if ( inside ) {
+                     print "    " inside;
+                  }
+                  printf "    Main thread: %s, pending reads %d, writes %d, flush %d\n", main_state, pending_reads, pending_writes, pending_flushes;
+                  printf "    Log: lsn = %d, chkp = %d, chkp age = %d\n", lsn, chkp, lsn - chkp;
+               }
+            ' "${BASEDIR}/${PREFIX}-innodbstatus1"
+            echo "    Threads are waiting at:"
+            awk '/has waited at/ { print $6, $7, $8 }' \
+              "${BASEDIR}/${PREFIX}-innodbstatus1" | sort | uniq -c | sort -rn
+            echo "    Threads are waiting on:"
+            awk '/^[XS]-lock on.*latch/ { print }' \
+              "${BASEDIR}/${PREFIX}-innodbstatus1" | sort | uniq -c | sort -rn
+
+            echo "--processlist--"
+            for word in State Command; do
+               echo "    $word"
+               awk -F: "/^ *$word:/{print \$2}" \
+                  "${BASEDIR}/${PREFIX}-processlist1" \
+                  | sort | uniq -c | sort -rn | head -n 5
+            done
+
+            echo "--stack traces--"
+            $PR_pmp -l 5 "${BASEDIR}/${PREFIX}-stacktrace" | head -n 5
+
+            echo "--oprofile--"
+            if [ ! -e "${BASEDIR}/${PREFIX}-opreport" ]; then
+               echo "    No opreport file exists"
+            fi
+            test -e "${BASEDIR}/${PREFIX}-opreport" && awk '
+               {
+                  if ( $1 == "samples" ) {
+                     go = 1;
+                  }
+                  if ( go == 1 ) {
+                     print "    " $0;
+                     if ( printed++ == 6 ) {
+                        exit;
+                     }
+                  }
+               } ' "${BASEDIR}/${PREFIX}-opreport"
+            ;;
+
+         LIST)
+            ls -lh ${BASEDIR}/${PREFIX}-*
+            ;;
+
+         VIEW)
+            echo "Viewing all files"
+            less -i ${BASEDIR}/${PREFIX}-*
+            echo "Press a key to continue or choose a different action"
+            ;;
+
+         DISKSTATS)
+            echo "Starting $PR_diskstats"
+            $PR_diskstats "${BASEDIR}/${PREFIX}-diskstats"
+            echo "Press a key to continue or choose a different action"
+            ;;
+
+         INNODB)
+            echo "Viewing InnoDB files"
+            less -i "${BASEDIR}/${PREFIX}-innodbstatus1"
+            echo "Press a key to continue or choose a different action"
+            ;;
+
+         MEXT)
+            echo "Displaying the first 4 samples of SHOW STATUS counters"
+            # Grab the first 4 samples by looking for blank lines.  I'll rewrite
+            # mext and this will be simpler in future. TODO: upgrade, if mext is
+            # fixed :)
+            awk '/---/{if(i++>12){exit}}{print}' "${BASEDIR}/${PREFIX}-mysqladmin" | mext -r -- cat - | less -S
+            echo "Press a key to continue or choose a different action"
+            ;;
+
+         NETWORK)
+            echo "Source of connections to port 3306"
+            awk '
+               /:3306/ {
+                  print substr($5, 0, index($5, ":") - 1);
+               }
+               /TS/ {
+                  if ( i++ > 1 ) {
+                     # Stop after the first sample
+                     exit;
+                  }
+               }' "${BASEDIR}/${PREFIX}-netstat" | sort | uniq -c | sort -rn
+            echo "Status of connections to port 3306"
+            awk '
+               /:3306/ {
+                  print $6;
+               }
+               /TS/ {
+                  if ( i++ > 1 ) {
+                     # Stop after the first sample
+                     exit;
+                  }
+               }' "${BASEDIR}/${PREFIX}-netstat" | sort | uniq -c | sort -rn
+            echo "Press a key to continue or choose a different action"
+            ;;
+
+         INVALID)
+            ;;
+
+      esac
+
+      # Capture and handle the interactive key-strokes.
+      KEY=""
+      read -n 1 -s KEY
+      case "${KEY}" in
+         j|k)
+            PREFIX="$(awk "
+               BEGIN {
+                  printed = 0;
+               }
+               {
+                  prev=curr;
+                  curr=\$1;
+                  if ( \"j\" == \"${KEY}\" && prev == \"${PREFIX}\" && curr ~ /./ ) {
+                     print curr;
+                     printed = 1;
+                     exit;
+                  }
+                  if ( \"k\" == \"${KEY}\" && curr == \"${PREFIX}\" && prev ~ /./ ) {
+                     print prev;
+                     printed = 1;
+                     exit;
+                  }
+               }
+               END {
+                  if ( printed == 0 ) {
+                     print \"${PREFIX}\";
+                  }
+               }" /tmp/aspersa.sift-prefixes)"
+            ;;
+         1)
+            ACTION="DEFAULT"
+            ;;
+         0)
+            ACTION="LIST"
+            ;;
+         '*')
+            ACTION="VIEW"
+            ;;
+         d)
+            ACTION="DISKSTATS"
+            ;;
+         i)
+            ACTION="INNODB"
+            ;;
+         m)
+            ACTION="MEXT"
+            ;;
+         n)
+            ACTION="NETWORK"
+            ;;
+         q)
+            ;;
+         '?')
+            print_help
+            echo "Press any key to continue"
+            read -n 1 -s
+            ;;
+         *)
+            echo "Unknown key '${KEY}'; press ? for help"
+            ACTION="INVALID"
+            ;;
+      esac
+   done
+
+}
+
+# Execute the program if it was not included from another file.  This makes it
+# possible to include without executing, and thus test.
+if [ "$(basename "$0")" = "sift" ] || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+    main "$@"
+fi

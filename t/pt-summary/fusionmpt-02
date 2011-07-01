@@ -1,0 +1,15 @@
+#!/bin/bash
+#parse_fusionmpt_lsiutil
+
+cat <<EOF > $1
+
+  /proc/mpt/ioc0    LSI Logic SAS1064E B3    MPT 105   Firmware 011e0000   IOC 0
+   B___T___L  Type       Vendor   Product          Rev      SASAddress     PhyNum
+   0   1   0  Disk       LSILOGIC Logical Volume   3000  
+  Hidden RAID Devices:
+   B___T    Device       Vendor   Product          Rev      SASAddress     PhyNum
+   0   2  PhysDisk 0     IBM-ESXS ST9300603SS   F  B536  5000c5001d784329     1
+   0   3  PhysDisk 1     IBM-ESXS MBD2300RC        SB17  500000e113c17152     0
+EOF
+
+cat samples/lsiutil-002.txt > $2

@@ -1,0 +1,11 @@
+#!/bin/bash
+#group_by_disk /tmp/aspersa
+
+cat <<EOF > $1
+EOF
+
+cat <<EOF > $2
+TS 1297205887.156653000
+   1    0 ram0 0 0 0 0 0 0 0 0 0 0 0
+TS 1297205888.161613000
+EOF

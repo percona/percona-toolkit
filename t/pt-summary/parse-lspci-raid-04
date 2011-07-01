@@ -1,0 +1,8 @@
+#!/bin/bash
+#parse_raid_controller_lspci
+
+cat <<EOF > $1
+LSI Logic MegaRAID SAS
+EOF
+
+cat samples/lspci-004.txt > $2

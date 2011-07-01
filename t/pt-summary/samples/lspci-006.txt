@@ -1,0 +1,54 @@
+00:00.0 Host bridge: Intel Corporation 5520 I/O Hub to ESI Port (rev 13)
+00:01.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 1 (rev 13)
+00:02.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 2 (rev 13)
+00:03.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 3 (rev 13)
+00:04.0 PCI bridge: Intel Corporation 5520/X58 I/O Hub PCI Express Root Port 4 (rev 13)
+00:05.0 PCI bridge: Intel Corporation 5520/X58 I/O Hub PCI Express Root Port 5 (rev 13)
+00:06.0 PCI bridge: Intel Corporation 5520/X58 I/O Hub PCI Express Root Port 6 (rev 13)
+00:07.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 7 (rev 13)
+00:08.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 8 (rev 13)
+00:09.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 9 (rev 13)
+00:0a.0 PCI bridge: Intel Corporation 5520/5500/X58 I/O Hub PCI Express Root Port 10 (rev 13)
+00:0d.0 Host bridge: Intel Corporation Unknown device 343a (rev 13)
+00:0d.1 Host bridge: Intel Corporation Unknown device 343b (rev 13)
+00:0d.2 Host bridge: Intel Corporation Unknown device 343c (rev 13)
+00:0d.3 Host bridge: Intel Corporation Unknown device 343d (rev 13)
+00:0d.4 Host bridge: Intel Corporation 5520/5500/X58 Physical Layer Port 0 (rev 13)
+00:0d.5 Host bridge: Intel Corporation 5520/5500 Physical Layer Port 1 (rev 13)
+00:0d.6 Host bridge: Intel Corporation Unknown device 341a (rev 13)
+00:0e.0 Host bridge: Intel Corporation Unknown device 341c (rev 13)
+00:0e.1 Host bridge: Intel Corporation Unknown device 341d (rev 13)
+00:0e.2 Host bridge: Intel Corporation Unknown device 341e (rev 13)
+00:0e.3 Host bridge: Intel Corporation Unknown device 341f (rev 13)
+00:0e.4 Host bridge: Intel Corporation Unknown device 3439 (rev 13)
+00:14.0 PIC: Intel Corporation 5520/5500/X58 I/O Hub System Management Registers (rev 13)
+00:14.1 PIC: Intel Corporation 5520/5500/X58 I/O Hub GPIO and Scratch Pad Registers (rev 13)
+00:14.2 PIC: Intel Corporation 5520/5500/X58 I/O Hub Control Status and RAS Registers (rev 13)
+00:1c.0 PCI bridge: Intel Corporation 82801JI (ICH10 Family) PCI Express Port 1
+00:1c.2 PCI bridge: Intel Corporation 82801JI (ICH10 Family) PCI Express Port 3
+00:1d.0 USB Controller: Intel Corporation 82801JI (ICH10 Family) USB UHCI Controller #1
+00:1d.1 USB Controller: Intel Corporation 82801JI (ICH10 Family) USB UHCI Controller #2
+00:1d.2 USB Controller: Intel Corporation 82801JI (ICH10 Family) USB UHCI Controller #3
+00:1d.3 USB Controller: Intel Corporation 82801JI (ICH10 Family) USB UHCI Controller #6
+00:1d.7 USB Controller: Intel Corporation 82801JI (ICH10 Family) USB2 EHCI Controller #1
+00:1e.0 PCI bridge: Intel Corporation 82801 PCI Bridge (rev 90)
+00:1f.0 ISA bridge: Intel Corporation 82801JIB (ICH10) LPC Interface Controller
+00:1f.2 IDE interface: Intel Corporation 82801JI (ICH10 Family) 4 port SATA IDE Controller
+01:03.0 VGA compatible controller: ATI Technologies Inc ES1000 (rev 02)
+01:04.0 System peripheral: Compaq Computer Corporation Integrated Lights Out Controller (rev 03)
+01:04.2 System peripheral: Compaq Computer Corporation Integrated Lights Out  Processor (rev 03)
+01:04.4 USB Controller: Hewlett-Packard Company Proliant iLO2 virtual USB controller
+01:04.6 IPMI SMIC interface: Hewlett-Packard Company Proliant iLO2 virtual UART
+02:00.0 Ethernet controller: Broadcom Corporation NetXtreme II BCM5709 Gigabit Ethernet (rev 20)
+02:00.1 Ethernet controller: Broadcom Corporation NetXtreme II BCM5709 Gigabit Ethernet (rev 20)
+03:00.0 Ethernet controller: Broadcom Corporation NetXtreme II BCM5709 Gigabit Ethernet (rev 20)
+03:00.1 Ethernet controller: Broadcom Corporation NetXtreme II BCM5709 Gigabit Ethernet (rev 20)
+04:00.0 RAID bus controller: Hewlett-Packard Company Smart Array G6 controllers (rev 01)
+07:00.0 RAID bus controller: Hewlett-Packard Company Smart Array Controller (rev 04)
+0d:00.0 PCI bridge: Integrated Device Technology, Inc. PES12N3A PCI Express Switch (rev 0e)
+0e:02.0 PCI bridge: Integrated Device Technology, Inc. PES12N3A PCI Express Switch (rev 0e)
+0e:04.0 PCI bridge: Integrated Device Technology, Inc. PES12N3A PCI Express Switch (rev 0e)
+0f:00.0 Ethernet controller: Intel Corporation 82571EB Gigabit Ethernet Controller (Copper) (rev 06)
+0f:00.1 Ethernet controller: Intel Corporation 82571EB Gigabit Ethernet Controller (Copper) (rev 06)
+10:00.0 Ethernet controller: Intel Corporation 82571EB Gigabit Ethernet Controller (Copper) (rev 06)
+10:00.1 Ethernet controller: Intel Corporation 82571EB Gigabit Ethernet Controller (Copper) (rev 06)

@@ -1,0 +1,154 @@
+#!/bin/bash
+#parse_arcconf
+
+cat <<EOF > $1
+       Specs | Adaptec 3405, SAS/SATA, 128 MB cache, Optimal
+     Battery | 99%, 3d1h11m remaining, Optimal
+
+  LogicalDev Size      RAID Disks Stripe Status  Cache
+  ========== ========= ==== ===== ====== ======= =======
+  raid10     279800 MB   10     4 256 KB Optimal On (WB)
+
+  PhysiclDev State   Speed         Vendor  Model        Size        Cache
+  ========== ======= ============= ======= ============ =========== =======
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3146855SS  140014 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3146356SS  140014 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3146356SS  140014 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3146855SS  140014 MB   On (WB)
+EOF
+
+cat <<EOF > $2
+# /usr/StorMan/arcconf getconfig 1
+Controllers found: 1
+----------------------------------------------------------------------
+Controller information
+----------------------------------------------------------------------
+   Controller Status                        : Optimal
+   Channel description                      : SAS/SATA
+   Controller Model                         : Adaptec 3405
+   Controller Serial Number                 : 8C16103E017
+   Physical Slot                            : 1
+   Temperature                              : 35 C/ 95 F (Normal)
+   Installed memory                         : 128 MB
+   Copyback                                 : Disabled
+   Background consistency check             : Disabled
+   Automatic Failover                       : Enabled
+   Global task priority                     : High
+   Stayawake period                         : Disabled
+   Spinup limit internal drives             : 0
+   Spinup limit external drives             : 0
+   Defunct disk drive count                 : 0
+   Logical devices/Failed/Degraded          : 1/0/0
+   --------------------------------------------------------
+   Controller Version Information
+   --------------------------------------------------------
+   BIOS                                     : 5.2-0 (17304)
+   Firmware                                 : 5.2-0 (17304)
+   Driver                                   : 1.1-5 (2461)
+   Boot Flash                               : 5.2-0 (17304)
+   --------------------------------------------------------
+   Controller Battery Information
+   --------------------------------------------------------
+   Status                                   : Optimal
+   Over temperature                         : No
+   Capacity remaining                       : 99 percent
+   Time remaining (at current draw)         : 3 days, 1 hours, 11 minutes
+
+----------------------------------------------------------------------
+Logical device information
+----------------------------------------------------------------------
+Logical device number 0
+   Logical device name                      : raid10
+   RAID level                               : 10
+   Status of logical device                 : Optimal
+   Size                                     : 279800 MB
+   Stripe-unit size                         : 256 KB
+   Read-cache mode                          : Enabled
+   Write-cache mode                         : Enabled (write-back)
+   Write-cache setting                      : Enabled (write-back) when protected by battery
+   Partitioned                              : Unknown
+   Protected by Hot-Spare                   : No
+   Bootable                                 : Yes
+   Failed stripes                           : No
+   Power settings                           : Disabled
+   --------------------------------------------------------
+   Logical device segment information
+   --------------------------------------------------------
+   Group 0, Segment 0                       : Present (0,0) 3LN6552C00009903T8E4
+   Group 0, Segment 1                       : Present (0,1) 3QN26HL400009009KZ0Q
+   Group 1, Segment 0                       : Present (0,2) 3QN1S2AN00009001XVFZ
+   Group 1, Segment 1                       : Present (0,3) 3LN648WZ00009903T916
+
+
+----------------------------------------------------------------------
+Physical Device information
+----------------------------------------------------------------------
+      Device #0
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,0(0:0)
+         Reported Location                  : Connector 0, Device 0
+         Vendor                             : SEAGATE
+         Model                              : ST3146855SS
+         Firmware                           : 0002
+         Serial number                      : 3LN6552C00009903T8E4
+         World-wide name                    : 5000C5000C4DDBB8
+         Size                               : 140014 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #1
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,1(1:0)
+         Reported Location                  : Connector 0, Device 1
+         Vendor                             : SEAGATE
+         Model                              : ST3146356SS
+         Firmware                           : 0005
+         Serial number                      : 3QN26HL400009009KZ0Q
+         World-wide name                    : 5000C50016F5E66C
+         Size                               : 140014 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #2
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,2(2:0)
+         Reported Location                  : Connector 0, Device 2
+         Vendor                             : SEAGATE
+         Model                              : ST3146356SS
+         Firmware                           : 0005
+         Serial number                      : 3QN1S2AN00009001XVFZ
+         World-wide name                    : 5000C50016F5EF4C
+         Size                               : 140014 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #3
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,3(3:0)
+         Reported Location                  : Connector 0, Device 3
+         Vendor                             : SEAGATE
+         Model                              : ST3146855SS
+         Firmware                           : 0002
+         Serial number                      : 3LN648WZ00009903T916
+         World-wide name                    : 5000C5000C4DEA60
+         Size                               : 140014 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+
+
+Command completed successfully.
+
+EOF

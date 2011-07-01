@@ -1,0 +1,28 @@
+#!/bin/bash
+#parse_dmidecode_mem_devices
+
+cat <<EOF > $1
+  Locator   Size     Speed             Form Factor   Type          Type Detail
+  ========= ======== ================= ============= ============= ===========
+  P1-DIMM1A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
+  P1-DIMM2A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
+  P1-DIMM3A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
+  P2-DIMM1A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
+  P2-DIMM2A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
+  P2-DIMM3A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
+            4096 kB  33 MHz (30.3 ns)  Other         Flash         Non-Volatile
+  P1-DIMM1B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P1-DIMM1C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P1-DIMM2B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P1-DIMM2C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P1-DIMM3B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P1-DIMM3C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P2-DIMM1B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P2-DIMM1C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P2-DIMM2B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P2-DIMM2C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P2-DIMM3B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+  P2-DIMM3C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
+EOF
+
+cat samples/dmidecode-005.txt > $2

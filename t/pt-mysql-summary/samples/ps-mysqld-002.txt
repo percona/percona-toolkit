@@ -1,0 +1,4 @@
+root     11524 28295  0 00:17 pts/1    00:00:00 grep mysqld
+mysql    14469 19521 74 Feb08 ?        79-20:57:40 /usr/sbin/mysqld --basedir=/ --datadir=/var/lib/mysql --user=mysql --pid-file=/var/lib/mysql/db1.pm.com.pid --skip-external-locking --socket=/var/lib/mysql/mysql.sock
+root     14470 19521  0 Feb08 ?        00:00:00 logger -p daemon.err -t mysqld_safe -i -t mysqld
+root     19521     1  0  2009 ?        00:00:00 /bin/sh /usr/bin/mysqld_safe --datadir=/var/lib/mysql --pid-file=/var/lib/mysql/db1.pm.com.pid

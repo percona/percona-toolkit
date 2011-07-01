@@ -1,0 +1,1040 @@
+# dmidecode 2.9
+SMBIOS 2.6 present.
+66 structures occupying 3552 bytes.
+Table at 0x0009C800.
+
+Handle 0x0000, DMI type 0, 24 bytes
+BIOS Information
+	Vendor: American Megatrends Inc.
+	Version: 080016 
+	Release Date: 03/08/2010
+	Address: 0xF0000
+	Runtime Size: 64 kB
+	ROM Size: 4096 kB
+	Characteristics:
+		ISA is supported
+		PCI is supported
+		PNP is supported
+		BIOS is upgradeable
+		BIOS shadowing is allowed
+		ESCD support is available
+		Boot from CD is supported
+		Selectable boot is supported
+		BIOS ROM is socketed
+		EDD is supported
+		5.25"/1.2 MB floppy services are supported (int 13h)
+		3.5"/720 KB floppy services are supported (int 13h)
+		3.5"/2.88 MB floppy services are supported (int 13h)
+		Print screen service is supported (int 5h)
+		8042 keyboard services are supported (int 9h)
+		Serial services are supported (int 14h)
+		Printer services are supported (int 17h)
+		CGA/mono video services are supported (int 10h)
+		ACPI is supported
+		USB legacy is supported
+		LS-120 boot is supported
+		ATAPI Zip drive boot is supported
+		BIOS boot specification is supported
+		Targeted content distribution is supported
+	BIOS Revision: 8.16
+
+Handle 0x0001, DMI type 1, 27 bytes
+System Information
+	Manufacturer: Supermicro
+	Product Name: X8DTN
+	Version: 1234567890
+	Serial Number: 1234567890
+	UUID: 00020003-0004-0005-0006-000700080009
+	Wake-up Type: Power Switch
+	SKU Number: 1234567890
+	Family: Server
+
+Handle 0x0002, DMI type 2, 15 bytes
+Base Board Information
+	Manufacturer: Supermicro
+	Product Name: X8DTN
+	Version: 2.0       
+	Serial Number: 1234567890
+	Asset Tag: 1234567890
+	Features:
+		Board is a hosting board
+		Board is replaceable
+	Location In Chassis: 1234567890
+	Chassis Handle: 0x0003
+	Type: Motherboard
+	Contained Object Handles: 0
+
+Handle 0x0003, DMI type 3, 21 bytes
+Chassis Information
+	Manufacturer: Supermicro
+	Type: Main Server Chassis
+	Lock: Not Present
+	Version: 1234567890
+	Serial Number: 1234567890.
+	Asset Tag: To Be Filled By O.E.M.
+	Boot-up State: Safe
+	Power Supply State: Safe
+	Thermal State: Safe
+	Security Status: None
+	OEM Information: 0x00000000
+	Height: Unspecified
+	Number Of Power Cords: 1
+	Contained Elements: 0
+
+Handle 0x0004, DMI type 4, 42 bytes
+Processor Information
+	Socket Designation: CPU 1
+	Type: Central Processor
+	Family: Xeon
+	Manufacturer: Intel            
+	ID: C2 06 02 00 FF FB EB BF
+	Signature: Type 0, Family 6, Model 44, Stepping 2
+	Flags:
+		FPU (Floating-point unit on-chip)
+		VME (Virtual mode extension)
+		DE (Debugging extension)
+		PSE (Page size extension)
+		TSC (Time stamp counter)
+		MSR (Model specific registers)
+		PAE (Physical address extension)
+		MCE (Machine check exception)
+		CX8 (CMPXCHG8 instruction supported)
+		APIC (On-chip APIC hardware supported)
+		SEP (Fast system call)
+		MTRR (Memory type range registers)
+		PGE (Page global enable)
+		MCA (Machine check architecture)
+		CMOV (Conditional move instruction supported)
+		PAT (Page attribute table)
+		PSE-36 (36-bit page size extension)
+		CLFSH (CLFLUSH instruction supported)
+		DS (Debug store)
+		ACPI (ACPI supported)
+		MMX (MMX technology supported)
+		FXSR (Fast floating-point save and restore)
+		SSE (Streaming SIMD extensions)
+		SSE2 (Streaming SIMD extensions 2)
+		SS (Self-snoop)
+		HTT (Hyper-threading technology)
+		TM (Thermal monitor supported)
+		PBE (Pending break enabled)
+	Version: Intel(R) Xeon(R) CPU           X5670  @ 2.93GHz     
+	Voltage: Unknown
+	External Clock: 133 MHz
+	Max Speed: 2933 MHz
+	Current Speed: 2933 MHz
+	Status: Populated, Enabled
+	Upgrade: Other
+	L1 Cache Handle: 0x0005
+	L2 Cache Handle: 0x0006
+	L3 Cache Handle: 0x0007
+	Serial Number: To Be Filled By O.E.M.
+	Asset Tag: To Be Filled By O.E.M.
+	Part Number: To Be Filled By O.E.M.
+	Core Count: 6
+	Core Enabled: 6
+	Thread Count: 12
+	Characteristics:
+		64-bit capable
+
+Handle 0x0005, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L1-Cache
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Through
+	Location: Internal
+	Installed Size: 384 KB
+	Maximum Size: 384 KB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Parity
+	System Type: Instruction
+	Associativity: 4-way Set-associative
+
+Handle 0x0006, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L2-Cache
+	Configuration: Enabled, Not Socketed, Level 2
+	Operational Mode: Write Through
+	Location: Internal
+	Installed Size: 1536 KB
+	Maximum Size: 1536 KB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 8-way Set-associative
+
+Handle 0x0007, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L3-Cache
+	Configuration: Enabled, Not Socketed, Level 3
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 12288 KB
+	Maximum Size: 12288 KB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 16-way Set-associative
+
+Handle 0x0008, DMI type 4, 42 bytes
+Processor Information
+	Socket Designation: CPU 2
+	Type: Central Processor
+	Family: Xeon
+	Manufacturer: Intel            
+	ID: C2 06 02 00 FF FB EB BF
+	Signature: Type 0, Family 6, Model 44, Stepping 2
+	Flags:
+		FPU (Floating-point unit on-chip)
+		VME (Virtual mode extension)
+		DE (Debugging extension)
+		PSE (Page size extension)
+		TSC (Time stamp counter)
+		MSR (Model specific registers)
+		PAE (Physical address extension)
+		MCE (Machine check exception)
+		CX8 (CMPXCHG8 instruction supported)
+		APIC (On-chip APIC hardware supported)
+		SEP (Fast system call)
+		MTRR (Memory type range registers)
+		PGE (Page global enable)
+		MCA (Machine check architecture)
+		CMOV (Conditional move instruction supported)
+		PAT (Page attribute table)
+		PSE-36 (36-bit page size extension)
+		CLFSH (CLFLUSH instruction supported)
+		DS (Debug store)
+		ACPI (ACPI supported)
+		MMX (MMX technology supported)
+		FXSR (Fast floating-point save and restore)
+		SSE (Streaming SIMD extensions)
+		SSE2 (Streaming SIMD extensions 2)
+		SS (Self-snoop)
+		HTT (Hyper-threading technology)
+		TM (Thermal monitor supported)
+		PBE (Pending break enabled)
+	Version: Intel(R) Xeon(R) CPU           X5670  @ 2.93GHz     
+	Voltage: Unknown
+	External Clock: 133 MHz
+	Max Speed: 2933 MHz
+	Current Speed: 2933 MHz
+	Status: Populated, Enabled
+	Upgrade: Other
+	L1 Cache Handle: 0x0009
+	L2 Cache Handle: 0x000A
+	L3 Cache Handle: 0x000B
+	Serial Number: To Be Filled By O.E.M.
+	Asset Tag: To Be Filled By O.E.M.
+	Part Number: To Be Filled By O.E.M.
+	Core Count: 6
+	Core Enabled: 6
+	Thread Count: 12
+	Characteristics:
+		64-bit capable
+
+Handle 0x0009, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L1-Cache
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Through
+	Location: Internal
+	Installed Size: 384 KB
+	Maximum Size: 384 KB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Parity
+	System Type: Instruction
+	Associativity: 4-way Set-associative
+
+Handle 0x000A, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L2-Cache
+	Configuration: Enabled, Not Socketed, Level 2
+	Operational Mode: Write Through
+	Location: Internal
+	Installed Size: 1536 KB
+	Maximum Size: 1536 KB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 8-way Set-associative
+
+Handle 0x000B, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L3-Cache
+	Configuration: Enabled, Not Socketed, Level 3
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 12288 KB
+	Maximum Size: 12288 KB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: 16-way Set-associative
+
+Handle 0x000C, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI0
+	Type: x8 PCI Express
+	Current Usage: Available
+	Length: Short
+	ID: 7
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x000D, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI1
+	Type: 64-bit PCI-X
+	Current Usage: Available
+	Length: Short
+	ID: 1
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x000E, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI2
+	Type: 64-bit PCI-X
+	Current Usage: Available
+	Length: Short
+	ID: 2
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x000F, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI3
+	Type: 64-bit PCI-X
+	Current Usage: Available
+	Length: Short
+	ID: 3
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x0010, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI4
+	Type: x16 PCI Express
+	Current Usage: Available
+	Length: Long
+	ID: 4
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x0011, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI5
+	Type: x8 PCI Express
+	Current Usage: Available
+	Length: Long
+	ID: 5
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x0012, DMI type 9, 17 bytes
+System Slot Information
+	Designation: PCI6
+	Type: x8 PCI Express
+	Current Usage: In Use
+	Length: Long
+	ID: 6
+	Characteristics:
+		3.3 V is provided
+		Opening is shared
+		PME signal is supported
+
+Handle 0x0013, DMI type 11, 5 bytes
+OEM Strings
+	String 1: To Be Filled By O.E.M.
+	String 2: To Be Filled By O.E.M.
+
+Handle 0x0014, DMI type 15, 55 bytes
+System Event Log
+	Area Length: 1008 bytes
+	Header Start Offset: 0x0810
+	Data Start Offset: 0x0810
+	Access Method: General-purpose non-volatile data functions
+	Access Address: 0x0001
+	Status: Valid, Not Full
+	Change Token: 0x00000000
+	Header Format: No Header
+	Supported Log Type Descriptors: 15
+	Descriptor 1: Single-bit ECC memory error
+	Data Format 1: Multiple-event handle
+	Descriptor 2: Multi-bit ECC memory error
+	Data Format 2: Multiple-event handle
+	Descriptor 3: Parity memory error
+	Data Format 3: Multiple-event
+	Descriptor 4: I/O channel block
+	Data Format 4: Multiple-event
+	Descriptor 5: POST error
+	Data Format 5: POST results bitmap
+	Descriptor 6: PCI parity error
+	Data Format 6: Multiple-event handle
+	Descriptor 7: PCI system error
+	Data Format 7: Multiple-event handle
+	Descriptor 8: System limit exceeded
+	Data Format 8: Multiple-event system management
+	Descriptor 9: OEM-specific
+	Data Format 9: POST results bitmap
+	Descriptor 10: OEM-specific
+	Data Format 10: Multiple-event handle
+	Descriptor 11: OEM-specific
+	Data Format 11: Multiple-event handle
+	Descriptor 12: OEM-specific
+	Data Format 12: Multiple-event handle
+	Descriptor 13: OEM-specific
+	Data Format 13: Multiple-event handle
+	Descriptor 14: OEM-specific
+	Data Format 14: Multiple-event handle
+	Descriptor 15: OEM-specific
+	Data Format 15: Multiple-event handle
+
+Handle 0x0015, DMI type 16, 15 bytes
+Physical Memory Array
+	Location: System Board Or Motherboard
+	Use: System Memory
+	Error Correction Type: Multi-bit ECC
+	Maximum Capacity: 384 GB
+	Error Information Handle: Not Provided
+	Number Of Devices: 18
+
+Handle 0x0016, DMI type 19, 15 bytes
+Memory Array Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x00C3FFFFFFF
+	Range Size: 49 GB
+	Physical Array Handle: 0x0015
+	Partition Width: 0
+
+Handle 0x0017, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM1A
+	Bank Locator: BANK0
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: 1066 MHz (0.9 ns)
+	Manufacturer: Hyundai       
+	Serial Number: 6ABA301E
+	Asset Tag:             
+	Part Number: HMT42GR7AMR4C-G7  
+
+Handle 0x0018, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000040003FF
+	Range Size: 65537 kB
+	Physical Device Handle: 0x0017
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0019, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM1B
+	Bank Locator: BANK1
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:             
+	Part Number:                   
+
+Handle 0x001A, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0019
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x001B, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM1C
+	Bank Locator: BANK2
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:             
+	Part Number:                   
+
+Handle 0x001C, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x001B
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x001D, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM2A
+	Bank Locator: BANK3
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: 1066 MHz (0.9 ns)
+	Manufacturer: Hyundai       
+	Serial Number: 2EBAB01E
+	Asset Tag:             
+	Part Number: HMT42GR7AMR4C-G7  
+
+Handle 0x001E, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00004000000
+	Ending Address: 0x000080003FF
+	Range Size: 65537 kB
+	Physical Device Handle: 0x001D
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x001F, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM2B
+	Bank Locator: BANK4
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:             
+	Part Number:                   
+
+Handle 0x0020, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x001F
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0021, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM2C
+	Bank Locator: BANK5
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:             
+	Part Number:                   
+
+Handle 0x0022, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0021
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0023, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM3A
+	Bank Locator: BANK6
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: 1066 MHz (0.9 ns)
+	Manufacturer: Hyundai       
+	Serial Number: 1CBA901E
+	Asset Tag:             
+	Part Number: HMT42GR7AMR4C-G7  
+
+Handle 0x0024, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00008000000
+	Ending Address: 0x0000C0003FF
+	Range Size: 65537 kB
+	Physical Device Handle: 0x0023
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0025, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM3B
+	Bank Locator: BANK7
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:             
+	Part Number:                   
+
+Handle 0x0026, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0025
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0027, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P1-DIMM3C
+	Bank Locator: BANK8
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:             
+	Part Number:                   
+
+Handle 0x0028, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0027
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0029, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM1A
+	Bank Locator: BANK9
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: 1066 MHz (0.9 ns)
+	Manufacturer: Hyundai       
+	Serial Number: 3FBAA01E
+	Asset Tag:             
+	Part Number: HMT42GR7AMR4C-G7  
+
+Handle 0x002A, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x0000C000000
+	Ending Address: 0x000100003FF
+	Range Size: 65537 kB
+	Physical Device Handle: 0x0029
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x002B, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM1B
+	Bank Locator: BANK10
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:              
+	Part Number:                   
+
+Handle 0x002C, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x002B
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x002D, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM1C
+	Bank Locator: BANK11
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:              
+	Part Number:                   
+
+Handle 0x002E, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x002D
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x002F, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM2A
+	Bank Locator: BANK12
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: 1066 MHz (0.9 ns)
+	Manufacturer: Hyundai       
+	Serial Number: ACAEB01E
+	Asset Tag:              
+	Part Number: HMT42GR7AMR4C-G7  
+
+Handle 0x0030, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00010000000
+	Ending Address: 0x000140003FF
+	Range Size: 65537 kB
+	Physical Device Handle: 0x002F
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0031, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM2B
+	Bank Locator: BANK13
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:              
+	Part Number:                   
+
+Handle 0x0032, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0031
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0033, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM2C
+	Bank Locator: BANK14
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:              
+	Part Number:                   
+
+Handle 0x0034, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0033
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0035, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: 16384 MB
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM3A
+	Bank Locator: BANK15
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: 1066 MHz (0.9 ns)
+	Manufacturer: Hyundai       
+	Serial Number: BBAEA01E
+	Asset Tag:              
+	Part Number: HMT42GR7AMR4C-G7  
+
+Handle 0x0036, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00014000000
+	Ending Address: 0x000180003FF
+	Range Size: 65537 kB
+	Physical Device Handle: 0x0035
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0037, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM3B
+	Bank Locator: BANK16
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:              
+	Part Number:                   
+
+Handle 0x0038, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0037
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x0039, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x0015
+	Error Information Handle: Not Provided
+	Total Width: 72 bits
+	Data Width: 64 bits
+	Size: No Module Installed
+	Form Factor: DIMM
+	Set: None
+	Locator: P2-DIMM3C
+	Bank Locator: BANK17
+	Type: <OUT OF SPEC>
+	Type Detail: Other
+	Speed: Unknown
+	Manufacturer:               
+	Serial Number:         
+	Asset Tag:              
+	Part Number:                   
+
+Handle 0x003A, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000000003FF
+	Range Size: 1 kB
+	Physical Device Handle: 0x0039
+	Memory Array Mapped Address Handle: 0x0016
+	Partition Row Position: 1
+	Interleave Position: Unknown
+	Interleaved Data Depth: 2
+
+Handle 0x003B, DMI type 16, 15 bytes
+Physical Memory Array
+	Location: System Board Or Motherboard
+	Use: Flash Memory
+	Error Correction Type: None
+	Maximum Capacity: 4 MB
+	Error Information Handle: Not Provided
+	Number Of Devices: 1
+
+Handle 0x003C, DMI type 19, 15 bytes
+Memory Array Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000003FFFFF
+	Range Size: 4 MB
+	Physical Array Handle: 0x003B
+	Partition Width: 0
+
+Handle 0x003D, DMI type 17, 28 bytes
+Memory Device
+	Array Handle: 0x003B
+	Error Information Handle: Not Provided
+	Total Width: 8 bits
+	Data Width: 8 bits
+	Size: 4096 kB
+	Form Factor: Other
+	Set: None
+	Locator:  
+	Bank Locator:  
+	Type: Flash
+	Type Detail: Non-Volatile
+	Speed: 33 MHz (30.3 ns)
+	Manufacturer:             
+	Serial Number:  
+	Asset Tag:  
+	Part Number:                     
+
+Handle 0x003E, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x000FFC00000
+	Ending Address: 0x000FFFFFFFF
+	Range Size: 4 MB
+	Physical Device Handle: 0x003D
+	Memory Array Mapped Address Handle: 0x003C
+	Partition Row Position: <OUT OF SPEC>
+
+Handle 0x003F, DMI type 32, 20 bytes
+System Boot Information
+	Status: No errors detected
+
+Handle 0x0040, DMI type 38, 18 bytes
+IPMI Device Information
+	Interface Type: KCS (Keyboard Control Style)
+	Specification Version: 2.0
+	I2C Slave Address: 0x10
+	NV Storage Device: Not Present
+	Base Address: 0x0000000000000CA2 (I/O)
+	Register Spacing: Successive Byte Boundaries
+
+Handle 0x0041, DMI type 127, 4 bytes
+End Of Table
+

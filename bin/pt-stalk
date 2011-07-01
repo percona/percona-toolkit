@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+
+# This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+
+# ########################################################################
+# A script to watch MySQL and run the 'collect' program when some condition
+# becomes true.  By default, it watches for a too-many-connections condition.
+# This is a good script to run in a screen session.  It's separate from the
+# 'collect' script because that lets you change 'collect' without stopping
+# and restarting this one.
+#
+# The name 'stalk' is because 'watch' is already taken, and 'stalk' is fun.
+#
+# Author: Baron Schwartz
+#
+# This program is part of Percona Toolkit.
+# This program was forked from Aspersa (http://code.google.com/p/aspersa/)
+# in June, 2011.
+# ########################################################################
+
+# ########################################################################
+# Check for the existence of a config file and source it if it exists 
+# ########################################################################
+if [ -f "${0}.conf" ]; then
+   . "${0}.conf"
+fi
+
+# ########################################################################
+# Configuration settings.
+# ########################################################################
+# This is the max number of <whatever> we want to tolerate.
+THRESHOLD=${THRESHOLD:-100}
+
+# This is the thing to check for.
+VARIABLE=${VARIABLE:-Threads_connected}
+
+# How many times must the condition be met before the script will fire?
+CYCLES=${CYCLES:-1}
+
+# Collect GDB stacktraces?
+GDB=${GDB:-no}
+
+# Collect oprofile data?
+OPROFILE=${OPROFILE:-yes}
+
+# Collect strace data?
+STRACE=${STRACE:-no}
+
+# Collect tcpdump data?
+TCPDUMP=${TCPDUMP:-yes}
+
+# Send mail to this list of addresses when the script triggers.
+# EMAIL=
+
+# Any options to pass to mysql/mysqladmin, such as -u, -p, etc
+# MYSQLOPTIONS=""
+
+# This is the interval between checks.
+INTERVAL=${INTERVAL:-30}
+
+# If the command you're running to detect the condition is allowed to return
+# nothing (e.g. a grep line that might not even exist if there's no problem),
+# then set this to "yes".
+MAYBE_EMPTY=${MAYBE_EMPTY:-no}
+
+# This is the location of the 'collect' script.
+if [ -z "${COLLECT}" ]; then
+   COLLECT="${HOME}/bin/collect";
+fi
+
+# This is where to store the collected data.
+if [ -z "${DEST}" ]; then
+   DEST="${HOME}/collected/"
+fi
+
+# How long to collect statistics data for?  Make sure that this isn't longer
+# than SLEEP.
+DURATION=${DURATION:-30}
+
+# How long to sleep after collecting?
+if [ -z "${SLEEP}" ]; then
+   SLEEP=$(($DURATION * 10))
+fi
+
+# Bail out if the disk is more than this %full.
+PCT_THRESHOLD=${PCT_THRESHOLD:-95}
+
+# Bail out if the disk has less than this many MB free.
+MB_THRESHOLD=${MB_THRESHOLD:-100}
+
+# Remove samples after this many days.
+PURGE=${PURGE:-30}
+
+# ########################################################################
+# End configuration
+# ########################################################################
+
+# ########################################################################
+# Echo to STDERR and exit false.
+# ########################################################################
+die() {
+   echo "${1}" >&2
+   exit 1
+}
+
+# ########################################################################
+# Echo to STDERR and possibly email.
+# ########################################################################
+log() {
+   if [ "${EMAIL}" ]; then
+      echo "${1} on $(hostname)" | mail -s "${2} on $(hostname)" ${EMAIL}
+   fi
+   echo "${1}" >&2
+}
+
+# Make the collection location
+mkdir -p "${DEST}" || die "Can't make the destination directory"
+test -d "${DEST}"  || die "${DEST} isn't a directory"
+test -w "${DEST}"  || die "${DEST} isn't writable"
+
+# Test if we have root; warn if not, but it isn't critical.
+if [ "$(id -u)" != "0" ]; then
+   echo 'Not running with root privileges!';
+fi
+
+# We increment this variable every time that the check is true, and set it to 0
+# if it's false.
+cycles_true=0;
+
+while true; do
+   d=$(date +%F-%T | tr :- _);
+
+   # XXX This is where we decide whether to execute 'collect'.
+   # XXX Customize this if needed.  The idea is to generate a number and store
+   # XXX it into $detected, and if $detected > $THRESHOLD, then we'll execute
+   # XXX the collection process.
+   detected=$(mysqladmin ext ${MYSQLOPTIONS} | grep ${VARIABLE} | awk '{print $4}');
+   if [ -z "${detected}" -a ${MAYBE_EMPTY} = "no" ]; then
+      # Oops, couldn't connect, maybe max_connections problem?
+      echo "$d The detected value is empty; something failed?  Exit status is $?"
+      matched="yes"
+      cycles_true=$(($cycles_true + 1))
+   elif [ "${detected:-0}" -gt ${THRESHOLD} ]; then
+      matched="yes"
+      cycles_true=$(($cycles_true + 1))
+   else
+      matched="no"
+      cycles_true=0
+   fi
+
+   # XXX Stop customizing here; everything above should be what you need.
+
+   NOTE="$d check results: ${VARIABLE} = ${detected}, matched = ${matched}, cycles_true = ${cycles_true}"
+   # Actually execute the collection script.
+   if [ "${matched:-no}" = "yes" -a ${cycles_true} -ge ${CYCLES} ]; then 
+
+      log "${NOTE}" "${COLLECT} triggered"
+      PREFIX="$(date +%F-%T | tr :- _)"
+      echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
+      ${COLLECT} -d "${DEST}" -i "${DURATION}" -g "${GDB}" -o "${OPROFILE}" -p "${PREFIX}" -s "${STRACE}" -t "${TCPDUMP}" ${MYSQLOPTIONS} -f "${PCT_THRESHOLD}" -m "${MB_THRESHOLD}"
+      echo "$d sleeping ${SLEEP} seconds to avoid DOS attack"
+      sleep ${SLEEP}
+   else
+      echo ${NOTE}
+      sleep ${INTERVAL}
+   fi
+
+
+   # Delete things more than $PURGE days old
+   find "${DEST}" -type f -mtime +${PURGE} -exec rm -f '{}' \;
+   find "/var/lib/oprofile/samples" -type d -name 'aspersa_collect_*' \
+      -depth -mtime +${PURGE} -exec rm -f '{}' \;
+
+done

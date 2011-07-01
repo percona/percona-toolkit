@@ -1,0 +1,132 @@
+#!/bin/bash
+#parse_lsi_megaraid_virtual_devices
+
+cat <<EOF > $1
+
+  VirtualDev Size      RAID Level Disks SpnDpth Stripe Status  Cache
+  ========== ========= ========== ===== ======= ====== ======= =========
+  0(no name) 69376MB   1 (1-0-0)      2     1-1   64kB Optimal WB, no RA
+  1(no name) 69376MB   1 (1-0-0)      2     1-1   64kB Optimal WB, no RA
+EOF
+
+cat <<EOF > $2
+[root@pc-db1 ~]# /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
+                                     
+Adapter #0
+
+Number of Virtual Disks: 2
+Virtual Disk: 0 (Target Id: 0)
+Name:
+RAID Level: Primary-1, Secondary-0, RAID Level Qualifier-0
+Size:69376MB
+State: Optimal
+Stripe Size: 64kB
+Number Of Drives:2
+Span Depth:1
+Default Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Current Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Access Policy: Read/Write
+Disk Cache Policy: Disk's Default
+Number of Spans: 1
+Span: 0 - Number of PDs: 2
+PD: 0 Information
+Enclosure Device ID: 32
+Slot Number: 0
+Device Id: 0
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 70007MB [0x88bb93a Sectors]
+Non Coerced Size: 69495MB [0x87bb93a Sectors]
+Coerced Size: 69376MB [0x8780000 Sectors]
+Firmware state: Online
+SAS Address(0): 0x5000c500079f8cf9
+SAS Address(1): 0x0
+Connected Port Number: 0(path0) 
+Inquiry Data: SEAGATE ST373455SS      S5273LQ2DZ33            
+Foreign State: None 
+Media Type: Hard Disk Device
+
+PD: 1 Information
+Enclosure Device ID: 32
+Slot Number: 1
+Device Id: 1
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 70007MB [0x88bb93a Sectors]
+Non Coerced Size: 69495MB [0x87bb93a Sectors]
+Coerced Size: 69376MB [0x8780000 Sectors]
+Firmware state: Online
+SAS Address(0): 0x5000c500079f5c35
+SAS Address(1): 0x0
+Connected Port Number: 1(path0) 
+Inquiry Data: SEAGATE ST373455SS      S5273LQ2D9RH            
+Foreign State: None 
+Media Type: Hard Disk Device
+
+Virtual Disk: 1 (Target Id: 1)
+Name:
+RAID Level: Primary-1, Secondary-0, RAID Level Qualifier-0
+Size:69376MB
+State: Optimal
+Stripe Size: 64kB
+Number Of Drives:2
+Span Depth:1
+Default Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Current Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Access Policy: Read/Write
+Disk Cache Policy: Disk's Default
+Number of Spans: 1
+Span: 0 - Number of PDs: 2
+PD: 0 Information
+Enclosure Device ID: 32
+Slot Number: 2
+Device Id: 2
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 70007MB [0x88bb93a Sectors]
+Non Coerced Size: 69495MB [0x87bb93a Sectors]
+Coerced Size: 69376MB [0x8780000 Sectors]
+Firmware state: Online
+SAS Address(0): 0x5000c500079fc0c9
+SAS Address(1): 0x0
+Connected Port Number: 2(path0) 
+Inquiry Data: SEAGATE ST373455SS      S5273LQ2DPST            
+Foreign State: None 
+Media Type: Hard Disk Device
+
+PD: 1 Information
+Enclosure Device ID: 32
+Slot Number: 3
+Device Id: 3
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 70007MB [0x88bb93a Sectors]
+Non Coerced Size: 69495MB [0x87bb93a Sectors]
+Coerced Size: 69376MB [0x8780000 Sectors]
+Firmware state: Online
+SAS Address(0): 0x5000c500079dc339
+SAS Address(1): 0x0
+Connected Port Number: 3(path0) 
+Inquiry Data: SEAGATE ST373455SS      S5273LQ2CKD5            
+Foreign State: None 
+Media Type: Hard Disk Device
+
+
+Exit Code: 0x00
+EOF

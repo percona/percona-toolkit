@@ -1,0 +1,19 @@
+#!/bin/bash
+#aggregate_stacktrace 0 /tmp/aspersa
+
+cat > $1 <<EOF
+   2387 pthread_cond_wait,open_table,open_tables,open_and_lock_tables_derived,execute_sqlcom_select,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone
+      5 pthread_cond_wait,open_table,open_tables,open_and_lock_tables_derived,mysql_insert,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone
+      4 pthread_cond_wait,os_event_wait_low,os_aio_simulated_handle,fil_aio_wait,io_handler_thread,start_thread,clone
+      4 pthread_cond_wait,open_table,open_tables,open_and_lock_tables_derived,mysql_delete,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone
+      1 select,os_thread_sleep,srv_master_thread,start_thread,clone
+      1 select,os_thread_sleep,srv_lock_timeout_and_monitor_thread,start_thread,clone
+      1 select,os_thread_sleep,srv_error_monitor_thread,start_thread,clone
+      1 select,handle_connections_sockets,main,select
+      1 read,my_real_read,my_net_read,do_command,handle_one_connection,start_thread,clone
+      1 pthread_cond_wait,cache_thread,one_thread_per_connection_end,handle_one_connection,start_thread,clone
+      1 free,ut_free,page_cur_insert_rec_low,btr_cur_optimistic_insert,row_ins_index_entry_low,row_ins_index_entry,row_ins,row_ins_step,row_insert_for_mysql,ha_innobase::write_row,handler::ha_write_row,ha_partition::copy_partitions,ha_partition::change_partitions,handler::ha_change_partitions,mysql_change_partitions,fast_alter_partition_table,mysql_alter_table,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone
+      1 do_sigwait,sigwait,signal_hand,start_thread,clone
+EOF
+
+cp samples/stacktrace-002.txt $2

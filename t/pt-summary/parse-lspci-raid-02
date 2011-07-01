@@ -1,0 +1,8 @@
+#!/bin/bash
+#parse_raid_controller_lspci
+
+cat <<EOF > $1
+LSI Logic Unknown
+EOF
+
+cat samples/lspci-002.txt > $2

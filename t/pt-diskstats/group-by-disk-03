@@ -1,0 +1,13 @@
+#!/bin/bash
+#group_by_disk /tmp/aspersa
+
+cat <<EOF > $1
+  #ts device    rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt    wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt busy in_prg
+  {5} sda3    1394.1    32.0    21.8     1%    0.5     0.4    98.8    62.8     3.0    48%    0.0     0.3  41%      0
+  {5} sda4    1394.1    32.0    21.8     1%    0.5     0.4    98.8    62.8     3.0    48%    0.0     0.3  41%      0
+EOF
+
+cat > $2 <<EOF
+TS 1298130002.073935000
+EOF
+cat >>$2 samples/diskstats-005.txt

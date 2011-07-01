@@ -1,0 +1,5 @@
+/dev/cciss/c0d0p1 99M 22M 72M 24% /boot on /boot type ext3 (rw)
+/dev/mapper/VolGroup00-LogVol00 194G 107G 78G 58% / on / type ext3 (rw)
+/dev/mapper/VolGroup00-mysql_log 191G 6.7G 175G 4% /data/mysql-log on /data/mysql-log type ext3 (rw)
+/dev/mapper/VolGroup01-mysql_data 1008G 437G 572G 44% /data/mysql-data on /data/mysql-data type ext3 (rw,noatime)
+tmpfs 48G 0 48G 0% /dev/shm on /dev/shm type tmpfs (rw)

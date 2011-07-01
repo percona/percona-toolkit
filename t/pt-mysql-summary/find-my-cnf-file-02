@@ -1,0 +1,6 @@
+#!/bin/bash
+#find_my_cnf_file 12345
+
+echo /var/lib/mysql/my.cnf > $1
+
+cp samples/ps-mysqld-004.txt /tmp/aspersa

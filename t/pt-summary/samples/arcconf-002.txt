@@ -1,0 +1,140 @@
+[root@db1 percona]# /usr/StorMan/arcconf getconfig 1
+Controllers found: 1
+----------------------------------------------------------------------
+Controller information
+----------------------------------------------------------------------
+   Controller Status                        : Optimal
+   Channel description                      : SAS/SATA
+   Controller Model                         : Adaptec 3405
+   Controller Serial Number                 : 8C211053018
+   Physical Slot                            : 32
+   Temperature                              : 32 C/ 89 F (Normal)
+   Installed memory                         : 128 MB
+   Copyback                                 : Disabled
+   Background consistency check             : Disabled
+   Automatic Failover                       : Enabled
+   Defunct disk drive count                 : 0
+   Logical devices/Failed/Degraded          : 1/0/0
+   --------------------------------------------------------
+   Controller Version Information
+   --------------------------------------------------------
+   BIOS                                     : 5.2-0 (17304)
+   Firmware                                 : 5.2-0 (17304)
+   Driver                                   : 1.1-5 (2453)
+   Boot Flash                               : 5.2-0 (17304)
+   --------------------------------------------------------
+   Controller Battery Information
+   --------------------------------------------------------
+   Status                                   : Optimal
+   Over temperature                         : No
+   Capacity remaining                       : 99 percent
+   Time remaining (at current draw)         : 3 days, 1 hours, 11 minutes
+
+----------------------------------------------------------------------
+Logical device information
+----------------------------------------------------------------------
+Logical device number 0
+   Logical device name                      : Raid10-A
+   RAID level                               : 10
+   Status of logical device                 : Optimal
+   Size                                     : 571392 MB
+   Stripe-unit size                         : 256 KB
+   Read-cache mode                          : Enabled
+   Write-cache mode                         : Enabled (write-back)
+   Write-cache setting                      : Enabled (write-back) when protected by battery
+   Partitioned                              : Yes
+   Protected by Hot-Spare                   : No
+   Bootable                                 : Yes
+   Failed stripes                           : No
+   --------------------------------------------------------
+   Logical device segment information
+   --------------------------------------------------------
+   Group 0, Segment 0                       : Present (0,0) 3LM5SRSA000099104XLP
+   Group 0, Segment 1                       : Present (0,1) 3LM5R7DQ00009908AU4Z
+   Group 1, Segment 0                       : Present (0,2) 3LM5SPA6000099104QHM
+   Group 1, Segment 1                       : Present (0,3) 3LM0VQPF00009809VLB0
+
+
+----------------------------------------------------------------------
+Physical Device information
+----------------------------------------------------------------------
+      Device #0
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device            : 0,0
+         Reported Location                  : Enclosure 0, Slot 0
+         Reported ESD                       : 2,0
+         Vendor                             : SEAGATE
+         Model                              : ST3300655SS
+         Firmware                           : 0002
+         Serial number                      : 3LM5SRSA000099104XLP
+         World-wide name                    : 5000C5000C376E14
+         Size                               : 286102 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #1
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device            : 0,1
+         Reported Location                  : Enclosure 0, Slot 1
+         Reported ESD                       : 2,0
+         Vendor                             : SEAGATE
+         Model                              : ST3300655SS
+         Firmware                           : 0002
+         Serial number                      : 3LM5R7DQ00009908AU4Z
+         World-wide name                    : 5000C5000C3749E8
+         Size                               : 286102 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #2
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device            : 0,2
+         Reported Location                  : Enclosure 0, Slot 2
+         Reported ESD                       : 2,0
+         Vendor                             : SEAGATE
+         Model                              : ST3300655SS
+         Firmware                           : 0002
+         Serial number                      : 3LM5SPA6000099104QHM
+         World-wide name                    : 5000C5000C374818
+         Size                               : 286102 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #3
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SAS 3.0 Gb/s
+         Reported Channel,Device            : 0,3
+         Reported Location                  : Enclosure 0, Slot 3
+         Reported ESD                       : 2,0
+         Vendor                             : SEAGATE
+         Model                              : ST3300655SS
+         Firmware                           : 0002
+         Serial number                      : 3LM0VQPF00009809VLB0
+         World-wide name                    : 5000C50006525494
+         Size                               : 286102 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+      Device #4
+         Device is an Enclosure services device
+         Reported Channel,Device            : 2,0
+         Enclosure ID                       : 0
+         Type                               : SES2
+         Vendor                             : ADAPTEC
+         Model                              : Virtual SGPIO  0
+         Firmware                           : 0001
+         Status of Enclosure services device
+            Temperature                     : Normal
+
+

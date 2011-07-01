@@ -1,0 +1,10 @@
+#!/bin/bash
+#parse_mysqld_instances
+
+cat <<EOF > $1
+  Port  Data Directory             Socket
+  ===== ========================== ======
+   3306 /mnt/data-store/mysql/data /tmp/mysql.sock
+EOF
+
+cp samples/ps-mysqld-003.txt /tmp/aspersa

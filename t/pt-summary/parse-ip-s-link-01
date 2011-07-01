@@ -1,0 +1,13 @@
+#!/bin/bash
+#parse_ip_s_link /tmp/aspersa
+
+cat <<EOF > $1
+  interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
+  ========= ========= ========== ========== ========== ========== ==========
+  lo          3000000      25000          0    3000000      25000          0
+  eth0      175000000   30000000          0  125000000     900000          0
+  wlan0      50000000      80000          0   20000000      90000          0
+  vboxnet0          0          0          0          0          0          0
+EOF
+
+cat samples/ip-s-link-001.txt > $2

@@ -1,0 +1,3 @@
+/dev/mapper/vg_ginger-lv_root 454G 24G 408G 6% / on / type ext4 (rw)
+/dev/sda1 194M 57M 127M 31% /boot on /boot type ext4 (rw)
+tmpfs 2.0G 896K 2.0G 1% /dev/shm on /dev/shm type tmpfs (rw)

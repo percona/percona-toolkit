@@ -1,0 +1,6 @@
+#!/bin/bash
+#get_mysql_timezone
+
+echo EDT > $1
+
+cp samples/mysql-variables-001.txt /tmp/aspersa-mysql-variables

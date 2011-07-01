@@ -1,0 +1,1 @@
+mysql-bin.000002	98	foo	mysql,test

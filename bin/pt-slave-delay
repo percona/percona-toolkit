@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
-# This program is copyright 2011-@CURRENTYEAR@ Percona Inc.
-# This program is copyright 2007-2011 Sergey Zhuravlev and Baron Schwartz.
+# This program is copyright 2007-2011 Sergey Zhuravlev and Baron Schwartz,
+# 2011 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED

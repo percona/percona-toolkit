@@ -59,6 +59,7 @@ our @EXPORT      = qw(
    no_diff
    throws_ok
    remove_traces
+   test_bash_tool
    $trunk
    $dsn_opts
    $sandbox_version
@@ -506,6 +507,16 @@ sub remove_traces {
       $sql =~ s/$trace_pat//gm;
    }
    return $sql;
+}
+
+sub test_bash_tool {
+   my ( $tool ) = @_;
+   die "I need a tool argument" unless $tool;
+   my $outfile = "/tmp/$tool-test-results.txt";
+   `rm -rf $outfile >/dev/null`;
+   `$trunk/util/test-bash-tool $tool > $outfile`;
+   print `cat $outfile`;
+   return;
 }
 
 1;

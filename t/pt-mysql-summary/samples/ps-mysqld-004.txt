@@ -1,0 +1,1 @@
+mysql     3271     1 33 Jan17 ?        2-14:46:30 /usr/sbin/mysqld --defaults-file=/var/lib/mysql/my.cnf --basedir=/usr --datadir=/var/lib/mysql/data/ --pid-file=/var/run/mysqld/mysqld.pid --socket=/var/run/mysqld/mysqld.sock

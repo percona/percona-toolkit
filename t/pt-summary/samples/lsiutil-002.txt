@@ -1,0 +1,64 @@
+root@kingdoms-prod-db7:~/percona# Linux/lsiutil.x86_64 -i -s
+
+LSI Logic MPT Configuration Utility, Version 1.62, January 14, 2009
+/bin/mknod: `/dev/mptctl': File exists
+
+1 MPT Port found
+
+==============================================================================
+
+/proc/mpt/ioc0    LSI Logic SAS1064E B3    MPT 105   Firmware 011e0000   IOC 0
+
+Seg/Bus/Dev/Fun    Board Name       Board Assembly   Board Tracer
+ 0  11   0   0     SAS1064                                           
+
+Current Port State
+------------------
+SAS1064E's links are 3.0 G, 3.0 G, down, down
+
+Software Version Information
+----------------------------
+Current active firmware version is 011e0000 (1.30.00)
+Firmware image's version is MPTFW-01.30.00.00-IE
+  LSI Logic
+x86 BIOS image's version is MPTBIOS-6.30.00.00 (2009.11.12)
+EFI BIOS image's version is 3.12.00.03
+
+Firmware Settings
+-----------------
+SAS WWID:                       5005076b08a75ad8
+Multi-pathing:                  Disabled
+SATA Native Command Queuing:    Enabled
+SATA Write Caching:             Enabled
+SATA Maximum Queue Depth:       32
+Device Missing Report Delay:    144 seconds
+Device Missing I/O Delay:       8 seconds
+Phy Parameters for Phynum:      0    1    2    3    
+  Link Enabled:                 Yes  Yes  Yes  Yes  
+  Link Min Rate:                1.5  1.5  1.5  1.5  
+  Link Max Rate:                3.0  3.0  3.0  3.0  
+  SSP Initiator Enabled:        Yes  Yes  Yes  Yes  
+  SSP Target Enabled:           No   No   No   No   
+  Port Configuration:           Auto Auto Auto Auto 
+Target IDs per enclosure:       1
+Persistent mapping:             Enabled
+Physical mapping type:          None
+Target ID 0 reserved for boot:  Yes
+Starting slot (direct attach):  0
+Target IDs (physical mapping):  4
+Interrupt Coalescing:           Enabled, timeout is 16 us, depth is 4
+
+Persistent Mappings
+-------------------
+Persistent entry 0 is valid, Bus 0 Target 1 is PhysId 500000e113c17152
+Persistent entry 1 is valid, Bus 0 Target 2 is PhysId 5000c5001d784329
+
+ B___T___L  Type       Vendor   Product          Rev      SASAddress     PhyNum
+ 0   1   0  Disk       LSILOGIC Logical Volume   3000  
+
+Hidden RAID Devices:
+
+ B___T    Device       Vendor   Product          Rev      SASAddress     PhyNum
+ 0   2  PhysDisk 0     IBM-ESXS ST9300603SS   F  B536  5000c5001d784329     1
+ 0   3  PhysDisk 1     IBM-ESXS MBD2300RC        SB17  500000e113c17152     0
+

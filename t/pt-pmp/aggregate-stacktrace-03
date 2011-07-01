@@ -1,0 +1,18 @@
+#!/bin/bash
+#aggregate_stacktrace 0 /tmp/aspersa
+
+cat > $1 <<EOF
+     35 pthread_cond_wait,end_thread,handle_one_connection,start_thread,clone
+     20 read,read,vio_read,my_real_read,my_net_read,handle_one_connection,start_thread,clone
+     18 pthread_cond_wait,os_event_wait_low,os_aio_simulated_handle,fil_aio_wait,io_handler_thread,start_thread,clone
+      3 pthread_cond_wait,MYSQL_LOG::wait_for_update,mysql_binlog_send,dispatch_command,handle_one_connection,start_thread,clone
+      1 select,os_thread_sleep,srv_master_thread,start_thread,clone
+      1 select,os_thread_sleep,srv_lock_timeout_and_monitor_thread,start_thread,clone
+      1 select,os_thread_sleep,srv_error_monitor_thread,start_thread,clone
+      1 select,handle_connections_sockets,main
+      1 do_sigwait,sigwait,signal_hand,start_thread,clone
+      1 btr_search_guess_on_hash,btr_cur_search_to_nth_level,btr_pcur_open_with_no_init,row_search_for_mysql,ha_innobase::index_read,join_read_always_key,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,do_select,JOIN::exec,mysql_select,handle_select,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread,clone
+      1 btr_cur_search_to_nth_level,btr_estimate_n_rows_in_range,ha_innobase::records_in_range,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_select,get_key_scans_params,SQL_SELECT::test_quick_select,get_quick_record_count,make_join_statistics,JOIN::optimize,mysql_select,handle_select,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread,clone
+EOF
+
+cp samples/stacktrace-003.txt $2

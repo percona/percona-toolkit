@@ -1,0 +1,43 @@
+#!/bin/bash
+#parse_lsi_megaraid_virtual_devices
+
+cat <<EOF > $1
+
+  VirtualDev Size      RAID Level Disks SpnDpth Stripe Status  Cache
+  ========== ========= ========== ===== ======= ====== ======= =========
+  0(no name) 69376MB   1 (1-0-0)      2      1-   64kB Optimal WB, no RA
+  1(no name) 69376MB   1 (1-0-0)      2      1-   64kB Optimal WB, no RA
+EOF
+
+cat <<EOF > $2
+[root@pc-db1 ~]# /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -Lall -aAll
+                                     
+
+Adapter 0 -- Virtual Drive Information:
+Virtual Disk: 0 (Target Id: 0)
+Name:
+RAID Level: Primary-1, Secondary-0, RAID Level Qualifier-0
+Size:69376MB
+State: Optimal
+Stripe Size: 64kB
+Number Of Drives:2
+Span Depth:1
+Default Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Current Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Access Policy: Read/Write
+Disk Cache Policy: Disk's Default
+Virtual Disk: 1 (Target Id: 1)
+Name:
+RAID Level: Primary-1, Secondary-0, RAID Level Qualifier-0
+Size:69376MB
+State: Optimal
+Stripe Size: 64kB
+Number Of Drives:2
+Span Depth:1
+Default Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Current Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Access Policy: Read/Write
+Disk Cache Policy: Disk's Default
+
+Exit Code: 0x00
+EOF

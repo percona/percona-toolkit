@@ -1,0 +1,93 @@
+#!/bin/bash
+#format_status_variables
+
+cat <<EOF > $1
+Variable                                Per day  Per second      5 secs
+Bytes_received                          8000000         100            
+Bytes_sent                             35000000         400            
+Com_admin_commands                           20                        
+Com_change_db                              1000                        
+Com_delete                                 8000                        
+Com_insert                                 8000                        
+Com_lock_tables                             200                        
+Com_replace                                1250                        
+Com_select                                22500                        
+Com_set_option                            22500                        
+Com_show_binlogs                             10                        
+Com_show_create_db                          400                        
+Com_show_create_table                      7000                        
+Com_show_databases                          125                        
+Com_show_fields                            7000                        
+Com_show_innodb_status                      300                        
+Com_show_open_tables                         10                        
+Com_show_processlist                        300                        
+Com_show_slave_status                       300                        
+Com_show_status                             350                        
+Com_show_storage_engines                     10                        
+Com_show_tables                             400                        
+Com_show_triggers                          7000                        
+Com_show_variables                          450                        
+Com_truncate                                300                        
+Com_unlock_tables                           250                        
+Com_update                                  900                        
+Connections                                2500                        
+Created_tmp_disk_tables                   15000                        
+Created_tmp_files                            60                        
+Created_tmp_tables                        22500                        
+Flush_commands                               10                        
+Handler_delete                             8000                        
+Handler_read_first                         2250                        
+Handler_read_key                          30000                        
+Handler_read_next                         15000                        
+Handler_read_rnd                           9000                        
+Handler_read_rnd_next                    300000           3            
+Handler_update                            17500                        
+Handler_write                            250000           2            
+Innodb_buffer_pool_pages_data               225                        
+Innodb_buffer_pool_pages_free              5000                        
+Innodb_buffer_pool_pages_total             6000                        
+Innodb_buffer_pool_read_ahead_rnd            10                        
+Innodb_buffer_pool_read_requests           2250                        
+Innodb_buffer_pool_reads                    150                        
+Innodb_data_fsyncs                           35                        
+Innodb_data_read                       30000000         350            
+Innodb_data_reads                           300                        
+Innodb_data_writes                           35                        
+Innodb_data_written                       17500                        
+Innodb_log_writes                            10                        
+Innodb_os_log_fsyncs                         35                        
+Innodb_os_log_written                      6000                        
+Innodb_page_size                         175000           2            
+Innodb_pages_read                           225                        
+Key_blocks_unused                        150000           1            
+Key_blocks_used                             175                        
+Key_read_requests                        100000           1            
+Key_reads                                   600                        
+Key_write_requests                        70000                        
+Key_writes                                17500                        
+Max_used_connections                         45                        
+Open_files                                 1500                        
+Open_tables                                 700                        
+Opened_tables                             15000                        
+Qcache_free_blocks                           80                        
+Qcache_free_memory                    175000000        2250            
+Qcache_hits                                8000                        
+Qcache_inserts                            20000                        
+Qcache_not_cached                         10000                        
+Qcache_queries_in_cache                     225                        
+Qcache_total_blocks                         600                        
+Questions                                100000           1            
+Select_scan                               25000                        
+Sort_rows                                  8000                        
+Sort_scan                                   300                        
+Table_locks_immediate                     50000                   17500
+Table_locks_waited                           10                       1
+Threads_cached                               35                        
+Threads_connected                            10                        
+Threads_created                              45                        
+Threads_running                              10                        
+Uptime                                    90000           1           1
+Uptime_since_flush_status                 90000           1            
+EOF
+
+join samples/mysql-status-00{1,2}.txt > /tmp/aspersa
