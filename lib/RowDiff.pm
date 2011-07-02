@@ -18,10 +18,9 @@
 # ###########################################################################
 # RowDiff package $Revision: 5697 $
 # ###########################################################################
-
+{
 # Package: RowDiff
 # RowDiff compares two sets of rows to find ones that are different.
-{
 package RowDiff;
 
 use strict;

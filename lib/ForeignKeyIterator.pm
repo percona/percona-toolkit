@@ -17,7 +17,7 @@
 # ###########################################################################
 # ForeignKeyIterator package $Revision: 7552 $
 # ###########################################################################
-
+{
 # Package: ForeignKeyIterator
 # ForeignKeyIterator iterates from or to a table by its foreign key constraints.
 # This is a special type of <SchemaIterator> with the same interface, so it
@@ -25,7 +25,6 @@
 # very differently.  Whereas a <SchemaIterator> is a real iterator that only
 # gets the next schema object when called, a ForeignKeyIterator slurps the
 # given <SchemaIterator> so it can discover foreign key constraints.
-{
 package ForeignKeyIterator;
 
 use strict;

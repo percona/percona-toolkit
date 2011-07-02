@@ -18,10 +18,9 @@
 # ###########################################################################
 # Processlist package $Revision: 7289 $
 # ###########################################################################
-
+{
 # Package: Processlist
 # Processlist makes events when used to poll SHOW FULL PROCESSLIST.
-{
 package Processlist;
 
 use strict;

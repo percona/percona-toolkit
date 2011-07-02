@@ -17,11 +17,10 @@
 # ###########################################################################
 # AdvisorRules package $Revision: 6813 $
 # ###########################################################################
-
+{
 # Package: AdvisorRules
 # AdvisorRules is a parent class for advisor rule modules like
 # <QueryAdivsorRules>.
-{
 package AdvisorRules;
 
 use strict;

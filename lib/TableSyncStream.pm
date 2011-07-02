@@ -18,12 +18,11 @@
 # ###########################################################################
 # TableSyncStream package $Revision: 5697 $
 # ###########################################################################
-
+{
 # Package: TableSyncStream
 # TableSyncStream is a table sync algo that selects all rows.
 # This package implements the simplest possible table-sync algorithm:
 # read every row from the tables and compare them.
-{
 package TableSyncStream;
 
 use strict;

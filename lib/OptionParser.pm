@@ -18,7 +18,7 @@
 # ###########################################################################
 # OptionParser package $Revision: 7102 $
 # ###########################################################################
-
+{
 # Package: OptionParser
 # OptionParser parses command line options from a tool's POD.  By default
 # it parses a description and usage from the POD's SYNOPSIS section and
@@ -58,7 +58,6 @@
 # The option's full name is given as the "=item".  The next, optional para
 # is the option's attributes.  And the next, required para is the option's
 # description (the first period-terminated sentence).
-{
 package OptionParser;
 
 use strict;

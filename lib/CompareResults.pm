@@ -17,10 +17,9 @@
 # ###########################################################################
 # CompareResults package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: CompareResults
 # CompareResults compares the query result sets.
-{
 package CompareResults;
 
 use strict;

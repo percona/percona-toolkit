@@ -18,14 +18,13 @@
 # ###########################################################################
 # TcpdumpParser package $Revision: 7505 $
 # ###########################################################################
-
+{
 # Package: TcpdumpParser
 # TcpdumpParser parses TCP packets from tcpdump files.
 # It expects the output to be formatted a certain way.
 # See the t/samples/tcpdumpxxx.txt files for examples.
 # Here's a sample command on Ubuntu to produce the right formatted output:
 # tcpdump -i lo port 3306 -s 1500 -x -n -q -tttt
-{
 package TcpdumpParser;
 
 use strict;

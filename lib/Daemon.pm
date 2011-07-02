@@ -17,10 +17,9 @@
 # ###########################################################################
 # Daemon package $Revision: 6255 $
 # ###########################################################################
-
+{
 # Package: Daemon
 # Daemon daemonizes the caller and handles daemon-related tasks like PID files.
-{
 package Daemon;
 
 use strict;

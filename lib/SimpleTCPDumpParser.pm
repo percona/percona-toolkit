@@ -18,10 +18,9 @@
 # ###########################################################################
 # SimpleTCPDumpParser package $Revision: 7515 $
 # ###########################################################################
-
-# Package: SimpleTCPDumperParser
-# SimpleTCPDumpParser parses simple tcpdump output.
 {
+# Package: SimpleTCPDumpParser
+# SimpleTCPDumpParser parses simple tcpdump output.
 package SimpleTCPDumpParser;
 
 use strict;

@@ -17,10 +17,9 @@
 # ###########################################################################
 # ExecutionThrottler package $Revision: 5266 $
 # ###########################################################################
-
+{
 # Package: ExecutionThrottler
 # ExecutionThrottle slows program execution if a threshold is exceeded.
-{
 package ExecutionThrottler;
 
 use strict;

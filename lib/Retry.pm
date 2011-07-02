@@ -17,10 +17,9 @@
 # ###########################################################################
 # Retry package $Revision: 7473 $
 # ###########################################################################
-
+{
 # Package: Retry
 # Retry retries code until a condition succeeds.
-{
 package Retry;
 
 use strict;

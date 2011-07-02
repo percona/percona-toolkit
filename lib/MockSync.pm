@@ -1,4 +1,3 @@
-# This program is copyright 2011 Percona Inc.
 # This program is copyright 2007-2010 Baron Schwartz.
 # Feedback and improvements are welcome.
 #
@@ -16,9 +15,9 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 
+{
 # Package: MockSync
 # MockSync simulates a table syncer module.  It's used by RowDiff.t.
-{
 package MockSync;
 
 use strict;

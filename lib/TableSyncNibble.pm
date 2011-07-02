@@ -18,7 +18,7 @@
 # ###########################################################################
 # TableSyncNibble package $Revision: 6511 $
 # ###########################################################################
-
+{
 # Package: TableSyncNibble
 # TableSyncNibble is a table sync algo that uses <TableNibbler>.
 # This package implements a moderately complex sync algorithm:
@@ -29,7 +29,6 @@
 # * Checksum them (state 2)
 # * If a row differs, it must be synced
 # See TableSyncStream for the TableSync interface this conforms to.
-{
 package TableSyncNibble;
 
 use strict;

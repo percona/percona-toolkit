@@ -18,7 +18,7 @@
 # ###########################################################################
 # TableSyncChunk package $Revision: 6389 $
 # ###########################################################################
-
+{
 # Package: TableSyncChunk
 # TableSyncChunk is a table sync algo that uses discrete chunks.
 # This package implements a simple sync algorithm:
@@ -28,7 +28,6 @@
 # * Checksum them (state 2)
 # * If a row differs, it must be synced
 # See TableSyncStream for the TableSync interface this conforms to.
-{
 package TableSyncChunk;
 
 use strict;

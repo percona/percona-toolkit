@@ -17,10 +17,9 @@
 # ###########################################################################
 # UpgradeReportFormatter package $Revision: 7193 $
 # ###########################################################################
-
+{
 # Package: UpgradeReportFormatter
 # UpgradeReportFormatter formats the output of pt-upgrade.
-{
 package UpgradeReportFormatter;
 
 use strict;

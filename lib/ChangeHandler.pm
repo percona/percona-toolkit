@@ -18,10 +18,9 @@
 # ###########################################################################
 # ChangeHandler package $Revision: 6785 $
 # ###########################################################################
-
+{
 # Package: ChangeHandler
 # ChangeHandler creates SQL statements for changing rows in a table.
-{
 package ChangeHandler;
 
 use strict;

@@ -17,7 +17,7 @@
 # ###########################################################################
 # TableUsage package $Revision: 7498 $
 # ###########################################################################
-
+{
 # Package: TableUsage
 # TableUsage determines how tables in a query are used.
 #
@@ -28,7 +28,6 @@
 # This package uses both QueryParser and SQLParser.  The former is used for
 # simple queries, and the latter is used for more complex queries where table
 # usage may be hidden in who-knows-which clause of the SQL statement.
-{
 package TableUsage;
 
 use strict;

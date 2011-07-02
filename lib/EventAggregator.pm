@@ -17,10 +17,9 @@
 # ###########################################################################
 # EventAggregator package $Revision: 7272 $
 # ###########################################################################
-
+{
 # Package: EventAggregator
 # EventAggregator aggregates event values and calculates basic statistics.
-{
 package EventAggregator;
 
 use strict;

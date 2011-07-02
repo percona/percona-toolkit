@@ -18,10 +18,9 @@
 # ###########################################################################
 # TCPRequestAggregator package $Revision: 7515 $
 # ###########################################################################
-
+{
 # Package: TCPRequestAggregator
 # TCPRequestAggregator aggregates TCP requests from tcpdump files.
-{
 package TCPRequestAggregator;
 
 use strict;

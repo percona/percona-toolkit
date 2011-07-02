@@ -18,10 +18,9 @@
 # ###########################################################################
 # Quoter package $Revision: 6850 $
 # ###########################################################################
-
+{
 # Package: Quoter
 # Quoter handles value quoting, unquoting, escaping, etc.
-{
 package Quoter;
 
 use strict;

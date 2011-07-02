@@ -17,10 +17,9 @@
 # ###########################################################################
 # CompareWarnings package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: CompareWarnings
 # CompareWarnings compares query warnings.
-{
 package CompareWarnings;
 
 use strict;

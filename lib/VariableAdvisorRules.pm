@@ -17,10 +17,9 @@
 # ###########################################################################
 # VariableAdvisorRules package $Revision: 6821 $
 # ###########################################################################
-
+{
 # Package: VariableAdvisorRules
 # VariableAdvisorRules specifies rules for checking MySQL variables.
-{
 package VariableAdvisorRules;
 use base 'AdvisorRules';
 

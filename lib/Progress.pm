@@ -17,10 +17,9 @@
 # ###########################################################################
 # Progress package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: Progress
 # Progress encapsulates a progress report.
-{
 package Progress;
 
 use strict;

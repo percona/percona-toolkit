@@ -18,10 +18,9 @@
 # ###########################################################################
 # MySQLDump package $Revision: 6345 $
 # ###########################################################################
-
+{
 # Package: MySQLDump
 # MySQLDump gets CREATE TABLE defs from MySQL.
-{
 package MySQLDump;
 
 use strict;

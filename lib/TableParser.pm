@@ -18,7 +18,7 @@
 # ###########################################################################
 # TableParser package $Revision: 7550 $
 # ###########################################################################
-
+{
 # Package: TableParser
 # TableParser parses SHOW CREATE TABLE.
 #
@@ -33,7 +33,6 @@
 # $opts->{mysql_version} is typically used, which is the return value from
 # VersionParser::parser() (which returns a zero-padded MySQL version,
 # e.g. 004001000 for 4.1.0).
-{
 package TableParser;
 
 use strict;

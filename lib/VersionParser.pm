@@ -18,10 +18,9 @@
 # ###########################################################################
 # VersionParser package $Revision: 6667 $
 # ###########################################################################
-
+{
 # Package: VersionParser
 # VersionParser parses a MySQL version string.
-{
 package VersionParser;
 
 use strict;

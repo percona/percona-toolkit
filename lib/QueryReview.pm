@@ -17,13 +17,12 @@
 # ###########################################################################
 # QueryReview package $Revision: 7342 $
 # ###########################################################################
-
+{
 # Package: QueryReview
 # QueryReview is an API to a query review table.
 # This module is an interface to a "query review table" in which certain
 # historical information about classes of queries is stored.  See the docs on
 # mk-query-digest for context.
-{
 package QueryReview;
 
 use strict;

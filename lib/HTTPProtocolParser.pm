@@ -17,10 +17,9 @@
 # ###########################################################################
 # HTTPProtocolParser package $Revision: 5811 $
 # ###########################################################################
-
+{
 # Package: HTTPProtocolParser
 # HTTPProtocolParser parses HTTP traffic from tcpdump files.
-{
 package HTTPProtocolParser;
 use base 'ProtocolParser';
 

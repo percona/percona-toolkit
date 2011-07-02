@@ -17,10 +17,9 @@
 # ###########################################################################
 # CompareQueryTimes package $Revision: 6785 $
 # ###########################################################################
-
+{
 # Package: CompareQueryTimes
 # CompareQueryTimes compares query execution times.
-{
 package CompareQueryTimes;
 
 use strict;

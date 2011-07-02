@@ -17,7 +17,7 @@
 # ###########################################################################
 # ReportFormatter package $Revision: 7473 $
 # ###########################################################################
-
+{
 # Package: ReportFormatter
 # ReportFormatter makes columnized reports given variable-width data lines.
 # It does the hard work of automatically sizing columns and truncating data
@@ -54,7 +54,6 @@
 # After these adjustments, get_report() calls _truncate_headers() and
 # _truncate_line_values().  These truncate output to the columns' final,
 # calculated widths.
-{
 package ReportFormatter;
 
 use strict;

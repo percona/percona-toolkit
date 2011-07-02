@@ -18,10 +18,9 @@
 # ###########################################################################
 # TableNibbler package $Revision: 5266 $
 # ###########################################################################
-
+{
 # Package: TableNibbler
 # TableNibbler determines how to nibble a table by chunks of rows.
-{
 package TableNibbler;
 
 use strict;

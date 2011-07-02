@@ -17,10 +17,9 @@
 # ###########################################################################
 # KeySize package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: KeySize
 # KeySize calculates the size of MySQL indexes (keys).
-{
 package KeySize;
 
 use strict;

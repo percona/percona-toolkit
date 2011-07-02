@@ -18,10 +18,9 @@
 # ###########################################################################
 # QueryRewriter package $Revision: 7473 $
 # ###########################################################################
-
+{
 # Package: QueryRewriter
 # QueryRewriter rewrites and transforms queries.
-{
 package QueryRewriter;
 
 use strict;

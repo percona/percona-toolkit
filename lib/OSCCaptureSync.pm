@@ -17,11 +17,10 @@
 # ###########################################################################
 # OSCCaptureSync package $Revision: 7463 $
 # ###########################################################################
-
+{
 # Package: OSCCaptureSync
 # OSCCaptureSync implements the capture and sync phases of an online schema
 # change.
-{
 package OSCCaptureSync;
 
 use strict;

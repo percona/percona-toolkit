@@ -17,7 +17,7 @@
 # ###########################################################################
 # MemcachedEvent package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: MemcachedEvent
 # MemcachedEvent creates events from <MemcachedProtocolParser> data.
 # Since memcached is not strictly MySQL stuff, we have to
@@ -25,7 +25,6 @@
 # 
 # See http://code.sixapart.com/svn/memcached/trunk/server/doc/protocol.txt
 # for information about the memcached protocol.
-{
 package MemcachedEvent;
 
 use strict;

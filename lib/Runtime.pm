@@ -17,7 +17,7 @@
 # ###########################################################################
 # Runtime package $Revision: 7221 $
 # ###########################################################################
-
+{
 # Package: Runtime
 # Runtime keeps track of time to control how long a tool's main loop runs.
 # This package was created to handle mk-query-digest --run-time-mode event.
@@ -25,7 +25,6 @@
 # now() comes from a clock, a log timestamp, or wherever.  The creator of
 # Runtime object determines how, or from where, time is gotten so that the
 # caller of the object can simply ask, "What time is it?".
-{
 package Runtime;
 
 use strict;

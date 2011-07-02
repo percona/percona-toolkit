@@ -18,7 +18,7 @@
 # ###########################################################################
 # TableChunker package $Revision: 7169 $
 # ###########################################################################
-
+{
 # Package: TableChunker
 # TableChunker helps determine how to "chunk" a table.  Chunk are
 # pre-determined ranges of rows defined by boundary values (sometimes also
@@ -42,7 +42,6 @@
 # distribution of values on the chunk colun can skew chunking.  If, for
 # example, col has values 0, 100, 101, ... then the zero value skews chunking.
 # The zero_chunk arg handles this.
-{
 package TableChunker;
 
 use strict;

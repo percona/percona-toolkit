@@ -17,7 +17,7 @@
 # ###########################################################################
 # MaatkitTest package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: MaatkitTest
 # MaatkitTest is a collection of helper-subs for the Maatkit tests.
 # Any file arguments (like no_diff() $expected_output) are relative to
@@ -26,7 +26,6 @@
 # this terminates the *entire* test process; die instead.  All
 # subs are exported by default, so is the variable $trunk, so there's
 # no need to import() in the test scripts.
-{
 package MaatkitTest;
 
 use strict;

@@ -17,10 +17,9 @@
 # ###########################################################################
 # DuplicateKeyFinder package $Revision: 7565 $
 # ###########################################################################
-
+{
 # Package: DuplicateKeyFinder
 # DuplicateKeyFinder finds duplicate indexes (keys).
-{
 package DuplicateKeyFinder;
 
 use strict;

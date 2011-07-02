@@ -17,10 +17,9 @@
 # ###########################################################################
 # MySQLConfigComparer package $Revision: 7403 $
 # ###########################################################################
-
+{
 # Package: MySQLConfigComparer
 # MySQLConfigComparer compares and diffs C<MySQLConfig> objects. 
-{
 package MySQLConfigComparer;
 
 use strict;

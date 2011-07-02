@@ -17,10 +17,9 @@
 # ###########################################################################
 # Sandbox package $Revision: 7140 $
 # ###########################################################################
-
+{
 # Package: Sandbox
 # Sandbox is an API for the test suite to access and control sandbox servers.
-{
 package Sandbox;
 
 BEGIN {

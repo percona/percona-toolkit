@@ -18,10 +18,9 @@
 # ###########################################################################
 # BinaryLogParser package $Revision: 7522 $
 # ###########################################################################
-
+{
 # Package: BinaryLogParser
 # BinaryLogParser parses binary log files converted to text by mysqlbinlog.
-{
 package BinaryLogParser;
 
 use strict;

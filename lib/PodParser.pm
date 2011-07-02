@@ -17,13 +17,12 @@
 # ###########################################################################
 # PodParser package $Revision: 7053 $
 # ###########################################################################
-
+{
 # Package: PodParser
 # PodParser parses sections of a POD.
 # This package wants to subclasses Pod::Parser but because some people
 # still run ancient systems on which even "core" modules are missing,
 # we have to roll our own pod parser.
-{
 package PodParser;
 
 use strict;

@@ -17,10 +17,9 @@
 # ###########################################################################
 # Advisor package $Revision: 6830 $
 # ###########################################################################
-
+{
 # Package: Advisor
 # Advisor loads, checks, and runs rules for the various mk-*-advisor tools.
-{
 package Advisor;
 
 use strict;

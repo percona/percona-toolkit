@@ -18,10 +18,9 @@
 # ###########################################################################
 # TableSyncer package $Revision: 7528 $
 # ###########################################################################
-
+{
 # Package: TableSyncer
 # TableSyncer helps sync tables with various table sync algo modules.
-{ 
 package TableSyncer;
 
 use strict;

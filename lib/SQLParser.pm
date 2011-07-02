@@ -17,7 +17,7 @@
 # ###########################################################################
 # SQLParser package $Revision: 7565 $
 # ###########################################################################
-
+{
 # Package: SQLParser
 # SQLParser parses common MySQL SQL statements into data structures.
 # This parser is MySQL-specific and intentionally meant to handle only
@@ -36,7 +36,6 @@
 # This package differs from QueryParser because here we parse the entire SQL
 # statement (thus giving access to all its parts), whereas QueryParser extracts
 # just needed parts (and ignores all the rest).
-{
 package SQLParser;
 
 use strict;

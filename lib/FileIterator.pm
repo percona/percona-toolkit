@@ -17,10 +17,9 @@
 # ###########################################################################
 # FileIterator package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: FileIterator
 # FileIterator make iterators that return filenames.
-{
 package FileIterator;
 
 use strict;

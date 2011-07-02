@@ -17,10 +17,9 @@
 # ###########################################################################
 # ProcesslistAggregator package $Revision: 6590 $
 # ###########################################################################
-
+{
 # Package: ProcesslistAggregator
 # ProcesslistAggregator aggregates PROCESSLIST entires.
-{
 package ProcesslistAggregator;
 
 use strict;

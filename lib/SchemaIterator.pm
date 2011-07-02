@@ -17,10 +17,9 @@
 # ###########################################################################
 # SchemaIterator package $Revision: 7547 $
 # ###########################################################################
-
+{
 # Package: SchemaIterator
 # SchemaIterator iterates schema objects.
-{
 package SchemaIterator;
 
 use strict;

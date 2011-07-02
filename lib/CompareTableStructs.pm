@@ -17,10 +17,9 @@
 # ###########################################################################
 # CompareTableStructs package $Revision: 6785 $
 # ###########################################################################
-
+{
 # Package: CompareTableStructs
 # CompareTableStructs compares CREATE TABLE defs.
-{
 package CompareTableStructs;
 
 use strict;

@@ -17,7 +17,7 @@
 # ###########################################################################
 # MySQLConfig package $Revision: 7403 $
 # ###########################################################################
-
+{
 # Package: MySQLConfig
 # MySQLConfig parses and encapsulates system variables and values from
 # SHOW VARIABLES, option files, mysqld --help --verbose or my_print_defaults.
@@ -33,7 +33,6 @@
 #
 # Only variables present in the input are saved in the MySQLConfig object.
 # So if <has()> returns false, then the variable did not appear in the input.
-{
 package MySQLConfig;
 
 use strict;

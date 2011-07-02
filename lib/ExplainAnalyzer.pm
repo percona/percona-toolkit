@@ -17,13 +17,12 @@
 # ###########################################################################
 # ExplainAnalyzer package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: ExplainAnalyzer
 # ExplainAnalyzer contains utility methods for getting and manipulating
 # EXPLAIN data.  It also has methods to save and retrieve information,
 # so it actually has state itself if used in this way -- it is not a data-less
 # collection of methods.
-{
 package ExplainAnalyzer;
 
 use strict;

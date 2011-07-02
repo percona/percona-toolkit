@@ -18,10 +18,9 @@
 # ###########################################################################
 # PgLogParser package $Revision: 5835 $
 # ###########################################################################
-
+{
 # Package: PgLogParser
 # PgLogParser parses Postgres logs.
-{
 package PgLogParser;
 
 use strict;

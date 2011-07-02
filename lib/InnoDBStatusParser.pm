@@ -18,10 +18,9 @@
 # ###########################################################################
 # InnoDBStatusParser package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: InnoDBStatusParser
 # InnoDBStatusParser parses SHOW INNODB STATUS.
-{
 package InnoDBStatusParser;
 
 use strict;

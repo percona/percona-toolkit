@@ -17,7 +17,7 @@
 # ###########################################################################
 # TextResultSetParser package $Revision: 6898 $
 # ###########################################################################
-
+{
 # Package: TextResultSetParser
 # TextResultSetParser converts a text result set to a data struct like
 # DBI::selectall_arrayref().  Text result sets are like what SHOW PROCESSLIST
@@ -39,7 +39,6 @@
 #   ]
 # (end code)
 # Both horizontal and vertical (\G) text outputs are supported.
-{
 package TextResultSetParser;
 
 use strict;

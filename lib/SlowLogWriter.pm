@@ -18,10 +18,9 @@
 # ###########################################################################
 # SlowLogWriter package $Revision: 6590 $
 # ###########################################################################
-
+{
 # Package: SlowLogWriter
 # SlowLogWriter writes events to a file in MySQL slow log format.
-{
 package SlowLogWriter;
 
 use strict;

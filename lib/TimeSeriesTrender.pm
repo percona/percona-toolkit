@@ -17,10 +17,9 @@
 # ###########################################################################
 # TimeSeriesTrender package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: TimeSeriesTrender
 # TimeSeriesTrender calculates trends in time.
-{
 package TimeSeriesTrender;
 
 use strict;

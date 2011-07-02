@@ -17,10 +17,9 @@
 # ###########################################################################
 # LogSplitter package $Revision: 7177 $
 # ###########################################################################
-
+{
 # Package: LogSplitter
 # LogSplitter splits MySQL query logs by sessions.
-{
 package LogSplitter;
 
 use strict;

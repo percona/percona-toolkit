@@ -18,11 +18,10 @@
 # ###########################################################################
 # DSNParser package $Revision: 7388 $
 # ###########################################################################
-
+{
 # Package: DSNParser
 # DSNParser parses DSNs and creates connections to MySQL using DBI and
 # DBD::mysql.
-{
 package DSNParser;
 
 use strict;

@@ -17,10 +17,9 @@
 # ###########################################################################
 # GeneralLogParser package $Revision: 7522 $
 # ###########################################################################
-
+{
 # Package: GeneralLogParser
 # GeneralLogParser parses MySQL general logs.
-{
 package GeneralLogParser;
 
 use strict;

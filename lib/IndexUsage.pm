@@ -17,7 +17,7 @@
 # ###########################################################################
 # IndexUsage package $Revision: 7096 $
 # ###########################################################################
-
+{
 # Package: IndexUsage
 # IndexUsage tracks index and tables usage of queries.  It can then show which
 # indexes are not used.  You use it by telling it about all the tables and
@@ -26,7 +26,6 @@
 #
 # If the object is created with a dbh and db, then results (the indexes,
 # tables, queries and index usages) are saved in tables.
-{
 package IndexUsage;
 
 use strict;

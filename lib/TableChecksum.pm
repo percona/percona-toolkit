@@ -18,10 +18,9 @@
 # ###########################################################################
 # TableChecksum package $Revision: 7080 $
 # ###########################################################################
-
+{
 # Package: TableChecksum
 # TableChecksum checksums tables.
-{
 package TableChecksum;
 
 use strict;

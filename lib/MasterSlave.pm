@@ -18,10 +18,9 @@
 # ###########################################################################
 # MasterSlave package $Revision: 7525 $
 # ###########################################################################
-
+{
 # Package: MasterSlave
 # MasterSlave handles common tasks related to master-slave setups.
-{
 package MasterSlave;
 
 use strict;

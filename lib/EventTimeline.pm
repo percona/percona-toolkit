@@ -17,10 +17,9 @@
 # ###########################################################################
 # EventTimeline package $Revision: 6590 $
 # ###########################################################################
-
-# Package: EventTimeLine
-# EventTimeLine aggregates events that are adjacent to each other.
 {
+# Package: EventTimeline
+# EventTimeline aggregates events that are adjacent to each other.
 package EventTimeline;
 
 use strict;

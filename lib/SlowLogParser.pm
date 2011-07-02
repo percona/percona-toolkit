@@ -18,10 +18,9 @@
 # ###########################################################################
 # SlowLogParser package $Revision: 7522 $
 # ###########################################################################
-
+{
 # Package: SlowLogParser
 # SlowLogParser parses MySQL slow logs.
-{
 package SlowLogParser;
 
 use strict;

@@ -15,6 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 
+{
 # Package: MockSyncStream
 # MockSyncStream simulates a <TableSyncStream> module.
 # It's used by mk-upgrade to quickly compare result sets for any differences.
@@ -22,7 +23,6 @@
 # This causes RowDiff::compare_sets() to terminate early.  So we don't actually
 # sync anything.  Unlike TableSyncStream, we're not working with a table but an
 # arbitrary query executed on two servers.
-{
 package MockSyncStream;
 
 use strict;

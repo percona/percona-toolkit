@@ -17,7 +17,7 @@
 # ###########################################################################
 # MySQLProtocolParser package $Revision: 7522 $
 # ###########################################################################
-
+{
 # Package: MySQLProtocolParser
 # MySQLProtocolParser parses MySQL events from tcpdump files.
 # The packets come from TcpdumpParser.  MySQLProtocolParse::parse_packet()
@@ -34,7 +34,6 @@
 # At times MySQLProtocolParser::parse_packet() will not return an event
 # because it usually takes a few packets to create one event.  In such
 # cases, TcpdumpParser::parse_event() will not call the other callbacks.
-{
 package MySQLProtocolParser;
 
 use strict;

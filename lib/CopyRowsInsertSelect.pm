@@ -17,11 +17,10 @@
 # ###########################################################################
 # CopyRowsInsertSelect package $Revision: 7464 $
 # ###########################################################################
-
+{
 # Package: CopyRowsInsertSelect
 # CopyRowsInsertSelect implements the copy rows phase of an online schema
 # change.
-{
 package CopyRowsInsertSelect;
 
 use strict;

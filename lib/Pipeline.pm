@@ -17,10 +17,9 @@
 # ###########################################################################
 # Pipeline package $Revision: 7509 $
 # ###########################################################################
-
+{
 # Package: Pipeline
 # Pipeline executes and controls a list of pipeline processes.
-{
 package Pipeline;
 
 use strict;

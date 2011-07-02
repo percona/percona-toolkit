@@ -18,13 +18,12 @@
 # ###########################################################################
 # TableSyncGroupBy package $Revision: 5697 $
 # ###########################################################################
-
+{
 # Package: TableSyncGroupBy
 # TableSyncGroupBy is a table sync algo that uses GROUP BY.
 # This package syncs tables without primary keys by doing an all-columns GROUP
 # BY with a count, and then streaming through the results to see how many of
 # each group exist.
-{
 package TableSyncGroupBy;
 
 use strict;

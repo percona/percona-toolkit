@@ -17,10 +17,9 @@
 # ###########################################################################
 # Transformers package $Revision: 7226 $
 # ###########################################################################
-
+{
 # Package: Transformers
 # Transformers exports subroutines that convert and beautify values.
-{
 package Transformers;
 
 use strict;

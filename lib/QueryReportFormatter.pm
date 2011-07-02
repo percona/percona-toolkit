@@ -17,7 +17,7 @@
 # ###########################################################################
 # QueryReportFormatter package $Revision: 7274 $
 # ###########################################################################
-
+{
 # Package: QueryReportFormatter
 # QueryReportFormatter is used primarily by mk-query-digest to print reports.
 # The main sub is print_reports() which prints the various reports for
@@ -27,7 +27,6 @@
 # fully aggregated and $ea->calculate_statistical_metrics() already called.
 # Subreports "profile" and "prepared" require the ReportFormatter module,
 # which is also in mk-query-digest.
-{
 package QueryReportFormatter;
 
 use strict;

@@ -17,7 +17,7 @@
 # ###########################################################################
 # Schema package $Revision: 7565 $
 # ###########################################################################
-
+{
 # Package: Schema
 # Schema encapsulates a data structure representing databases and tables.
 # Although in MySQL "schema" is technically equivalent to "databae", we
@@ -49,7 +49,6 @@
 #
 # Schema objects are usually added by a <SchemaIterator>, but you can add
 # them manually if needed; see <add_schema_object()>.
-{
 package Schema;
 
 use strict;

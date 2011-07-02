@@ -18,10 +18,9 @@
 # ###########################################################################
 # SysLogParser package $Revision: 5831 $
 # ###########################################################################
-
+{
 # Package: SysLogParser
 # SysLogParser parses events from syslogs.
-{
 package SysLogParser;
 
 use strict;

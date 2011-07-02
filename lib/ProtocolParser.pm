@@ -17,10 +17,9 @@
 # ###########################################################################
 # ProtocolParser package $Revision: 7522 $
 # ###########################################################################
-
+{
 # Package: ProtocolParser
 # ProtocolParser is a parent class for protocol-specific parsers.
-{
 package ProtocolParser;
 
 use strict;

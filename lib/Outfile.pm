@@ -17,10 +17,9 @@
 # ###########################################################################
 # Outfile package $Revision: 5266 $
 # ###########################################################################
-
+{
 # Package: Outfile
 # Outfile writes rows to a file in SELECT INTO OUTFILE format.
-{
 package Outfile;
 
 use strict;

@@ -16,9 +16,9 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 
+{
 # Package: MockSth
 # MockSth simulates a DBI statement handle without a database connection.
-{
 package MockSth;
 
 use strict;
