@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+
+# Usage: write-dev-docs [FILE..]
+#
+# A file can be a tool name like "pt-archiver" or a module name like
+# "Advisor.pm"; the ".pm" suffix is required.  A file can be with
+# or without a path.  One or more file can be specified.  If no files
+# are specified, then dev docs for lib/* and bin/* are written.
+# Files are only written if the original (e.g. bin/pt-archiver) is
+# newer than the dev doc copy (e.g. docs/dev/tools/pt-archiver).
+# Dev doc copies are necessary so that NaturalDocs does not write
+# absolute paths in config/NaturalDocs/Menu.txt.
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+exit_status=0
+
+die() {
+   echo $1  >&2
+   exit 1
+}
+
+warn() {
+   echo $1 >&2
+   exit_status=1
+}
+
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+   fi
+   BRANCH=`pwd`
+fi
+
+# ############################################################################
+# Global variables
+# ############################################################################
+
+DEV_DOCS=$BRANCH/docs/dev
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+write_dev_doc() {
+   file=$1
+   pkg=$(basename $file)
+   pkg=${pkg/%.pm/}
+
+   # Modules begin with a capital letter.
+   if [ $(expr "$pkg" : "[A-Z]") -eq 1 ]; then
+      outfile=$DEV_DOCS/modules/$pkg.pm
+   else
+      outfile=$DEV_DOCS/tools/$pkg.pm
+   fi
+
+   # Don't write unless the file is newer than its dev doc copy.
+   if [ ! $file -nt $outfile ]; then
+      echo "$file has not been modified"
+      return
+   fi
+
+   # Extract the package from the file (Advisor from Advisor.pm,
+   # pt_kill from pt-kill, etc.).
+   $BRANCH/util/extract-package $pkg $file > $outfile
+   if [ $? -ne 0 ]; then
+      rm $outfile
+      warn "Error extracting package $pkg from $file"
+   else
+      echo "Wrote $outfile"
+   fi
+}
+
+find_file() {
+   if [ -f $file ]; then
+      return
+   fi
+
+   if [ -f "$BRANCH/bin/$file" ]; then
+      file="$BRANCH/bin/$file"
+      return
+   fi
+
+   if [ -f "$BRANCH/lib/$file" ]; then
+      file="$BRANCH/lib/$file"
+      return
+   fi
+
+   warn "$file does not exist"
+}
+
+# ############################################################################
+# Scripts starts here
+# ############################################################################
+
+if [ -z $@ ]; then
+   cd $BRANCH
+   for file in bin/*; do
+      write_dev_doc $file
+   done
+   for file in lib/*.pm; do
+      write_dev_doc $file
+   done
+else
+   # Do not cd $BRANCH because user may be using relative paths to a file
+   # like write-dev-docs ../bin/pt-kill.
+   for file; do
+      find_file
+      write_dev_doc $file
+   done
+fi
+
+# By default NaturalDocs only updates modified files; it only rebuilds
+# the menu, indexes, etc. if necessary.  To make that necessary, delete
+# config/NaturalDocs/Data/, config/NaturalDocs/Menu.txt, and
+# docs/dev/html/*, then re-run this tool and NaturalDocs will reuibld
+# the html output.
+cd $BRANCH
+util/NaturalDocs/NaturalDocs     \
+   --project config/NaturalDocs/ \
+   --input docs/dev/             \
+   --output HTML docs/dev/html/
+exit_status=$(( exit_status | $? ))
+
+exit $exit_status

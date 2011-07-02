@@ -1,0 +1,174 @@
+Format: 1.52
+
+
+# You can add a title and sub-title to your menu like this:
+# Title: [project name]
+# SubTitle: [subtitle]
+
+# You can add a footer to your documentation like this:
+# Footer: [text]
+# If you want to add a copyright notice, this would be the place to do it.
+
+# You can add a timestamp to your documentation like one of these:
+# Timestamp: Generated on month day, year
+# Timestamp: Updated mm/dd/yyyy
+# Timestamp: Last updated mon day
+#
+#   m     - One or two digit month.  January is "1"
+#   mm    - Always two digit month.  January is "01"
+#   mon   - Short month word.  January is "Jan"
+#   month - Long month word.  January is "January"
+#   d     - One or two digit day.  1 is "1"
+#   dd    - Always two digit day.  1 is "01"
+#   day   - Day with letter extension.  1 is "1st"
+#   yy    - Two digit year.  2006 is "06"
+#   yyyy  - Four digit year.  2006 is "2006"
+#   year  - Four digit year.  2006 is "2006"
+
+
+# --------------------------------------------------------------------------
+# 
+# Cut and paste the lines below to change the order in which your files
+# appear on the menu.  Don't worry about adding or removing files, Natural
+# Docs will take care of that.
+# 
+# You can further organize the menu by grouping the entries.  Add a
+# "Group: [name] {" line to start a group, and add a "}" to end it.
+# 
+# You can add text and web links to the menu by adding "Text: [text]" and
+# "Link: [name] ([URL])" lines, respectively.
+# 
+# The formatting and comments are auto-generated, so don't worry about
+# neatness when editing the file.  Natural Docs will clean it up the next
+# time it is run.  When working with groups, just deal with the braces and
+# forget about the indentation and comments.
+# 
+# --------------------------------------------------------------------------
+
+
+Group: Modules  {
+
+   File: Advisor  (modules/Advisor.pm)
+   File: AdvisorRules  (modules/AdvisorRules.pm)
+   File: BinaryLogParser  (modules/BinaryLogParser.pm)
+   File: ChangeHandler  (modules/ChangeHandler.pm)
+   File: CompareQueryTimes  (modules/CompareQueryTimes.pm)
+   File: CompareResults  (modules/CompareResults.pm)
+   File: CompareTableStructs  (modules/CompareTableStructs.pm)
+   File: CompareWarnings  (modules/CompareWarnings.pm)
+   File: CopyRowsInsertSelect  (modules/CopyRowsInsertSelect.pm)
+   File: Daemon  (modules/Daemon.pm)
+   File: DSNParser  (modules/DSNParser.pm)
+   File: DuplicateKeyFinder  (modules/DuplicateKeyFinder.pm)
+   File: EventAggregator  (modules/EventAggregator.pm)
+   File: EventTimeline  (modules/EventTimeline.pm)
+   File: ExecutionThrottler  (modules/ExecutionThrottler.pm)
+   File: ExplainAnalyzer  (modules/ExplainAnalyzer.pm)
+   File: FileIterator  (modules/FileIterator.pm)
+   File: ForeignKeyIterator  (modules/ForeignKeyIterator.pm)
+   File: GeneralLogParser  (modules/GeneralLogParser.pm)
+   File: HTTPProtocolParser  (modules/HTTPProtocolParser.pm)
+   File: IndexUsage  (modules/IndexUsage.pm)
+   File: InnoDBStatusParser  (modules/InnoDBStatusParser.pm)
+   File: KeySize  (modules/KeySize.pm)
+   File: LogSplitter  (modules/LogSplitter.pm)
+   File: MaatkitTest  (modules/MaatkitTest.pm)
+   File: MasterSlave  (modules/MasterSlave.pm)
+   File: MemcachedEvent  (modules/MemcachedEvent.pm)
+   File: MemcachedProtocolParser  (modules/MemcachedProtocolParser.pm)
+   File: MockSth  (modules/MockSth.pm)
+   File: MockSync  (modules/MockSync.pm)
+   File: MockSyncStream  (modules/MockSyncStream.pm)
+   File: MySQLConfig  (modules/MySQLConfig.pm)
+   File: MySQLConfigComparer  (modules/MySQLConfigComparer.pm)
+   File: MySQLDump  (modules/MySQLDump.pm)
+   File: MySQLProtocolParser  (modules/MySQLProtocolParser.pm)
+   File: OptionParser  (modules/OptionParser.pm)
+   File: OSCCaptureSync  (modules/OSCCaptureSync.pm)
+   File: Outfile  (modules/Outfile.pm)
+   File: PgLogParser  (modules/PgLogParser.pm)
+   File: Pipeline  (modules/Pipeline.pm)
+   File: PodParser  (modules/PodParser.pm)
+   File: Processlist  (modules/Processlist.pm)
+   File: ProcesslistAggregator  (modules/ProcesslistAggregator.pm)
+   File: Progress  (modules/Progress.pm)
+   File: ProtocolParser  (modules/ProtocolParser.pm)
+   File: QueryAdvisorRules  (modules/QueryAdvisorRules.pm)
+   File: QueryParser  (modules/QueryParser.pm)
+   File: QueryReportFormatter  (modules/QueryReportFormatter.pm)
+   File: QueryReview  (modules/QueryReview.pm)
+   File: QueryRewriter  (modules/QueryRewriter.pm)
+   File: Quoter  (modules/Quoter.pm)
+   File: ReportFormatter  (modules/ReportFormatter.pm)
+   File: Retry  (modules/Retry.pm)
+   File: RowDiff  (modules/RowDiff.pm)
+   File: Runtime  (modules/Runtime.pm)
+   File: Sandbox  (modules/Sandbox.pm)
+   File: Schema  (modules/Schema.pm)
+   File: SchemaIterator  (modules/SchemaIterator.pm)
+   File: SimpleTCPDumpParser  (modules/SimpleTCPDumpParser.pm)
+   File: SlowLogParser  (modules/SlowLogParser.pm)
+   File: SlowLogWriter  (modules/SlowLogWriter.pm)
+   File: SQLParser  (modules/SQLParser.pm)
+   File: SysLogParser  (modules/SysLogParser.pm)
+   File: TableChecksum  (modules/TableChecksum.pm)
+   File: TableChunker  (modules/TableChunker.pm)
+   File: TableNibbler  (modules/TableNibbler.pm)
+   File: TableParser  (modules/TableParser.pm)
+   File: TableSyncChunk  (modules/TableSyncChunk.pm)
+   File: TableSyncer  (modules/TableSyncer.pm)
+   File: TableSyncGroupBy  (modules/TableSyncGroupBy.pm)
+   File: TableSyncNibble  (modules/TableSyncNibble.pm)
+   File: TableSyncStream  (modules/TableSyncStream.pm)
+   File: TableUsage  (modules/TableUsage.pm)
+   File: TcpdumpParser  (modules/TcpdumpParser.pm)
+   File: TCPRequestAggregator  (modules/TCPRequestAggregator.pm)
+   File: TextResultSetParser  (modules/TextResultSetParser.pm)
+   File: TimeSeriesTrender  (modules/TimeSeriesTrender.pm)
+   File: Transformers  (modules/Transformers.pm)
+   File: UpgradeReportFormatter  (modules/UpgradeReportFormatter.pm)
+   File: VariableAdvisorRules  (modules/VariableAdvisorRules.pm)
+   File: VersionParser  (modules/VersionParser.pm)
+   }  # Group: Modules
+
+Group: Tools  {
+
+   File: pt_archiver  (tools/pt-archiver.pm)
+   File: pt_config_diff  (tools/pt-config-diff.pm)
+   File: pt_deadlock_logger  (tools/pt-deadlock-logger.pm)
+   File: pt_duplicate_key_checker  (tools/pt-duplicate-key-checker.pm)
+   File: pt_fifo_split  (tools/pt-fifo-split.pm)
+   File: pt_find  (tools/pt-find.pm)
+   File: pt_fk_error_logger  (tools/pt-fk-error-logger.pm)
+   File: pt_heartbeat  (tools/pt-heartbeat.pm)
+   File: pt_index_usage  (tools/pt-index-usage.pm)
+   File: pt_kill  (tools/pt-kill.pm)
+   File: pt_log_player  (tools/pt-log-player.pm)
+   File: pt_online_schema_change  (tools/pt-online-schema-change.pm)
+   File: pt_profile_compact  (tools/pt-profile-compact.pm)
+   File: pt_query_advisor  (tools/pt-query-advisor.pm)
+   File: pt_query_digest  (tools/pt-query-digest.pm)
+   File: pt_query_profiler  (tools/pt-query-profiler.pm)
+   File: pt_schema_advisor  (tools/pt-schema-advisor.pm)
+   File: pt_show_grants  (tools/pt-show-grants.pm)
+   File: pt_slave_delay  (tools/pt-slave-delay.pm)
+   File: pt_slave_find  (tools/pt-slave-find.pm)
+   File: pt_slave_restart  (tools/pt-slave-restart.pm)
+   File: pt_table_checksum  (tools/pt-table-checksum.pm)
+   File: pt_table_sync  (tools/pt-table-sync.pm)
+   File: pt_table_usage  (tools/pt-table-usage.pm)
+   File: pt_tcp_model  (tools/pt-tcp-model.pm)
+   File: pt_trend  (tools/pt-trend.pm)
+   File: pt_upgrade  (tools/pt-upgrade.pm)
+   File: pt_variable_advisor  (tools/pt-variable-advisor.pm)
+   File: pt_visual_explain  (tools/pt-visual-explain.pm)
+   }  # Group: Tools
+
+Group: Index  {
+
+   Index: Everything
+   Class Index: Classes
+   Function Index: Functions
+   Variable Index: Variables
+   }  # Group: Index
+
