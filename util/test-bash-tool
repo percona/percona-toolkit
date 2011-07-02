@@ -5,10 +5,6 @@ die() {
    exit 255
 }
 
-warn() {
-   echo $1 >&2
-}
-
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
    cd $BRANCH
@@ -26,7 +22,7 @@ fi
 result() {
    result=$1
    if [ $result -eq 0 ]; then
-      echo -n "ok $testno - $t"
+      echo "ok $testno - $t"
    else
       echo "not ok $testno - $t"
       failed_tests=$(( failed_tests + 1))
@@ -39,16 +35,12 @@ result() {
 
 # All variables are named GL_whatever so they don't get overwritten with stuff
 # that happens in the functions sourced.
-GL_input="/tmp/percona-toolkit-test"
-GL_expected="/tmp/percona-toolkit-test-expected"
-GL_result="/tmp/percona-toolkit-test-result"
+GL_input="/tmp/aspersa"
+GL_expected="/tmp/aspersa-reference"
+GL_result="/tmp/aspersa-result"
 
 run_test() {
    t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
-
-   # Return unless the test file is bash.  There may be other types of
-   # files in the tool's test dir.
-   head -n 1 $t | grep -q bash || die "$t is not a bash file"
 
    # The format of the test file is as follows:
    # - line 1 is the shebang
@@ -74,7 +66,24 @@ run_test() {
    result $?
 
    # Clean up
-   rm -f /tmp/percona-toolkit-test*
+   rm -f /tmp/aspersa*
+}
+
+load_tests() {
+   test_files="$@"
+   i=0
+   for t in $test_files; do
+      # Return unless the test file is bash.  There may be other types of
+      # files in the tool's test dir.
+      if [ ! -f $t ]; then
+         continue
+      fi
+      head -n 1 $t | grep -q bash || continue
+
+      tests[$i]=$t
+      i=$(( i + 1 ))
+   done
+   echo "1..$i"
 }
 
 tool=$1  # bash tool, e.g. pt-diskstats
@@ -87,7 +96,7 @@ cd $BRANCH/bin
 if [ ! -f $tool ]; then
    die "$tool does not exist"
 fi
-head -n1 $tool | grep bash || die "$tool is not a bash file"
+head -n1 $tool | grep -q bash || die "$tool is not a bash file"
 
 # Source the tool, i.e. import its functions.
 source $tool
@@ -95,14 +104,17 @@ source $tool
 cd $BRANCH/t/$tool
 testno=1
 failed_tests=0
+declare -a tests
 if [ -z "$t" ]; then
    # Run all the tool's tests.
-   for t in *; do
-      run_test $t
-   done
+   load_tests *
 else
    # Run just the specified test.
-   run_test $t
+   load_tests $t
 fi
+
+for t in "${tests[@]}"; do
+   run_test $t
+done
 
 exit $failed_tests
