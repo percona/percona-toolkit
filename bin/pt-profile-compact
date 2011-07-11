@@ -1266,49 +1266,75 @@ Show version and exit.
 
 =back
 
-=head1 DOWNLOADING
+=head1 DOWNLOADING 
+      
+Visit L<http://www.percona.com/software/> to download the latest release of
+Percona Toolkit.  Or, to get the latest release from the command line:
 
-You can download Maatkit from Google Code at
-L<http://code.google.com/p/maatkit/>, or you can get any of the tools
-easily with a command like the following:
+   wget percona.com/latest/percona-toolkit/PKG
 
-   wget http://www.maatkit.org/get/toolname
-   or
-   wget http://www.maatkit.org/trunk/toolname
+Replace C<PKG> with C<tar>, C<rpm>, or C<deb> to download the package in that
+format.  You can also get individual tools from the latest release:
 
-Where C<toolname> can be replaced with the name (or fragment of a name) of any
-of the Maatkit tools.  Once downloaded, they're ready to run; no installation is
-needed.  The first URL gets the latest released version of the tool, and the
-second gets the latest trunk code from Subversion.
+   wget percona.com/latest/percona-toolkit/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 ENVIRONMENT
 
-The environment variable C<MKDEBUG> enables verbose debugging output in all of
-the Maatkit tools:
+The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
+To enable debugging and capture all output to a file, run the tool like:
 
-   MKDEBUG=1 mk-....
+   PTDEBUG=1 $TOOL ... > FILE 2>&1
+
+Be careful: debugging output is voluminous and can generate several megabytes
+of output.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Perl and some core packages that ought to be installed in any
-reasonably new version of Perl.
+You need Perl, DBI, DBD::mysql, and some core packages that ought to be
+installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs see L<http://www.maatkit.org/bugs/pt-profile-compact>.
+For a list of known bugs, see L<http://www.percona.com/bugs/$TOOL>.
 
-Please use Google Code Issues and Groups to report bugs or request support:
-L<http://code.google.com/p/maatkit/>.  You can also join #maatkit on Freenode to
-discuss Maatkit.
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
 
-Please include the complete command-line used to reproduce the problem you are
-seeing, the version of all MySQL servers involved, the complete output of the
-tool when run with L<"--version">, and if possible, debugging output produced by
-running with the C<MKDEBUG=1> environment variable.
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 AUTHORS
+
+Baron Schwartz
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools developed by Percona for MySQL support and consulting.  Percona Toolkit
+was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
+projects were created by Baron Schwartz and developed primarily by him and
+Daniel Nichter, both of whom are employed by Percona.  Visit
+L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2007-@CURRENTYEAR@ Baron Schwartz.
+This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -1325,23 +1351,8 @@ You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 Place, Suite 330, Boston, MA  02111-1307  USA.
 
-=head1 SEE ALSO
-
-See also L<mk-query-profiler>.
-
-=head1 AUTHORS
-
-Baron Schwartz
-
-=head1 ABOUT MAATKIT
-
-This tool is part of Maatkit, a toolkit for power users of MySQL.  Maatkit
-was created by Baron Schwartz; Baron and Daniel Nichter are the primary
-code contributors.  Both are employed by Percona.  Financial support for
-Maatkit development is primarily provided by Percona and its clients. 
-
 =head1 VERSION
 
-This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 7477 $.
+Percona Toolkit v1.0.0 released 2011-08-01
 
 =cut

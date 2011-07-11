@@ -75,6 +75,72 @@ how wide each column should be, and then prints them out.
 This is useful for things like aligning the output of vmstat or iostat so it
 is easier to read.
 
+=head1 DOWNLOADING 
+      
+Visit L<http://www.percona.com/software/> to download the latest release of
+Percona Toolkit.  Or, to get the latest release from the command line:
+
+   wget percona.com/latest/percona-toolkit/PKG
+
+Replace C<PKG> with C<tar>, C<rpm>, or C<deb> to download the package in that
+format.  You can also get individual tools from the latest release:
+
+   wget percona.com/latest/percona-toolkit/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 ENVIRONMENT
+
+The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
+To enable debugging and capture all output to a file, run the tool like:
+
+   PTDEBUG=1 $TOOL ... > FILE 2>&1
+
+Be careful: debugging output is voluminous and can generate several megabytes
+of output.
+
+=head1 SYSTEM REQUIREMENTS
+
+You need Perl, DBI, DBD::mysql, and some core packages that ought to be
+installed in any reasonably new version of Perl.
+
+=head1 BUGS
+
+For a list of known bugs, see L<http://www.percona.com/bugs/$TOOL>.
+
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 AUTHORS
+
+Baron Schwartz
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools developed by Percona for MySQL support and consulting.  Percona Toolkit
+was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
+projects were created by Baron Schwartz and developed primarily by him and
+Daniel Nichter, both of whom are employed by Percona.  Visit
+L<http://www.percona.com/software/> for more software developed by Percona.
+
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
 This program is copyright 2010 Baron Schwartz, 2011 Percona Inc.
@@ -94,22 +160,8 @@ You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 Place, Suite 330, Boston, MA  02111-1307  USA.
 
-=head1 AUTHORS
-
-Baron Schwartz
-
-=head1 ABOUT PERCONA TOOLKIT
-
-This tool is part of Percona Toolkit, a collection of advanced command-line
-tools used by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Financial support for
-Percona Toolkit development is provided by Percona and its clients.  Visit
-L<http://www.percona.com/software/> for more projects developed by Percona.
-
 =head1 VERSION
 
-This manual page documents Ver @VERSION@ Distrib @DISTRIB@ $Revision: 7531 $.
+Percona Toolkit v1.0.0 released 2011-08-01
 
 =cut
