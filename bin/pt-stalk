@@ -1,37 +1,8 @@
 #!/usr/bin/env bash
 
-# This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
-# Feedback and improvements are welcome.
-#
-# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
-# systems, you can issue `man perlgpl' or `man perlartistic' to read these
-# licenses.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
-
-# ########################################################################
-# A script to watch MySQL and run the 'collect' program when some condition
-# becomes true.  By default, it watches for a too-many-connections condition.
-# This is a good script to run in a screen session.  It's separate from the
-# 'collect' script because that lets you change 'collect' without stopping
-# and restarting this one.
-#
-# The name 'stalk' is because 'watch' is already taken, and 'stalk' is fun.
-#
-# Author: Baron Schwartz
-#
-# This program is part of Percona Toolkit.
-# This program was forked from Aspersa (http://code.google.com/p/aspersa/)
-# in June, 2011.
-# ########################################################################
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
 
 # ########################################################################
 # Check for the existence of a config file and source it if it exists 
@@ -187,3 +158,55 @@ while true; do
       -depth -mtime +${PURGE} -exec rm -f '{}' \;
 
 done
+
+# ############################################################################
+# Documentation
+# ############################################################################
+:<<'DOCUMENTATION'
+=pod
+
+=head1 NAME
+
+pt-stalk - Watch MySQL and run the 'collect' program when some condition
+becomes true.
+
+=head1 SYNOPSIS
+
+Usage: pt-stalk [OPTION...]
+
+=head1 DESCRIPTION
+
+By default, it watches for a too-many-connections condition.
+This is a good script to run in a screen session.  It's separate from the
+'collect' script because that lets you change 'collect' without stopping
+and restarting this one.
+
+The name 'stalk' is because 'watch' is already taken, and 'stalk' is fun.
+
+=head1 AUTHORS
+
+Baron Schwartz, Justin Swanhart, and Fernando Ipar
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+Feedback and improvements are welcome.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+legal.pod (END) 
+
+=cut
+
+DOCUMENTATION
