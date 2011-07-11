@@ -3563,7 +3563,7 @@ Replace C<TOOL> with the name of any tool.
 The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
 To enable debugging and capture all output to a file, run the tool like:
 
-   PTDEBUG=1 $TOOL ... > FILE 2>&1
+   PTDEBUG=1 pt-log-player ... > FILE 2>&1
 
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
@@ -3575,7 +3575,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/$TOOL>.
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-log-player>.
 
 Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
 Include the following information in your bug report:
