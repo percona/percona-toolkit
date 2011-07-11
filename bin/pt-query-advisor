@@ -6687,7 +6687,7 @@ very long) loop when parsing very large queries.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.maatkit.org/bugs/pt-query-advisor>.
+L<http://www.percona.com/bugs/pt-query-advisor>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
