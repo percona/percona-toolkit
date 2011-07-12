@@ -16,7 +16,7 @@ use EventAggregator;
 use QueryRewriter;
 use ReportFormatter;
 use UpgradeReportFormatter;
-use MaatkitTest;
+use PerconaTest;
 
 my $result;
 my $expected;

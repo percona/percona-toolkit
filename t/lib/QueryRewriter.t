@@ -14,7 +14,7 @@ use Test::More tests => 266;
 
 use QueryRewriter;
 use QueryParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $qp = new QueryParser();
 my $qr = new QueryRewriter(QueryParser=>$qp);

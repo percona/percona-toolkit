@@ -19,7 +19,7 @@ use Sandbox;
 use OptionParser;
 use MySQLDump;
 use TableParser;
-use MaatkitTest;
+use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 

@@ -14,7 +14,7 @@ use Test::More tests => 16;
 use TcpdumpParser;
 use ProtocolParser;
 use HTTPProtocolParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $tcpdump  = new TcpdumpParser();
 my $protocol; # Create a new HTTPProtocolParser for each test.

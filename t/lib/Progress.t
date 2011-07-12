@@ -14,7 +14,7 @@ use Test::More tests => 29;
 
 use Transformers;
 use Progress;
-use MaatkitTest;
+use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 

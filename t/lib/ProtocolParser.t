@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 1;
 
 use ProtocolParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $protocol = new ProtocolParser();
 isa_ok($protocol, 'ProtocolParser');

@@ -15,7 +15,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 49;
 
 use Transformers;
-use MaatkitTest;
+use PerconaTest;
 
 Transformers->import( qw(parse_timestamp micro_t shorten secs_to_time
    time_to_secs percentage_of unix_timestamp make_checksum any_unix_timestamp

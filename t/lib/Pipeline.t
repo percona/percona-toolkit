@@ -13,7 +13,7 @@ use Test::More tests => 10;
 
 use Time::HiRes qw(usleep);
 
-use MaatkitTest;
+use PerconaTest;
 use Pipeline;
 
 my $output  = '';

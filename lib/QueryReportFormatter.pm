@@ -15,7 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# QueryReportFormatter package $Revision: 7274 $
+# QueryReportFormatter package
 # ###########################################################################
 {
 # Package: QueryReportFormatter

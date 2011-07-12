@@ -12,7 +12,7 @@ use warnings FATAL => 'all';
 use Test::More tests => 137;
 use English qw(-no_match_vars);
 
-use MaatkitTest;
+use PerconaTest;
 use SQLParser;
 
 use Data::Dumper;

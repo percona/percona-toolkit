@@ -15,7 +15,7 @@ use English qw(-no_match_vars);
 
 use QueryRewriter;
 use QueryParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $qp = new QueryParser;
 my $qr = new QueryRewriter( QueryParser => $qp );

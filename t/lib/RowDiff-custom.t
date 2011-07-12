@@ -7,9 +7,9 @@ BEGIN {
 };
 
 # RowDiff-custom.t tests some of the basic RowDiff functionalities
-# as RowDiff.t but uses a different Perl lib if the MK_PERL_LIB
+# as RowDiff.t but uses a different Perl lib if the PT_PERL_LIB
 # environment var is set. This allows us to test these functionalities
-# against custom versions of DBI, DBD::mysql, etc. If MK_PERL_LIB
+# against custom versions of DBI, DBD::mysql, etc. If PT_PERL_LIB
 # is not set, then all these tests are skipped.
 
 package MockSync;
@@ -46,11 +46,11 @@ sub key_cols {
 package main;
 
 BEGIN {
-   if ( defined $ENV{MK_PERL_LIB} ) {
-      die "The MK_PERL_LIB environment variable is not a valid directory: "
-         . $ENV{MK_PERL_LIB} unless -d $ENV{MK_PERL_LIB};
-      print "# Using Perl lib $ENV{MK_PERL_LIB}\n";
-      use lib ($ENV{MK_PERL_LIB} ? "$ENV{MK_PERL_LIB}" : ());
+   if ( defined $ENV{PT_PERL_LIB} ) {
+      die "The PT_PERL_LIB environment variable is not a valid directory: "
+         . $ENV{PT_PERL_LIB} unless -d $ENV{PT_PERL_LIB};
+      print "# Using Perl lib $ENV{PT_PERL_LIB}\n";
+      use lib ($ENV{PT_PERL_LIB} ? "$ENV{PT_PERL_LIB}" : ());
    }
 };
 
@@ -61,10 +61,10 @@ use Test::More;
 use English qw(-no_match_vars);
 use DBI;
 use DBD::mysql;  # so we can print $DBD::mysql::VERSION
-use MaatkitTest;
+use PerconaTest;
 
-plan skip_all => "MK_PERL_LIB env var is not set", 4
-   unless defined $ENV{MK_PERL_LIB};
+plan skip_all => "PT_PERL_LIB env var is not set", 4
+   unless defined $ENV{PT_PERL_LIB};
 
 print "# DBI v$DBI::VERSION\n"
    . "# DBD::mysql v$DBD::mysql::VERSION\n";

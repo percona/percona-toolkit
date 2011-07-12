@@ -19,7 +19,7 @@ use DSNParser;
 use Transformers;
 use QueryRewriter;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;

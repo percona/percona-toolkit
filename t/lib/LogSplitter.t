@@ -13,7 +13,7 @@ use Test::More tests => 23;
 
 use LogSplitter;
 use SlowLogParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $output;
 my $tmpdir = '/tmp/LogSplitter';

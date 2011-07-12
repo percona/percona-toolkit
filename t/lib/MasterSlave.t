@@ -15,7 +15,7 @@ use MasterSlave;
 use DSNParser;
 use VersionParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 
 my $vp = new VersionParser();
 my $ms = new MasterSlave(VersionParser => $vp);

@@ -30,7 +30,7 @@ use Transformers;
 use Retry;
 use Sandbox;
 use CompareResults;
-use MaatkitTest;
+use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -136,7 +136,7 @@ isa_ok($cr, 'CompareResults');
 );
 
 $i = 0;
-MaatkitTest::wait_until(
+PerconaTest::wait_until(
    sub {
       my $r;
       eval {
@@ -355,7 +355,7 @@ isa_ok($cr, 'CompareResults');
 );
 
 $i = 0;
-MaatkitTest::wait_until(
+PerconaTest::wait_until(
    sub {
       my $r;
       eval {

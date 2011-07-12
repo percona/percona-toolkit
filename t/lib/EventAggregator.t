@@ -17,7 +17,7 @@ use QueryParser;
 use SlowLogParser;
 use BinaryLogParser;
 use Transformers;
-use MaatkitTest;
+use PerconaTest;
 
 my $qr = new QueryRewriter();
 my $qp = new QueryParser();

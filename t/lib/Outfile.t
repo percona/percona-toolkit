@@ -14,7 +14,7 @@ use Test::More tests => 1;
 use Outfile;
 use DSNParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 
 # This is just for grabbing stuff from fetchrow_arrayref()
 # instead of writing test rows by hand.

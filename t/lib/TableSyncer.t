@@ -34,7 +34,7 @@ use MySQLDump;
 use TableParser;
 use DSNParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 

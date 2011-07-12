@@ -15,7 +15,7 @@ use PodParser;
 use AdvisorRules;
 use VariableAdvisorRules;
 use Advisor;
-use MaatkitTest;
+use PerconaTest;
 
 my $p   = new PodParser();
 my $var = new VariableAdvisorRules(PodParser => $p);

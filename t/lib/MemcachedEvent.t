@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 15;
 
 use MemcachedEvent;
-use MaatkitTest;
+use PerconaTest;
 
 my $memce = new MemcachedEvent();
 isa_ok($memce, 'MemcachedEvent');

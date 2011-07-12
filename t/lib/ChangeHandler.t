@@ -15,7 +15,7 @@ use ChangeHandler;
 use Quoter;
 use DSNParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 
 my $dp  = new DSNParser(opts => $dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -463,7 +463,7 @@ $ch->process_rows(1, "trace");
 
 is_deeply(
    \@rows,
-   ["INSERT INTO `test`.`foo`(`a`, `b`) VALUES ('1', '2') /*maatkit trace*/",],
+   ["INSERT INTO `test`.`foo`(`a`, `b`) VALUES ('1', '2') /*percona-toolkit trace*/",],
    "process_rows() appends trace msg to SQL statements"
 );
 

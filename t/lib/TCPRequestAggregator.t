@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 5;
 
 use TCPRequestAggregator;
-use MaatkitTest;
+use PerconaTest;
 
 my $in = "t/lib/samples/simple-tcprequests/";
 my $p;

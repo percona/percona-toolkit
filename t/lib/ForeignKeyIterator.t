@@ -19,7 +19,7 @@ use Quoter;
 use TableParser;
 use DSNParser;
 use OptionParser;
-use MaatkitTest;
+use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 

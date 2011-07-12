@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 7;
 
 use GeneralLogParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $p = new GeneralLogParser();
 

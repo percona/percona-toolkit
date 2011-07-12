@@ -18,7 +18,7 @@ use Quoter;
 use MySQLDump;
 use DSNParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);

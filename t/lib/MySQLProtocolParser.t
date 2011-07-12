@@ -13,7 +13,7 @@ use Test::More tests => 72;
 
 use MySQLProtocolParser;
 use TcpdumpParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $sample  = "t/lib/samples/tcpdump/";
 my $tcpdump = new TcpdumpParser();

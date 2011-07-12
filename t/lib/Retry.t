@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 14;
 
 use Retry;
-use MaatkitTest;
+use PerconaTest;
 
 my $success;
 my $failure;
