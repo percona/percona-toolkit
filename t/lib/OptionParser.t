@@ -1505,8 +1505,10 @@ $o->_parse_specs(
 
 is_deeply(
    [$o->get_defaults_files()],
-   ["/etc/maatkit/maatkit.conf", "/etc/maatkit/OptionParser.t.conf",
-      "$ENV{HOME}/.maatkit.conf", "$ENV{HOME}/.OptionParser.t.conf"],
+   ["/etc/percona-toolkit/percona-toolkit.conf",
+    "/etc/percona-toolkit/OptionParser.t.conf",
+    "$ENV{HOME}/.percona-toolkit.conf",
+    "$ENV{HOME}/.OptionParser.t.conf"],
    "default options files",
 );
 ok(!$o->got('config'), 'Did not got --config');
@@ -1976,8 +1978,8 @@ my %synop  = $o->_parse_synopsis();
 is_deeply(
    \%synop,
    {
-      usage       => "mk-archiver [OPTION...] --source DSN --where WHERE",
-      description => "mk-archiver nibbles records from a MySQL table.  The --source and --dest arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value from --source.",
+      usage       => "pt-archiver [OPTION...] --source DSN --where WHERE",
+      description => "pt-archiver nibbles records from a MySQL table.  The --source and --dest arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value from --source.",
    },
    "_parse_synopsis() gets usage and description"
 );
