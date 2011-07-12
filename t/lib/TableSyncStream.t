@@ -16,7 +16,7 @@ use Quoter;
 use MockSth;
 use RowDiff;
 use ChangeHandler;
-use MaatkitTest;
+use PerconaTest;
 
 my $q = new Quoter();
 my @rows;

@@ -16,7 +16,7 @@ use Quoter;
 use MockSth;
 use RowDiff;
 use ChangeHandler;
-use MaatkitTest;
+use PerconaTest;
 
 my $q = new Quoter();
 my $tbl_struct = { is_col => {} };  # fake tbl_struct

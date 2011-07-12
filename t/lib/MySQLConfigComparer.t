@@ -14,7 +14,7 @@ use Test::More tests => 16;
 use TextResultSetParser();
 use MySQLConfigComparer;
 use MySQLConfig;
-use MaatkitTest;
+use PerconaTest;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;

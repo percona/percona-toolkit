@@ -15,7 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# PodParser package $Revision: 7053 $
+# PodParser package
 # ###########################################################################
 {
 # Package: PodParser
@@ -62,7 +62,6 @@ sub new {
    my $self = {
       current_section => '',
       current_item    => '',
-      in_list         => 0,
       items           => {},  # keyed off SECTION
       magic           => {},  # keyed off SECTION->magic ident (without MAGIC_)
       magic_ident     => '',  # set when next para is a magic para
@@ -83,7 +82,7 @@ sub get_magic {
 sub parse_from_file {
    my ( $self, $file ) = @_;
    return unless $file;
-
+   MKDEBUG && _d('Parsing POD in', $file);
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    my $para;
@@ -99,7 +98,7 @@ sub parse_from_file {
          MKDEBUG && _d('cmd:', $cmd, 'name:', $name);
          $self->command($cmd, $name);
       }
-      else {
+      elsif ( $parse_items_from{$self->{current_section}} ) {
          $self->textblock($para);
       }
    }
@@ -113,17 +112,18 @@ sub command {
    my ( $self, $cmd, $name ) = @_;
    
    $name =~ s/\s+\Z//m;  # Remove \n and blank line after name.
-   
-   if  ( $cmd eq 'head1' && $parse_items_from{$name} ) {
+
+   if  ( $cmd eq 'head1' ) {
       MKDEBUG && _d('In section', $name);
       $self->{current_section} = $name;
-      $self->{items}->{$name}  = {};
    }
    elsif ( $cmd eq 'over' ) {
-      MKDEBUG && _d('Start items in', $self->{current_section});
-      $self->{in_list} = 1;
+      if ( $parse_items_from{$name} ) {
+         MKDEBUG && _d('Start items in', $self->{current_section});
+         $self->{items}->{$self->{current_section}} = {};
+      }
    }
-   elsif ( $cmd eq 'item' ) {
+   elsif ( $cmd eq 'item' && $parse_items_from{$self->{current_section}} ) {
       my $pat = $item_pattern_for{ $self->{current_section} };
       my ($item) = $name =~ m/$pat/;
       if ( $item ) {
@@ -137,13 +137,13 @@ sub command {
          warn "Item $name does not match $pat";
       }
    }
-   elsif ( $cmd eq '=back' ) {
-      MKDEBUG && _d('End items');
-      $self->{in_list} = 0;
+   elsif ( $cmd eq 'back' ) {
+      if ( $parse_items_from{$self->{current_section}} ) {
+         MKDEBUG && _d('End items in', $self->{current_section});
+      }
    }
    else {
       $self->{current_section} = '';
-      $self->{in_list}         = 0;
    }
    
    return;

@@ -12,11 +12,11 @@ use English qw(-no_match_vars);
 use Test::More tests => 32;
 
 use Processlist;
-use MaatkitTest;
+use PerconaTest;
 use TextResultSetParser;
 use Transformers;
 use MasterSlave;
-use MaatkitTest;
+use PerconaTest;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;

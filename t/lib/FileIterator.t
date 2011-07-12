@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 12;
 
 use FileIterator;
-use MaatkitTest;
+use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 

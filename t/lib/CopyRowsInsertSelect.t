@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 
 BEGIN {
-   die "The MAATKIT_WORKING_COPY environment variable is not set.  See http://code.google.com/p/maatkit/wiki/Testing"
-      unless $ENV{MAATKIT_WORKING_COPY} && -d $ENV{MAATKIT_WORKING_COPY};
-   unshift @INC, "$ENV{MAATKIT_WORKING_COPY}/common";
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
+      unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
+   unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 };
 
 use strict;
@@ -13,7 +13,7 @@ use Test::More;
 
 use DSNParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 use Progress;
 use Transformers;
 use Retry;
@@ -46,7 +46,7 @@ my $osc    = new CopyRowsInsertSelect(Retry => $rr);
 my $msg    = sub { print "$_[0]\n"; };
 my $output = "";
 
-$sb->load_file("master", "common/t/samples/osc/tbl001.sql");
+$sb->load_file("master", "t/lib/samples/osc/tbl001.sql");
 $dbh->do("USE osc");
 
 $osc->copy(
@@ -83,7 +83,7 @@ $output = output( sub {
 ok(
    no_diff(
       $output,
-      "common/t/samples/osc/copyins001.txt",
+      "t/lib/samples/osc/copyins001.txt",
       cmd_output => 1,
    ),
    "Prints 2 SQL statments for the 2 chunks"

@@ -1,4 +1,4 @@
-# This program is copyright 2007-2010 Baron Schwartz.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -14,7 +14,9 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
-
+# ###########################################################################
+# MockSync package
+# ###########################################################################
 {
 # Package: MockSync
 # MockSync simulates a table syncer module.  It's used by RowDiff.t.
@@ -56,3 +58,6 @@ sub key_cols {
 
 1;
 }
+# ###########################################################################
+# End MockSync package
+# ###########################################################################

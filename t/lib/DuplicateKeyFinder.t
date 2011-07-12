@@ -14,7 +14,7 @@ use Test::More tests => 37;
 use DuplicateKeyFinder;
 use Quoter;
 use TableParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $dk = new DuplicateKeyFinder();
 my $q  = new Quoter();

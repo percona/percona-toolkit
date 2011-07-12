@@ -1,5 +1,4 @@
-# This program is copyright 2011 Percona Inc.
-# This program is copyright 2007-2010 Baron Schwartz.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -16,7 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# ChangeHandler package $Revision: 6785 $
+# ChangeHandler package
 # ###########################################################################
 {
 # Package: ChangeHandler
@@ -260,7 +259,7 @@ sub process_rows {
                # ]
                $row    = shift @$rows;
                my $sql = $self->$func(@$row);
-               $sql   .= " /*maatkit $trace_msg*/" if $trace_msg;
+               $sql   .= " /*percona-toolkit $trace_msg*/" if $trace_msg;
                $self->_take_action($sql, $row->[2]);
             }
          }

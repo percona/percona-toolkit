@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 3;
 
 use VersionParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $vp = new VersionParser;
 

@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 1;
 
 use TimeSeriesTrender;
-use MaatkitTest;
+use PerconaTest;
 
 my $result;
 my $tst = new TimeSeriesTrender(

@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 31;
 
 use Quoter;
-use MaatkitTest;
+use PerconaTest;
 
 my $q = new Quoter;
 

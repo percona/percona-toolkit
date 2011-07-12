@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 87;
 
-use MaatkitTest;
+use PerconaTest;
 use PodParser;
 use AdvisorRules;
 use QueryAdvisorRules;

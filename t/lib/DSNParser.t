@@ -13,7 +13,7 @@ use Test::More tests => 27;
 
 use DSNParser;
 use OptionParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $opts = [
    {

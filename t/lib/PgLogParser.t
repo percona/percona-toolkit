@@ -13,7 +13,7 @@ use Test::More tests => 41;
 
 use PgLogParser;
 use SysLogParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $p = new PgLogParser;
 

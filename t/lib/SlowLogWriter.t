@@ -13,7 +13,7 @@ use Test::More tests => 4;
 
 use SlowLogParser;
 use SlowLogWriter;
-use MaatkitTest;
+use PerconaTest;
 
 my $p = new SlowLogParser;
 my $w = new SlowLogWriter;

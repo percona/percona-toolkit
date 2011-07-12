@@ -13,7 +13,7 @@ use Test::More tests => 28;
 
 use MemcachedProtocolParser;
 use TcpdumpParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $tcpdump  = new TcpdumpParser();
 my $protocol; # Create a new MemcachedProtocolParser for each test.

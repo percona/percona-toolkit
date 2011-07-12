@@ -13,7 +13,7 @@ use Test::More tests => 22;
 
 use Transformers;
 use ReportFormatter;
-use MaatkitTest;
+use PerconaTest;
 
 my $rf = new ReportFormatter();
 isa_ok($rf, 'ReportFormatter');

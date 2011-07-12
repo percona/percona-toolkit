@@ -13,7 +13,7 @@ use Test::More tests => 151;
 
 use OptionParser;
 use DSNParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $o  = new OptionParser(
    description  => 'OptionParser.t parses command line options.',

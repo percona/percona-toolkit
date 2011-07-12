@@ -14,7 +14,7 @@ use Test::More tests => 24;
 use TableParser;
 use TableNibbler;
 use Quoter;
-use MaatkitTest;
+use PerconaTest;
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);

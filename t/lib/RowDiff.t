@@ -19,7 +19,7 @@ use DSNParser;
 use TableParser;
 use MySQLDump;
 use Quoter;
-use MaatkitTest;
+use PerconaTest;
 
 my ($d, $s);
 
@@ -449,7 +449,7 @@ SKIP: {
    diag(`$trunk/sandbox/mk-test-env reset >/dev/null 2>&1`);
    $sb->create_dbs($master_dbh, [qw(test)]);
    $sb->load_file('master', 't/lib/samples/issue_11.sql');
-   MaatkitTest::wait_until(
+   PerconaTest::wait_until(
       sub {
          my $r;
          eval {

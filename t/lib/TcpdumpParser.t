@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 7;
 
 use TcpdumpParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $sample = "t/lib/samples/tcpdump/";
 my $p = new TcpdumpParser();

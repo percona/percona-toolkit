@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 2;
 
 use InnoDBStatusParser;
-use MaatkitTest;
+use PerconaTest;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;

@@ -16,7 +16,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use MaatkitTest;
+use PerconaTest;
 use Quoter;
 use TableParser;
 use FileIterator;

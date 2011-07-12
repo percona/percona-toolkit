@@ -13,7 +13,7 @@ use Test::More tests => 23;
 
 use Daemon;
 use OptionParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
 my $d = new Daemon(o=>$o);

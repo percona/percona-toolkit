@@ -25,7 +25,7 @@ use VersionParser;
 use MasterSlave;
 use Retry;
 use TableSyncer;
-use MaatkitTest;
+use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);

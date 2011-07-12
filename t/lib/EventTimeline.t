@@ -14,7 +14,7 @@ use Test::More tests => 3;
 use Transformers;
 use QueryRewriter;
 use EventTimeline;
-use MaatkitTest;
+use PerconaTest;
 
 my $qr = new QueryRewriter();
 my ( $result, $events, $et, $expected );

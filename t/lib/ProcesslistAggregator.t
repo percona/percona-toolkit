@@ -17,7 +17,7 @@ use DSNParser;
 use MySQLDump;
 use Quoter;
 use TableParser;
-use MaatkitTest;
+use PerconaTest;
 
 my $r   = new TextResultSetParser();
 my $apl = new ProcesslistAggregator();

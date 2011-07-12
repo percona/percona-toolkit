@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 7;
 
-use MaatkitTest;
+use PerconaTest;
 use BinaryLogParser;
 
 my $p = new BinaryLogParser();

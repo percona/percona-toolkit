@@ -15,7 +15,7 @@ use MockSyncStream;
 use Quoter;
 use MockSth;
 use RowDiff;
-use MaatkitTest;
+use PerconaTest;
 
 my $rd = new RowDiff( dbh => 1 );
 my @rows;

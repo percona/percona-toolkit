@@ -13,7 +13,7 @@ use Test::More;
 
 use DSNParser;
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 use OSCCaptureSync;
 
 use Data::Dumper;
