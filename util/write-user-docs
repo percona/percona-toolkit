@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# Usage: write-user-docs [TOOL...]
+#
+# This script writes/updates a tool's user documentation.  First, pod2rst
+# is called to convert the tool's POD to RST.  Then sphinx-build is called
+# to convert the RST to HTML.
+#
+# RST files are written to docs/user/<tool>.rst, and HTML files are written
+# to docs/user/html/<tool>.html.
+#
+# If no tools are specified on the command line, then user docs for all Perl
+# tools in bin/ are written.
+#
+# If the env variable PERCONA_TOOLKIT_BRANCH is not set, then this script
+# must be called from a directory in a branch.
+#
+# Exits 0 on success, else 1 on warnings and errors.
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+exit_status=0
+
+die() {
+   echo "$1" >&2
+   exit 1
+}
+
+warn() {
+   echo "$1" >&2
+   exit_status=1
+}
+
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+   cd $BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+      exit 1
+   fi
+   BRANCH=`pwd`
+fi
+
+# ############################################################################
+# Paths
+# ############################################################################
+
+RST=$BRANCH/docs/user
+HTML=$BRANCH/docs/user/html
+CONFIG=$BRANCH/config/sphinx-build
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+write_rst() {
+   tool="$1"
+   if [ ! -f $tool ]; then
+      warn "Tool $tool does not exist"
+      return
+   fi
+
+   cat $tool | pod2rst --title=$tool > $RST/$tool.rst
+   exit_status=$(( exit_status | $? ))
+   echo "Wrote $RST/$tool.rst"
+}
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+cd $BRANCH/bin
+if [ -z $@ ]; then
+   for tool in *; do
+      if [ -n "$(head -n 1 $tool | grep perl)" ]; then
+         write_rst $tool
+      fi
+   done
+else
+   for tool; do
+      write_rst $tool
+   done
+fi
+
+# -W treats warnings as errors; remove it to ignore warnings if you must.
+sphinx-build -W -c $CONFIG -b html $RST $HTML
+exit_status=$(( exit_status | $? ))
+
+exit $exit_status
