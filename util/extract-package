@@ -23,15 +23,15 @@ fi
 # package tool_name from tool-name.
 perl_pkg=${pkg//-/_}
 
-pkg_start_byte=$(grep --byte-offset "^# Package: $perl_pkg$" $tool | cut -d':' -f1)
-if [ -z "$pkg_start_byte" ]; then
-   pkg_start_byte=$(grep --byte-offset "^package $perl_pkg;" $tool | cut -d':' -f1)
-   if [ -z "$pkg_start_byte" ]; then
+pkg_start_line=$(grep --line-number "^# Package: $perl_pkg$" $tool | cut -d':' -f1)
+if [ -z "$pkg_start_line" ]; then
+   pkg_start_line=$(grep --line-number "^package $perl_pkg;" $tool | cut -d':' -f1)
+   if [ -z "$pkg_start_line" ]; then
       die "Cannot find package $perl_pkg in $tool"
    fi
 fi
 
 # The package should end with a line that starts with 1;.
-tail -c +$pkg_start_byte $tool | awk '/^1;/ { exit } { print }'
+tail -n +$pkg_start_line $tool | awk '/^1;/ { print; exit; } { print }'
 
 exit $?
