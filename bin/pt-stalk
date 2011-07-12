@@ -184,7 +184,7 @@ and restarting this one.
 The name 'stalk' is because 'watch' is already taken, and 'stalk' is fun.
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

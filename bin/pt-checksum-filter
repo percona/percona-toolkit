@@ -1177,20 +1177,20 @@ exit $exit_status;
 
 =head1 NAME
 
-pt-checksum-filter - Filter checksums from mk-table-checksum.
+pt-checksum-filter - Filter checksums from pt-table-checksum.
 
 =head1 SYNOPSIS
 
 Usage: pt-checksum-filter [OPTION]... FILE
 
-pt-checksum-filter filters checksums from mk-table-checksum and prints those
+pt-checksum-filter filters checksums from pt-table-checksum and prints those
 that differ.  With no FILE, or when FILE is -, read standard input.
 
 Examples:
 
   pt-checksum-filter checksums.txt
 
-  mk-table-checksum host1 host2 | pt-checksum-filter
+  pt-table-checksum host1 host2 | pt-checksum-filter
 
   pt-checksum-filter db1-checksums.txt db2-checksums.txt --ignore-databases
 
@@ -1215,12 +1215,12 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-This program takes the unsorted, verbose output from L<mk-table-checksum> and
+This program takes the unsorted, verbose output from L<pt-table-checksum> and
 sorts it, then filters it so you only see lines that have different checksums
 or counts.
 
-You can pipe input directly into it from L<mk-table-checksum>, or you can
-save the mk-table-checksum's output and run pt-checksum-filter on the
+You can pipe input directly into it from L<pt-table-checksum>, or you can
+save the pt-table-checksum's output and run pt-checksum-filter on the
 resulting file(s).  If you run it against just one file, or pipe output
 directly into it, it'll output results during processing.  Processing multiple
 files is slightly more expensive, and you won't see any output until they're
@@ -1258,7 +1258,7 @@ input is processed.
 
 short form: -h
 
-Preserves headers output by mk-table-checksum.
+Preserves headers output by pt-table-checksum.
 
 =item --help
 
@@ -1302,7 +1302,7 @@ Show version and exit.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

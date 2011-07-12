@@ -1169,7 +1169,7 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-profile-compact - Compact the output from mk-query-profiler.
+pt-profile-compact - Compact the output from pt-query-profiler.
 
 =head1 SYNOPSIS
 
@@ -1207,7 +1207,7 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-profile-compact slices and aligns the output from mk-query-profiler
+pt-profile-compact slices and aligns the output from pt-query-profiler
 so you can compare profile results side by side easily.  It prints the first
 profile result intact, but each subsequent result is trimmed to be as narrow
 as possible, then aligned next to the first.
@@ -1222,7 +1222,7 @@ If the first profile it sees is labeled QUERY X, it will only look at QUERY
 profiles from then on.  The same holds for SUMMARY profiles.  This is because
 there are different numbers of lines in QUERY and SUMMARY profiles.  You can
 specify which kind of profile result you want to process.  See
-L<mk-query-profiler> for the full list of types.
+L<pt-query-profiler> for the full list of types.
 
 =head1 OPTIONS
 
@@ -1267,7 +1267,7 @@ Show version and exit.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

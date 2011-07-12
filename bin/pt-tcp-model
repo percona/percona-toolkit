@@ -2278,7 +2278,7 @@ you can do something like the following (the port must come last on FreeBSD):
 
   tcpdump -s 65535 -x -nn -q -tttt -i any -c 1000 port 3306 \
     > mysql.tcp.txt
-  mk-query-digest --type tcpdump mysql.tcp.txt
+  pt-query-digest --type tcpdump mysql.tcp.txt
 
 The other tcpdump parameters, such as -s, -c, and -i, are up to you.  Just make
 sure the output looks like this (there is a line break in the first line to
@@ -2319,7 +2319,7 @@ number.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

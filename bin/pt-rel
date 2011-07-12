@@ -85,7 +85,7 @@ The output will be
   RW-shared spins 14648, OS waits 882; RW-excl spins 13146
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

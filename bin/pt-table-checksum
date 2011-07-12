@@ -6593,7 +6593,7 @@ sub do_tbl_replicate {
    foreach my $warning ( @$warnings ) {
       if ( $warning->{message} =~ m/Data truncated for column 'boundaries'/ ) {
          _d("Warning: WHERE clause too large for boundaries column; ",
-            "mk-table-sync may fail; value:", $where);
+            "pt-table-sync may fail; value:", $where);
       }
       elsif ( ($warning->{code} || 0) == 1592 ) {
          # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -7133,7 +7133,7 @@ Or,
 
 Or,
 
-   pt-table-checksum host1 host2 ... hostN | mk-checksum-filter
+   pt-table-checksum host1 host2 ... hostN | pt-checksum-filter
 
 See L<"SPECIFYING HOSTS"> for more on the syntax of the host arguments.
 
@@ -7182,7 +7182,7 @@ on the same server, just checksum both databases:
 
    pt-table-checksum --databases db1,db2
 
-You can then use L<mk-checksum-filter> to compare the results in both databases
+You can then use L<pt-checksum-filter> to compare the results in both databases
 easily.
 
 pt-table-checksum examines table structure only on the first host specified,
@@ -7412,7 +7412,7 @@ Output is unsorted, though all lines for one table should be output together.
 For speed, all checksums are done in parallel (as much as possible) and may
 complete out of the order in which they were started.  You might want to run
 them through another script or command-line utility to make sure they are in the
-order you want.  If you pipe the output through L<mk-checksum-filter>, you
+order you want.  If you pipe the output through L<pt-checksum-filter>, you
 can sort the output and/or avoid seeing output about tables that have no
 differences.
 
@@ -8176,8 +8176,8 @@ L<"--replicate-check"> option, pt-table-checksum can run the query for you to
 make it even easier.  See L<"CONSISTENT CHECKSUMS"> for details.  
 
 If you find tables that have differences, you can use the chunk boundaries in a
-WHERE clause with L<mk-table-sync> to help repair them more efficiently.  See
-L<mk-table-sync> for details.
+WHERE clause with L<pt-table-sync> to help repair them more efficiently.  See
+L<pt-table-sync> for details.
 
 The table must have at least these columns: db, tbl, chunk, boundaries,
 this_crc, master_crc, this_cnt, master_cnt.  The table may be named anything you
@@ -8606,7 +8606,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<maatkit> manpage for full details.
+comma-separated.  See the L<percona-toolkit> manpage for full details.
 
 =over
 
@@ -8661,7 +8661,7 @@ User for login if not current user.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

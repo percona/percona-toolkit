@@ -4421,7 +4421,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-mk-achiver is a read-write tool.  It deletes data from the source by default, so
+pt-achiver is a read-write tool.  It deletes data from the source by default, so
 you should test your archiving jobs with the L<"--dry-run"> option if you're not
 sure about them.  It is designed to have as little impact on production systems
 as possible, but tuning with L<"--limit">, L<"--txn-size"> and similar options
@@ -4464,7 +4464,7 @@ rows.  Specifying the index with the 'i' part of the L<"--source"> argument can
 be crucial for this; use L<"--dry-run"> to examine the generated queries and be
 sure to EXPLAIN them to see if they are efficient (most of the time you probably
 want to scan the PRIMARY key, which is the default).  Even better, profile
-pt-archiver with mk-query-profiler and make sure it is not scanning the whole
+pt-archiver with pt-query-profiler and make sure it is not scanning the whole
 table every query.
 
 You can disable the seek-then-scan optimizations partially or wholly with
@@ -4853,7 +4853,7 @@ Pause archiving if the slave given by L<"--check-slave-lag"> lags.
 
 This option causes pt-archiver to look at the slave every time it's about
 to fetch another row.  If the slave's lag is greater than the option's value,
-or if the slave isn't running (so its lag is NULL), mk-table-checksum sleeps
+or if the slave isn't running (so its lag is NULL), pt-table-checksum sleeps
 for L<"--check-interval"> seconds and then looks at the lag again.  It repeats
 until the slave is caught up, then proceeds to fetch and archive the row.
 
@@ -5279,7 +5279,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<maatkit> manpage for full details.
+comma-separated.  See the L<percona-toolkit> manpage for full details.
 
 =over
 
@@ -5536,7 +5536,7 @@ A sample module might look like this:
    1;
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 
