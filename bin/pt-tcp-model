@@ -9,22 +9,22 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the BZR repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -74,9 +74,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1024,25 +1024,29 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# Transformers package 7226
+# Transformers package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the BZR repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
-# Transformers - Common transformation and beautification subroutines
+{
 package Transformers;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -1065,7 +1069,6 @@ our @EXPORT_OK   = qw(
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
 our $n_ts      = qr/(\d{1,5})([shmd]?)/; # Limit \d{1,5} because \d{6} looks
-                                         # like a MySQL YYMMDD without hh:mm:ss.
 
 sub micro_t {
    my ( $t, %args ) = @_;
@@ -1075,12 +1078,8 @@ sub micro_t {
 
    $t = 0 if $t < 0;
 
-   # "Remove" scientific notation so the regex below does not make
-   # 6.123456e+18 into 6.123456.
    $t = sprintf('%.17f', $t) if $t =~ /e/;
 
-   # Truncate after 6 decimal places to avoid 0.9999997 becoming 1
-   # because sprintf() rounds.
    $t =~ s/\.(\d{1,6})\d*/\.$1/;
 
    if ($t > 0 && $t <= 0.000999) {
@@ -1101,7 +1100,6 @@ sub micro_t {
    return $f;
 }
 
-# Returns what percentage $is of $of.
 sub percentage_of {
    my ( $is, $of, %args ) = @_;
    my $p   = $args{p} || 0; # float precision
@@ -1114,7 +1112,6 @@ sub secs_to_time {
    $secs ||= 0;
    return '00:00' unless $secs;
 
-   # Decide what format to use, if not given
    $fmt ||= $secs >= 86_400 ? 'd'
           : $secs >= 3_600  ? 'h'
           :                   'm';
@@ -1137,8 +1134,6 @@ sub secs_to_time {
          $secs % 60);
 }
 
-# Convert time values to number of seconds:
-# 1s = 1, 1m = 60, 1h = 3600, 1d = 86400.
 sub time_to_secs {
    my ( $val, $default_suffix ) = @_;
    die "I need a val argument" unless defined $val;
@@ -1176,8 +1171,6 @@ sub shorten {
       $num, $units[$n]);
 }
 
-# Turns a unix timestamp into an ISO8601 formatted date and time.  $gmt makes
-# this relative to GMT, for test determinism.
 sub ts {
    my ( $time, $gmt ) = @_;
    my ( $sec, $min, $hour, $mday, $mon, $year )
@@ -1194,8 +1187,6 @@ sub ts {
    return $val;
 }
 
-# Turns MySQL's 071015 21:43:52 into a properly formatted timestamp.  Also
-# handles a timestamp with fractions after it.
 sub parse_timestamp {
    my ( $val ) = @_;
    if ( my($y, $m, $d, $h, $i, $s, $f)
@@ -1208,9 +1199,6 @@ sub parse_timestamp {
    return $val;
 }
 
-# Turns a properly formatted timestamp like 2007-10-15 01:43:52
-# into an int (seconds since epoch).  Optional microseconds are printed.  $gmt
-# makes it use GMT time instead of local time (to make tests deterministic).
 sub unix_timestamp {
    my ( $val, $gmt ) = @_;
    if ( my($y, $m, $d, $h, $i, $s, $us) = $val =~ m/^$proper_ts$/ ) {
@@ -1226,15 +1214,6 @@ sub unix_timestamp {
    return $val;
 }
 
-# Turns several different types of timestamps into a unix timestamp.
-# Each type is auto-detected.  Supported types are:
-#   * N[shdm]                Now - N[shdm]
-#   * 071015 21:43:52        MySQL slow log timestamp
-#   * 2009-07-01 [3:43:01]   Proper timestamp with options HH:MM:SS
-#   * NOW()                  A MySQL time express
-# For the last type, the callback arg is required.  It is passed the
-# given value/expression and is expected to return a single value
-# (the result of the expression).
 sub any_unix_timestamp {
    my ( $val, $callback ) = @_;
 
@@ -1248,9 +1227,6 @@ sub any_unix_timestamp {
       return time - $n;
    }
    elsif ( $val =~ m/^\d{9,}/ ) {
-      # unix timestamp 100000000 is roughly March, 1973, so older
-      # dates won't be caught here; they'll probably be mistaken
-      # for a MySQL slow log timestamp.
       MKDEBUG && _d('ts is already a unix timestamp');
       return $val;
    }
@@ -1273,7 +1249,6 @@ sub any_unix_timestamp {
    return;
 }
 
-# Returns the rightmost 64 bits of an MD5 checksum of the value.
 sub make_checksum {
    my ( $val ) = @_;
    my $checksum = uc substr(md5_hex($val), -16);
@@ -1281,9 +1256,6 @@ sub make_checksum {
    return $checksum;
 }
 
-# Perl implementation of CRC32, ripped off from Digest::Crc32.  The results
-# ought to match what you get from any standard CRC32 implementation, such as
-# that inside MySQL.
 sub crc32 {
    my ( $string ) = @_;
    return unless $string;
@@ -1308,30 +1280,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Transformers package
 # ###########################################################################
 
 # ###########################################################################
-# Progress package 7096
+# Progress package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Progress.pm
-#   trunk/common/t/Progress.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the BZR repository at,
+#   lib/Progress.pm
+#   t/lib/Progress.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package Progress;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1454,30 +1421,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Progress package
 # ###########################################################################
 
 # ###########################################################################
-# FileIterator package 7096
+# FileIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/FileIterator.pm
-#   trunk/common/t/FileIterator.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the BZR repository at,
+#   lib/FileIterator.pm
+#   t/lib/FileIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package FileIterator;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1538,28 +1500,32 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End FileIterator package
 # ###########################################################################
 
 # ###########################################################################
-# SimpleTCPDumpParser package 7515
+# SimpleTCPDumpParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/SimpleTCPDumpParser.pm
-#   trunk/common/t/SimpleTCPDumpParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the BZR repository at,
+#   lib/SimpleTCPDumpParser.pm
+#   t/lib/SimpleTCPDumpParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package SimpleTCPDumpParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Time::Local qw(timelocal);
 use Data::Dumper;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1666,28 +1632,29 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End SimpleTCPDumpParser package
 # ###########################################################################
 
 # ###########################################################################
-# TCPRequestAggregator package 7515
+# TCPRequestAggregator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TCPRequestAggregator.pm
-#   trunk/common/t/TCPRequestAggregator.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the BZR repository at,
+#   lib/TCPRequestAggregator.pm
+#   t/lib/TCPRequestAggregator.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package TCPRequestAggregator;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use List::Util qw(sum);
 use Data::Dumper;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1893,7 +1860,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TCPRequestAggregator package
 # ###########################################################################

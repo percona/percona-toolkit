@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+exit_status=0
+
+die() {
+   echo $1  >&2
+   exit 1
+}
+
+warn() {
+   echo $1 >&2
+   exit_status=$((exit_status | 1))
+}
+
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+   fi
+   BRANCH=`pwd`
+fi
+
+# ############################################################################
+# Global variables
+# ############################################################################
+
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+file_is_modified() {
+   local file=$1
+   bzr status $file | grep -q modified
+}
+
+pkgs_in_tool() {
+   local tool=$1
+   pkgs=$(grep '^package [A-Za-z]*;' $tool | cut -d' ' -f2 | cut -d';' -f1)
+}
+
+replace_pkg_in_tool() {
+   local tool_file=$1
+   local tmp_file="$tool_file.tmp"
+
+   local pkg_start_line=$(grep -n "^# $pkg package" $tool_file | cut -d':' -f1)
+   if [ -z "$pkg_start_line" ]; then
+      warn "$tool does not use $pkg"
+      return 1
+   fi
+   pkg_start_line=$((pkg_start_line - 1))
+
+   local pkg_end_line=$(grep -n "^# End $pkg" $tool_file | cut -d':' -f1)
+   if [ -z "$pkg_end_line" ]; then
+      warn "Cannot find 'End $pkg' in $tool"
+      return 1
+   fi
+   pkg_end_line=$((pkg_end_line + 1))
+
+   head -n $pkg_start_line $tool_file > $tmp_file
+
+   echo "# $pkg package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the BZR repository at,
+#   lib/$pkg.pm
+#   t/lib/$pkg.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{" >> $tmp_file
+
+   $BRANCH/util/extract-package $pkg $pkg_file | grep -v '^ *#' >> $tmp_file
+
+   echo "}
+# ###########################################################################
+# End $pkg package" >> $tmp_file
+
+   tail -n +$pkg_end_line  $tool_file >> $tmp_file
+
+   mv $tmp_file $tool_file
+} 
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+tool_file=$1
+if [ -z "$tool_file" ]; then
+   die "Usage: $0 TOOL [MODULE...]"
+fi
+if [ ! -f $tool_file ]; then
+   die "$tool_file does not exist"
+fi
+
+tool=$(basename $tool_file)
+tmp_tool_file="/tmp/$tool.tmp";
+cp $tool_file $tmp_tool_file
+
+shift
+pkgs="$@"
+if [ -z "$pkgs" ]; then
+   pkgs_in_tool $tool_file
+fi
+
+pkgs_updated=0
+for pkg in $pkgs; do
+   pkg_file="$BRANCH/lib/$pkg.pm"
+   if [ ! -f $pkg_file ]; then
+      warn "$pkg_file does not exist"
+      continue
+   fi
+   if file_is_modified $pkg_file; then
+      warn "$pkg_file has uncommitted changes"
+      continue
+   fi
+
+   replace_pkg_in_tool $tmp_tool_file
+   if [ $? -eq 0 ]; then
+      echo "Updated $pkg"
+      pkgs_updated=$((pkgs_updated+1))
+   fi
+done
+
+if [ $pkgs_updated -ne 0 ]; then
+   cp $tmp_tool_file $tool_file
+   if [ $? -ne 0 ]; then
+      warn "Failed to copy $tmp_tool_file to $tool_file"
+   else
+      rm $tmp_tool_file > /dev/null
+      exit_status=$((exit_status | $?))
+   fi
+fi
+
+exit $exit_status
