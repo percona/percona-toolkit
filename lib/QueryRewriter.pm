@@ -152,7 +152,7 @@ sub fingerprint {
       && return 'mysqldump';
    # Matches queries like REPLACE /*foo.bar:3/3*/ INTO checksum.checksum
    $query =~ m#/\*\w+\.\w+:[0-9]/[0-9]\*/#     # mk-table-checksum, etc query
-      && return 'maatkit';
+      && return 'percona-toolkit';
    # Administrator commands appear to be a comment, so return them as-is
    $query =~ m/\Aadministrator command: /
       && return $query;

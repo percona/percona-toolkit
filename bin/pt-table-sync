@@ -8933,7 +8933,7 @@ Make slave1 have the same data as its replication master:
 
   pt-table-sync --execute --sync-to-master slave1
 
-Resolve differences that L<mk-table-checksum> found on all slaves of master1:
+Resolve differences that L<pt-table-checksum> found on all slaves of master1:
 
   pt-table-sync --execute --replicate test.checksum master1
 
@@ -9031,11 +9031,11 @@ The default is to run without L<"--replicate"> which causes pt-table-sync
 to automatically find differences efficiently with one of several
 algorithms (see L<"ALGORITHMS">).  Alternatively, the value of
 L<"--replicate">, if specified, causes pt-table-sync to use the differences
-already found by having previously ran L<mk-table-checksum> with its own
+already found by having previously ran L<pt-table-checksum> with its own
 C<--replicate> option.  Strictly speaking, you don't need to use
 L<"--replicate"> because pt-table-sync can find differences, but many
 people use L<"--replicate"> if, for example, they checksum regularly
-using L<mk-table-checksum> then fix differences as needed with pt-table-sync.
+using L<pt-table-checksum> then fix differences as needed with pt-table-sync.
 If you're unsure, read each tool's documentation carefully and decide for
 yourself, or consult with an expert.
 
@@ -9179,7 +9179,7 @@ before.
 =item Nibble
 
 Finds an index and ascends the index in fixed-size nibbles of L<"--chunk-size">
-rows, using a non-backtracking algorithm (see L<mk-archiver> for more on this
+rows, using a non-backtracking algorithm (see L<pt-archiver> for more on this
 algorithm).  It is very similar to L<"Chunk">, but instead of pre-calculating
 the boundaries of each piece of the table based on index cardinality, it uses
 C<LIMIT> to define each nibble's upper limit, and the previous nibble's upper
@@ -9633,7 +9633,7 @@ The default is C<CRC32>.  Other good choices include C<MD5> and C<SHA1>.  If you
 have installed the C<FNV_64> user-defined function, C<pt-table-sync> will detect
 it and prefer to use it, because it is much faster than the built-ins.  You can
 also use MURMUR_HASH if you've installed that user-defined function.  Both of
-these are distributed with Maatkit.  See L<mk-table-checksum> for more
+these are distributed with Maatkit.  See L<pt-table-checksum> for more
 information and benchmarks.
 
 =item --help
@@ -9744,7 +9744,7 @@ value of L<"--lock">. See L<"--[no]transaction">.
 Lock the source and destination table, sync, then swap names.  This is useful as
 a less-blocking ALTER TABLE, once the tables are reasonably in sync with each
 other (which you may choose to accomplish via any number of means, including
-dump and reload or even something like L<mk-archiver>).  It requires exactly two
+dump and reload or even something like L<pt-archiver>).  It requires exactly two
 DSNs and assumes they are on the same server, so it does no waiting for
 replication or the like.  Tables are locked with LOCK TABLES.
 
@@ -9816,11 +9816,11 @@ Sync tables listed as different in this table.
 
 Specifies that C<pt-table-sync> should examine the specified table to find data
 that differs.  The table is exactly the same as the argument of the same name to
-L<mk-table-checksum>.  That is, it contains records of which tables (and ranges
+L<pt-table-checksum>.  That is, it contains records of which tables (and ranges
 of values) differ between the master and slave.
 
 For each table and range of values that shows differences between the master and
-slave, C<mk-table-checksum> will sync that table, with the appropriate C<WHERE>
+slave, C<pt-table-checksum> will sync that table, with the appropriate C<WHERE>
 clause, to its master.
 
 This automatically sets L<"--wait"> to 60 and causes changes to be made on the
@@ -9993,7 +9993,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<maatkit> manpage for full details.
+comma-separated.  See the L<percona-toolkit> manpage for full details.
 
 =over
 
@@ -10054,7 +10054,7 @@ User for login if not current user.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

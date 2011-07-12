@@ -206,7 +206,7 @@ Usage: pt-pmp [OPTION...]
 pt-pmp aggregates stack traces.
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

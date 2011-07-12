@@ -103,7 +103,7 @@ is(
       .q{ISNULL(`foo_base_foo_id`), ISNULL(`fooe_foo_id`)))) AS UNSIGNED)), 10, }
       .q{16)) AS crc FROM `foo`.`bar` USE INDEX (`PRIMARY`) WHERE }
       .q{(`id` >= 2166633); }),
-   'maatkit',
+   'percona-toolkit',
    'Fingerprints mk-table-checksum queries together',
 );
 

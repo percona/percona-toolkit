@@ -2341,76 +2341,6 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# MaatkitCommon package 7096
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/MaatkitCommon.pm
-#   trunk/common/t/MaatkitCommon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
-# ###########################################################################
-package MaatkitCommon;
-
-
-use strict;
-use warnings FATAL => 'all';
-
-use English qw(-no_match_vars);
-
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = qw();
-our @EXPORT_OK   = qw(
-   _d
-   get_number_of_cpus
-);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-sub get_number_of_cpus {
-   my ( $sys_info ) = @_;
-   my $n_cpus; 
-
-   my $cpuinfo;
-   if ( $sys_info || (open $cpuinfo, "<", "/proc/cpuinfo") ) {
-      local $INPUT_RECORD_SEPARATOR = undef;
-      my $contents = $sys_info || <$cpuinfo>;
-      MKDEBUG && _d('sys info:', $contents);
-      close $cpuinfo if $cpuinfo;
-      $n_cpus = scalar( map { $_ } $contents =~ m/(processor)/g );
-      MKDEBUG && _d('Got', $n_cpus, 'cpus from /proc/cpuinfo');
-      return $n_cpus if $n_cpus;
-   }
-
-
-   if ( $sys_info || ($OSNAME =~ m/freebsd/i) || ($OSNAME =~ m/darwin/i) ) { 
-      my $contents = $sys_info || `sysctl hw.ncpu`;
-      MKDEBUG && _d('sys info:', $contents);
-      ($n_cpus) = $contents =~ m/(\d)/ if $contents;
-      MKDEBUG && _d('Got', $n_cpus, 'cpus from sysctl hw.ncpu');
-      return $n_cpus if $n_cpus;
-   } 
-
-   $n_cpus ||= $ENV{NUMBER_OF_PROCESSORS};
-
-   return $n_cpus || 1; # There has to be at least 1 CPU.
-}
-
-1;
-
-# ###########################################################################
-# End MaatkitCommon package
-# ###########################################################################
-
-# ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -2658,7 +2588,7 @@ sub main {
          . $o->get('base-dir') . ' is not a directory');
    }
 
-   $o->set('threads', max(2, MaatkitCommon::get_number_of_cpus()))
+   $o->set('threads', max(2, get_number_of_cpus()))
       unless $o->got('threads');
 
    $o->set('verbose', 0) if $o->get('quiet');
@@ -3014,7 +2944,45 @@ sub warn_error {
       . "$warning\n";
    return;
 }
- 
+
+# Returns the number of CPUs.  If no sys info is given, then it's gotten
+# from /proc/cpuinfo, sysctl or whatever method will work.  If sys info
+# is given, then we try to parse the number of CPUs from it.  Passing in
+# $sys_info makes this code easy to test.
+sub get_number_of_cpus {
+   my ( $sys_info ) = @_;
+   my $n_cpus; 
+
+   # Try to read the number of CPUs in /proc/cpuinfo.
+   # This only works on GNU/Linux.
+   my $cpuinfo;
+   if ( $sys_info || (open $cpuinfo, "<", "/proc/cpuinfo") ) {
+      local $INPUT_RECORD_SEPARATOR = undef;
+      my $contents = $sys_info || <$cpuinfo>;
+      MKDEBUG && _d('sys info:', $contents);
+      close $cpuinfo if $cpuinfo;
+      $n_cpus = scalar( map { $_ } $contents =~ m/(processor)/g );
+      MKDEBUG && _d('Got', $n_cpus, 'cpus from /proc/cpuinfo');
+      return $n_cpus if $n_cpus;
+   }
+
+   # Alternatives to /proc/cpuinfo:
+
+   # FreeBSD and Mac OS X
+   if ( $sys_info || ($OSNAME =~ m/freebsd/i) || ($OSNAME =~ m/darwin/i) ) { 
+      my $contents = $sys_info || `sysctl hw.ncpu`;
+      MKDEBUG && _d('sys info:', $contents);
+      ($n_cpus) = $contents =~ m/(\d)/ if $contents;
+      MKDEBUG && _d('Got', $n_cpus, 'cpus from sysctl hw.ncpu');
+      return $n_cpus if $n_cpus;
+   } 
+
+   # Windows   
+   $n_cpus ||= $ENV{NUMBER_OF_PROCESSORS};
+
+   return $n_cpus || 1; # There has to be at least 1 CPU.
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -3054,9 +3022,9 @@ Play all those sessions on host1, save results in ./results:
 
   pt-log-player --play ./sessions --base-dir ./results h=host1
 
-Use L<mk-query-digest> to summarize the results:
+Use L<pt-query-digest> to summarize the results:
 
-  mk-query-digest ./results/*
+  pt-query-digest ./results/*
 
 =head1 RISKS
 
@@ -3100,7 +3068,7 @@ script on a production server!
 
 Each L<"--play"> thread writes its results to a separate file.  These result
 files are in slow log format so they can be aggregated and summarized with
-L<mk-query-digest>.  See L<"OUTPUT">.
+L<pt-query-digest>.  See L<"OUTPUT">.
 
 =head1 OUTPUT
 
@@ -3495,7 +3463,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<maatkit> manpage for full details.
+comma-separated.  See the L<percona-toolkit> manpage for full details.
 
 =over
 
@@ -3550,7 +3518,7 @@ User for login if not current user.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 

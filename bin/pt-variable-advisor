@@ -3454,7 +3454,7 @@ severity: warn
 This variable is set too high.  This is too long to wait before
 noticing that the connection to the master has failed and retrying.  This
 should probably be set to 60 seconds or less.  It is also a good idea to
-use mk-heartbeat to ensure that the connection does not appear to time out
+use pt-heartbeat to ensure that the connection does not appear to time out
 when the master is simply idle.
 
 =item slave_skip_errors
@@ -3464,7 +3464,7 @@ severity: crit
 You should not set this option.  If replication is having errors,
 you need to find and resolve the cause of that; it is likely that your
 slave's data is different from the master.  You can find out with
-mk-table-checksum.
+pt-table-checksum.
 
 =item sort_buffer_size-1
 
@@ -3752,7 +3752,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<maatkit> manpage for full details.
+comma-separated.  See the L<percona-toolkit> manpage for full details.
 
 =over
 
@@ -3807,7 +3807,7 @@ User for login if not current user.
 =back
 
 =head1 DOWNLOADING 
-      
+
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 
