@@ -9,22 +9,22 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -74,9 +74,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1024,26 +1024,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# VersionParser package 6667
+# VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/VersionParser.pm
-#   trunk/common/t/VersionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package VersionParser;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1108,20 +1107,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End VersionParser package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 7388
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package DSNParser;
 
 use strict;
@@ -1137,7 +1136,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1335,8 +1333,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -1465,29 +1463,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 6255
+# Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Daemon.pm
-#   trunk/common/t/Daemon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1652,26 +1649,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
 
 # ###########################################################################
-# Quoter package 6850
+# Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Quoter.pm
-#   trunk/common/t/Quoter.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1730,29 +1726,29 @@ sub join_quote {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Quoter package
 # ###########################################################################
 
 # ###########################################################################
-# Transformers package 7226
+# Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Transformers.pm
-#   trunk/common/t/Transformers.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Transformers;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -1986,31 +1982,31 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Transformers package
 # ###########################################################################
 
 # ###########################################################################
-# TableParser package 7156
+# TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TableParser.pm
-#   trunk/common/t/TableParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableParser.pm
+#   t/lib/TableParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package TableParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2302,6 +2298,7 @@ sub get_keys {
 
 sub get_fks {
    my ( $self, $ddl, $opts ) = @_;
+   my $q   = $self->{Quoter};
    my $fks = {};
 
    foreach my $fk (
@@ -2311,17 +2308,22 @@ sub get_fks {
       my ( $cols ) = $fk =~ m/FOREIGN KEY \(([^\)]+)\)/;
       my ( $parent, $parent_cols ) = $fk =~ m/REFERENCES (\S+) \(([^\)]+)\)/;
 
+      my ($db, $tbl) = $q->split_unquote($parent, $opts->{database});
+      my %parent_tbl = (tbl => $tbl);
+      $parent_tbl{db} = $db if $db;
+
       if ( $parent !~ m/\./ && $opts->{database} ) {
-         $parent = "`$opts->{database}`.$parent";
+         $parent = $q->quote($opts->{database}) . ".$parent";
       }
 
       $fks->{$name} = {
          name           => $name,
          colnames       => $cols,
          cols           => [ map { s/[ `]+//g; $_; } split(',', $cols) ],
-         parent_tbl     => $parent,
-         parent_colnames=> $parent_cols,
+         parent_tbl     => \%parent_tbl,
+         parent_tblname => $parent,
          parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
+         parent_colnames=> $parent_cols,
          ddl            => $fk,
       };
    }
@@ -2381,26 +2383,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TableParser package
 # ###########################################################################
 
 # ###########################################################################
-# MySQLDump package 6345
+# MySQLDump package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/MySQLDump.pm
-#   trunk/common/t/MySQLDump.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MySQLDump.pm
+#   t/lib/MySQLDump.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package MySQLDump;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 ( our $before = <<'EOF') =~ s/^   //gm;
@@ -2687,20 +2688,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MySQLDump package
 # ###########################################################################
 
 # ###########################################################################
-# TableChunker package 7169
+# TableChunker package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TableChunker.pm
-#   trunk/common/t/TableChunker.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableChunker.pm
+#   t/lib/TableChunker.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package TableChunker;
 
 use strict;
@@ -3620,30 +3621,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TableChunker package
 # ###########################################################################
 
 # ###########################################################################
-# Progress package 7096
+# Progress package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Progress.pm
-#   trunk/common/t/Progress.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Progress.pm
+#   t/lib/Progress.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package Progress;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -3766,20 +3762,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Progress package
 # ###########################################################################
 
 # ###########################################################################
-# OSCCaptureSync package 7463
+# OSCCaptureSync package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OSCCaptureSync.pm
-#   trunk/common/t/OSCCaptureSync.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OSCCaptureSync.pm
+#   t/lib/OSCCaptureSync.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OSCCaptureSync;
 
 use strict;
@@ -3884,20 +3880,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OSCCaptureSync package
 # ###########################################################################
 
 # ###########################################################################
-# CopyRowsInsertSelect package 7464
+# CopyRowsInsertSelect package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/CopyRowsInsertSelect.pm
-#   trunk/common/t/CopyRowsInsertSelect.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/CopyRowsInsertSelect.pm
+#   t/lib/CopyRowsInsertSelect.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package CopyRowsInsertSelect;
 
 use strict;
@@ -3996,20 +3992,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End CopyRowsInsertSelect package
 # ###########################################################################
 
 # ###########################################################################
-# Retry package 7465
+# Retry package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Retry.pm
-#   trunk/common/t/Retry.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Retry;
 
 use strict;
@@ -4080,7 +4076,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Retry package
 # ###########################################################################

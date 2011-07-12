@@ -11,7 +11,7 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
 # See https://launchpad.net/percona-toolkit for more information.

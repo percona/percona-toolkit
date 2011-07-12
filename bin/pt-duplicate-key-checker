@@ -9,20 +9,19 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# VersionParser package 6667
+# VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/VersionParser.pm
-#   trunk/common/t/VersionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package VersionParser;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -87,26 +86,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End VersionParser package
 # ###########################################################################
 
 # ###########################################################################
-# Quoter package 6850
+# Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Quoter.pm
-#   trunk/common/t/Quoter.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -165,31 +163,31 @@ sub join_quote {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Quoter package
 # ###########################################################################
 
 # ###########################################################################
-# TableParser package 7156
+# TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TableParser.pm
-#   trunk/common/t/TableParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableParser.pm
+#   t/lib/TableParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package TableParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -481,6 +479,7 @@ sub get_keys {
 
 sub get_fks {
    my ( $self, $ddl, $opts ) = @_;
+   my $q   = $self->{Quoter};
    my $fks = {};
 
    foreach my $fk (
@@ -490,17 +489,22 @@ sub get_fks {
       my ( $cols ) = $fk =~ m/FOREIGN KEY \(([^\)]+)\)/;
       my ( $parent, $parent_cols ) = $fk =~ m/REFERENCES (\S+) \(([^\)]+)\)/;
 
+      my ($db, $tbl) = $q->split_unquote($parent, $opts->{database});
+      my %parent_tbl = (tbl => $tbl);
+      $parent_tbl{db} = $db if $db;
+
       if ( $parent !~ m/\./ && $opts->{database} ) {
-         $parent = "`$opts->{database}`.$parent";
+         $parent = $q->quote($opts->{database}) . ".$parent";
       }
 
       $fks->{$name} = {
          name           => $name,
          colnames       => $cols,
          cols           => [ map { s/[ `]+//g; $_; } split(',', $cols) ],
-         parent_tbl     => $parent,
-         parent_colnames=> $parent_cols,
+         parent_tbl     => \%parent_tbl,
+         parent_tblname => $parent,
          parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
+         parent_colnames=> $parent_cols,
          ddl            => $fk,
       };
    }
@@ -560,26 +564,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TableParser package
 # ###########################################################################
 
 # ###########################################################################
-# MySQLDump package 6345
+# MySQLDump package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/MySQLDump.pm
-#   trunk/common/t/MySQLDump.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MySQLDump.pm
+#   t/lib/MySQLDump.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package MySQLDump;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 ( our $before = <<'EOF') =~ s/^   //gm;
@@ -866,20 +869,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MySQLDump package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 7388
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package DSNParser;
 
 use strict;
@@ -895,7 +898,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1093,8 +1095,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -1223,28 +1225,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -1294,9 +1296,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -2244,25 +2246,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# KeySize package 7096
+# KeySize package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/KeySize.pm
-#   trunk/common/t/KeySize.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/KeySize.pm
+#   t/lib/KeySize.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package KeySize;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -2379,27 +2381,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End KeySize package
 # ###########################################################################
 
 # ###########################################################################
-# DuplicateKeyFinder package 7147
+# DuplicateKeyFinder package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DuplicateKeyFinder.pm
-#   trunk/common/t/DuplicateKeyFinder.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DuplicateKeyFinder.pm
+#   t/lib/DuplicateKeyFinder.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package DuplicateKeyFinder;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
-use List::Util qw(min);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -2508,7 +2508,7 @@ sub get_duplicate_fks {
          my $i_pcols = join(',', sort @{$fks[$i]->{parent_cols}} );
          my $j_pcols = join(',', sort @{$fks[$j]->{parent_cols}} );
 
-         if ( $fks[$i]->{parent_tbl} eq $fks[$j]->{parent_tbl}
+         if ( $fks[$i]->{parent_tblname} eq $fks[$j]->{parent_tblname}
               && $i_cols  eq $j_cols
               && $i_pcols eq $j_pcols ) {
             my $dupe = {
@@ -2520,11 +2520,11 @@ sub get_duplicate_fks {
                duplicate_of_ddl  => $fks[$i]->{ddl},
                reason            =>
                     "FOREIGN KEY $fks[$j]->{name} ($fks[$j]->{colnames}) "
-                  . "REFERENCES $fks[$j]->{parent_tbl} "
+                  . "REFERENCES $fks[$j]->{parent_tblname} "
                   . "($fks[$j]->{parent_colnames}) "
                   . 'is a duplicate of '
                   . "FOREIGN KEY $fks[$i]->{name} ($fks[$i]->{colnames}) "
-                  . "REFERENCES $fks[$i]->{parent_tbl} "
+                  . "REFERENCES $fks[$i]->{parent_tblname} "
                   ."($fks[$i]->{parent_colnames})",
                dupe_type         => 'fk',
             };
@@ -2767,28 +2767,29 @@ sub _d {
 }
 
 1;
+}
 # ###########################################################################
 # End DuplicateKeyFinder package
 # ###########################################################################
 
 # ###########################################################################
-# Transformers package 7226
+# Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Transformers.pm
-#   trunk/common/t/Transformers.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Transformers;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -3022,29 +3023,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Transformers package
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 6255
+# Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Daemon.pm
-#   trunk/common/t/Daemon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -3209,302 +3209,382 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
 
 # ###########################################################################
-# SchemaIterator package 7141
+# SchemaIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/SchemaIterator.pm
-#   trunk/common/t/SchemaIterator.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/SchemaIterator.pm
+#   t/lib/SchemaIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package SchemaIterator;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+my $open_comment = qr{/\*!\d{5} };
+my $tbl_name     = qr{
+   CREATE\s+
+   (?:TEMPORARY\s+)?
+   TABLE\s+
+   (?:IF NOT EXISTS\s+)?
+   ([^\(]+)
+}x;
+
 
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter) ) {
+   my @required_args = qw(OptionParser Quoter);
+   foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+
+   my ($file_itr, $dbh) = @args{qw(file_itr dbh)};
+   die "I need either a dbh or file_itr argument"
+      if (!$dbh && !$file_itr) || ($dbh && $file_itr);
+
    my $self = {
       %args,
-      filter => undef,
-      dbs    => [],
+      filters => _make_filters(%args),
    };
+
    return bless $self, $class;
 }
 
-sub make_filter {
-   my ( $self, $o ) = @_;
-   my @lines = (
-      'sub {',
-      '   my ( $dbh, $db, $tbl ) = @_;',
-      '   my $engine = undef;',
-   );
-
-
-   my @permit_dbs = _make_filter('unless', '$db', $o->get('databases'))
-      if $o->has('databases');
-   my @reject_dbs = _make_filter('if', '$db', $o->get('ignore-databases'))
-      if $o->has('ignore-databases');
-   my @dbs_regex;
-   if ( $o->has('databases-regex') && (my $p = $o->get('databases-regex')) ) {
-      push @dbs_regex, "      return 0 unless \$db && (\$db =~ m/$p/o);";
-   }
-   my @reject_dbs_regex;
-   if ( $o->has('ignore-databases-regex')
-        && (my $p = $o->get('ignore-databases-regex')) ) {
-      push @reject_dbs_regex, "      return 0 if \$db && (\$db =~ m/$p/o);";
-   }
-   if ( @permit_dbs || @reject_dbs || @dbs_regex || @reject_dbs_regex ) {
-      push @lines,
-         '   if ( $db ) {',
-            (@permit_dbs        ? @permit_dbs       : ()),
-            (@reject_dbs        ? @reject_dbs       : ()),
-            (@dbs_regex         ? @dbs_regex        : ()),
-            (@reject_dbs_regex  ? @reject_dbs_regex : ()),
-         '   }';
-   }
-
-   if ( $o->has('tables') || $o->has('ignore-tables')
-        || $o->has('ignore-tables-regex') ) {
-
-      my $have_qtbl       = 0;
-      my $have_only_qtbls = 0;
-      my %qtbls;
-
-      my @permit_tbls;
-      my @permit_qtbls;
-      my %permit_qtbls;
-      if ( $o->get('tables') ) {
-         my %tbls;
-         map {
-            if ( $_ =~ m/\./ ) {
-               $permit_qtbls{$_} = 1;
-            }
-            else {
-               $tbls{$_} = 1;
-            }
-         } keys %{ $o->get('tables') };
-         @permit_tbls  = _make_filter('unless', '$tbl', \%tbls);
-         @permit_qtbls = _make_filter('unless', '$qtbl', \%permit_qtbls);
-
-         if ( @permit_qtbls ) {
-            push @lines,
-               '   my $qtbl   = ($db ? "$db." : "") . ($tbl ? $tbl : "");';
-            $have_qtbl = 1;
-         }
-      }
-
-      my @reject_tbls;
-      my @reject_qtbls;
-      my %reject_qtbls;
-      if ( $o->get('ignore-tables') ) {
-         my %tbls;
-         map {
-            if ( $_ =~ m/\./ ) {
-               $reject_qtbls{$_} = 1;
-            }
-            else {
-               $tbls{$_} = 1;
-            }
-         } keys %{ $o->get('ignore-tables') };
-         @reject_tbls= _make_filter('if', '$tbl', \%tbls);
-         @reject_qtbls = _make_filter('if', '$qtbl', \%reject_qtbls);
-
-         if ( @reject_qtbls && !$have_qtbl ) {
-            push @lines,
-               '   my $qtbl   = ($db ? "$db." : "") . ($tbl ? $tbl : "");';
-         }
-      }
-
-      if ( keys %permit_qtbls  && !@permit_dbs ) {
-         my $dbs = {};
-         map {
-            my ($db, undef) = split(/\./, $_);
-            $dbs->{$db} = 1;
-         } keys %permit_qtbls;
-         MKDEBUG && _d('Adding restriction "--databases',
-               (join(',', keys %$dbs) . '"'));
-         if ( keys %$dbs ) {
-            $o->set('databases', $dbs);
-            return $self->make_filter($o);
-         }
-      }
-
-      my @tbls_regex;
-      if ( $o->has('tables-regex') && (my $p = $o->get('tables-regex')) ) {
-         push @tbls_regex, "      return 0 unless \$tbl && (\$tbl =~ m/$p/o);";
-      }
-      my @reject_tbls_regex;
-      if ( $o->has('ignore-tables-regex')
-           && (my $p = $o->get('ignore-tables-regex')) ) {
-         push @reject_tbls_regex,
-            "      return 0 if \$tbl && (\$tbl =~ m/$p/o);";
-      }
-
-      my @get_eng;
-      my @permit_engs;
-      my @reject_engs;
-      if ( ($o->has('engines') && $o->get('engines'))
-           || ($o->has('ignore-engines') && $o->get('ignore-engines')) ) {
-         push @get_eng,
-            '      my $sql = "SHOW TABLE STATUS "',
-            '              . ($db ? "FROM `$db`" : "")',
-            '              . " LIKE \'$tbl\'";',
-            '      MKDEBUG && _d($sql);',
-            '      eval {',
-            '         $engine = $dbh->selectrow_hashref($sql)->{engine};',
-            '      };',
-            '      MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);',
-            '      MKDEBUG && _d($tbl, "uses engine", $engine);',
-            '      $engine = lc $engine if $engine;',
-         @permit_engs
-            = _make_filter('unless', '$engine', $o->get('engines'), 1);
-         @reject_engs
-            = _make_filter('if', '$engine', $o->get('ignore-engines'), 1)
-      }
-
-      if ( @permit_tbls || @permit_qtbls || @reject_tbls || @tbls_regex
-           || @reject_tbls_regex || @permit_engs || @reject_engs ) {
-         push @lines,
-            '   if ( $tbl ) {',
-               (@permit_tbls       ? @permit_tbls        : ()),
-               (@reject_tbls       ? @reject_tbls        : ()),
-               (@tbls_regex        ? @tbls_regex         : ()),
-               (@reject_tbls_regex ? @reject_tbls_regex  : ()),
-               (@permit_qtbls      ? @permit_qtbls       : ()),
-               (@reject_qtbls      ? @reject_qtbls       : ()),
-               (@get_eng           ? @get_eng            : ()),
-               (@permit_engs       ? @permit_engs        : ()),
-               (@reject_engs       ? @reject_engs        : ()),
-            '   }';
-      }
-   }
-
-   push @lines,
-      '   MKDEBUG && _d(\'Passes filters:\', $db, $tbl, $engine, $dbh);',
-      '   return 1;',  '}';
-
-   my $code = join("\n", @lines);
-   MKDEBUG && _d('filter sub:', $code);
-   my $filter_sub= eval $code
-      or die "Error compiling subroutine code:\n$code\n$EVAL_ERROR";
-
-   return $filter_sub;
-}
-
-sub set_filter {
-   my ( $self, $filter_sub ) = @_;
-   $self->{filter} = $filter_sub;
-   MKDEBUG && _d('Set filter sub');
-   return;
-}
-
-sub get_db_itr {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh);
+sub _make_filters {
+   my ( %args ) = @_;
+   my @required_args = qw(OptionParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh) = @args{@required_args};
+   my ($o, $q) = @args{@required_args};
 
-   my $filter = $self->{filter};
-   my @dbs;
-   eval {
+   my %filters;
+
+
+   my @simple_filters = qw(
+      databases         tables         engines
+      ignore-databases  ignore-tables  ignore-engines);
+   FILTER:
+   foreach my $filter ( @simple_filters ) {
+      if ( $o->has($filter) ) {
+         my $objs = $o->get($filter);
+         next FILTER unless $objs && scalar keys %$objs;
+         my $is_table = $filter =~ m/table/ ? 1 : 0;
+         foreach my $obj ( keys %$objs ) {
+            die "Undefined value for --$filter" unless $obj;
+            $obj = lc $obj;
+            if ( $is_table ) {
+               my ($db, $tbl) = $q->split_unquote($obj);
+               $db ||= '*';
+               MKDEBUG && _d('Filter', $filter, 'value:', $db, $tbl);
+               $filters{$filter}->{$tbl} = $db;
+            }
+            else { # database
+               MKDEBUG && _d('Filter', $filter, 'value:', $obj);
+               $filters{$filter}->{$obj} = 1;
+            }
+         }
+      }
+   }
+
+   my @regex_filters = qw(
+      databases-regex         tables-regex
+      ignore-databases-regex  ignore-tables-regex);
+   REGEX_FILTER:
+   foreach my $filter ( @regex_filters ) {
+      if ( $o->has($filter) ) {
+         my $pat = $o->get($filter);
+         next REGEX_FILTER unless $pat;
+         $filters{$filter} = qr/$pat/;
+         MKDEBUG && _d('Filter', $filter, 'value:', $filters{$filter});
+      }
+   }
+
+   MKDEBUG && _d('Schema object filters:', Dumper(\%filters));
+   return \%filters;
+}
+
+sub next_schema_object {
+   my ( $self ) = @_;
+
+   my $schema_obj;
+   if ( $self->{file_itr} ) {
+      $schema_obj= $self->_iterate_files();
+   }
+   else { # dbh
+      $schema_obj= $self->_iterate_dbh();
+   }
+
+   if ( $schema_obj ) {
+      if ( $schema_obj->{ddl} && $self->{TableParser} ) {
+         $schema_obj->{tbl_struct}
+            = $self->{TableParser}->parse($schema_obj->{ddl});
+      }
+
+      delete $schema_obj->{ddl} unless $self->{keep_ddl};
+
+      if ( my $schema = $self->{Schema} ) {
+         $schema->add_schema_object($schema_obj);
+      }
+   }
+
+   MKDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
+   return $schema_obj;
+}
+
+sub _iterate_files {
+   my ( $self ) = @_;
+
+   if ( !$self->{fh} ) {
+      my ($fh, $file) = $self->{file_itr}->();
+      if ( !$fh ) {
+         MKDEBUG && _d('No more files to iterate');
+         return;
+      }
+      $self->{fh}   = $fh;
+      $self->{file} = $file;
+   }
+   my $fh = $self->{fh};
+   MKDEBUG && _d('Getting next schema object from', $self->{file});
+
+   local $INPUT_RECORD_SEPARATOR = '';
+   CHUNK:
+   while (defined(my $chunk = <$fh>)) {
+      if ($chunk =~ m/Database: (\S+)/) {
+         my $db = $1; # XXX
+         $db =~ s/^`//;  # strip leading `
+         $db =~ s/`$//;  # and trailing `
+         if ( $self->database_is_allowed($db) ) {
+            $self->{db} = $db;
+         }
+      }
+      elsif ($self->{db} && $chunk =~ m/CREATE TABLE/) {
+         if ($chunk =~ m/DROP VIEW IF EXISTS/) {
+            MKDEBUG && _d('Table is a VIEW, skipping');
+            next CHUNK;
+         }
+
+         my ($tbl) = $chunk =~ m/$tbl_name/;
+         $tbl      =~ s/^\s*`//;
+         $tbl      =~ s/`\s*$//;
+         if ( $self->table_is_allowed($self->{db}, $tbl) ) {
+            my ($ddl) = $chunk =~ m/^(?:$open_comment)?(CREATE TABLE.+?;)$/ms;
+            if ( !$ddl ) {
+               warn "Failed to parse CREATE TABLE from\n" . $chunk;
+               next CHUNK;
+            }
+            $ddl =~ s/ \*\/;\Z/;/;  # remove end of version comment
+
+            my ($engine) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;   
+
+            if ( !$engine || $self->engine_is_allowed($engine) ) {
+               return {
+                  db  => $self->{db},
+                  tbl => $tbl,
+                  ddl => $ddl,
+               };
+            }
+         }
+      }
+   }  # CHUNK
+
+   MKDEBUG && _d('No more schema objects in', $self->{file});
+   close $self->{fh};
+   $self->{fh} = undef;
+
+   return $self->_iterate_files();
+}
+
+sub _iterate_dbh {
+   my ( $self ) = @_;
+   my $q   = $self->{Quoter};
+   my $dbh = $self->{dbh};
+   MKDEBUG && _d('Getting next schema object from dbh', $dbh);
+
+   if ( !defined $self->{dbs} ) {
       my $sql = 'SHOW DATABASES';
       MKDEBUG && _d($sql);
-      @dbs =  grep {
-         my $ok = $filter ? $filter->($dbh, $_, undef) : 1;
-         $ok = 0 if $_ =~ m/information_schema|performance_schema|lost\+found/;
-         $ok;
-      } @{ $dbh->selectcol_arrayref($sql) };
+      my @dbs = grep { $self->database_is_allowed($_) }
+                @{$dbh->selectcol_arrayref($sql)};
       MKDEBUG && _d('Found', scalar @dbs, 'databases');
-   };
-
-   MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-   my $iterator = sub {
-      return shift @dbs;
-   };
-
-   if (wantarray) {
-      return ($iterator, scalar @dbs);
+      $self->{dbs} = \@dbs;
    }
-   else {
-      return $iterator;
-   }
-}
 
-sub get_tbl_itr {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh db);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+   if ( !$self->{db} ) {
+      $self->{db} = shift @{$self->{dbs}};
+      MKDEBUG && _d('Next database:', $self->{db});
+      return unless $self->{db};
    }
-   my ($dbh, $db, $views) = @args{@required_args, 'views'};
 
-   my $filter = $self->{filter};
-   my @tbls;
-   if ( $db ) {
-      eval {
-         my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM '
-                 . $self->{Quoter}->quote($db);
+   if ( !defined $self->{tbls} ) {
+      my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
+      MKDEBUG && _d($sql);
+      my @tbls = map {
+         $_->[0];  # (tbl, type)
+      }
+      grep {
+         my ($tbl, $type) = @$_;
+         $self->table_is_allowed($self->{db}, $tbl)
+            && (!$type || ($type ne 'VIEW'));
+      }
+      @{$dbh->selectall_arrayref($sql)};
+      MKDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
+      $self->{tbls} = \@tbls;
+   }
+
+   while ( my $tbl = shift @{$self->{tbls}} ) {
+      my $engine;
+      if ( $self->{filters}->{'engines'}
+           || $self->{filters}->{'ignore-engines'} ) {
+         my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
+                 . " LIKE \'$tbl\'";
          MKDEBUG && _d($sql);
-         @tbls = map {
-            $_->[0]
+         $engine = $dbh->selectrow_hashref($sql)->{engine};
+         MKDEBUG && _d($tbl, 'uses', $engine, 'engine');
+      }
+
+
+      if ( !$engine || $self->engine_is_allowed($engine) ) {
+         my $ddl;
+         if ( my $du = $self->{MySQLDump} ) {
+            $ddl = $du->get_create_table($dbh, $q, $self->{db}, $tbl)->[1];
          }
-         grep {
-            my ($tbl, $type) = @$_;
-            my $ok = $filter ? $filter->($dbh, $db, $tbl) : 1;
-            if ( !$views ) {
-               $ok = 0 if ($type || '') eq 'VIEW';
-            }
-            $ok;
-         }
-         @{ $dbh->selectall_arrayref($sql) };
-         MKDEBUG && _d('Found', scalar @tbls, 'tables in', $db);
-      };
-      MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-   }
-   else {
-      MKDEBUG && _d('No db given so no tables');
+
+         return {
+            db  => $self->{db},
+            tbl => $tbl,
+            ddl => $ddl,
+         };
+      }
    }
 
-   my $iterator = sub {
-      return shift @tbls;
-   };
+   MKDEBUG && _d('No more tables in database', $self->{db});
+   $self->{db}   = undef;
+   $self->{tbls} = undef;
 
-   if ( wantarray ) {
-      return ($iterator, scalar @tbls);
-   }
-   else {
-      return $iterator;
-   }
+   return $self->_iterate_dbh();
 }
 
-sub _make_filter {
-   my ( $cond, $var_name, $objs, $lc ) = @_;
-   my @lines;
-   if ( scalar keys %$objs ) {
-      my $test = join(' || ',
-         map { "$var_name eq '" . ($lc ? lc $_ : $_) ."'" } keys %$objs);
-      push @lines, "      return 0 $cond $var_name && ($test);",
+sub database_is_allowed {
+   my ( $self, $db ) = @_;
+   die "I need a db argument" unless $db;
+
+   $db = lc $db;
+
+   my $filter = $self->{filters};
+
+   if ( $db =~ m/information_schema|performance_schema|lost\+found/ ) {
+      MKDEBUG && _d('Database', $db, 'is a system database, ignoring');
+      return 0;
    }
-   return @lines;
+
+   if ( $self->{filters}->{'ignore-databases'}->{$db} ) {
+      MKDEBUG && _d('Database', $db, 'is in --ignore-databases list');
+      return 0;
+   }
+
+   if ( $filter->{'ignore-databases-regex'}
+        && $db =~ $filter->{'ignore-databases-regex'} ) {
+      MKDEBUG && _d('Database', $db, 'matches --ignore-databases-regex');
+      return 0;
+   }
+
+   if ( $filter->{'databases'}
+        && !$filter->{'databases'}->{$db} ) {
+      MKDEBUG && _d('Database', $db, 'is not in --databases list, ignoring');
+      return 0;
+   }
+
+   if ( $filter->{'databases-regex'}
+        && $db !~ $filter->{'databases-regex'} ) {
+      MKDEBUG && _d('Database', $db, 'does not match --databases-regex, ignoring');
+      return 0;
+   }
+
+   return 1;
+}
+
+sub table_is_allowed {
+   my ( $self, $db, $tbl ) = @_;
+   die "I need a db argument"  unless $db;
+   die "I need a tbl argument" unless $tbl;
+
+   $db  = lc $db;
+   $tbl = lc $tbl;
+
+   my $filter = $self->{filters};
+
+   if ( $filter->{'ignore-tables'}->{$tbl}
+        && ($filter->{'ignore-tables'}->{$tbl} eq '*'
+            || $filter->{'ignore-tables'}->{$tbl} eq $db) ) {
+      MKDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
+      return 0;
+   }
+
+   if ( $filter->{'ignore-tables-regex'}
+        && $tbl =~ $filter->{'ignore-tables-regex'} ) {
+      MKDEBUG && _d('Table', $tbl, 'matches --ignore-tables-regex');
+      return 0;
+   }
+
+   if ( $filter->{'tables'}
+        && !$filter->{'tables'}->{$tbl} ) { 
+      MKDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
+      return 0;
+   }
+
+   if ( $filter->{'tables-regex'}
+        && $tbl !~ $filter->{'tables-regex'} ) {
+      MKDEBUG && _d('Table', $tbl, 'does not match --tables-regex, ignoring');
+      return 0;
+   }
+
+   if ( $filter->{'tables'}
+        && $filter->{'tables'}->{$tbl}
+        && $filter->{'tables'}->{$tbl} ne '*'
+        && $filter->{'tables'}->{$tbl} ne $db ) {
+      MKDEBUG && _d('Table', $tbl, 'is only allowed in database',
+         $filter->{'tables'}->{$tbl});
+      return 0;
+   }
+
+   return 1;
+}
+
+sub engine_is_allowed {
+   my ( $self, $engine ) = @_;
+   die "I need an engine argument" unless $engine;
+
+   $engine = lc $engine;
+
+   my $filter = $self->{filters};
+
+   if ( $filter->{'ignore-engines'}->{$engine} ) {
+      MKDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      return 0;
+   }
+
+   if ( $filter->{'engines'}
+        && !$filter->{'engines'}->{$engine} ) {
+      MKDEBUG && _d('Engine', $engine, 'is not in --engines list, ignoring');
+      return 0;
+   }
+
+   return 1;
 }
 
 sub _d {
@@ -3516,7 +3596,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End SchemaIterator package
 # ###########################################################################

@@ -11,7 +11,7 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 # ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/DSNParser.pm
 #   t/lib/DSNParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -367,7 +367,7 @@ sub _d {
 # ###########################################################################
 # MySQLDump package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/MySQLDump.pm
 #   t/lib/MySQLDump.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -672,7 +672,7 @@ sub _d {
 # ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableParser.pm
 #   t/lib/TableParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1073,7 +1073,7 @@ sub _d {
 # ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Quoter.pm
 #   t/lib/Quoter.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1150,7 +1150,7 @@ sub join_quote {
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -2171,7 +2171,7 @@ sub _d {
 # ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Transformers.pm
 #   t/lib/Transformers.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -2427,7 +2427,7 @@ sub _d {
 # ###########################################################################
 # SlowLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/SlowLogParser.pm
 #   t/lib/SlowLogParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -2628,7 +2628,7 @@ sub _d {
 # ###########################################################################
 # EventAggregator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/EventAggregator.pm
 #   t/lib/EventAggregator.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -3582,7 +3582,7 @@ sub _d {
 # ###########################################################################
 # QueryParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/QueryParser.pm
 #   t/lib/QueryParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -3986,7 +3986,7 @@ sub _d {
 # ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/QueryRewriter.pm
 #   t/lib/QueryRewriter.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -4360,7 +4360,7 @@ sub _d {
 # ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Daemon.pm
 #   t/lib/Daemon.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -4546,7 +4546,7 @@ sub _d {
 # ###########################################################################
 # ChangeHandler package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/ChangeHandler.pm
 #   t/lib/ChangeHandler.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -4689,7 +4689,7 @@ sub process_rows {
             while ( @$rows ) {
                $row    = shift @$rows;
                my $sql = $self->$func(@$row);
-               $sql   .= " /*maatkit $trace_msg*/" if $trace_msg;
+               $sql   .= " /*percona-toolkit $trace_msg*/" if $trace_msg;
                $self->_take_action($sql, $row->[2]);
             }
          }
@@ -4869,7 +4869,7 @@ sub _d {
 # ###########################################################################
 # RowDiff package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/RowDiff.pm
 #   t/lib/RowDiff.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -5055,7 +5055,7 @@ sub _d {
 # ###########################################################################
 # TableChunker package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableChunker.pm
 #   t/lib/TableChunker.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -5988,7 +5988,7 @@ sub _d {
 # ###########################################################################
 # TableNibbler package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableNibbler.pm
 #   t/lib/TableNibbler.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -6247,7 +6247,7 @@ sub _d {
 # ###########################################################################
 # TableChecksum package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableChecksum.pm
 #   t/lib/TableChecksum.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -6630,7 +6630,7 @@ sub _d {
 # ###########################################################################
 # TableSyncer package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableSyncer.pm
 #   t/lib/TableSyncer.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -7143,7 +7143,7 @@ sub _d {
 # ###########################################################################
 # TableSyncChunk package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableSyncChunk.pm
 #   t/lib/TableSyncChunk.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -7447,7 +7447,7 @@ sub _d {
 # ###########################################################################
 # TableSyncNibble package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableSyncNibble.pm
 #   t/lib/TableSyncNibble.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -7808,7 +7808,7 @@ sub _d {
 # ###########################################################################
 # TableSyncGroupBy package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TableSyncGroupBy.pm
 #   t/lib/TableSyncGroupBy.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -7963,7 +7963,7 @@ sub _d {
 # ###########################################################################
 # Outfile package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Outfile.pm
 #   t/lib/Outfile.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -8016,7 +8016,7 @@ sub _d {
 # ###########################################################################
 # MockSyncStream package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/MockSyncStream.pm
 #   t/lib/MockSyncStream.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -8137,7 +8137,7 @@ sub _d {
 # ###########################################################################
 # MockSth package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/MockSth.pm
 #   t/lib/MockSth.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -8211,7 +8211,7 @@ sub _d {
 # ###########################################################################
 # VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/VersionParser.pm
 #   t/lib/VersionParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -8294,7 +8294,7 @@ sub _d {
 # ###########################################################################
 # ReportFormatter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/ReportFormatter.pm
 #   t/lib/ReportFormatter.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -8644,7 +8644,7 @@ sub _d {
 # ###########################################################################
 # UpgradeReportFormatter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/UpgradeReportFormatter.pm
 #   t/lib/UpgradeReportFormatter.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -8834,7 +8834,7 @@ sub _d {
 # ###########################################################################
 # CompareResults package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/CompareResults.pm
 #   t/lib/CompareResults.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -9684,7 +9684,7 @@ sub _d {
 # ###########################################################################
 # CompareQueryTimes package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/CompareQueryTimes.pm
 #   t/lib/CompareQueryTimes.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -9978,7 +9978,7 @@ sub _d {
 # ###########################################################################
 # CompareWarnings package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/CompareWarnings.pm
 #   t/lib/CompareWarnings.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -10360,7 +10360,7 @@ sub _d {
 # ###########################################################################
 # Retry package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Retry.pm
 #   t/lib/Retry.t
 # See https://launchpad.net/percona-toolkit for more information.

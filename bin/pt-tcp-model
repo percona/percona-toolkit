@@ -11,7 +11,7 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/OptionParser.pm
 #   t/lib/OptionParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1032,7 +1032,7 @@ sub _d {
 # ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Transformers.pm
 #   t/lib/Transformers.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1288,7 +1288,7 @@ sub _d {
 # ###########################################################################
 # Progress package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/Progress.pm
 #   t/lib/Progress.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1429,7 +1429,7 @@ sub _d {
 # ###########################################################################
 # FileIterator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/FileIterator.pm
 #   t/lib/FileIterator.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1508,7 +1508,7 @@ sub _d {
 # ###########################################################################
 # SimpleTCPDumpParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/SimpleTCPDumpParser.pm
 #   t/lib/SimpleTCPDumpParser.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -1640,7 +1640,7 @@ sub _d {
 # ###########################################################################
 # TCPRequestAggregator package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/TCPRequestAggregator.pm
 #   t/lib/TCPRequestAggregator.t
 # See https://launchpad.net/percona-toolkit for more information.

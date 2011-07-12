@@ -9,22 +9,22 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -74,9 +74,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1024,26 +1024,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# Quoter package 6850
+# Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Quoter.pm
-#   trunk/common/t/Quoter.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1102,24 +1101,27 @@ sub join_quote {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Quoter package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 6366
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package DSNParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
@@ -1128,8 +1130,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1306,7 +1306,7 @@ sub get_dbh {
       RaiseError         => 1,
       PrintError         => 0,
       ShowErrorStatement => 1,
-      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/ ? 1 : 0),
+      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
 
@@ -1327,8 +1327,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -1457,24 +1457,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 5266
+# Daemon package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1504,7 +1508,8 @@ sub daemonize {
       exit;
    }
 
-   $self->{child} = 1;
+   $self->{PID_owner} = $PID;
+   $self->{child}     = 1;
 
    POSIX::setsid() or die "Cannot start a new session: $OS_ERROR";
    chdir '/'       or die "Cannot chdir to /: $OS_ERROR";
@@ -1582,7 +1587,7 @@ sub make_PID_file {
       die "Do not call Daemon::make_PID_file() for daemonized scripts";
    }
    $self->_make_PID_file();
-   $self->{rm_PID_file} = 1;
+   $self->{PID_owner} = $PID;
    return;
 }
 
@@ -1623,7 +1628,9 @@ sub _remove_PID_file {
 
 sub DESTROY {
    my ( $self ) = @_;
-   $self->_remove_PID_file() if $self->{child} || $self->{rm_PID_file};
+
+   $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
+
    return;
 }
 
@@ -1636,24 +1643,29 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
 
 # ###########################################################################
-# Transformers package 5715
+# Transformers package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Transformers;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -1670,6 +1682,7 @@ our @EXPORT_OK   = qw(
    unix_timestamp
    any_unix_timestamp
    make_checksum
+   crc32
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -1799,7 +1812,7 @@ sub parse_timestamp {
          = $val =~ m/^$mysql_ts$/ )
    {
       return sprintf "%d-%02d-%02d %02d:%02d:"
-                     . (defined $f ? '%02.6f' : '%02d'),
+                     . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
    }
    return $val;
@@ -1862,6 +1875,21 @@ sub make_checksum {
    return $checksum;
 }
 
+sub crc32 {
+   my ( $string ) = @_;
+   return unless $string;
+   my $poly = 0xEDB88320;
+   my $crc  = 0xFFFFFFFF;
+   foreach my $char ( split(//, $string) ) {
+      my $comp = ($crc ^ ord($char)) & 0xFF;
+      for ( 1 .. 8 ) {
+         $comp = $comp & 1 ? $poly ^ ($comp >> 1) : $comp >> 1;
+      }
+      $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
+   }
+   return $crc ^ 0xFFFFFFFF;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -1871,7 +1899,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Transformers package
 # ###########################################################################
