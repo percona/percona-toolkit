@@ -2164,7 +2164,7 @@ sub fingerprint {
    $query =~ m#\ASELECT /\*!40001 SQL_NO_CACHE \*/ \* FROM `# # mysqldump query
       && return 'mysqldump';
    $query =~ m#/\*\w+\.\w+:[0-9]/[0-9]\*/#     # pt-table-checksum, etc query
-      && return 'maatkit';
+      && return 'percona-toolkit';
    $query =~ m/\Aadministrator command: /
       && return $query;
    $query =~ m/\A\s*(call\s+\S+)\(/i
