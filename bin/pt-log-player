@@ -9,22 +9,22 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -74,9 +74,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1024,27 +1024,31 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# SlowLogParser package 7522
+# SlowLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/SlowLogParser.pm
-#   trunk/common/t/SlowLogParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/SlowLogParser.pm
+#   t/lib/SlowLogParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package SlowLogParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Data::Dumper;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
 
 sub new {
    my ( $class ) = @_;
@@ -1221,20 +1225,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End SlowLogParser package
 # ###########################################################################
 
 # ###########################################################################
-# BinaryLogParser package 7522
+# BinaryLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/BinaryLogParser.pm
-#   trunk/common/t/BinaryLogParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/BinaryLogParser.pm
+#   t/lib/BinaryLogParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package BinaryLogParser;
 
 use strict;
@@ -1424,31 +1428,31 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End BinaryLogParser package
 # ###########################################################################
 
 # ###########################################################################
-# GeneralLogParser package 7522
+# GeneralLogParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/GeneralLogParser.pm
-#   trunk/common/t/GeneralLogParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/GeneralLogParser.pm
+#   t/lib/GeneralLogParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package GeneralLogParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class ) = @_;
@@ -1585,34 +1589,31 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End GeneralLogParser package
 # ###########################################################################
 
 # ###########################################################################
-# LogSplitter package 7177
+# LogSplitter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/LogSplitter.pm
-#   trunk/common/t/LogSplitter.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/LogSplitter.pm
+#   t/lib/LogSplitter.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package LogSplitter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG           => $ENV{MKDEBUG} || 0;
-use constant MAX_OPEN_FILES    => 1000;
-use constant CLOSE_N_LRU_FILES => 100;
 
 my $oktorun = 1;
 
@@ -1638,6 +1639,8 @@ sub new {
       session_files     => 64,
       quiet             => 0,
       verbose           => 0,
+      max_open_files    => 1_000,
+      close_lru_files   => 100,
       %args,
       n_dirs_total       => 0,  # total number of dirs created
       n_files_total      => 0,  # total number of session files created
@@ -1754,7 +1757,9 @@ sub _save_event {
          return;
       }
 
-      $self->_close_lru_session() if $self->{n_open_fhs} >= MAX_OPEN_FILES;
+      if ( $self->{n_open_fhs} >= $self->{max_open_files} ) {
+         $self->_close_lru_session()
+      }
 
       open my $fh, '>', $session_file
          or die "Cannot open session file $session_file: $OS_ERROR";
@@ -1773,7 +1778,9 @@ sub _save_event {
    }
    elsif ( !$session->{active} ) {
 
-      $self->_close_lru_session() if $self->{n_open_fhs} >= MAX_OPEN_FILES;
+      if ( $self->{n_open_fhs} >= $self->{max_open_files} ) {
+         $self->_close_lru_session();
+      }
 
        open $session->{fh}, '>>', $session->{session_file}
           or die "Cannot reopen session file "
@@ -1837,8 +1844,8 @@ sub _get_session_ds {
 sub _close_lru_session {
    my ( $self ) = @_;
    my $session_fhs = $self->{session_fhs};
-   my $lru_n       = $self->{n_sessions_saved} - MAX_OPEN_FILES - 1;
-   my $close_to_n  = $lru_n + CLOSE_N_LRU_FILES - 1;
+   my $lru_n       = $self->{n_sessions_saved} - $self->{max_open_files} - 1;
+   my $close_to_n  = $lru_n + $self->{close_lru_files} - 1;
 
    MKDEBUG && _d('Closing session fhs', $lru_n, '..', $close_to_n,
       '(',$self->{n_sessions}, 'sessions', $self->{n_open_fhs}, 'open fhs)');
@@ -1972,20 +1979,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End LogSplitter package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 7388
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package DSNParser;
 
 use strict;
@@ -2001,7 +2008,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2199,8 +2205,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -2329,7 +2335,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
@@ -2405,23 +2411,22 @@ sub get_number_of_cpus {
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 6255
+# Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Daemon.pm
-#   trunk/common/t/Daemon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2586,7 +2591,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################

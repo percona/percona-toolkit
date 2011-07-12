@@ -9,22 +9,22 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -74,9 +74,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1024,20 +1024,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 7388
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package DSNParser;
 
 use strict;
@@ -1053,7 +1053,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1251,8 +1250,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -1381,26 +1380,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# VersionParser package 6667
+# VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/VersionParser.pm
-#   trunk/common/t/VersionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package VersionParser;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1465,29 +1463,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End VersionParser package
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 6255
+# Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Daemon.pm
-#   trunk/common/t/Daemon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1652,26 +1649,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
 
 # ###########################################################################
-# PodParser package 7053
+# PodParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/PodParser.pm
-#   trunk/common/t/PodParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/PodParser.pm
+#   t/lib/PodParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package PodParser;
-
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 my %parse_items_from = (
@@ -1697,7 +1693,6 @@ sub new {
    my $self = {
       current_section => '',
       current_item    => '',
-      in_list         => 0,
       items           => {},  # keyed off SECTION
       magic           => {},  # keyed off SECTION->magic ident (without MAGIC_)
       magic_ident     => '',  # set when next para is a magic para
@@ -1718,7 +1713,7 @@ sub get_magic {
 sub parse_from_file {
    my ( $self, $file ) = @_;
    return unless $file;
-
+   MKDEBUG && _d('Parsing POD in', $file);
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    my $para;
@@ -1733,7 +1728,7 @@ sub parse_from_file {
          MKDEBUG && _d('cmd:', $cmd, 'name:', $name);
          $self->command($cmd, $name);
       }
-      else {
+      elsif ( $parse_items_from{$self->{current_section}} ) {
          $self->textblock($para);
       }
    }
@@ -1745,17 +1740,18 @@ sub command {
    my ( $self, $cmd, $name ) = @_;
    
    $name =~ s/\s+\Z//m;  # Remove \n and blank line after name.
-   
-   if  ( $cmd eq 'head1' && $parse_items_from{$name} ) {
+
+   if  ( $cmd eq 'head1' ) {
       MKDEBUG && _d('In section', $name);
       $self->{current_section} = $name;
-      $self->{items}->{$name}  = {};
    }
    elsif ( $cmd eq 'over' ) {
-      MKDEBUG && _d('Start items in', $self->{current_section});
-      $self->{in_list} = 1;
+      if ( $parse_items_from{$name} ) {
+         MKDEBUG && _d('Start items in', $self->{current_section});
+         $self->{items}->{$self->{current_section}} = {};
+      }
    }
-   elsif ( $cmd eq 'item' ) {
+   elsif ( $cmd eq 'item' && $parse_items_from{$self->{current_section}} ) {
       my $pat = $item_pattern_for{ $self->{current_section} };
       my ($item) = $name =~ m/$pat/;
       if ( $item ) {
@@ -1769,13 +1765,13 @@ sub command {
          warn "Item $name does not match $pat";
       }
    }
-   elsif ( $cmd eq '=back' ) {
-      MKDEBUG && _d('End items');
-      $self->{in_list} = 0;
+   elsif ( $cmd eq 'back' ) {
+      if ( $parse_items_from{$self->{current_section}} ) {
+         MKDEBUG && _d('End items in', $self->{current_section});
+      }
    }
    else {
       $self->{current_section} = '';
-      $self->{in_list}         = 0;
    }
    
    return;
@@ -1846,20 +1842,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End PodParser package
 # ###########################################################################
 
 # ###########################################################################
-# TextResultSetParser package 6898
+# TextResultSetParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TextResultSetParser.pm
-#   trunk/common/t/TextResultSetParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TextResultSetParser.pm
+#   t/lib/TextResultSetParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package TextResultSetParser;
 
 use strict;
@@ -1990,20 +1986,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TextResultSetParser package
 # ###########################################################################
 
 # ###########################################################################
-# Advisor package 6830
+# Advisor package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Advisor.pm
-#   trunk/common/t/Advisor.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Advisor.pm
+#   t/lib/Advisor.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Advisor;
 
 use strict;
@@ -2116,19 +2112,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Advisor package
 # ###########################################################################
 
 # ###########################################################################
-# AdvisorRules package 6813
+# AdvisorRules package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/AdvisorRules.pm
-#   trunk/common/t/AdvisorRules.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/AdvisorRules.pm
+#   t/lib/AdvisorRules.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package AdvisorRules;
 
 use strict;
@@ -2202,19 +2199,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End AdvisorRules package
 # ###########################################################################
 
 # ###########################################################################
-# VariableAdvisorRules package 6821
+# VariableAdvisorRules package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/VariableAdvisorRules.pm
-#   trunk/common/t/VariableAdvisorRules.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VariableAdvisorRules.pm
+#   t/lib/VariableAdvisorRules.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package VariableAdvisorRules;
 use base 'AdvisorRules';
 
@@ -2803,7 +2801,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End VariableAdvisorRules package
 # ###########################################################################

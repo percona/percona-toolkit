@@ -9,20 +9,19 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# Quoter package 6850
+# Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Quoter.pm
-#   trunk/common/t/Quoter.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -81,28 +80,28 @@ sub join_quote {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Quoter package
 # ###########################################################################
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -152,9 +151,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1102,26 +1101,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# VersionParser package 6667
+# VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/VersionParser.pm
-#   trunk/common/t/VersionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package VersionParser;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -1186,20 +1184,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End VersionParser package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 7388
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package DSNParser;
 
 use strict;
@@ -1215,7 +1213,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1413,8 +1410,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -1543,31 +1540,26 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# MasterSlave package 7525
+# MasterSlave package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/MasterSlave.pm
-#   trunk/common/t/MasterSlave.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MasterSlave.pm
+#   t/lib/MasterSlave.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package MasterSlave;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
-use List::Util qw(min max);
-use Data::Dumper;
-$Data::Dumper::Quotekeys = 0;
-$Data::Dumper::Indent    = 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1834,7 +1826,7 @@ sub get_master_status {
    MKDEBUG && _d($dbh, 'SHOW MASTER STATUS');
    $sth->execute();
    my ($ms) = @{$sth->fetchall_arrayref({})};
-   MKDEBUG && _d(Dumper($ms));
+   MKDEBUG && _d(@$ms);
 
    if ( !$ms || scalar keys %$ms < 2 ) {
       MKDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
@@ -1975,168 +1967,6 @@ sub catchup_to_same_pos {
       die "The servers aren't both stopped at the same position";
    }
 
-}
-
-sub change_master_to {
-   my ( $self, $dbh, $master_dsn, $master_pos ) = @_;
-   $self->stop_slave($dbh);
-   MKDEBUG && _d(Dumper($master_dsn), Dumper($master_pos));
-   my $sql = "CHANGE MASTER TO MASTER_HOST='$master_dsn->{h}', "
-      . "MASTER_PORT= $master_dsn->{P}, MASTER_LOG_FILE='$master_pos->{file}', "
-      . "MASTER_LOG_POS=$master_pos->{position}";
-   MKDEBUG && _d($dbh, $sql);
-   $dbh->do($sql);
-}
-
-sub make_sibling_of_master {
-   my ( $self, $slave_dbh, $slave_dsn, $dsn_parser, $timeout) = @_;
-
-   my $master_dsn  = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
-      or die "This server is not a slave";
-   my $master_dbh  = $dsn_parser->get_dbh(
-      $dsn_parser->get_cxn_params($master_dsn), { AutoCommit => 1 });
-   my $gmaster_dsn
-      = $self->get_master_dsn($master_dbh, $master_dsn, $dsn_parser)
-      or die "This server's master is not a slave";
-   my $gmaster_dbh = $dsn_parser->get_dbh(
-      $dsn_parser->get_cxn_params($gmaster_dsn), { AutoCommit => 1 });
-   if ( $self->short_host($slave_dsn) eq $self->short_host($gmaster_dsn) ) {
-      die "The slave's master's master is the slave: master-master replication";
-   }
-
-   $self->stop_slave($master_dbh);
-   $self->catchup_to_master($slave_dbh, $master_dbh, $timeout);
-   $self->stop_slave($slave_dbh);
-
-   my $master_status = $self->get_master_status($master_dbh);
-   my $mslave_status = $self->get_slave_status($master_dbh);
-   my $slave_status  = $self->get_slave_status($slave_dbh);
-   my $master_pos    = $self->repl_posn($master_status);
-   my $slave_pos     = $self->repl_posn($slave_status);
-
-   if ( !$self->slave_is_running($mslave_status)
-     && !$self->slave_is_running($slave_status)
-     && $self->pos_cmp($master_pos, $slave_pos) == 0)
-   {
-      $self->change_master_to($slave_dbh, $gmaster_dsn,
-         $self->repl_posn($mslave_status)); # Note it's not $master_pos!
-   }
-   else {
-      die "The servers aren't both stopped at the same position";
-   }
-
-   $mslave_status = $self->get_slave_status($master_dbh);
-   $slave_status  = $self->get_slave_status($slave_dbh);
-   my $mslave_pos = $self->repl_posn($mslave_status);
-   $slave_pos     = $self->repl_posn($slave_status);
-   if ( $self->short_host($mslave_status) ne $self->short_host($slave_status)
-     || $self->pos_cmp($mslave_pos, $slave_pos) != 0)
-   {
-      die "The servers don't have the same master/position after the change";
-   }
-}
-
-sub make_slave_of_sibling {
-   my ( $self, $slave_dbh, $slave_dsn, $sib_dbh, $sib_dsn,
-        $dsn_parser, $timeout) = @_;
-
-   if ( $self->short_host($slave_dsn) eq $self->short_host($sib_dsn) ) {
-      die "You are trying to make the slave a slave of itself";
-   }
-
-   my $master_dsn1 = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
-      or die "This server is not a slave";
-   my $master_dbh1 = $dsn_parser->get_dbh(
-      $dsn_parser->get_cxn_params($master_dsn1), { AutoCommit => 1 });
-   my $master_dsn2 = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
-      or die "The sibling is not a slave";
-   if ( $self->short_host($master_dsn1) ne $self->short_host($master_dsn2) ) {
-      die "This server isn't a sibling of the slave";
-   }
-   my $sib_master_stat = $self->get_master_status($sib_dbh)
-      or die "Binary logging is not enabled on the sibling";
-   die "The log_slave_updates option is not enabled on the sibling"
-      unless $self->has_slave_updates($sib_dbh);
-
-   $self->catchup_to_same_pos($slave_dbh, $sib_dbh);
-
-   $sib_master_stat = $self->get_master_status($sib_dbh);
-   $self->change_master_to($slave_dbh, $sib_dsn,
-         $self->repl_posn($sib_master_stat));
-
-   my $slave_status = $self->get_slave_status($slave_dbh);
-   my $slave_pos    = $self->repl_posn($slave_status);
-   $sib_master_stat = $self->get_master_status($sib_dbh);
-   if ( $self->short_host($slave_status) ne $self->short_host($sib_dsn)
-     || $self->pos_cmp($self->repl_posn($sib_master_stat), $slave_pos) != 0)
-   {
-      die "After changing the slave's master, it isn't a slave of the sibling, "
-         . "or it has a different replication position than the sibling";
-   }
-}
-
-sub make_slave_of_uncle {
-   my ( $self, $slave_dbh, $slave_dsn, $unc_dbh, $unc_dsn,
-        $dsn_parser, $timeout) = @_;
-
-   if ( $self->short_host($slave_dsn) eq $self->short_host($unc_dsn) ) {
-      die "You are trying to make the slave a slave of itself";
-   }
-
-   my $master_dsn = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
-      or die "This server is not a slave";
-   my $master_dbh = $dsn_parser->get_dbh(
-      $dsn_parser->get_cxn_params($master_dsn), { AutoCommit => 1 });
-   my $gmaster_dsn
-      = $self->get_master_dsn($master_dbh, $master_dsn, $dsn_parser)
-      or die "The master is not a slave";
-   my $unc_master_dsn
-      = $self->get_master_dsn($unc_dbh, $unc_dsn, $dsn_parser)
-      or die "The uncle is not a slave";
-   if ($self->short_host($gmaster_dsn) ne $self->short_host($unc_master_dsn)) {
-      die "The uncle isn't really the slave's uncle";
-   }
-
-   my $unc_master_stat = $self->get_master_status($unc_dbh)
-      or die "Binary logging is not enabled on the uncle";
-   die "The log_slave_updates option is not enabled on the uncle"
-      unless $self->has_slave_updates($unc_dbh);
-
-   $self->catchup_to_same_pos($master_dbh, $unc_dbh);
-   $self->catchup_to_master($slave_dbh, $master_dbh, $timeout);
-
-   my $slave_status  = $self->get_slave_status($slave_dbh);
-   my $master_status = $self->get_master_status($master_dbh);
-   if ( $self->pos_cmp(
-         $self->repl_posn($slave_status),
-         $self->repl_posn($master_status)) != 0 )
-   {
-      die "The slave is not caught up to its master";
-   }
-
-   $unc_master_stat = $self->get_master_status($unc_dbh);
-   $self->change_master_to($slave_dbh, $unc_dsn,
-      $self->repl_posn($unc_master_stat));
-
-
-   $slave_status    = $self->get_slave_status($slave_dbh);
-   my $slave_pos    = $self->repl_posn($slave_status);
-   if ( $self->short_host($slave_status) ne $self->short_host($unc_dsn)
-     || $self->pos_cmp($self->repl_posn($unc_master_stat), $slave_pos) != 0)
-   {
-      die "After changing the slave's master, it isn't a slave of the uncle, "
-         . "or it has a different replication position than the uncle";
-   }
-}
-
-sub detach_slave {
-   my ( $self, $dbh ) = @_;
-   $self->stop_slave($dbh);
-   my $stat = $self->get_slave_status($dbh)
-      or die "This server is not a slave";
-   $dbh->do('CHANGE MASTER TO MASTER_HOST=""');
-   $dbh->do('RESET SLAVE'); # Wipes out master.info, etc etc
-   return $stat;
 }
 
 sub slave_is_running {
@@ -2322,29 +2152,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MasterSlave package
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 6255
+# Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Daemon.pm
-#   trunk/common/t/Daemon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2509,7 +2338,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################

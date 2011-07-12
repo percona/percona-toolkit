@@ -58,7 +58,7 @@ replace_pkg_in_tool() {
    fi
    pkg_start_line=$((pkg_start_line - 1))
 
-   local pkg_end_line=$(grep -n "^# End $pkg" $tool_file | cut -d':' -f1)
+   local pkg_end_line=$(grep -n "^# End $pkg package" $tool_file | cut -d':' -f1)
    if [ -z "$pkg_end_line" ]; then
       warn "Cannot find 'End $pkg' in $tool"
       return 1
@@ -69,7 +69,7 @@ replace_pkg_in_tool() {
 
    echo "# $pkg package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the BZR repository at,
+# with comments and its test file can be found in the Bazaar repository at,
 #   lib/$pkg.pm
 #   t/lib/$pkg.t
 # See https://launchpad.net/percona-toolkit for more information.
@@ -98,6 +98,9 @@ fi
 if [ ! -f $tool_file ]; then
    die "$tool_file does not exist"
 fi
+if [ -z "$(head -n 1 $tool_file | grep perl)" ]; then
+   die "$tool_file is not a Perl tool"
+fi
 
 tool=$(basename $tool_file)
 tmp_tool_file="/tmp/$tool.tmp";
@@ -109,8 +112,13 @@ if [ -z "$pkgs" ]; then
    pkgs_in_tool $tool_file
 fi
 
+echo "Updating modules in $tool..."
 pkgs_updated=0
 for pkg in $pkgs; do
+   if [ "$pkg" == "main" ]; then
+      continue
+   fi
+
    pkg_file="$BRANCH/lib/$pkg.pm"
    if [ ! -f $pkg_file ]; then
       warn "$pkg_file does not exist"
@@ -119,7 +127,7 @@ for pkg in $pkgs; do
    if file_is_modified $pkg_file; then
       warn "$pkg_file has uncommitted changes"
       continue
-   fi
+   fi 
 
    replace_pkg_in_tool $tmp_tool_file
    if [ $? -eq 0 ]; then
