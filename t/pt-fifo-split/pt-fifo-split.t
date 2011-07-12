@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 4;
 
-use MaatkitTest;
+use PerconaTest;
 require "$trunk/bin/pt-fifo-split";
 
 unlink('/tmp/mk-fifo-split');

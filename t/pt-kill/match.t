@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 14;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
 my $dp = new DSNParser(opts=>$dsn_opts);

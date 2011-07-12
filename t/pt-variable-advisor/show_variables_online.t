@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 shift @INC;  # These shifts are required for tools that use base and derived
 shift @INC;  # classes.  See mk-query-digest/t/101_slowlog_analyses.t

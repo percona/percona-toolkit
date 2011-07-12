@@ -11,11 +11,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 1;
 
-use MaatkitTest;
+use PerconaTest;
 
 # See 101_slowlog_analyses.t or http://code.google.com/p/maatkit/wiki/Testing
 shift @INC;  # our unshift (above)
-shift @INC;  # MaatkitTest's unshift
+shift @INC;  # PerconaTest's unshift
 
 require "$trunk/bin/pt-query-digest";
 

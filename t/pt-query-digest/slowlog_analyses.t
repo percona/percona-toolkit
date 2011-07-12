@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 42;
 
-use MaatkitTest;
+use PerconaTest;
 
 # Normally we want $trunk/common in @INC so we can "use MaakitTest" and
 # other modules path-independently.  However, mk-query-digest uses
@@ -22,7 +22,7 @@ use MaatkitTest;
 # module in $trunk/common.  We remove $trunk/common from @INC so Perl won't
 # find/load it again.\n
 shift @INC;  # our unshift (above)
-shift @INC;  # MaatkitTest's unshift
+shift @INC;  # PerconaTest's unshift
 
 require "$trunk/bin/pt-query-digest";
 

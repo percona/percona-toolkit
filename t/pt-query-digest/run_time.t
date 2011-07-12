@@ -11,11 +11,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 use Time::HiRes qw(sleep);
 shift @INC;  # our unshift (above)
-shift @INC;  # MaatkitTest's unshift
+shift @INC;  # PerconaTest's unshift
 shift @INC;  # Sandbox's unshift
 require "$trunk/bin/pt-query-digest";
 

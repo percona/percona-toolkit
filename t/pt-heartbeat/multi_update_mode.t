@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-heartbeat";
 

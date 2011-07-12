@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
@@ -63,7 +63,7 @@ diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_533.sql`);
 # My box acts weird so I double check that this is ok.
 my $r;
 my $i = 0;
-MaatkitTest::wait_until(
+PerconaTest::wait_until(
    sub {
       eval {
          $r = $dbh3->selectrow_arrayref('SHOW TABLES FROM test');

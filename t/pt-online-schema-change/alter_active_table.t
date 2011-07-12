@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 use Time::HiRes qw(usleep);
 use Data::Dumper;

@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-slave-restart";
 
@@ -33,7 +33,7 @@ else {
 $sb->create_dbs($master_dbh, ['test']);
 $master_dbh->do('CREATE TABLE test.t (a INT)');
 my $i = 0;
-MaatkitTest::wait_until(
+PerconaTest::wait_until(
    sub {
       my $r;
       eval {

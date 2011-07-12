@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 4;
 
-use MaatkitTest;
+use PerconaTest;
 
 my $output  = "";
 my $cmd     = "$trunk/bin/pt-online-schema-change";

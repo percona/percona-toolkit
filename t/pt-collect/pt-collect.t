@@ -12,8 +12,12 @@ use English qw(-no_match_vars);
 use Test::More tests => 1;
 
 use PerconaTest;
-require "$trunk/bin/pt-trend";
-ok(1, 'dummy test');
+
+like(
+   `$trunk/bin/pt-collect --help`,
+   qr/Usage:/,
+   'It runs'
+);
 
 # #############################################################################
 # Done.

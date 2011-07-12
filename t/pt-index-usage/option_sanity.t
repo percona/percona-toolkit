@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 1;
 
-use MaatkitTest;
+use PerconaTest;
 
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-index-usage";
