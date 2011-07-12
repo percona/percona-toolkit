@@ -139,9 +139,10 @@ sub __shorten {
 # parameters, canonicalizing whitespace, etc.  See
 # http://dev.mysql.com/doc/refman/5.0/en/literals.html for literal syntax.
 # Note: Any changes to this function must be profiled for speed!  Speed of this
-# function is critical for mk-log-parser.  There are known bugs in this, but the
-# balance between maybe-you-get-a-bug and speed favors speed.  See past
-# revisions of this subroutine for more correct, but slower, regexes.
+# function is critical for pt-query-digest.  There are known bugs in this,
+# but the balance between maybe-you-get-a-bug and speed favors speed.
+# See past Maatkit revisions of this subroutine for more correct, but slower,
+# regexes.
 sub fingerprint {
    my ( $self, $query ) = @_;
 
@@ -151,7 +152,7 @@ sub fingerprint {
    $query =~ m#\ASELECT /\*!40001 SQL_NO_CACHE \*/ \* FROM `# # mysqldump query
       && return 'mysqldump';
    # Matches queries like REPLACE /*foo.bar:3/3*/ INTO checksum.checksum
-   $query =~ m#/\*\w+\.\w+:[0-9]/[0-9]\*/#     # mk-table-checksum, etc query
+   $query =~ m#/\*\w+\.\w+:[0-9]/[0-9]\*/#     # pt-table-checksum, etc query
       && return 'percona-toolkit';
    # Administrator commands appear to be a comment, so return them as-is
    $query =~ m/\Aadministrator command: /
