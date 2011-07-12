@@ -12,4 +12,4 @@ Option types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN,
 Options and values after processing arguments:
 
   --cat       a,b
-  --config    /etc/maatkit/maatkit.conf,/etc/maatkit/OptionParser.t.conf,$ENV{HOME}/.maatkit.conf,$ENV{HOME}/.OptionParser.t.conf
+  --config    /etc/percona-toolkit/percona-toolkit.conf,/etc/percona-toolkit/OptionParser.t.conf,$ENV{HOME}/.percona-toolkit.conf,$ENV{HOME}/.OptionParser.t.conf
