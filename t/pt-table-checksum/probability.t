@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use List::Util qw(sum);
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-checksum";
 

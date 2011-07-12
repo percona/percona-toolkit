@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 1;
 
-use MaatkitTest;
+use PerconaTest;
 
 # #############################################################################
 # Issue 565: mk-query-digest isn't compiling filter correctly

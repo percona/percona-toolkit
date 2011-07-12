@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 1;
 
-use MaatkitTest;
+use PerconaTest;
 
 my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --type http --limit 10 $trunk/t/lib/samples/http/";
 

@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use MaatkitTest;
+use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
@@ -98,7 +98,7 @@ like(
 
 $sb->load_file('master', 't/pt-table-sync/samples/issue_367.sql');
 my $i = 0;
-MaatkitTest::wait_until(
+PerconaTest::wait_until(
    sub {
       my $r;
       eval {

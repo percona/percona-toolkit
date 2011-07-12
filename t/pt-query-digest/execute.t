@@ -12,11 +12,11 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use Sandbox;
-use MaatkitTest;
+use PerconaTest;
 use VersionParser;
 # See 101_slowlog_analyses.t for why we shift.
 shift @INC;  # our unshift (above)
-shift @INC;  # MaatkitTest's unshift
+shift @INC;  # PerconaTest's unshift
 shift @INC;  # Sandbox
 
 require "$trunk/bin/pt-query-digest";

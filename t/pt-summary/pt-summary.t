@@ -10,7 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
-use MaatkitTest;
+use PerconaTest;
 
 system("$trunk/util/test-bash-tool pt-summary @ARGV");
 

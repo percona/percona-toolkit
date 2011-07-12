@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 2;
 
-use MaatkitTest;
+use PerconaTest;
 
 # #############################################################################
 # Issue 687: Test segfaults on old version of Perl

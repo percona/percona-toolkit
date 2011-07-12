@@ -13,7 +13,7 @@ use warnings FATAL => 'all';
 use English qw( -no_match_vars );
 use Test::More;
 
-use MaatkitTest; 
+use PerconaTest; 
 use Sandbox;
 require "$trunk/bin/pt-slave-delay";
 
