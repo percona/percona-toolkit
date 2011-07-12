@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+cd $PERCONA_TOOLKIT_BRANCH/lib
+
+for m in *.pm; do
+   M=`echo $m | sed 's/.pm//'`
+   grep -q "^# $M package" $PERCONA_TOOLKIT_BRANCH/bin/*
+   if [ $? -ne 0 ]; then
+      echo $M
+   fi
+done
