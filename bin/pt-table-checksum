@@ -9,25 +9,25 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# TableParser package 7156
+# TableParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TableParser.pm
-#   trunk/common/t/TableParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableParser.pm
+#   t/lib/TableParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package TableParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -319,6 +319,7 @@ sub get_keys {
 
 sub get_fks {
    my ( $self, $ddl, $opts ) = @_;
+   my $q   = $self->{Quoter};
    my $fks = {};
 
    foreach my $fk (
@@ -328,17 +329,22 @@ sub get_fks {
       my ( $cols ) = $fk =~ m/FOREIGN KEY \(([^\)]+)\)/;
       my ( $parent, $parent_cols ) = $fk =~ m/REFERENCES (\S+) \(([^\)]+)\)/;
 
+      my ($db, $tbl) = $q->split_unquote($parent, $opts->{database});
+      my %parent_tbl = (tbl => $tbl);
+      $parent_tbl{db} = $db if $db;
+
       if ( $parent !~ m/\./ && $opts->{database} ) {
-         $parent = "`$opts->{database}`.$parent";
+         $parent = $q->quote($opts->{database}) . ".$parent";
       }
 
       $fks->{$name} = {
          name           => $name,
          colnames       => $cols,
          cols           => [ map { s/[ `]+//g; $_; } split(',', $cols) ],
-         parent_tbl     => $parent,
-         parent_colnames=> $parent_cols,
+         parent_tbl     => \%parent_tbl,
+         parent_tblname => $parent,
          parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
+         parent_colnames=> $parent_cols,
          ddl            => $fk,
       };
    }
@@ -398,27 +404,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TableParser package
 # ###########################################################################
 
 # ###########################################################################
-# TableChecksum package 7080
+# TableChecksum package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TableChecksum.pm
-#   trunk/common/t/TableChecksum.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableChecksum.pm
+#   t/lib/TableChecksum.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package TableChecksum;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use List::Util qw(max);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use List::Util qw(max);
 
 our %ALGOS = (
    CHECKSUM => { pref => 0, hash => 0 },
@@ -780,28 +787,28 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TableChecksum package
 # ###########################################################################
 
 # ###########################################################################
-# OptionParser package 7102
+# OptionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/OptionParser.pm
-#   trunk/common/t/OptionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OptionParser.pm
+#   t/lib/OptionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
-use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -851,9 +858,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/maatkit/maatkit.conf",
-         "/etc/maatkit/$program_name.conf",
-         "$home/.maatkit.conf",
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1801,20 +1808,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package 7388
+# DSNParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/DSNParser.pm
-#   trunk/common/t/DSNParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DSNParser.pm
+#   t/lib/DSNParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package DSNParser;
 
 use strict;
@@ -1830,7 +1837,6 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
-
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2028,8 +2034,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -2158,26 +2164,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# VersionParser package 6667
+# VersionParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/VersionParser.pm
-#   trunk/common/t/VersionParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionParser.pm
+#   t/lib/VersionParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package VersionParser;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -2242,26 +2247,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End VersionParser package
 # ###########################################################################
 
 # ###########################################################################
-# MySQLDump package 6345
+# MySQLDump package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/MySQLDump.pm
-#   trunk/common/t/MySQLDump.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MySQLDump.pm
+#   t/lib/MySQLDump.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package MySQLDump;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 ( our $before = <<'EOF') =~ s/^   //gm;
@@ -2548,20 +2552,20 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End MySQLDump package
 # ###########################################################################
 
 # ###########################################################################
-# TableChunker package 7169
+# TableChunker package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/TableChunker.pm
-#   trunk/common/t/TableChunker.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableChunker.pm
+#   t/lib/TableChunker.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package TableChunker;
 
 use strict;
@@ -3481,26 +3485,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End TableChunker package
 # ###########################################################################
 
 # ###########################################################################
-# Quoter package 6850
+# Quoter package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Quoter.pm
-#   trunk/common/t/Quoter.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -3559,7 +3562,7 @@ sub join_quote {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Quoter package
 # ###########################################################################
@@ -4178,23 +4181,22 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package 6255
+# Daemon package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Daemon.pm
-#   trunk/common/t/Daemon.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Daemon.pm
+#   t/lib/Daemon.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
-
+{
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
-use English qw(-no_match_vars);
-
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -4359,18 +4361,14 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
 
 # ###########################################################################
-# SchemaIterator package 7512
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/SchemaIterator.pm
-#   trunk/common/t/SchemaIterator.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# SchemaIterator r7512
+# Don't update this package!
 # ###########################################################################
 package SchemaIterator;
 
@@ -4740,13 +4738,14 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# Retry package 7473
+# Retry package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Retry.pm
-#   trunk/common/t/Retry.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package Retry;
 
 use strict;
@@ -4817,30 +4816,25 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Retry package
 # ###########################################################################
 
 # ###########################################################################
-# Progress package 7096
+# Progress package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/Progress.pm
-#   trunk/common/t/Progress.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Progress.pm
+#   t/lib/Progress.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package Progress;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -4963,7 +4957,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End Progress package
 # ###########################################################################
@@ -6584,7 +6578,7 @@ sub do_tbl_replicate {
    foreach my $warning ( @$warnings ) {
       if ( $warning->{message} =~ m/Data truncated for column 'boundaries'/ ) {
          _d("Warning: WHERE clause too large for boundaries column; ",
-            "mk-table-sync may fail; value:", $where);
+            "pt-table-sync may fail; value:", $where);
       }
       elsif ( ($warning->{code} || 0) == 1592 ) {
          # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -7124,7 +7118,7 @@ Or,
 
 Or,
 
-   pt-table-checksum host1 host2 ... hostN | mk-checksum-filter
+   pt-table-checksum host1 host2 ... hostN | pt-checksum-filter
 
 See L<"SPECIFYING HOSTS"> for more on the syntax of the host arguments.
 
@@ -7173,7 +7167,7 @@ on the same server, just checksum both databases:
 
    pt-table-checksum --databases db1,db2
 
-You can then use L<mk-checksum-filter> to compare the results in both databases
+You can then use L<pt-checksum-filter> to compare the results in both databases
 easily.
 
 pt-table-checksum examines table structure only on the first host specified,
@@ -7403,7 +7397,7 @@ Output is unsorted, though all lines for one table should be output together.
 For speed, all checksums are done in parallel (as much as possible) and may
 complete out of the order in which they were started.  You might want to run
 them through another script or command-line utility to make sure they are in the
-order you want.  If you pipe the output through L<mk-checksum-filter>, you
+order you want.  If you pipe the output through L<pt-checksum-filter>, you
 can sort the output and/or avoid seeing output about tables that have no
 differences.
 
@@ -8167,8 +8161,8 @@ L<"--replicate-check"> option, pt-table-checksum can run the query for you to
 make it even easier.  See L<"CONSISTENT CHECKSUMS"> for details.  
 
 If you find tables that have differences, you can use the chunk boundaries in a
-WHERE clause with L<mk-table-sync> to help repair them more efficiently.  See
-L<mk-table-sync> for details.
+WHERE clause with L<pt-table-sync> to help repair them more efficiently.  See
+L<pt-table-sync> for details.
 
 The table must have at least these columns: db, tbl, chunk, boundaries,
 this_crc, master_crc, this_cnt, master_cnt.  The table may be named anything you
@@ -8597,7 +8591,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<maatkit> manpage for full details.
+comma-separated.  See the L<percona-toolkit> manpage for full details.
 
 =over
 
