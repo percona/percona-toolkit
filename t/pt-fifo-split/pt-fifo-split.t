@@ -14,7 +14,7 @@ use Test::More tests => 4;
 use PerconaTest;
 require "$trunk/bin/pt-fifo-split";
 
-unlink('/tmp/mk-fifo-split');
+unlink('/tmp/pt-fifo-split');
 
 my $cmd = "$trunk/bin/pt-fifo-split";
 
@@ -24,7 +24,7 @@ like($output, qr/Options and values/, 'It lives');
 system("($cmd --lines 10000 $trunk/bin/pt-fifo-split > /dev/null 2>&1 < /dev/null)&");
 sleep(1);
 
-open my $fh, '<', '/tmp/mk-fifo-split' or die $OS_ERROR;
+open my $fh, '<', '/tmp/pt-fifo-split' or die $OS_ERROR;
 my $contents = do { local $INPUT_RECORD_SEPARATOR; <$fh>; };
 close $fh;
 
@@ -37,7 +37,7 @@ ok($contents eq $contents2, 'I read the file');
 system("($cmd $trunk/t/pt-fifo-split/samples/file_with_lines --offset 2 > /dev/null 2>&1 < /dev/null)&");
 sleep(1);
 
-open $fh, '<', '/tmp/mk-fifo-split' or die $OS_ERROR;
+open $fh, '<', '/tmp/pt-fifo-split' or die $OS_ERROR;
 $contents = do { local $INPUT_RECORD_SEPARATOR; <$fh>; };
 close $fh;
 
@@ -53,14 +53,14 @@ EOF
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/mk-script.pid`;
-$output = `$cmd --pid /tmp/mk-script.pid 2>&1`;
+`touch /tmp/pt-script.pid`;
+$output = `$cmd --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/pt-script.pid already exists},
    'Dies if PID file already exists (issue 391)'
 );
-`rm -rf /tmp/mk-script.pid`;
+`rm -rf /tmp/pt-script.pid`;
 
 # #############################################################################
 # Done.
