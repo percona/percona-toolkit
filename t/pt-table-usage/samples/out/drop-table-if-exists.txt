@@ -1,3 +1,0 @@
-Query_id: 0xAED187CD505CBD92.1
-DROP_TABLE t
-

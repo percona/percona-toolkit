@@ -1665,7 +1665,7 @@ sub main {
 
    my ( $version, $ts ) = $dbh->selectrow_array("SELECT VERSION(), NOW()");
    print join("\n",
-      "-- Grants dumped by pt-show-grants $VERSION",
+      "-- Grants dumped by pt-show-grants",
       "-- Dumped from server " . ($dbh->{mysql_hostinfo} || '')
       . ($o->get('timestamp') ? ", MySQL $version at $ts" : ", MySQL $version"),
       ), "\n" if $o->get('header');

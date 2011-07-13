@@ -9,25 +9,25 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# TableParser package
+# TableParser package 7156
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/TableParser.pm
-#   t/lib/TableParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/TableParser.pm
+#   trunk/common/t/TableParser.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package TableParser;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
+
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -319,7 +319,6 @@ sub get_keys {
 
 sub get_fks {
    my ( $self, $ddl, $opts ) = @_;
-   my $q   = $self->{Quoter};
    my $fks = {};
 
    foreach my $fk (
@@ -329,22 +328,17 @@ sub get_fks {
       my ( $cols ) = $fk =~ m/FOREIGN KEY \(([^\)]+)\)/;
       my ( $parent, $parent_cols ) = $fk =~ m/REFERENCES (\S+) \(([^\)]+)\)/;
 
-      my ($db, $tbl) = $q->split_unquote($parent, $opts->{database});
-      my %parent_tbl = (tbl => $tbl);
-      $parent_tbl{db} = $db if $db;
-
       if ( $parent !~ m/\./ && $opts->{database} ) {
-         $parent = $q->quote($opts->{database}) . ".$parent";
+         $parent = "`$opts->{database}`.$parent";
       }
 
       $fks->{$name} = {
          name           => $name,
          colnames       => $cols,
          cols           => [ map { s/[ `]+//g; $_; } split(',', $cols) ],
-         parent_tbl     => \%parent_tbl,
-         parent_tblname => $parent,
-         parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
+         parent_tbl     => $parent,
          parent_colnames=> $parent_cols,
+         parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
          ddl            => $fk,
       };
    }
@@ -404,28 +398,27 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End TableParser package
 # ###########################################################################
 
 # ###########################################################################
-# TableChecksum package
+# TableChecksum package 7080
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/TableChecksum.pm
-#   t/lib/TableChecksum.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/TableChecksum.pm
+#   trunk/common/t/TableChecksum.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
 package TableChecksum;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
 use List::Util qw(max);
+
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 our %ALGOS = (
    CHECKSUM => { pref => 0, hash => 0 },
@@ -787,28 +780,28 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End TableChecksum package
 # ###########################################################################
 
 # ###########################################################################
-# OptionParser package
+# OptionParser package 7102
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/OptionParser.pm
-#   t/lib/OptionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/OptionParser.pm
+#   trunk/common/t/OptionParser.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package OptionParser;
 
 use strict;
 use warnings FATAL => 'all';
+use List::Util qw(max);
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-use List::Util qw(max);
 use Getopt::Long;
 
 my $POD_link_re = '[LC]<"?([^">]+)"?>';
@@ -858,9 +851,9 @@ sub new {
       defaults_to       => {},  # rule: opt defaults to value of other opt
       DSNParser         => undef,
       default_files     => [
-         "/etc/percona-toolkit/percona-toolkit.conf",
-         "/etc/percona-toolkit/$program_name.conf",
-         "$home/.percona-toolkit.conf",
+         "/etc/maatkit/maatkit.conf",
+         "/etc/maatkit/$program_name.conf",
+         "$home/.maatkit.conf",
          "$home/.$program_name.conf",
       ],
       types             => {
@@ -1808,20 +1801,20 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End OptionParser package
 # ###########################################################################
 
 # ###########################################################################
-# DSNParser package
+# DSNParser package 7388
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/DSNParser.pm
-#   t/lib/DSNParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/DSNParser.pm
+#   trunk/common/t/DSNParser.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package DSNParser;
 
 use strict;
@@ -1837,6 +1830,7 @@ eval {
    require DBI;
 };
 my $have_dbi = $EVAL_ERROR ? 0 : 1;
+
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2034,8 +2028,8 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
-         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
+      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, ' {',
+         join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ), '}');
 
       eval {
          $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
@@ -2164,25 +2158,26 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End DSNParser package
 # ###########################################################################
 
 # ###########################################################################
-# VersionParser package
+# VersionParser package 6667
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/VersionParser.pm
-#   t/lib/VersionParser.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/VersionParser.pm
+#   trunk/common/t/VersionParser.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
 package VersionParser;
 
 use strict;
 use warnings FATAL => 'all';
+
 use English qw(-no_match_vars);
+
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -2247,25 +2242,26 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End VersionParser package
 # ###########################################################################
 
 # ###########################################################################
-# MySQLDump package
+# MySQLDump package 6345
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MySQLDump.pm
-#   t/lib/MySQLDump.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/MySQLDump.pm
+#   trunk/common/t/MySQLDump.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
 package MySQLDump;
 
 use strict;
 use warnings FATAL => 'all';
+
 use English qw(-no_match_vars);
+
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 ( our $before = <<'EOF') =~ s/^   //gm;
@@ -2552,20 +2548,20 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End MySQLDump package
 # ###########################################################################
 
 # ###########################################################################
-# TableChunker package
+# TableChunker package 7169
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/TableChunker.pm
-#   t/lib/TableChunker.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/TableChunker.pm
+#   trunk/common/t/TableChunker.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package TableChunker;
 
 use strict;
@@ -3485,25 +3481,26 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End TableChunker package
 # ###########################################################################
 
 # ###########################################################################
-# Quoter package
+# Quoter package 6850
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Quoter.pm
-#   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/Quoter.pm
+#   trunk/common/t/Quoter.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package Quoter;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -3562,26 +3559,31 @@ sub join_quote {
 }
 
 1;
-}
+
 # ###########################################################################
 # End Quoter package
 # ###########################################################################
 
 # ###########################################################################
-# MasterSlave package
+# MasterSlave package 7525
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MasterSlave.pm
-#   t/lib/MasterSlave.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/MasterSlave.pm
+#   trunk/common/t/MasterSlave.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package MasterSlave;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use List::Util qw(min max);
+use Data::Dumper;
+$Data::Dumper::Quotekeys = 0;
+$Data::Dumper::Indent    = 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -3848,7 +3850,7 @@ sub get_master_status {
    MKDEBUG && _d($dbh, 'SHOW MASTER STATUS');
    $sth->execute();
    my ($ms) = @{$sth->fetchall_arrayref({})};
-   MKDEBUG && _d(@$ms);
+   MKDEBUG && _d(Dumper($ms));
 
    if ( !$ms || scalar keys %$ms < 2 ) {
       MKDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
@@ -3989,6 +3991,168 @@ sub catchup_to_same_pos {
       die "The servers aren't both stopped at the same position";
    }
 
+}
+
+sub change_master_to {
+   my ( $self, $dbh, $master_dsn, $master_pos ) = @_;
+   $self->stop_slave($dbh);
+   MKDEBUG && _d(Dumper($master_dsn), Dumper($master_pos));
+   my $sql = "CHANGE MASTER TO MASTER_HOST='$master_dsn->{h}', "
+      . "MASTER_PORT= $master_dsn->{P}, MASTER_LOG_FILE='$master_pos->{file}', "
+      . "MASTER_LOG_POS=$master_pos->{position}";
+   MKDEBUG && _d($dbh, $sql);
+   $dbh->do($sql);
+}
+
+sub make_sibling_of_master {
+   my ( $self, $slave_dbh, $slave_dsn, $dsn_parser, $timeout) = @_;
+
+   my $master_dsn  = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
+      or die "This server is not a slave";
+   my $master_dbh  = $dsn_parser->get_dbh(
+      $dsn_parser->get_cxn_params($master_dsn), { AutoCommit => 1 });
+   my $gmaster_dsn
+      = $self->get_master_dsn($master_dbh, $master_dsn, $dsn_parser)
+      or die "This server's master is not a slave";
+   my $gmaster_dbh = $dsn_parser->get_dbh(
+      $dsn_parser->get_cxn_params($gmaster_dsn), { AutoCommit => 1 });
+   if ( $self->short_host($slave_dsn) eq $self->short_host($gmaster_dsn) ) {
+      die "The slave's master's master is the slave: master-master replication";
+   }
+
+   $self->stop_slave($master_dbh);
+   $self->catchup_to_master($slave_dbh, $master_dbh, $timeout);
+   $self->stop_slave($slave_dbh);
+
+   my $master_status = $self->get_master_status($master_dbh);
+   my $mslave_status = $self->get_slave_status($master_dbh);
+   my $slave_status  = $self->get_slave_status($slave_dbh);
+   my $master_pos    = $self->repl_posn($master_status);
+   my $slave_pos     = $self->repl_posn($slave_status);
+
+   if ( !$self->slave_is_running($mslave_status)
+     && !$self->slave_is_running($slave_status)
+     && $self->pos_cmp($master_pos, $slave_pos) == 0)
+   {
+      $self->change_master_to($slave_dbh, $gmaster_dsn,
+         $self->repl_posn($mslave_status)); # Note it's not $master_pos!
+   }
+   else {
+      die "The servers aren't both stopped at the same position";
+   }
+
+   $mslave_status = $self->get_slave_status($master_dbh);
+   $slave_status  = $self->get_slave_status($slave_dbh);
+   my $mslave_pos = $self->repl_posn($mslave_status);
+   $slave_pos     = $self->repl_posn($slave_status);
+   if ( $self->short_host($mslave_status) ne $self->short_host($slave_status)
+     || $self->pos_cmp($mslave_pos, $slave_pos) != 0)
+   {
+      die "The servers don't have the same master/position after the change";
+   }
+}
+
+sub make_slave_of_sibling {
+   my ( $self, $slave_dbh, $slave_dsn, $sib_dbh, $sib_dsn,
+        $dsn_parser, $timeout) = @_;
+
+   if ( $self->short_host($slave_dsn) eq $self->short_host($sib_dsn) ) {
+      die "You are trying to make the slave a slave of itself";
+   }
+
+   my $master_dsn1 = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
+      or die "This server is not a slave";
+   my $master_dbh1 = $dsn_parser->get_dbh(
+      $dsn_parser->get_cxn_params($master_dsn1), { AutoCommit => 1 });
+   my $master_dsn2 = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
+      or die "The sibling is not a slave";
+   if ( $self->short_host($master_dsn1) ne $self->short_host($master_dsn2) ) {
+      die "This server isn't a sibling of the slave";
+   }
+   my $sib_master_stat = $self->get_master_status($sib_dbh)
+      or die "Binary logging is not enabled on the sibling";
+   die "The log_slave_updates option is not enabled on the sibling"
+      unless $self->has_slave_updates($sib_dbh);
+
+   $self->catchup_to_same_pos($slave_dbh, $sib_dbh);
+
+   $sib_master_stat = $self->get_master_status($sib_dbh);
+   $self->change_master_to($slave_dbh, $sib_dsn,
+         $self->repl_posn($sib_master_stat));
+
+   my $slave_status = $self->get_slave_status($slave_dbh);
+   my $slave_pos    = $self->repl_posn($slave_status);
+   $sib_master_stat = $self->get_master_status($sib_dbh);
+   if ( $self->short_host($slave_status) ne $self->short_host($sib_dsn)
+     || $self->pos_cmp($self->repl_posn($sib_master_stat), $slave_pos) != 0)
+   {
+      die "After changing the slave's master, it isn't a slave of the sibling, "
+         . "or it has a different replication position than the sibling";
+   }
+}
+
+sub make_slave_of_uncle {
+   my ( $self, $slave_dbh, $slave_dsn, $unc_dbh, $unc_dsn,
+        $dsn_parser, $timeout) = @_;
+
+   if ( $self->short_host($slave_dsn) eq $self->short_host($unc_dsn) ) {
+      die "You are trying to make the slave a slave of itself";
+   }
+
+   my $master_dsn = $self->get_master_dsn($slave_dbh, $slave_dsn, $dsn_parser)
+      or die "This server is not a slave";
+   my $master_dbh = $dsn_parser->get_dbh(
+      $dsn_parser->get_cxn_params($master_dsn), { AutoCommit => 1 });
+   my $gmaster_dsn
+      = $self->get_master_dsn($master_dbh, $master_dsn, $dsn_parser)
+      or die "The master is not a slave";
+   my $unc_master_dsn
+      = $self->get_master_dsn($unc_dbh, $unc_dsn, $dsn_parser)
+      or die "The uncle is not a slave";
+   if ($self->short_host($gmaster_dsn) ne $self->short_host($unc_master_dsn)) {
+      die "The uncle isn't really the slave's uncle";
+   }
+
+   my $unc_master_stat = $self->get_master_status($unc_dbh)
+      or die "Binary logging is not enabled on the uncle";
+   die "The log_slave_updates option is not enabled on the uncle"
+      unless $self->has_slave_updates($unc_dbh);
+
+   $self->catchup_to_same_pos($master_dbh, $unc_dbh);
+   $self->catchup_to_master($slave_dbh, $master_dbh, $timeout);
+
+   my $slave_status  = $self->get_slave_status($slave_dbh);
+   my $master_status = $self->get_master_status($master_dbh);
+   if ( $self->pos_cmp(
+         $self->repl_posn($slave_status),
+         $self->repl_posn($master_status)) != 0 )
+   {
+      die "The slave is not caught up to its master";
+   }
+
+   $unc_master_stat = $self->get_master_status($unc_dbh);
+   $self->change_master_to($slave_dbh, $unc_dsn,
+      $self->repl_posn($unc_master_stat));
+
+
+   $slave_status    = $self->get_slave_status($slave_dbh);
+   my $slave_pos    = $self->repl_posn($slave_status);
+   if ( $self->short_host($slave_status) ne $self->short_host($unc_dsn)
+     || $self->pos_cmp($self->repl_posn($unc_master_stat), $slave_pos) != 0)
+   {
+      die "After changing the slave's master, it isn't a slave of the uncle, "
+         . "or it has a different replication position than the uncle";
+   }
+}
+
+sub detach_slave {
+   my ( $self, $dbh ) = @_;
+   $self->stop_slave($dbh);
+   my $stat = $self->get_slave_status($dbh)
+      or die "This server is not a slave";
+   $dbh->do('CHANGE MASTER TO MASTER_HOST=""');
+   $dbh->do('RESET SLAVE'); # Wipes out master.info, etc etc
+   return $stat;
 }
 
 sub slave_is_running {
@@ -4174,28 +4338,29 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End MasterSlave package
 # ###########################################################################
 
 # ###########################################################################
-# Daemon package
+# Daemon package 6255
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Daemon.pm
-#   t/lib/Daemon.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/Daemon.pm
+#   trunk/common/t/Daemon.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
+
 package Daemon;
 
 use strict;
 use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use POSIX qw(setsid);
+use English qw(-no_match_vars);
+
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -4360,22 +4525,22 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End Daemon package
 # ###########################################################################
 
 # ###########################################################################
-# SchemaIterator package
+# SchemaIterator package 7512
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/SchemaIterator.pm
-#   t/lib/SchemaIterator.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/SchemaIterator.pm
+#   trunk/common/t/SchemaIterator.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
 package SchemaIterator;
 
+{ # package scope
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
@@ -4472,29 +4637,16 @@ sub _make_filters {
 sub next_schema_object {
    my ( $self ) = @_;
 
-   my $schema_obj;
+   my %schema_object;
    if ( $self->{file_itr} ) {
-      $schema_obj= $self->_iterate_files();
+      %schema_object = $self->_iterate_files();
    }
    else { # dbh
-      $schema_obj= $self->_iterate_dbh();
+      %schema_object = $self->_iterate_dbh();
    }
 
-   if ( $schema_obj ) {
-      if ( $schema_obj->{ddl} && $self->{TableParser} ) {
-         $schema_obj->{tbl_struct}
-            = $self->{TableParser}->parse($schema_obj->{ddl});
-      }
-
-      delete $schema_obj->{ddl} unless $self->{keep_ddl};
-
-      if ( my $schema = $self->{Schema} ) {
-         $schema->add_schema_object($schema_obj);
-      }
-   }
-
-   MKDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
-   return $schema_obj;
+   MKDEBUG && _d('Next schema object:', Dumper(\%schema_object));
+   return %schema_object;
 }
 
 sub _iterate_files {
@@ -4543,11 +4695,11 @@ sub _iterate_files {
             my ($engine) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;   
 
             if ( !$engine || $self->engine_is_allowed($engine) ) {
-               return {
+               return (
                   db  => $self->{db},
                   tbl => $tbl,
                   ddl => $ddl,
-               };
+               );
             }
          }
       }
@@ -4615,11 +4767,11 @@ sub _iterate_dbh {
             $ddl = $du->get_create_table($dbh, $q, $self->{db}, $tbl)->[1];
          }
 
-         return {
+         return (
             db  => $self->{db},
             tbl => $tbl,
             ddl => $ddl,
-         };
+         );
       }
    }
 
@@ -4746,21 +4898,21 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
+} # package scope
 1;
-}
+
 # ###########################################################################
 # End SchemaIterator package
 # ###########################################################################
 
 # ###########################################################################
-# Retry package
+# Retry package 7473
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Retry.pm
-#   t/lib/Retry.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/Retry.pm
+#   trunk/common/t/Retry.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
 package Retry;
 
 use strict;
@@ -4831,25 +4983,30 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End Retry package
 # ###########################################################################
 
 # ###########################################################################
-# Progress package
+# Progress package 7096
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Progress.pm
-#   t/lib/Progress.t
-# See https://launchpad.net/percona-toolkit for more information.
+# with comments and its test file can be found in the SVN repository at,
+#   trunk/common/Progress.pm
+#   trunk/common/t/Progress.t
+# See http://code.google.com/p/maatkit/wiki/Developers for more information.
 # ###########################################################################
-{
 package Progress;
 
 use strict;
 use warnings FATAL => 'all';
+
 use English qw(-no_match_vars);
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 sub new {
@@ -4972,7 +5129,7 @@ sub _d {
 }
 
 1;
-}
+
 # ###########################################################################
 # End Progress package
 # ###########################################################################
@@ -6593,7 +6750,7 @@ sub do_tbl_replicate {
    foreach my $warning ( @$warnings ) {
       if ( $warning->{message} =~ m/Data truncated for column 'boundaries'/ ) {
          _d("Warning: WHERE clause too large for boundaries column; ",
-            "pt-table-sync may fail; value:", $where);
+            "mk-table-sync may fail; value:", $where);
       }
       elsif ( ($warning->{code} || 0) == 1592 ) {
          # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
@@ -7133,7 +7290,7 @@ Or,
 
 Or,
 
-   pt-table-checksum host1 host2 ... hostN | pt-checksum-filter
+   pt-table-checksum host1 host2 ... hostN | mk-checksum-filter
 
 See L<"SPECIFYING HOSTS"> for more on the syntax of the host arguments.
 
@@ -7182,7 +7339,7 @@ on the same server, just checksum both databases:
 
    pt-table-checksum --databases db1,db2
 
-You can then use L<pt-checksum-filter> to compare the results in both databases
+You can then use L<mk-checksum-filter> to compare the results in both databases
 easily.
 
 pt-table-checksum examines table structure only on the first host specified,
@@ -7412,7 +7569,7 @@ Output is unsorted, though all lines for one table should be output together.
 For speed, all checksums are done in parallel (as much as possible) and may
 complete out of the order in which they were started.  You might want to run
 them through another script or command-line utility to make sure they are in the
-order you want.  If you pipe the output through L<pt-checksum-filter>, you
+order you want.  If you pipe the output through L<mk-checksum-filter>, you
 can sort the output and/or avoid seeing output about tables that have no
 differences.
 
@@ -8176,8 +8333,8 @@ L<"--replicate-check"> option, pt-table-checksum can run the query for you to
 make it even easier.  See L<"CONSISTENT CHECKSUMS"> for details.  
 
 If you find tables that have differences, you can use the chunk boundaries in a
-WHERE clause with L<pt-table-sync> to help repair them more efficiently.  See
-L<pt-table-sync> for details.
+WHERE clause with L<mk-table-sync> to help repair them more efficiently.  See
+L<mk-table-sync> for details.
 
 The table must have at least these columns: db, tbl, chunk, boundaries,
 this_crc, master_crc, this_cnt, master_cnt.  The table may be named anything you
@@ -8606,7 +8763,7 @@ These DSN options are used to create a DSN.  Each option is given like
 C<option=value>.  The options are case-sensitive, so P and p are not the
 same option.  There cannot be whitespace before or after the C<=> and
 if the value contains whitespace it must be quoted.  DSN options are
-comma-separated.  See the L<percona-toolkit> manpage for full details.
+comma-separated.  See the L<maatkit> manpage for full details.
 
 =over
 
@@ -8661,7 +8818,7 @@ User for login if not current user.
 =back
 
 =head1 DOWNLOADING 
-
+      
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
 
