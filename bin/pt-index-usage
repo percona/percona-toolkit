@@ -3680,6 +3680,202 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Schema package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Schema.pm
+#   t/lib/Schema.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Schema;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw();
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   my $self = {
+      %args,
+      schema  => {},  # keyed on db->tbl
+   };
+   return bless $self, $class;
+}
+
+sub get_schema {
+   my ( $self ) = @_;
+   return $self->{schema};
+}
+
+sub get_table {
+   my ( $self, $db_name, $tbl_name ) = @_;
+   if ( exists $self->{schema}->{$db_name}
+        && exists $self->{schema}->{$db_name}->{$tbl_name} ) {
+      return $self->{schema}->{$db_name}->{$tbl_name};
+   }
+   return;
+}
+
+
+
+sub add_schema_object {
+   my ( $self, $schema_object ) = @_;
+   die "I need a schema_object argument" unless $schema_object;
+
+   my ($db, $tbl) = @{$schema_object}{qw(db tbl)};
+   if ( !$db || !$tbl ) {
+      warn "No database or table for schema object";
+      return;
+   }
+
+   my $tbl_struct = $schema_object->{tbl_struct};
+   if ( !$tbl_struct ) {
+      warn "No table structure for $db.$tbl";
+      return;
+   }
+
+   $self->{schema}->{lc $db}->{lc $tbl} = $schema_object;
+
+
+   return;
+}
+
+sub find_column {
+   my ( $self, %args ) = @_;
+   my $ignore = $args{ignore};
+   my $schema = $self->{schema};
+
+   my ($col, $tbl, $db);
+   if ( my $col_name = $args{col_name} ) {
+      ($col, $tbl, $db) = reverse map { s/`//g; $_ } split /[.]/, $col_name;
+      MKDEBUG && _d('Column', $col_name, 'has db', $db, 'tbl', $tbl,
+         'col', $col);
+   }
+   else {
+      ($col, $tbl, $db) = @args{qw(col tbl db)};
+   }
+
+   $db  = lc $db;
+   $tbl = lc $tbl;
+   $col = lc $col;
+
+   if ( !$col ) {
+      MKDEBUG && _d('No column specified or parsed');
+      return;
+   }
+   MKDEBUG && _d('Finding column', $col, 'in', $db, $tbl);
+
+   if ( $db && !$schema->{$db} ) {
+      MKDEBUG && _d('Database', $db, 'does not exist');
+      return;
+   }
+
+   if ( $db && $tbl && !$schema->{$db}->{$tbl} ) {
+      MKDEBUG && _d('Table', $tbl, 'does not exist in database', $db);
+      return;
+   }
+
+   my @tbls;
+   my @search_dbs = $db ? ($db) : keys %$schema;
+   DATABASE:
+   foreach my $search_db ( @search_dbs ) {
+      my @search_tbls = $tbl ? ($tbl) : keys %{$schema->{$search_db}};
+
+      TABLE:
+      foreach my $search_tbl ( @search_tbls ) {
+         next DATABASE unless exists $schema->{$search_db}->{$search_tbl};
+
+         if ( $ignore
+              && grep { $_->{db} eq $search_db && $_->{tbl} eq $search_tbl }
+                 @$ignore ) {
+            MKDEBUG && _d('Ignoring', $search_db, $search_tbl, $col);
+            next TABLE;
+         }
+
+         my $tbl = $schema->{$search_db}->{$search_tbl};
+         if ( $tbl->{tbl_struct}->{is_col}->{$col} ) {
+            MKDEBUG && _d('Column', $col, 'exists in', $tbl->{db}, $tbl->{tbl});
+            push @tbls, $tbl;
+         }
+      }
+   }
+
+   return \@tbls;
+}
+
+sub find_table {
+   my ( $self, %args ) = @_;
+   my $ignore = $args{ignore};
+   my $schema = $self->{schema};
+
+   my ($tbl, $db);
+   if ( my $tbl_name = $args{tbl_name} ) {
+      ($tbl, $db) = reverse map { s/`//g; $_ } split /[.]/, $tbl_name;
+      MKDEBUG && _d('Table', $tbl_name, 'has db', $db, 'tbl', $tbl);
+   }
+   else {
+      ($tbl, $db) = @args{qw(tbl db)};
+   }
+
+   $db  = lc $db;
+   $tbl = lc $tbl;
+
+   if ( !$tbl ) {
+      MKDEBUG && _d('No table specified or parsed');
+      return;
+   }
+   MKDEBUG && _d('Finding table', $tbl, 'in', $db);
+
+   if ( $db && !$schema->{$db} ) {
+      MKDEBUG && _d('Database', $db, 'does not exist');
+      return;
+   }
+
+   if ( $db && $tbl && !$schema->{$db}->{$tbl} ) {
+      MKDEBUG && _d('Table', $tbl, 'does not exist in database', $db);
+      return;
+   }
+
+   my @dbs;
+   my @search_dbs = $db ? ($db) : keys %$schema;
+   DATABASE:
+   foreach my $search_db ( @search_dbs ) {
+      if ( $ignore && grep { $_->{db} eq $search_db } @$ignore ) {
+         MKDEBUG && _d('Ignoring', $search_db);
+         next DATABASE;
+      }
+
+      if ( exists $schema->{$search_db}->{$tbl} ) {
+         MKDEBUG && _d('Table', $tbl, 'exists in', $search_db);
+         push @dbs, $search_db;
+      }
+   }
+
+   return \@dbs;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Schema package
+# ###########################################################################
+
+# ###########################################################################
 # SchemaIterator package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4855,7 +5051,6 @@ sub main {
    my $parser = new SlowLogParser();
    my $fi     = new FileIterator();
    my $du     = new MySQLDump();
-   my $si     = new SchemaIterator(Quoter => $q);
    my $iu     = new IndexUsage(
       QueryRewriter => $qr,
    );
@@ -4875,7 +5070,6 @@ sub main {
       IndexUsage      => $iu,
       ExplainAnalyzer => $exa,
    );
-
 
    # ########################################################################
    # Ready the save results database and its tables.
@@ -4939,49 +5133,28 @@ sub main {
    # guess which database to USE for EXPLAIN-ing it.  This code block doesn't
    # read query logs, it's just inventorying the tables and indexes.
    # ########################################################################
-   $si->set_filter($si->make_filter($o));
    my $version = $vp->parse($dbh->selectrow_array('SELECT VERSION()'));
-   my ($next_db, $db_count) = $si->get_db_itr(dbh => $si_dbh);
-   my ($db_pr, $dbs_done);
-   if ( $o->get('progress') ) {
-      $db_pr = new Progress(
-         jobsize => $db_count,
-         spec    => $o->get('progress'),
-         name    => 'schema inventory',
-      );
-   }
-   DATABASE:
-   while ( my $database = $next_db->() ) {
-      MKDEBUG && _d('Getting tables from', $database);
-      my ($next_tbl, $tbl_count) = $si->get_tbl_itr(
-         dbh   => $si_dbh,
-         db    => $database,
-         views => 0,
-      );
-      my ($tbl_pr, $tbls_done);
-      if ( $o->get('progress') ) {
-         $tbl_pr = new Progress(
-            jobsize => $tbl_count,
-            spec    => $o->get('progress'),
-            name    => "table inventory for $database",
-         );
+
+   my $schema     = new Schema();
+   my $schema_itr = new SchemaIterator(
+      dbh          => $dbh,
+      OptionParser => $o,
+      Quoter       => $q,
+      MySQLDump    => $du,
+      TableParser  => $tp,
+      Schema       => $schema,
+      keep_ddl     => 1,
+   );
+   TALBE:
+   while ( my $tbl = $schema_itr->next_schema_object() ) {
+      eval {
+         my ($indexes) = $tp->get_keys($tbl->{ddl}, {version => $version});
+         $iu->add_indexes(%$tbl, indexes=>$indexes);
+      };
+      if ( $EVAL_ERROR ) {
+         warn $EVAL_ERROR unless $o->get('q');
+         MKDEBUG && _d($EVAL_ERROR);
       }
-      TABLE:
-      while ( my $table = $next_tbl->() ) {
-         MKDEBUG && _d('Got table', $table);
-         eval {
-            my $ddl       = $du->get_create_table(
-                            $si_dbh, $q, $database, $table)->[1];
-            my ($indexes) = $tp->get_keys($ddl, {version => $version });
-            $iu->add_indexes(db=>$database, tbl=>$table, indexes=>$indexes);
-         };
-         if ( $EVAL_ERROR ) {
-            warn $EVAL_ERROR unless $o->get('q');
-            MKDEBUG && _d($EVAL_ERROR);
-         }
-         $tbl_pr->update(sub { ++$tbls_done }) if $tbl_pr;
-      }
-      $db_pr->update(sub { ++$dbs_done }) if $db_pr;
    }
    $si_dbh->disconnect();
 
