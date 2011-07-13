@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 37;
+use Test::More tests => 39;
 
 use MasterSlave;
 use DSNParser;
@@ -397,6 +397,17 @@ SKIP: {
    diag(`/tmp/12345/start >/dev/null`);
    diag(`/tmp/12346/start >/dev/null`);
 };
+
+is(
+   $ms->get_slave_lag($dbh),
+   undef,
+   "get_slave_lag() for master"
+);
+
+ok(
+   defined $ms->get_slave_lag($slaves[1]),
+   "get_slave_lag() for slave"
+);
 
 # #############################################################################
 # Done.

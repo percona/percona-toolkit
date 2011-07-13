@@ -12337,7 +12337,7 @@ sub main {
                   # We need to figure out what interval we're in and what
                   # interval is next.  So first we need to parse the ts.
                   if ( my($y, $m, $d, $h, $i, $s)
-                        = $args->{event}->{ts} =~ m/^$mysql_ts$/ ) {
+                        = $args->{event}->{ts} =~ m/^$Transformers::mysql_ts$/ ) {
                      my $rt = $o->get('run-time');
                      if ( $run_time_interval == 60 ) {
                         MKDEBUG && _d("Run-time interval in seconds");

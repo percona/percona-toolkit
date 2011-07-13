@@ -8,7 +8,7 @@
 
 # NOTE port: The server is listening on a non-default port.
 
-# WARN slave_net_timeout: This variable is set too high.  This is too long to wait before noticing that the connection to the master has failed and retrying.  This should probably be set to 60 seconds or less.  It is also a good idea to use mk-heartbeat to ensure that the connection does not appear to time out when the master is simply idle.
+# WARN slave_net_timeout: This variable is set too high.  This is too long to wait before noticing that the connection to the master has failed and retrying.  This should probably be set to 60 seconds or less.  It is also a good idea to use pt-heartbeat to ensure that the connection does not appear to time out when the master is simply idle.
 
 # NOTE innodb_data_file_path: Auto-extending InnoDB files can consume a lot of disk space that is very difficult to reclaim later.  Some people prefer to set innodb_file_per_table and allocate a fixed-size file for ibdata1.
 
