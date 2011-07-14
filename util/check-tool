@@ -1,0 +1,435 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+my @tool_files = @ARGV;
+if ( !@tool_files ) {
+   die "Usage: $PROGRAM_NAME [TOOL...]\n";
+}
+
+my $exit_status = 0;  # 0 no problems, 1 any problems
+my $tool_file;        # bin/pt-archiver
+my $tool_name;        # pt-archiver (no path)
+
+my @check_subs = (qw(
+   check_alpha_order
+   check_module_usage
+   check_option_types
+   check_pod_header_order
+   check_pod_formatting
+   check_option_usage
+));
+
+TOOL:
+while ( defined($tool_file = shift @ARGV) ) {
+   my $fh;
+   eval {
+      open $fh, "<", $tool_file;
+   };
+   if ( $EVAL_ERROR ) {
+      $exit_status = 1;
+      warn "Cannot open $tool_file: $OS_ERROR";
+      next TOOL;
+   }
+   
+   ($tool_name) = $tool_file =~ m{/([a-z-]+)$};
+   if ( !$tool_name ) {
+      $exit_status = 1;
+      warn "Cannot parse tool name from $tool_file";
+      next TOOL;
+   }
+
+   foreach my $check_sub ( @check_subs ) {
+      seek $fh, 0, 0;
+      print "# $check_sub ", ('#' x (70 - length $check_sub)), "\n";
+      my $sub = \&$check_sub;
+      eval {
+         &$sub($fh);
+      };
+      if ( $EVAL_ERROR ) {
+         $exit_status = 1;
+         warn "Error while checking $tool_name: $EVAL_ERROR";
+      }
+   }
+}
+
+exit $exit_status;
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+# Check that options in the tool's POD are in alphabetical order.  Only the
+# head1 OPTIONS section and any head2 subsections are checked.  Subsections
+# are considered independent.  The "[no]" part of negatable options is not
+# part of the base option name, so it's ignored.
+sub check_alpha_order {
+   my ($fh) = @_;
+   local $INPUT_RECORD_SEPARATOR = '';
+   my $para;
+   my $section;
+   while ( $para = <$fh> ) {
+      last if ($section) = $para =~ m/^=head1 (OPTIONS)/;
+   }
+   die "Cannot find =head1 OPTIONS" unless $section;
+   parse_options($fh, $section);
+   return;
+}
+
+sub parse_options {
+   my ($fh, $section) = @_;
+   my $para;
+   my @opts;
+   while ( $para = <$fh> ) {
+      last if $para =~ m/^=head1/;
+
+      if ( my ($option) = $para =~ m/^=item --(?:\[no\])?(.*)/ ) {
+         push @opts, $option;
+      }
+      elsif ( $para =~ m/^=head2 (.+)/ ) {
+         parse_options($fh, $1);
+      }
+   }
+
+   my $fmt    = "%-20s %-20s\n";
+   my @sorted = sort @opts;
+   for my $i ( 0..$#sorted ) {
+      if ( $opts[$i] ne $sorted[$i] ) {
+         $exit_status = 1;
+         printf "$tool_name has unsorted options in $section\n";
+         printf $fmt, 'ACTUAL', 'CORRECT';
+         printf $fmt, '=' x 20, '=' x 20;
+         map { printf $fmt, $opts[$_], $sorted[$_] }
+         grep { $opts[$_] ne $sorted[$_] }
+         ($i..$#sorted);
+         last; 
+      }
+   }
+
+   return;
+}
+
+sub check_module_usage {
+   my ($fh) = @_;
+
+   # These modules are not instantiated as objects.
+   my %not_obj = (
+      Transformers   => 1,
+   );
+
+   # Many tools dyanmically instantiate objs like $plugin="WatchStatus",
+   # $plugin->new().  So this script can't detect that.
+   my %dynamic = (
+      'pt-loadavg' => {
+         WatchStatus       => 1,
+         WatchProcesslist  => 1,
+         WatchServer       => 1, 
+      },
+      'pt-query-advisor' => {
+         SlowLogParser     => 1,
+         GeneralLogParser  => 1,
+      },
+      'pt-query-digest' => {
+         TcpdumpParser           => 1,
+         MySQLProtocolParser     => 1,
+         PgLogParser             => 1,
+         SlowLogParser           => 1,
+         MemcachedProtocolParser => 1,
+         MemcachedEvent          => 1,
+         BinaryLogParser         => 1,
+         GeneralLogParser        => 1,
+         ProtocolParser          => 1,
+         HTTPProtocolParser      => 1,
+      },
+      'pt-table-sync' => {
+         TableSyncStream   => 1,
+         TableSyncChunk    => 1,
+         TableSyncNibble   => 1,
+         TableSyncGroupBy  => 1,
+      },
+      'pt-table-usage' => {
+         SlowLogParser => 1,
+      },
+   );
+
+   # If these base-class modules are present, they should be accompanied
+   # by a subclass.
+   my %base_class = (
+      'AdvisorRules' => [ qw(QueryAdvisorRules VariableAdvisorRules) ],
+   );
+
+   # Nearly every tool has or needs these modules.
+   my %ignore = (
+      OptionParser => 1,
+      DSNParser    => 1,
+   );
+
+   my $contents = do   { local $/ = undef; <$fh> };
+   my %uses     = map  { $_ => 1 } $contents =~ m/new ([A-Z]\w+)(?:\(|;)/gm;
+   my @unused   = grep {
+      my $module = $_;
+      my $unused = 0;
+      if ( $not_obj{$module} ) {
+         # MaatkitCommon::_d
+         chomp(my $g = `grep -c '${_}::' $tool_file`);
+         # Transformers->import
+         chomp(my $i = `grep -c '${_}->import' $tool_file`);
+         $g ||= 0;
+         $i ||= 0;
+         $unused = 1 if $g + $i == 0;
+      }
+      elsif ( $dynamic{$tool_name}->{$module} ) {
+         # Can't detect these.
+      }
+      elsif ( $base_class{$module} ) {
+         $unused = 1 unless grep { $uses{$_} } @{$base_class{$module}};
+      }
+      else {
+         $unused = 1 unless $uses{$module};
+      }
+      $unused;
+   }
+   grep { !$ignore{$_} } $contents =~ m/^# (\w+) package$/gm;
+
+   if ( @unused ) {
+      print "$tool_name has unused modules:\n"
+         . join('', map { "\t$_\n" } @unused);
+      $exit_status = 1;
+   }
+   
+   return;
+}
+
+sub check_option_types {
+   my ($fh) = @_;
+
+   # Standard options: http://code.google.com/p/maatkit/wiki/CommandLineOptions
+   my $sop = {
+      'defaults-file'   => {type  => 's', short => 'F' },
+      'host'            => {type  => 's', short => 'h' },
+      'password'        => {type  => 's', short => 'p' },
+      'port'            => {type  => 'i', short => 'P' },
+      'socket'          => {type  => 's', short => 'S' },
+      'user'            => {type  => 's', short => 'u' },
+      'charset'         => {type  => 's', short => 'A' },
+      'ask-pass'        => {type  => '',  short => '', },
+      'database'        => {type  => 's', short => 'D' },
+      'set-vars'        => {type  => 's', short => '', },
+      'where'           => {type  => 's', short => '', },
+      'databases'       => {type  => 'h', short => 'd' },
+      'tables'          => {type  => 'h', short => 't' },
+      'columns'         => {type  => 'a', short => 'c' },
+      'engines'         => {type  => 'h', short => 'e' },
+      'ignore-databases'=> {type  => 'H', short => '', },
+      'ignore-tables'   => {type  => 'H', short => '', },
+      'ignore-columns'  => {type  => 'H', short => '', },
+      'ignore-engines'  => {type  => 'H', short => '', },
+      'config'          => {type  => 'A', short => '', },
+      'daemonize'       => {type  => '',  short => '', },
+      'dry-run'         => {type  => '',  short => '', },
+      'log'             => {type  => 's', short => '', },
+      'pid'             => {type  => 's', short => '', },
+      # --progress is not standard.  Some older tools had their own special
+      # progress, whereas newer tools use Progress.
+      # 'progress'        => {type  => 'a', short => '', },
+      'quiet'           => {type  => '',  short => 'q' },
+      'sentinel'        => {type  => 's', short => '', },
+      'stop'            => {type  => '',  short => '', },
+      'run-time'        => {type  => 'm', short => '', },
+      'threads'         => {type  => 'i', short => '', },
+      'verbose'         => {type  => '',  short => 'v' },
+      'wait'            => {type  => 'm', short => 'w' },
+      'recurse'         => {type  => 'i', short => ''  },
+   };
+
+   # Exceptions are inevitable.  E.g., pt-deadlock-logger --columns is not the
+   # standard filter --columns (e.g. same family as --databases, --tables, etc.)
+   # These exceptions are good candidates for change, so our standard options
+   # really are standard across all tools.
+   my $exception = { 
+      'pt-deadlock-logger' => {  # not standard filter
+         columns => {
+            type  => 'h',
+            short => '',
+         },
+      },
+      'pt-checksum-filter' => {  # not standard filter
+         'ignore-databases' => {
+            type  => '',
+            short => '',
+         },
+      },
+   };
+
+   my $help = `$tool_file --help`;
+
+   # Options are listed after the line "Options:" (default group).
+   # Each line is like:
+   #   --defaults-file=s      -F  Only read mysql options from the given file
+   # The short form (-F) is optional.  The list is terminated at
+   # the line "Option types:".  Problem is: there's a second list
+   # of options.  The second list shows each option's value.  So
+   # we stop parsing when we get an option that we already have.
+   my $opt = {};
+   while ( $help =~ m/^\s{2,}--(\S+?)(?:=(.))?\s+(?:-([a-zA-Z]))?\s+\w+/mg ) {
+      my ($long, $type, $short) = ($1, $2, $3);
+      die "Failed to parse $help" unless $long;
+      last if $opt->{$long};
+      $opt->{$long} = 1;
+
+      if ( $sop->{$long} ) {
+         # Check option type.
+         my $expected_type = $sop->{$long}->{type};
+         $expected_type = $exception->{$tool_name}->{$long}->{type}
+            if exists $exception->{$tool_name}->{$long}->{type};
+         $expected_type = '' unless defined $expected_type;
+         if ( ($type || '') ne $expected_type ) {
+            $exit_status = 1;
+               print "$tool_name --$long "
+               . ($type ? "is type $type" : "has no type")
+               . " but should "
+               . ($expected_type ? "be type $expected_type"
+                                 : "have no type")
+               . "\n";
+         }
+
+         # Check short form.
+         my $expected_short = $sop->{$long}->{short};
+         $expected_short = $exception->{$tool_name}->{$long}->{short}
+            if exists $exception->{$tool_name}->{$long}->{short};
+         $expected_short = '' unless defined $expected_short;
+         if ( ($short || '') ne $expected_short ) {
+            print "$tool_name --$long "
+               . ($short ? "has short form -$short" : "has no short form")
+               . " but should have "
+               . ($expected_short ? "short form -$expected_short"
+                                  : "no short form")
+               . "\n";
+         }
+      }
+   }
+
+   return;
+}
+
+# Check that the POD headers are in standard order.  Only major, required
+# headers are checked.  For example, there maybe be other headers between
+# DESCRIPTION and OPTIONS, but these are ignored.
+sub check_pod_header_order {
+   my @std_hdrs = (
+      'NAME',
+      'SYNOPSIS',
+      'RISKS',
+      'DESCRIPTION',
+      'OPTIONS',
+      'DOWNLOADING',
+      'ENVIRONMENT',
+      'SYSTEM REQUIREMENTS',
+      'BUGS',
+      'AUTHORS',
+      'COPYRIGHT, LICENSE, AND WARRANTY',
+      'VERSION',
+   );
+
+   my @hdrs;
+   foreach my $hdr ( split(/\n/, `grep '^=head1' $tool_file`) ) {
+      $hdr =~ s/^=head1 //;
+      if ( $hdr =~ s/\s+$// ) {
+         print "Extra space after $hdr\n";
+      }
+      push @hdrs, $hdr if grep { $hdr eq $_ } @std_hdrs;
+   }
+
+   my $fmt = "%-32s %-32s\n";
+   for my $i ( 0..$#std_hdrs ) {
+      if ( ($hdrs[$i] || '') ne $std_hdrs[$i] ) {
+         $exit_status = 1;
+         print "$tool_name has missing or out-of-order standard headers:\n";
+         printf $fmt, 'ACTUAL', 'CORRECT';
+         printf $fmt, '=' x 32, '=' x 32;
+         map { printf $fmt, ($hdrs[$_] || ''), $std_hdrs[$_] }
+         grep { ($hdrs[$_] || '') ne $std_hdrs[$_] }
+         ($i..$#std_hdrs);
+         last; 
+      }
+   }
+
+   return;
+}
+
+sub check_pod_formatting {
+   my ($fh) = @_;
+
+   my $output = `perldoc -T $tool_file 2>&1`;
+   # unlike() will print the whole POD if this fails; ok() is more terse.
+   if ( $output =~ m/can't break/ ) {
+      $exit_status = 1;
+      print "$tool_name POD has lines that are too long\n";
+   }
+
+   chomp(my $podchecker = `which podchecker`);
+   if ( $podchecker ) { 
+      $output = `$podchecker $tool_file 2>&1`;
+      if ( $output !~ m/pod syntax OK/ ) {
+         $exit_status = 1;
+         print "$output\n";
+      }
+   }
+
+   return;
+}
+
+sub check_option_usage {
+   my ($fh) = @_;
+
+   # help and version are special opts, intrinsic to OptionParser.
+   # The other opts are usually processed all at once by calling
+   # DSNParser::parse_options().
+   my %ignore = qw(
+      version        1
+      help           1
+      charset        1
+      defaults-file  1
+      host           1
+      password       1
+      port           1
+      socket         1
+      user           1
+   );
+
+   my $contents = do   { local $/ = undef; <$fh> };
+   my @options  = grep { !$ignore{$_} }
+                  map { s/^\[no\]//; $_; }
+                  $contents =~ m/^=item --(.+)$/gm;
+   my @unused   = grep {
+      chomp(my $get = `grep -c "get('$_')" $tool_file`);
+      chomp(my $got = `grep -c "got('$_')" $tool_file`);
+      $get ||= 0;
+      $got ||= 0;
+      my $used = $get + $got;
+      !$used;
+   } @options;
+
+   if ( @unused ) {
+      $exit_status = 1;
+      print "$tool_name has unused options:\n"
+         . join('', map { "\t--$_\n" } @unused);
+   }
+
+   (my $pkg = $tool_name) =~ s/-/_/g;
+   my $main = `grep -A 1000 $pkg $tool_file`;
+   if ( $main !~ m/->parse_options\(/ ) {
+      $exit_status = 1;
+      print "$tool_name does not call DSNParser::parse_options()\n";
+   }
+
+   return;
+}

@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+
+# You must run the program from util/.
+if ( !(-f 'aspell.en.pws' && -f 'parse-aspell-output') ) {
+   die "This script must be run from the util/ directory of a branch\n"
+}
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+# These programs should be in your PATH.
+my $pod2text = 'pod2text';
+my $aspell   = 'aspell';
+
+my $tool_file = shift @ARGV;
+if ( !$tool_file ) {
+   die "Usage: $PROGRAM_NAME TOOL\n";
+}
+
+my ($tool_name) = $tool_file =~ m{([a-z-]+)$};
+if ( !$tool_name ) {
+   die "Cannot parse tool name from $tool_file";
+}
+
+# Temp files.
+my $pod_file       = "/tmp/$tool_name-pod";
+my $bad_words_file = "/tmp/$tool_name-misspelled-words";
+
+# Convert tool's POD to text.
+`$pod2text $tool_file > $pod_file`;
+
+# Spell check the text file.
+`cat $pod_file | $aspell --pipe --lang en_US --personal ./aspell.en.pws > $bad_words_file`;
+
+# Parse and match the aspell output to the text file.
+print "$tool_name:\n\n";
+print `./parse-aspell-output $bad_words_file $pod_file`;
+print "\n";
+
+# Cleanup.
+`rm -rf $pod_file`;
+`rm -rf $bad_words_file`;
+
+exit;

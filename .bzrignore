@@ -1,4 +1,6 @@
 config/NaturalDocs/Data
 docs/dev/*
 docs/user/html
+docs/test-coverage/db
+docs/test-coverage/html
 .DS_Store

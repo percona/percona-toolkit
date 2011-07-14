@@ -75,7 +75,7 @@ how wide each column should be, and then prints them out.
 This is useful for things like aligning the output of vmstat or iostat so it
 is easier to read.
 
-=head1 DOWNLOADING 
+=head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:

@@ -298,7 +298,7 @@ Usage: pt-collect [OPTION...]
 pt-collect focuses on gathering diagnostic data during a MySQL performance
 problem.  It is typically executed by C<stalk>.
 
-=head1 DOWNLOADING 
+=head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:

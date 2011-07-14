@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+
+# This pseudo-script is for developers to see if their box has all
+# the modules necessary for testing Maatkit.  Any missing modules
+# will cause an error like "Can't locate Foo.pm in @INC ...".  Else
+# the version for each module used by this script will be printed.
+
+use Data::Dumper;
+use DBD::mysql;
+use DBI;
+use Digest::MD5;
+use File::Basename;
+use File::Find;
+use File::Spec;
+use File::Temp;
+use Getopt::Long;
+use IO::Compress::Gzip;
+use IO::File;
+use IO::Uncompress::Inflate;
+use List::Util;
+use POSIX;
+use Socket;
+use Term::ReadKey;
+use Test::More;
+use threads;
+use Thread::Queue;
+use Time::HiRes;
+use Time::Local;
+#use Digest::Crc32;
+
+my $file    = __FILE__;
+my $m       = `cat $file | grep '^use'`;
+my @modules = map { m/use (.+?);/; $1 } split("\n", $m);
+
+foreach my $module ( @modules ) {
+   my $version = "${module}::VERSION";
+   print "$module " . ${$version} . "\n";
+} 
+
+exit;
