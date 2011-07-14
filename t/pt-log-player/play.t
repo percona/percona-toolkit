@@ -32,7 +32,6 @@ my $cmd = "$trunk/bin/pt-log-player --play $tmpdir -F /tmp/12345/my.sandbox.cnf 
 
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
-
 # #############################################################################
 # Test that all session files gets assigned.
 # #############################################################################
@@ -42,7 +41,8 @@ for my $n ( 1..16 ) {
       no_diff(
          sub { pt_log_player::main(@args, '--threads', $n) },
          "t/pt-log-player/samples/assigned16-$n.txt",
-         trf => "sed -e 's!$trunk/t/pt-log-player/samples/16sessions/!!g'",
+         trf  => "sed -e 's!$trunk/t/pt-log-player/samples/16sessions/!!g'",
+         sort => '',
       ),
       "Assigned 16 sessions to $n threads"
    );
