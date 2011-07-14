@@ -90,7 +90,7 @@ ok(
          '--report-format', 'query_report,profile',
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
       "t/pt-query-digest/samples/slow007_explain_3.txt",
-      trf => "sed 's/at [a-zA-Z\/\-]\\+ line [0-9]\\+/at line ?/'",
+      trf => "sed 's/at .* line [0-9]*/at line ?/'",
    ),
    'Analysis for slow007 with --explain, failed',
 );

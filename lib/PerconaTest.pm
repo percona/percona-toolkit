@@ -34,7 +34,7 @@ use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use Test::More;
-use Time::HiRes qw(usleep);
+use Time::HiRes qw(sleep);
 use POSIX qw(signal_h);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -219,15 +219,14 @@ sub parse_file {
 # Wait until code returns true.
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
-   my $slept     = 0;
-   my $sleep_int = $t || .5;
    $t     ||= .5;
-   $max_t ||= 5;
-   $t *= 1_000_000;
+   $max_t ||= 10;
+
+   my $slept = 0;
    while ( $slept <= $max_t ) {
       return if $code->();
-      usleep($t);
-      $slept += $sleep_int;
+      sleep $t;
+      $slept += $t;
    }
    return;
 }
@@ -253,6 +252,24 @@ sub wait_for {
       return 1;
    }
    return 0;
+}
+
+sub wait_for_table {
+   my ($dbh, $tbl, $where) = @_;
+   my $sql = "SELECT 1 FROM $tbl" . ($where ? " WHERE $where LIMIT 1" : "");
+   return wait_until(
+      sub {
+         my $r;
+         eval { $r = $dbh->selectrow_arrayref($sql); };
+         return 0 if $EVAL_ERROR;
+         if ( $where ) {
+            return 0 unless $r && @$r;
+         }
+         return 1;
+      },
+      0.25,
+      15,
+   );
 }
 
 sub _read {

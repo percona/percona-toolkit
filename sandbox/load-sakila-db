@@ -42,4 +42,6 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 /tmp/$PORT/use < sakila-db/sakila-schema.sql
 /tmp/$PORT/use < sakila-db/sakila-data.sql
 
+$PERCONA_TOOLKIT_BRANCH/sandbox/test-env reset
+
 exit 0
