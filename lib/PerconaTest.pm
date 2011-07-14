@@ -483,6 +483,10 @@ sub no_diff {
          `sed $sed_args $tmp_file`;
       }
    }
+   if ( defined(my $sort_args = $args{sort}) ) {
+      `cat $tmp_file | sort $sort_args > $tmp_file-2`;
+      `mv $tmp_file-2 $tmp_file`;
+   }
 
    # diff the outputs.
    my $retval = system("diff $tmp_file $expected_output");
