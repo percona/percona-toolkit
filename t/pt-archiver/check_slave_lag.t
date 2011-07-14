@@ -42,6 +42,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 # Issue 758: Make mk-archiver wait for a slave
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_758.sql');
+PerconaTest::wait_for_table($dbh2, "issue_758.t");
 
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
@@ -81,7 +82,7 @@ is_deeply(
 
 # After this sleep the slave should have executed the INSERT SELECT,
 # which returns 0, and the 2 purge/delete statments from above.
-sleep 1;
+sleep 3;
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
    [[0]],

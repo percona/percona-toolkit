@@ -85,6 +85,7 @@ SKIP: {
 
    # This test will achive rows from dbh:test.table_1 to dbh2:test.table_2.
    $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
+   PerconaTest::wait_for_table($dbh2, 'test.table_2');
 
    # Change passwords so defaults files won't work.
    $dbh->do('SET PASSWORD FOR msandbox = PASSWORD("foo")');
@@ -92,7 +93,7 @@ SKIP: {
 
    $dbh2->do('TRUNCATE TABLE test.table_2');
 
-   $output = `MKDEBUG=1 $trunk/bin/pt-archiver --where 1=1 --source h=127.1,P=12345,D=test,t=table_1,u=msandbox,p=foo --dest P=12346,t=table_2 --statistics 2>&1`;
+   $output = `$trunk/bin/pt-archiver --where 1=1 --source h=127.1,P=12345,D=test,t=table_1,u=msandbox,p=foo --dest P=12346,t=table_2 2>&1`;
    my $r = $dbh2->selectall_arrayref('SELECT * FROM test.table_2');
    is(
       scalar @$r,
@@ -112,7 +113,6 @@ SKIP: {
          . 'status" and restart with "test-env restart".  The error was: '
          . $EVAL_ERROR);
    }
-
 };
 
 # #############################################################################
