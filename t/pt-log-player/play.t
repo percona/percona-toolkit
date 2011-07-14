@@ -40,8 +40,11 @@ for my $n ( 1..16 ) {
    ok(
       no_diff(
          sub { pt_log_player::main(@args, '--threads', $n) },
-         "t/pt-log-player/samples/assigned16-$n.txt",
-         trf  => "sed -e 's!$trunk/t/pt-log-player/samples/16sessions/!!g'",
+         "t/pt-log-player/samples/assigned16.txt",
+         sed  => [
+            "'s!$trunk/t/pt-log-player/samples/16sessions/!!g'",
+            "'s/Process [0-9]* plays //g'",
+         ],
          sort => '',
       ),
       "Assigned 16 sessions to $n threads"
