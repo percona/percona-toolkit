@@ -478,9 +478,10 @@ sub no_diff {
    if ( my $trf = $args{trf} ) {
       `$trf $tmp_file_orig > $tmp_file`;
    }
-   if ( my $sed = $args{sed} ) {
+   if ( my $sed_args = $args{sed} ) {
       foreach my $sed_args ( @{$args{sed}} ) {
-         `sed $sed_args $tmp_file`;
+         `cat $tmp_file | sed $sed_args > $tmp_file-2`;
+         `mv $tmp_file-2 $tmp_file`;
       }
    }
    if ( defined(my $sort_args = $args{sort}) ) {
