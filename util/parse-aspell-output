@@ -1,0 +1,89 @@
+#!/usr/bin/env perl
+
+# This script parses the output of ispell/aspell --pipe into something
+# meaningful.  The output is like:
+#
+#   @(#) International Ispell Version 3.1.20 (but really Aspell 0.60.6)
+#   & mk 50 0: Mk, km, mks, ml, K, M, k, ...
+#   *
+#   *
+#   *
+#   *
+#
+#   *
+#   *
+#   & mk 50 6: Mk, km, mks, ml, K, M, k, ...
+#
+# Spelling errors are the "& WORD COUNT OFFSET: SUGGESTIONS" lines.  We
+# don't care about COUNT and OFFSET is per-word (or so it seems), so it's
+# not helpful to us either.  We also don't care about the suggestions.
+#
+# What we care about is on which line the bad WORD appears.  Lines are
+# separated by blank lines in the output; so that output reflects 2 lines
+# in the input.  The asterisk lines are good/spelled correctly words.
+
+use strict;
+use warnings FATAL => 'all';
+
+use English qw(-no_match_vars);
+use Data::Dumper;
+
+my ($ispell_output, $pod_text) = @ARGV;
+die "No ispell output file given" unless $ispell_output && -f $ispell_output;
+die "No POD text file given" unless $pod_text && -f $pod_text;
+
+my $fh;
+
+open $fh, '<', $pod_text or die "Cannot open $pod_text: $OS_ERROR";
+my @pod = <$fh>;
+close $fh;
+
+open $fh, '<', $ispell_output or die "Cannot open $ispell_output: $OS_ERROR";
+
+my $pod_lineno = 1;
+my $i = 0;
+my $j = 0;
+LINE:
+while ( defined(my $line = <$fh>) ) {
+   if ( $line =~ m/^\s*$/ ) {
+      $pod_lineno++;
+      next LINE;
+   }
+
+   my ($word, $correct) = $line =~ m/^& (\w+) \d+ \d+: (.+)/;
+   next LINE unless $word;
+
+   next LINE if $word eq 'mk';
+
+   if ( $i < $pod_lineno ) {
+      for my $pod_line ( $j..$#pod ) {
+         $i++ if $pod[$j++] ne "\n";
+         last if $i == $pod_lineno;
+      }
+   }
+
+   my $pod_line = $pod[$j - 1];
+
+   next LINE if $pod_line =~ m/^\s*(?:type|short form): [\w-]+/;
+
+   next LINE if $word =~ m/utf/i && $pod_line =~ m/utf8/i;
+
+   next LINE if $pod_line =~ m/^\s+--$word$/;
+
+   next LINE if $word eq 'maatkit'  && $pod_line =~ m/maatkit manpage/;
+   next LINE if $word eq 'maatkit'  && $pod_line =~ m{http://code.google.com/p/maatkit/};
+   next LINE if $word eq 'dsn'      && $pod_line =~ m/dsn: \w+/;
+   next LINE if $word eq 'tmp'      && $pod_line =~ m/tmp table/;
+   next LINE if $word eq 'toolname' && $pod_line =~ m/Where "toolname"/;
+
+   $pod_line =~ s/^\s+//;
+   my @correct = map { s/^s+//g; s/\s+$//g; $_ } split(',', $correct);
+
+   print "  Misspelled: $word\n"
+      .  " Suggestions: " . join(', ',
+                  grep { defined $_ } map { $correct[$_] } (0..2)) . "\n"
+      .  "        Line: $pod_line\n";
+}
+
+close $fh;
+exit;

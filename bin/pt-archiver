@@ -5536,7 +5536,7 @@ A sample module might look like this:
 
    1;
 
-=head1 DOWNLOADING 
+=head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:

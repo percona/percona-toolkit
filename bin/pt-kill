@@ -4106,12 +4106,6 @@ short form: -P; type: int
 
 Port number to use for connection.
 
-=item --[no]strip-comments
-
-default: yes
-
-Remove SQL comments from queries in the Info column of the PROCESSLIST.
-
 =item --run-time
 
 type: time
@@ -4151,6 +4145,12 @@ Stop running instances by creating the L<"--sentinel"> file.
 Causes pt-kill to create the sentinel file specified by L<"--sentinel"> and
 exit.  This should have the effect of stopping all running instances which are
 watching the same sentinel file.
+
+=item --[no]strip-comments
+
+default: yes
+
+Remove SQL comments from queries in the Info column of the PROCESSLIST.
 
 =item --user
 
@@ -4226,23 +4226,6 @@ See also L<"GROUP, MATCH AND KILL">.
 
 =over
 
-=item --match-all
-
-group: Query Matches
-
-Match all queries that are not ignored.  If no ignore options are specified,
-then every query matches (except replication threads, unless
-L<"--replication-threads"> is also specified).  This option allows you to
-specify negative matches, i.e. "match every query I<except>..." where the
-exceptions are defined by specifying various C<--ignore> options.
-
-This option is I<not> the same as L<"--victims"> C<all>.  This option matches
-all queries within a class, whereas L<"--victims"> C<all> specifies that all
-matching queries in a class (however they matched) will be killed.  Normally,
-however, the two are used together because if, for example, you specify
-L<"--victims"> C<oldest>, then although all queries may match, only the oldest
-will be killed.
-
 =item --busy-time
 
 type: time; group: Query Matches
@@ -4313,6 +4296,23 @@ type: string; group: Query Matches
 Ignore queries whose user matches this Perl regex.
 
 See L<"--match-user">.
+
+=item --match-all
+
+group: Query Matches
+
+Match all queries that are not ignored.  If no ignore options are specified,
+then every query matches (except replication threads, unless
+L<"--replication-threads"> is also specified).  This option allows you to
+specify negative matches, i.e. "match every query I<except>..." where the
+exceptions are defined by specifying various C<--ignore> options.
+
+This option is I<not> the same as L<"--victims"> C<all>.  This option matches
+all queries within a class, whereas L<"--victims"> C<all> specifies that all
+matching queries in a class (however they matched) will be killed.  Normally,
+however, the two are used together because if, for example, you specify
+L<"--victims"> C<oldest>, then although all queries may match, only the oldest
+will be killed.
 
 =item --match-command
 
@@ -4581,7 +4581,7 @@ User for login if not current user.
 
 =back
 
-=head1 DOWNLOADING 
+=head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:

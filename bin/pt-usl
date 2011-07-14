@@ -794,7 +794,7 @@ This tool is based on Neil Gunther's book Guerrilla Capacity Planning.
      other samples; it will introduce skew into the throughput for that sample,
      too.
 
-=head1 DOWNLOADING 
+=head1 DOWNLOADING
 
 Visit L<http://www.percona.com/software/> to download the latest release of
 Percona Toolkit.  Or, to get the latest release from the command line:
