@@ -1,0 +1,70 @@
+Installing Percona Toolkit
+==========================
+
+System Requirements
+-------------------
+
+Most tools require:
+
+   * Perl v5.8 or newer
+   * Bash v3 or newer
+   * Core Perl modules like Time::HiRes
+
+Tools that connect to MySQL require:
+
+   * Perl modules DBI and DBD::mysql
+   * MySQL 5.0 or newer
+
+Percona Toolkit is only tested on UNIX systems, primarily Debian and
+Red Hat derivatives; other operating systems are not supported.
+
+Tools that connect to MySQL may work with MySQL v4.1, but this is not
+test or supported.
+
+Quick Install
+-------------
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+Detailed Install
+----------------
+
+Extract the tarball and cd to the resulting directory:
+
+   tar zxvf percona-toolkit-<version>.tar.gz
+   cd percona-toolkit-<version>
+
+Generate the Makefile, which will check Perl module dependencies and
+so forth:
+
+   perl Makefile.PL
+
+Build the tools' man pages and prep for test and install:
+
+   make
+
+Test that the tools can run:
+
+   make test
+
+All tests should pass.  If not, then your system may be missing a Perl module
+required by a tool.  The tests are not comprehensive; they only test that the
+tools can be executed by Perl and Bash.
+
+Finally, install all tools and their man pages:
+
+   make install
+
+On most systems, the tools are installed in /usr/local/bin.
+
+Installation Options
+--------------------
+
+To install to a directory other than your system's default, such as your
+home directory, generate the Makefile with a prefix:
+
+   perl Makefile.PL PREFIX=${HOME}
+
