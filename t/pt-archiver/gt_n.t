@@ -35,7 +35,7 @@ my $cmd = "$trunk/bin/pt-archiver";
 # Test the custom plugin gt_n.
 # ###########################################################################
 $sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
-PerconaTest::wait_for_table($dbh, 'gt_n.t1');
+PerconaTest::wait_for_table($dbh, 'gt_n.t1', 'status="ok"');
 my $sql = 'select status, count(*) from gt_n.t1 group by status';
 is_deeply(
    $dbh->selectall_arrayref($sql),

@@ -52,18 +52,20 @@ $master_dbh->do('create table t (i int, unique index (i))');
 $master_dbh->do('insert into t values (1),(2)');
 
 $slave_dbh->do('insert into t values (3)');
+PerconaTest::wait_for_table($slave_dbh, 'test.t', 'i=1');
 
 is_deeply(
-   $master_dbh->selectall_arrayref('select * from test.t'),
+   $master_dbh->selectall_arrayref('select * from test.t order by i'),
    [[1],[2]],
    'Data on master before sync'
 );
-
+use Data::Dumper;
+my $rows = $slave_dbh->selectall_arrayref('select * from test.t order by i');
 is_deeply(
-   $slave_dbh->selectall_arrayref('select * from test.t'),
+   $rows,
    [[1],[2],[3]],
    'Data on slave before sync'
-);
+) or print Dumper($rows);
 
 $master_dbh->do('SET GLOBAL binlog_format="ROW"');
 $master_dbh->disconnect();

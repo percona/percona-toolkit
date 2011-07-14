@@ -255,12 +255,17 @@ sub wait_for {
 }
 
 sub wait_for_table {
-   my ($dbh, $tbl) = @_;
+   my ($dbh, $tbl, $where) = @_;
+   my $sql = "SELECT 1 FROM $tbl" . ($where ? " WHERE $where LIMIT 1" : "");
    return wait_until(
       sub {
          my $r;
-         eval { $r = $dbh->selectrow_arrayref("SELECT 1 FROM $tbl"); };
-         return $EVAL_ERROR ? 0 : 1;
+         eval { $r = $dbh->selectrow_arrayref($sql); };
+         return 0 if $EVAL_ERROR;
+         if ( $where ) {
+            return 0 unless $r && @$r;
+         }
+         return 1;
       },
       0.25,
       15,

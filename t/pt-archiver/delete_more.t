@@ -122,7 +122,8 @@ SKIP: {
 
    # Run it again without DSN b so changes should be made on slave.
    $sb->load_file('master', "t/pt-archiver/samples/delete_more.sql");
-   PerconaTest::wait_for_table($slave_dbh, "`dm`.`main_table-123`");
+   PerconaTest::wait_for_table($slave_dbh, "`dm`.`main_table-123`", 'id=5');
+   PerconaTest::wait_for_table($slave_dbh, "`dm`.`other_table-123`", 'id=r6');
 
    is_deeply(
       $slave_dbh->selectall_arrayref('select * from `main_table-123` order by id'),
