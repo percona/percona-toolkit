@@ -32,42 +32,42 @@ SKIP: {
 
    # There's no hung queries so we'll just make sure it outputs anything,
    # its debug stuff in this case.
-   `$cmd --print --interval 1s --run-time 2 --pid /tmp/mk-kill.pid --log /tmp/mk-kill.log --daemonize`;
-   $output = `ps -eaf | grep 'mk-kill \-F'`;
+   `$cmd --print --interval 1s --run-time 2 --pid /tmp/pt-kill.pid --log /tmp/pt-kill.log --daemonize`;
+   $output = `ps -eaf | grep 'pt-kill \-F'`;
    like(
       $output,
-      qr/mk-kill -F /,
+      qr/pt-kill -F /,
       'It lives daemonized'
    );
    ok(
-      -f '/tmp/mk-kill.pid',
+      -f '/tmp/pt-kill.pid',
       'PID file created'
    );
    ok(
-      -f '/tmp/mk-kill.log',
+      -f '/tmp/pt-kill.log',
       'Log file created'
    );
 
    sleep 2;
    ok(
-      !-f '/tmp/mk-kill.pid',
+      !-f '/tmp/pt-kill.pid',
       'PID file removed'
    );
 
-   diag(`rm -rf /tmp/mk-kill.log`);
+   diag(`rm -rf /tmp/pt-kill.log`);
 }
 
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/mk-script.pid`;
-$output = `$cmd $trunk/t/lib/samples/pl/recset006.txt --match-state Locked  --print --pid /tmp/mk-script.pid 2>&1`;
+`touch /tmp/pt-script.pid`;
+$output = `$cmd $trunk/t/lib/samples/pl/recset006.txt --match-state Locked  --print --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/pt-script.pid already exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
-`rm -rf /tmp/mk-script.pid`;
+`rm -rf /tmp/pt-script.pid`;
 
 # #############################################################################
 # Done.
