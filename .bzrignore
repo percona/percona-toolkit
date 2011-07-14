@@ -1,4 +1,4 @@
 config/NaturalDocs/Data
-docs/dev/tools
-docs/dev/modules
-docs/dev/.DS_Store
+docs/dev/*
+docs/user/html
+.DS_Store

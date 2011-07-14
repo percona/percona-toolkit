@@ -1,0 +1,347 @@
+package Percona::Toolkit;
+
+our $VERSION = '1.0.0';
+
+1;
+
+=pod
+
+=head1 NAME
+
+Percona Toolkit - Advanced command-line tools used by Percona for MySQL support and consulting
+
+=head1 DESCRIPTION
+
+Percona Toolkit is a collection of advanced command-line tools used by
+Percona (L<http://www.percona.com/>) support staff to perform a variety of
+MySQL and system tasks that are too difficult or complex to perform manually.
+
+These tools are ideal alternatives to private or "one-off" scripts because
+they are professionally developed, formally tested, and fully documented.
+They are also fully self-contained, so installation is quick and easy and
+no libraries are installed. 
+
+Percona Toolkit is developed and supported by Percona Inc.  For more
+information and other free, open-source software developed by Percona,
+visit L<http://www.percona.com/software/>.
+
+=head1 TOOLS
+
+This release of Percona Toolkit includes the following tools:
+
+=over
+
+=item * pt-archiver
+
+Archive data.
+
+=back
+
+For more free, open-source software developed Percona, visit
+L<http://www.percona.com/software/>.  
+
+=head1 CONFIGURATION FILES
+
+Percona Toolkit tools can read options from configuration files.  The
+configuration file syntax is simple and direct, and bears some resemblances
+to the MySQL command-line client tools.  The configuration files all follow
+the same conventions.
+
+Internally, what actually happens is that the lines are read from the file and
+then added as command-line options and arguments to the tool, so just
+think of the configuration files as a way to write your command lines.
+
+=head2 SYNTAX
+
+The syntax of the configuration files is as follows:
+
+=over
+
+=item *
+
+Whitespace followed by a hash (#) sign signifies that the rest of the line is a
+comment.  This is deleted.
+
+=item *
+
+Whitespace is stripped from the beginning and end of all lines.
+
+=item *
+
+Empty lines are ignored.
+
+=item *
+
+Each line is permitted to be in either of the following formats:
+
+  option
+  option=value
+
+Whitespace around the equals sign is deleted during processing.
+
+=item *
+
+Only long options are recognized.
+
+=item *
+
+A line containing only two hyphens signals the end of option parsing.  Any
+further lines are interpreted as additional arguments (not options) to the
+program.
+
+=back
+
+=head2 READ ORDER
+
+The tools read several configuration files in order:
+
+=over
+
+=item 1.
+
+The global Percona Toolkit configuration file,
+F</etc/percona-toolkit/percona-toolkit.conf>.  All tools read this file,
+so you should only add options to it that you want to apply to all tools.
+
+=item 2.
+
+The global tool-specific configuration file, F</etc/percona-toolkit/TOOL.conf>,
+where C<TOOL> is a tool name like C<pt-query-digest>.  This file is named
+after the specific tool you're using, so you can add options that apply
+only to that tool.
+
+=item 3.
+
+The user's own Percona Toolkit configuration file,
+F<$HOME/.percona-toolkit.conf>.  All tools read this file, so you should only
+add options to it that you want to apply to all tools.
+
+=item 4.
+
+The user's tool-specific configuration file, F<$HOME/.TOOL.conf>,
+where C<TOOL> is a tool name like C<pt-query-digest>.  This file is named
+after the specific tool you're using, so you can add options that apply
+only to that tool.
+
+=back
+
+=head2 SPECIFYING
+
+There is a special C<--config> option, which lets you specify which
+configuration files Percona Toolkit should read.  You specify a
+comma-separated list of files.  However, its behavior is not like other
+command-line options.  It must be given B<first> on the command line,
+before any other options.  If you try to specify it anywhere else, it will
+cause an error.  Also, you cannot specify C<--config=/path/to/file>;
+you must specify the option and the path to the file separated by whitespace
+I<without an equal sign> between them, like:
+
+  --config /path/to/file
+
+If you don't want any configuration files at all, specify C<--config ''> to
+provide an empty list of files.
+
+=head1 DSN (DATA SOURCE NAME) SPECIFICATIONS
+
+Percona Toolkit tools use DSNs to specify how to create a DBD connection to
+a MySQL server.  A DSN is a comma-separated string of C<key=value> parts, like:
+
+  h=host1,P=3306,u=bob
+
+The standard key parts are shown below, but some tools add additional key
+parts.  See each tool's documentation for details.
+
+Some tools do not use DSNs but still connect to MySQL using options like
+C<--host>, C<--user>, and C<--password>.  Such tools uses these options to
+create a DSN automatically, behind the scenes.
+
+Other tools uses both DSNs and options like the ones above.  The options
+provide defaults for all DSNs that do not specify the option's corresponding
+key part.  For example, if DSN C<h=host1> and option C<--port=12345> are
+specified, then the tool automatically adds C<P=12345> to DSN.
+
+=head2 KEY PARTS
+
+Many of the tools add more parts to DSNs for special purposes, and sometimes
+override parts to make them do something slightly different.  However, all the
+tools support at least the following:
+
+=over
+
+=item * A
+
+Specifies the default character set for the connection.
+
+Enables character set settings in Perl and MySQL.  If the value is C<utf8>, sets
+Perl's binmode on STDOUT to utf8, passes the C<mysql_enable_utf8> option to
+DBD::mysql, and runs C<SET NAMES UTF8> after connecting to MySQL.  Any other
+value sets binmode on STDOUT without the utf8 layer, and runs C<SET NAMES> after
+connecting to MySQL.
+
+Unfortunately, there is no way from within Perl itself to specify the client
+library's character set.  C<SET NAMES> only affects the server; if the client
+library's settings don't match, there could be problems.  You can use the
+defaults file to specify the client library's character set, however.  See the
+description of the F part below.
+
+=item * D
+
+Specifies the connection's default database.
+
+=item * F
+
+Specifies a defaults file the mysql client library (the C client library used by
+DBD::mysql, I<not Percona Toolkit itself>) should read.  The tools all read the
+[client] section within the defaults file.  If you omit this, the standard
+defaults files will be read in the usual order.  "Standard" varies from system
+to system, because the filenames to read are compiled into the client library.
+On Debian systems, for example, it's usually /etc/mysql/my.cnf then ~/.my.cnf.
+If you place the following into ~/.my.cnf, tools will Do The Right Thing:
+
+  [client]
+  user=your_user_name
+  pass=secret
+
+Omitting the F part is usually the right thing to do.  As long as you have
+configured your ~/.my.cnf correctly, that will result in tools connecting
+automatically without needing a username or password.
+
+You can also specify a default character set in the defaults file.  Unlike the
+L<"A"> part described above, this will actually instruct the client library
+(DBD::mysql) to change the character set it uses internally, which cannot be
+accomplished any other way as far as I know, except for C<utf8>.
+
+=item * P
+
+Port number to use for the connection.  Note that the usual special-case
+behaviors apply: if you specify C<localhost> as your hostname on Unix systems,
+the connection actually uses a socket file, not a TCP/IP connection, and thus
+ignores the port.
+
+=item * S
+
+Socket file to use for the connection (on Unix systems).
+
+=item * h
+
+Hostname or IP address for the connection.
+
+=item * p
+
+Password to use when connecting.
+
+=item * u
+
+User for login if not current user.
+
+=back
+
+=head2 BAREWORD
+
+Many of the tools will let you specify a DSN as a single word, without any
+C<key=value> syntax.  This is called a 'bareword'.  How this is handled is
+tool-specific, but it is usually interpreted as the L<"h"> part.  The tool's
+C<--help> output will tell you the behavior for that tool.
+
+=head2 PROPAGATION
+
+Many tools will let you propagate values from one DSN to the next, so you don't
+have to specify all the parts for each DSN.  For example, if you want to specify
+a username and password for each DSN, you can connect to three hosts as follows:
+
+ h=host1,u=fred,p=wilma host2 host3
+
+This is tool-specific.
+
+=head1 ENVIRONMENT
+
+The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
+To enable debugging and capture all output to a file, run the tool like:
+
+   PTDEBUG=1 pt-table-checksum ... > FILE 2>&1
+
+Be careful: debugging output is voluminous and can generate several megabytes
+of output.
+
+=head1 SYSTEM REQUIREMENTS
+
+Most tools require:
+
+=over
+
+=item * Perl v5.8 or newer
+
+=item * Bash v3 or newer
+
+=item * Core Perl modules like Time::HiRes
+
+=back
+
+Tools that connect to MySQL require:
+
+=over
+
+=item * Perl modules DBI and DBD::mysql
+
+=item * MySQL 5.0 or newer
+
+=back
+
+Percona Toolkit is only tested on UNIX systems, primarily Debian and
+Red Hat derivatives; other operating systems are not supported.
+
+Tools that connect to MySQL may work with MySQL v4.1, but this is not
+test or supported.
+
+=head1 BUGS
+
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool C<--version>
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 AUTHORS
+
+Percona Toolkit is primarily developed by Baron Schwartz and Daniel Nichter,
+both of whom are employed by Percona Inc.  See each program's documenation
+for details.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+Percona Toolkit is copyright 2011 Percona Inc. and others.
+See each program's documentation for complete copyright notices.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 VERSION
+
+Percona Toolkit v1.0.0 released 2008-08-01
+
+=cut

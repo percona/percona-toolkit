@@ -78,9 +78,7 @@ write_rst() {
 cd $BRANCH/bin
 if [ -z $@ ]; then
    for tool in *; do
-      if [ -n "$(head -n 1 $tool | grep perl)" ]; then
-         write_rst $tool
-      fi
+      write_rst $tool
    done
 else
    for tool; do

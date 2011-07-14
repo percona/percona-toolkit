@@ -3331,6 +3331,7 @@ Number of session files to create with L<"--split">.
 The number of session files should either be equal to the number of
 L<"--threads"> you intend to L<"--play"> or be an even multiple of
 L<"--threads">.  This number is important for maximum performance because it:
+
   * allows each thread to have roughly the same amount of sessions to play
   * avoids having to open/close many session files
   * avoids disk IO overhead by doing large sequential reads
@@ -3340,7 +3341,6 @@ file becomes too large.  For example, splitting a 20G log into 8 sessions
 files may yield roughly eight 2G session files.
 
 See also L<"--max-sessions">.
-
 
 =item --set-vars
 
