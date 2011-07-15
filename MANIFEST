@@ -43,3 +43,4 @@ bin/pt-upgrade
 bin/pt-usl
 bin/pt-variable-advisor
 bin/pt-visual-explain
+docs/percona-toolkit.pod

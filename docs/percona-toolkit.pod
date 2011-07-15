@@ -25,14 +25,166 @@ This release of Percona Toolkit includes the following tools:
 
 =over
 
-=item * pt-archiver
+=item pt-align
 
-Archive data.
+Read lines and split them into words.
+
+=item pt-archiver
+
+Archive rows from a MySQL table into another table or a file.
+
+=item pt-checksum-filter
+
+Filter checksums from pt-table-checksum.
+
+=item pt-collect
+
+Collect information from a server for some period of time.
+
+=item pt-config-diff
+
+Diff MySQL configuration files and server variables.
+
+=item pt-deadlock-logger
+
+Extract and log MySQL deadlock information.
+
+=item pt-diskstats
+
+Read a file generated from /proc/diskstats and summarize it.
+
+=item pt-duplicate-key-checker
+
+Find duplicate indexes and foreign keys on MySQL tables.
+
+=item pt-fifo-split
+
+Split files and pipe lines to a fifo without really splitting.
+
+=item pt-find
+
+Find MySQL tables and execute actions, like GNU find.
+
+=item pt-fk-error-logger
+
+Extract and log MySQL foreign key errors.
+
+=item pt-heartbeat
+
+Monitor MySQL replication delay.
+
+=item pt-index-usage
+
+Read queries from a log and analyze how they use indexes.
+
+=item pt-kill
+
+Kill MySQL queries that match certain criteria.
+
+=item pt-log-player
+
+Replay MySQL query logs.
+
+=item pt-mext
+
+Aggregate and summarize mysqladmin extended output.
+
+=item pt-mysql-summary
+
+Summarize MySQL information in a nice way.
+
+=item pt-online-schema-change
+
+Perform online, non-blocking table schema changes.
+
+=item pt-pmp
+
+Aggregate GDB stack traces for a selected program.
+
+=item pt-profile-compact
+
+Compact the output from pt-query-profiler.
+
+=item pt-query-advisor
+
+Analyze queries and advise on possible problems.
+
+=item pt-query-digest
+
+Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
+
+=item pt-query-profiler
+
+Execute SQL statements and print statistics, or measure activity caused by other processes.
+
+=item pt-rel
+
+Make each number in a line of text relative to the previous matching line.
+
+=item pt-show-grants
+
+Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
+
+=item pt-sift
+
+Browses the files created by the collect tool.
+
+=item pt-slave-delay
+
+Make a MySQL slave server lag behind its master.
+
+=item pt-slave-find
+
+Find and print replication hierarchy tree of MySQL slaves.
+
+=item pt-slave-restart
+
+Watch and restart MySQL replication after errors.
+
+=item pt-stalk
+
+Watch MySQL and run the 'collect' program when some condition becomes true.
+
+=item pt-summary
+
+Summarize system information in a nice way.
+
+=item pt-table-checksum
+
+Perform an online replication consistency check, or checksum MySQL tables efficiently on one or many servers.
+
+=item pt-table-sync
+
+Synchronize MySQL table data efficiently.
+
+=item pt-tcp-model
+
+Transform tcpdump into metrics that permit performance and scalability modeling.
+
+=item pt-trend
+
+Compute statistics over a set of time-series data points.
+
+=item pt-upgrade
+
+Execute queries on multiple servers and check for differences.
+
+=item pt-usl
+
+Model Universal Scalability Law.
+
+=item pt-variable-advisor
+
+Analyze MySQL variables and advise on possible problems.
+
+=item pt-visual-explain
+
+Format EXPLAIN output as a tree.
 
 =back
 
 For more free, open-source software developed Percona, visit
-L<http://www.percona.com/software/>.  
+L<http://www.percona.com/software/>.
 
 =head1 CONFIGURATION FILES
 
@@ -162,7 +314,7 @@ tools support at least the following:
 
 =over
 
-=item * A
+=item A
 
 Specifies the default character set for the connection.
 
@@ -178,11 +330,11 @@ library's settings don't match, there could be problems.  You can use the
 defaults file to specify the client library's character set, however.  See the
 description of the F part below.
 
-=item * D
+=item D
 
 Specifies the connection's default database.
 
-=item * F
+=item F
 
 Specifies a defaults file the mysql client library (the C client library used by
 DBD::mysql, I<not Percona Toolkit itself>) should read.  The tools all read the
@@ -205,26 +357,27 @@ L<"A"> part described above, this will actually instruct the client library
 (DBD::mysql) to change the character set it uses internally, which cannot be
 accomplished any other way as far as I know, except for C<utf8>.
 
-=item * P
+=item h
+
+Hostname or IP address for the connection.
+
+=item p
+
+Password to use when connecting.
+
+
+=item P
 
 Port number to use for the connection.  Note that the usual special-case
 behaviors apply: if you specify C<localhost> as your hostname on Unix systems,
 the connection actually uses a socket file, not a TCP/IP connection, and thus
 ignores the port.
 
-=item * S
+=item S
 
 Socket file to use for the connection (on Unix systems).
 
-=item * h
-
-Hostname or IP address for the connection.
-
-=item * p
-
-Password to use when connecting.
-
-=item * u
+=item u
 
 User for login if not current user.
 

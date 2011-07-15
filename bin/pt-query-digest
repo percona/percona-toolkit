@@ -13690,8 +13690,7 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-query-digest - Analyze query execution logs and generate a query report,
-filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
+pt-query-digest - Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
 
 =head1 SYNOPSIS
 

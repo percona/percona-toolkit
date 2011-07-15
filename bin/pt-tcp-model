@@ -2036,8 +2036,7 @@ exit main(@ARGV) unless caller;
 
 =head1 NAME
 
-pt-tcp-model - Transform tcpdump into metrics that permit performance and
-scalability modeling.
+pt-tcp-model - Transform tcpdump into metrics that permit performance and scalability modeling.
 
 =head1 SYNOPSIS
 

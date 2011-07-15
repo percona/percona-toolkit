@@ -1,0 +1,19 @@
+#!/usr/bin/env awk -f
+
+BEGIN {
+   if ( from == "" || file == "" || to == "" ) {
+      print "Usage: replace-text FROM_PATTERN TEXT_FILE TO_PATTERN"
+      exit
+   }
+}
+
+$0 ~ from {
+   system("cat " file)
+
+   while ( getline ) {
+      if ( $0 ~ to )
+         break
+   }
+}
+
+{ print }

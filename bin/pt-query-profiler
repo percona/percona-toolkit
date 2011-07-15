@@ -2267,8 +2267,7 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-query-profiler - Execute SQL statements and print statistics, or measure
-activity caused by other processes.
+pt-query-profiler - Execute SQL statements and print statistics, or measure activity caused by other processes.
 
 =head1 SYNOPSIS
 

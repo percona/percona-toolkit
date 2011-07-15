@@ -43,6 +43,12 @@ RPM=$BRANCH/config/rpm
 RELEASE=$BRANCH/release
 
 # ############################################################################
+# Programs and their options
+# ############################################################################
+
+TAR=${TAR:-tar}
+
+# ############################################################################
 # Subroutines
 # ############################################################################
 
@@ -138,7 +144,8 @@ make_manifest() {
          echo $file >> MANIFEST
       fi
    done
-   find bin/pt-* >> MANIFEST
+   find bin  -type f -depth 1 >> MANIFEST
+   find docs -type f -depth 1 >> MANIFEST
    echo "OK"
 }
 
@@ -146,16 +153,68 @@ update_percona_toolkit_pod() {
    cd $BRANCH/bin
 
    local pod=$DOCS/percona-toolkit.pod
+   local tool_list=/tmp/percona-tool-list.pod
+
+   echo -n "Updating TOOLS section in percona-toolkit.pod: "
+
+   echo "=head1 TOOLS
+
+This release of Percona Toolkit includes the following tools:
+
+=over
+" > $tool_list
 
    for tool in *; do
       desc=$(grep -A 2 '^=head1 NAME' $tool | tail -n 1 | sed 's/ - /:/' | cut -d':' -f2)
       echo "=item $tool
 
 $desc
-"
+" >> $tool_list
    done
 
-   echo "=over" >> $pod
+   echo "=back
+
+For more free, open-source software developed Percona, visit
+L<http://www.percona.com/software/>.
+" >> $tool_list
+
+   cat $pod | ../util/replace-text -v from='^=head1 TOOLS' -v file=$tool_list -v to='^=head1' > $pod.tmp
+   rm $tool_list
+
+   if [ -z "$(podchecker $pod.tmp 2>&1 | grep -i 'pod syntax OK')" ]; then
+      die "POD syntax errors; run podchecker $pod.tmp"
+   fi
+
+   mv $pod.tmp $pod
+   echo "OK"
+}
+
+build_tar() {
+   cd $BRANCH
+
+   local pkg="percona-toolkit-$VERSION"
+   local pkg_dir="$RELEASE/$pkg"
+   
+   echo -n "Building $pkg.tar.gz: "
+
+   if [ ! -d $RELEASE ]; then
+      mkdir $RELEASE
+   else 
+      rm -rf $RELEASE/*
+   fi
+
+
+   mkdir $pkg_dir
+   mkdir "$pkg_dir/bin" "$pkg_dir/docs" "$pkg_dir/lib"
+
+   for file in `cat MANIFEST`; do
+      cp $file $pkg_dir/$file
+   done
+
+   cd $RELEASE
+   $TAR czf "$pkg.tar.gz" $pkg
+
+   echo "OK"
 }
 
 # ############################################################################
@@ -170,14 +229,17 @@ fi
 
 DATE=$(date -u +'%F')
 VERSION=$1
-# check_version
-# update_version
+#check_version
+#update_version
 
 YEAR=$(date -u +'%Y');
 #update_copyright_year
 
 #make_manifest
 
-update_percona_toolkit_pod
+#update_percona_toolkit_pod
+
+build_tar
+
 
 exit $exit_status
