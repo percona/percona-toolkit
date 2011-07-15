@@ -3,4 +3,5 @@ docs/dev/*
 docs/user/html
 docs/test-coverage/db
 docs/test-coverage/html
+release
 .DS_Store

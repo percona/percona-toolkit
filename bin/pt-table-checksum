@@ -7092,8 +7092,7 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-table-checksum - Perform an online replication consistency check, or
-checksum MySQL tables efficiently on one or many servers.
+pt-table-checksum - Perform an online replication consistency check, or checksum MySQL tables efficiently on one or many servers.
 
 =head1 SYNOPSIS
 

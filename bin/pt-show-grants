@@ -1841,8 +1841,7 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-show-grants - Canonicalize and print MySQL grants so you can effectively
-replicate, compare and version-control them.
+pt-show-grants - Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
 
 =head1 SYNOPSIS
 
