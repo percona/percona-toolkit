@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+#
+# WORK IN PROGRESS -- Do not use yet.
+#
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+exit_status=0
+
+die() {
+   echo $1  >&2
+   exit 1
+}
+
+warn() {
+   echo $1 >&2
+   exit_status=1
+}
+
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+   fi
+   BRANCH=`pwd`
+fi
+
+# ############################################################################
+# Paths
+# ############################################################################
+
+DOCS=$BRANCH/docs/test-coverage
+DB=$DOCS/db
+HTML=$DOCS/html
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+test_coverage() {
+   rm -rf $DB/*
+   file="Advisor.pm"
+   test_file="Advisor.t"
+   cd $BRANCH/t/lib
+   prove --perl "perl -MDevel::Cover=-silent,1,-db,$DB,-ignore,.+,-select,$file" $test_file
+
+   cover -report text $DB | $BRANCH/util/parse-cover-report > $DOCS/$file
+   echo "Wrote $DOCS/$file"
+}
+
+# ###########################################################################
+# Script starts here
+# ###########################################################################
+
+test_coverage
+
+exit $exit_status

@@ -1,0 +1,32 @@
+#!/usr/bin/env awk -f
+/^File/ {
+   line_fmt="%-30s %5s %5s %5s %5s %5s\n";
+
+   while ( getline && $0 !~ /^Total/ ) {
+      if ( $1 ~ /\.pm/ ) {
+         n=split($1, path, "/")
+
+         printf("Test coverage for Percona Toolkit %s on ", path[n]);
+         system("date -u +'%F %T UTC'");
+         print ""
+
+         printf(line_fmt, "File", "stmt", "bran", "cond", "sub", "total");
+         printf(line_fmt, "------------------------------", "-----", "-----", "-----", "-----", "-----");
+         printf(line_fmt, path[n], $2, $3, $4, $5, $7)
+
+         break;
+      }
+   }
+   print ""
+
+   while ( $0 !~ /^line/ ) {
+      getline
+   }
+   print
+
+   while ( getline ) {
+      print
+   }
+
+   exit
+}
