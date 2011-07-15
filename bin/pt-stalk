@@ -167,8 +167,7 @@ done
 
 =head1 NAME
 
-pt-stalk - Watch MySQL and run the 'collect' program when some condition
-becomes true.
+pt-stalk - Watch MySQL and run the 'collect' program when some condition becomes true.
 
 =head1 SYNOPSIS
 

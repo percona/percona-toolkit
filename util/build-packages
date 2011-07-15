@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+
+# Bail out on errors, be strict
+set -ue
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+exit_status=0
+
+die() {
+   echo "$1" >&2
+   exit 1
+}
+
+warn() {
+   echo "$1" >&2
+   exit_status=1
+}
+
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+   cd $BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+      exit 1
+   fi
+   BRANCH=`pwd`
+fi
+
+# ############################################################################
+# Paths
+# ############################################################################
+
+DOCS=$BRANCH/docs
+DEB=$BRANCH/config/deb
+RPM=$BRANCH/config/rpm
+RELEASE=$BRANCH/release
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+check_branch() {
+   echo -n "Checking branch... "
+   local clean_branch=$(bzr version-info --check-clean | grep -i 'clean: True')
+   if [ -z "$clean_branch" ]; then
+      die "The branch has uncommitted changes or unknown files"
+   fi
+   echo "OK"
+}
+
+check_version() {
+   cd $BRANCH
+
+   echo -n "Checking new version $VERSION... "
+   local current_version=$(expr `cat Makefile.PL | grep VERSION | awk '{print $3}'` : "'\([0-9.]*\)'")
+   if ! [ "$VERSION" '>' "$current_version" ]; then
+      die "New version $VERSION is not greater than current version $current_version"
+   fi
+   echo "OK"
+}
+
+update_version() {
+   cd $BRANCH/bin
+
+   local new_version_str="Percona Toolkit v$VERSION released $DATE"
+
+   echo -n "Updating version in tools... "
+   for tool_file in *; do
+      sed -i'.bak' -e "s/^Percona Toolkit v.*/$new_version_str/" $tool_file
+      if [ $? -ne 0 ]; then
+         die "Error updating version in $tool_file"
+      fi
+      rm "$tool_file.bak"
+   done
+
+   local new_versions=$(grep --no-filename '^Percona Toolkit v' * | sort -u)
+   if [ "$new_versions" != "$new_version_str" ]; then
+      die "The version in some tool did not update correctly"
+   fi
+   echo "OK"
+
+   echo -n "Updating version in Makefile.PL... "
+   sed -i'.bak' -e "s/'[0-9.]*'/'$VERSION'/" Makefile.PL
+   if [ $? -ne 0 ]; then
+      die "Error updating version in Makefile.PL"
+   fi
+   rm "Makefile.PL.bak"
+   echo "OK"   
+}
+
+update_copyright_year() {
+   cd $BRANCH/bin
+
+   echo -n "Updating copyright year in tools... "
+   for tool_file in *; do
+      local copyright=$(grep "[0-9] Percona Inc." $tool_file);
+      local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
+      if [ $? -ne 0 ]; then
+         die "Error parsing copyright year in $tool_file"
+      fi
+      sed -i'.bak' -e "s/^$copyright/$new_copyright/" $tool_file
+      if [ $? -ne 0 ]; then
+         die "Error updating copyright year in $tool_file"
+      fi
+      rm "$tool_file.bak"
+   done
+   echo "OK"
+
+   echo -n "Updating copyright year in percona-toolkit.pod..."
+   local pod=$DOCS/percona-toolkit.pod
+   local copyright=$(grep "[0-9] Percona Inc." $pod)
+   local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
+   if [ $? -ne 0 ]; then
+      die "Error parsing copyright year in percona-toolkit.pod"
+   fi
+   sed -i'.bak' -e "s/^$copyright/$new_copyright/" $pod
+   if [ $? -ne 0 ]; then
+      die "Error updating copyright year in percona-toolkit.pod"
+   fi
+   rm $pod.bak
+   echo "OK"
+}
+
+make_manifest() {
+   cd $BRANCH
+
+   echo -n "Making MANIFEST... "
+   echo -n > MANIFEST
+   for file in *; do
+      if [ -f $file ]; then
+         echo $file >> MANIFEST
+      fi
+   done
+   find bin/pt-* >> MANIFEST
+   echo "OK"
+}
+
+update_percona_toolkit_pod() {
+   cd $BRANCH/bin
+
+   local pod=$DOCS/percona-toolkit.pod
+
+   for tool in *; do
+      desc=$(grep -A 2 '^=head1 NAME' $tool | tail -n 1 | sed 's/ - /:/' | cut -d':' -f2)
+      echo "=item $tool
+
+$desc
+"
+   done
+
+   echo "=over" >> $pod
+}
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+if [ $# -eq 0 ]; then
+   die "Usage: $0 VERSION"
+fi
+
+#check_branch
+
+DATE=$(date -u +'%F')
+VERSION=$1
+# check_version
+# update_version
+
+YEAR=$(date -u +'%Y');
+#update_copyright_year
+
+#make_manifest
+
+update_percona_toolkit_pod
+
+exit $exit_status
