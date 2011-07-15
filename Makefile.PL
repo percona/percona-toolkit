@@ -1,10 +1,10 @@
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-    NAME         => 'percona-toolkit',
-    VERSION_FROM => 'docs/percona-toolkit.pod',
-    EXE_FILES    => [ <bin/*> ],
-    MAN1PODS     => {
+    NAME      => 'percona-toolkit',
+    VERSION   => '0.9.0',
+    EXE_FILES => [ <bin/*> ],
+    MAN1PODS  => {
       'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1',
       map {
          (my $name = $_) =~ s/^bin.//;

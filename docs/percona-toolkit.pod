@@ -1,9 +1,3 @@
-package Percona::Toolkit;
-
-our $VERSION = '1.0.0';
-
-1;
-
 =pod
 
 =head1 NAME

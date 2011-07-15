@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+eval {
+   my ($year, $copyright)       = @ARGV;
+   my ($years) = $copyright     =~ m/(\S+) Percona Inc./;
+   my ($first_year, $last_year) = split /-/, $years;
+
+   my $new_copyright;
+   if ( $first_year && $last_year ) {
+      $new_copyright = "$first_year-$year Percona Inc."
+   }
+   elsif ( $first_year < $year ) {
+      $new_copyright = "$first_year-$year Percona Inc."
+   }
+   else {
+      $new_copyright = "$first_year Percona Inc."
+   }
+
+   $copyright =~ s/\S+ Percona Inc./$new_copyright/;
+   print $copyright;
+};
+die $EVAL_ERROR if $EVAL_ERROR;
+
+exit 0;

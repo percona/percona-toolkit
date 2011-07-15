@@ -1,0 +1,47 @@
+#!/usr/bin/make -f
+
+build: build-stamp
+
+build-stamp:
+	dh_testdir
+	perl Makefile.PL INSTALLDIRS=vendor
+	$(MAKE)
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	-rm -f build-stamp
+	[ ! -f Makefile ] || $(MAKE) distclean
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean
+	dh_installdirs
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/maatkit
+	rm -rf debian/maatkit/usr/lib
+
+binary-arch:
+
+binary-indep: build install
+	dh_testdir
+	dh_testroot
+	dh_installdocs
+	dh_installmenu
+	dh_installchangelogs Changelog
+	dh_installdocs
+	dh_install
+	dh_installman
+	dh_compress
+	dh_fixperms
+	dh_perl
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep
+
+.PHONY: binary binary-arch binary-indep clean checkroot
