@@ -62,9 +62,8 @@ check_branch() {
 }
 
 check_version() {
-   cd $BRANCH
-
    echo -n "Checking new version $VERSION... "
+   cd $BRANCH
    local current_version=$(expr `cat Makefile.PL | grep VERSION | awk '{print $3}'` : "'\([0-9.]*\)'")
    if ! [ "$VERSION" '>' "$current_version" ]; then
       die "New version $VERSION is not greater than current version $current_version"
@@ -73,11 +72,11 @@ check_version() {
 }
 
 update_version() {
+   echo -n "Updating version in tools... "
    cd $BRANCH/bin
 
    local new_version_str="Percona Toolkit v$VERSION released $DATE"
 
-   echo -n "Updating version in tools... "
    for tool_file in *; do
       sed -i'.bak' -e "s/^Percona Toolkit v.*/$new_version_str/" $tool_file
       if [ $? -ne 0 ]; then
@@ -93,6 +92,7 @@ update_version() {
    echo "OK"
 
    echo -n "Updating version in Makefile.PL... "
+   cd $BRANCH
    sed -i'.bak' -e "s/'[0-9.]*'/'$VERSION'/" Makefile.PL
    if [ $? -ne 0 ]; then
       die "Error updating version in Makefile.PL"
@@ -102,9 +102,8 @@ update_version() {
 }
 
 update_copyright_year() {
-   cd $BRANCH/bin
-
    echo -n "Updating copyright year in tools... "
+   cd $BRANCH/bin
    for tool_file in *; do
       local copyright=$(grep "[0-9] Percona Inc." $tool_file);
       local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
@@ -134,10 +133,9 @@ update_copyright_year() {
    echo "OK"
 }
 
-make_manifest() {
+update_manifest() {
+   echo -n "Updating MANIFEST... "
    cd $BRANCH
-
-   echo -n "Making MANIFEST... "
    echo -n > MANIFEST
    for file in *; do
       if [ -f $file ]; then
@@ -150,12 +148,10 @@ make_manifest() {
 }
 
 update_percona_toolkit_pod() {
+   echo -n "Updating TOOLS section in percona-toolkit.pod: "
    cd $BRANCH/bin
-
    local pod=$DOCS/percona-toolkit.pod
    local tool_list=/tmp/percona-tool-list.pod
-
-   echo -n "Updating TOOLS section in percona-toolkit.pod: "
 
    echo "=head1 TOOLS
 
@@ -189,32 +185,47 @@ L<http://www.percona.com/software/>.
    echo "OK"
 }
 
-build_tar() {
+prep_release_dir() {
+   echo -n "Preparing release directory: "
    cd $BRANCH
-
-   local pkg="percona-toolkit-$VERSION"
-   local pkg_dir="$RELEASE/$pkg"
-   
-   echo -n "Building $pkg.tar.gz: "
-
    if [ ! -d $RELEASE ]; then
       mkdir $RELEASE
-   else 
-      rm -rf $RELEASE/*
+   elif [ -d $RELEASE/$PKG ]; then
+      rm -rf $RELEASE/$PKG
    fi
-
-
-   mkdir $pkg_dir
-   mkdir "$pkg_dir/bin" "$pkg_dir/docs" "$pkg_dir/lib"
-
+   (
+      cd $RELEASE
+      mkdir -p $PKG $PKG/bin $PKG/docs $PKG/lib
+   )
    for file in `cat MANIFEST`; do
-      cp $file $pkg_dir/$file
+      cp $file $RELEASE/$PKG/$file
    done
-
-   cd $RELEASE
-   $TAR czf "$pkg.tar.gz" $pkg
-
    echo "OK"
+}
+
+build_tar() {
+   echo -n "Building $PKG.tar.gz: "
+   cd $RELEASE
+   $TAR czf "$PKG.tar.gz" $PKG
+   echo "OK"
+}
+
+build_rpm() {
+   echo -n "Building $PKG-1.noarch.rpm: "
+   cd $RELEASE
+   if [ ! -f "$PKG.tar.gz" ]; then
+      die "Cannot build RPM because $PKG.tar.gz does not exist"
+   fi
+   mkdir -p rpm rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
+   cd rpm
+   local topdir=`pwd`
+   # Build RPM package from the tarball
+   rpmbuild --define "_topdir $topdir" -ta ../$PKG.tar.gz
+   echo "OK"
+}
+
+build_deb() {
+   :
 }
 
 # ############################################################################
@@ -225,21 +236,64 @@ if [ $# -eq 0 ]; then
    die "Usage: $0 VERSION"
 fi
 
-#check_branch
+YEAR=$(date -u +'%Y')          # for updating copyright year
+DATE=$(date -u +'%F')          # for updating release date
+VERSION=$1                     # for PKG 
+PKG="percona-toolkit-$VERSION" # what we're building
 
-DATE=$(date -u +'%F')
-VERSION=$1
-#check_version
-#update_version
+# This script does not check that you've done pre-release tasks like running
+# the test suite, updating Changelog entries, etc.  You're responsible for
+# that.  These checks are for the sanity of package building.
+CHECK=${CHECK:-1}
+if [ $CHECK -eq 1 ]; then
+   check_branch
+   check_version
+fi
 
-YEAR=$(date -u +'%Y');
-#update_copyright_year
+# These items need to be updated automatically for each release.
+UPDATE=${UPDATE:-1}
+if [ $UPDATE -eq 1 ]; then
+   update_version
+   update_copyright_year
+   update_manifest
+   update_percona_toolkit_pod
+fi
 
-#make_manifest
+# Now that those ^ items are updated, you need to commit and push one more
+# time before the release packages are built.  This script can't do that
+# because your branch could non-standard.
+cat <<MSG
 
-#update_percona_toolkit_pod
+Branch verified and updated; ready to build $PKG,
+but first you must:
 
-build_tar
+  1. bzr diff and review the changes (Changelog, percon-toolkit.pod, etc.)
+  2. bzr commit -m "Build $PKG"
+  3. bzr push
 
+Press any key to continue... (or Ctrl-C to abort)
+MSG
+read
+
+# Build the release packages.
+BUILD=${BUILD:-1}
+if [ $BUILD -eq 1 ]; then
+   prep_release_dir
+
+   BUILD_TAR=${BUILD_TAR:-1}
+   if [ $BUILD_TAR -eq 1 ]; then
+      build_tar
+   fi
+
+   BUILD_RPM=${BUILD_RPM:-1}
+   if [ $BUILD_RPM -eq 1 ]; then
+      build_rpm
+   fi
+   
+   BUILD_DEB=${BUILD_DEB:-1}
+   if [ $BUILD_DEB -eq 1 ]; then
+      build_deb
+   fi
+fi
 
 exit $exit_status
