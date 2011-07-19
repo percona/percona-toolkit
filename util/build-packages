@@ -137,13 +137,11 @@ update_manifest() {
    echo -n "Updating MANIFEST... "
    cd $BRANCH
    echo -n > MANIFEST
-   for file in *; do
+   for file in * bin/* docs/*.pod; do
       if [ -f $file ]; then
          echo $file >> MANIFEST
       fi
    done
-   find bin  -type f -depth 1 >> MANIFEST
-   find docs -type f -depth 1 >> MANIFEST
    echo "OK"
 }
 
@@ -216,11 +214,25 @@ build_rpm() {
    if [ ! -f "$PKG.tar.gz" ]; then
       die "Cannot build RPM because $PKG.tar.gz does not exist"
    fi
+
    mkdir -p rpm rpm/BUILD rpm/SOURCES rpm/RPMS rpm/SRPMS
    cd rpm
    local topdir=`pwd`
-   # Build RPM package from the tarball
-   rpmbuild --define "_topdir $topdir" -ta ../$PKG.tar.gz
+
+   # Build RPM package from the tarball.
+   rpmbuild -bb --clean $BRANCH/config/rpm/percona-toolkit.spec \
+      --quiet                         \
+      --define "_topdir $PWD"         \
+      --define "_sourcedir $RELEASE"  \
+      --define "version $VERSION"     \
+      --define "release 1"
+
+   if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
+      die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
+   fi
+   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE
+   rm -rf $RELEASE/rpm
+
    echo "OK"
 }
 
@@ -262,7 +274,9 @@ fi
 # Now that those ^ items are updated, you need to commit and push one more
 # time before the release packages are built.  This script can't do that
 # because your branch could non-standard.
-cat <<MSG
+BUILD=${BUILD:-1}
+   if [ $BUILD -eq 1 ]; then
+   cat <<MSG
 
 Branch verified and updated; ready to build $PKG,
 but first you must:
@@ -273,11 +287,9 @@ but first you must:
 
 Press any key to continue... (or Ctrl-C to abort)
 MSG
-read
 
-# Build the release packages.
-BUILD=${BUILD:-1}
-if [ $BUILD -eq 1 ]; then
+   read
+
    prep_release_dir
 
    BUILD_TAR=${BUILD_TAR:-1}
