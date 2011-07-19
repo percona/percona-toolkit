@@ -313,7 +313,7 @@ LANG='en_US.UTF-8'
 
 YEAR=$(date -u +'%Y')                      # for updating copyright year
 DATE=$(date -u +'%F')                      # for updating release date
-DEB_DATE=$(date -u +'%a, %d %m %Y %T %z')  # for updating deb/changelog
+DEB_DATE=$(date -u +'%a, %d %b %Y %T %z')  # for updating deb/changelog
 VERSION=$1                                 # for PKG 
 PKG="percona-toolkit-$VERSION"             # what we're building
 
