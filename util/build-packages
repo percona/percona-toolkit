@@ -37,10 +37,10 @@ fi
 # Paths
 # ############################################################################
 
-DOCS=$BRANCH/docs
-DEB=$BRANCH/config/deb
-RPM=$BRANCH/config/rpm
-RELEASE=$BRANCH/release
+DOCS_DIR=$BRANCH/docs
+DEB_CONFIG_DIR=$BRANCH/config/deb
+RPM_CONFIG_DIR=$BRANCH/config/rpm
+RELEASE_DIR=$BRANCH/release
 
 # ############################################################################
 # Programs and their options
@@ -67,6 +67,19 @@ check_version() {
    local current_version=$(expr `cat Makefile.PL | grep VERSION | awk '{print $3}'` : "'\([0-9.]*\)'")
    if ! [ "$VERSION" '>' "$current_version" ]; then
       die "New version $VERSION is not greater than current version $current_version"
+   fi
+   echo "OK"
+}
+
+check_changelog() {
+   echo -n "Checking Changelog: "
+   cd $BRANCH
+   first_line=$(head -n 3 Changelog | tail -n 1)
+   if [ $(expr "$first_line" : "v[0-9]") -gt 0 ]; then
+      die "No changes since $first_line"
+   fi
+   if [ -n "$(grep "^v$VERSION" Changelog)" ]; then
+      die "Entries for v$VERSION already exist"
    fi
    echo "OK"
 }
@@ -119,7 +132,7 @@ update_copyright_year() {
    echo "OK"
 
    echo -n "Updating copyright year in percona-toolkit.pod..."
-   local pod=$DOCS/percona-toolkit.pod
+   local pod=$DOCS_DIR/percona-toolkit.pod
    local copyright=$(grep "[0-9] Percona Inc." $pod)
    local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
    if [ $? -ne 0 ]; then
@@ -148,7 +161,7 @@ update_manifest() {
 update_percona_toolkit_pod() {
    echo -n "Updating TOOLS section in percona-toolkit.pod: "
    cd $BRANCH/bin
-   local pod=$DOCS/percona-toolkit.pod
+   local pod=$DOCS_DIR/percona-toolkit.pod
    local tool_list=/tmp/percona-tool-list.pod
 
    echo "=head1 TOOLS
@@ -183,34 +196,59 @@ L<http://www.percona.com/software/>.
    echo "OK"
 }
 
+update_changelog() {
+   echo -n "Updating Changelog: "
+   cd $BRANCH
+   head -n 2 Changelog > /tmp/changelog.tmp
+   echo "v$VERSION released $DATE" >> /tmp/changelog.tmp
+   echo >> /tmp/changelog.tmp
+   n_lines=$(wc -l Changelog | awk '{print $1}')
+   tail -n $((n_lines - 2)) Changelog >> /tmp/changelog.tmp
+   mv /tmp/changelog.tmp $BRANCH/Changelog
+   echo "OK"
+
+   echo -n "Updating Debian changelog: "
+   cd $DEB_CONFIG_DIR
+   echo "percona-toolkit ($VERSION) unstable; urgency=low
+" > /tmp/changelog.tmp
+
+   cat $BRANCH/Changelog | $BRANCH/util/log-entries -v version="$VERSION" >> /tmp/changelog.tmp
+   echo >> /tmp/changelog.tmp
+   echo " -- Percona Toolkit Developers <toolkit-dev@percona.com>  $DEB_DATE
+" >> /tmp/changelog.tmp 
+   cat changelog >> /tmp/changelog.tmp
+   mv /tmp/changelog.tmp changelog
+   echo "OK"
+}
+
 prep_release_dir() {
    echo -n "Preparing release directory: "
    cd $BRANCH
-   if [ ! -d $RELEASE ]; then
-      mkdir $RELEASE
-   elif [ -d $RELEASE/$PKG ]; then
-      rm -rf $RELEASE/$PKG
+   if [ ! -d $RELEASE_DIR ]; then
+      mkdir $RELEASE_DIR
+   elif [ -d $RELEASE_DIR/$PKG ]; then
+      rm -rf $RELEASE_DIR/$PKG
    fi
    (
-      cd $RELEASE
+      cd $RELEASE_DIR
       mkdir -p $PKG $PKG/bin $PKG/docs $PKG/lib
    )
    for file in `cat MANIFEST`; do
-      cp $file $RELEASE/$PKG/$file
+      cp $file $RELEASE_DIR/$PKG/$file
    done
    echo "OK"
 }
 
 build_tar() {
    echo -n "Building $PKG.tar.gz: "
-   cd $RELEASE
+   cd $RELEASE_DIR
    $TAR czf "$PKG.tar.gz" $PKG
    echo "OK"
 }
 
 build_rpm() {
    echo -n "Building $PKG-1.noarch.rpm: "
-   cd $RELEASE
+   cd $RELEASE_DIR
    if [ ! -f "$PKG.tar.gz" ]; then
       die "Cannot build RPM because $PKG.tar.gz does not exist"
    fi
@@ -220,24 +258,43 @@ build_rpm() {
    local topdir=`pwd`
 
    # Build RPM package from the tarball.
-   rpmbuild -bb --clean $BRANCH/config/rpm/percona-toolkit.spec \
+   rpmbuild -bb --clean $RPM_CONFIG_DIR/percona-toolkit.spec \
       --quiet                         \
       --define "_topdir $PWD"         \
-      --define "_sourcedir $RELEASE"  \
+      --define "_sourcedir $RELEASE_DIR"  \
       --define "version $VERSION"     \
       --define "release 1"
 
    if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
       die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
    fi
-   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE
-   rm -rf $RELEASE/rpm
+   mv "RPMS/noarch/$PKG-1.noarch.rpm" $RELEASE_DIR
+   rm -rf $RELEASE_DIR/rpm
 
    echo "OK"
 }
 
 build_deb() {
-   :
+   local deb_pkg="percona-toolkit_$VERSION-1_all.deb"
+   echo -n "Building $deb_pkg: "
+
+   cd $RELEASE_DIR
+   if [ ! -f "$PKG.tar.gz" ]; then
+      die "Cannot build RPM because $PKG.tar.gz does not exist"
+   fi
+
+   # Copy debian pkg files.
+   if [ ! -d "$RELEASE_DIR/$PKG/debian" ]; then
+      mkdir $RELEASE_DIR/$PKG/debian
+   fi
+   cp $BRANCH/config/deb/* $RELEASE_DIR/$PKG/debian/
+
+   # Build Debian source and binary packages
+   cd $RELEASE_DIR/$PKG
+   debuild -S -sa -us -uc
+   debuild -b -us -uc
+
+   echo "OK"
 }
 
 # ############################################################################
@@ -248,10 +305,16 @@ if [ $# -eq 0 ]; then
    die "Usage: $0 VERSION"
 fi
 
-YEAR=$(date -u +'%Y')          # for updating copyright year
-DATE=$(date -u +'%F')          # for updating release date
-VERSION=$1                     # for PKG 
-PKG="percona-toolkit-$VERSION" # what we're building
+# My machine's language is not English.  This affects DEB_DATE because
+# date %a is language-sensitive.  We want abbreviated day names in English.
+# Setting LANG as such works for me; hopefully it works for you, too.
+LANG='en_US.UTF-8'
+
+YEAR=$(date -u +'%Y')                      # for updating copyright year
+DATE=$(date -u +'%F')                      # for updating release date
+DEB_DATE=$(date -u +'%a, %d %m %Y %T %z')  # for updating deb/changelog
+VERSION=$1                                 # for PKG 
+PKG="percona-toolkit-$VERSION"             # what we're building
 
 # This script does not check that you've done pre-release tasks like running
 # the test suite, updating Changelog entries, etc.  You're responsible for
@@ -260,6 +323,7 @@ CHECK=${CHECK:-1}
 if [ $CHECK -eq 1 ]; then
    check_branch
    check_version
+   check_changelog
 fi
 
 # These items need to be updated automatically for each release.
@@ -269,6 +333,7 @@ if [ $UPDATE -eq 1 ]; then
    update_copyright_year
    update_manifest
    update_percona_toolkit_pod
+   update_changelog
 fi
 
 # Now that those ^ items are updated, you need to commit and push one more

@@ -1,0 +1,21 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+   if ( version == "" ) {
+      print "Usage: log-entries VERSION"
+      exit
+   }
+
+   start = "^v" version
+}
+
+$0 ~ start {
+   while ( getline ) {
+      if ( $0 ~ /^v[0-9]/ )
+         exit
+      if ( $0 ~ /^$/ )
+         continue
+      
+      print
+   }
+}

@@ -1,32 +1,35 @@
-This package was debianized by Baron Schwartz <baron.schwartz@gmail.com> on
-Sun, 10 Jun 2007 22:30:36 -0500
+This package was debianized by Percona Toolkit Developers
+<toolkit-dev@percona.com> on Sun, 10 Jun 2007 22:30:36 -0500
 
-It was downloaded from http://code.google.com/p/maatkit/
+It was downloaded from http://www.percona.com/downloads/
 
-Debian Sponsor: Norbert Tretkowski <nobse@debian.org>
+Upstream Author:
 
-Upstream Author: Baron Schwartz <baron.schwartz@gmail.com>
+    Percona Toolkit Developers <toolkit-dev@percona.com>
 
-Copyright: "Copyright(c) 2006-2007 Baron Schwartz"
+Copyright:
+
+   Copyright 2011 Percona Inc.
 
 License:
-   This software is dual licensed, either GPL version 2 or Artistic License.
 
-   This package is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, version 2; OR the Perl Artistic License.
+    This software is dual licensed, either GPL version 2 or Artistic License.
 
-   This package is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    This package is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, version 2; OR the Perl Artistic License.
 
-   You should have received a copy of the GNU General Public License
-   along with this package; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+    This package is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-On Debian systems, the complete text of the GNU General Public License version 2
-can be found in `/usr/share/common-licenses/GPL-2'.
+    You should have received a copy of the GNU General Public License
+    along with this package; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-On Debian systems, the complete text of the Artistic License can 
-be found in `/usr/share/common-licenses/Artistic'.
+On Debian systems, the complete text of the GNU General Public License version
+2 can be found in `/usr/share/common-licenses/GPL-2'.
+
+On Debian systems, the complete text of the Artistic License can  be found in
+`/usr/share/common-licenses/Artistic'.
