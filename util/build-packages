@@ -287,13 +287,14 @@ build_deb() {
    # Copy debian pkg files.
    if [ ! -d "$RELEASE_DIR/$PKG/debian" ]; then
       mkdir $RELEASE_DIR/$PKG/debian
+   else
+      rm -rf * $RELEASE_DIR/$PKG/debian
    fi
    cp $BRANCH/config/deb/* $RELEASE_DIR/$PKG/debian/
 
-   # Build Debian source and binary packages
+   # Build Debian "binary" package.
    cd $RELEASE_DIR/$PKG
-   debuild -S -sa -us -uc
-   debuild -b -us -uc
+   dpkg-buildpackage -b -us -uc >/dev/null
 
    echo "OK"
 }
