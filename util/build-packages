@@ -1,11 +1,35 @@
 #!/usr/bin/env bash
 
-# Bail out on errors, be strict
-set -ue
+# This script builds tar, rpm, and deb packages for a new release.  The
+# packages are created in the release/ directory (which is created if it
+# does not exist).
+#
+# There's only one command line option: VERISON.  It must be newer than
+# the last version in the Changelog; see check_version().  Do not include
+# a leading 'v', just `build-packages 1.0.8' for example.
+#
+# These environment variables control what the script does:
+#   CHECK=0|1     - Do (not) check the branch, version, etc.
+#   UPDATE=0|1    - Do (not) update changelogs, versions, etc.
+#   BUILD=0|1     - Do (not) build any packages
+#   BUILD_TAR=0|1 - Do (not) build the .tar.gz package
+#   BUILD_RPM=0|1 - Do (not) build the .rpm package
+#   BUILD_DEB=0|1 - Do (not) build the .deb package
+# All of these env vars are true by default.  If, for example, you just want
+# to build the branch as-is: CHECK=0 UPDATE=0 build-packages VERSION
+# Otherwise, this script is pretty strict and tries to ensure a good build.
+#
+# A few more things you should know:
+#  * You'll need rpmbuild and dpkg-buildpackage to build the rpm and deb pkgs
+#  * Output (STDOUT and STDERR) for some stuff is saved to files in tmpdir
+#  * All dates/times are UTC
+#  * No pkgs are signed (TODO)
 
 # ############################################################################
 # Standard startup, find the branch's root directory
 # ############################################################################
+
+set -ue # bail out on errors, be strict
 
 exit_status=0
 
@@ -260,11 +284,14 @@ build_rpm() {
 
    # Build RPM package from the tarball.
    rpmbuild -bb --clean $RPM_CONFIG_DIR/percona-toolkit.spec \
-      --quiet                         \
-      --define "_topdir $PWD"         \
-      --define "_sourcedir $RELEASE_DIR"  \
-      --define "version $VERSION"     \
-      --define "release 1"
+      --quiet                            \
+      --define "_topdir $PWD"            \
+      --define "_sourcedir $RELEASE_DIR" \
+      --define "version $VERSION"        \
+      --define "release 1" > $tmpdir/rpmbuild 2>&1
+   if [ $? -ne 0 ]; then
+      warn "rpmbuild has warnings; see $tmpdir/rpmbuild"
+   fi
 
    if [ ! -f "RPMS/noarch/$PKG-1.noarch.rpm" ]; then
       die "RPMS/noarch/$PKG-1.noarch.rpm did not build"
@@ -294,7 +321,15 @@ build_deb() {
 
    # Build Debian "binary" package.
    cd $RELEASE_DIR/$PKG
-   dpkg-buildpackage -b -us -uc >/dev/null
+   dpkg-buildpackage -b -us -uc >$tmpdir/dpkg-buildpackage 2>&1
+   if [ $? -ne 0 ]; then
+      warn "dpkg-buildpackage has warnings; see $tmpdir/dpkg-buildpackage"
+   fi
+
+   rm -rf debian/ build-stamp >/dev/null
+   make distclean >/dev/null
+   cd $RELEASE_DIR
+   rm -rf *.changes >/dev/null
 
    echo "OK"
 }
@@ -317,6 +352,11 @@ DATE=$(date -u +'%F')                      # for updating release date
 DEB_DATE=$(date -u +'%a, %d %b %Y %T %z')  # for updating deb/changelog
 VERSION=$1                                 # for PKG 
 PKG="percona-toolkit-$VERSION"             # what we're building
+
+# mktemp -d doesn't work on Mac OS X, so we'll do it the old-fashioned way.
+tmpdir="/tmp/build-percona-toolkit-$VERSION"
+rm -rf $tmpdir >/dev/null 2>&1
+mkdir $tmpdir
 
 # This script does not check that you've done pre-release tasks like running
 # the test suite, updating Changelog entries, etc.  You're responsible for
@@ -342,7 +382,7 @@ fi
 # time before the release packages are built.  This script can't do that
 # because your branch could non-standard.
 BUILD=${BUILD:-1}
-   if [ $BUILD -eq 1 ]; then
+if [ $BUILD -eq 1 ]; then
    cat <<MSG
 
 Branch verified and updated; ready to build $PKG,
@@ -373,6 +413,12 @@ MSG
    if [ $BUILD_DEB -eq 1 ]; then
       build_deb
    fi
+
+   if [ -d $RELEASE_DIR/$PKG ]; then
+      rm -rf  $RELEASE_DIR/$PKG
+   fi
+
+   echo "Done building $PKG.  Packages are in $RELEASE_DIR"
 fi
 
 exit $exit_status
