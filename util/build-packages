@@ -19,11 +19,12 @@ warn() {
    exit_status=1
 }
 
+PERCONA_TOOLKIT_BRANCH=${PERCONA_TOOLKIT_BRANCH:-""}
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
    cd $BRANCH
 else
-   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+   while [ ! -f Makefile.PL ] && [ $PWD != "/" ]; do
       cd ..
    done
    if [ ! -f Makefile.PL ]; then
