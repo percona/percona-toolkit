@@ -20,8 +20,8 @@ install: build
 	dh_testroot
 	dh_clean
 	dh_installdirs
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/maatkit
-	rm -rf debian/maatkit/usr/lib
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/percona-toolkit
+	rm -rf debian/percona-toolkit/usr/lib
 
 binary-arch:
 

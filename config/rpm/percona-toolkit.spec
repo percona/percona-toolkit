@@ -1,5 +1,5 @@
 Name:      percona-toolkit
-Summary:   Advanced MySQL and system command-line tools used by Percona
+Summary:   Advanced MySQL and system command-line tools
 Version:   %{version}
 Release:   %{release}
 Group:     Applications/Databases
