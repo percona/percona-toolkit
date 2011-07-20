@@ -2,7 +2,7 @@
 
 BEGIN {
    if ( from == "" || file == "" || to == "" ) {
-      print "Usage: replace-text FROM_PATTERN TEXT_FILE TO_PATTERN"
+      print "Usage: replace-text -v from=PATTERN -v file=FILE -v to=PATTERN"
       exit
    }
 }

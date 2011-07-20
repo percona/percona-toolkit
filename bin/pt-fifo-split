@@ -1450,15 +1450,19 @@ Show version and exit.
 
 =head1 DOWNLOADING
 
-Visit L<http://www.percona.com/software/> to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
 
-   wget percona.com/latest/percona-toolkit/PKG
+   wget percona.com/get/percona-toolkit.tar.gz
 
-Replace C<PKG> with C<tar>, C<rpm>, or C<deb> to download the package in that
-format.  You can also get individual tools from the latest release:
+   wget percona.com/get/percona-toolkit.rpm
 
-   wget percona.com/latest/percona-toolkit/TOOL
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
 
 Replace C<TOOL> with the name of any tool.
 
