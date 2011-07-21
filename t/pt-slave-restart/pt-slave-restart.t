@@ -33,19 +33,7 @@ else {
 $sb->create_dbs($master_dbh, ['test']);
 $master_dbh->do('CREATE TABLE test.t (a INT)');
 my $i = 0;
-PerconaTest::wait_until(
-   sub {
-      my $r;
-      eval {
-         $r = $slave_dbh->selectrow_arrayref('SHOW TABLES FROM test LIKE "t"');
-      };
-      return 1 if ($r->[0] || '') eq 't';
-      diag('Waiting for CREATE TABLE to replicate...') unless $i++;
-      return 0;
-   },
-   0.5,
-   30,
-);
+PerconaTest::wait_for_table($slave_dbh, 'test.t');
 
 # Bust replication
 $slave_dbh->do('DROP TABLE test.t');

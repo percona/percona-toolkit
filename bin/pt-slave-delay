@@ -9,83 +9,6 @@ use warnings FATAL => 'all';
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 # ###########################################################################
-# Quoter package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Quoter.pm
-#   t/lib/Quoter.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package Quoter;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
-sub new {
-   my ( $class, %args ) = @_;
-   return bless {}, $class;
-}
-
-sub quote {
-   my ( $self, @vals ) = @_;
-   foreach my $val ( @vals ) {
-      $val =~ s/`/``/g;
-   }
-   return join('.', map { '`' . $_ . '`' } @vals);
-}
-
-sub quote_val {
-   my ( $self, $val ) = @_;
-
-   return 'NULL' unless defined $val;          # undef = NULL
-   return "''" if $val eq '';                  # blank string = ''
-   return $val if $val =~ m/^0x[0-9a-fA-F]+$/;  # hex data
-
-   $val =~ s/(['\\])/\\$1/g;
-   return "'$val'";
-}
-
-sub split_unquote {
-   my ( $self, $db_tbl, $default_db ) = @_;
-   $db_tbl =~ s/`//g;
-   my ( $db, $tbl ) = split(/[.]/, $db_tbl);
-   if ( !$tbl ) {
-      $tbl = $db;
-      $db  = $default_db;
-   }
-   return ($db, $tbl);
-}
-
-sub literal_like {
-   my ( $self, $like ) = @_;
-   return unless $like;
-   $like =~ s/([%_])/\\$1/g;
-   return "'$like'";
-}
-
-sub join_quote {
-   my ( $self, $default_db, $db_tbl ) = @_;
-   return unless $db_tbl;
-   my ($db, $tbl) = split(/[.]/, $db_tbl);
-   if ( !$tbl ) {
-      $tbl = $db;
-      $db  = $default_db;
-   }
-   $db  = "`$db`"  if $db  && $db  !~ m/^`/;
-   $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
-   return $db ? "$db.$tbl" : $tbl;
-}
-
-1;
-}
-# ###########################################################################
-# End Quoter package
-# ###########################################################################
-
-# ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -1546,619 +1469,6 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# MasterSlave package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MasterSlave.pm
-#   t/lib/MasterSlave.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package MasterSlave;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = {
-      %args,
-      replication_thread => {},
-   };
-   return bless $self, $class;
-}
-
-sub recurse_to_slaves {
-   my ( $self, $args, $level ) = @_;
-   $level ||= 0;
-   my $dp   = $args->{dsn_parser};
-   my $dsn  = $args->{dsn};
-
-   my $dbh;
-   eval {
-      $dbh = $args->{dbh} || $dp->get_dbh(
-         $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      MKDEBUG && _d('Connected to', $dp->as_string($dsn));
-   };
-   if ( $EVAL_ERROR ) {
-      print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
-         or die "Cannot print: $OS_ERROR";
-      return;
-   }
-
-   my $sql  = 'SELECT @@SERVER_ID';
-   MKDEBUG && _d($sql);
-   my ($id) = $dbh->selectrow_array($sql);
-   MKDEBUG && _d('Working on server ID', $id);
-   my $master_thinks_i_am = $dsn->{server_id};
-   if ( !defined $id
-       || ( defined $master_thinks_i_am && $master_thinks_i_am != $id )
-       || $args->{server_ids_seen}->{$id}++
-   ) {
-      MKDEBUG && _d('Server ID seen, or not what master said');
-      if ( $args->{skip_callback} ) {
-         $args->{skip_callback}->($dsn, $dbh, $level, $args->{parent});
-      }
-      return;
-   }
-
-   $args->{callback}->($dsn, $dbh, $level, $args->{parent});
-
-   if ( !defined $args->{recurse} || $level < $args->{recurse} ) {
-
-      my @slaves =
-         grep { !$_->{master_id} || $_->{master_id} == $id } # Only my slaves.
-         $self->find_slave_hosts($dp, $dbh, $dsn, $args->{method});
-
-      foreach my $slave ( @slaves ) {
-         MKDEBUG && _d('Recursing from',
-            $dp->as_string($dsn), 'to', $dp->as_string($slave));
-         $self->recurse_to_slaves(
-            { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
-      }
-   }
-}
-
-sub find_slave_hosts {
-   my ( $self, $dsn_parser, $dbh, $dsn, $method ) = @_;
-
-   my @methods = qw(processlist hosts);
-   if ( $method ) {
-      @methods = grep { $_ ne $method } @methods;
-      unshift @methods, $method;
-   }
-   else {
-      if ( ($dsn->{P} || 3306) != 3306 ) {
-         MKDEBUG && _d('Port number is non-standard; using only hosts method');
-         @methods = qw(hosts);
-      }
-   }
-   MKDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
-      'using methods', @methods);
-
-   my @slaves;
-   METHOD:
-   foreach my $method ( @methods ) {
-      my $find_slaves = "_find_slaves_by_$method";
-      MKDEBUG && _d('Finding slaves with', $find_slaves);
-      @slaves = $self->$find_slaves($dsn_parser, $dbh, $dsn);
-      last METHOD if @slaves;
-   }
-
-   MKDEBUG && _d('Found', scalar(@slaves), 'slaves');
-   return @slaves;
-}
-
-sub _find_slaves_by_processlist {
-   my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
-
-   my @slaves = map  {
-      my $slave        = $dsn_parser->parse("h=$_", $dsn);
-      $slave->{source} = 'processlist';
-      $slave;
-   }
-   grep { $_ }
-   map  {
-      my ( $host ) = $_->{host} =~ m/^([^:]+):/;
-      if ( $host eq 'localhost' ) {
-         $host = '127.0.0.1'; # Replication never uses sockets.
-      }
-      $host;
-   } $self->get_connected_slaves($dbh);
-
-   return @slaves;
-}
-
-sub _find_slaves_by_hosts {
-   my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
-
-   my @slaves;
-   my $sql = 'SHOW SLAVE HOSTS';
-   MKDEBUG && _d($dbh, $sql);
-   @slaves = @{$dbh->selectall_arrayref($sql, { Slice => {} })};
-
-   if ( @slaves ) {
-      MKDEBUG && _d('Found some SHOW SLAVE HOSTS info');
-      @slaves = map {
-         my %hash;
-         @hash{ map { lc $_ } keys %$_ } = values %$_;
-         my $spec = "h=$hash{host},P=$hash{port}"
-            . ( $hash{user} ? ",u=$hash{user}" : '')
-            . ( $hash{password} ? ",p=$hash{password}" : '');
-         my $dsn           = $dsn_parser->parse($spec, $dsn);
-         $dsn->{server_id} = $hash{server_id};
-         $dsn->{master_id} = $hash{master_id};
-         $dsn->{source}    = 'hosts';
-         $dsn;
-      } @slaves;
-   }
-
-   return @slaves;
-}
-
-sub get_connected_slaves {
-   my ( $self, $dbh ) = @_;
-
-   my $show = "SHOW GRANTS FOR ";
-   my $user = 'CURRENT_USER()';
-   my $vp   = $self->{VersionParser};
-   if ( $vp && !$vp->version_ge($dbh, '4.1.2') ) {
-      $user = $dbh->selectrow_arrayref('SELECT USER()')->[0];
-      $user =~ s/([^@]+)@(.+)/'$1'\@'$2'/;
-   }
-   my $sql = $show . $user;
-   MKDEBUG && _d($dbh, $sql);
-
-   my $proc;
-   eval {
-      $proc = grep {
-         m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-      } @{$dbh->selectcol_arrayref($sql)};
-   };
-   if ( $EVAL_ERROR ) {
-
-      if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
-         MKDEBUG && _d('Retrying SHOW GRANTS without host; error:',
-            $EVAL_ERROR);
-         ($user) = split('@', $user);
-         $sql    = $show . $user;
-         MKDEBUG && _d($sql);
-         eval {
-            $proc = grep {
-               m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
-            } @{$dbh->selectcol_arrayref($sql)};
-         };
-      }
-
-      die "Failed to $sql: $EVAL_ERROR" if $EVAL_ERROR;
-   }
-   if ( !$proc ) {
-      die "You do not have the PROCESS privilege";
-   }
-
-   $sql = 'SHOW PROCESSLIST';
-   MKDEBUG && _d($dbh, $sql);
-   grep { $_->{command} =~ m/Binlog Dump/i }
-   map  { # Lowercase the column names
-      my %hash;
-      @hash{ map { lc $_ } keys %$_ } = values %$_;
-      \%hash;
-   }
-   @{$dbh->selectall_arrayref($sql, { Slice => {} })};
-}
-
-sub is_master_of {
-   my ( $self, $master, $slave ) = @_;
-   my $master_status = $self->get_master_status($master)
-      or die "The server specified as a master is not a master";
-   my $slave_status  = $self->get_slave_status($slave)
-      or die "The server specified as a slave is not a slave";
-   my @connected     = $self->get_connected_slaves($master)
-      or die "The server specified as a master has no connected slaves";
-   my (undef, $port) = $master->selectrow_array('SHOW VARIABLES LIKE "port"');
-
-   if ( $port != $slave_status->{master_port} ) {
-      die "The slave is connected to $slave_status->{master_port} "
-         . "but the master's port is $port";
-   }
-
-   if ( !grep { $slave_status->{master_user} eq $_->{user} } @connected ) {
-      die "I don't see any slave I/O thread connected with user "
-         . $slave_status->{master_user};
-   }
-
-   if ( ($slave_status->{slave_io_state} || '')
-      eq 'Waiting for master to send event' )
-   {
-      my ( $master_log_name, $master_log_num )
-         = $master_status->{file} =~ m/^(.*?)\.0*([1-9][0-9]*)$/;
-      my ( $slave_log_name, $slave_log_num )
-         = $slave_status->{master_log_file} =~ m/^(.*?)\.0*([1-9][0-9]*)$/;
-      if ( $master_log_name ne $slave_log_name
-         || abs($master_log_num - $slave_log_num) > 1 )
-      {
-         die "The slave thinks it is reading from "
-            . "$slave_status->{master_log_file},  but the "
-            . "master is writing to $master_status->{file}";
-      }
-   }
-   return 1;
-}
-
-sub get_master_dsn {
-   my ( $self, $dbh, $dsn, $dsn_parser ) = @_;
-   my $master = $self->get_slave_status($dbh) or return undef;
-   my $spec   = "h=$master->{master_host},P=$master->{master_port}";
-   return       $dsn_parser->parse($spec, $dsn);
-}
-
-sub get_slave_status {
-   my ( $self, $dbh ) = @_;
-   if ( !$self->{not_a_slave}->{$dbh} ) {
-      my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
-            ||= $dbh->prepare('SHOW SLAVE STATUS');
-      MKDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
-      $sth->execute();
-      my ($ss) = @{$sth->fetchall_arrayref({})};
-
-      if ( $ss && %$ss ) {
-         $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-         return $ss;
-      }
-
-      MKDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
-      $self->{not_a_slave}->{$dbh}++;
-   }
-}
-
-sub get_master_status {
-   my ( $self, $dbh ) = @_;
-
-   if ( $self->{not_a_master}->{$dbh} ) {
-      MKDEBUG && _d('Server on dbh', $dbh, 'is not a master');
-      return;
-   }
-
-   my $sth = $self->{sths}->{$dbh}->{MASTER_STATUS}
-         ||= $dbh->prepare('SHOW MASTER STATUS');
-   MKDEBUG && _d($dbh, 'SHOW MASTER STATUS');
-   $sth->execute();
-   my ($ms) = @{$sth->fetchall_arrayref({})};
-   MKDEBUG && _d(@$ms);
-
-   if ( !$ms || scalar keys %$ms < 2 ) {
-      MKDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
-      $self->{not_a_master}->{$dbh}++;
-   }
-
-  return { map { lc($_) => $ms->{$_} } keys %$ms }; # lowercase the keys
-}
-
-sub wait_for_master {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(master_status slave_dbh);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($master_status, $slave_dbh) = @args{@required_args};
-   my $timeout       = $args{timeout} || 60;
-
-   my $result;
-   my $waited;
-   if ( $master_status ) {
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
-              . "$master_status->{position}, $timeout)";
-      MKDEBUG && _d($slave_dbh, $sql);
-      my $start = time;
-      ($result) = $slave_dbh->selectrow_array($sql);
-
-      $waited = time - $start;
-
-      MKDEBUG && _d('Result of waiting:', $result);
-      MKDEBUG && _d("Waited", $waited, "seconds");
-   }
-   else {
-      MKDEBUG && _d('Not waiting: this server is not a master');
-   }
-
-   return {
-      result => $result,
-      waited => $waited,
-   };
-}
-
-sub stop_slave {
-   my ( $self, $dbh ) = @_;
-   my $sth = $self->{sths}->{$dbh}->{STOP_SLAVE}
-         ||= $dbh->prepare('STOP SLAVE');
-   MKDEBUG && _d($dbh, $sth->{Statement});
-   $sth->execute();
-}
-
-sub start_slave {
-   my ( $self, $dbh, $pos ) = @_;
-   if ( $pos ) {
-      my $sql = "START SLAVE UNTIL MASTER_LOG_FILE='$pos->{file}', "
-              . "MASTER_LOG_POS=$pos->{position}";
-      MKDEBUG && _d($dbh, $sql);
-      $dbh->do($sql);
-   }
-   else {
-      my $sth = $self->{sths}->{$dbh}->{START_SLAVE}
-            ||= $dbh->prepare('START SLAVE');
-      MKDEBUG && _d($dbh, $sth->{Statement});
-      $sth->execute();
-   }
-}
-
-sub catchup_to_master {
-   my ( $self, $slave, $master, $timeout ) = @_;
-   $self->stop_slave($master);
-   $self->stop_slave($slave);
-   my $slave_status  = $self->get_slave_status($slave);
-   my $slave_pos     = $self->repl_posn($slave_status);
-   my $master_status = $self->get_master_status($master);
-   my $master_pos    = $self->repl_posn($master_status);
-   MKDEBUG && _d('Master position:', $self->pos_to_string($master_pos),
-      'Slave position:', $self->pos_to_string($slave_pos));
-
-   my $result;
-   if ( $self->pos_cmp($slave_pos, $master_pos) < 0 ) {
-      MKDEBUG && _d('Waiting for slave to catch up to master');
-      $self->start_slave($slave, $master_pos);
-
-      $result = $self->wait_for_master(
-            master_status => $master_status,
-            slave_dbh     => $slave,
-            timeout       => $timeout,
-            master_status => $master_status
-      );
-      if ( !defined $result->{result} ) {
-         $slave_status = $self->get_slave_status($slave);
-         if ( !$self->slave_is_running($slave_status) ) {
-            MKDEBUG && _d('Master position:',
-               $self->pos_to_string($master_pos),
-               'Slave position:', $self->pos_to_string($slave_pos));
-            $slave_pos = $self->repl_posn($slave_status);
-            if ( $self->pos_cmp($slave_pos, $master_pos) != 0 ) {
-               die "MASTER_POS_WAIT() returned NULL but slave has not "
-                  . "caught up to master";
-            }
-            MKDEBUG && _d('Slave is caught up to master and stopped');
-         }
-         else {
-            die "Slave has not caught up to master and it is still running";
-         }
-      }
-   }
-   else {
-      MKDEBUG && _d("Slave is already caught up to master");
-   }
-
-   return $result;
-}
-
-sub catchup_to_same_pos {
-   my ( $self, $s1_dbh, $s2_dbh ) = @_;
-   $self->stop_slave($s1_dbh);
-   $self->stop_slave($s2_dbh);
-   my $s1_status = $self->get_slave_status($s1_dbh);
-   my $s2_status = $self->get_slave_status($s2_dbh);
-   my $s1_pos    = $self->repl_posn($s1_status);
-   my $s2_pos    = $self->repl_posn($s2_status);
-   if ( $self->pos_cmp($s1_pos, $s2_pos) < 0 ) {
-      $self->start_slave($s1_dbh, $s2_pos);
-   }
-   elsif ( $self->pos_cmp($s2_pos, $s1_pos) < 0 ) {
-      $self->start_slave($s2_dbh, $s1_pos);
-   }
-
-   $s1_status = $self->get_slave_status($s1_dbh);
-   $s2_status = $self->get_slave_status($s2_dbh);
-   $s1_pos    = $self->repl_posn($s1_status);
-   $s2_pos    = $self->repl_posn($s2_status);
-
-   if ( $self->slave_is_running($s1_status)
-     || $self->slave_is_running($s2_status)
-     || $self->pos_cmp($s1_pos, $s2_pos) != 0)
-   {
-      die "The servers aren't both stopped at the same position";
-   }
-
-}
-
-sub slave_is_running {
-   my ( $self, $slave_status ) = @_;
-   return ($slave_status->{slave_sql_running} || 'No') eq 'Yes';
-}
-
-sub has_slave_updates {
-   my ( $self, $dbh ) = @_;
-   my $sql = q{SHOW VARIABLES LIKE 'log_slave_updates'};
-   MKDEBUG && _d($dbh, $sql);
-   my ($name, $value) = $dbh->selectrow_array($sql);
-   return $value && $value =~ m/^(1|ON)$/;
-}
-
-sub repl_posn {
-   my ( $self, $status ) = @_;
-   if ( exists $status->{file} && exists $status->{position} ) {
-      return {
-         file     => $status->{file},
-         position => $status->{position},
-      };
-   }
-   else {
-      return {
-         file     => $status->{relay_master_log_file},
-         position => $status->{exec_master_log_pos},
-      };
-   }
-}
-
-sub get_slave_lag {
-   my ( $self, $dbh ) = @_;
-   my $stat = $self->get_slave_status($dbh);
-   return unless $stat;  # server is not a slave
-   return $stat->{seconds_behind_master};
-}
-
-sub pos_cmp {
-   my ( $self, $a, $b ) = @_;
-   return $self->pos_to_string($a) cmp $self->pos_to_string($b);
-}
-
-sub short_host {
-   my ( $self, $dsn ) = @_;
-   my ($host, $port);
-   if ( $dsn->{master_host} ) {
-      $host = $dsn->{master_host};
-      $port = $dsn->{master_port};
-   }
-   else {
-      $host = $dsn->{h};
-      $port = $dsn->{P};
-   }
-   return ($host || '[default]') . ( ($port || 3306) == 3306 ? '' : ":$port" );
-}
-
-sub is_replication_thread {
-   my ( $self, $query, %args ) = @_; 
-   return unless $query;
-
-   my $type = lc $args{type} || 'all';
-   die "Invalid type: $type"
-      unless $type =~ m/^binlog_dump|slave_io|slave_sql|all$/i;
-
-   my $match = 0;
-   if ( $type =~ m/binlog_dump|all/i ) {
-      $match = 1
-         if ($query->{Command} || $query->{command} || '') eq "Binlog Dump";
-   }
-   if ( !$match ) {
-      if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
-         MKDEBUG && _d("Slave replication thread");
-         if ( $type ne 'all' ) { 
-            my $state = $query->{State} || $query->{state} || '';
-
-            if ( $state =~ m/^init|end$/ ) {
-               MKDEBUG && _d("Special state:", $state);
-               $match = 1;
-            }
-            else {
-               my ($slave_sql) = $state =~ m/
-                  ^(Waiting\sfor\sthe\snext\sevent
-                   |Reading\sevent\sfrom\sthe\srelay\slog
-                   |Has\sread\sall\srelay\slog;\swaiting
-                   |Making\stemp\sfile
-                   |Waiting\sfor\sslave\smutex\son\sexit)/xi; 
-
-               $match = $type eq 'slave_sql' &&  $slave_sql ? 1
-                      : $type eq 'slave_io'  && !$slave_sql ? 1
-                      :                                       0;
-            }
-         }
-         else {
-            $match = 1;
-         }
-      }
-      else {
-         MKDEBUG && _d('Not system user');
-      }
-
-      if ( !defined $args{check_known_ids} || $args{check_known_ids} ) {
-         my $id = $query->{Id} || $query->{id};
-         if ( $match ) {
-            $self->{replication_thread}->{$id} = 1;
-         }
-         else {
-            if ( $self->{replication_thread}->{$id} ) {
-               MKDEBUG && _d("Thread ID is a known replication thread ID");
-               $match = 1;
-            }
-         }
-      }
-   }
-
-   MKDEBUG && _d('Matches', $type, 'replication thread:',
-      ($match ? 'yes' : 'no'), '; match:', $match);
-
-   return $match;
-}
-
-
-sub get_replication_filters {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($dbh) = @args{@required_args};
-
-   my %filters = ();
-
-   my $status = $self->get_master_status($dbh);
-   if ( $status ) {
-      map { $filters{$_} = $status->{$_} }
-      grep { defined $status->{$_} && $status->{$_} ne '' }
-      qw(
-         binlog_do_db
-         binlog_ignore_db
-      );
-   }
-
-   $status = $self->get_slave_status($dbh);
-   if ( $status ) {
-      map { $filters{$_} = $status->{$_} }
-      grep { defined $status->{$_} && $status->{$_} ne '' }
-      qw(
-         replicate_do_db
-         replicate_ignore_db
-         replicate_do_table
-         replicate_ignore_table 
-         replicate_wild_do_table
-         replicate_wild_ignore_table
-      );
-
-      my $sql = "SHOW VARIABLES LIKE 'slave_skip_errors'";
-      MKDEBUG && _d($dbh, $sql);
-      my $row = $dbh->selectrow_arrayref($sql);
-      $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
-   }
-
-   return \%filters; 
-}
-
-
-sub pos_to_string {
-   my ( $self, $pos ) = @_;
-   my $fmt  = '%s/%020d';
-   return sprintf($fmt, @{$pos}{qw(file position)});
-}
-
-sub reset_known_replication_threads {
-   my ( $self ) = @_;
-   $self->{replication_thread} = {};
-   return;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End MasterSlave package
-# ###########################################################################
-
-# ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -2345,6 +1655,346 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Transformers package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Transformers;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Time::Local qw(timegm timelocal);
+use Digest::MD5 qw(md5_hex);
+
+require Exporter;
+our @ISA         = qw(Exporter);
+our %EXPORT_TAGS = ();
+our @EXPORT      = ();
+our @EXPORT_OK   = qw(
+   micro_t
+   percentage_of
+   secs_to_time
+   time_to_secs
+   shorten
+   ts
+   parse_timestamp
+   unix_timestamp
+   any_unix_timestamp
+   make_checksum
+   crc32
+);
+
+our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
+our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
+our $n_ts      = qr/(\d{1,5})([shmd]?)/; # Limit \d{1,5} because \d{6} looks
+
+sub micro_t {
+   my ( $t, %args ) = @_;
+   my $p_ms = defined $args{p_ms} ? $args{p_ms} : 0;  # precision for ms vals
+   my $p_s  = defined $args{p_s}  ? $args{p_s}  : 0;  # precision for s vals
+   my $f;
+
+   $t = 0 if $t < 0;
+
+   $t = sprintf('%.17f', $t) if $t =~ /e/;
+
+   $t =~ s/\.(\d{1,6})\d*/\.$1/;
+
+   if ($t > 0 && $t <= 0.000999) {
+      $f = ($t * 1000000) . 'us';
+   }
+   elsif ($t >= 0.001000 && $t <= 0.999999) {
+      $f = sprintf("%.${p_ms}f", $t * 1000);
+      $f = ($f * 1) . 'ms'; # * 1 to remove insignificant zeros
+   }
+   elsif ($t >= 1) {
+      $f = sprintf("%.${p_s}f", $t);
+      $f = ($f * 1) . 's'; # * 1 to remove insignificant zeros
+   }
+   else {
+      $f = 0;  # $t should = 0 at this point
+   }
+
+   return $f;
+}
+
+sub percentage_of {
+   my ( $is, $of, %args ) = @_;
+   my $p   = $args{p} || 0; # float precision
+   my $fmt = $p ? "%.${p}f" : "%d";
+   return sprintf $fmt, ($is * 100) / ($of ||= 1);
+}
+
+sub secs_to_time {
+   my ( $secs, $fmt ) = @_;
+   $secs ||= 0;
+   return '00:00' unless $secs;
+
+   $fmt ||= $secs >= 86_400 ? 'd'
+          : $secs >= 3_600  ? 'h'
+          :                   'm';
+
+   return
+      $fmt eq 'd' ? sprintf(
+         "%d+%02d:%02d:%02d",
+         int($secs / 86_400),
+         int(($secs % 86_400) / 3_600),
+         int(($secs % 3_600) / 60),
+         $secs % 60)
+      : $fmt eq 'h' ? sprintf(
+         "%02d:%02d:%02d",
+         int(($secs % 86_400) / 3_600),
+         int(($secs % 3_600) / 60),
+         $secs % 60)
+      : sprintf(
+         "%02d:%02d",
+         int(($secs % 3_600) / 60),
+         $secs % 60);
+}
+
+sub time_to_secs {
+   my ( $val, $default_suffix ) = @_;
+   die "I need a val argument" unless defined $val;
+   my $t = 0;
+   my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
+   $suffix = $suffix || $default_suffix || 's';
+   if ( $suffix =~ m/[smhd]/ ) {
+      $t = $suffix eq 's' ? $num * 1        # Seconds
+         : $suffix eq 'm' ? $num * 60       # Minutes
+         : $suffix eq 'h' ? $num * 3600     # Hours
+         :                  $num * 86400;   # Days
+
+      $t *= -1 if $prefix && $prefix eq '-';
+   }
+   else {
+      die "Invalid suffix for $val: $suffix";
+   }
+   return $t;
+}
+
+sub shorten {
+   my ( $num, %args ) = @_;
+   my $p = defined $args{p} ? $args{p} : 2;     # float precision
+   my $d = defined $args{d} ? $args{d} : 1_024; # divisor
+   my $n = 0;
+   my @units = ('', qw(k M G T P E Z Y));
+   while ( $num >= $d && $n < @units - 1 ) {
+      $num /= $d;
+      ++$n;
+   }
+   return sprintf(
+      $num =~ m/\./ || $n
+         ? "%.${p}f%s"
+         : '%d',
+      $num, $units[$n]);
+}
+
+sub ts {
+   my ( $time, $gmt ) = @_;
+   my ( $sec, $min, $hour, $mday, $mon, $year )
+      = $gmt ? gmtime($time) : localtime($time);
+   $mon  += 1;
+   $year += 1900;
+   my $val = sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+      $year, $mon, $mday, $hour, $min, $sec);
+   if ( my ($us) = $time =~ m/(\.\d+)$/ ) {
+      $us = sprintf("%.6f", $us);
+      $us =~ s/^0\././;
+      $val .= $us;
+   }
+   return $val;
+}
+
+sub parse_timestamp {
+   my ( $val ) = @_;
+   if ( my($y, $m, $d, $h, $i, $s, $f)
+         = $val =~ m/^$mysql_ts$/ )
+   {
+      return sprintf "%d-%02d-%02d %02d:%02d:"
+                     . (defined $f ? '%09.6f' : '%02d'),
+                     $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   return $val;
+}
+
+sub unix_timestamp {
+   my ( $val, $gmt ) = @_;
+   if ( my($y, $m, $d, $h, $i, $s, $us) = $val =~ m/^$proper_ts$/ ) {
+      $val = $gmt
+         ? timegm($s, $i, $h, $d, $m - 1, $y)
+         : timelocal($s, $i, $h, $d, $m - 1, $y);
+      if ( defined $us ) {
+         $us = sprintf('%.6f', $us);
+         $us =~ s/^0\././;
+         $val .= $us;
+      }
+   }
+   return $val;
+}
+
+sub any_unix_timestamp {
+   my ( $val, $callback ) = @_;
+
+   if ( my ($n, $suffix) = $val =~ m/^$n_ts$/ ) {
+      $n = $suffix eq 's' ? $n            # Seconds
+         : $suffix eq 'm' ? $n * 60       # Minutes
+         : $suffix eq 'h' ? $n * 3600     # Hours
+         : $suffix eq 'd' ? $n * 86400    # Days
+         :                  $n;           # default: Seconds
+      MKDEBUG && _d('ts is now - N[shmd]:', $n);
+      return time - $n;
+   }
+   elsif ( $val =~ m/^\d{9,}/ ) {
+      MKDEBUG && _d('ts is already a unix timestamp');
+      return $val;
+   }
+   elsif ( my ($ymd, $hms) = $val =~ m/^(\d{6})(?:\s+(\d+:\d+:\d+))?/ ) {
+      MKDEBUG && _d('ts is MySQL slow log timestamp');
+      $val .= ' 00:00:00' unless $hms;
+      return unix_timestamp(parse_timestamp($val));
+   }
+   elsif ( ($ymd, $hms) = $val =~ m/^(\d{4}-\d\d-\d\d)(?:[T ](\d+:\d+:\d+))?/) {
+      MKDEBUG && _d('ts is properly formatted timestamp');
+      $val .= ' 00:00:00' unless $hms;
+      return unix_timestamp($val);
+   }
+   else {
+      MKDEBUG && _d('ts is MySQL expression');
+      return $callback->($val) if $callback && ref $callback eq 'CODE';
+   }
+
+   MKDEBUG && _d('Unknown ts type:', $val);
+   return;
+}
+
+sub make_checksum {
+   my ( $val ) = @_;
+   my $checksum = uc substr(md5_hex($val), -16);
+   MKDEBUG && _d($checksum, 'checksum for', $val);
+   return $checksum;
+}
+
+sub crc32 {
+   my ( $string ) = @_;
+   return unless $string;
+   my $poly = 0xEDB88320;
+   my $crc  = 0xFFFFFFFF;
+   foreach my $char ( split(//, $string) ) {
+      my $comp = ($crc ^ ord($char)) & 0xFF;
+      for ( 1 .. 8 ) {
+         $comp = $comp & 1 ? $poly ^ ($comp >> 1) : $comp >> 1;
+      }
+      $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
+   }
+   return $crc ^ 0xFFFFFFFF;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Transformers package
+# ###########################################################################
+
+# ###########################################################################
+# Retry package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Retry;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub retry {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(try wait);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($try, $wait) = @args{@required_args};
+   my $tries = $args{tries} || 3;
+
+   my $tryno = 0;
+   while ( ++$tryno <= $tries ) {
+      MKDEBUG && _d("Retry", $tryno, "of", $tries);
+      my $result;
+      eval {
+         $result = $try->(tryno=>$tryno);
+      };
+
+      if ( defined $result ) {
+         MKDEBUG && _d("Try code succeeded");
+         if ( my $on_success = $args{on_success} ) {
+            MKDEBUG && _d("Calling on_success code");
+            $on_success->(tryno=>$tryno, result=>$result);
+         }
+         return $result;
+      }
+
+      if ( $EVAL_ERROR ) {
+         MKDEBUG && _d("Try code died:", $EVAL_ERROR);
+         die $EVAL_ERROR unless $args{retry_on_die};
+      }
+
+      if ( $tryno < $tries ) {
+         MKDEBUG && _d("Try code failed, calling wait code");
+         $wait->(tryno=>$tryno);
+      }
+   }
+
+   MKDEBUG && _d("Try code did not succeed");
+   if ( my $on_failure = $args{on_failure} ) {
+      MKDEBUG && _d("Calling on_failure code");
+      $on_failure->();
+   }
+
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Retry package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -2352,100 +2002,85 @@ sub _d {
 # Check at the end of this package for the call to main() which actually runs
 # the program.
 # ###########################################################################
-package pt_slave_restart;
+package pt_slave_delay;
 
 use English qw(-no_match_vars);
-use IO::File;
 use List::Util qw(min max);
-use Time::HiRes qw(sleep);
 use sigtrap qw(handler finish untrapped normal-signals);
+
+Transformers->import(qw(ts));
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-$OUTPUT_AUTOFLUSH = 1;
-
+my $now;
 my $o;
-my $dp;
-my $q  = new Quoter();
-my $vp = new VersionParser();
-my %children;
+my $oktorun = 1;
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
 
-   # ########################################################################
-   # Get configuration information.
-   # ########################################################################
-   $o  = new OptionParser();
+   my $vp = new VersionParser();
+   $o     = new OptionParser();
    $o->get_specs();
    $o->get_opts();
 
-   $dp = $o->DSNParser(); 
+   my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
 
-   $o->set('verbose', 0) if $o->get('quiet');
+   my $dsn_defaults = $dp->parse_options($o);
+   my $slave_dsn  = @ARGV ? $dp->parse(shift @ARGV, $dsn_defaults)
+                          : $dsn_defaults;
+   my $master_dsn = $dp->parse(shift @ARGV, $slave_dsn, $dsn_defaults) if @ARGV;
 
-   if ( !$o->get('help') ) {
-      if ( $o->get('until-master') ) {
-         if ( $o->get('until-master') !~ m/^[.\w-]+,\d+$/ ) {
-            $o->save_error("Invalid --until-master argument, must be file,pos");
-         }
+   if ( !$o->got('help') ) {
+      if ( !$slave_dsn ) {
+         $o->save_error("Missing or invalid slave host");
       }
-      if ( $o->get('until-relay') ) {
-         if ( $o->get('until-relay') !~ m/^[.\w-]+,\d+$/ ) {
-            $o->save_error("Invalid --until-relay argument, must be file,pos");
-         }
-      }
+   }
+
+   $o->set('interval', max($o->get('interval'), 1));
+   if ( $o->get('run-time') ) {
+      $o->set('run-time', max($o->get('run-time'), 1));
    }
 
    $o->usage_or_errors();
 
-   # ########################################################################
-   # First things first: if --stop was given, create the sentinel file.
-   # ########################################################################
-   my $sentinel = $o->get('sentinel');
-   if ( $o->get('stop') ) {
-      MKDEBUG && _d('Creating sentinel file', $sentinel);
-      my $file = IO::File->new($sentinel, ">>")
-         or die "Cannot open $sentinel: $OS_ERROR\n";
-      print $file "Remove this file to permit pt-replica-restart to run\n"
-         or die "Cannot write to $sentinel: $OS_ERROR\n";
-      close $file
-         or die "Cannot close $sentinel: $OS_ERROR\n";
-      print STDOUT "Successfully created file $sentinel\n"
-         unless $o->get('quiet');
-      # Exit unlesss --monitor is given.
-      if ( !$o->got('monitor') ) {
-         MKDEBUG && _d('Nothing more to do, quitting');
-         return 0;
-      }
-      else {
-         # Wait for all other running instances to quit, assuming they have the
-         # same --interval as this invocation.  Then remove the file and
-         # continue.
-         MKDEBUG && _d('Waiting for other instances to quit');
-         sleep $o->get('max-sleep');
-         MKDEBUG && _d('Unlinking', $sentinel);
-         unlink $sentinel
-            or die "Cannot unlink $sentinel: $OS_ERROR";
-      }
+   # #######################################################################
+   # Ready to work now.
+   # #######################################################################
+   my ( $TS, $FILE, $POS ) = ( 0, 1, 2 );
+   my @positions;
+   my $next_start = 0;
+   $now    = time();
+   my $end = $now + ( $o->get('run-time') || 0 );    # When we should exit
+
+   # Connect before daemonizing, in case --ask-pass is needed.
+   my $slave_dbh = get_dbh($dp, $slave_dsn);
+   my $status    = $slave_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+   if ( !$status || ! %$status ) {
+      die "No SLAVE STATUS found";
+   }
+   if ( ( $status->{slave_sql_running} || '' ) eq 'No' ) {
+      # http://code.google.com/p/maatkit/issues/detail?id=1169
+      die "Slave SQL thread is not running";
    }
 
-   # ########################################################################
-   # Connect and go to work.
-   # ########################################################################
-   if ( $o->get('ask-pass') ) {
-      $o->set('password', OptionParser::prompt_noecho("Enter password: "));
+   my $master_dbh;
+   if ( $master_dsn ) {
+      MKDEBUG && _d('Connecting to master via DSN from cmd-line');
+      $master_dbh = get_dbh($dp, $master_dsn);
    }
-   my $dsn_defaults = $dp->parse_options($o);
-   my $dsn          = @ARGV ? $dp->parse(shift @ARGV, $dsn_defaults)
-                    :         $dsn_defaults;
-   my $dbh          = $dp->get_dbh($dp->get_cxn_params($dsn),
-                              { AutoCommit => 1, });
+   elsif ( $o->get('use-master')
+           || $status->{slave_io_state} =~ m/free enough relay log/ )
+   {
+      # Try to connect to the slave's master just by looking at its
+      # SLAVE STATUS.
+      MKDEBUG && _d('The I/O thread is waiting, connecting to master');
+      my $spec    = "h=$status->{master_host},P=$status->{master_port}";
+      $master_dbh = get_dbh($dp, $dp->parse($spec, $slave_dsn));
+   }
 
-   $dbh->{InactiveDestroy}  = 1;         # Don't disconnect on fork/daemonize
-
-   # Daemonize only after connecting and doing --ask-pass.
+   # Daemonize only after (potentially) asking for passwords for --ask-pass.
    my $daemon;
    if ( $o->get('daemonize') ) {
       $daemon = new Daemon(o=>$o);
@@ -2458,320 +2093,211 @@ sub main {
       $daemon->make_PID_file();
    }
 
-   my $exit_status = 0; 
-   my @servers_to_watch; 
+   # If the I/O thread isn't running when the program starts,
+   # it never knows what to do.  So start it.
+   $slave_dbh->do('START SLAVE IO_THREAD');
 
-   # Despite the name, recursing to slaves actually begins at the specified
-   # server, so the named server may also be watched, if it's a slave.
-   my $ms = new MasterSlave(VersionParser => $vp);
-   $ms->recurse_to_slaves(
-      {  dbh        => $dbh,
-         dsn        => $dsn,
-         dsn_parser => $dp,
-         recurse    => $o->get('recurse') || 0,
-         callback   => sub {
-            my ( $dsn, $dbh, $level ) = @_;
-            # Test whether we want to watch this server.
-            eval {
-               my $stat = $ms->get_slave_status($dbh);
-               if ( $stat ) {
-                  push @servers_to_watch, { dsn => $dsn, dbh => $dbh };
-               }
-               else {
-                  die "could not find slave status on this server\n";
-               }
-            };
-            if ( $EVAL_ERROR ) {
-               chomp $EVAL_ERROR;
-               MKDEBUG && _d('Not watching', $dp->as_string($dsn),
-                  'because', $EVAL_ERROR);
-            }
-         },
-         skip_callback => sub {
-            my ( $dsn, $dbh, $level ) = @_;
-            print STDERR "Skipping ", $dp->as_string($dsn), "\n";
-         },
-         method => $o->get('recursion-method'),
+   while (                              # Quit if:
+      (!$o->get('run-time') || $now < $end) # time is exceeded
+      && $oktorun                       # or instructed to quit
+   ) {
+
+      $now = time();
+
+      if ( !$slave_dbh || !$slave_dbh->ping() ) {
+         # Try 10 times, for about 2 minutes, to reconnect to the slave,
+         # increasing wait time from 3 to 15 seconds.
+         $o->set('ask-pass', 0);  # don't ask again
+         my $tries = 10;
+         my $rt    = new Retry();
+         $rt->retry(
+            tries        => $tries,
+            retry_on_die => 1,
+            wait         => sub {
+               my ( %args ) = @_;
+               return unless $oktorun;
+               my $t = min($args{tryno} * 3, 15);
+               info("Could not reconnect to slave, sleeping $t seconds "
+                  . "and trying " . ($tries-$args{tryno}) . " more times")
+                     if $tries - $args{tryno};
+               sleep $t;
+            },
+            try          => sub {
+               return unless $oktorun;
+               info("Lost connection to slave, trying to reconnect");
+               $slave_dbh = get_dbh($dp, $slave_dsn);
+               return $slave_dbh;
+            },
+            on_success   => sub {
+               info("Reconnected to slave");
+            },
+            on_failure   => sub {
+               return unless $oktorun;
+               die "Failed to reconnect to slave";
+            },
+         );
+         last unless $oktorun;  # might have gotten interrupt while waiting
       }
-   );
-
-   # Watch each server found.
-   my $must_fork = @servers_to_watch > 1;
-   foreach my $host ( @servers_to_watch ) {
-
-      $host->{dbh}->{InactiveDestroy}  = 1;         # Don't disconnect on fork
-
-      # Fork, but only if there might be more than one host to watch.
-      my $pid = $must_fork ? fork() : undef;
-      if ( !$must_fork || (defined($pid) && $pid == 0) ) {
-         # I either forked and I'm a child, or I didn't fork... confusing, eh?
-         watch_server($host->{dsn}, $host->{dbh}, $must_fork, $ms);
+      $status = $slave_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+      if ( !$status || ! %$status ) {
+         die "No SLAVE STATUS found";
       }
-      elsif ( $must_fork && !defined($pid) ) {
-         die("Unable to fork!");
-      }
-      # I already exited if I'm a child, so I'm the parent.  (Or maybe I never
-      # forked).
-      $children{$dp->as_string($host->{dsn})} = $pid if $must_fork;
-   }
 
-   MKDEBUG && _d('Child PIDs:', values %children);
-   # Wait for the children to exit.
-   foreach my $host ( keys %children ) {
-      MKDEBUG && _d('Waiting to reap', $host);
-      my $pid = waitpid($children{$host}, 0);
-      $exit_status ||= $CHILD_ERROR >> 8;
-   }
-
-   $dp->disconnect($dbh);
-   return $exit_status;
-}
-
-# ############################################################################
-# Subroutines.
-# ############################################################################
-
-# Actually watch a server.  If many instances are being watched, this is
-# fork()ed.
-sub watch_server {
-   my ( $dsn, $dbh, $was_forked, $ms ) = @_;
-
-   MKDEBUG && _d('Watching server', $dp->as_string($dsn),
-      'forked:', $was_forked);
-
-   my $start_sql = $vp->version_ge($dbh, '4.0.5')
-                 ? 'START SLAVE' : 'SLAVE START';
-   if ( $o->get('until-master') ) {
-      my ( $file, $pos ) = split(',', $o->get('until-master'));
-      $start_sql .= " UNTIL MASTER_LOG_FILE = '$file', MASTER_LOG_POS = $pos";
-   }
-   elsif ( $o->get('until-relay') ) {
-      my ( $file, $pos ) = split(',', $o->get('until-relay'));
-      $start_sql .= " UNTIL RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $pos";
-   }
-
-   my $set_skip   = $dbh->prepare("SET GLOBAL SQL_SLAVE_SKIP_COUNTER = "
-                    . $o->get('skip-count'));
-   my $start      = $dbh->prepare($start_sql);
-   my $stop       = $dbh->prepare('STOP SLAVE');
-   my $chmt       = $dbh->prepare(
-                    'CHANGE MASTER TO MASTER_LOG_FILE=?, MASTER_LOG_POS=?');
-
-
-   # ########################################################################
-   # Lookup tables of things to do when a problem is detected.
-   # ########################################################################
-   my @error_patterns = (
-      [ qr/You have an error in your SQL/         => 'refetch_relay_log' ],
-      [ qr/Could not parse relay log event entry/ => 'refetch_relay_log' ],
-      [ qr/Incorrect key file for table/          => 'repair_table'      ],
-      # This must be the last one.  It's a catch-all rule: skip and restart.
-      [ qr/./                                     => 'skip'              ],
-   );
-
-   # ########################################################################
-   # These are actions to take when an error is found.
-   # ########################################################################
-   my %actions = (
-      refetch_relay_log => sub {
-         my ( $stat, $dbh ) = @_;
-         MKDEBUG && _d('Found relay log corruption');
-         # Can't do CHANGE MASTER TO with a running slave.
-         $stop->execute();
-         $chmt->execute(
-            @{$stat}{qw(relay_master_log_file exec_master_log_pos)});
-      },
-      skip => sub {
-         my ( $stat, $dbh ) = @_;
-         MKDEBUG && _d('Found non-relay-log error');
-         $set_skip->execute();
-      },
-      repair_table => sub {
-         my ( $stat, $dbh ) = @_;
-         MKDEBUG && _d('Found corrupt table');
-         # [ qr/Incorrect key file for table './foo/bar.MYI'
-         my ( $db, $tbl ) = $stat->{last_error} =~ m!([^/]+)/(.*?)\.MYI!;
-         if ( $db && $tbl ) {
-            my $sql = "REPAIR TABLE " . $q->quote($db, $tbl);
-            MKDEBUG && _d($sql);
-            $dbh->do($sql);
+      if ( !$master_dbh
+            && $status->{slave_io_state} =~ m/free enough relay log/ ) {
+         MKDEBUG && _d("The I/O thread is stuck, connecting to master");
+         # If we're daemonized and --ask-pass is given, there's no way
+         # to ask for a password.
+         if ( $o->get('daemonize') && $o->get('ask-pass') ) {
+            die "Cannot ask for password while daemonized";
          }
-      },
-   );
-
-   my $err_text  = $o->get('error-text');
-   my $exit_time = time() + ($o->get('run-time') || 0);
-   my $sleep     = $o->get('sleep');
-   my ($last_log, $last_pos);
-
-   my $stat = {}; # Will hold SHOW SLAVE STATUS
-   STAT:
-   while ( $stat
-           && (!$o->get('run-time') || time() < $exit_time)
-           && !-f $o->get('sentinel') ) {
-      my $increase_sleep = 1;
-      $stat = $ms->get_slave_status($dbh);
-      if ( !$stat ) {
-         print STDERR "No SLAVE STATUS output found on ",
-            $dp->as_string($dsn), "\n";
-         next STAT;
+         my $spec    = "h=$status->{master_host},P=$status->{master_port}";
+         $master_dbh = get_dbh($dp, $dp->parse($spec, $slave_dsn));
       }
 
-      MKDEBUG && _d('Last/current relay log file:',
-         $last_log, $stat->{relay_log_file});
-      MKDEBUG && _d('Last/current relay log pos:',
-         $last_pos, $stat->{relay_log_pos});
-      if ( !$last_log
-           || $last_log ne $stat->{relay_log_file}   # Avoid infinite loops
-           || $last_pos != $stat->{relay_log_pos}
-      ) {
-         $stat->{slave_sql_running} ||= 'No';
-         $stat->{last_error}        ||= '';
-         $stat->{last_errno}        ||= 0;
+      if ( defined $status->{seconds_behind_master} ) {
+         info("slave running $status->{seconds_behind_master} seconds behind");
+      }
 
-         if ( $o->get('until-master') && pos_ge($stat, 'master') ) {
-            die "Slave has advanced past " . $o->get('until-master')
-               . " on master.\n";
+      # Get binlog position.
+      if ( $master_dbh ) {
+         MKDEBUG && _d('Getting binlog pos from master');
+         my $res = $master_dbh->selectrow_hashref("SHOW MASTER STATUS");
+         die "Binary logging is disabled on the MASTER-HOST"
+            unless $res && %$res && $res->{file};
+         my $pos = $positions[-1];
+         if ( !@positions || $pos->[$FILE] ne $res->{file}
+            || $pos->[$POS] != $res->{position} )
+         {
+            push @positions,
+               [ $now, $res->{file}, $res->{position} ];
          }
-         elsif ( $o->get('until-relay') && pos_ge($stat, 'relay') ) {
-            die "Slave has advanced past " . $o->get('until-relay')
-               . " in relay logs.\n";
+      }
+      else {
+         MKDEBUG && _d('Getting binlog pos from slave');
+         # Use the position on master at which the I/O thread is reading.
+         # If the I/O thread is not far behind, which it usually is not,
+         # this is basically the same as the master's File/Position, but
+         # it's more efficient -- one fewer connections to keep open.
+         my $pos = $positions[-1];
+         if ( !@positions
+            || $pos->[$FILE] ne $status->{master_log_file}
+            || $pos->[$POS] != $status->{read_master_log_pos} )
+         {
+            push @positions,
+               [ $now, $status->{master_log_file},
+                 $status->{read_master_log_pos} ];
+         }
+      }
+
+      if ( ( $status->{slave_sql_running} || '' ) eq 'No' ) {
+         MKDEBUG && _d('Slave not running');
+         # Find the most recent binlog position that's older than
+         # the delay amount.
+         my $pos;
+         my $i = 0;
+         while ( $i < @positions
+                 && $positions[$i]->[$TS] <= $now - $o->get('delay') ) {
+            $pos = $i;
+            $i++;
          }
 
-         if ( $stat->{slave_sql_running} eq 'No' ) {
-            # Print the time, error, etc
-            if ( $o->get('verbose') ) {
-               my $err = '';
-               if ( $o->get('verbose') > 1 ) {
-                  ($err = $stat->{last_error} || '' ) =~ s/\s+/ /g;
-                  if ( $o->get('error-length') ) {
-                     $err = substr($err, 0, $o->get('error-length'));
-                  }
-               }
-               printf("%s %s %s %11d %d %s\n",
-                  ts(time),
-                  $dp->as_string($dsn),
-                  $stat->{relay_log_file},
-                  $stat->{relay_log_pos},
-                  $stat->{last_errno} || 0,
-                  $err
+         if ( $pos ) {
+            my $position = $positions[$pos];
+            MKDEBUG && _d('Chosen position:', ts($position->[$TS]),
+                  $position->[$FILE], '/', $position->[$POS]);
+         }
+         else {
+            MKDEBUG && _d('No position found');
+         }
+
+         # Make the slave server delay if possible; otherwise sleep and check
+         # again.
+         if ( $now >= $next_start && defined $pos ) {
+            my $position = $positions[$pos];
+            if ( $position->[$FILE] ne $status->{relay_master_log_file}
+               || $position->[$POS] != $status->{exec_master_log_pos} )
+            {
+               $slave_dbh->do(
+                  "START SLAVE SQL_THREAD UNTIL /*$position->[$TS]*/ "
+                     . "MASTER_LOG_FILE = '$position->[$FILE]', "
+                     . "MASTER_LOG_POS = $position->[$POS]"
                );
-            }
 
-            if ( $o->got('error-numbers') 
-                 && !exists($o->get('error-numbers')->{$stat->{last_errno}}) ) {
-               die "Error $stat->{last_errno} is not in --error-numbers.\n";
-            }
-            elsif ( $err_text
-                    && $stat->{last_error}
-                    && $stat->{last_error} !~ m/$err_text/ ) {
-               die "Error does not match --error-text.\n";
-            }
-            elsif ( $stat->{last_error} || $o->get('always') ) {
-
-               # What kind of error is it?
-               foreach my $pat ( @error_patterns ) {
-                  if ( $stat->{last_error} =~ m/$pat->[0]/ ) {
-                     $actions{$pat->[1]}->($stat, $dbh);
-                     last;
-                  }
-               }
-
-               $start->execute();
-               $increase_sleep = 0;
-
-               # Only set this on events I tried to restart.  Otherwise there
-               # could be a race condition: I see it, I record it, but it hasn't
-               # caused an error yet; so I won't try to restart it when it does.
-               # (The point of this is to avoid trying to restart the same event
-               # twice in case another race condition happens -- I restart it,
-               # then check the server and it hasn't yet cleared the error
-               # message and restarted the SQL thread).
-               if ( $o->get('check-relay-log') ) {
-                  $last_log = $stat->{relay_log_file};
-                  $last_pos = $stat->{relay_log_pos};
-               }
+               info("START SLAVE until master "
+                  . ts($position->[$TS])
+                  . " $position->[$FILE]/$position->[$POS]");
             }
             else {
-               MKDEBUG && _d('The slave is stopped, but without error');
-               $increase_sleep = 1;
+               info("no new binlog events");
             }
+
+            # Throw away positions we're going to replicate past.
+            @positions = @positions[$pos + 1 .. $#positions];
          }
-         elsif ( $o->get('verbose') > 2 ) {
-            printf("%s delayed %s sec\n", $dp->as_string($dsn),
-               (defined $stat->{seconds_behind_master} ?
-               $stat->{seconds_behind_master} : 'NULL'));
+         else {
+            my $position = $positions[-1];
+            info("slave stopped at master position "
+               . "$position->[$FILE]/$position->[$POS]");
          }
+      }
+      elsif ( ($status->{seconds_behind_master} || 0) < $o->get('delay') ) {
+         my $position = $positions[-1];
+         my $behind = $status->{seconds_behind_master} || 0;
+         $next_start = $now + $o->get('delay') - $behind;
+         info("STOP SLAVE until "
+            . ts($next_start)
+            . " at master position $position->[$FILE]/$position->[$POS]");
+         $slave_dbh->do("STOP SLAVE SQL_THREAD");
       }
       else {
-         if ( $o->get('verbose') ) {
-            print "Not checking slave because relay log file or position has "
-               . "not changed "
-               . "(file " . ($last_log || '')
-               . " pos "  . ($last_pos || '') . ")\n";
-         }
+         my $position = $positions[-1];
+         my $behind = $status->{seconds_behind_master} || 0;
+         info("slave running $behind seconds behind at"
+            . " master position $position->[$FILE]/$position->[$POS]");
       }
 
-      # Adjust sleep time.
-      if ( $increase_sleep ) {
-         $sleep = min($o->get('max-sleep'), $sleep * 2);
-      }
-      else {
-         $sleep = max($o->get('min-sleep'), $sleep / 2);
-      }
-
-      # Errors are very likely to follow each other in quick succession.  NOTE:
-      # this policy has a side effect with respect to $sleep.  Suppose $sleep is
-      # 512 and pt-replica-restart finds an error; now $sleep is 256, but
-      # pt-replica-restart sleeps only 1 (the initial value of --sleep).  Suppose
-      # there is no error when it wakes up after 1 second, because 1 was too
-      # short.  Now it doubles $sleep, back to 512.  $sleep has the same value
-      # it did before the error was ever found.
-      my $sleep_time = $increase_sleep ? $sleep : min($sleep, $o->get('sleep'));
-      if ( $o->get('verbose') > 2 ) {
-         printf("%s sleeping %f\n", $dp->as_string($dsn), $sleep_time);
-      }
-      sleep $sleep_time;
+      sleep($o->get('interval'));
    }
 
-   MKDEBUG && _d('All done with server', $dp->as_string($dsn));
-   if ( $was_forked ) {
-      $dp->disconnect($dbh);
-      exit(0);
+   if ( $slave_dbh && $o->get('continue') ) {
+      info("Setting slave to run normally");
+      $slave_dbh->do("START SLAVE SQL_THREAD");
    }
+
+   return 0;
 }
 
-# Determines if the $stat's log coordinates are greater than or equal to the
-# desired coordinates. $which is 'master' or 'relay'
-sub pos_ge {
-   my ( $stat, $which ) = @_;
-   my $fmt  = '%s/%020d';
-   my $curr = $which eq 'master'
-      ? sprintf($fmt, @{$stat}{qw(relay_master_log_file exec_master_log_pos)})
-      : sprintf($fmt, @{$stat}{qw(relay_log_file relay_log_pos)});
-   my $stop = sprintf($fmt, split(',', $o->get("until-$which")));
-   return $curr ge $stop;
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+sub info {
+   my ( $message ) = @_;
+   $o->get('quiet') ? MKDEBUG && _d('info: now:', $now, 'message:', $message)
+                    : print ts($now), " ", $message, "\n";
 }
 
-sub ts {
-   my ( $time ) = @_;
-   my ( $sec, $min, $hour, $mday, $mon, $year )
-      = localtime($time);
-   $mon  += 1;
-   $year += 1900;
-   return sprintf("%d-%02d-%02dT%02d:%02d:%02d",
-      $year, $mon, $mday, $hour, $min, $sec);
-}
-
-# Catches signals for exiting gracefully.
+# Catches signals so pt-slave-delay can exit gracefully.
 sub finish {
    my ($signal) = @_;
    print STDERR "Exiting on SIG$signal.\n";
-   if ( %children ) {
-      kill 9, values %children;
-      print STDERR "Signaled ", join(', ', values %children), "\n";
+   $oktorun = 0;
+}
+
+sub get_dbh {
+   my ( $dp, $info, $db ) = @_;
+
+   if ( $o->get('ask-pass') ) {
+      $info->{p} = OptionParser::prompt_noecho(
+         "Enter password" . ($info->{h} ? " for $info->{h}: " : ": "));
    }
-   exit(1);
+
+   my $dbh = $dp->get_dbh(
+      $dp->get_cxn_params($info), {AutoCommit => 1});
+   $dbh->{FetchHashKeyName} = 'NAME_lc'; # Lowercases all column names
+   $dbh->{InactiveDestroy}  = 1;         # Don't disconnect on fork
+   return $dbh;
 }
 
 sub _d {
@@ -2797,14 +2323,19 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-replica-restart - Watch and restart MySQL replication after errors.
+pt-slave-delay - Make a MySQL slave server lag behind its master.
 
 =head1 SYNOPSIS
 
-Usage: pt-replica-restart [OPTION...] [DSN]
+Usage: pt-slave-delay [OPTION...] SLAVE-HOST [MASTER-HOST]
 
-pt-replica-restart watches one or more MySQL replication slaves for
-errors, and tries to restart replication if it stops.
+pt-slave-delay starts and stops a slave server as needed to make it lag
+behind the master.  The SLAVE-HOST and MASTER-HOST use DSN syntax, and
+values are copied from the SLAVE-HOST to the MASTER-HOST if omitted.
+
+To hold slavehost one minute behind its master for ten minutes:
+
+   pt-slave-delay --delay 1m --interval 15s --run-time 10m slavehost
 
 =head1 RISKS
 
@@ -2813,84 +2344,62 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-replica-restart is a brute-force way to try to keep a slave server running when
-it is having problems with replication.  Don't be too hasty to use it unless you
-need to.  If you use this tool carelessly, you might miss the chance to really
-solve the slave server's problems.
+pt-slave-delay is generally very low-risk.  It simply starts and stops the
+replication SQL thread.  This might cause monitoring systems to think the slave
+is having trouble.
 
-At the time of this release there is a bug that causes an invalid
-C<CHANGE MASTER TO> statement to be executed.
+At the time of this release, we know of no bugs that could cause serious harm to
+users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-replica-restart>.
+L<http://www.percona.com/bugs/pt-slave-delay>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-replica-restart watches one or more MySQL replication slaves and tries to skip
-statements that cause errors.  It polls slaves intelligently with an
-exponentially varying sleep time.  You can specify errors to skip and run the
-slaves until a certain binlog position.
+C<pt-slave-delay> watches a slave and starts and stops its replication SQL
+thread as necessary to hold it at least as far behind the master as you
+request.  In practice, it will typically cause the slave to lag between
+L<"--delay"> and L<"--delay">+L<"--interval"> behind the master.
 
-Note: it has come to my attention that Yahoo! had or has an internal tool
-called fix_repl, described to me by a past Yahoo! employee and mentioned in
-the first edition of High Performance MySQL.  Apparently this tool does the
-same thing.  Make no mistake, though: this is not a way to "fix replication."
-In fact I would not even encourage its use on a regular basis; I use it only
-when I have an error I know I just need to skip past.
+It bases the delay on binlog positions in the slave's relay logs by default,
+so there is no need to connect to the master.  This works well if the IO
+thread doesn't lag the master much, which is typical in most replication
+setups; the IO thread lag is usually milliseconds on a fast network.  If your
+IO thread's lag is too large for your purposes, C<pt-slave-delay> can also
+connect to the master for information about binlog positions.
+
+If the slave's I/O thread reports that it is waiting for the SQL thread to
+free some relay log space, C<pt-slave-delay> will automatically connect to the
+master to find binary log positions.  If L<"--ask-pass"> and L<"--daemonize">
+are given, it is possible that this could cause it to ask for a password while
+daemonized.  In this case, it exits.  Therefore, if you think your slave might
+encounter this condition, you should be sure to either specify
+L<"--use-master"> explicitly when daemonizing, or don't specify L<"--ask-pass">.
+
+The SLAVE-HOST and optional MASTER-HOST are both DSNs.  See L<"DSN OPTIONS">.
+Missing MASTER-HOST values are filled in with values from SLAVE-HOST, so you
+don't need to specify them in both places.  C<pt-slave-delay> reads all normal
+MySQL option files, such as ~/.my.cnf, so you may not need to specify username,
+password and other common options at all.
+
+C<pt-slave-delay> tries to exit gracefully by trapping signals such as Ctrl-C.
+You cannot bypass L<"--[no]continue"> with a trappable signal.
+
+=head1 PRIVILEGES
+
+pt-slave-delay requires the following privileges: PROCESS, REPLICATION CLIENT,
+and SUPER.
 
 =head1 OUTPUT
 
-If you specify L<"--verbose">, pt-replica-restart prints a line every time it sees
-the slave has an error.  See L<"--verbose"> for details.
-
-=head1 SLEEP
-
-pt-replica-restart sleeps intelligently between polling the slave.  The current
-sleep time varies.
-
-=over
-
-=item *
-
-The initial sleep time is given by L<"--sleep">.
-
-=item *
-
-If it checks and finds an error, it halves the previous sleep time.
-
-=item *
-
-If it finds no error, it doubles the previous sleep time.
-
-=item *
-
-The sleep time is bounded below by L<"--min-sleep"> and above by
-L<"--max-sleep">.
-
-=item *
-
-Immediately after finding an error, pt-replica-restart assumes another error is
-very likely to happen next, so it sleeps the current sleep time or the initial
-sleep time, whichever is less.
-
-=back
-
-=head1 EXIT STATUS
-
-An exit status of 0 (sometimes also called a return value or return code)
-indicates success.  Any other value represents the exit status of the Perl
-process itself, or of the last forked process that exited if there were multiple
-servers to monitor.
-
-=head1 COMPATIBILITY
-
-pt-replica-restart should work on many versions of MySQL.  Lettercase of many
-output columns from SHOW SLAVE STATUS has changed over time, so it treats them
-all as lowercase.
+If you specify L<"--quiet">, there is no output.  Otherwise, the normal output
+is a status message consisting of a timestamp and information about what
+C<pt-slave-delay> is doing: starting the slave, stopping the slave, or just
+observing.
 
 =head1 OPTIONS
 
@@ -2898,11 +2407,6 @@ This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
 
 =over
-
-=item --always
-
-Start slaves even when there is no error.  With this option enabled,
-pt-replica-restart will not let you stop the slave manually if you want to!
 
 =item --ask-pass
 
@@ -2918,21 +2422,6 @@ runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
 binmode on STDOUT without the utf8 layer, and runs SET NAMES after
 connecting to MySQL.
 
-=item --[no]check-relay-log
-
-default: yes
-
-Check the last relay log file and position before checking for slave errors.
-
-By default pt-replica-restart will not doing anything (it will just sleep)
-if neither the relay log file nor the relay log position have changed since
-the last check.  This prevents infinite loops (i.e. restarting the same
-error in the same relay log file at the same relay log position).
-
-For certain slave errors, however, this check needs to be disabled by
-specifying C<--no-check-relay-log>.  Do not do this unless you know what
-you are doing!
-
 =item --config
 
 type: Array
@@ -2940,16 +2429,19 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --[no]continue
+
+default: yes
+
+Continue replication normally on exit.  After exiting, restart the slave's SQL
+thread with no UNTIL condition, so it will run as usual and catch up to the
+master.  This is enabled by default and works even if you terminate
+C<pt-slave-delay> with Control-C.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX
 operating systems only.
-
-=item --database
-
-short form: -D; type: string
-
-Database to use.
 
 =item --defaults-file
 
@@ -2958,34 +2450,11 @@ short form: -F; type: string
 Only read mysql options from the given file.  You must give an absolute
 pathname.
 
-=item --error-length
+=item --delay
 
-type: int
+type: time; default: 1h
 
-Max length of error message to print.  When L<"--verbose"> is set high enough to
-print the error, this option will truncate the error text to the specified
-length.  This can be useful to prevent wrapping on the terminal.
-
-=item --error-numbers
-
-type: hash
-
-Only restart this comma-separated list of errors.  Makes pt-replica-restart only
-try to restart if the error number is in this comma-separated list of errors.
-If it sees an error not in the list, it will exit.
-
-The error number is in the C<last_errno> column of C<SHOW SLAVE STATUS>.
-
-=item --error-text
-
-type: string
-
-Only restart errors that match this pattern.  A Perl regular expression against
-which the error text, if any, is matched.  If the error text exists and matches,
-pt-replica-restart will try to restart the slave.  If it exists but doesn't match,
-pt-replica-restart will exit.
-
-The error text is in the C<last_error> column of C<SHOW SLAVE STATUS>.
+How far the slave should lag its master.
 
 =item --help
 
@@ -2997,35 +2466,18 @@ short form: -h; type: string
 
 Connect to host.
 
+=item --interval
+
+type: time; default: 1m
+
+How frequently C<pt-slave-delay> should check whether the slave needs to be
+started or stopped.
+
 =item --log
 
 type: string
 
 Print all output to this file when daemonized.
-
-=item --max-sleep
-
-type: float; default: 64
-
-Maximum sleep seconds.
-
-The maximum time pt-replica-restart will sleep before polling the slave again.
-This is also the time that pt-replica-restart will wait for all other running
-instances to quit if both L<"--stop"> and L<"--monitor"> are specified.
-
-See L<"SLEEP">.
-
-=item --min-sleep
-
-type: float; default: 0.015625
-
-The minimum time pt-replica-restart will sleep before polling the slave again.
-See L<"SLEEP">.
-
-=item --monitor
-
-Whether to monitor the slave (default).  Unless you specify --monitor
-explicitly, L<"--stop"> will disable it.
 
 =item --password
 
@@ -3053,60 +2505,14 @@ Port number to use for connection.
 
 short form: -q
 
-Suppresses normal output (disables L<"--verbose">).
-
-=item --recurse
-
-type: int; default: 0
-
-Watch slaves of the specified server, up to the specified number of servers deep
-in the hierarchy.  The default depth of 0 means "just watch the slave
-specified."
-
-pt-replica-restart examines C<SHOW PROCESSLIST> and tries to determine which
-connections are from slaves, then connect to them.  See L<"--recursion-method">.
-
-Recursion works by finding all slaves when the program starts, then watching
-them.  If there is more than one slave, C<pt-replica-restart> uses C<fork()> to
-monitor them.
-
-This also works if you have configured your slaves to show up in C<SHOW SLAVE
-HOSTS>.  The minimal configuration for this is the C<report_host> parameter, but
-there are other "report" parameters as well for the port, username, and
-password.
-
-=item --recursion-method
-
-type: string
-
-Preferred recursion method used to find slaves.
-
-Possible methods are:
-
-  METHOD       USES
-  ===========  ================
-  processlist  SHOW PROCESSLIST
-  hosts        SHOW SLAVE HOSTS
-
-The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
-However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually pt-replica-restart does the right thing and finds
-the slaves, but you may give a preferred method and it will be used first.
-If it doesn't find any slaves, the other methods will be tried.
+Don't print informational messages about operation.  See L<OUTPUT> for details.
 
 =item --run-time
 
 type: time
 
-Time to run before exiting.  Causes pt-replica-restart to stop after the specified
-time has elapsed.  Optional suffix: s=seconds, m=minutes, h=hours, d=days; if no
-suffix, s is used.
-
-=item --sentinel
-
-type: string; default: /tmp/pt-replica-restart-sentinel
-
-Exit if this file exists.
+How long C<pt-slave-delay> should run before exiting.  The default is to run
+forever.
 
 =item --set-vars
 
@@ -3115,73 +2521,25 @@ type: string; default: wait_timeout=10000
 Set these MySQL variables.  Immediately after connecting to MySQL, this string
 will be appended to SET and executed.
 
-=item --skip-count
-
-type: int; default: 1
-
-Number of statements to skip when restarting the slave.
-
-=item --sleep
-
-type: int; default: 1
-
-Initial sleep seconds between checking the slave.
-
-See L<"SLEEP">.
-
 =item --socket
 
 short form: -S; type: string
 
 Socket file to use for connection.
 
-=item --stop
+=item --use-master
 
-Stop running instances by creating the sentinel file.
+Get binlog positions from master, not slave.  Don't trust the binlog positions
+in the slave's relay log.  Connect to the master and get binlog positions
+instead.  If you specify this option without giving a MASTER-HOST on the command
+line, C<pt-slave-delay> examines the slave's SHOW SLAVE STATUS to determine the
+hostname and port for connecting to the master.
 
-Causes C<pt-replica-restart> to create the sentinel file specified by
-L<"--sentinel">.  This should have the effect of stopping all running
-instances which are watching the same sentinel file.  If L<"--monitor"> isn't
-specified, C<pt-replica-restart> will exit after creating the file.  If it is
-specified, C<pt-replica-restart> will wait the interval given by
-L<"--max-sleep">, then remove the file and continue working.
-
-You might find this handy to stop cron jobs gracefully if necessary, or to
-replace one running instance with another.  For example, if you want to stop
-and restart C<pt-replica-restart> every hour (just to make sure that it is
-restarted every hour, in case of a server crash or some other problem), you
-could use a C<crontab> line like this:
-
- 0 * * * * pt-replica-restart --monitor --stop --sentinel /tmp/pt-replica-restartup
-
-The non-default L<"--sentinel"> will make sure the hourly C<cron> job stops
-only instances previously started with the same options (that is, from the
-same C<cron> job).
-
-See also L<"--sentinel">.
-
-=item --until-master
-
-type: string
-
-Run until this master log file and position.  Start the slave, and retry if it
-fails, until it reaches the given replication coordinates.  The coordinates are
-the logfile and position on the master, given by relay_master_log_file,
-exec_master_log_pos.  The argument must be in the format "file,pos".  Separate
-the filename and position with a single comma and no space.
-
-This will also cause an UNTIL clause to be given to START SLAVE.
-
-After reaching this point, the slave should be stopped and pt-replica-restart
-will exit.
-
-=item --until-relay
-
-type: string
-
-Run until this relay log file and position.  Like L<"--until-master">, but in
-the slave's relay logs instead.  The coordinates are given by relay_log_file,
-relay_log_pos.
+C<pt-slave-delay> uses only the MASTER_HOST and MASTER_PORT values from SHOW
+SLAVE STATUS for the master connection.  It does not use the MASTER_USER
+value.  If you want to specify a different username for the master than the
+one you use to connect to the slave, you should specify the MASTER-HOST option
+explicitly on the command line.
 
 =item --user
 
@@ -3189,20 +2547,11 @@ short form: -u; type: string
 
 User for login if not current user.
 
-=item --verbose
-
-short form: -v; cumulative: yes; default: 1
-
-Be verbose; can specify multiple times.  Verbosity 1 outputs connection
-information, a timestamp, relay_log_file, relay_log_pos, and last_errno.
-Verbosity 2 adds last_error.  See also L<"--error-length">.  Verbosity 3 prints
-the current sleep time each time pt-replica-restart sleeps.
-
 =item --version
 
-=back
-
 Show version and exit.
+
+=back
 
 =head1 DSN OPTIONS
 
@@ -3287,7 +2636,7 @@ Replace C<TOOL> with the name of any tool.
 The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
 To enable debugging and capture all output to a file, run the tool like:
 
-   PTDEBUG=1 pt-replica-restart ... > FILE 2>&1
+   PTDEBUG=1 pt-slave-delay ... > FILE 2>&1
 
 Be careful: debugging output is voluminous and can generate several megabytes
 of output.
@@ -3299,7 +2648,7 @@ installed in any reasonably new version of Perl.
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-replica-restart>.
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-slave-delay>.
 
 Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
 Include the following information in your bug report:
@@ -3323,7 +2672,7 @@ see L<"ENVIRONMENT">.
 
 =head1 AUTHORS
 
-Baron Schwartz
+Sergey Zhuravlev and Baron Schwartz
 
 =head1 ABOUT PERCONA TOOLKIT
 
@@ -3336,7 +2685,8 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+This program is copyright 2007-2011 Sergey Zhuravle and Baron Schwartz,
+2011 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
