@@ -42,6 +42,5 @@ Contents:
    pt-tcp-model
    pt-trend
    pt-upgrade
-   pt-usl
    pt-variable-advisor
    pt-visual-explain

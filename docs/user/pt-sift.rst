@@ -11,7 +11,7 @@ NAME
 ****
 
 
-pt-sift - Browses the files created by the collect tool.
+pt-sift - Browses files created by pt-collect.
 
 
 ********
@@ -19,7 +19,11 @@ SYNOPSIS
 ********
 
 
-Usage: pt-sift [OPTION...]
+Usage: pt-sift FILE|PREFIX|DIRECTORY
+
+pt-sift browses the files created by pt-collect.  If you specify a
+FILE or PREFIX, it browses only files with that prefix.  If you specify a
+DIRECTORY, then it browses all files within that directory.
 
 
 ***********
@@ -27,33 +31,87 @@ DESCRIPTION
 ***********
 
 
-pt-sift browses the files created by the collect tool.
+pt-sift downloads other tools that it might need, such as pt-diskstats,
+and then makes a list of the unique timestamp prefixes of all the files in
+the directory, as written by the pt-collect tool.  If the user specified
+a timestamp on the command line, then it begins with that sample of data;
+otherwise it begins by showing a list of the timestamps and prompting for
+a selection.  Thereafter, it displays a summary of the selected sample, and
+the user can navigate and inspect with keystrokes.  The keystroke commands
+you can use are as follows:
 
 
-***********
-DOWNLOADING
-***********
+d
+ 
+ Sets the action to start the pt-diskstats tool on the sample's disk
+ performance statistics.
+ 
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+i
+ 
+ Sets the action to view the first INNODB STATUS sample in less.
+ 
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
+m
+ 
+ Displays the first 4 samples of SHOW STATUS counters side by side with the
+ pt-mext tool.
+ 
 
 
-.. code-block:: perl
+n
+ 
+ Summarizes the first sample of netstat data in two ways: by originating host,
+ and by connection state.
+ 
 
-    wget percona.com/latest/percona-toolkit/TOOL
+
+j
+ 
+ Select the next timestamp as the active sample.
+ 
 
 
-Replace \ ``TOOL``\  with the name of any tool.
+k
+ 
+ Select the previous timestamp as the active sample.
+ 
+
+
+q
+ 
+ Quit the program.
+ 
+
+
+1
+ 
+ Sets the action for each sample to the default, which is to view a summary
+ of the sample.
+ 
+
+
+0
+ 
+ Sets the action to just list the files in the sample.
+ 
+
+
+\*
+ 
+ Sets the action to view all of the samples's files in the less program.
+ 
+
+
+
+*******
+OPTIONS
+*******
+
+
+This tool does not have any command-line options.
 
 
 ***********
@@ -61,17 +119,7 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-
-.. code-block:: perl
-
-    PTDEBUG=1 pt-sift ... > FILE 2>&1
-
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 
 *******************
@@ -79,7 +127,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Bash.
+This tool requires Bash v3 or newer.
 
 
 ****
@@ -115,6 +163,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

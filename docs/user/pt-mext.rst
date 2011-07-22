@@ -11,7 +11,7 @@ NAME
 ****
 
 
-pt-mext - Aggregate and summarize mysqladmin extended output.
+pt-mext - Look at many samples of MySQL \ ``SHOW GLOBAL STATUS``\  side-by-side.
 
 
 ********
@@ -19,7 +19,25 @@ SYNOPSIS
 ********
 
 
-Usage: pt-mext [OPTION...]
+Usage: pt-mext [OPTIONS] -- COMMAND
+
+pt-mext columnizes repeated output from a program like mysqladmin extended.
+
+Get output from \ ``mysqladmin``\ :
+
+
+.. code-block:: perl
+
+    mext -r -- mysqladmin ext -i10 -c3"
+
+
+Get output from a file:
+
+
+.. code-block:: perl
+
+    mext -r -- cat mysqladmin-output.txt
+
 
 
 ***********
@@ -27,33 +45,26 @@ DESCRIPTION
 ***********
 
 
-pt-mext aggregates and summarizes mysqladmin extended output.
+pt-mext executes the \ ``COMMAND``\  you specify, and reads through the result one
+line at a time.  It places each line into a temporary file.  When it finds a
+blank line, it assumes that a new sample of SHOW GLOBAL STATUS is starting,
+and it creates a new temporary file.  At the end of this process, it has a
+number of temporary files.  It joins the temporary files together side-by-side
+and prints the result.  If the "-r" option is given, it first subtracts
+each sample from the one after it before printing results.
 
 
-***********
-DOWNLOADING
-***********
+*******
+OPTIONS
+*******
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
 
+-r
+ 
+ Relative: subtract each column from the previous column.
+ 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
 
 
 ***********
@@ -61,17 +72,7 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-
-.. code-block:: perl
-
-    PTDEBUG=1 pt-mext ... > FILE 2>&1
-
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 
 *******************
@@ -79,7 +80,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Bash.
+This tool requires the Bourne shell (\ */bin/sh*\ ).
 
 
 ****
@@ -115,6 +116,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

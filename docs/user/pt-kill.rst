@@ -334,14 +334,6 @@ This tool accepts additional command-line arguments.  Refer to the
  
 
 
---[no]strip-comments
- 
- default: yes
- 
- Remove SQL comments from queries in the Info column of the PROCESSLIST.
- 
-
-
 --run-time
  
  type: time
@@ -389,6 +381,14 @@ This tool accepts additional command-line arguments.  Refer to the
  Causes pt-kill to create the sentinel file specified by "--sentinel" and
  exit.  This should have the effect of stopping all running instances which are
  watching the same sentinel file.
+ 
+
+
+--[no]strip-comments
+ 
+ default: yes
+ 
+ Remove SQL comments from queries in the Info column of the PROCESSLIST.
  
 
 
@@ -478,25 +478,6 @@ a regex pattern like \ ``(?i-xsm:select)``\ .
 See also "GROUP, MATCH AND KILL".
 
 
---match-all
- 
- group: Query Matches
- 
- Match all queries that are not ignored.  If no ignore options are specified,
- then every query matches (except replication threads, unless
- "--replication-threads" is also specified).  This option allows you to
- specify negative matches, i.e. "match every query \ *except*\ ..." where the
- exceptions are defined by specifying various \ ``--ignore``\  options.
- 
- This option is \ *not*\  the same as "--victims" \ ``all``\ .  This option matches
- all queries within a class, whereas "--victims" \ ``all``\  specifies that all
- matching queries in a class (however they matched) will be killed.  Normally,
- however, the two are used together because if, for example, you specify
- "--victims" \ ``oldest``\ , then although all queries may match, only the oldest
- will be killed.
- 
-
-
 --busy-time
  
  type: time; group: Query Matches
@@ -583,6 +564,25 @@ See also "GROUP, MATCH AND KILL".
  Ignore queries whose user matches this Perl regex.
  
  See "--match-user".
+ 
+
+
+--match-all
+ 
+ group: Query Matches
+ 
+ Match all queries that are not ignored.  If no ignore options are specified,
+ then every query matches (except replication threads, unless
+ "--replication-threads" is also specified).  This option allows you to
+ specify negative matches, i.e. "match every query \ *except*\ ..." where the
+ exceptions are defined by specifying various \ ``--ignore``\  options.
+ 
+ This option is \ *not*\  the same as "--victims" \ ``all``\ .  This option matches
+ all queries within a class, whereas "--victims" \ ``all``\  specifies that all
+ matching queries in a class (however they matched) will be killed.  Normally,
+ however, the two are used together because if, for example, you specify
+ "--victims" \ ``oldest``\ , then although all queries may match, only the oldest
+ will be killed.
  
 
 
@@ -913,22 +913,26 @@ DOWNLOADING
 ***********
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
 
 
 .. code-block:: perl
 
-    wget percona.com/latest/percona-toolkit/PKG
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
 
 
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
+You can also get individual tools from the latest release:
 
 
 .. code-block:: perl
 
-    wget percona.com/latest/percona-toolkit/TOOL
+    wget percona.com/get/TOOL
 
 
 Replace \ ``TOOL``\  with the name of any tool.
