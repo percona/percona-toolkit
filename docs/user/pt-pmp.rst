@@ -19,7 +19,12 @@ SYNOPSIS
 ********
 
 
-Usage: pt-pmp [OPTION...]
+Usage: pt-pmp [OPTIONS] [FILES]
+
+pt-pmp is a poor man's profiler, inspired by `http://poormansprofiler.org <http://poormansprofiler.org>`_.
+It can create and summarize full stack traces of processes on Linux.
+Summaries of stack traces can be an invaluable tool for diagnosing what
+a process is waiting for.
 
 
 ***********
@@ -27,33 +32,59 @@ DESCRIPTION
 ***********
 
 
-pt-pmp aggregates stack traces.
+pt-pmp performs two tasks: it gets a stack trace, and it summarizes the stack
+trace.  If a file is given on the command line, the tool skips the first step
+and just aggregates the file.
+
+To summarize the stack trace, the tool extracts the function name (symbol)
+from each level of the stack, and combines them with commas.  It does this
+for each thread in the output.  Afterwards, it sorts similar threads together
+and counts how many of each one there are, then sorts them most-frequent first.
 
 
-***********
-DOWNLOADING
-***********
+*******
+OPTIONS
+*******
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+Options must precede files on the command line.
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
+-b BINARY
+ 
+ Which binary to trace (default mysqld)
+ 
 
 
-.. code-block:: perl
+-i ITERATIONS
+ 
+ How many traces to gather and aggregate (default 1)
+ 
 
-    wget percona.com/latest/percona-toolkit/TOOL
+
+-k KEEPFILE
+ 
+ Keep the raw traces in this file after aggregation
+ 
 
 
-Replace \ ``TOOL``\  with the name of any tool.
+-l NUMBER
+ 
+ Aggregate only first NUMBER functions; 0=infinity (default 0)
+ 
+
+
+-p PID
+ 
+ Process ID of the process to trace; overrides -b
+ 
+
+
+-s SLEEPTIME
+ 
+ Number of seconds to sleep between iterations (default 0)
+ 
+
 
 
 ***********
@@ -61,17 +92,7 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-
-.. code-block:: perl
-
-    PTDEBUG=1 pt-pmp ... > FILE 2>&1
-
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 
 *******************
@@ -79,8 +100,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Perl, DBI, DBD::mysql, and some core packages that ought to be
-installed in any reasonably new version of Perl.
+This tool requires Bash v3 or newer.
 
 
 ****
@@ -116,6 +136,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

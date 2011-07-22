@@ -19,7 +19,10 @@ SYNOPSIS
 ********
 
 
-Usage: pt-align [OPTION...]
+Usage: pt-align [FILES]
+
+pt-align reads lines in files and splits them into words.  This is useful for
+things like aligning the output of vmstat or iostat so it is easier to read.
 
 
 ***********
@@ -27,42 +30,27 @@ DESCRIPTION
 ***********
 
 
-This program reads in lines and splits them into words.  It counts how many
-words each line has, and if there is one number that predominates, it assumes
-this is the number of words in each line.  Then it discards all lines that
-don't have that many words, and looks at the 2nd line that DOES.  It assumes
-this is the first non-header line.  Based on whether each word looks numeric
-or not, it decides on column alignment.  Finally, it goes through and decides
-how wide each column should be, and then prints them out.
+pt-align counts how many words each line has, and if there is one number that
+predominates, it assumes this is the number of words in each line.  Then it
+discards all lines that don't have that many words, and looks at the 2nd line
+that does.  It assumes this is the first non-header line.  Based on whether
+each word looks numeric or not, it decides on column alignment.  Finally, it
+goes through and decides how wide each column should be, and then prints them
+out.
 
-This is useful for things like aligning the output of vmstat or iostat so it
-is easier to read.
-
-
-***********
-DOWNLOADING
-***********
+The tool's behavior has some important consequences. Reading the entire input
+before formatting means that you can't use it for aligning data as it is
+generated incrementally, and you probably don't want to use this tool on very
+large files. Discarding lines with the wrong number of words means that some
+lines won't be printed.
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+*******
+OPTIONS
+*******
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
+This tool does not have any command-line options.
 
 
 ***********
@@ -70,17 +58,7 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-
-.. code-block:: perl
-
-    PTDEBUG=1 pt-align ... > FILE 2>&1
-
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 
 *******************
@@ -88,8 +66,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Perl, DBI, DBD::mysql, and some core packages that ought to be
-installed in any reasonably new version of Perl.
+This tool requires Perl v5.8 or newer built with core modules.
 
 
 ****
@@ -125,6 +102,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

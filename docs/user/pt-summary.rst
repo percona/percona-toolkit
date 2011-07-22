@@ -19,7 +19,29 @@ SYNOPSIS
 ********
 
 
-Usage: pt-collect [OPTION...]
+Usage: pt-summary
+
+pt-summary conveniently summarizes the status and configuration of a server.
+It is not a tuning tool or diagnosis tool.  It produces a report that is easy
+to diff and can be pasted into emails without losing the formatting.  This
+tool works well on Linux systems.
+
+Download and run:
+
+
+.. code-block:: perl
+
+    wget http://aspersa.googlecode.com/svn/trunk/summary
+    bash ./summary
+
+
+Download and run in a single step:
+
+
+.. code-block:: perl
+
+    wget -O- http://aspersa.googlecode.com/svn/trunk/summary | bash
+
 
 
 ***********
@@ -27,43 +49,19 @@ DESCRIPTION
 ***********
 
 
-Goals: work well on Linux; create a compact diff-able report that is
-easy to paste into a wiki or email, and easy to scan and compare too.
-
-Usage: $ wget -O- http://aspersa.googlecode.com/svn/trunk/summary |bash
-Options are set through the ASPERSA_SKIP environment variable.  Set this
-variable to a comma-separated list of things you want to omit.
-
-Options:
-  MOUNT:   Don't print out mounted filesystems and disk fullness.
-  NETWORK: Don't print out information on network controllers & config.
-  PROCESS: Don't print out top processes and vmstat information.
+pt-summary runs a large variety of commands to inspect system status and
+configuration, saves the output into files in /tmp, and then runs Unix
+commands on these results to format them nicely.  It works best when
+executed as a privileged user, but will also work without privileges,
+although some output might not be possible to generate without root.
 
 
-***********
-DOWNLOADING
-***********
+*******
+OPTIONS
+*******
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
-
-
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
+This tool does not have any command-line options.
 
 
 ***********
@@ -71,17 +69,16 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
+The ASPERSA_SKIP environment variable specifies a comma-separated list
+of things to skip:
 
 
 .. code-block:: perl
 
-    PTDEBUG=1 pt-summary ... > FILE 2>&1
+   MOUNT:   Don't print out mounted filesystems and disk fullness.
+   NETWORK: Don't print out information on network controllers & config.
+   PROCESS: Don't print out top processes and vmstat information.
 
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
 
 
 *******************
@@ -89,7 +86,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Bash.
+This tool requires the Bourne shell (\ */bin/sh*\ ).
 
 
 ****
@@ -125,6 +122,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

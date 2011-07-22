@@ -11,7 +11,7 @@ NAME
 ****
 
 
-rel - Make each number in a line of text relative to the previous matching line.
+pt-rel - Relativize values to previous matching lines.
 
 
 ********
@@ -19,13 +19,16 @@ SYNOPSIS
 ********
 
 
-Given a file with some lines of text that follow a repeated pattern, including
-numbers,
+Usage: pt-rel [FILES]
+
+pt-rel matches lines and subtracts the value of the previous line's values
+from the current line's values.  The lines must be text with numeric values
+that repeat, varying only the values.
 
 
-.. code-block:: perl
-
-   rel /path/to/file.txt
+***********
+DESCRIPTION
+***********
 
 
 For example, if the text is this:
@@ -39,7 +42,7 @@ For example, if the text is this:
    RW-shared spins 834352175, OS waits 20259032; RW-excl spins 1769762980
 
 
-The output will be
+Then the output will be:
 
 
 .. code-block:: perl
@@ -50,31 +53,17 @@ The output will be
    RW-shared spins 14648, OS waits 882; RW-excl spins 13146
 
 
-
-***********
-DOWNLOADING
-***********
-
-
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+The first values (line 1) for "Mutex spin waits", "rounds", and "OS waits"
+were subtracted from the second values (line 3); the same happened for values
+from lines 2 and 4.
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
+*******
+OPTIONS
+*******
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
+This tool does not have any command-line options.
 
 
 ***********
@@ -100,7 +89,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Bash.
+This tool requires Perl v5.8 or newer.
 
 
 ****
@@ -136,6 +125,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

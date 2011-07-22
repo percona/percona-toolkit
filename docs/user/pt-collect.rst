@@ -19,7 +19,12 @@ SYNOPSIS
 ********
 
 
-Usage: pt-collect [OPTION...]
+Usage: pt-collect -d -g -i -o -s [OPTIONS] [-- MYSQL-OPTIONS]
+
+pt-collect tool gathers a variety of information about a system for a period
+of time.  It is typically executed when the stalk tool detects a condition
+and wants to collect information to assist in diagnosis.  Four options
+must be specified on the command line: -dgios.
 
 
 ***********
@@ -27,34 +32,75 @@ DESCRIPTION
 ***********
 
 
-pt-collect focuses on gathering diagnostic data during a MySQL performance
-problem.  It is typically executed by \ ``stalk``\ .
+pt-collect creates a lock to ensure that only one instance runs at a time,
+and then saves a variety of performance and status data into files in the
+configured directory.  Files are named with a timestamp so they can be
+grouped together.  The tool is MySQL-centric by default, and gathers quite
+a bit of diagnostic data that's useful for understanding the behavior of
+a MySQL database server.
+
+Options after \ ``--``\  are passed to \ ``mysql``\  and \ ``mysqladmin``\ .
 
 
-***********
-DOWNLOADING
-***********
+*******
+OPTIONS
+*******
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+
+-d (required)
+ 
+ DESTINATION Where to store the resulting data; must already exist.
+ 
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
+-g <yes/no> (required)
+ 
+ Collect GDB stack traces.
+ 
 
 
-.. code-block:: perl
+-i INTERVAL (required)
+ 
+ How many seconds to collect data.
+ 
 
-    wget percona.com/latest/percona-toolkit/TOOL
+
+-o <yes/no> (required)
+ 
+ Collect oprofile data; disables -s.
+ 
 
 
-Replace \ ``TOOL``\  with the name of any tool.
+-s <yes/no> (required)
+ 
+ Collect strace data.
+ 
+
+
+-f PERCENT
+ 
+ Exit if the disk is more than this percent full.
+ 
+
+
+-m MEGABYTES
+ 
+ Exit unless there are this many megabytes free disk space.
+ 
+
+
+-p PREFIX
+ 
+ Store the data into files with this prefix (optional).
+ 
+
+
+-t <yes/no>
+ 
+ Collect tcpdump data.
+ 
+
 
 
 ***********
@@ -62,17 +108,7 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-
-.. code-block:: perl
-
-    PTDEBUG=1 pt-collect ... > FILE 2>&1
-
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 
 *******************
@@ -80,7 +116,11 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Bash.
+This tool requires Bash v3 or newer and assumes that these programs
+are installed, in the PATH, and executable: sysctl, top, vmstat, iostat,
+mpstat, lsof, mysql, mysqladmin, df, netstat, pidof, flock, and others
+depending on what command-line options are specified.  If some of those
+programs are not available, the tool will still run but may print warnings.
 
 
 ****
@@ -116,6 +156,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

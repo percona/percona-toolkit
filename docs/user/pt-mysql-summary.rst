@@ -19,7 +19,13 @@ SYNOPSIS
 ********
 
 
-Usage: pt-mysql-summary [OPTION...]
+Usage: pt-mysql-summary [MYSQL-OPTIONS]
+
+pt-mysql-summary conveniently summarizes the status and configuration of a
+MySQL database server so that you can learn about it at a glance.  It is not
+a tuning tool or diagnosis tool.  It produces a report that is easy to diff
+and can be pasted into emails without losing the formatting.  It should work
+well on any modern UNIX systems.
 
 
 ***********
@@ -27,49 +33,47 @@ DESCRIPTION
 ***********
 
 
-Goals: work well on all UNIXes; create a compact diff-able report that is
-easy to paste into a wiki or email, and easy to scan and compare too.
+pt-mysql-summary works by connecting to a MySQL database server and querying
+it for status and configuration information.  It saves these bits of data
+into files in /tmp, and then formats them neatly with awk and other scripting
+languages.
 
 To use, simply execute it.  Optionally add the same command-line options
-you would use to connect to MySQL, such as "./mysql-summary --user=foo"
+you would use to connect to MySQL, like  \ ``pt-mysql-summary --user=foo``\ .
+
+The tool interacts minimally with the server upon which it runs.  It assumes
+that you'll run it on the same server you're inspecting, and therefore it
+assumes that it will be able to find the my.cnf configuration file, for
+example.  However, it should degrade gracefully if this is not the case.
+Note, however, that its output does not indicate which information comes from
+the MySQL database and which comes from the host operating system, so it is
+possible for confusing output to be generated if you run the tool on one
+server and direct it to connect to a MySQL database server running on another
+server.
 
 
-****
-TODO
-****
+**************
+Fuzzy-Rounding
+**************
 
 
-
-.. code-block:: perl
-
-    * Parse queries out of processlist and aggregate them.
-
-
-
-***********
-DOWNLOADING
-***********
+Many of the outputs from this tool are deliberately rounded to show their
+magnitude but not the exact detail.  This is called fuzzy-rounding. The idea
+is that it doesn't matter whether a server is running 918 queries per second
+or 921 queries per second; such a small variation is insignificant, and only
+makes the output hard to compare to other servers.  Fuzzy-rounding rounds in
+larger increments as the input grows.  It begins by rounding to the nearest 5,
+then the nearest 10, nearest 25, and then repeats by a factor of 10 larger
+(50, 100, 250), and so on, as the input grows.
 
 
-Visit `http://www.percona.com/software/ <http://www.percona.com/software/>`_ to download the latest release of
-Percona Toolkit.  Or, to get the latest release from the command line:
+*******
+OPTIONS
+*******
 
 
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/PKG
-
-
-Replace \ ``PKG``\  with \ ``tar``\ , \ ``rpm``\ , or \ ``deb``\  to download the package in that
-format.  You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/latest/percona-toolkit/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
+This tool does not have any command-line options of its own.  All options
+are passed to \ ``mysql``\ .
 
 
 ***********
@@ -77,17 +81,7 @@ ENVIRONMENT
 ***********
 
 
-The environment variable \ ``PTDEBUG``\  enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-
-.. code-block:: perl
-
-    PTDEBUG=1 pt-mysql-summary ... > FILE 2>&1
-
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 
 *******************
@@ -95,8 +89,7 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-You need Perl, DBI, DBD::mysql, and some core packages that ought to be
-installed in any reasonably new version of Perl.
+This tool requires Bash v3 or newer.
 
 
 ****
@@ -132,6 +125,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******
