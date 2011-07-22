@@ -1,18 +1,15 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
 usage() {
-   echo "Usage: $0 [-r] -- commandline"
-   echo "   -r     Relative: subtract each column from the previous column."
-   echo "   --     Option separator; after this, all arguments are passed"
-   echo "          to the program whose output mext will columnize."
-   echo "mext columnizes repeated output from a program like mysqladmin extended:"
-   echo "   mext -r -- mysqladmin ext -i10 -c3"
-   echo "You can also work with data from a file:"
-   echo "   mext -r -- cat mysqladmin-output.txt"
+   if [ "${OPT_ERR}" ]; then
+      echo "${OPT_ERR}" >&2
+   fi
+   echo "Usage: pt-mext [OPTIONS] -- COMMAND" >&2
+   echo "For more information, 'man pt-mext' or 'perldoc $0'" >&2
    exit 1
 }
 
@@ -102,47 +99,49 @@ rm -f $FILE*;
 
 =head1 NAME
 
-pt-mext - Aggregate and summarize mysqladmin extended output.
+pt-mext - Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
 =head1 SYNOPSIS
 
-Usage: pt-mext [OPTION...]
+Usage: pt-mext [OPTIONS] -- COMMAND
+
+pt-mext columnizes repeated output from a program like mysqladmin extended.
+
+Get output from C<mysqladmin>:
+
+   mext -r -- mysqladmin ext -i10 -c3"
+
+Get output from a file:
+
+   mext -r -- cat mysqladmin-output.txt
 
 =head1 DESCRIPTION
 
-pt-mext aggregates and summarizes mysqladmin extended output.
+pt-mext executes the C<COMMAND> you specify, and reads through the result one
+line at a time.  It places each line into a temporary file.  When it finds a
+blank line, it assumes that a new sample of SHOW GLOBAL STATUS is starting,
+and it creates a new temporary file.  At the end of this process, it has a
+number of temporary files.  It joins the temporary files together side-by-side
+and prints the result.  If the L<"-r"> option is given, it first subtracts
+each sample from the one after it before printing results.
 
-=head1 DOWNLOADING
+=head1 OPTIONS
 
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
+=over
 
-   wget percona.com/get/percona-toolkit.tar.gz
+=item -r
 
-   wget percona.com/get/percona-toolkit.rpm
+Relative: subtract each column from the previous column.
 
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
+=back
 
 =head1 ENVIRONMENT
 
-The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-   PTDEBUG=1 pt-mext ... > FILE 2>&1
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Bash.
+This tool requires the Bourne shell (F</bin/sh>).
 
 =head1 BUGS
 
@@ -167,6 +166,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 

@@ -4,28 +4,12 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
-# Print a usage message and exit.
 usage() {
    if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}"
+      echo "${OPT_ERR}" >&2
    fi
-   cat <<-USAGE
-Usage: $0 OPTIONS [MYSQL-OPTIONS]
-   Collects diagnostic data on a MySQL server and stores it into files.
-   The MYSQL-OPTIONS are standard options to connect to MySQL: -uhPpS. Any
-   options or arguments that follow this tool's -digos options will be treated
-   as options to pass directly to mysql and mysqladmin.
-Options: (required: -dfigmos)
-   -d DESTINATION Where to store the resulting data; must already exist.
-   -f PERCENT     Exit if the disk is more than this percent full.
-   -i INTERVAL    How many seconds to collect data.
-   -g <yes/no>    Collect GDB stack traces.
-   -m MEGABYTES   Exit unless there are this many megabytes free disk space.
-   -o <yes/no>    Collect oprofile data; disables -s.
-   -p PREFIX      Store the data into files with this prefix (optional).
-   -s <yes/no>    Collect strace data.
-   -t <yes/no>    Collect tcpdump data.
-	USAGE
+   echo "Usage: pt-collect -d -g -i -o -s [OPTIONS] [-- MYSQL-OPTIONS]" >&2
+   echo "For more information, 'man pt-collect' or 'perldoc $0'." >&2
    exit 1
 }
 
@@ -83,8 +67,9 @@ for o; do
    esac
 done
 
+
 if [ -z "${OPT_d}" -o -z "${OPT_i}" -o -z "${OPT_o}" -o -z "${OPT_g}"  -o -z "${OPT_s}" ]; then
-   OPT_ERR="Missing command-line option."
+   OPT_ERR="Missing command-line argument."
    usage
 fi
 
@@ -241,17 +226,17 @@ echo "Gathering info for $d"
       opcontrol --stop
       opcontrol --dump
       kill $(pidof oprofiled);
-      opcontrol --save=aspersa_collect_$d
+      opcontrol --save=percona_toolkit_collect_$d
 
       # Attempt to generate a report; if this fails, then just tell the user how
       # to generate the report.
       path_to_binary=$(which mysqld);
       if [ "${path_to_binary}" -a -f "${path_to_binary}" ]; then
-         opreport --demangle=smart --symbols --merge tgid session:aspersa_collect_$d "${path_to_binary}" > "$OPT_d/$d-opreport"
+         opreport --demangle=smart --symbols --merge tgid session:percona_toolkit_collect_$d "${path_to_binary}" > "$OPT_d/$d-opreport"
       else
-         echo "oprofile data saved to aspersa_collect_$d; you should now be able to get a report" > "$OPT_d/$d-opreport"
+         echo "oprofile data saved to percona_toolkit_collect_$d; you should now be able to get a report" > "$OPT_d/$d-opreport"
          echo "by running something like" >> "$OPT_d/$d-opreport"
-         echo "opreport --demangle=smart --symbols --merge tgid session:aspersa_collect_$d /path/to/mysqld" >> "$OPT_d/$d-opreport"
+         echo "opreport --demangle=smart --symbols --merge tgid session:percona_toolkit_collect_$d /path/to/mysqld" >> "$OPT_d/$d-opreport"
       fi
    elif [ "${OPT_s}" = "yes" ]; then
       kill -s 2 ${strace_pid}
@@ -277,7 +262,7 @@ echo "Gathering info for $d"
 
    # Finally, record what system we collected this data from.
    hostname > "$OPT_d/$d-hostname"
-)200>/tmp/aspersa-collect-lockfile >> "$OPT_d/$d-output" 2>&1
+)200>/tmp/percona-toolkit-collect-lockfile >> "$OPT_d/$d-output" 2>&1
 
 # ############################################################################
 # Documentation
@@ -291,44 +276,77 @@ pt-collect - Collect information from a server for some period of time.
 
 =head1 SYNOPSIS
 
-Usage: pt-collect [OPTION...]
+Usage: pt-collect -d -g -i -o -s [OPTIONS] [-- MYSQL-OPTIONS]
+
+pt-collect tool gathers a variety of information about a system for a period
+of time.  It is typically executed when the stalk tool detects a condition
+and wants to collect information to assist in diagnosis.  Four options
+must be specified on the command line: -dgios.
 
 =head1 DESCRIPTION
 
-pt-collect focuses on gathering diagnostic data during a MySQL performance
-problem.  It is typically executed by C<stalk>.
+pt-collect creates a lock to ensure that only one instance runs at a time,
+and then saves a variety of performance and status data into files in the
+configured directory.  Files are named with a timestamp so they can be
+grouped together.  The tool is MySQL-centric by default, and gathers quite
+a bit of diagnostic data that's useful for understanding the behavior of
+a MySQL database server.
 
-=head1 DOWNLOADING
+Options after C<--> are passed to C<mysql> and C<mysqladmin>.
 
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
+=head1 OPTIONS
 
-   wget percona.com/get/percona-toolkit.tar.gz
+=over
 
-   wget percona.com/get/percona-toolkit.rpm
+=item -d (required)
 
-   wget percona.com/get/percona-toolkit.deb
+DESTINATION Where to store the resulting data; must already exist.
 
-You can also get individual tools from the latest release:
+=item -g <yes/no> (required)
 
-   wget percona.com/get/TOOL
+Collect GDB stack traces.
 
-Replace C<TOOL> with the name of any tool.
+=item -i INTERVAL (required)
+
+How many seconds to collect data.
+
+=item -o <yes/no> (required)
+
+Collect oprofile data; disables -s.
+
+=item -s <yes/no> (required)
+
+Collect strace data.
+
+=item -f PERCENT
+
+Exit if the disk is more than this percent full.
+
+=item -m MEGABYTES
+
+Exit unless there are this many megabytes free disk space.
+
+=item -p PREFIX
+
+Store the data into files with this prefix (optional).
+
+=item -t <yes/no>
+
+Collect tcpdump data.
+
+=back
 
 =head1 ENVIRONMENT
 
-The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-   PTDEBUG=1 pt-collect ... > FILE 2>&1
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Bash.
+This tool requires Bash v3 or newer and assumes that these programs
+are installed, in the PATH, and executable: sysctl, top, vmstat, iostat,
+mpstat, lsof, mysql, mysqladmin, df, netstat, pidof, flock, and others
+depending on what command-line options are specified.  If some of those
+programs are not available, the tool will still run but may print warnings.
 
 =head1 BUGS
 
@@ -353,6 +371,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 

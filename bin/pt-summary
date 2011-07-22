@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
@@ -1187,53 +1187,46 @@ pt-summary - Summarize system information in a nice way.
 
 =head1 SYNOPSIS
 
-Usage: pt-collect [OPTION...]
+Usage: pt-summary
+
+pt-summary conveniently summarizes the status and configuration of a server.
+It is not a tuning tool or diagnosis tool.  It produces a report that is easy
+to diff and can be pasted into emails without losing the formatting.  This
+tool works well on Linux systems.
+
+Download and run:
+
+   wget http://aspersa.googlecode.com/svn/trunk/summary
+   bash ./summary
+
+Download and run in a single step:
+
+   wget -O- http://aspersa.googlecode.com/svn/trunk/summary | bash
 
 =head1 DESCRIPTION
 
-Goals: work well on Linux; create a compact diff-able report that is
-easy to paste into a wiki or email, and easy to scan and compare too.
+pt-summary runs a large variety of commands to inspect system status and
+configuration, saves the output into files in /tmp, and then runs Unix
+commands on these results to format them nicely.  It works best when
+executed as a privileged user, but will also work without privileges,
+although some output might not be possible to generate without root.
 
-Usage: $ wget -O- http://aspersa.googlecode.com/svn/trunk/summary |bash
-Options are set through the ASPERSA_SKIP environment variable.  Set this
-variable to a comma-separated list of things you want to omit.
+=head1 OPTIONS
 
-Options:
+This tool does not have any command-line options.
+
+=head1 ENVIRONMENT
+
+The ASPERSA_SKIP environment variable specifies a comma-separated list
+of things to skip:
+
   MOUNT:   Don't print out mounted filesystems and disk fullness.
   NETWORK: Don't print out information on network controllers & config.
   PROCESS: Don't print out top processes and vmstat information.
 
-=head1 DOWNLOADING
-
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-   wget percona.com/get/percona-toolkit.tar.gz
-
-   wget percona.com/get/percona-toolkit.rpm
-
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
-
-=head1 ENVIRONMENT
-
-The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-   PTDEBUG=1 pt-summary ... > FILE 2>&1
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
-
 =head1 SYSTEM REQUIREMENTS
 
-You need Bash.
+This tool requires the Bourne shell (F</bin/sh>).
 
 =head1 BUGS
 
@@ -1258,6 +1251,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 

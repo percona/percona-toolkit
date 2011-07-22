@@ -4,6 +4,31 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
+usage() {
+   if [ "${OPT_ERR}" ]; then
+      echo "${OPT_ERR}" >&2
+   fi
+   echo "Usage: pt-diskstats [OPTIONS] [FILES]" >&2
+   echo "For more information, 'man pt-diskstats' or 'perldoc $0'" >&2
+   exit 1
+}
+
+# Show current help and settings
+print_help() {
+   cat <<-HELP
+   You can control this program by key presses:
+   ------------------- Key ------------------- ---- Current Setting ----
+   A, D, S) Set the group-by mode              ${OPT_g:-(none)}
+   c) Enter an awk regex to match column names ${OPT_c:-(none)}
+   d) Enter an awk regex to match disk names   ${OPT_d:-(none)}
+   i) Set the sample size in seconds           ${OPT_i:-(none)}
+   s) Set the redisplay interval in seconds    ${OPT_s:-(none)}
+   p) Pause the program
+   q) Quit the program
+   ------------------- Press any key to continue -----------------------
+	HELP
+}
+
 # ########################################################################
 # A bunch of snippets of awk code, to be reused in the functions below.
 # ########################################################################
@@ -259,7 +284,7 @@ design_print_formats() {
 # last sample.
 group_by_disk () {
    [ -z "${awk_print_line}" ] && design_print_formats
-   cat > /tmp/aspersa.awk <<EOF
+   cat > /tmp/percona-toolkit.awk <<EOF
    BEGIN {
       devs    = 0;
       devname = "${OPT_d}";
@@ -292,13 +317,13 @@ group_by_disk () {
       }
    }
 EOF
-   awk -f /tmp/aspersa.awk "$@"
+   awk -f /tmp/percona-toolkit.awk "$@"
 }
 
 # Prints out one line for each sample, summing up all disks together.
 group_by_sample() {
    [ -z "${awk_print_line}" ] && design_print_formats
-   cat > /tmp/aspersa.awk <<EOF
+   cat > /tmp/percona-toolkit.awk <<EOF
    BEGIN {
       devs    = 0;
       devname = "${OPT_d}";
@@ -359,14 +384,14 @@ group_by_sample() {
       }
    }
 EOF
-   awk -f /tmp/aspersa.awk "$@"
+   awk -f /tmp/percona-toolkit.awk "$@"
 }
 
 # Prints out one line for each sample, for each disk that matches the pattern.
 # TODO: omits the first sample.
 group_by_all () {
    [ -z "${awk_print_line}" ] && design_print_formats
-   cat > /tmp/aspersa.awk <<EOF
+   cat > /tmp/percona-toolkit.awk <<EOF
    BEGIN {
       devs    = 0;
       devname = "${OPT_d}";
@@ -398,49 +423,9 @@ group_by_all () {
       ${awk_save_curr_as_prev}
    }
 EOF
-   awk -f /tmp/aspersa.awk "$@"
+   awk -f /tmp/percona-toolkit.awk "$@"
 }
 
-# Show current help and settings
-print_help() {
-   cat <<-HELP
-   You can control this program by key presses:
-   ------------------- Key ------------------- ---- Current Setting ----
-   A, D, S) Set the group-by mode              ${OPT_g:-(none)}
-   c) Enter an awk regex to match column names ${OPT_c:-(none)}
-   d) Enter an awk regex to match disk names   ${OPT_d:-(none)}
-   i) Set the sample size in seconds           ${OPT_i:-(none)}
-   s) Set the redisplay interval in seconds    ${OPT_s:-(none)}
-   p) Pause the program
-   q) Quit the program
-   ------------------- Press any key to continue -----------------------
-	HELP
-}
-
-usage() {
-   if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}"
-   fi
-   cat <<-USAGE
-Usage: $0 [OPTIONS] [FILE]
-   $0 does two things: 1) get /proc/diskstats periodically 2) aggregate the result.
-   If you specify a FILE, or send input to STDIN, then step 1) is not performed.
-Options:
-   -c COLS     Awk regex of which columns to include (default cnc|rt|mb|busy|prg).
-   -d DEVICES  Awk regex of which devices to include.
-   -g GROUPBY  Group-by mode (default disk); specify one of the following:
-      disk)    # Each line of output shows one disk device.
-      sample)  # Each line of output shows one sample of statistics.
-      all)     # Each line of output shows one sample and one disk device.
-   -i INTERVAL In -g sample mode, include INTERVAL seconds per sample.
-   -k KEEPFILE File to save diskstats samples in (default /tmp/aspersa).
-               If a non-default filename is used, it will be saved for later
-               analysis.
-   -n SAMPLES  When in interactive mode, stop after N samples.
-   -s INTERVAL Sample /proc/diskstats every N seconds (default 1).
-	USAGE
-   exit 1
-}
 
 # The main code that runs by default.  Arguments are the command-line options.
 main() {
@@ -494,7 +479,7 @@ main() {
       esac
    done
    OPT_i="${OPT_i:-}"; export OPT_i;
-   OPT_k="${OPT_k:-/tmp/aspersa}"; export OPT_k;
+   OPT_k="${OPT_k:-/tmp/diskstats-samples}"; export OPT_k;
    OPT_n="${OPT_n:-}"; export OPT_n;
    OPT_c="${OPT_c:-cnc|rt|mb|busy|prg}"; export OPT_c;
    OPT_d="${OPT_d:-}"; export OPT_d;
@@ -524,8 +509,8 @@ main() {
             fi
          fi
          if [ "${finished}" ]; then
-            if [ "${OPT_k}" = "/tmp/aspersa" ]; then
-               rm -f /tmp/aspersa
+            if [ "${OPT_k}" = "/tmp/diskstats-samples" ]; then
+               rm -f /tmp/diskstats-samples
             fi
             break;
          fi
@@ -620,10 +605,10 @@ main() {
 
    done
 
-   if [ "${OPT_k}" = "/tmp/aspersa" ]; then
-      rm -f "/tmp/aspersa"
+   if [ "${OPT_k}" = "/tmp/diskstats-samples" ]; then
+      rm -f "/tmp/diskstats-samples"
    fi
-   rm -f /tmp/aspersa.awk
+   rm -f /tmp/percona-toolkit.awk
 }
 
 # Execute the program if it was not included from another file.  This makes it
@@ -640,15 +625,37 @@ fi
 
 =head1 NAME
 
-pt-diskstats - Read a file generated from /proc/diskstats and summarize it.
+pt-diskstats - Aggregate and summarize F</proc/diskstats>.
 
 =head1 SYNOPSIS
 
-Usage: pt-diskstats [OPTION...]
+Usage: pt-diskstats [OPTIONS] [FILES]
+
+pt-diskstats reads F</proc/diskstats> periodically, or files with the
+contents of F</proc/diskstats>, aggregates the data, and prints it nicely.
 
 =head1 DESCRIPTION
 
-The file read should look like this:
+pt-diskstats tool is similar to iostat, but has some advantages. It separates
+reads and writes, for example, and computes some things that iostat does in
+either incorrect or confusing ways.  It is also menu-driven and interactive
+with several different ways to aggregate the data, and integrates well with
+the L<pt-collect> tool. These properties make it very convenient for quickly
+drilling down into I/O performance at the desired level of granularity.
+
+This program works in two main modes. One way is to process a file with saved
+disk statistics, which you specify on the command line.  The other way is to
+start a background process gathering samples at intervals and saving them into
+a file, and process this file in the foreground.  In both cases, the tool is
+interactively controlled by keystrokes, so you can redisplay and slice the
+data flexibly and easily.  If the tool is not attached to a terminal, it
+doesn't run interactively; it just processes and prints its output, then exits.
+Otherwise it loops until you exit with the 'q' key.
+
+If you press the '?' key, you will bring up the interactive help menu that
+shows which keys control the program.
+
+Files should have this format:
 
    <contents of /proc/diskstats>
    TS <timestamp>
@@ -656,38 +663,139 @@ The file read should look like this:
    ... et cetera
    TS <timestamp>  <-- must end with a TS line.
 
-=head1 DOWNLOADING
+See L<http://aspersa.googlecode.com/svn/html/diskstats.html> for a detailed
+example of using the tool.
 
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
+=head1 OUTPUT
 
-   wget percona.com/get/percona-toolkit.tar.gz
+The columns are as follows:
 
-   wget percona.com/get/percona-toolkit.rpm
+=over
 
-   wget percona.com/get/percona-toolkit.deb
+=item #ts
 
-You can also get individual tools from the latest release:
+The number of seconds of samples in the line.  If there is only one, then
+the timestamp itself is shown, without the {curly braces}.
 
-   wget percona.com/get/TOOL
+=item device
 
-Replace C<TOOL> with the name of any tool.
+The device name.  If there is more than one device, then instead the number
+of devices aggregated into the line is shown, in {curly braces}.
+
+=item rd_mb_s
+
+The number of megabytes read per second, average, during the sampled interval.
+
+=item rd_cnc
+
+The average concurrency of the read operations, as computed by Little's Law
+(a.k.a. queueing theory).
+
+=item rd_rt
+
+The average response time of the read operations, in milliseconds.
+
+=item wr_mb_s
+
+Megabytes written per second, average.
+
+=item wr_cnc
+
+Write concurrency, similar to read concurrency.
+
+=item wr_rt
+
+Write response time, similar to read response time.
+
+=item busy
+
+The fraction of time that the device had at least one request in progress;
+this is what iostat calls %util (which is a misleading name).
+
+=item in_prg
+
+The number of requests that were in progress.  Unlike the read and write
+concurrencies, which are averages that are generated from reliable numbers,
+this number is an instantaneous sample, and you can see that it might
+represent a spike of requests, rather than the true long-term average.
+
+=back
+
+In addition to the above columns, there are a few columns that are hidden by
+default. If you press the 'c' key, and then press Enter, you will blank out
+the regular expression pattern that selects columns to display, and you will
+then see the extra columns:
+
+=over
+
+=item rd_s
+
+The number of reads per second.
+
+=item rd_avkb
+
+The average size of the reads, in kilobytes.
+
+=item rd_mrg
+
+The percentage of read requests that were merged together in the disk
+scheduler before reaching the device.
+
+=item wr_s, wr_avgkb, and wr_mrg
+
+These are analogous to their rd_* cousins.
+
+=back
+
+=head1 OPTIONS
+
+Options must precede files on the command line.
+
+=over
+
+=item -c COLS
+
+Awk regex of which columns to include (default cnc|rt|mb|busy|prg).
+
+=item -d DEVICES
+
+Awk regex of which devices to include.
+
+=item -g GROUPBY
+
+Group-by mode (default disk); specify one of the following:
+
+   disk   - Each line of output shows one disk device.
+   sample - Each line of output shows one sample of statistics.
+   all    - Each line of output shows one sample and one disk device.
+
+=item -i INTERVAL
+
+In -g sample mode, include INTERVAL seconds per sample.
+
+=item -k KEEPFILE
+
+File to save diskstats samples in (default /tmp/diskstats-samples).
+If a non-default filename is used, it will be saved for later analysis.
+
+=item -n SAMPLES
+
+When in interactive mode, stop after N samples.
+
+=item -s INTERVAL
+
+Sample /proc/diskstats every N seconds (default 1).
+
+=back
 
 =head1 ENVIRONMENT
 
-The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-   PTDEBUG=1 pt-diskstats ... > FILE 2>&1
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Perl, DBI, DBD::mysql, and some core packages that ought to be
-installed in any reasonably new version of Perl.
+This tool requires Bash v3 or newer and the F</proc> filesystem unless
+reading from files.
 
 =head1 BUGS
 
@@ -712,6 +820,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
