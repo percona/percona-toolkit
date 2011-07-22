@@ -50,7 +50,7 @@ fuzz () {
 # symlink them to /etc/passwd and then run this program as root.  Call this
 # function with "rm" or "touch" as an argument.
 temp_files() {
-   for file in /tmp/aspersa /tmp/aspersa2; do
+   for file in /tmp/pt-summary.tmp /tmp/pt-summary.tmp2; do
       case "$1" in
       touch)
          if ! touch "${file}"; then
@@ -128,21 +128,21 @@ group_concat () {
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
 # easily.  The calling convention is that the data they need to run is prepared
-# first by putting it into /tmp/aspersa.  Then code that's testing just needs to
-# put sample data into /tmp/aspersa and call it.
+# first by putting it into /tmp/pt-summary.tmp.  Then code that's testing just needs to
+# put sample data into /tmp/pt-summary.tmp and call it.
 # ##############################################################################
    
 # ##############################################################################
-# Parse Linux's /proc/cpuinfo, which should be stored in /tmp/aspersa.
+# Parse Linux's /proc/cpuinfo, which should be stored in /tmp/pt-summary.tmp.
 # ##############################################################################
 parse_proc_cpuinfo () {
    # Physical processors are indicated by distinct 'physical id'.  Virtual CPUs
    # are indicated by paragraphs -- one per paragraph.  We assume that all
    # processors are identical, i.e. that there are not some processors with dual
    # cores and some with quad cores.
-   virtual=$(grep -c ^processor /tmp/aspersa);
-   physical=$(grep 'physical id' /tmp/aspersa | sort -u | wc -l);
-   cores=$(grep 'cpu cores' /tmp/aspersa | head -n 1 | cut -d: -f2);
+   virtual=$(grep -c ^processor /tmp/pt-summary.tmp);
+   physical=$(grep 'physical id' /tmp/pt-summary.tmp | sort -u | wc -l);
+   cores=$(grep 'cpu cores' /tmp/pt-summary.tmp | head -n 1 | cut -d: -f2);
 
    # Older kernel won't have 'physical id' or 'cpu cores'.
    if [ "${physical}" = "0" ]; then physical=${virtual}; fi
@@ -155,17 +155,17 @@ parse_proc_cpuinfo () {
 
    name_val "Processors" "physical = ${physical}, cores = ${cores}, virtual = ${virtual}, hyperthreading = ${htt}"
 
-   awk -F: '/cpu MHz/{print $2}' /tmp/aspersa \
-      | sort | uniq -c > /tmp/aspersa2
-   name_val "Speeds" "$(group_concat /tmp/aspersa2)"
+   awk -F: '/cpu MHz/{print $2}' /tmp/pt-summary.tmp \
+      | sort | uniq -c > /tmp/pt-summary.tmp2
+   name_val "Speeds" "$(group_concat /tmp/pt-summary.tmp2)"
 
-   awk -F: '/model name/{print $2}' /tmp/aspersa \
-      | sort | uniq -c > /tmp/aspersa2
-   name_val "Models" "$(group_concat /tmp/aspersa2)"
+   awk -F: '/model name/{print $2}' /tmp/pt-summary.tmp \
+      | sort | uniq -c > /tmp/pt-summary.tmp2
+   name_val "Models" "$(group_concat /tmp/pt-summary.tmp2)"
 
-   awk -F: '/cache size/{print $2}' /tmp/aspersa \
-      | sort | uniq -c > /tmp/aspersa2
-   name_val "Caches" "$(group_concat /tmp/aspersa2)"
+   awk -F: '/cache size/{print $2}' /tmp/pt-summary.tmp \
+      | sort | uniq -c > /tmp/pt-summary.tmp2
+   name_val "Caches" "$(group_concat /tmp/pt-summary.tmp2)"
 }
 
 # ##############################################################################
@@ -188,8 +188,8 @@ parse_psrinfo_cpus() {
       start = index($0, " at ") + 4;
       end   = length($0) - start - 4
       print substr($0, start, end);
-   }' "$1" | sort | uniq -c > /tmp/aspersa2
-   name_val "Speeds" "$(group_concat /tmp/aspersa2)"
+   }' "$1" | sort | uniq -c > /tmp/pt-summary.tmp2
+   name_val "Speeds" "$(group_concat /tmp/pt-summary.tmp2)"
 }
 
 # ##############################################################################
@@ -234,7 +234,7 @@ parse_memory_sysctl_freebsd() {
 
 # ##############################################################################
 # Parse memory devices from the output of 'dmidecode', which should be stored in
-# /tmp/aspersa.
+# /tmp/pt-summary.tmp.
 # ##############################################################################
 parse_dmidecode_mem_devices () {
    echo "  Locator   Size     Speed             Form Factor   Type          Type Detail"
@@ -254,7 +254,7 @@ parse_dmidecode_mem_devices () {
           -e 's/</{/g' \
           -e 's/>/}/g' \
           -e 's/[ \t]*\n/\n/g' \
-       /tmp/aspersa \
+       /tmp/pt-summary.tmp \
        | awk -F: '/Size|Type|Form.Factor|Type.Detail|[^ ]Locator/{printf("|%s", $2)}/Speed/{print "|" $2}' \
        | sed -e 's/No Module Installed/{EMPTY}/' \
        | sort \
@@ -289,13 +289,13 @@ parse_ip_s_link () {
 }
 
 # ##############################################################################
-# Parse the output of 'netstat -antp' which should be in /tmp/aspersa.
+# Parse the output of 'netstat -antp' which should be in /tmp/pt-summary.tmp.
 # ##############################################################################
 parse_netstat () {
    echo "  Connections from remote IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
       print substr($5, 0, index($5, ":") - 1);
-   }' /tmp/aspersa | sort | uniq -c \
+   }' /tmp/pt-summary.tmp | sort | uniq -c \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -305,7 +305,7 @@ parse_netstat () {
    echo "  Connections to local IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
       print substr($4, 0, index($4, ":") - 1);
-   }' /tmp/aspersa | sort | uniq -c \
+   }' /tmp/pt-summary.tmp | sort | uniq -c \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -315,7 +315,7 @@ parse_netstat () {
    echo "  Connections to top 10 local ports"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
       print substr($4, index($4, ":") + 1);
-   }' /tmp/aspersa | sort | uniq -c | sort -rn | head -n10 \
+   }' /tmp/pt-summary.tmp | sort | uniq -c | sort -rn | head -n10 \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -324,7 +324,7 @@ parse_netstat () {
    echo "  States of connections"
    awk '$1 ~ /^tcp/ {
       print $6;
-   }' /tmp/aspersa | sort | uniq -c | sort -rn \
+   }' /tmp/pt-summary.tmp | sort | uniq -c | sort -rn \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -341,7 +341,7 @@ parse_filesystems () {
    # requires two passes through the file.  The first pass finds the max size of
    # these columns and prints out a printf spec, and the second prints out the
    # file nicely aligned.
-   cat > /tmp/aspersa.awk <<-EOF
+   cat > /tmp/pt-summary.awk <<-EOF
       BEGIN {
          device     = 10;
          fstype     = 4;
@@ -370,11 +370,11 @@ parse_filesystems () {
          print "%-" device "s %5s %4s %-" fstype "s %-" options "s %s";
       }
 	EOF
-   spec="$( awk -f /tmp/aspersa.awk "$1" )";
-   #awk -f /tmp/aspersa.awk "$1"
+   spec="$( awk -f /tmp/pt-summary.awk "$1" )";
+   #awk -f /tmp/pt-summary.awk "$1"
    #return;
 
-   cat > /tmp/aspersa.awk <<-EOF
+   cat > /tmp/pt-summary.awk <<-EOF
       BEGIN {
          spec="  ${spec}\\n";
          printf spec, "Filesystem", "Size", "Used", "Type", "Opts", "Mountpoint";
@@ -390,11 +390,11 @@ parse_filesystems () {
          printf spec, \$1, \$2, \$5, f_fstype, f_options, \$6;
       }
 	EOF
-   awk -f /tmp/aspersa.awk "$1"
+   awk -f /tmp/pt-summary.awk "$1"
 }
 
 # ##############################################################################
-# Parse the output of fdisk -l, which should be in /tmp/aspersa; there might be
+# Parse the output of fdisk -l, which should be in /tmp/pt-summary.tmp; there might be
 # multiple fdisk -l outputs in the file.
 # ##############################################################################
 parse_fdisk () {
@@ -423,25 +423,25 @@ parse_fdisk () {
          }
          printf(format, $1, "Part", start, end, sprintf("%.0f", (end - start) * units));
       }
-   ' /tmp/aspersa
+   ' /tmp/pt-summary.tmp
 }
 
 # ##############################################################################
-# Parse the output of dmesg, which should be in /tmp/aspersa, and detect
+# Parse the output of dmesg, which should be in /tmp/pt-summary.tmp, and detect
 # virtualization.
 # ##############################################################################
 parse_virtualization_dmesg () {
-   if grep -qi -e vmware -e vmxnet -e 'paravirtualized kernel on vmi' /tmp/aspersa; then
+   if grep -qi -e vmware -e vmxnet -e 'paravirtualized kernel on vmi' /tmp/pt-summary.tmp; then
       echo "VMWare";
-   elif grep -qi -e 'paravirtualized kernel on xen' -e 'Xen virtual console' /tmp/aspersa; then
+   elif grep -qi -e 'paravirtualized kernel on xen' -e 'Xen virtual console' /tmp/pt-summary.tmp; then
       echo "Xen";
-   elif grep -qi qemu /tmp/aspersa; then
+   elif grep -qi qemu /tmp/pt-summary.tmp; then
       echo "QEmu";
-   elif grep -qi 'paravirtualized kernel on KVM' /tmp/aspersa; then
+   elif grep -qi 'paravirtualized kernel on KVM' /tmp/pt-summary.tmp; then
       echo "KVM";
-   elif grep -q VBOX /tmp/aspersa; then
+   elif grep -q VBOX /tmp/pt-summary.tmp; then
       echo "VirtualBox";
-   elif grep -qi 'hd.: Virtual .., ATA.*drive' /tmp/aspersa; then
+   elif grep -qi 'hd.: Virtual .., ATA.*drive' /tmp/pt-summary.tmp; then
       echo "Microsoft VirtualPC";
    fi
 }
@@ -458,73 +458,73 @@ parse_virtualization_generic() {
 }
 
 # ##############################################################################
-# Parse the output of lspci, which should be in /tmp/aspersa, and detect
+# Parse the output of lspci, which should be in /tmp/pt-summary.tmp, and detect
 # Ethernet cards.
 # ##############################################################################
 parse_ethernet_controller_lspci () {
-   grep -i ethernet /tmp/aspersa | cut -d: -f3 | while read line; do
+   grep -i ethernet /tmp/pt-summary.tmp | cut -d: -f3 | while read line; do
       name_val Controller "${line}"
    done
 }
 
 # ##############################################################################
-# Parse the output of lspci, which should be in /tmp/aspersa, and detect RAID
+# Parse the output of lspci, which should be in /tmp/pt-summary.tmp, and detect RAID
 # controllers.
 # ##############################################################################
 parse_raid_controller_lspci () {
-   if grep -q "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS" /tmp/aspersa; then
+   if grep -q "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS" /tmp/pt-summary.tmp; then
       echo 'LSI Logic MegaRAID SAS'
-   elif grep -q "Fusion-MPT SAS" /tmp/aspersa; then
+   elif grep -q "Fusion-MPT SAS" /tmp/pt-summary.tmp; then
       echo 'Fusion-MPT SAS'
-   elif grep -q "RAID bus controller: LSI Logic / Symbios Logic Unknown" /tmp/aspersa; then
+   elif grep -q "RAID bus controller: LSI Logic / Symbios Logic Unknown" /tmp/pt-summary.tmp; then
       echo 'LSI Logic Unknown'
-   elif grep -q "RAID bus controller: Adaptec AAC-RAID" /tmp/aspersa; then
+   elif grep -q "RAID bus controller: Adaptec AAC-RAID" /tmp/pt-summary.tmp; then
       echo 'AACRAID'
-   elif grep -q "3ware [0-9]* Storage Controller" /tmp/aspersa; then
+   elif grep -q "3ware [0-9]* Storage Controller" /tmp/pt-summary.tmp; then
       echo '3Ware'
-   elif grep -q "Hewlett-Packard Company Smart Array" /tmp/aspersa; then
+   elif grep -q "Hewlett-Packard Company Smart Array" /tmp/pt-summary.tmp; then
       echo 'HP Smart Array'
-   elif grep -q " RAID bus controller: " /tmp/aspersa; then
-      awk -F: '/RAID bus controller\:/ {print $3" "$5" "$6}' /tmp/aspersa
+   elif grep -q " RAID bus controller: " /tmp/pt-summary.tmp; then
+      awk -F: '/RAID bus controller\:/ {print $3" "$5" "$6}' /tmp/pt-summary.tmp
    fi
 }
 
 # ##############################################################################
-# Parse the output of dmesg, which should be in /tmp/aspersa, and detect RAID
+# Parse the output of dmesg, which should be in /tmp/pt-summary.tmp, and detect RAID
 # controllers.
 # ##############################################################################
 parse_raid_controller_dmesg () {
    pat='scsi[0-9].*: .*'
-   if grep -qi "${pat}megaraid" /tmp/aspersa; then
+   if grep -qi "${pat}megaraid" /tmp/pt-summary.tmp; then
       echo 'LSI Logic MegaRAID SAS'
-   elif grep -q "Fusion MPT SAS" /tmp/aspersa; then
+   elif grep -q "Fusion MPT SAS" /tmp/pt-summary.tmp; then
       echo 'Fusion-MPT SAS'
-   elif grep -q "${pat}aacraid" /tmp/aspersa; then
+   elif grep -q "${pat}aacraid" /tmp/pt-summary.tmp; then
       echo 'AACRAID'
-   elif grep -q "${pat}3ware [0-9]* Storage Controller" /tmp/aspersa; then
+   elif grep -q "${pat}3ware [0-9]* Storage Controller" /tmp/pt-summary.tmp; then
       echo '3Ware'
    fi
 }
 
 # ##############################################################################
 # Parse the output of "hpacucli ctrl all show config", which should be stored in
-# /tmp/aspersa
+# /tmp/pt-summary.tmp
 # ##############################################################################
 parse_hpacucli () {
-   grep 'logicaldrive\|physicaldrive' /tmp/aspersa
+   grep 'logicaldrive\|physicaldrive' /tmp/pt-summary.tmp
 }
 
 # ##############################################################################
-# Parse the output of arcconf, which should be stored in /tmp/aspersa
+# Parse the output of arcconf, which should be stored in /tmp/pt-summary.tmp
 # ##############################################################################
 parse_arcconf () {
-   model=$(awk -F: '/Controller Model/{print $2}' /tmp/aspersa)
-   chan="$(awk -F: '/Channel description/{print $2}' /tmp/aspersa)"
-   cache="$(awk -F: '/Installed memory/{print $2}' /tmp/aspersa)"
-   status="$(awk -F: '/Controller Status/{print $2}' /tmp/aspersa)"
+   model=$(awk -F: '/Controller Model/{print $2}' /tmp/pt-summary.tmp)
+   chan="$(awk -F: '/Channel description/{print $2}' /tmp/pt-summary.tmp)"
+   cache="$(awk -F: '/Installed memory/{print $2}' /tmp/pt-summary.tmp)"
+   status="$(awk -F: '/Controller Status/{print $2}' /tmp/pt-summary.tmp)"
    name_val Specs "${model/ /},${chan},${cache} cache,${status}"
 
-   battery=$(grep -A5 'Controller Battery Info' /tmp/aspersa \
+   battery=$(grep -A5 'Controller Battery Info' /tmp/pt-summary.tmp \
       | awk '/Capacity remaining/ {c=$4}
              /Status/             {s=$3}
              /Time remaining/     {t=sprintf("%dd%dh%dm", $7, $9, $11)}
@@ -537,9 +537,9 @@ parse_arcconf () {
    echo
    echo "  LogicalDev Size      RAID Disks Stripe Status  Cache"
    echo "  ========== ========= ==== ===== ====== ======= ======="
-   for dev in $(awk '/Logical device number/{print $4}' /tmp/aspersa); do
+   for dev in $(awk '/Logical device number/{print $4}' /tmp/pt-summary.tmp); do
       sed -n -e "/^Logical device .* ${dev}$/,/^$\|^Logical device number/p" \
-         /tmp/aspersa \
+         /tmp/pt-summary.tmp \
       | awk '
          /Logical device name/               {d=$5}
          /Size/                              {z=$3 " " $4}
@@ -565,7 +565,7 @@ parse_arcconf () {
 
    # Find the paragraph with physical devices, tabularize with assoc arrays.
    tempresult=""
-   sed -n -e '/Physical Device information/,/^$/p' /tmp/aspersa \
+   sed -n -e '/Physical Device information/,/^$/p' /tmp/pt-summary.tmp \
       | awk -F: '
          /Device #[0-9]/ {
             device=substr($0, index($0, "#"));
@@ -616,45 +616,45 @@ parse_arcconf () {
 }
 
 # ##############################################################################
-# Parse the output of "lsiutil -i -s" from /tmp/aspersa
+# Parse the output of "lsiutil -i -s" from /tmp/pt-summary.tmp
 # ##############################################################################
 parse_fusionmpt_lsiutil () {
    echo
-   awk '/LSI.*Firmware/ { print " ", $0 }' /tmp/aspersa
-   grep . /tmp/aspersa | sed -n -e '/B___T___L/,$ {s/^/  /; p}'
+   awk '/LSI.*Firmware/ { print " ", $0 }' /tmp/pt-summary.tmp
+   grep . /tmp/pt-summary.tmp | sed -n -e '/B___T___L/,$ {s/^/  /; p}'
 }
 
 # ##############################################################################
-# Parse the output of MegaCli64 -AdpAllInfo -aALL from /tmp/aspersa.
+# Parse the output of MegaCli64 -AdpAllInfo -aALL from /tmp/pt-summary.tmp.
 # ##############################################################################
 parse_lsi_megaraid_adapter_info () {
-   name=$(awk -F: '/Product Name/{print substr($2, 2)}' /tmp/aspersa);
-   int=$(awk '/Host Interface/{print $4}' /tmp/aspersa);
-   prt=$(awk '/Number of Backend Port/{print $5}' /tmp/aspersa);
-   bbu=$(awk '/^BBU             :/{print $3}' /tmp/aspersa);
-   mem=$(awk '/Memory Size/{print $4}' /tmp/aspersa);
-   vdr=$(awk '/Virtual Drives/{print $4}' /tmp/aspersa);
-   dvd=$(awk '/Degraded/{print $3}' /tmp/aspersa);
-   phy=$(awk '/^  Disks/{print $3}' /tmp/aspersa);
-   crd=$(awk '/Critical Disks/{print $4}' /tmp/aspersa);
-   fad=$(awk '/Failed Disks/{print $4}' /tmp/aspersa);
+   name=$(awk -F: '/Product Name/{print substr($2, 2)}' /tmp/pt-summary.tmp);
+   int=$(awk '/Host Interface/{print $4}' /tmp/pt-summary.tmp);
+   prt=$(awk '/Number of Backend Port/{print $5}' /tmp/pt-summary.tmp);
+   bbu=$(awk '/^BBU             :/{print $3}' /tmp/pt-summary.tmp);
+   mem=$(awk '/Memory Size/{print $4}' /tmp/pt-summary.tmp);
+   vdr=$(awk '/Virtual Drives/{print $4}' /tmp/pt-summary.tmp);
+   dvd=$(awk '/Degraded/{print $3}' /tmp/pt-summary.tmp);
+   phy=$(awk '/^  Disks/{print $3}' /tmp/pt-summary.tmp);
+   crd=$(awk '/Critical Disks/{print $4}' /tmp/pt-summary.tmp);
+   fad=$(awk '/Failed Disks/{print $4}' /tmp/pt-summary.tmp);
    name_val Model "${name}, ${int} interface, ${prt} ports"
    name_val Cache "${mem} Memory, BBU ${bbu}"
 }
 
 # ##############################################################################
-# Parse the output (saved in /tmp/aspersa) of
+# Parse the output (saved in /tmp/pt-summary.tmp) of
 # /opt/MegaRAID/MegaCli/MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL
 # ##############################################################################
 parse_lsi_megaraid_bbu_status () {
-   charge=$(awk '/Relative State/{print $5}' /tmp/aspersa);
-   temp=$(awk '/^Temperature/{print $2}' /tmp/aspersa);
-   soh=$(awk '/isSOHGood:/{print $2}' /tmp/aspersa);
+   charge=$(awk '/Relative State/{print $5}' /tmp/pt-summary.tmp);
+   temp=$(awk '/^Temperature/{print $2}' /tmp/pt-summary.tmp);
+   soh=$(awk '/isSOHGood:/{print $2}' /tmp/pt-summary.tmp);
    name_val BBU "${charge}% Charged, Temperature ${temp}C, isSOHGood=${soh}"
 }
 
 # ##############################################################################
-# Parse physical devices from the output (saved in /tmp/aspersa) of
+# Parse physical devices from the output (saved in /tmp/pt-summary.tmp) of
 # /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
 # OR, it will also work with the output of
 # /opt/MegaRAID/MegaCli/MegaCli64 -PDList -aALL
@@ -663,8 +663,8 @@ parse_lsi_megaraid_devices () {
    echo
    echo "  PhysiclDev Type State   Errors Vendor  Model        Size"
    echo "  ========== ==== ======= ====== ======= ============ ==========="
-   for dev in $(awk '/Device Id/{print $3}' /tmp/aspersa); do
-      sed -e '/./{H;$!d;}' -e "x;/Device Id: ${dev}/!d;" /tmp/aspersa \
+   for dev in $(awk '/Device Id/{print $3}' /tmp/pt-summary.tmp); do
+      sed -e '/./{H;$!d;}' -e "x;/Device Id: ${dev}/!d;" /tmp/pt-summary.tmp \
       | awk '
          /Media Type/                        {d=substr($0, index($0, ":") + 2)}
          /PD Type/                           {t=$3}
@@ -682,7 +682,7 @@ parse_lsi_megaraid_devices () {
 }
 
 # ##############################################################################
-# Parse virtual devices from the output (saved in /tmp/aspersa) of
+# Parse virtual devices from the output (saved in /tmp/pt-summary.tmp) of
 # /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
 # OR, it will also work with the output of
 # /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -Lall -aAll
@@ -758,7 +758,7 @@ parse_lsi_megaraid_virtual_devices () {
                devices[device ",stripe"], devices[device ",state"],
                devices[device ",wpolicy"] ", " devices[device ",rpolicy"]);
          }
-      }' /tmp/aspersa
+      }' /tmp/pt-summary.tmp
 }
 
 # ##############################################################################
@@ -766,7 +766,7 @@ parse_lsi_megaraid_virtual_devices () {
 # system activity is enough.
 # ##############################################################################
 format_vmstat () {
-   cat > /tmp/aspersa.awk <<-EOF
+   cat > /tmp/pt-summary.awk <<-EOF
       BEGIN {
          format = "  %2s %2s  %4s %4s %5s %5s %6s %6s %3s %3s %3s %3s %3s\n";
       }
@@ -793,7 +793,7 @@ format_vmstat () {
             printf format, r, b, si, so, bi, bo, ir, cs, us, sy, il, wa, st;
          }
 	EOF
-      awk -f /tmp/aspersa.awk /tmp/aspersa
+      awk -f /tmp/pt-summary.awk /tmp/pt-summary.tmp
    }
 
 # ##############################################################################
@@ -815,12 +815,12 @@ main () {
    # Set up temporary files.
    temp_files "rm"
    temp_files "touch"
-   section Aspersa_System_Summary_Report
+   section Percona_Toolkit_System_Summary_Report
 
    # ########################################################################
    # Grab a bunch of stuff and put it into temp files for later.
    # ########################################################################
-   sysctl -a > /tmp/aspersa.sysctl 2>/dev/null
+   sysctl -a > /tmp/pt-summary.tmp.sysctl 2>/dev/null
 
    # ########################################################################
    # General date, time, load, etc
@@ -926,19 +926,19 @@ main () {
    # available to non-root users and usually has telltale signs.  It's most
    # reliable to look at /var/log/dmesg if possible.  There are a number of
    # other ways to find out if a system is virtualized.
-   cat /var/log/dmesg > /tmp/aspersa 2>/dev/null
-   if [ ! -s /tmp/aspersa ]; then
-      dmesg > /tmp/aspersa 2>/dev/null
+   cat /var/log/dmesg > /tmp/pt-summary.tmp 2>/dev/null
+   if [ ! -s /tmp/pt-summary.tmp ]; then
+      dmesg > /tmp/pt-summary.tmp 2>/dev/null
    fi
-   if [ -s /tmp/aspersa ]; then
+   if [ -s /tmp/pt-summary.tmp ]; then
       virt="$(parse_virtualization_dmesg)"
    fi
    if [ -z "${virt}" ]; then
       if which lspci >/dev/null 2>&1; then
-         lspci > /tmp/aspersa 2>/dev/null
-         if grep -qi virtualbox /tmp/aspersa; then
+         lspci > /tmp/pt-summary.tmp 2>/dev/null
+         if grep -qi virtualbox /tmp/pt-summary.tmp; then
             virt=VirtualBox
-         elif grep -qi vmware /tmp/aspersa; then
+         elif grep -qi vmware /tmp/pt-summary.tmp; then
             virt=VMWare
          elif [ -e /proc/user_beancounters ]; then
             virt="OpenVZ/Virtuozzo"
@@ -949,10 +949,10 @@ main () {
          virt="FreeBSD Jail"
       fi
    elif [ "${platform}" = "SunOS" ]; then
-      if which prtdiag >/dev/null 2>&1 && prtdiag > /tmp/aspersa.prtdiag 2>/dev/null; then
-         virt="$(parse_virtualization_generic /tmp/aspersa.prtdiag)"
-      elif which smbios >/dev/null 2>&1 && smbios > /tmp/aspersa.smbios 2>/dev/null; then
-         virt="$(parse_virtualization_generic /tmp/aspersa.smbios)"
+      if which prtdiag >/dev/null 2>&1 && prtdiag > /tmp/pt-summary.tmp.prtdiag 2>/dev/null; then
+         virt="$(parse_virtualization_generic /tmp/pt-summary.tmp.prtdiag)"
+      elif which smbios >/dev/null 2>&1 && smbios > /tmp/pt-summary.tmp.smbios 2>/dev/null; then
+         virt="$(parse_virtualization_generic /tmp/pt-summary.tmp.smbios)"
       fi
    fi
    name_val Virtualized "${virt:-No virtualization detected}"
@@ -962,23 +962,23 @@ main () {
    # ########################################################################
    section Processor
    if [ -f /proc/cpuinfo ]; then
-      cat /proc/cpuinfo > /tmp/aspersa 2>/dev/null
+      cat /proc/cpuinfo > /tmp/pt-summary.tmp 2>/dev/null
       parse_proc_cpuinfo
    elif [ "${platform}" = "FreeBSD" ]; then
-      parse_sysctl_cpu_freebsd /tmp/aspersa.sysctl
+      parse_sysctl_cpu_freebsd /tmp/pt-summary.tmp.sysctl
    elif [ "${platform}" = "SunOS" ]; then
-      psrinfo -v > /tmp/aspersa
-      parse_psrinfo_cpus /tmp/aspersa
+      psrinfo -v > /tmp/pt-summary.tmp
+      parse_psrinfo_cpus /tmp/pt-summary.tmp
       # TODO: prtconf -v actually prints the CPU model name etc.
    fi
 
    section Memory
    if [ "${platform}" = "Linux" ]; then
-      free -b > /tmp/aspersa
-      cat /proc/meminfo >> /tmp/aspersa
-      parse_free_minus_b /tmp/aspersa
+      free -b > /tmp/pt-summary.tmp
+      cat /proc/meminfo >> /tmp/pt-summary.tmp
+      parse_free_minus_b /tmp/pt-summary.tmp
    elif [ "${platform}" = "FreeBSD" ]; then
-      parse_memory_sysctl_freebsd /tmp/aspersa.sysctl
+      parse_memory_sysctl_freebsd /tmp/pt-summary.tmp.sysctl
    elif [ "${platform}" = "SunOS" ]; then
       name_val Memory "$(prtconf | awk -F: '/Memory/{print $2}')"
    fi
@@ -994,7 +994,7 @@ main () {
       fi
    fi
 
-   if which dmidecode >/dev/null 2>&1 && dmidecode > /tmp/aspersa 2>/dev/null; then
+   if which dmidecode >/dev/null 2>&1 && dmidecode > /tmp/pt-summary.tmp 2>/dev/null; then
       parse_dmidecode_mem_devices
    fi
 
@@ -1003,30 +1003,30 @@ main () {
    # ########################################################################
    # TODO: Add info about software RAID
 
-   if echo "${ASPERSA_SKIP}" | grep -v MOUNT >/dev/null; then
+   if echo "${PT_SUMMARY_SKIP}" | grep -v MOUNT >/dev/null; then
       if [ "${platform}" != "SunOS" ]; then
          section "Mounted_Filesystems"
          cmd="df -h"
          if [ "${platform}" = "Linux" ]; then
             cmd="df -h -P"
          fi
-         $cmd | sort > /tmp/aspersa2
-         mount | sort | join /tmp/aspersa2 - > /tmp/aspersa
-         parse_filesystems /tmp/aspersa "${platform}"
+         $cmd | sort > /tmp/pt-summary.tmp2
+         mount | sort | join /tmp/pt-summary.tmp2 - > /tmp/pt-summary.tmp
+         parse_filesystems /tmp/pt-summary.tmp "${platform}"
       fi
    fi
 
    if [ "${platform}" = "Linux" ]; then
       section "Disk_Schedulers_And_Queue_Size"
-      echo "" > /tmp/aspersa
+      echo "" > /tmp/pt-summary.tmp
       for disk in $(ls /sys/block/ | grep -v -e ram -e loop -e 'fd[0-9]'); do
          if [ -e "/sys/block/${disk}/queue/scheduler" ]; then
             name_val "${disk}" "$(cat /sys/block/${disk}/queue/scheduler | grep -o '\[.*\]') $(cat /sys/block/${disk}/queue/nr_requests)"
-            fdisk -l "/dev/${disk}" >> /tmp/aspersa 2>/dev/null
+            fdisk -l "/dev/${disk}" >> /tmp/pt-summary.tmp 2>/dev/null
          fi
       done
 
-      # Relies on /tmp/aspersa having data from the Disk Schedulers loop.
+      # Relies on /tmp/pt-summary.tmp having data from the Disk Schedulers loop.
       section "Disk_Partioning"
       parse_fdisk
 
@@ -1051,13 +1051,13 @@ main () {
    # often available to non-root users.  It's most reliable to look at
    # /var/log/dmesg if possible.
    # ########################################################################
-   if which lspci >/dev/null 2>&1 && lspci > /tmp/aspersa 2>/dev/null; then
+   if which lspci >/dev/null 2>&1 && lspci > /tmp/pt-summary.tmp 2>/dev/null; then
       controller="$(parse_raid_controller_lspci)"
    fi
    if [ -z "${controller}" ]; then
-      cat /var/log/dmesg > /tmp/aspersa 2>/dev/null
-      if [ ! -s /tmp/aspersa ]; then
-         dmesg > /tmp/aspersa 2>/dev/null
+      cat /var/log/dmesg > /tmp/pt-summary.tmp 2>/dev/null
+      if [ ! -s /tmp/pt-summary.tmp ]; then
+         dmesg > /tmp/pt-summary.tmp 2>/dev/null
       fi
       controller="$(parse_raid_controller_dmesg)"
    fi
@@ -1072,27 +1072,27 @@ main () {
    # ########################################################################
    notfound=""
    if [ "${controller}" = "AACRAID" ]; then
-      if arcconf getconfig 1 > /tmp/aspersa 2>/dev/null; then
+      if arcconf getconfig 1 > /tmp/pt-summary.tmp 2>/dev/null; then
          parse_arcconf
       elif ! which arcconf >/dev/null 2>&1; then
          notfound="e.g. http://www.adaptec.com/en-US/support/raid/scsi_raid/ASR-2120S/"
       fi
    elif [ "${controller}" = "HP Smart Array" ]; then
-      if hpacucli ctrl all show config > /tmp/aspersa 2>/dev/null; then
+      if hpacucli ctrl all show config > /tmp/pt-summary.tmp 2>/dev/null; then
          parse_hpacucli
       elif ! which hpacucli >/dev/null 2>&1; then
          notfound="your package repository or the manufacturer's website"
       fi
    elif [ "${controller}" = "LSI Logic MegaRAID SAS" ]; then
-      if MegaCli64 -AdpAllInfo -aALL -NoLog > /tmp/aspersa 2>/dev/null; then
+      if MegaCli64 -AdpAllInfo -aALL -NoLog > /tmp/pt-summary.tmp 2>/dev/null; then
          parse_lsi_megaraid_adapter_info
       elif ! which MegaCli64 >/dev/null 2>&1; then
          notfound="your package repository or the manufacturer's website"
       fi
-      if MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL -NoLog > /tmp/aspersa 2>/dev/null; then
+      if MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL -NoLog > /tmp/pt-summary.tmp 2>/dev/null; then
          parse_lsi_megaraid_bbu_status
       fi
-      if MegaCli64 -LdPdInfo -aALL -NoLog > /tmp/aspersa 2>/dev/null; then
+      if MegaCli64 -LdPdInfo -aALL -NoLog > /tmp/pt-summary.tmp 2>/dev/null; then
          parse_lsi_megaraid_virtual_devices
          parse_lsi_megaraid_devices
       fi
@@ -1103,13 +1103,13 @@ main () {
       echo "   ${notfound}"
    fi
 
-   if echo "${ASPERSA_SKIP}" | grep -v NETWORK >/dev/null; then
+   if echo "${PT_SUMMARY_SKIP}" | grep -v NETWORK >/dev/null; then
       # #####################################################################
       # Network stuff
       # #####################################################################
       if [ "${platform}" = "Linux" ]; then
          section Network_Config
-         if which lspci > /dev/null 2>&1 && lspci > /tmp/aspersa 2>/dev/null; then
+         if which lspci > /dev/null 2>&1 && lspci > /tmp/pt-summary.tmp 2>/dev/null; then
             parse_ethernet_controller_lspci
          fi
          if sysctl net.ipv4.tcp_fin_timeout > /dev/null 2>&1; then
@@ -1122,14 +1122,14 @@ main () {
       # /proc/sys/net/netfilter/nf_conntrack_max or /proc/sys/net/nf_conntrack_max
       # in new kernels like Fedora 12?
 
-      if which ip >/dev/null 2>&1 && ip -s link > /tmp/aspersa 2>/dev/null; then
+      if which ip >/dev/null 2>&1 && ip -s link > /tmp/pt-summary.tmp 2>/dev/null; then
          section Interface_Statistics
-         parse_ip_s_link /tmp/aspersa
+         parse_ip_s_link /tmp/pt-summary.tmp
       fi
 
       if [ "${platform}" = "Linux" ]; then
          section Network_Connections
-         if netstat -antp > /tmp/aspersa 2>/dev/null; then
+         if netstat -antp > /tmp/pt-summary.tmp 2>/dev/null; then
             parse_netstat
          fi
       fi
@@ -1138,7 +1138,7 @@ main () {
    # ########################################################################
    # Processes, load, etc
    # ########################################################################
-   if echo "${ASPERSA_SKIP}" | grep -v PROCESS >/dev/null; then
+   if echo "${PT_SUMMARY_SKIP}" | grep -v PROCESS >/dev/null; then
       section Top_Processes
       if which prstat > /dev/null 2>&1; then
          prstat | head
@@ -1151,12 +1151,12 @@ main () {
       fi
       if which vmstat > /dev/null 2>&1 ; then
          section "Simplified_and_fuzzy_rounded_vmstat_(wait_please)"
-         vmstat 1 5 > /tmp/aspersa
+         vmstat 1 5 > /tmp/pt-summary.tmp
          if [ "${platform}" = "Linux" ]; then
             format_vmstat
          else
             # TODO: simplify/format for other platforms
-            cat /tmp/aspersa
+            cat /tmp/pt-summary.tmp
          fi
       fi
    fi
@@ -1217,7 +1217,7 @@ This tool does not have any command-line options.
 
 =head1 ENVIRONMENT
 
-The ASPERSA_SKIP environment variable specifies a comma-separated list
+The PT_SUMMARY_SKIP environment variable specifies a comma-separated list
 of things to skip:
 
   MOUNT:   Don't print out mounted filesystems and disk fullness.

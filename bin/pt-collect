@@ -226,17 +226,17 @@ echo "Gathering info for $d"
       opcontrol --stop
       opcontrol --dump
       kill $(pidof oprofiled);
-      opcontrol --save=percona_toolkit_collect_$d
+      opcontrol --save=pt_collect_$d
 
       # Attempt to generate a report; if this fails, then just tell the user how
       # to generate the report.
       path_to_binary=$(which mysqld);
       if [ "${path_to_binary}" -a -f "${path_to_binary}" ]; then
-         opreport --demangle=smart --symbols --merge tgid session:percona_toolkit_collect_$d "${path_to_binary}" > "$OPT_d/$d-opreport"
+         opreport --demangle=smart --symbols --merge tgid session:pt_collect_$d "${path_to_binary}" > "$OPT_d/$d-opreport"
       else
-         echo "oprofile data saved to percona_toolkit_collect_$d; you should now be able to get a report" > "$OPT_d/$d-opreport"
+         echo "oprofile data saved to pt_collect_$d; you should now be able to get a report" > "$OPT_d/$d-opreport"
          echo "by running something like" >> "$OPT_d/$d-opreport"
-         echo "opreport --demangle=smart --symbols --merge tgid session:percona_toolkit_collect_$d /path/to/mysqld" >> "$OPT_d/$d-opreport"
+         echo "opreport --demangle=smart --symbols --merge tgid session:pt_collect_$d /path/to/mysqld" >> "$OPT_d/$d-opreport"
       fi
    elif [ "${OPT_s}" = "yes" ]; then
       kill -s 2 ${strace_pid}
