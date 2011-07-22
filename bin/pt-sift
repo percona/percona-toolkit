@@ -67,17 +67,17 @@ main() {
 
    # We need to generate a list of timestamps, and ask the user to choose one if
    # there is no PREFIX yet.  NOTE: we rely on the "-df" files here.
-   ls "${BASEDIR}" | grep -- '-df$' | cut -d- -f1 | sort > /tmp/aspersa.sift-prefixes
+   ls "${BASEDIR}" | grep -- '-df$' | cut -d- -f1 | sort > /tmp/pt-sift.prefixes
    if [ -z "${PREFIX}" ]; then
-      if [ "$(grep -c . /tmp/aspersa.sift-prefixes)" = "1" ]; then
+      if [ "$(grep -c . /tmp/pt-sift.prefixes)" = "1" ]; then
          # If there is only one sample, we use it as the prefix.
-         PREFIX="$(cat /tmp/aspersa.sift-prefixes)"
+         PREFIX="$(cat /tmp/pt-sift.prefixes)"
       fi
    fi
    if [ -z "${PREFIX}" ]; then
       echo
       i=0
-      cat /tmp/aspersa.sift-prefixes | while read line; do
+      cat /tmp/pt-sift.prefixes | while read line; do
          i=$(($i + 1))
          echo -n "  $line"
          if [ "${i}" = "3" ]; then
@@ -87,14 +87,14 @@ main() {
       done
       # We might have ended mid-line or we might have printed a newline; print a
       # newline if required to end the list of timestamp prefixes.
-      awk 'BEGIN { i = 0 } { i++ } END { if ( i % 3 != 0 ) { print "" } }' /tmp/aspersa.sift-prefixes
+      awk 'BEGIN { i = 0 } { i++ } END { if ( i % 3 != 0 ) { print "" } }' /tmp/pt-sift.prefixes
       echo
-      while [ -z "${PREFIX}" -o "$(grep -c "${PREFIX}" /tmp/aspersa.sift-prefixes)" -ne 1 ]; do
-         DEFAULT="$(tail -1 /tmp/aspersa.sift-prefixes)"
+      while [ -z "${PREFIX}" -o "$(grep -c "${PREFIX}" /tmp/pt-sift.prefixes)" -ne 1 ]; do
+         DEFAULT="$(tail -1 /tmp/pt-sift.prefixes)"
          read -e -p "Select a timestamp from the list [${DEFAULT}] " ARG
          ARG="${ARG:-${DEFAULT}}"
-         if [ "$(grep -c "${ARG}" /tmp/aspersa.sift-prefixes)" -eq 1 ]; then
-            PREFIX="$(grep "${ARG}" /tmp/aspersa.sift-prefixes)"
+         if [ "$(grep -c "${ARG}" /tmp/pt-sift.prefixes)" -eq 1 ]; then
+            PREFIX="$(grep "${ARG}" /tmp/pt-sift.prefixes)"
          fi
       done
    fi
@@ -106,7 +106,7 @@ main() {
       if [ "${ACTION}" != "INVALID" ]; then
          # Print the current host, timestamp and action.  Figure out if we're at
          # the first or last sample, to make it easy to navigate.
-         PAGE="$(awk "/./{i++} /${PREFIX}/{c=i} END{print c, \"of\", i}" /tmp/aspersa.sift-prefixes)"
+         PAGE="$(awk "/./{i++} /${PREFIX}/{c=i} END{print c, \"of\", i}" /tmp/pt-sift.prefixes)"
          HOST="$(cat "${BASEDIR}/${PREFIX}-hostname" 2>/dev/null)"
          echo -e "======== ${HOST:-unknown} at \033[34m${PREFIX} \033[31m${ACTION}\033[0m (${PAGE}) ========"
       fi
@@ -414,7 +414,7 @@ main() {
                   if ( printed == 0 ) {
                      print \"${PREFIX}\";
                   }
-               }" /tmp/aspersa.sift-prefixes)"
+               }" /tmp/pt-sift.prefixes)"
             ;;
          1)
             ACTION="DEFAULT"

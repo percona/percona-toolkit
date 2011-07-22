@@ -69,7 +69,7 @@ ENVIRONMENT
 ***********
 
 
-The ASPERSA_SKIP environment variable specifies a comma-separated list
+The PT_SUMMARY_SKIP environment variable specifies a comma-separated list
 of things to skip:
 
 

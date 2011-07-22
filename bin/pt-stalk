@@ -154,7 +154,7 @@ while true; do
 
    # Delete things more than $PURGE days old
    find "${DEST}" -type f -mtime +${PURGE} -exec rm -f '{}' \;
-   find "/var/lib/oprofile/samples" -type d -name 'aspersa_collect_*' \
+   find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
       -depth -mtime +${PURGE} -exec rm -f '{}' \;
 
 done
