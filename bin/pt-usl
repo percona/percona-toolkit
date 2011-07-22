@@ -4,43 +4,12 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
-# Print a usage message and exit.
 usage() {
    if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}"
+      echo "${OPT_ERR}" >&2
    fi
-   cat <<-EOF
-Usage: $0 [OPTIONS] FILE [FILE...]
-   $0 performs Universal Scalability Law modelling.
-   It expects as input a file with columns N (load; concurrency; independentvar)
-   and C (throughput).  The file may contain comment lines beginning with the #
-   character.  The tool outputs .png images with the deviation, efficiency,
-   residuals, and model-vs-actual data.  It also prints out information from the
-   process of fitting the curve to the data, such as gnuplot's error estimates.
-Options:
-   -a              Set X-axis label to 'node count' (default is concurrency).
-   -c CONVERSION   Converts the input file into N-vs-C format as specified:
-      globalstatus   Convert from MySQL's SHOW GLOBAL STATUS
-      tcpdump        Convert from 'tcpdump -tttt -nnq' format
-   -d              Don't delete the gnuplot files used to generate the charts.
-   -e              Draw error lines on the final plot.
-   -i INTERVAL     When -c is given, group the input into -i second intervals.
-   -k KEEPFILE     Save the N-vs-C data in the specified file.
-   -l LIMIT        X-axis limit for the final plot.
-   -L COLOR        The color for plotting points (default lt rgb "#8B0000").
-   -m THREADS      When -c is given, max valid value of N, to filter outliers.
-   -n ADJUSTMENT   Adjust the N variable downwards to compensate for known
-                   errors such as error of observation.
-   -o ONLY         Only produce plots specified in this comma-separated list.
-   -p PREFIX       Prefix for the generated image file names.
-   -P PORT         TCP port for when -c tcpdump is used (default 3306).
-   -r              Render pdf and eps plots in color.
-   -R              Don't re-fit the data; use the results from quadratic fit.
-   -t FILETYPE     Type for the image files (png, pdf, eps).
-   -T POINTTYPE    Point-type and options for the plots (default 6).
-   -x ADJUSTMENT   Multiply the C(1) regression parameter by this factor.
-   -X              Include C(1) as a fit parameter for USL regression.
-	EOF
+   echo "Usage: pt-usl [OPTIONS] [FILES]" >&2
+   echo "For more information, 'man pt-usl' or 'perldoc $0'." >&2
    exit 1
 }
 
@@ -777,11 +746,44 @@ pt-usl - Model Universal Scalability Law.
 
 =head1 SYNOPSIS
 
-Usage: pt-usl [OPTION...]
+Usage: pt-usl [OPTIONS] [FILES]
 
 =head1 DESCRIPTION
 
 This tool is based on Neil Gunther's book Guerrilla Capacity Planning.
+
+It expects as input a file with columns N (load; concurrency; independentvar)
+and C (throughput).  The file may contain comment lines beginning with the #
+character.  The tool outputs .png images with the deviation, efficiency,
+residuals, and model-vs-actual data.  It also prints out information from the
+process of fitting the curve to the data, such as gnuplot's error estimates.
+
+=head1 OPTIONS
+
+Options must precede files on the command line.
+
+   -a              Set X-axis label to 'node count' (default is concurrency).
+   -c CONVERSION   Converts the input file into N-vs-C format as specified:
+      globalstatus   Convert from MySQL's SHOW GLOBAL STATUS
+      tcpdump        Convert from 'tcpdump -tttt -nnq' format
+   -d              Don't delete the gnuplot files used to generate the charts.
+   -e              Draw error lines on the final plot.
+   -i INTERVAL     When -c is given, group the input into -i second intervals.
+   -k KEEPFILE     Save the N-vs-C data in the specified file.
+   -l LIMIT        X-axis limit for the final plot.
+   -L COLOR        The color for plotting points (default lt rgb "#8B0000").
+   -m THREADS      When -c is given, max valid value of N, to filter outliers.
+   -n ADJUSTMENT   Adjust the N variable downwards to compensate for known
+                   errors such as error of observation.
+   -o ONLY         Only produce plots specified in this comma-separated list.
+   -p PREFIX       Prefix for the generated image file names.
+   -P PORT         TCP port for when -c tcpdump is used (default 3306).
+   -r              Render pdf and eps plots in color.
+   -R              Don't re-fit the data; use the results from quadratic fit.
+   -t FILETYPE     Type for the image files (png, pdf, eps).
+   -T POINTTYPE    Point-type and options for the plots (default 6).
+   -x ADJUSTMENT   Multiply the C(1) regression parameter by this factor.
+   -X              Include C(1) as a fit parameter for USL regression.
 
 =head1 TODO
 
@@ -794,37 +796,13 @@ This tool is based on Neil Gunther's book Guerrilla Capacity Planning.
      other samples; it will introduce skew into the throughput for that sample,
      too.
 
-=head1 DOWNLOADING
-
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-   wget percona.com/get/percona-toolkit.tar.gz
-
-   wget percona.com/get/percona-toolkit.rpm
-
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
-
 =head1 ENVIRONMENT
 
-The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-   PTDEBUG=1 pt-usl ... > FILE 2>&1
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Bash.
+This tool requires Bash v3 or newer and gnuplot.
 
 =head1 BUGS
 
@@ -849,6 +827,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 

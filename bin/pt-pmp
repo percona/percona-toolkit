@@ -4,23 +4,12 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
-# Print a usage message and exit.
 usage() {
    if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}"
+      echo "${OPT_ERR}" >&2
    fi
-   cat <<-USAGE
-Usage: $0 [OPTIONS] [FILE]
-   $0 does two things: 1) get a GDB backtrace 2) aggregate it.
-   If you specify a FILE, then step 1) is not performed.
-Options:
-   -b BINARY      Which binary to trace (default mysqld)
-   -i ITERATIONS  How many traces to gather and aggregate (default 1)
-   -k KEEPFILE    Keep the raw traces in this file after aggregation
-   -l NUMBER      Aggregate only first NUMBER functions; 0=infinity (default 0)
-   -p PID         Process ID of the process to trace; overrides -b
-   -s SLEEPTIME   Number of seconds to sleep between iterations (default 0)
-	USAGE
+   echo "Usage: pt-pmp [OPTIONS] [FILES]" >&2
+   echo "For more information, 'man pt-pmp' or 'perldoc $0'" >&2
    exit 1
 }
 
@@ -29,7 +18,7 @@ Options:
 # to pass the maxlen argument into this function to make maxlen testable.
 aggregate_stacktrace() {
    maxlen="$1";
-   cat > /tmp/aspersa.awk <<EOF
+   cat > /tmp/percona-toolkit.awk <<EOF
       BEGIN {
          s = "";
       }
@@ -106,13 +95,13 @@ aggregate_stacktrace() {
          print s
       }
 EOF
-   awk -f /tmp/aspersa.awk "$2" | sort | uniq -c | sort -r -n -k 1,1
-   rm -f /tmp/aspersa
+   awk -f /tmp/percona-toolkit.awk "$2" | sort | uniq -c | sort -r -n -k 1,1
+   rm -f /tmp/percona-toolkit
 }
 
 # The main program to run.
 main() {
-   rm -f /tmp/aspersa
+   rm -f /tmp/percona-toolkit
 
    # Get command-line options
    for o; do
@@ -167,15 +156,15 @@ main() {
       fi
       date;
       for x in $(seq 1 $OPT_i); do
-         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-/tmp/aspersa}"
-         date +'TS %N.%s %F %T' >> "${OPT_k:-/tmp/aspersa}"
+         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-/tmp/percona-toolkit}"
+         date +'TS %N.%s %F %T' >> "${OPT_k:-/tmp/percona-toolkit}"
          sleep $OPT_s
       done
    fi
 
    if [ $# -eq 0 ]; then
-      aggregate_stacktrace "${OPT_l}" "${OPT_k:-/tmp/aspersa}"
-      rm -f /tmp/aspersa
+      aggregate_stacktrace "${OPT_l}" "${OPT_k:-/tmp/percona-toolkit}"
+      rm -f /tmp/percona-toolkit
    else
       aggregate_stacktrace "${OPT_l}" "$@"
    fi
@@ -199,44 +188,63 @@ pt-pmp - Aggregate GDB stack traces for a selected program.
 
 =head1 SYNOPSIS
 
-Usage: pt-pmp [OPTION...]
+Usage: pt-pmp [OPTIONS] [FILES]
+
+pt-pmp is a poor man's profiler, inspired by L<http://poormansprofiler.org>.
+It can create and summarize full stack traces of processes on Linux.
+Summaries of stack traces can be an invaluable tool for diagnosing what
+a process is waiting for.
 
 =head1 DESCRIPTION
 
-pt-pmp aggregates stack traces.
+pt-pmp performs two tasks: it gets a stack trace, and it summarizes the stack
+trace.  If a file is given on the command line, the tool skips the first step
+and just aggregates the file.
 
-=head1 DOWNLOADING
+To summarize the stack trace, the tool extracts the function name (symbol)
+from each level of the stack, and combines them with commas.  It does this
+for each thread in the output.  Afterwards, it sorts similar threads together
+and counts how many of each one there are, then sorts them most-frequent first.
 
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
+=head1 OPTIONS
 
-   wget percona.com/get/percona-toolkit.tar.gz
+Options must precede files on the command line.
 
-   wget percona.com/get/percona-toolkit.rpm
+=over
 
-   wget percona.com/get/percona-toolkit.deb
+=item -b BINARY
 
-You can also get individual tools from the latest release:
+Which binary to trace (default mysqld)
 
-   wget percona.com/get/TOOL
+=item -i ITERATIONS
 
-Replace C<TOOL> with the name of any tool.
+How many traces to gather and aggregate (default 1)
+
+=item -k KEEPFILE
+
+Keep the raw traces in this file after aggregation
+
+=item -l NUMBER
+
+Aggregate only first NUMBER functions; 0=infinity (default 0)
+
+=item -p PID
+
+Process ID of the process to trace; overrides -b
+
+=item -s SLEEPTIME
+
+Number of seconds to sleep between iterations (default 0)
+
+=back
 
 =head1 ENVIRONMENT
 
-The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
-To enable debugging and capture all output to a file, run the tool like:
-
-   PTDEBUG=1 pt-pmp ... > FILE 2>&1
-
-Be careful: debugging output is voluminous and can generate several megabytes
-of output.
+This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-You need Perl, DBI, DBD::mysql, and some core packages that ought to be
-installed in any reasonably new version of Perl.
+This tool requires Bash v3 or newer.
 
 =head1 BUGS
 
@@ -261,6 +269,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
