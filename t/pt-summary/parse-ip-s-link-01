@@ -1,5 +1,5 @@
 #!/bin/bash
-#parse_ip_s_link /tmp/aspersa
+#parse_ip_s_link /tmp/percona-toolkit
 
 cat <<EOF > $1
   interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors

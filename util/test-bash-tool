@@ -96,7 +96,7 @@ cd $BRANCH/bin
 if [ ! -f $tool ]; then
    die "$tool does not exist"
 fi
-head -n1 $tool | grep -q bash || die "$tool is not a bash file"
+head -n1 $tool | grep -q -E 'bash|sh' || die "$tool is not a bash file"
 
 # Source the tool, i.e. import its functions.
 source $tool

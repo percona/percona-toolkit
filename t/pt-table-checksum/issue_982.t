@@ -189,7 +189,7 @@ $output = output(
 sleep 1;
 
 my $row = $master_dbh->selectrow_hashref('show master status');
-$output = `mysqlbinlog /tmp/12345/data/$row->{file} | grep 'use ' | sort -u`;
+$output = `mysqlbinlog /tmp/12345/data/$row->{file} | grep 'use ' | grep -v '^# Warning' |  sort -u`;
 is(
    $output,
 "use mysql/*!*/;
@@ -211,7 +211,7 @@ $output = output(
 sleep 1;
 
 $row = $master_dbh->selectrow_hashref('show master status');
-$output = `mysqlbinlog /tmp/12345/data/$row->{file} | grep 'use '`;
+$output = `mysqlbinlog /tmp/12345/data/$row->{file} | grep 'use ' | grep -v '^# Warning'`;
 is(
    $output,
 "use test/*!*/;

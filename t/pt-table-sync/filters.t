@@ -32,6 +32,14 @@ else {
    plan tests => 4;
 }
 
+# Previous tests slave 12347 to 12346 which makes pt-table-checksum
+# complain that it cannot connect to 12347 for checking repl filters
+# and such.  12347 isn't present but SHOW SLAVE HOSTS on 12346 hasn't
+# figured that out yet, so we restart 12346 to refresh this list.
+diag(`/tmp/12346/stop >/dev/null`);
+diag(`/tmp/12346/start >/dev/null`);
+$slave_dbh  = $sb->get_dbh_for('slave1');
+
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-table-sync -F $cnf"; 
