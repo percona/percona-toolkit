@@ -1,5 +1,5 @@
 #!/bin/bash
-#format_innodb_status /tmp/aspersa-innodb-status
+#format_innodb_status /tmp/percona-toolkit-innodb-status
 
 cat <<'EOF' > $1
       Checkpoint Age | 0k
@@ -16,4 +16,4 @@ Tables Locked
       1 `test`.`t`
 EOF
 
-cp samples/innodb-status.003.txt /tmp/aspersa-innodb-status
+cp samples/innodb-status.003.txt /tmp/percona-toolkit-innodb-status

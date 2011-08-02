@@ -42,34 +42,34 @@ my $output = `/tmp/12346/use -e 'show slave status'`;
 like($output, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
 # Start an instance
-diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/mk-slave-restart.pid --log /tmp/mk-slave-restart.log`);
-$output = `ps -eaf | grep 'mk-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v mk-slave-restart.t`;
-like($output, qr/mk-slave-restart --max/, 'It lives');
+diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
+$output = `ps -eaf | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
+like($output, qr/pt-slave-restart --max/, 'It lives');
 
 unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
 
-ok(-f '/tmp/mk-slave-restart.pid', 'PID file created');
-ok(-f '/tmp/mk-slave-restart.log', 'Log file created');
+ok(-f '/tmp/pt-slave-restart.pid', 'PID file created');
+ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
 my ($pid) = $output =~ /\s+(\d+)\s+/;
-$output = `cat /tmp/mk-slave-restart.pid`;
+$output = `cat /tmp/pt-slave-restart.pid`;
 is($output, $pid, 'PID file has correct PID');
 
 diag(`$trunk/bin/pt-slave-restart --stop -q`);
 sleep 1;
-$output = `ps -eaf | grep mk-slave-restart | grep -v grep`;
-unlike($output, qr/mk-slave-restart --max/, 'It is dead');
+$output = `ps -eaf | grep pt-slave-restart | grep -v grep`;
+unlike($output, qr/pt-slave-restart --max/, 'It is dead');
 
-diag(`rm -f /tmp/mk-slave-re*`);
-ok(! -f '/tmp/mk-slave-restart.pid', 'PID file removed');
+diag(`rm -f /tmp/pt-slave-re*`);
+ok(! -f '/tmp/pt-slave-restart.pid', 'PID file removed');
 
 # #############################################################################
-# Issue 118: mk-slave-restart --error-numbers option is broken
+# Issue 118: pt-slave-restart --error-numbers option is broken
 # #############################################################################
-$output = `$trunk/bin/pt-slave-restart --stop --sentinel /tmp/mk-slave-restartup --error-numbers=1205,1317`;
-like($output, qr{Successfully created file /tmp/mk-slave-restartup}, '--error-numbers works (issue 118)');
+$output = `$trunk/bin/pt-slave-restart --stop --sentinel /tmp/pt-slave-restartup --error-numbers=1205,1317`;
+like($output, qr{Successfully created file /tmp/pt-slave-restartup}, '--error-numbers works (issue 118)');
 
-diag(`rm -f /tmp/mk-slave-re*`);
+diag(`rm -f /tmp/pt-slave-re*`);
 
 # #############################################################################
 # Issue 459: mk-slave-restart --error-text is broken
@@ -99,14 +99,14 @@ unlike(
 # ###########################################################################
 # Issue 391: Add --pid option to all scripts
 # ###########################################################################
-`touch /tmp/mk-script.pid`;
-$output = `$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --pid /tmp/mk-script.pid 2>&1`;
+`touch /tmp/pt-script.pid`;
+$output = `$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   qr{PID file /tmp/pt-script.pid already exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
-`rm -rf /tmp/mk-script.pid`;
+`rm -rf /tmp/pt-script.pid`;
 
 # #############################################################################
 # Issue 662: Option maxlength does not exist
@@ -131,7 +131,7 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`rm -f /tmp/mk-slave-re*`);
+diag(`rm -f /tmp/pt-slave-re*`);
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
 exit;

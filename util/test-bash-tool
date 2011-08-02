@@ -35,9 +35,9 @@ result() {
 
 # All variables are named GL_whatever so they don't get overwritten with stuff
 # that happens in the functions sourced.
-GL_input="/tmp/aspersa"
-GL_expected="/tmp/aspersa-reference"
-GL_result="/tmp/aspersa-result"
+GL_input="/tmp/percona-toolkit"
+GL_expected="/tmp/percona-toolkit-reference"
+GL_result="/tmp/percona-toolkit-result"
 
 run_test() {
    t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
@@ -66,7 +66,7 @@ run_test() {
    result $?
 
    # Clean up
-   rm -f /tmp/aspersa*
+   rm -f /tmp/percona-toolkit*
 }
 
 load_tests() {

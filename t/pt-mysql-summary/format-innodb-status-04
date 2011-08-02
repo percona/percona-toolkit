@@ -1,5 +1,5 @@
 #!/bin/bash
-#format_innodb_status /tmp/aspersa-innodb-status
+#format_innodb_status /tmp/percona-toolkit-innodb-status
 
 cat <<'EOF' > $1
       Checkpoint Age | 93M
@@ -26,4 +26,4 @@ Mutexes/Locks Waited For
       1 lock on RW-latch at 0x2ab2c679a550 created in file buf/buf0buf.c line 550
 EOF
 
-cp samples/innodb-status.004.txt /tmp/aspersa-innodb-status
+cp samples/innodb-status.004.txt /tmp/percona-toolkit-innodb-status

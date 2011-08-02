@@ -58,4 +58,4 @@ cat <<EOF > $1
 
 EOF
 
-cp samples/processlist-001.txt /tmp/aspersa-mysql-processlist
+cp samples/processlist-001.txt /tmp/percona-toolkit-mysql-processlist

@@ -6,4 +6,4 @@ cat <<EOF > $1
     binlog_ignore_db | mysql,test
 EOF
 
-cp samples/mysql-show-master-status-001.txt /tmp/aspersa
+cp samples/mysql-show-master-status-001.txt /tmp/percona-toolkit

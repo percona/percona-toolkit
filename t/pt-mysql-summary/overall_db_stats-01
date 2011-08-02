@@ -30,4 +30,4 @@ cat <<EOF > $1
 
 EOF
 
-cp samples/mysql-schema-001.txt /tmp/aspersa-mysqldump
+cp samples/mysql-schema-001.txt /tmp/percona-toolkit-mysqldump

@@ -42,7 +42,7 @@ ok(
    no_diff(
       "$cmd -d issue_1192 --no-summary",
       "t/pt-duplicate-key-checker/samples/issue_1192.txt",
-      sed => ["-i -e 's/  (/ (/g'"],
+      sed => ["'s/  (/ (/g'"],
    ),
    "Keys are sorted lc so left-prefix magic works (issue 1192)"
 );

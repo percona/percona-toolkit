@@ -189,6 +189,6 @@ check_ids('mkosc', 'a', 'i', get_ids());
 # Done.
 # #############################################################################
 diag(`rm -rf $query_table_stop`);
-#diag(`echo > $query_table_output`);
-#$sb->wipe_clean($dbh);
+diag(`rm -rf $query_table_output`);
+$sb->wipe_clean($dbh);
 exit;

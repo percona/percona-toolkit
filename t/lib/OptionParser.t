@@ -698,9 +698,9 @@ sub check_usage {
       "t/lib/samples/OptionParser/$file",
       cmd_output => 1,
       sed        => [
-         "-i -e 's/ $prog_name/ \$PROGRAM_NAME/g'",
-         "-i -e 's/$trunk_esc/\$trunk/g'",
-         "-i -e 's/$home_esc/\$ENV\{HOME\}/g'",
+         "'s/ $prog_name/ \$PROGRAM_NAME/g'",
+         "'s/$trunk_esc/\$trunk/g'",
+         "'s/$home_esc/\$ENV\{HOME\}/g'",
       ],
    ),
 }

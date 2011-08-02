@@ -21,6 +21,10 @@
 #    SHOW CREATE TABLE `foo`\G
 INSERT INTO `foo` VALUES (1, 2, 3) /*... omitted ...*/\G
 
-# Statistic        Value
-# ================ =====
-# execute_executed     1
+# Statistic                              Count %/Events
+# ====================================== ===== ========
+# events_read                                1   100.00
+# events_parsed                              1   100.00
+# events_aggregated                          1   100.00
+# execute_executed                           1   100.00
+# pipeline_restarted_after_SlowLogParser     1   100.00

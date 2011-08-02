@@ -1,5 +1,5 @@
 #!/bin/bash
-#aggregate_stacktrace 0 /tmp/aspersa
+#aggregate_stacktrace 0 /tmp/percona-toolkit
 
 cat > $1 <<EOF
     187 __lll_mutex_lock_wait,_L_mutex_lock_1133,pthread_mutex_lock,safe_mutex_lock,open_table,open_tables,open_and_lock_tables,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread,clone

@@ -1,5 +1,5 @@
 #!/bin/bash
-#aggregate_stacktrace 0 /tmp/aspersa
+#aggregate_stacktrace 0 /tmp/percona-toolkit
 
 cat > $1 <<EOF
    2387 pthread_cond_wait,open_table,open_tables,open_and_lock_tables_derived,execute_sqlcom_select,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone

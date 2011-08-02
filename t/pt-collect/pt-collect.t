@@ -14,7 +14,7 @@ use Test::More tests => 1;
 use PerconaTest;
 
 like(
-   `$trunk/bin/pt-collect --help`,
+   `$trunk/bin/pt-collect --help 2>&1`,
    qr/Usage:/,
    'It runs'
 );
