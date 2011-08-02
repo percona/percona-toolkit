@@ -1,5 +1,5 @@
 #!/bin/bash
-#parse_free_minus_b /tmp/aspersa
+#parse_free_minus_b /tmp/percona-toolkit
 
 cat <<EOF > $1
        Total | 3.89G

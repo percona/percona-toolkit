@@ -1,0 +1,4 @@
+Mutex spin waits 0, rounds 99584819933, OS waits 437663963
+RW-shared spins 834337527, OS waits 20258150; RW-excl spins 1769749834
+Mutex spin waits 0, rounds 99591465498, OS waits 437698122
+RW-shared spins 834352175, OS waits 20259032; RW-excl spins 1769762980
