@@ -1,5 +1,5 @@
 #!/bin/bash
-#aggregate_stacktrace 0 /tmp/aspersa
+#aggregate_stacktrace 0 /tmp/percona-toolkit
 
 cat > $1 <<EOF
      32 read,vio_read_buff,libmysqlclient::??,my_net_read,cli_safe_read,libmysqlclient::??,mysql_real_query,Connection::run,Worker::work,thread_proxy,start_thread,clone,??

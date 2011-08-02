@@ -51,7 +51,7 @@ ok(
    no_diff(
       sub { pt_query_digest::main(@args, '--execute', $cnf,
          "$trunk/t/lib/samples/slowlogs/slow018.txt") },
-      't/pt-query-digest/samples/slow018_execute_report_1.txt'
+      't/pt-query-digest/samples/slow018_execute_report_1.txt',
    ),
    '--execute without database'
 );
@@ -76,7 +76,7 @@ ok(
       sub { pt_query_digest::main(@args, '--execute', $cnf,
          "$trunk/t/lib/samples/slowlogs/slow018.txt") },
       't/pt-query-digest/samples/slow018_execute_report_2.txt',
-      trf => 'tail -n 26',
+      trf => 'tail -n 30',
    ),
    '--execute with default database'
 );

@@ -1,5 +1,5 @@
 #!/bin/bash
-#aggregate_stacktrace 0 /tmp/aspersa
+#aggregate_stacktrace 0 /tmp/percona-toolkit
 
 cat > $1 <<EOF
      33 pthread_cond_wait,boost::condition_variable::wait,Queue::pop,Worker::work,boost::_mfi::mf0::operator,boost::_bi::list1::operator,boost::_bi::bind_t::operator,boost::detail::thread_data::run,thread_proxy,start_thread,clone,??

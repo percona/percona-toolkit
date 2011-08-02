@@ -3,4 +3,4 @@
 
 echo /tmp/12346/my.sandbox.cnf > $1
 
-cp samples/ps-mysqld-001.txt /tmp/aspersa
+cp samples/ps-mysqld-001.txt /tmp/percona-toolkit

@@ -9,4 +9,4 @@ cat <<EOF > $1
   12346 /tmp/12346/data            /tmp/12346/mysql_sandbox12346.sock
 EOF
 
-cp samples/ps-mysqld-001.txt /tmp/aspersa
+cp samples/ps-mysqld-001.txt /tmp/percona-toolkit

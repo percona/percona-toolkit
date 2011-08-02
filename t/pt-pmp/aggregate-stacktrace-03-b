@@ -1,5 +1,5 @@
 #!/bin/bash
-#aggregate_stacktrace 2 /tmp/aspersa
+#aggregate_stacktrace 2 /tmp/percona-toolkit
 
 cat > $1 <<EOF
      35 pthread_cond_wait,end_thread

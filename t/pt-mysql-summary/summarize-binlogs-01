@@ -7,4 +7,4 @@ cat <<EOF > $1
           Total Size | 6.5G
 EOF
 
-cp samples/mysql-master-logs-001.txt /tmp/aspersa
+cp samples/mysql-master-logs-001.txt /tmp/percona-toolkit

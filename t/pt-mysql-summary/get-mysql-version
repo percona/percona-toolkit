@@ -6,4 +6,4 @@ cat <<EOF > $1
             Built On | debian-linux-gnu i486
 EOF
 
-cp samples/mysql-variables-001.txt /tmp/aspersa-mysql-variables
+cp samples/mysql-variables-001.txt /tmp/percona-toolkit-mysql-variables

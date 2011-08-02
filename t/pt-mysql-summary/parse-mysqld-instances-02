@@ -7,4 +7,4 @@ cat <<EOF > $1
         /var/lib/mysql             /var/lib/mysql/mysql.sock
 EOF
 
-cp samples/ps-mysqld-002.txt /tmp/aspersa
+cp samples/ps-mysqld-002.txt /tmp/percona-toolkit

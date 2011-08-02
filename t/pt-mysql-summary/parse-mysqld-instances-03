@@ -7,4 +7,4 @@ cat <<EOF > $1
    3306 /mnt/data-store/mysql/data /tmp/mysql.sock
 EOF
 
-cp samples/ps-mysqld-003.txt /tmp/aspersa
+cp samples/ps-mysqld-003.txt /tmp/percona-toolkit

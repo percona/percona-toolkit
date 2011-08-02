@@ -3,4 +3,4 @@
 
 echo EDT > $1
 
-cp samples/mysql-variables-001.txt /tmp/aspersa-mysql-variables
+cp samples/mysql-variables-001.txt /tmp/percona-toolkit-mysql-variables

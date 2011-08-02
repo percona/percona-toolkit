@@ -34,4 +34,4 @@ pid-file                            = /var/run/mysqld/mysqld.pid
 target-dir                          = /data/backup
 EOF
 
-cp samples/my.cnf-001.txt /tmp/aspersa
+cp samples/my.cnf-001.txt /tmp/percona-toolkit
