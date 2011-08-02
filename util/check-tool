@@ -18,6 +18,7 @@ if ( !@tool_files ) {
 my $exit_status = 0;  # 0 no problems, 1 any problems
 my $tool_file;        # bin/pt-archiver
 my $tool_name;        # pt-archiver (no path)
+my $tool_type;        # perl or bash
 
 my @check_subs = (qw(
    check_alpha_order
@@ -47,6 +48,13 @@ while ( defined($tool_file = shift @ARGV) ) {
       next TOOL;
    }
 
+   $tool_type = get_tool_type($tool_file);
+   if ( !$tool_type ) {
+      $exit_status = 1;
+      warn "Cannot determine if $tool_name is Perl or Bash; assuming Perl";
+      $tool_type = 'perl';
+   }
+
    foreach my $check_sub ( @check_subs ) {
       seek $fh, 0, 0;
       print "# $check_sub ", ('#' x (70 - length $check_sub)), "\n";
@@ -66,6 +74,16 @@ exit $exit_status;
 # ############################################################################
 # Subroutines
 # ############################################################################
+
+sub get_tool_type {
+   my ($file) = @_;
+   return unless $file;
+   my $head = `head -n 1 $file`;
+   return unless $head;
+   return 'bash' if $head =~ m/bash|sh/;
+   return 'perl' if $head =~ m/perl/;
+   return;
+}
 
 # Check that options in the tool's POD are in alphabetical order.  Only the
 # head1 OPTIONS section and any head2 subsections are checked.  Subsections
@@ -119,6 +137,11 @@ sub parse_options {
 
 sub check_module_usage {
    my ($fh) = @_;
+
+   if ( $tool_type ne 'perl' ) {
+      print "Not a Perl tool\n";
+      return;
+   }
 
    # These modules are not instantiated as objects.
    my %not_obj = (
@@ -210,6 +233,11 @@ sub check_module_usage {
 
 sub check_option_types {
    my ($fh) = @_;
+
+   if ( $tool_type ne 'perl' ) {
+      print "Not a Perl tool\n";
+      return;
+   }
 
    # Standard options: http://code.google.com/p/maatkit/wiki/CommandLineOptions
    my $sop = {
@@ -330,10 +358,10 @@ sub check_pod_header_order {
       'RISKS',
       'DESCRIPTION',
       'OPTIONS',
-      'DOWNLOADING',
       'ENVIRONMENT',
       'SYSTEM REQUIREMENTS',
       'BUGS',
+      'DOWNLOADING',
       'AUTHORS',
       'COPYRIGHT, LICENSE, AND WARRANTY',
       'VERSION',
@@ -389,6 +417,11 @@ sub check_pod_formatting {
 
 sub check_option_usage {
    my ($fh) = @_;
+
+   if ( $tool_type ne 'perl' ) {
+      print "Not a Perl tool\n";
+      return;
+   }
 
    # help and version are special opts, intrinsic to OptionParser.
    # The other opts are usually processed all at once by calling
