@@ -11800,15 +11800,6 @@ sub main {
       @orderby = @{$o->get('order-by')};
    }
 
-   my $can_gzip;
-   if ( $o->get('save-results') ) {
-      eval {
-         require IO::Compress::Gzip;
-         IO::Compress::Gzip->import(qw(gzip $GzipError));
-      };
-      $can_gzip = $EVAL_ERROR ? 0 : 1;
-   }
-
    if ( !$o->get('help') ) {
       if ( $review_dsn
            && (!defined $review_dsn->{D} || !defined $review_dsn->{t}) ) {
@@ -11834,16 +11825,6 @@ sub main {
             if $int =~ m/[^\d]/;
          $o->save_error("--execute-throttle step must be between 1 and 100")
             if $step && ($step < 1 || $step > 100);
-      }
-      if ( $o->get('save-results') && $o->get('gzip') && !$can_gzip ) {
-         my $err = "Cannot gzip --save-results because IO::Compress::Gzip "
-                 . "is not installed";
-         if ( $o->got('gzip') ) {
-            $o->save_error($err);
-         }
-         else {
-            warn $err;
-         }
       }
       if ( $o->get('progress') ) {
          eval { Progress->validate_spec($o->get('progress')) };
@@ -13207,15 +13188,6 @@ sub print_reports {
          );
       }
 
-      if ( my $file = $o->get('save-results') ) {
-         save_results(
-            ea    => $eas->[$i],
-            worst => $worst,
-            file  => $file,
-            gzip  => $o->get('gzip'),
-         );
-      }
-
       $eas->[$i]->reset_aggregated_data();  # Reset for next iteration.
 
       # Print header report only once.  So remove it from the
@@ -13529,79 +13501,6 @@ sub update_query_review_tables {
    return;
 }
 
-# Save EventAggregator (ea) results to file.  To reconstruct an ea
-# later, the following info is saved, in this format:
-#   groupby (e.g. fingerprint)
-#
-#   worst  (e.g. Query_time)
-#
-#   attribute types (hashref with attrib=>type for each attrib)
-#
-#   results (3 hashrefs for classes, globals and samples)
-# Each bit of info is separated by a blank line so the program that
-# loads them can easily parse one from the other ($INPUT_RECORD_SEPARATOR='').
-sub save_results {
-   my ( %args ) = @_;
-   foreach my $arg ( qw(ea worst file) ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $ea      = $args{ea};
-   my $results = $ea->results();
-   my $worst   = $args{worst};
-   my $file    = $args{file};
-   return unless $file;
-   MKDEBUG && _d('Saving results to', $file);
-
-   my $ea_info = {
-      groupby         => $ea->{groupby},
-      worst           => $ea->{worst},
-      attribute_types => $ea->attributes(),
-      results         => { 
-         classes => {},
-         globals => $results->{globals},
-         samples => {},
-      }
-   };
-   # Shallow copy of worst results (don't dump all results).
-   foreach my $item ( @$worst ) {
-      my $where = $item->[0];
-      $ea_info->{results}->{classes}->{$where} = $results->{classes}->{$where};
-      $ea_info->{results}->{samples}->{$where} = $results->{samples}->{$where};
-   }
-
-   my ($fh, $zfh);  # filehandle, gzip filehandle
-   $file .= '.gz' if $args{gzip};
-   open $fh, '>', $file;
-   if ( !$fh ) {
-      warn "Cannot open $file for --save-results: $OS_ERROR";
-      return;
-   }
-   if ( $args{gzip} ) {
-      our $GzipError;
-      $zfh = new IO::Compress::Gzip($fh);
-      if ( !$zfh ) {
-         warn "Cannot open gzip filehandle on $file for --save-results: "
-            . $GzipError;
-         close $fh if $fh;
-         return;
-      }
-   }
-   else {
-      $zfh = $fh;
-   }
-
-   local $Data::Dumper::Indent    = 0;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
-   local $Data::Dumper::Purity    = 1;
-
-   print $zfh Dumper($ea_info);
-   close $zfh;
-   close $fh if $fh;
-
-   return;
-}
-
 # Sub: verify_run_time
 #   Verify that the given run mode and run time are valid.  If the run mode
 #   is "interval", the time boundary (in seconds) for the run time is returned
@@ -13817,7 +13716,7 @@ L<http://code.google.com/p/maatkit/wiki/EventAttributes>.
 The default output is a query analysis report.  The L<"--[no]report"> option
 controls whether or not this report is printed.  Sometimes you may wish to
 parse all the queries but suppress the report, for example when using
-L<"--print">, L<"--review"> or L<"--save-results">.
+L<"--print"> or L<"--review">.
 
 There is one paragraph for each class of query analyzed.  A "class" of queries
 all have the same value for the L<"--group-by"> attribute which is
@@ -14561,12 +14460,6 @@ attributes which you can group by: key_print (see memcached section in
 L<"FINGERPRINTS">), cmd, key, res and val (see memcached section in
 L<"ATTRIBUTES">).
 
-=item --[no]gzip
-
-default: yes
-
-Gzip L<"--save-results"> files; requires IO::Compress::Gzip.
-
 =item --help
 
 Show help and exit.
@@ -15146,15 +15039,6 @@ aggregating and reporting if you're just using this to print out samples of
 queries.  A complete example:
 
   pt-query-digest --sample 2 --no-report --print slow.log
-
-=item --save-results
-
-type: string
-
-Save results to the specified file.
-
-If L<"--[no]gzip"> is true (by default it is) then .gz is appended to the
-file name.
 
 =item --select
 
