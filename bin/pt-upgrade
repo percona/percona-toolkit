@@ -11588,12 +11588,6 @@ Execute and compare this single query; ignores files on command line.
 This option allows you to supply a single query on the command line.  Any
 slowlogs also specified on the command line are ignored.
 
-=item --[no]report
-
-default: yes
-
-Print the L<"--reports">.
-
 =item --reports
 
 type: Hash; default: queries,differences,errors,statistics
@@ -11732,24 +11726,6 @@ User for login if not current user.
 
 =back
 
-=head1 DOWNLOADING
-
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-   wget percona.com/get/percona-toolkit.tar.gz
-
-   wget percona.com/get/percona-toolkit.rpm
-
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
-
 =head1 ENVIRONMENT
 
 The environment variable C<PTDEBUG> enables verbose debugging output to STDERR.
@@ -11788,6 +11764,24 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with C<PTDEBUG>;
 see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
