@@ -364,7 +364,9 @@ sub get_master_status {
    MKDEBUG && _d($dbh, 'SHOW MASTER STATUS');
    $sth->execute();
    my ($ms) = @{$sth->fetchall_arrayref({})};
-   MKDEBUG && _d(@$ms);
+   MKDEBUG && _d(
+      $ms ? map { "$_=" . (defined $ms->{$_} ? $ms->{$_} : '') } keys %$ms
+          : '');
 
    if ( !$ms || scalar keys %$ms < 2 ) {
       MKDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
