@@ -4,7 +4,6 @@ INSTALL
 MANIFEST
 Makefile.PL
 README
-bin/pt-align
 bin/pt-archiver
 bin/pt-checksum-filter
 bin/pt-collect
@@ -27,7 +26,6 @@ bin/pt-profile-compact
 bin/pt-query-advisor
 bin/pt-query-digest
 bin/pt-query-profiler
-bin/pt-rel
 bin/pt-show-grants
 bin/pt-sift
 bin/pt-slave-delay

@@ -6665,14 +6665,17 @@ Usage: pt-query-advisor [OPTION...] [FILE]
 pt-query-advisor analyzes queries and advises on possible problems.
 Queries are given either by specifying slowlog files, --query, or --review.
 
-   # Analyzer all queries in the given slowlog
+Analyze all queries in a slow log:
+
    pt-query-advisor /path/to/slow-query.log
 
-   # Get queries from tcpdump using pt-query-digest
-   pt-query-digest --type tcpdump.txt --print --no-report | pt-query-advisor
+Analyze all queires in a general log:
 
-   # Get queries from a general log
    pt-query-advisor --type genlog mysql.log
+
+Get queries from tcpdump using pt-query-digest:
+
+   pt-query-digest --type tcpdump.txt --print --no-report | pt-query-advisor
 
 =head1 RISKS
 
