@@ -7105,21 +7105,26 @@ Each host is specified as a DSN and missing values are inherited from the
 first host.  If you specify multiple hosts, the first is assumed to be the
 master.
 
-STOP! Are you checksumming a slave(s) against its master?  Then be sure to learn
+B<STOP!>  Are you checksumming slaves against a master?  Then be sure to learn
 what L<"--replicate"> does.  It is probably the option you want to use.
 
-   pt-table-checksum --replicate=mydb.checksum master-host
-   ... time passses, replication catches up ...
-   pt-table-checksum --replicate=mydb.checksum --replicate-check 2 \
-      master-host
+Checksum all slaves against the master:
 
-Or,
+   pt-table-checksum             \
+      h=master-host              \
+      --replicate mydb.checksums
 
-   pt-table-checksum h=host1,u=user,p=password h=host2 ...
+   # Wait for first command to complete and replication to catchup
+   # on all slaves, then...
 
-Or,
+   pt-table-checksum            \
+      h=master-host             \
+      --replicat mydb.checksums \
+      --replicate-check 2
 
-   pt-table-checksum host1 host2 ... hostN | pt-checksum-filter
+Checksum all databases and tables on two servers and print the differences:
+
+   pt-table-checksum h=host1,u=user h=host2 | pt-checksum-filter
 
 See L<"SPECIFYING HOSTS"> for more on the syntax of the host arguments.
 
@@ -7181,50 +7186,32 @@ the checksums to be different.
 
 =head1 SPECIFYING HOSTS
 
-pt-table-checksum connects to a theoretically unlimited number of MySQL
-servers.  You specify a list of one or more host definitions on the command
-line, such as "host1 host2".  Each host definition can be just a hostname, or it
-can be a complex string that specifies connection options as well.  You can
-specify connection options two ways:
+Each host is specified on the command line as a DSN.  A DSN is a comma-separted
+list of C<option=value> pairs.  The most basic DSN is C<h=host> to specify
+the hostname of the server and use default for everything else (port, etc.).
+See L<"DSN OPTIONS"> for more information.
 
-=over
+DSN options that are listed as C<copy: yes> are copied from the first DSN
+to subsequent DSNs that do not specify the DSN option.  For example,
+C<h=host1,P=12345 h=host2> is equivalent to C<h=host1,P=12345 h=host2,P=12345>.
+This allows you to avoid repeating DSN options that have the same value
+for all DSNs.
 
-=item *
+Connection-related command-line options like L<"--user"> and L<"--password">
+provide default DSN values for the corresponding DSN options indicated by
+the short form of each option.  For example, the short form of L<"--user">
+is C<-u> which corresponds to the C<u> DSN option, so C<--user bob h=host>
+is equivalent to C<h=host,u=bob>.  These defaults apply to all DSNs that
+do not specify the DSN option.
 
-Format a host definition in a key=value,key=value form.  If an argument on the
-command line contains the letter '=', pt-table-checksum will parse it into
-its component parts.  Examine the L<"--help"> output for details on the allowed
-keys.
+The DSN option value precedence from higest to lowest is:
 
-Specifying a list of simple host definitions "host1 host2" is equivalent to the
-more complicated "h=host1 h=host2" format.
-
-=item *
-
-With the command-line options such as L<"--user"> and L<"--password">.  These
-options, if given, apply globally to all host definitions.
-
-=back
-
-In addition to specifying connection options this way, pt-table-checksum
-allows shortcuts.  Any options specified for the first host definition on the
-command line fill in missing values in subsequent ones.  Any options that are
-still missing after this are filled in from the command-line options if
-possible.
-
-In other words, the places you specify connection options have precedence:
-highest precedence is the option specified directly in the host definition, next
-is the option specified in the first host definition, and lowest is the
-command-line option.
-
-You can mix simple and complex host definitions and/or command-line arguments.
-For example, if all your servers except one of your slaves uses a non-standard
-port number:
-
-   pt-table-checksum --port 4500 master h=slave1,P=3306 slave2 slave3
+   * explicit values in each DSN on the command-line
+   * copied values from the first DSN
+   * default values from connection-related command-line options
 
 If you are confused about how pt-table-checksum will connect to your servers,
-give the L<"--explain-hosts"> option and it will tell you.
+use the L<"--explain-hosts"> option and it will tell you.
 
 =head1 HOW FAST IS IT?
 
@@ -7878,10 +7865,9 @@ Show, but do not execute, checksum queries (disables L<"--empty-replicate-table"
 
 group: Help
 
-Print connection information and exit.
-
-Print out a list of hosts to which pt-table-checksum will connect, with all
-the various connection options, and exit.  See L<"SPECIFYING HOSTS">.
+Print full DSNs for each host and exit.  This option allows you to see how
+pt-table-checksum parses DSNs from the command-line and how it will connect
+to those hosts.  See L<"SPECIFYING HOSTS">.
 
 =item --float-precision
 

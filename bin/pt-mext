@@ -160,7 +160,7 @@ This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires the Bourne shell (F</bin/sh>).
+This tool requires the Bourne shell (F</bin/sh>) and the seq program.
 
 =head1 BUGS
 
