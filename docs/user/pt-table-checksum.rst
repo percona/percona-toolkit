@@ -26,32 +26,33 @@ Each host is specified as a DSN and missing values are inherited from the
 first host.  If you specify multiple hosts, the first is assumed to be the
 master.
 
-STOP! Are you checksumming a slave(s) against its master?  Then be sure to learn
+\ **STOP!**\   Are you checksumming slaves against a master?  Then be sure to learn
 what "--replicate" does.  It is probably the option you want to use.
 
-
-.. code-block:: perl
-
-    pt-table-checksum --replicate=mydb.checksum master-host
-    ... time passses, replication catches up ...
-    pt-table-checksum --replicate=mydb.checksum --replicate-check 2 \
-       master-host
-
-
-Or,
+Checksum all slaves against the master:
 
 
 .. code-block:: perl
 
-    pt-table-checksum h=host1,u=user,p=password h=host2 ...
+    pt-table-checksum             \
+       h=master-host              \
+       --replicate mydb.checksums
+ 
+    # Wait for first command to complete and replication to catchup
+    # on all slaves, then...
+ 
+    pt-table-checksum            \
+       h=master-host             \
+       --replicat mydb.checksums \
+       --replicate-check 2
 
 
-Or,
+Checksum all databases and tables on two servers and print the differences:
 
 
 .. code-block:: perl
 
-    pt-table-checksum host1 host2 ... hostN | pt-checksum-filter
+    pt-table-checksum h=host1,u=user h=host2 | pt-checksum-filter
 
 
 See "SPECIFYING HOSTS" for more on the syntax of the host arguments.
@@ -130,55 +131,36 @@ SPECIFYING HOSTS
 ****************
 
 
-pt-table-checksum connects to a theoretically unlimited number of MySQL
-servers.  You specify a list of one or more host definitions on the command
-line, such as "host1 host2".  Each host definition can be just a hostname, or it
-can be a complex string that specifies connection options as well.  You can
-specify connection options two ways:
+Each host is specified on the command line as a DSN.  A DSN is a comma-separted
+list of \ ``option=value``\  pairs.  The most basic DSN is \ ``h=host``\  to specify
+the hostname of the server and use default for everything else (port, etc.).
+See "DSN OPTIONS" for more information.
 
+DSN options that are listed as \ ``copy: yes``\  are copied from the first DSN
+to subsequent DSNs that do not specify the DSN option.  For example,
+\ ``h=host1,P=12345 h=host2``\  is equivalent to \ ``h=host1,P=12345 h=host2,P=12345``\ .
+This allows you to avoid repeating DSN options that have the same value
+for all DSNs.
 
-\*
- 
- Format a host definition in a key=value,key=value form.  If an argument on the
- command line contains the letter '=', pt-table-checksum will parse it into
- its component parts.  Examine the "--help" output for details on the allowed
- keys.
- 
- Specifying a list of simple host definitions "host1 host2" is equivalent to the
- more complicated "h=host1 h=host2" format.
- 
+Connection-related command-line options like "--user" and "--password"
+provide default DSN values for the corresponding DSN options indicated by
+the short form of each option.  For example, the short form of "--user"
+is \ ``-u``\  which corresponds to the \ ``u``\  DSN option, so \ ``--user bob h=host``\ 
+is equivalent to \ ``h=host,u=bob``\ .  These defaults apply to all DSNs that
+do not specify the DSN option.
 
-
-\*
- 
- With the command-line options such as "--user" and "--password".  These
- options, if given, apply globally to all host definitions.
- 
-
-
-In addition to specifying connection options this way, pt-table-checksum
-allows shortcuts.  Any options specified for the first host definition on the
-command line fill in missing values in subsequent ones.  Any options that are
-still missing after this are filled in from the command-line options if
-possible.
-
-In other words, the places you specify connection options have precedence:
-highest precedence is the option specified directly in the host definition, next
-is the option specified in the first host definition, and lowest is the
-command-line option.
-
-You can mix simple and complex host definitions and/or command-line arguments.
-For example, if all your servers except one of your slaves uses a non-standard
-port number:
+The DSN option value precedence from higest to lowest is:
 
 
 .. code-block:: perl
 
-    pt-table-checksum --port 4500 master h=slave1,P=3306 slave2 slave3
+    * explicit values in each DSN on the command-line
+    * copied values from the first DSN
+    * default values from connection-related command-line options
 
 
 If you are confused about how pt-table-checksum will connect to your servers,
-give the "--explain-hosts" option and it will tell you.
+use the "--explain-hosts" option and it will tell you.
 
 
 ***************
@@ -987,10 +969,9 @@ This tool accepts additional command-line arguments.  Refer to the
  
  group: Help
  
- Print connection information and exit.
- 
- Print out a list of hosts to which pt-table-checksum will connect, with all
- the various connection options, and exit.  See "SPECIFYING HOSTS".
+ Print full DSNs for each host and exit.  This option allows you to see how
+ pt-table-checksum parses DSNs from the command-line and how it will connect
+ to those hosts.  See "SPECIFYING HOSTS".
  
 
 
@@ -1902,36 +1883,6 @@ comma-separated.  See the percona-toolkit manpage for full details.
 
 
 ***********
-DOWNLOADING
-***********
-
-
-Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/percona-toolkit.tar.gz
- 
-    wget percona.com/get/percona-toolkit.rpm
- 
-    wget percona.com/get/percona-toolkit.deb
-
-
-You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
-
-
-***********
 ENVIRONMENT
 ***********
 
@@ -1991,6 +1942,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

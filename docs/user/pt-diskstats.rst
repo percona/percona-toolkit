@@ -25,6 +25,29 @@ pt-diskstats reads \ */proc/diskstats*\  periodically, or files with the
 contents of \ */proc/diskstats*\ , aggregates the data, and prints it nicely.
 
 
+*****
+RISKS
+*****
+
+
+The following section is included to inform users about the potential risks,
+whether known or unknown, of using this tool.  The two main categories of risks
+are those created by the nature of the tool (e.g. read-only tools vs. read-write
+tools) and those created by bugs.
+
+pt-diskstats is a read-only tool.  It should be very low-risk.
+
+At the time of this release, we know of no bugs that could cause serious harm
+to users.
+
+The authoritative source for updated information is always the online issue
+tracking system.  Issues that affect this tool will be marked as such.  You can
+see a list of such issues at the following URL:
+`http://www.percona.com/bugs/pt-diskstats <http://www.percona.com/bugs/pt-diskstats>`_.
+
+See also "BUGS" for more information on filing bugs and getting help.
+
+
 ***********
 DESCRIPTION
 ***********
@@ -167,7 +190,7 @@ rd_mrg
 
 wr_s, wr_avgkb, and wr_mrg
  
- These are analogous to their rd_\* cousins.
+ These are analogous to their \ ``rd_\*``\  cousins.
  
 
 

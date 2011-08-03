@@ -193,7 +193,7 @@ OUTPUT
 The default output is a query analysis report.  The "--[no]report" option
 controls whether or not this report is printed.  Sometimes you may wish to
 parse all the queries but suppress the report, for example when using
-"--print", "--review" or "--save-results".
+"--print" or "--review".
 
 There is one paragraph for each class of query analyzed.  A "class" of queries
 all have the same value for the "--group-by" attribute which is
@@ -520,9 +520,9 @@ See "--group-by" for more.
 
 When parsing memcached input ("--type" memcached), the fingerprint is an
 abstracted version of the command and key, with placeholders removed.  For
-example, "get user_123_preferences" fingerprints to "get user_?_preferences".
-There is also a "key_print" which a fingerprinted version of the key.  This
-example's key_print is "user_?_preferences".
+example, \ ``get user_123_preferences``\  fingerprints to \ ``get user_?_preferences``\ .
+There is also a \ ``key_print``\  which a fingerprinted version of the key.  This
+example's key_print is \ ``user_?_preferences``\ .
 
 Query fingerprinting accommodates a great many special cases, which have proven
 necessary in the real world.  For example, an IN list with 5 literals is really
@@ -1125,14 +1125,6 @@ This tool accepts additional command-line arguments.  Refer to the
  attributes which you can group by: key_print (see memcached section in
  "FINGERPRINTS"), cmd, key, res and val (see memcached section in
  "ATTRIBUTES").
- 
-
-
---[no]gzip
- 
- default: yes
- 
- Gzip "--save-results" files; requires IO::Compress::Gzip.
  
 
 
@@ -1829,17 +1821,6 @@ This tool accepts additional command-line arguments.  Refer to the
  
 
 
---save-results
- 
- type: string
- 
- Save results to the specified file.
- 
- If "--[no]gzip" is true (by default it is) then .gz is appended to the
- file name.
- 
-
-
 --select
  
  type: Array
@@ -2436,36 +2417,6 @@ comma-separated.  See the percona-toolkit manpage for full details.
 
 
 ***********
-DOWNLOADING
-***********
-
-
-Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/percona-toolkit.tar.gz
- 
-    wget percona.com/get/percona-toolkit.rpm
- 
-    wget percona.com/get/percona-toolkit.deb
-
-
-You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
-
-
-***********
 ENVIRONMENT
 ***********
 
@@ -2525,6 +2476,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

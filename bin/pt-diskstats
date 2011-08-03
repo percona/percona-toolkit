@@ -762,7 +762,7 @@ scheduler before reaching the device.
 
 =item wr_s, wr_avgkb, and wr_mrg
 
-These are analogous to their rd_* cousins.
+These are analogous to their C<rd_*> cousins.
 
 =back
 

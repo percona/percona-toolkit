@@ -26,6 +26,29 @@ FILE or PREFIX, it browses only files with that prefix.  If you specify a
 DIRECTORY, then it browses all files within that directory.
 
 
+*****
+RISKS
+*****
+
+
+The following section is included to inform users about the potential risks,
+whether known or unknown, of using this tool.  The two main categories of risks
+are those created by the nature of the tool (e.g. read-only tools vs. read-write
+tools) and those created by bugs.
+
+pt-sift is a read-only tool.  It should be very low-risk.
+
+At the time of this release, we know of no bugs that could cause serious harm
+to users.
+
+The authoritative source for updated information is always the online issue
+tracking system.  Issues that affect this tool will be marked as such.  You can
+see a list of such issues at the following URL:
+`http://www.percona.com/bugs/pt-sift <http://www.percona.com/bugs/pt-sift>`_.
+
+See also "BUGS" for more information on filing bugs and getting help.
+
+
 ***********
 DESCRIPTION
 ***********

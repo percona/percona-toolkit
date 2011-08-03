@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 
-# Usage: write-user-docs [TOOL...]
+# Usage: write-user-docs [FILES]
 #
 # This script writes/updates a tool's user documentation.  First, pod2rst
-# is called to convert the tool's POD to RST.  Then sphinx-build is called
+# is called to convert the file's POD to RST.  Then sphinx-build is called
 # to convert the RST to HTML.
 #
 # RST files are written to docs/user/<tool>.rst, and HTML files are written
 # to docs/user/html/<tool>.html.
 #
-# If no tools are specified on the command line, then user docs for all Perl
-# tools in bin/ are written.
+# If no file are specified on the command line, then only the sections from
+# docs/percona-toolkit.pod are written.
 #
 # If the env variable PERCONA_TOOLKIT_BRANCH is not set, then this script
 # must be called from a directory in a branch.
+#
+# To rewrite all user docs from scratch:
+#   rm -rf docs/user/*
+#   util/write-user-docs bin/*
 #
 # Exits 0 on success, else 1 on warnings and errors.
 
@@ -33,6 +37,7 @@ warn() {
    exit_status=1
 }
 
+cwd=$PWD
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
    cd $BRANCH
@@ -46,13 +51,15 @@ else
    fi
    BRANCH=`pwd`
 fi
+cd $cwd
 
 # ############################################################################
 # Paths
 # ############################################################################
 
-RST=$BRANCH/docs/user
-HTML=$BRANCH/docs/user/html
+DOCS=$BRANCH/docs
+RST=$DOCS/user
+HTML=$RST/html
 CONFIG=$BRANCH/config/sphinx-build
 
 # ############################################################################
@@ -60,34 +67,78 @@ CONFIG=$BRANCH/config/sphinx-build
 # ############################################################################
 
 write_rst() {
-   tool="$1"
-   if [ ! -f $tool ]; then
-      warn "Tool $tool does not exist"
+   local file="$1"
+   if [ ! -f $file ]; then
+      warn "$file does not exist"
       return
    fi
+   local tool=$(basename $file)
 
-   cat $tool | pod2rst --title=$tool > $RST/$tool.rst
+   cat $file | pod2rst --title=$tool > $RST/$tool.rst
    exit_status=$(( exit_status | $? ))
    echo "Wrote $RST/$tool.rst"
+}
+
+write_index() {
+   declare -a section_filenames
+   local i=0
+
+   sections=$(grep '^=head1' $DOCS/percona-toolkit.pod | grep -v "NAME" | sed -e 's/=head1 //' -e 's/ /_/g')
+   for section in $sections; do
+      header=$(echo $section | sed -e 's/_/ /g')
+
+      if [ $section = "DESCRIPTION" ]; then
+         filename="index"
+      else
+         filename=$(echo $section | sed -e 's/,//g' | tr "[:upper:]" "[:lower:]");
+         section_filenames[$i]=$filename
+         i=$(($i + 1))
+      fi
+
+      $BRANCH/util/extract-text $DOCS/percona-toolkit.pod "^=head1 $header" "^=head1|=cut" > /tmp/$filename.pod
+      cat /tmp/$filename.pod | pod2rst > $RST/$filename.rst
+      rm /tmp/$filename.pod
+      echo "Wrote $RST/$filename.rst"
+   done
+
+   echo ".. toctree::"    >> $RST/index.rst
+   echo "   :maxdepth: 2" >> $RST/index.rst
+   echo                   >> $RST/index.rst
+   for section_filename in "${section_filenames[@]}"; do
+      echo "   $section_filename" >> $RST/index.rst
+   done
+
+   echo ".. toctree::" >> $RST/tools.rst
+   echo "   :hidden:"  >> $RST/tools.rst
+   echo                >> $RST/tools.rst
+   local tools=$(grep '^pt-' $RST/tools.rst)
+   for tool in $tools; do
+      echo "   $tool" >> $RST/tools.rst
+   done
+
+   sed -e 's/^\(pt-.*\)/:doc:`\1`/g' -i.bak $RST/tools.rst
+   rm $RST/*.bak
 }
 
 # ############################################################################
 # Script starts here
 # ############################################################################
 
-cd $BRANCH/bin
-if [ -z $@ ]; then
-   for tool in *; do
-      write_rst $tool
-   done
-else
+if [ $# -gt 0 ]; then
    for tool; do
       write_rst $tool
    done
 fi
 
-# -W treats warnings as errors; remove it to ignore warnings if you must.
-sphinx-build -W -c $CONFIG -b html $RST $HTML
-exit_status=$(( exit_status | $? ))
+if [ "$DOCS/percona-toolkit.pod" -nt "$RST/index.rst" ]; then
+   write_index
+fi
+
+BUILD=${BUILD:-1}
+if [ $BUILD -eq 1 ]; then
+   # -W treats warnings as errors; remove it to ignore warnings if you must.
+   sphinx-build -W -c $CONFIG -b html $RST $HTML
+   exit_status=$(( exit_status | $? ))
+fi
 
 exit $exit_status

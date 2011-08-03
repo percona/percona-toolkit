@@ -15,19 +15,16 @@ they are professionally developed, formally tested, and fully documented.
 They are also fully self-contained, so installation is quick and easy and
 no libraries are installed. 
 
-Percona Toolkit is developed and supported by Percona Inc.  For more
-information and other free, open-source software developed by Percona,
-visit L<http://www.percona.com/software/>.
+Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
+toolkits for MySQL server administration.  It is developed and supported by
+Percona Inc.  For more information and other free, open-source software
+developed by Percona, visit L<http://www.percona.com/software/>.
 
 =head1 TOOLS
 
 This release of Percona Toolkit includes the following tools:
 
 =over
-
-=item pt-align
-
-Read lines and split them into words.
 
 =item pt-archiver
 
@@ -117,10 +114,6 @@ Analyze query execution logs and generate a query report, filter, replay, or tra
 
 Execute SQL statements and print statistics, or measure activity caused by other processes.
 
-=item pt-rel
-
-Make each number in a line of text relative to the previous matching line.
-
 =item pt-show-grants
 
 Canonicalize and print MySQL grants so you can effectively replicate, compare and version-control them.
@@ -168,10 +161,6 @@ Compute statistics over a set of time-series data points.
 =item pt-upgrade
 
 Execute queries on multiple servers and check for differences.
-
-=item pt-usl
-
-Model Universal Scalability Law.
 
 =item pt-variable-advisor
 
