@@ -13978,9 +13978,9 @@ See L<"--group-by"> for more.
 
 When parsing memcached input (L<"--type"> memcached), the fingerprint is an
 abstracted version of the command and key, with placeholders removed.  For
-example, "get user_123_preferences" fingerprints to "get user_?_preferences".
-There is also a "key_print" which a fingerprinted version of the key.  This
-example's key_print is "user_?_preferences".
+example, C<get user_123_preferences> fingerprints to C<get user_?_preferences>.
+There is also a C<key_print> which a fingerprinted version of the key.  This
+example's key_print is C<user_?_preferences>.
 
 Query fingerprinting accommodates a great many special cases, which have proven
 necessary in the real world.  For example, an IN list with 5 literals is really

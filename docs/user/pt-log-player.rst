@@ -564,20 +564,6 @@ This tool accepts additional command-line arguments.  Refer to the
  
 
 
---wait-between-sessions
- 
- type: array; default: 0; group: Play
- 
- Not implemented yet.
- 
- The wait time is given in seconds with microsecond precision and can be either
- a single value or a range.  A single value causes an exact wait; example:
- 0.010 = wait 10 milliseconds.  A range causes a random wait between
- the given value times; example: 0.001,1 = random wait from 1 millisecond to
- 1 second.
- 
-
-
 --[no]warnings
  
  default: no; group: Play
@@ -665,36 +651,6 @@ comma-separated.  See the percona-toolkit manpage for full details.
 
 
 ***********
-DOWNLOADING
-***********
-
-
-Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/percona-toolkit.tar.gz
- 
-    wget percona.com/get/percona-toolkit.rpm
- 
-    wget percona.com/get/percona-toolkit.deb
-
-
-You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
-
-
-***********
 ENVIRONMENT
 ***********
 
@@ -754,6 +710,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

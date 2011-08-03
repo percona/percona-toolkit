@@ -235,7 +235,7 @@ from other connections in MySQL 5.0.7 and greater.  It is not available before
 5.0.1.
 
 The total number of questions is not protected, but the breakdown of
-individual question types is, because it comes from the Com_ status variables.
+individual question types is, because it comes from the \ ``Com_``\  status variables.
 
 
 Table and index accesses
@@ -267,7 +267,7 @@ read the next entry in an index.
 
 Depending on your MySQL version, you'll either see one or two columns of
 information in this section.  The one headed "Handler" is all from the
-Handler_ variables, and those statistics are protected.  If your MySQL version
+\ ``Handler_``\  variables, and those statistics are protected.  If your MySQL version
 supports it, you'll also see a column headed "InnoDB," which is unprotected.
 
 
@@ -618,36 +618,6 @@ comma-separated.  See the percona-toolkit manpage for full details.
 
 
 ***********
-DOWNLOADING
-***********
-
-
-Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/percona-toolkit.tar.gz
- 
-    wget percona.com/get/percona-toolkit.rpm
- 
-    wget percona.com/get/percona-toolkit.deb
-
-
-You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
-
-
-***********
 ENVIRONMENT
 ***********
 
@@ -707,6 +677,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******

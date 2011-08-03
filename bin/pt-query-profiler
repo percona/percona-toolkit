@@ -2450,7 +2450,7 @@ from other connections in MySQL 5.0.7 and greater.  It is not available before
 5.0.1.
 
 The total number of questions is not protected, but the breakdown of
-individual question types is, because it comes from the Com_ status variables.
+individual question types is, because it comes from the C<Com_> status variables.
 
 =head2 Table and index accesses
 
@@ -2476,7 +2476,7 @@ read the next entry in an index.
 
 Depending on your MySQL version, you'll either see one or two columns of
 information in this section.  The one headed "Handler" is all from the
-Handler_ variables, and those statistics are protected.  If your MySQL version
+C<Handler_> variables, and those statistics are protected.  If your MySQL version
 supports it, you'll also see a column headed "InnoDB," which is unprotected.
 
 =head2 I/O Operations

@@ -505,14 +505,6 @@ This tool accepts additional command-line arguments.  Refer to the
  
 
 
---[no]report
- 
- default: yes
- 
- Print the "--reports".
- 
-
-
 --reports
  
  type: Hash; default: queries,differences,errors,statistics
@@ -688,36 +680,6 @@ comma-separated.  See the percona-toolkit manpage for full details.
 
 
 ***********
-DOWNLOADING
-***********
-
-
-Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/percona-toolkit.tar.gz
- 
-    wget percona.com/get/percona-toolkit.rpm
- 
-    wget percona.com/get/percona-toolkit.deb
-
-
-You can also get individual tools from the latest release:
-
-
-.. code-block:: perl
-
-    wget percona.com/get/TOOL
-
-
-Replace \ ``TOOL``\  with the name of any tool.
-
-
-***********
 ENVIRONMENT
 ***********
 
@@ -777,6 +739,36 @@ Include the following information in your bug report:
 
 If possible, include debugging output by running the tool with \ ``PTDEBUG``\ ;
 see "ENVIRONMENT".
+
+
+***********
+DOWNLOADING
+***********
+
+
+Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/percona-toolkit.tar.gz
+ 
+    wget percona.com/get/percona-toolkit.rpm
+ 
+    wget percona.com/get/percona-toolkit.deb
+
+
+You can also get individual tools from the latest release:
+
+
+.. code-block:: perl
+
+    wget percona.com/get/TOOL
+
+
+Replace \ ``TOOL``\  with the name of any tool.
 
 
 *******
