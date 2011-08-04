@@ -27,6 +27,7 @@ my @check_subs = (qw(
    check_pod_header_order
    check_pod_formatting
    check_option_usage
+   check_pod_links
 ));
 
 TOOL:
@@ -40,8 +41,13 @@ while ( defined($tool_file = shift @ARGV) ) {
       warn "Cannot open $tool_file: $OS_ERROR";
       next TOOL;
    }
-   
-   ($tool_name) = $tool_file =~ m{/([a-z-]+)$};
+
+   # This make `bin/$ ../util/check-tool *' if . isn't in PATH.
+   if ( $tool_file !~ m{/} ) {
+      $tool_file = "./$tool_file";
+   }
+
+   ($tool_name) = $tool_file =~ m/([a-z-]+)$/;
    if ( !$tool_name ) {
       $exit_status = 1;
       warn "Cannot parse tool name from $tool_file";
@@ -55,6 +61,7 @@ while ( defined($tool_file = shift @ARGV) ) {
       $tool_type = 'perl';
    }
 
+   print '# ', ('#' x (70 - length $tool_name)), " $tool_name\n";
    foreach my $check_sub ( @check_subs ) {
       seek $fh, 0, 0;
       print "# $check_sub ", ('#' x (70 - length $check_sub)), "\n";
@@ -67,6 +74,7 @@ while ( defined($tool_file = shift @ARGV) ) {
          warn "Error while checking $tool_name: $EVAL_ERROR";
       }
    }
+   print "\n\n";
 }
 
 exit $exit_status;
@@ -465,4 +473,25 @@ sub check_option_usage {
    }
 
    return;
+}
+
+sub check_pod_links {
+   my $offset = `cat $tool_file | grep '^=head1 NAME' --byte-offset | cut -d ':' -f 1`;
+   if ( !$offset ) {
+      warn "Cannot find '^=head1 NAME' in $tool_file";
+      return;
+   }
+   chomp $offset;
+   my $pod = `tail -c +$offset $tool_file`;
+   if ( !$pod ) {
+      warn "Failed to parse POD from $tool_file";
+      return;
+   }
+   my @links_in_lit = $pod =~ m/^([ ]+.*L<.+)$/mg;
+   if ( @links_in_lit ) {
+      print "$tool_name has POD links in literal blocks:\n";
+      foreach my $line ( @links_in_lit ) {
+         print "$line\n";
+      }
+   }
 }
