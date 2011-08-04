@@ -249,12 +249,12 @@ is true:
 
 .. code-block:: perl
 
-   * L<"--where"> is used.
-   * L<"--since"> is used.
-   * L<"--chunk-size"> is used.
-   * L<"--replicate"> is used.
-   * L<"--count"> is used.
-   * MySQL version less than 4.1.1.
+   * --where is used
+   * --since is used
+   * --chunk-size is used
+   * --replicate is used
+   * --count is used
+   * MySQL version less than 4.1.1
 
 
 The BIT_XOR algorithm also requires MySQL version 4.1.1 or later.

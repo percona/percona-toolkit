@@ -481,11 +481,11 @@ These options are:
 
 .. code-block:: perl
 
-   * L<"--conflict-column">
-   * L<"--conflict-comparison">
-   * L<"--conflict-value">
-   * L<"--conflict-threshold">
-   * L<"--conflict-error">  (optional)
+   * --conflict-column
+   * --conflict-comparison
+   * --conflict-value
+   * --conflict-threshold
+   * --conflict-error">  (optional)
 
 
 Use "--print" to test this option before "--execute".  The printed
@@ -745,13 +745,13 @@ This tool accepts additional command-line arguments.  Refer to the
   
     COMPARISON  CHOOSES ROW WITH
     ==========  =========================================================
-    newest      Newest temporal L<"--conflict-column"> value
-    oldest      Oldest temporal L<"--conflict-column"> value
-    greatest    Greatest numerical L<"--conflict-column"> value
-    least       Least numerical L<"--conflict-column"> value
-    equals      L<"--conflict-column"> value equal to L<"--conflict-value">
-    matches     L<"--conflict-column"> value matching Perl regex pattern
-                L<"--conflict-value">
+    newest      Newest temporal --conflict-column value
+    oldest      Oldest temporal --conflict-column value
+    greatest    Greatest numerical "--conflict-column value
+    least       Least numerical --conflict-column value
+    equals      --conflict-column value equal to --conflict-value
+    matches     --conflict-column value matching Perl regex pattern
+                --conflict-value
  
  
  This option only works with "--bidirectional".

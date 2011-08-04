@@ -10,4 +10,3 @@ Changelog
 ---------
 
 * Forked, combined, and rebranded Maatkit and Aspersa as Percona Toolkit.
-* Foo
