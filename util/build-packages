@@ -99,7 +99,7 @@ check_version() {
 }
 
 check_changelog() {
-   echo -n "Checking Changelog: "
+   echo -n "Checking Changelog... "
    cd $BRANCH
    first_line=$(head -n 3 Changelog | tail -n 1)
    if [ $(expr "$first_line" : "v[0-9]") -gt 0 ]; then
@@ -112,7 +112,7 @@ check_changelog() {
 }
 
 check_rel_notes() {
-   echo -n "Checking release_notes.rst: "
+   echo -n "Checking release_notes.rst... "
    cd $DOCS_DIR
    if [ -n "$(grep "^v$VERSION" release_notes.rst)" ]; then
       die "Entries for v$VERSION already exist"
@@ -148,6 +148,15 @@ update_version() {
    fi
    rm "Makefile.PL.bak"
    echo "OK"   
+   
+   echo -n "Updating version in percona-toolkit.pod... "
+   cd $DOCS_DIR
+   sed -i'.bak' -e "s/^Percona Toolkit v.*/$new_version_str/" percona-toolkit.pod
+   if [ $? -ne 0 ]; then
+      die "Error updating version in percona-toolkit.pod"
+   fi
+   rm "percona-toolkit.pod.bak"
+   echo "OK"   
 }
 
 update_copyright_year() {
@@ -167,7 +176,7 @@ update_copyright_year() {
    done
    echo "OK"
 
-   echo -n "Updating copyright year in percona-toolkit.pod..."
+   echo -n "Updating copyright year in percona-toolkit.pod... "
    local pod=$DOCS_DIR/percona-toolkit.pod
    local copyright=$(grep "[0-9] Percona Inc." $pod)
    local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
@@ -195,7 +204,7 @@ update_manifest() {
 }
 
 update_percona_toolkit_pod() {
-   echo -n "Updating TOOLS section in percona-toolkit.pod: "
+   echo -n "Updating TOOLS section in percona-toolkit.pod... "
    cd $BRANCH/bin
    local pod=$DOCS_DIR/percona-toolkit.pod
    local tool_list=/tmp/percona-tool-list.pod
@@ -233,7 +242,7 @@ L<http://www.percona.com/software/>.
 }
 
 update_changelog() {
-   echo -n "Updating Changelog: "
+   echo -n "Updating Changelog... "
    cd $BRANCH
    head -n 2 Changelog > /tmp/changelog.tmp
    echo "v$VERSION released $DATE" >> /tmp/changelog.tmp
@@ -243,7 +252,7 @@ update_changelog() {
    mv /tmp/changelog.tmp $BRANCH/Changelog
    echo "OK"
 
-   echo -n "Updating Debian changelog: "
+   echo -n "Updating Debian changelog... "
    cd $DEB_CONFIG_DIR
    echo "percona-toolkit ($VERSION) unstable; urgency=low
 " > /tmp/changelog.tmp
@@ -258,7 +267,7 @@ update_changelog() {
 }
 
 update_rel_notes() {
-   echo -n "Updating release_notes.rst: "
+   echo -n "Updating release_notes.rst... "
    cd $DOCS_DIR
 
    head -n 3 release_notes.rst > /tmp/release_notes.tmp
@@ -287,7 +296,7 @@ update_rel_notes() {
 }
 
 update_user_docs() {
-   echo -n "Updating user docs: "
+   echo -n "Updating user docs... "
    $BRANCH/util/write-user-docs $BRANCH/bin/* > /tmp/sphinx-build.output 2>&1
    if [ $? -ne 0 ]; then
       warn "Error updating user docs:"
@@ -299,7 +308,7 @@ update_user_docs() {
 }
 
 prep_release_dir() {
-   echo -n "Preparing release directory: "
+   echo -n "Preparing release directory... "
    cd $BRANCH
    if [ ! -d $RELEASE_DIR ]; then
       mkdir $RELEASE_DIR
@@ -317,14 +326,14 @@ prep_release_dir() {
 }
 
 build_tar() {
-   echo -n "Building $PKG.tar.gz: "
+   echo -n "Building $PKG.tar.gz... "
    cd $RELEASE_DIR
    $TAR czf "$PKG.tar.gz" $PKG
    echo "OK"
 }
 
 build_rpm() {
-   echo -n "Building $PKG-1.noarch.rpm: "
+   echo -n "Building $PKG-1.noarch.rpm... "
    cd $RELEASE_DIR
    if [ ! -f "$PKG.tar.gz" ]; then
       die "Cannot build RPM because $PKG.tar.gz does not exist"
@@ -356,7 +365,7 @@ build_rpm() {
 
 build_deb() {
    local deb_pkg="percona-toolkit_$VERSION-1_all.deb"
-   echo -n "Building $deb_pkg: "
+   echo -n "Building $deb_pkg... "
 
    cd $RELEASE_DIR
    if [ ! -f "$PKG.tar.gz" ]; then
