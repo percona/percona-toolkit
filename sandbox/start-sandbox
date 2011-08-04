@@ -106,7 +106,7 @@ if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
-   err "Invalid Maakit trunk directory: $PERCONA_TOOLKIT_BRANCH"
+   err "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
    exit 1
 fi
 

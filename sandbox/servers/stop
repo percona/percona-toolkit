@@ -23,7 +23,7 @@ sandbox_is_alive() {
 
 exit_status=0
 
-echo -n "Stopping Maatkit sandbox PORT... "
+echo -n "Stopping MySQL test server on port PORT... "
 
 sandbox_is_alive
 if [ $? -eq 1 ]; then
@@ -32,9 +32,9 @@ if [ $? -eq 1 ]; then
 fi
 
 if [ $exit_status -eq 0 ]; then
-   echo "done."
+   echo "OK"
 else
-   echo "failed!"
+   echo "FAILED"
 fi
 
 exit $exit_status

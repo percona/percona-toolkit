@@ -5,22 +5,21 @@ err() {
    for msg; do
       echo $msg
    done
-   echo "See http://code.google.com/p/maatkit/wiki/Testing for more information."
-   echo
+   exit_status=1
 }
 
 # ###########################################################################
 # Sanity check the cmd line options.
 # ###########################################################################
 if [ $# -lt 1 ]; then
-   err "Usage: load-sakila-db port"
+   err "Usage: load-sakila-db PORT"
    exit 1
 fi
 
 PORT=$1
 
 if [ ! -d "/tmp/$PORT" ]; then
-   err "Sandbox does not exist: /tmp/$PORT"
+   err "MySQL test server does not exist: /tmp/$PORT"
    exit 1
 fi
 
@@ -33,15 +32,21 @@ if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
-   err "Invalid Maakit trunk directory: $PERCONA_TOOLKIT_BRANCH"
+   err "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
    exit 1
 fi
 
 cd $PERCONA_TOOLKIT_BRANCH/sandbox
 
+exit_status=0
+
 /tmp/$PORT/use < sakila-db/sakila-schema.sql
+exit_status=$((exit_status | $?))
+
 /tmp/$PORT/use < sakila-db/sakila-data.sql
+exit_status=$((exit_status | $?))
 
 $PERCONA_TOOLKIT_BRANCH/sandbox/test-env reset
+exit_status=$((exit_status | $?))
 
-exit 0
+exit $exit_status

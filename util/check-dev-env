@@ -1,9 +1,12 @@
 #!/usr/bin/env perl
 
 # This pseudo-script is for developers to see if their box has all
-# the modules necessary for testing Maatkit.  Any missing modules
-# will cause an error like "Can't locate Foo.pm in @INC ...".  Else
-# the version for each module used by this script will be printed.
+# the modules necessary for testing Percona Toolkit.  Any missing
+# modules will cause an error like "Can't locate Foo.pm in @INC ...".
+# Else the version for each module used by this script will be printed.
+#
+# In addition to these modules, many non-standard programs are needed
+# for other tasks, like building packages, writing test coverage, etc.
 
 use Data::Dumper;
 use DBD::mysql;

@@ -25,7 +25,7 @@ sandbox_is_alive() {
 if [ -f "$PIDFILE" ] || [ -S "$SOCKETFILE" ]; then
    sandbox_is_alive
    if [ $? -eq 1 ]; then
-      echo "Maatkit sandbox PORT is running."
+      echo "MySQL test server on port PORT is running."
       exit 0
    fi
 
@@ -40,7 +40,7 @@ cd $BASEDIR
 $BASEDIR/bin/mysqld_safe --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>&1 &
 cd $PWD
 
-echo -n "Starting Maatkit sandbox PORT... "
+echo -n "Starting MySQL test server on port PORT... "
 for i in 1 2 3 4 5 6 7 8 9 10; do
    sleep 1
    if [ -f $PIDFILE ] && [ -S $SOCKETFILE ]; then
@@ -50,9 +50,9 @@ done
 
 sandbox_is_alive
 if [ $? -eq 1 ]; then
-   echo "success!"
+   echo "OK"
    exit 0
 else
-   echo "failed."
+   echo "FAILED"
    exit 1
 fi
