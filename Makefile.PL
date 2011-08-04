@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     NAME      => 'percona-toolkit',
-    VERSION   => '0.9.0',
+    VERSION   => '0.9.5',
     EXE_FILES => [ <bin/*> ],
     MAN1PODS  => {
       'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1',

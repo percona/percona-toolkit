@@ -1,8 +1,8 @@
-COPYING
 Changelog
+COPYING
 INSTALL
-MANIFEST
 Makefile.PL
+MANIFEST
 README
 bin/pt-archiver
 bin/pt-checksum-filter
@@ -38,7 +38,6 @@ bin/pt-table-sync
 bin/pt-tcp-model
 bin/pt-trend
 bin/pt-upgrade
-bin/pt-usl
 bin/pt-variable-advisor
 bin/pt-visual-explain
 docs/percona-toolkit.pod
