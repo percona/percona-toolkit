@@ -43,6 +43,7 @@ warn() {
    exit_status=1
 }
 
+cwd=$PWD
 PERCONA_TOOLKIT_BRANCH=${PERCONA_TOOLKIT_BRANCH:-""}
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
@@ -57,6 +58,7 @@ else
    fi
    BRANCH=`pwd`
 fi
+cd $cwd
 
 # ############################################################################
 # Paths
@@ -104,6 +106,15 @@ check_changelog() {
       die "No changes since $first_line"
    fi
    if [ -n "$(grep "^v$VERSION" Changelog)" ]; then
+      die "Entries for v$VERSION already exist"
+   fi
+   echo "OK"
+}
+
+check_rel_notes() {
+   echo -n "Checking release_notes.rst: "
+   cd $DOCS_DIR
+   if [ -n "$(grep "^v$VERSION" release_notes.rst)" ]; then
       die "Entries for v$VERSION already exist"
    fi
    echo "OK"
@@ -237,12 +248,41 @@ update_changelog() {
    echo "percona-toolkit ($VERSION) unstable; urgency=low
 " > /tmp/changelog.tmp
 
-   cat $BRANCH/Changelog | $BRANCH/util/log-entries -v version="$VERSION" >> /tmp/changelog.tmp
+   cat $BRANCH/Changelog | $BRANCH/util/log-entries $VERSION >> /tmp/changelog.tmp
    echo >> /tmp/changelog.tmp
    echo " -- Percona Toolkit Developers <toolkit-dev@percona.com>  $DEB_DATE
 " >> /tmp/changelog.tmp 
    cat changelog >> /tmp/changelog.tmp
    mv /tmp/changelog.tmp changelog
+   echo "OK"
+}
+
+update_rel_notes() {
+   echo -n "Updating release_notes.rst: "
+   cd $DOCS_DIR
+
+   head -n 3 release_notes.rst > /tmp/release_notes.tmp
+
+   local line="v$VERSION released $DATE"
+   local len=${#line}
+   local ul=$(printf "%${len}s")
+   echo $line                             >> /tmp/release_notes.tmp
+   echo ${ul// /=}                        >> /tmp/release_notes.tmp
+   echo                                   >> /tmp/release_notes.tmp
+   (cd $cwd && cat $REL_NOTES             >> /tmp/release_notes.tmp)
+   echo                                   >> /tmp/release_notes.tmp
+   echo "Changelog"                       >> /tmp/release_notes.tmp
+   echo "---------"                       >> /tmp/release_notes.tmp
+   echo                                   >> /tmp/release_notes.tmp
+   cat $BRANCH/Changelog | $BRANCH/util/log-entries $VERSION \
+                         | sed -e 's/^ *//g'                 \
+                                          >> /tmp/release_notes.tmp
+   echo                                   >> /tmp/release_notes.tmp
+
+   tail -n +4 release_notes.rst >> /tmp/release_notes.tmp
+
+   mv /tmp/release_notes.tmp release_notes.rst
+
    echo "OK"
 }
 
@@ -338,8 +378,14 @@ build_deb() {
 # Script starts here
 # ############################################################################
 
-if [ $# -eq 0 ]; then
-   die "Usage: $0 VERSION"
+if [ $# -lt 2 ]; then
+   die "Usage: $0 VERSION RELEASE_NOTES"
+fi
+VERSION=$1
+REL_NOTES=$2
+
+if [ ! -f $REL_NOTES ]; then
+   die "$REL_NOTES does not exist"
 fi
 
 # My machine's language is not English.  This affects DEB_DATE because
@@ -350,7 +396,6 @@ LANG='en_US.UTF-8'
 YEAR=$(date -u +'%Y')                      # for updating copyright year
 DATE=$(date -u +'%F')                      # for updating release date
 DEB_DATE=$(date -u +'%a, %d %b %Y %T %z')  # for updating deb/changelog
-VERSION=$1                                 # for PKG 
 PKG="percona-toolkit-$VERSION"             # what we're building
 
 # mktemp -d doesn't work on Mac OS X, so we'll do it the old-fashioned way.
@@ -366,6 +411,7 @@ if [ $CHECK -eq 1 ]; then
    check_branch
    check_version
    check_changelog
+   check_rel_notes
 fi
 
 # These items need to be updated automatically for each release.
@@ -376,6 +422,7 @@ if [ $UPDATE -eq 1 ]; then
    update_manifest
    update_percona_toolkit_pod
    update_changelog
+   update_rel_notes
 fi
 
 # Now that those ^ items are updated, you need to commit and push one more

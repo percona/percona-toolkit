@@ -31,3 +31,4 @@ developed by Percona, visit `http://www.percona.com/software/ <http://www.percon
    authors
    copyright_license_and_warranty
    version
+   release_notes
