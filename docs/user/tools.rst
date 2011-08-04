@@ -41,7 +41,7 @@ This release of Percona Toolkit includes the following tools:
 
 :doc:`pt-diskstats`
  
- Read a file generated from /proc/diskstats and summarize it.
+ Aggregate and summarize \ */proc/diskstats*\ .
  
 
 
@@ -95,7 +95,7 @@ This release of Percona Toolkit includes the following tools:
 
 :doc:`pt-mext`
  
- Aggregate and summarize mysqladmin extended output.
+ Look at many samples of MySQL \ ``SHOW GLOBAL STATUS``\  side-by-side.
  
 
 
@@ -149,7 +149,7 @@ This release of Percona Toolkit includes the following tools:
 
 :doc:`pt-sift`
  
- Browses the files created by the collect tool.
+ Browses files created by pt-collect.
  
 
 
@@ -173,7 +173,7 @@ This release of Percona Toolkit includes the following tools:
 
 :doc:`pt-stalk`
  
- Watch MySQL and run the 'collect' program when some condition becomes true.
+ Wait for a condition to occur then begin collecting data.
  
 
 

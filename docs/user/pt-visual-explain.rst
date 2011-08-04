@@ -656,10 +656,10 @@ This tool accepts additional command-line arguments.  Refer to the
  
  .. code-block:: perl
  
-   value  meaning
-   =====  =======
+   Value  Meaning
+   =====  ================================================
    tree   Pretty-printed terse tree.
-   dump   Data::Dumper output (see L<Data::Dumper> for more).
+   dump   Data::Dumper output (see Data::Dumper for more).
  
  
 
