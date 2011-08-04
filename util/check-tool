@@ -209,13 +209,9 @@ sub check_module_usage {
       my $module = $_;
       my $unused = 0;
       if ( $not_obj{$module} ) {
-         # MaatkitCommon::_d
-         chomp(my $g = `grep -c '${_}::' $tool_file`);
          # Transformers->import
          chomp(my $i = `grep -c '${_}->import' $tool_file`);
-         $g ||= 0;
-         $i ||= 0;
-         $unused = 1 if $g + $i == 0;
+         $unused = 1 unless $i;
       }
       elsif ( $dynamic{$tool_name}->{$module} ) {
          # Can't detect these.
