@@ -108,6 +108,8 @@ write_index() {
       echo "   $section_filename" >> $RST/index.rst
    done
 
+   echo "   release_notes" >> $RST/index.rst
+
    echo ".. toctree::" >> $RST/tools.rst
    echo "   :hidden:"  >> $RST/tools.rst
    echo                >> $RST/tools.rst
@@ -130,8 +132,13 @@ if [ $# -gt 0 ]; then
    done
 fi
 
-if [ "$DOCS/percona-toolkit.pod" -nt "$RST/index.rst" ]; then
+if [ ! -f "$RST/index.rst" ] || [ "$DOCS/percona-toolkit.pod" -nt "$RST/index.rst" ]; then
    write_index
+fi
+
+if [ ! -f "$RST/release_notes.rst" ] || [ "$DOCS/release_notes.rst" -nt "$RST/release_notes.rst" ]; then
+   cp $DOCS/release_notes.rst $RST/
+   echo "Wrote $RST/release_notes.rst"
 fi
 
 BUILD=${BUILD:-1}

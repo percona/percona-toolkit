@@ -1,5 +1,5 @@
-percona-toolkit (0.9.4) unstable; urgency=low
+percona-toolkit (0.9.5) unstable; urgency=low
 
-  * First release candidate.
+  * Forked, combined, and rebranded Maatkit and Aspersa as Percona Toolkit.
 
- -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 19 Jul 2011 21:14:21 +0000
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 04 Aug 2011 21:00:00 +0000

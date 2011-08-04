@@ -1,5 +1,5 @@
 Changelog for Percona Toolkit
 
-v0.9.4 released 2011-08-19
+v0.9.5 released 2011-08-04
 
-  * First release candidate.
+  * Forked, combined, and rebranded Maatkit and Aspersa as Percona Toolkit.

@@ -1,21 +1,27 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env bash
 
+version=$1
+if [ -z "$version" ]; then
+   echo "Usage: log-entires VERSION" >&2
+   echo "Example: cat Changelog | log-entries 1.0.1" >&2
+   exit 1
+fi
+
+awk "
 BEGIN {
-   if ( version == "" ) {
-      print "Usage: log-entries VERSION"
-      exit
-   }
-
-   start = "^v" version
+   start = \"^v\" \"$version\"
 }
 
-$0 ~ start {
+\$0 ~ start {
    while ( getline ) {
-      if ( $0 ~ /^v[0-9]/ )
+      if ( \$0 ~ /^v[0-9]/ )
          exit
-      if ( $0 ~ /^$/ )
+      if ( \$0 ~ /^\$/ )
          continue
       
       print
    }
 }
+"
+
+exit $?

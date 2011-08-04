@@ -48,7 +48,7 @@ Extract and log MySQL deadlock information.
 
 =item pt-diskstats
 
-Read a file generated from /proc/diskstats and summarize it.
+Aggregate and summarize F</proc/diskstats>.
 
 =item pt-duplicate-key-checker
 
@@ -84,7 +84,7 @@ Replay MySQL query logs.
 
 =item pt-mext
 
-Aggregate and summarize mysqladmin extended output.
+Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
 =item pt-mysql-summary
 
@@ -120,7 +120,7 @@ Canonicalize and print MySQL grants so you can effectively replicate, compare an
 
 =item pt-sift
 
-Browses the files created by the collect tool.
+Browses files created by pt-collect.
 
 =item pt-slave-delay
 
@@ -136,7 +136,7 @@ Watch and restart MySQL replication after errors.
 
 =item pt-stalk
 
-Watch MySQL and run the 'collect' program when some condition becomes true.
+Wait for a condition to occur then begin collecting data.
 
 =item pt-summary
 
