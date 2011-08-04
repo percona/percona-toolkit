@@ -286,6 +286,18 @@ update_rel_notes() {
    echo "OK"
 }
 
+update_user_docs() {
+   echo -n "Updating user docs: "
+   $BRANCH/util/write-user-docs $BRANCH/bin/* > /tmp/sphinx-build.output 2>&1
+   if [ $? -ne 0 ]; then
+      warn "Error updating user docs:"
+      cat /tmp/sphinx-build.output >&2
+      exit 1
+   fi
+   rm /tmp/sphinx-build.output
+   echo "OK"
+}
+
 prep_release_dir() {
    echo -n "Preparing release directory: "
    cd $BRANCH
@@ -423,6 +435,7 @@ if [ $UPDATE -eq 1 ]; then
    update_percona_toolkit_pod
    update_changelog
    update_rel_notes
+   update_user_docs 
 fi
 
 # Now that those ^ items are updated, you need to commit and push one more

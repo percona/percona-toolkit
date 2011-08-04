@@ -144,7 +144,7 @@ fi
 BUILD=${BUILD:-1}
 if [ $BUILD -eq 1 ]; then
    # -W treats warnings as errors; remove it to ignore warnings if you must.
-   sphinx-build -W -c $CONFIG -b html $RST $HTML
+   sphinx-build -N -W -c $CONFIG -b html $RST $HTML
    exit_status=$(( exit_status | $? ))
 fi
 
