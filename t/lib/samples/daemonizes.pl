@@ -4,9 +4,9 @@
 # cannot daemonize itself.
 
 BEGIN {
-   die "The MAATKIT_WORKING_COPY environment variable is not set.  See http://code.google.com/p/maatkit/wiki/Testing"
-      unless $ENV{MAATKIT_WORKING_COPY} && -d $ENV{MAATKIT_WORKING_COPY};
-   unshift @INC, "$ENV{MAATKIT_WORKING_COPY}/common";
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.  See http://code.google.com/p/maatkit/wiki/Testing"
+      unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
+   unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/common";
 };
 
 use strict;
