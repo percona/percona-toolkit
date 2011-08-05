@@ -5,7 +5,6 @@ Makefile.PL
 MANIFEST
 README
 bin/pt-archiver
-bin/pt-checksum-filter
 bin/pt-collect
 bin/pt-config-diff
 bin/pt-deadlock-logger
@@ -22,10 +21,8 @@ bin/pt-mext
 bin/pt-mysql-summary
 bin/pt-online-schema-change
 bin/pt-pmp
-bin/pt-profile-compact
 bin/pt-query-advisor
 bin/pt-query-digest
-bin/pt-query-profiler
 bin/pt-show-grants
 bin/pt-sift
 bin/pt-slave-delay

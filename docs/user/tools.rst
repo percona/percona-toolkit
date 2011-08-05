@@ -15,12 +15,6 @@ This release of Percona Toolkit includes the following tools:
  
 
 
-:doc:`pt-checksum-filter`
- 
- Filter checksums from pt-table-checksum.
- 
-
-
 :doc:`pt-collect`
  
  Collect information from a server for some period of time.
@@ -117,12 +111,6 @@ This release of Percona Toolkit includes the following tools:
  
 
 
-:doc:`pt-profile-compact`
- 
- Compact the output from pt-query-profiler.
- 
-
-
 :doc:`pt-query-advisor`
  
  Analyze queries and advise on possible problems.
@@ -132,12 +120,6 @@ This release of Percona Toolkit includes the following tools:
 :doc:`pt-query-digest`
  
  Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
- 
-
-
-:doc:`pt-query-profiler`
- 
- Execute SQL statements and print statistics, or measure activity caused by other processes.
  
 
 
@@ -232,7 +214,6 @@ For more free, open-source software developed Percona, visit
    :hidden:
 
    pt-archiver
-   pt-checksum-filter
    pt-collect
    pt-config-diff
    pt-deadlock-logger
@@ -249,10 +230,8 @@ For more free, open-source software developed Percona, visit
    pt-mysql-summary
    pt-online-schema-change
    pt-pmp
-   pt-profile-compact
    pt-query-advisor
    pt-query-digest
-   pt-query-profiler
    pt-show-grants
    pt-sift
    pt-slave-delay
