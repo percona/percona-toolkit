@@ -143,7 +143,7 @@ while true; do
       log "${NOTE}" "${COLLECT} triggered"
       PREFIX="$(date +%F-%T | tr :- _)"
       echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
-      ${COLLECT} -d "${DEST}" -i "${DURATION}" -g "${GDB}" -o "${OPROFILE}" -p "${PREFIX}" -s "${STRACE}" -t "${TCPDUMP}" ${MYSQLOPTIONS} -f "${PCT_THRESHOLD}" -m "${MB_THRESHOLD}"
+      ${COLLECT} -d "${DEST}" -i "${DURATION}" -g "${GDB}" -o "${OPROFILE}" -p "${PREFIX}" -s "${STRACE}" -t "${TCPDUMP}" -f "${PCT_THRESHOLD}" -m "${MB_THRESHOLD}" -- ${MYSQLOPTIONS}
       echo "$d sleeping ${SLEEP} seconds to avoid DOS attack"
       sleep ${SLEEP}
    else
