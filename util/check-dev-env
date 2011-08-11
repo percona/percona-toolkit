@@ -7,6 +7,8 @@
 #
 # In addition to these modules, many non-standard programs are needed
 # for other tasks, like building packages, writing test coverage, etc.
+#
+# Exits 0 if all modules are installed, else exits non-zero.
 
 use Data::Dumper;
 use DBD::mysql;
@@ -29,7 +31,7 @@ use threads;
 use Thread::Queue;
 use Time::HiRes;
 use Time::Local;
-#use Digest::Crc32;
+use Digest::Crc32;
 
 my $file    = __FILE__;
 my $m       = `cat $file | grep '^use'`;
@@ -40,4 +42,4 @@ foreach my $module ( @modules ) {
    print "$module " . ${$version} . "\n";
 } 
 
-exit;
+exit 0;
