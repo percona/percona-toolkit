@@ -221,6 +221,11 @@ sub get_specs {
       $self->{DSNParser} = DSNParser->new(opts => \@dsn_opts);
    }
 
+   if ( $contents =~ m/^(Percona Toolkit v.+)$/m ) {
+      $self->{version} = $1;
+      MKDEBUG && _d($self->{version});
+   }
+
    return;
 }
 
@@ -656,9 +661,12 @@ sub get_opts {
    ) or $self->save_error('Error parsing options');
 
    if ( exists $self->{opts}->{version} && $self->{opts}->{version}->{got} ) {
-      printf("%s  Ver %s Distrib %s Changeset %s\n",
-         $self->{program_name}, $main::VERSION, $main::DISTRIB, $main::SVN_REV)
-            or die "Cannot print: $OS_ERROR";
+      if ( $self->{version} ) {
+         print $self->{version}, "\n";
+      }
+      else {
+         print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
+      }
       exit 0;
    }
 
@@ -1126,23 +1134,6 @@ sub prompt_noecho {
    return $response;
 }
 
-# This is debug code I want to run for all tools, and this is a module I
-# certainly include in all tools, but otherwise there's no real reason to put
-# it here.
-if ( MKDEBUG ) {
-   print '# ', $^X, ' ', $], "\n";
-   my $uname = `uname -a`;
-   if ( $uname ) {
-      $uname =~ s/\s+/ /g;
-      print "# $uname\n";
-   }
-   printf("# %s  Ver %s Distrib %s Changeset %s line %d\n",
-      $PROGRAM_NAME, ($main::VERSION || ''), ($main::DISTRIB || ''),
-      ($main::SVN_REV || ''), __LINE__);
-   print('# Arguments: ',
-      join(' ', map { my $a = "_[$_]_"; $a =~ s/\n/\n# /g; $a; } @ARGV), "\n");
-}
-
 # Reads a configuration file and returns it as a list.  Inspired by
 # Config::Tiny.
 sub _read_config_file {
@@ -1333,6 +1324,19 @@ sub _d {
         map { defined $_ ? $_ : 'undef' }
         @_;
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+# This is debug code I want to run for all tools, and this is a module I
+# certainly include in all tools, but otherwise there's no real reason to put
+# it here.
+if ( MKDEBUG ) {
+   print '# ', $^X, ' ', $], "\n";
+   if ( my $uname = `uname -a` ) {
+      $uname =~ s/\s+/ /g;
+      print "# $uname\n";
+   }
+   print '# Arguments: ',
+      join(' ', map { my $a = "_[$_]_"; $a =~ s/\n/\n# /g; $a; } @ARGV), "\n";
 }
 
 1;

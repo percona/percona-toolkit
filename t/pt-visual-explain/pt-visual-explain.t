@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 use PerconaTest;
 require "$trunk/bin/pt-visual-explain";
@@ -48,6 +48,17 @@ like(
    'Dies if PID file already exists (issue 391)'
 );
 `rm -rf /tmp/mk-script.pid`;
+
+
+# ############################################################################
+# Bug #823394: --version doesn't work 
+# ############################################################################
+$output = `$trunk/bin/pt-visual-explain --version 2>&1`;
+like(
+   $output,
+   qr/v\d\.\d.\d+/,
+   '--version works (bug 823394)'
+);
 
 # #############################################################################
 # Done.
