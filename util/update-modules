@@ -32,6 +32,7 @@ fi
 # Global variables
 # ############################################################################
 
+CHECK=${CHECK:-1}
 
 # ############################################################################
 # Subroutines
@@ -39,7 +40,11 @@ fi
 
 file_is_modified() {
    local file=$1
-   bzr status $file | grep -q modified
+   if [ $CHECK -eq 1 ]; then
+      bzr status $file | grep -q modified
+   else
+      return 1
+   fi
 }
 
 pkgs_in_tool() {
