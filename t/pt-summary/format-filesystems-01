@@ -1,9 +1,0 @@
-#!/bin/bash
-#parse_filesystems samples/df-mount-001.txt Linux
-
-cat <<EOF > $1
-  Filesystem                     Size Used Type  Opts Mountpoint
-  /dev/mapper/vg_ginger-lv_root  454G   6% ext4  rw   /
-  /dev/sda1                      194M  31% ext4  rw   /boot
-  tmpfs                          2.0G   1% tmpfs rw   /dev/shm
-EOF
