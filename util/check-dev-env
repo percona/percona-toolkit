@@ -13,13 +13,13 @@
 use Data::Dumper;
 use DBD::mysql;
 use DBI;
+use Digest::Crc32;
 use Digest::MD5;
 use File::Basename;
 use File::Find;
 use File::Spec;
 use File::Temp;
 use Getopt::Long;
-use IO::Compress::Gzip;
 use IO::File;
 use IO::Uncompress::Inflate;
 use List::Util;
@@ -27,11 +27,8 @@ use POSIX;
 use Socket;
 use Term::ReadKey;
 use Test::More;
-use threads;
-use Thread::Queue;
 use Time::HiRes;
 use Time::Local;
-use Digest::Crc32;
 
 my $file    = __FILE__;
 my $m       = `cat $file | grep '^use'`;
