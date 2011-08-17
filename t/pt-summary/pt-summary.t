@@ -12,6 +12,6 @@ use English qw(-no_match_vars);
 
 use PerconaTest;
 
-system("$trunk/util/test-bash-tool pt-summary @ARGV");
+system("$trunk/util/test-bash-functions pt-summary @ARGV");
 
 exit;

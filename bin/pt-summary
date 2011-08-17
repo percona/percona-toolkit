@@ -341,19 +341,22 @@ parse_filesystems () {
    # requires two passes through the file.  The first pass finds the max size of
    # these columns and prints out a printf spec, and the second prints out the
    # file nicely aligned.
-   cat > /tmp/pt-summary.awk <<-EOF
+   local file=$1
+   local platform=$2
+
+   local spec=$(awk '
       BEGIN {
          device     = 10;
          fstype     = 4;
          options    = 4;
       }
       /./ {
-         f_device     = \$1;
-         f_fstype     = \$10;
-         f_options    = substr(\$11, 2, length(\$11) - 2);
+         f_device     = $1;
+         f_fstype     = $10;
+         f_options    = substr($11, 2, length($11) - 2);
          if ( "$2" == "FreeBSD" ) {
-            f_fstype  = substr(\$9, 2, length(\$9) - 2);
-            f_options = substr(\$0, index(\$0, ",") + 2);
+            f_fstype  = substr($9, 2, length($9) - 2);
+            f_options = substr($0, index($0, ",") + 2);
             f_options = substr(f_options, 1, length(f_options) - 1);
          }
          if ( length(f_device) > device ) {
@@ -369,28 +372,24 @@ parse_filesystems () {
       END{
          print "%-" device "s %5s %4s %-" fstype "s %-" options "s %s";
       }
-	EOF
-   spec="$( awk -f /tmp/pt-summary.awk "$1" )";
-   #awk -f /tmp/pt-summary.awk "$1"
-   #return;
+   ' $file)
 
-   cat > /tmp/pt-summary.awk <<-EOF
+   awk "
       BEGIN {
-         spec="  ${spec}\\n";
-         printf spec, "Filesystem", "Size", "Used", "Type", "Opts", "Mountpoint";
+         spec=\"  ${spec}\\n\";
+         printf spec, \"Filesystem\", \"Size\", \"Used\", \"Type\", \"Opts\", \"Mountpoint\";
       }
       {
          f_fstype     = \$10;
          f_options    = substr(\$11, 2, length(\$11) - 2);
-         if ( "$2" == "FreeBSD" ) {
+         if ( \"$2\" == \"FreeBSD\" ) {
             f_fstype  = substr(\$9, 2, length(\$9) - 2);
-            f_options = substr(\$0, index(\$0, ",") + 2);
+            f_options = substr(\$0, index(\$0, \",\") + 2);
             f_options = substr(f_options, 1, length(f_options) - 1);
          }
          printf spec, \$1, \$2, \$5, f_fstype, f_options, \$6;
       }
-	EOF
-   awk -f /tmp/pt-summary.awk "$1"
+   " $file
 }
 
 # ##############################################################################
@@ -766,15 +765,16 @@ parse_lsi_megaraid_virtual_devices () {
 # system activity is enough.
 # ##############################################################################
 format_vmstat () {
-   cat > /tmp/pt-summary.awk <<-EOF
+   local file=$1
+   awk "
       BEGIN {
-         format = "  %2s %2s  %4s %4s %5s %5s %6s %6s %3s %3s %3s %3s %3s\n";
+         format = \"  %2s %2s  %4s %4s %5s %5s %6s %6s %3s %3s %3s %3s %3s\n\";
       }
       /procs/ {
-         print  "  procs  ---swap-- -----io---- ---system---- --------cpu--------";
+         print  \"  procs  ---swap-- -----io---- ---system---- --------cpu--------\";
       }
       /bo/ {
-         printf format, "r", "b", "si", "so", "bi", "bo", "ir", "cs", "us", "sy", "il", "wa", "st";
+         printf format, \"r\", \"b\", \"si\", \"so\", \"bi\", \"bo\", \"ir\", \"cs\", \"us\", \"sy\", \"il\", \"wa\", \"st\";
       }
       \$0 !~ /r/ {
             fuzzy_var = \$1;   ${fuzzy_formula}  r   = fuzzy_var;
@@ -792,9 +792,8 @@ format_vmstat () {
             fuzzy_var = \$17;                    st  = fuzzy_var;
             printf format, r, b, si, so, bi, bo, ir, cs, us, sy, il, wa, st;
          }
-	EOF
-      awk -f /tmp/pt-summary.awk /tmp/percona-toolkit
-   }
+   " $file
+}
 
 # ##############################################################################
 # The main() function is called at the end of the script.  This makes it
