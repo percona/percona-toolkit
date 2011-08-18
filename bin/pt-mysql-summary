@@ -1058,10 +1058,10 @@ main() {
       echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
       echo -n "Type the name of the database, or press Enter to dump all of them. "
       read dbtodump
-      mysqldump --no-data --skip-comments \
+      mysqldump "$@" --no-data --skip-comments \
          --skip-add-locks --skip-add-drop-table --compact \
          --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-         ${trg_arg} "$@" ${dbtodump:---all-databases} > /tmp/percona-toolkit-mysqldump
+         ${trg_arg} ${dbtodump:---all-databases} > /tmp/percona-toolkit-mysqldump
       # Test the result by checking the file, not by the exit status, because we
       # might get partway through and then die, and the info is worth analyzing
       # anyway.
