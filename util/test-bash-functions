@@ -98,7 +98,9 @@ result() {
       echo "not ok $testno - $TEST_FILE $test_name"
       failed_tests=$(( failed_tests + 1))
       echo "#   Failed '$test_command'" >&2
-      cat $TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
+      if [ -f $TMPDIR/failed_result ]; then
+         cat $TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
+      fi
    fi
    testno=$((testno + 1))
    TEST_NUMBER=$((TEST_NUMBER + 1))
@@ -112,8 +114,16 @@ result() {
 no_diff() {
    local got=$1
    local expected=$2
-   local test_command="diff $got $expected"
+   test_command="diff $got $expected"
    eval $test_command > $TMPDIR/failed_result 2>&1
+   result $?
+}
+
+is() {
+   local got=$1
+   local expected=$2
+   test_command="\"$got\" == \"$expected\""
+   test "$got" = "$expected"
    result $?
 }
 

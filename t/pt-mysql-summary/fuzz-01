@@ -1,6 +1,0 @@
-#!/bin/bash
-#fuzz 49
-
-cat <<EOF > $1
-50
-EOF
