@@ -1,7 +1,8 @@
 #!/bin/bash
-#summarize_processlist
 
-cat <<EOF > $1
+TESTS=1
+
+cat <<EOF > $TMPDIR/expected
 
   Command                        COUNT(*) Working SUM(Time) MAX(Time)
   ------------------------------ -------- ------- --------- ---------
@@ -58,4 +59,5 @@ cat <<EOF > $1
 
 EOF
 
-cp samples/processlist-001.txt /tmp/percona-toolkit-mysql-processlist
+summarize_processlist samples/processlist-001.txt > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected
