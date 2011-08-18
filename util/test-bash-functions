@@ -7,6 +7,7 @@
 # ############################################################################
 # Standard startup, find the branch's root directory
 # ############################################################################
+LANG='en_US.UTF-8'
 
 die() {
    echo $1 >&2
@@ -70,6 +71,8 @@ run_test() {
    local t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
    rm -rf $TMPDIR/* >/dev/null 2>&1
 
+   TEST_NUMBER=1  # test number in this test file
+
    # Tests assume that they're being ran from their own dir, so they access
    # sample files like "samples/foo.txt".  So cd to the dir of the test file
    # and run it.  But the test file may have been given as a relative path,
@@ -77,9 +80,9 @@ run_test() {
    # other test files are in other dirs.
    cwd="$PWD"
    local t_dir=$(dirname $t)
-   local t_file=$(basename $t)
+   TEST_FILE=$(basename $t)
    cd $t_dir
-   source $t_file
+   source $TEST_FILE
    cd $cwd
 
    return $?
@@ -88,16 +91,17 @@ run_test() {
 # Print a TAP-style test result.
 result() {
    local result=$1
-   local test_name=${TEST_NAME:-"$t"}
+   local test_name=${TEST_NAME:-"$TEST_NUMBER"}
    if [ $result -eq 0 ]; then
-      echo "ok $testno - $test_name"
+      echo "ok $testno - $TEST_FILE $test_name"
    else
-      echo "not ok $testno - $test_name"
+      echo "not ok $testno - $TEST_FILE $test_name"
       failed_tests=$(( failed_tests + 1))
       echo "#   Failed '$test_command'" >&2
       cat $TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
    fi
-   testno=$(( testno + 1))
+   testno=$((testno + 1))
+   TEST_NUMBER=$((TEST_NUMBER + 1))
    return $result
 }
 

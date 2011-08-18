@@ -284,10 +284,10 @@ design_print_formats() {
 # last sample.
 group_by_disk () {
    [ -z "${awk_print_line}" ] && design_print_formats
-   cat > /tmp/percona-toolkit.awk <<EOF
+   awk "
    BEGIN {
       devs    = 0;
-      devname = "${OPT_d}";
+      devname = \"${OPT_d}\";
    }
    \$1 !~ /TS/ && \$3 ~ devname {
       ${awk_parse_line}
@@ -303,7 +303,7 @@ group_by_disk () {
       }
       ${awk_find_max_device_name_length}
       ${awk_print_header}
-      elapsed = curr_ts - first["ts"];
+      elapsed = curr_ts - first[\"ts\"];
       for ( i = 1; i <= devs; i++ ) {
          dev               = devsort[i];
          ${awk_get_overall_increments}
@@ -312,21 +312,19 @@ group_by_disk () {
          t_in_progress     = (tot_in_progress / (iterations - 1));
          devs_in_group     = 1;
          ${awk_compute_read_write_stats}
-         line_ts="{" (iterations - 1) "}";
+         line_ts=\"{\" (iterations - 1) \"}\";
          ${awk_print_line}
       }
-   }
-EOF
-   awk -f /tmp/percona-toolkit.awk "$@"
+   } " "$@"
 }
 
 # Prints out one line for each sample, summing up all disks together.
 group_by_sample() {
    [ -z "${awk_print_line}" ] && design_print_formats
-   cat > /tmp/percona-toolkit.awk <<EOF
+   awk "
    BEGIN {
       devs    = 0;
-      devname = "${OPT_d}";
+      devname = \"${OPT_d}\";
    }
    \$1 !~ /TS/ && \$3 ~ devname {
       ${awk_parse_line}
@@ -368,7 +366,7 @@ group_by_sample() {
          devs_in_group = devs;
          ${awk_compute_read_write_stats}
          if ( devs > 1 ) {
-            dev     = "{" devs "}";
+            dev     = \"{\" devs \"}\";
          }
          else {
             dev     = devsort[1];
@@ -377,14 +375,12 @@ group_by_sample() {
          printed_a_line = 1;
       }
       if ( iterations == 1 || printed_a_line == 1 ) {
-         # We don't save "curr" as "prev" on every sample we see, because if the
-         # interval of printing is more than one sample, we want "prev" to be
+         # We don't save curr as prev on every sample we see, because if the
+         # interval of printing is more than one sample, we want prev to be
          # the first sample in the interval, not the previous sample seen.
          ${awk_save_curr_as_prev}
       }
-   }
-EOF
-   awk -f /tmp/percona-toolkit.awk "$@"
+   } " "$@"
 }
 
 # Prints out one line for each sample, for each disk that matches the pattern.

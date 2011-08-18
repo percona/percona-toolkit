@@ -1,7 +1,10 @@
 #!/bin/bash
-#group_by_all samples/diskstats-001.txt
 
-cat <<EOF > $1
+# This test file must be ran by util/test-bash-functions.
+
+TESTS=1
+
+cat <<EOF > $TMPDIR/expected
   #ts device          rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt    wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt busy in_prg
   2.0 ram0             0.0     0.0     0.0     0%    0.0     0.0     0.0     0.0     0.0     0%    0.0     0.0   0%      0
   2.0 cciss/c0d0       0.0     0.0     0.0     0%    0.0     0.0    23.0    53.2     0.6    85%    0.0     0.9   0%      0
@@ -39,3 +42,6 @@ cat <<EOF > $1
   7.0 dm-0             0.0     0.0     0.0     0%    0.0     0.0   194.5     8.0     0.8     0%    0.1     0.6   0%      0
   7.0 md0              0.0     0.0     0.0     0%    0.0     0.0     0.0     0.0     0.0     0%    0.0     0.0   0%      0
 EOF
+
+group_by_all "samples/diskstats-001.txt" > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected
