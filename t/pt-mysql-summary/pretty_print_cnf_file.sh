@@ -1,7 +1,8 @@
 #!/bin/bash
-#pretty_print_cnf_file
 
-cat <<EOF > $1
+TESTS=1
+
+cat <<EOF > $TMPDIR/expected
 
 [mysqld]
 datadir                             = /mnt/data/mysql
@@ -34,4 +35,5 @@ pid-file                            = /var/run/mysqld/mysqld.pid
 target-dir                          = /data/backup
 EOF
 
-cp samples/my.cnf-001.txt /tmp/percona-toolkit
+pretty_print_cnf_file samples/my.cnf-001.txt > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected

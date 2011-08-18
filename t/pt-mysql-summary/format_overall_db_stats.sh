@@ -1,7 +1,8 @@
 #!/bin/bash
-#format_overall_db_stats
 
-cat <<EOF > $1
+TESTS=2
+
+cat <<EOF > $TMPDIR/expected
 
   Database Tables Views SPs Trigs Funcs   FKs Partn
   mysql        17                                  
@@ -29,5 +30,31 @@ cat <<EOF > $1
   sakila     1  15   1   3  19  26   3   4   1          45   4   1   7   2
 
 EOF
+format_overall_db_stats samples/mysql-schema-001.txt > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected
 
-cp samples/mysql-schema-001.txt /tmp/percona-toolkit-mysqldump
+
+cat <<EOF > $TMPDIR/expected
+
+  Database Tables Views SPs Trigs Funcs   FKs Partn
+  {chosen}      1                                  
+
+  Database InnoDB
+  {chosen}      1
+
+  Database BTREE
+  {chosen}     2
+
+             t   v
+             i   a
+             n   r
+             y   c
+             i   h
+             n   a
+             t   r
+  Database === ===
+  {chosen}   1   1
+
+EOF
+format_overall_db_stats samples/mysql-schema-002.txt > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected

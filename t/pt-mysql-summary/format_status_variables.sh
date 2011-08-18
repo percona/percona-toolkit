@@ -1,7 +1,8 @@
 #!/bin/bash
-#format_status_variables
 
-cat <<EOF > $1
+TESTS=1
+
+cat <<EOF > $TMPDIR/expected
 Variable                                Per day  Per second      5 secs
 Bytes_received                          8000000         100            
 Bytes_sent                             35000000         400            
@@ -90,4 +91,6 @@ Uptime                                    90000           1           1
 Uptime_since_flush_status                 90000           1            
 EOF
 
-join samples/mysql-status-00{1,2}.txt > /tmp/percona-toolkit
+join samples/mysql-status-00{1,2}.txt > $TMPDIR/in
+format_status_variables $TMPDIR/in > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected
