@@ -1,4 +1,4 @@
-#!/usr/bin/evn perl
+#!/usr/bin/env perl
 
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
@@ -12,6 +12,8 @@ use English qw(-no_match_vars);
 
 use PerconaTest;
 
-system("$trunk/util/test-bash-tool pt-pmp @ARGV");
+my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
+push @ARGV, "$trunk/t/$tool/*.sh" unless @ARGV;
+system("$trunk/util/test-bash-functions $trunk/bin/$tool @ARGV");
 
 exit;
