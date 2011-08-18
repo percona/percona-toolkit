@@ -226,12 +226,14 @@ parse_mysqld_instances () {
 # /tmp/percona-toolkit.  You have to specify the port for the instance you are
 # interested in, in case there are multiple instances.
 find_my_cnf_file() {
-   if test -n "$1" && $AP_GREP -- "/mysqld.*--port=$1" /tmp/percona-toolkit >/dev/null 2>&1 ; then
-      $AP_GREP -- "/mysqld.*--port=$1" /tmp/percona-toolkit \
+   local file=$1
+   local port=$2
+   if test -n "$port" && $AP_GREP -- "/mysqld.*--port=$port" $file >/dev/null 2>&1 ; then
+      $AP_GREP -- "/mysqld.*--port=$port" $file \
          | $AP_AWK 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
          | head -n1
    else
-      $AP_GREP '/mysqld' /tmp/percona-toolkit \
+      $AP_GREP '/mysqld' $file \
          | $AP_AWK 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
          | head -n1
    fi
@@ -525,37 +527,38 @@ find_max_trx_time() {
 
 # Summarizes various things about InnoDB status that are not easy to see by eye.
 format_innodb_status () {
-   name_val "Checkpoint Age"       $(shorten $(find_checkpoint_age "${1}"))
-   name_val "InnoDB Queue"        "$(awk '/queries inside/{print}' "${1}")"
-   name_val "Oldest Transaction"  "$(find_max_trx_time "${1}") Seconds";
-   name_val "History List Len"     $(awk '/History list length/{print $4}' "$1")
-   name_val "Read Views"           $(awk '/read views open inside/{print $1}' "${1}")
-   name_val "Undo Log Entries"    "$(summarize_undo_log_entries "${1}")"
-   name_val "Pending I/O Reads"   "$(find_pending_io_reads "${1}")"
-   name_val "Pending I/O Writes"  "$(find_pending_io_writes "${1}")"
-   name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${1}")"
-   $AP_AWK -F, '/^---TRANSACTION/{print $2}' "${1}" \
+   local file=$1
+   name_val "Checkpoint Age"       $(shorten $(find_checkpoint_age "${file}"))
+   name_val "InnoDB Queue"        "$(awk '/queries inside/{print}' "${file}")"
+   name_val "Oldest Transaction"  "$(find_max_trx_time "${file}") Seconds";
+   name_val "History List Len"     $(awk '/History list length/{print $4}' "${file}")
+   name_val "Read Views"           $(awk '/read views open inside/{print $1}' "${file}")
+   name_val "Undo Log Entries"    "$(summarize_undo_log_entries "${file}")"
+   name_val "Pending I/O Reads"   "$(find_pending_io_reads "${file}")"
+   name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
+   name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
+   $AP_AWK -F, '/^---TRANSACTION/{print $2}' "${file}" \
       | $AP_SED -e 's/ [0-9]* sec.*//' | sort | uniq -c > /tmp/percona-toolkit2
    name_val "Transaction States" "$(group_concat /tmp/percona-toolkit2)"
-   if $AP_GREP 'TABLE LOCK table' "${1}" >/dev/null ; then
+   if $AP_GREP 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
-      $AP_AWK '/^TABLE LOCK table/{print $4}' "${1}" \
+      $AP_AWK '/^TABLE LOCK table/{print $4}' "${file}" \
          | sort | uniq -c | sort -rn
    fi
-   if $AP_GREP 'has waited at' "${1}" > /dev/null ; then
+   if $AP_GREP 'has waited at' "${file}" > /dev/null ; then
       echo "Semaphore Waits"
-      $AP_GREP 'has waited at' "${1}" | cut -d' ' -f6-8 \
+      $AP_GREP 'has waited at' "${file}" | cut -d' ' -f6-8 \
          | sort | uniq -c | sort -rn
    fi
-   if $AP_GREP 'reserved it in mode' "${1}" > /dev/null; then
+   if $AP_GREP 'reserved it in mode' "${file}" > /dev/null; then
       echo "Semaphore Holders"
       $AP_AWK '/has reserved it in mode/{
          print substr($0, 1 + index($0, "("), index($0, ")") - index($0, "(") - 1);
-      }' "${1}" | sort | uniq -c | sort -rn
+      }' "${file}" | sort | uniq -c | sort -rn
    fi
-   if $AP_GREP -e 'Mutex at' -e 'lock on' "${1}" >/dev/null 2>&1; then
+   if $AP_GREP -e 'Mutex at' -e 'lock on' "${file}" >/dev/null 2>&1; then
       echo "Mutexes/Locks Waited For"
-      $AP_GREP -e 'Mutex at' -e 'lock on' "${1}" | $AP_SED -e 's/^[XS]-//' -e 's/,.*$//' \
+      $AP_GREP -e 'Mutex at' -e 'lock on' "${file}" | $AP_SED -e 's/^[XS]-//' -e 's/,.*$//' \
          | sort | uniq -c | sort -rn
    fi
 }
@@ -1243,7 +1246,7 @@ main() {
    # ########################################################################
    section Configuration_File
    ps auxww 2>/dev/null | $AP_GREP mysqld > /tmp/percona-toolkit
-   cnf_file=$(find_my_cnf_file ${port});
+   cnf_file=$(find_my_cnf_file /tmp/percona-toolkit ${port});
    if [ ! -e "${cnf_file}" ]; then
       name_val "Config File" "Cannot autodetect, trying common locations"
       cnf_file="/etc/my.cnf";
