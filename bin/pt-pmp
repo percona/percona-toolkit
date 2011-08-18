@@ -17,16 +17,17 @@ usage() {
 # to aggregate, and the files to read.  If maxlen=0, it means infinity.  We have
 # to pass the maxlen argument into this function to make maxlen testable.
 aggregate_stacktrace() {
-   maxlen="$1";
-   cat > /tmp/percona-toolkit.awk <<EOF
+   local maxlen=$1;
+   shift
+   awk "
       BEGIN {
-         s = "";
+         s = \"\";
       }
       /^Thread/ {
-         if ( s != "" ) {
+         if ( s != \"\" ) {
             print s;
          }
-         s = "";
+         s = \"\";
          c = 0;
       }
       /^\#/ {
@@ -38,37 +39,37 @@ aggregate_stacktrace() {
                targ = \$4;
             }
             if ( targ ~ /[<\\(]/ ) {
-               targ = substr(\$0, index(\$0, " in ") + 4);
+               targ = substr(\$0, index(\$0, \" in \") + 4);
                if ( targ ~ / from / ) {
-                  targ = substr(targ, 1, index(targ, " from ") - 1);
+                  targ = substr(targ, 1, index(targ, \" from \") - 1);
                }
                if ( targ ~ / at / ) {
-                  targ = substr(targ, 1, index(targ, " at ") - 1);
+                  targ = substr(targ, 1, index(targ, \" at \") - 1);
                }
                # Shorten C++ templates, e.g. in t/samples/stacktrace-004.txt
                while ( targ ~ />::/ ) {
-                  if ( 0 == gsub(/<[^<>]*>/, "", targ) ) {
+                  if ( 0 == gsub(/<[^<>]*>/, \"\", targ) ) {
                      break;
                   }
                }
                # Further shorten argument lists.
                while ( targ ~ /\\(/ ) {
-                  if ( 0 == gsub(/\\([^()]*\\)/, "", targ) ) {
+                  if ( 0 == gsub(/\\([^()]*\\)/, \"\", targ) ) {
                      break;
                   }
                }
                # Remove void and const decorators.
-               gsub(/ ?(void|const) ?/, "", targ);
-               gsub(/ /, "", targ);
+               gsub(/ ?(void|const) ?/, \"\", targ);
+               gsub(/ /, \"\", targ);
             }
             else if ( targ ~ /\\?\\?/ && \$2 ~ /[1-9]/ ) {
                # Substitute ?? by the name of the library.
                targ = \$NF;
                while ( targ ~ /\\// ) {
-                  targ = substr(targ, index(targ, "/") + 1);
+                  targ = substr(targ, index(targ, \"/\") + 1);
                }
-               targ = substr(targ, 1, index(targ, ".") - 1);
-               targ = targ "::??";
+               targ = substr(targ, 1, index(targ, \".\") - 1);
+               targ = targ \"::??\";
             }
          }
          else {
@@ -76,14 +77,14 @@ aggregate_stacktrace() {
          }
          # get rid of long symbol names such as 'pthread_cond_wait@@GLIBC_2.3.2'
          if ( targ ~ /@@/ ) {
-            fname = substr(targ, 1, index(targ, "@@") - 1);
+            fname = substr(targ, 1, index(targ, \"@@\") - 1);
          }
          else {
             fname = targ;
          }
          if ( ${maxlen:-0} == 0 || c < ${maxlen:-0} ) {
-            if (s != "" ) {
-               s = s "," fname;
+            if (s != \"\" ) {
+               s = s \",\" fname;
             }
             else {
                s = fname;
@@ -94,9 +95,7 @@ aggregate_stacktrace() {
       END {
          print s
       }
-EOF
-   awk -f /tmp/percona-toolkit.awk "$2" | sort | uniq -c | sort -r -n -k 1,1
-   rm -f /tmp/percona-toolkit
+   " "$@" | sort | uniq -c | sort -r -n -k 1,1
 }
 
 # The main program to run.
