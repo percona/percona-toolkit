@@ -1,7 +1,8 @@
 #!/bin/bash
-#parse_arcconf
 
-cat <<EOF > $1
+TESTS=2
+
+cat <<EOF > $TMPDIR/expected
        Specs | Adaptec 3405, SAS/SATA, 128 MB cache, Optimal
      Battery | 99%, 3d1h11m remaining, Optimal
 
@@ -17,7 +18,7 @@ cat <<EOF > $1
   Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3146855SS  140014 MB   On (WB)
 EOF
 
-cat <<EOF > $2
+cat <<EOF > $TMPDIR/in
 # /usr/StorMan/arcconf getconfig 1
 Controllers found: 1
 ----------------------------------------------------------------------
@@ -152,3 +153,23 @@ Physical Device information
 Command completed successfully.
 
 EOF
+parse_arcconf $TMPDIR/in > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected
+
+cat <<EOF > $TMPDIR/expected
+       Specs | Adaptec 3405, SAS/SATA, 128 MB cache, Optimal
+     Battery | 99%, 3d1h11m remaining, Optimal
+
+  LogicalDev Size      RAID Disks Stripe Status  Cache
+  ========== ========= ==== ===== ====== ======= =======
+  Raid10-A   571392 MB   10     4 256 KB Optimal On (WB)
+
+  PhysiclDev State   Speed         Vendor  Model        Size        Cache
+  ========== ======= ============= ======= ============ =========== =======
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+  Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
+EOF
+parse_arcconf samples/arcconf-002.txt > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected

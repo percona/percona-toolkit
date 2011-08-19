@@ -1,14 +1,3 @@
-#!/bin/bash
-#parse_dmidecode_mem_devices
-
-cat <<EOF > $1
-  Locator   Size     Speed             Form Factor   Type          Type Detail
-  ========= ======== ================= ============= ============= ===========
-  SODIMM0   2048 MB  800 MHz           SODIMM        Other         Synchronous
-  SODIMM1   2048 MB  800 MHz           SODIMM        Other         Synchronous
-EOF
-
-cat <<EOF > $2
 # dmidecode 2.10
 SMBIOS 2.5 present.
 41 structures occupying 1867 bytes.
@@ -461,5 +450,3 @@ OEM-specific Type
 
 Handle 0x0028, DMI type 127, 4 bytes
 End Of Table
-
-EOF

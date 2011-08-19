@@ -1,14 +1,13 @@
 #!/bin/bash
-#parse_proc_cpuinfo
 
-cat <<EOF > $1
+cat <<EOF > $TMPDIR/expected
   Processors | physical = 1, cores = 2, virtual = 2, hyperthreading = no
       Speeds | 2x1300.000
       Models | 2xGenuine Intel(R) CPU U7300 @ 1.30GHz
       Caches | 2x3072 KB
 EOF
 
-cat <<EOF > $2
+cat <<EOF > $TMPDIR/in
 processor	: 0
 vendor_id	: GenuineIntel
 cpu family	: 6
@@ -68,3 +67,5 @@ address sizes	: 36 bits physical, 48 bits virtual
 power management:
 
 EOF
+parse_proc_cpuinfo $TMPDIR/in > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected

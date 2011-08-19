@@ -136,13 +136,14 @@ group_concat () {
 # Parse Linux's /proc/cpuinfo, which should be stored in /tmp/percona-toolkit.
 # ##############################################################################
 parse_proc_cpuinfo () {
+   local file=$1
    # Physical processors are indicated by distinct 'physical id'.  Virtual CPUs
    # are indicated by paragraphs -- one per paragraph.  We assume that all
    # processors are identical, i.e. that there are not some processors with dual
    # cores and some with quad cores.
-   virtual=$(grep -c ^processor /tmp/percona-toolkit);
-   physical=$(grep 'physical id' /tmp/percona-toolkit | sort -u | wc -l);
-   cores=$(grep 'cpu cores' /tmp/percona-toolkit | head -n 1 | cut -d: -f2);
+   virtual=$(grep -c ^processor $file);
+   physical=$(grep 'physical id' $file | sort -u | wc -l);
+   cores=$(grep 'cpu cores' $file | head -n 1 | cut -d: -f2);
 
    # Older kernel won't have 'physical id' or 'cpu cores'.
    if [ "${physical}" = "0" ]; then physical=${virtual}; fi
@@ -155,17 +156,17 @@ parse_proc_cpuinfo () {
 
    name_val "Processors" "physical = ${physical}, cores = ${cores}, virtual = ${virtual}, hyperthreading = ${htt}"
 
-   awk -F: '/cpu MHz/{print $2}' /tmp/percona-toolkit \
-      | sort | uniq -c > /tmp/percona-toolkit2
-   name_val "Speeds" "$(group_concat /tmp/percona-toolkit2)"
+   awk -F: '/cpu MHz/{print $2}' $file \
+      | sort | uniq -c > "$file.unq"
+   name_val "Speeds" "$(group_concat "$file.unq")"
 
-   awk -F: '/model name/{print $2}' /tmp/percona-toolkit \
-      | sort | uniq -c > /tmp/percona-toolkit2
-   name_val "Models" "$(group_concat /tmp/percona-toolkit2)"
+   awk -F: '/model name/{print $2}' $file \
+      | sort | uniq -c > "$file-2"
+   name_val "Models" "$(group_concat "$file.unq")"
 
-   awk -F: '/cache size/{print $2}' /tmp/percona-toolkit \
-      | sort | uniq -c > /tmp/percona-toolkit2
-   name_val "Caches" "$(group_concat /tmp/percona-toolkit2)"
+   awk -F: '/cache size/{print $2}' $file \
+      | sort | uniq -c > "$file.unq"
+   name_val "Caches" "$(group_concat "$file.unq")"
 }
 
 # ##############################################################################
@@ -196,16 +197,18 @@ parse_psrinfo_cpus() {
 # Parse the output of 'free -b' plus the contents of /proc/meminfo
 # ##############################################################################
 parse_free_minus_b () {
-   physical=$(awk '/Mem:/{print $3}' "${1}")
-   swap=$(awk '/Swap:/{print $3}' "${1}")
-   virtual=$(shorten $(($physical + $swap)))
+   local file=$1
 
-   name_val Total   $(shorten $(awk '/Mem:/{print $2}' "${1}"))
-   name_val Free    $(shorten $(awk '/Mem:/{print $4}' "${1}"))
+   local physical=$(awk '/Mem:/{print $3}' "${file}")
+   local swap=$(awk '/Swap:/{print $3}' "${file}")
+   local virtual=$(shorten $(($physical + $swap)))
+
+   name_val Total   $(shorten $(awk '/Mem:/{print $2}' "${file}"))
+   name_val Free    $(shorten $(awk '/Mem:/{print $4}' "${file}"))
    name_val Used    "physical = $(shorten ${physical}), swap = $(shorten ${swap}), virtual = ${virtual}"
-   name_val Buffers $(shorten $(awk '/Mem:/{print $6}' "${1}"))
-   name_val Caches  $(shorten $(awk '/Mem:/{print $7}' "${1}"))
-   name_val Dirty  "$(awk '/Dirty:/ {print $2, $3}' "${1}")"
+   name_val Buffers $(shorten $(awk '/Mem:/{print $6}' "${file}"))
+   name_val Caches  $(shorten $(awk '/Mem:/{print $7}' "${file}"))
+   name_val Dirty  "$(awk '/Dirty:/ {print $2, $3}' "${file}")"
 }
 
 # ##############################################################################
@@ -233,10 +236,10 @@ parse_memory_sysctl_freebsd() {
 }
 
 # ##############################################################################
-# Parse memory devices from the output of 'dmidecode', which should be stored in
-# /tmp/percona-toolkit.
+# Parse memory devices from the output of 'dmidecode'.
 # ##############################################################################
 parse_dmidecode_mem_devices () {
+   local file=$1
    echo "  Locator   Size     Speed             Form Factor   Type          Type Detail"
    echo "  ========= ======== ================= ============= ============= ==========="
    # Print paragraphs containing 'Memory Device\n', extract the desired bits,
@@ -254,7 +257,7 @@ parse_dmidecode_mem_devices () {
           -e 's/</{/g' \
           -e 's/>/}/g' \
           -e 's/[ \t]*\n/\n/g' \
-       /tmp/percona-toolkit \
+       $file \
        | awk -F: '/Size|Type|Form.Factor|Type.Detail|[^ ]Locator/{printf("|%s", $2)}/Speed/{print "|" $2}' \
        | sed -e 's/No Module Installed/{EMPTY}/' \
        | sort \
@@ -292,10 +295,11 @@ parse_ip_s_link () {
 # Parse the output of 'netstat -antp' which should be in /tmp/percona-toolkit.
 # ##############################################################################
 parse_netstat () {
+   local file=$1
    echo "  Connections from remote IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
       print substr($5, 0, index($5, ":") - 1);
-   }' /tmp/percona-toolkit | sort | uniq -c \
+   }' $file | sort | uniq -c \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -305,7 +309,7 @@ parse_netstat () {
    echo "  Connections to local IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
       print substr($4, 0, index($4, ":") - 1);
-   }' /tmp/percona-toolkit | sort | uniq -c \
+   }' $file | sort | uniq -c \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -315,7 +319,7 @@ parse_netstat () {
    echo "  Connections to top 10 local ports"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
       print substr($4, index($4, ":") + 1);
-   }' /tmp/percona-toolkit | sort | uniq -c | sort -rn | head -n10 \
+   }' $file | sort | uniq -c | sort -rn | head -n10 \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -324,7 +328,7 @@ parse_netstat () {
    echo "  States of connections"
    awk '$1 ~ /^tcp/ {
       print $6;
-   }' /tmp/percona-toolkit | sort | uniq -c | sort -rn \
+   }' $file | sort | uniq -c | sort -rn \
       | awk "{
          fuzzy_var=\$1;
          ${fuzzy_formula}
@@ -397,6 +401,7 @@ parse_filesystems () {
 # multiple fdisk -l outputs in the file.
 # ##############################################################################
 parse_fdisk () {
+   local file=$1
    awk '
       BEGIN {
          format="%-12s %4s %10s %10s %18s\n";
@@ -422,7 +427,7 @@ parse_fdisk () {
          }
          printf(format, $1, "Part", start, end, sprintf("%.0f", (end - start) * units));
       }
-   ' /tmp/percona-toolkit
+   ' $file
 }
 
 # ##############################################################################
@@ -430,17 +435,18 @@ parse_fdisk () {
 # virtualization.
 # ##############################################################################
 parse_virtualization_dmesg () {
-   if grep -qi -e vmware -e vmxnet -e 'paravirtualized kernel on vmi' /tmp/percona-toolkit; then
+   local file=$1
+   if grep -qi -e vmware -e vmxnet -e 'paravirtualized kernel on vmi' $file; then
       echo "VMWare";
-   elif grep -qi -e 'paravirtualized kernel on xen' -e 'Xen virtual console' /tmp/percona-toolkit; then
+   elif grep -qi -e 'paravirtualized kernel on xen' -e 'Xen virtual console' $file; then
       echo "Xen";
-   elif grep -qi qemu /tmp/percona-toolkit; then
+   elif grep -qi qemu $file; then
       echo "QEmu";
-   elif grep -qi 'paravirtualized kernel on KVM' /tmp/percona-toolkit; then
+   elif grep -qi 'paravirtualized kernel on KVM' $file; then
       echo "KVM";
-   elif grep -q VBOX /tmp/percona-toolkit; then
+   elif grep -q VBOX $file; then
       echo "VirtualBox";
-   elif grep -qi 'hd.: Virtual .., ATA.*drive' /tmp/percona-toolkit; then
+   elif grep -qi 'hd.: Virtual .., ATA.*drive' $file; then
       echo "Microsoft VirtualPC";
    fi
 }
@@ -461,7 +467,8 @@ parse_virtualization_generic() {
 # Ethernet cards.
 # ##############################################################################
 parse_ethernet_controller_lspci () {
-   grep -i ethernet /tmp/percona-toolkit | cut -d: -f3 | while read line; do
+   local file=$1
+   grep -i ethernet $file | cut -d: -f3 | while read line; do
       name_val Controller "${line}"
    done
 }
@@ -471,20 +478,21 @@ parse_ethernet_controller_lspci () {
 # controllers.
 # ##############################################################################
 parse_raid_controller_lspci () {
-   if grep -q "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS" /tmp/percona-toolkit; then
+   local file=$1
+   if grep -q "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS" $file; then
       echo 'LSI Logic MegaRAID SAS'
-   elif grep -q "Fusion-MPT SAS" /tmp/percona-toolkit; then
+   elif grep -q "Fusion-MPT SAS" $file; then
       echo 'Fusion-MPT SAS'
-   elif grep -q "RAID bus controller: LSI Logic / Symbios Logic Unknown" /tmp/percona-toolkit; then
+   elif grep -q "RAID bus controller: LSI Logic / Symbios Logic Unknown" $file; then
       echo 'LSI Logic Unknown'
-   elif grep -q "RAID bus controller: Adaptec AAC-RAID" /tmp/percona-toolkit; then
+   elif grep -q "RAID bus controller: Adaptec AAC-RAID" $file; then
       echo 'AACRAID'
-   elif grep -q "3ware [0-9]* Storage Controller" /tmp/percona-toolkit; then
+   elif grep -q "3ware [0-9]* Storage Controller" $file; then
       echo '3Ware'
-   elif grep -q "Hewlett-Packard Company Smart Array" /tmp/percona-toolkit; then
+   elif grep -q "Hewlett-Packard Company Smart Array" $file; then
       echo 'HP Smart Array'
-   elif grep -q " RAID bus controller: " /tmp/percona-toolkit; then
-      awk -F: '/RAID bus controller\:/ {print $3" "$5" "$6}' /tmp/percona-toolkit
+   elif grep -q " RAID bus controller: " $file; then
+      awk -F: '/RAID bus controller\:/ {print $3" "$5" "$6}' $file
    fi
 }
 
@@ -493,14 +501,15 @@ parse_raid_controller_lspci () {
 # controllers.
 # ##############################################################################
 parse_raid_controller_dmesg () {
+   local file=$1
    pat='scsi[0-9].*: .*'
-   if grep -qi "${pat}megaraid" /tmp/percona-toolkit; then
+   if grep -qi "${pat}megaraid" $file; then
       echo 'LSI Logic MegaRAID SAS'
-   elif grep -q "Fusion MPT SAS" /tmp/percona-toolkit; then
+   elif grep -q "Fusion MPT SAS" $file; then
       echo 'Fusion-MPT SAS'
-   elif grep -q "${pat}aacraid" /tmp/percona-toolkit; then
+   elif grep -q "${pat}aacraid" $file; then
       echo 'AACRAID'
-   elif grep -q "${pat}3ware [0-9]* Storage Controller" /tmp/percona-toolkit; then
+   elif grep -q "${pat}3ware [0-9]* Storage Controller" $file; then
       echo '3Ware'
    fi
 }
@@ -510,20 +519,22 @@ parse_raid_controller_dmesg () {
 # /tmp/percona-toolkit
 # ##############################################################################
 parse_hpacucli () {
-   grep 'logicaldrive\|physicaldrive' /tmp/percona-toolkit
+   local file=$1
+   grep 'logicaldrive\|physicaldrive' $file
 }
 
 # ##############################################################################
 # Parse the output of arcconf, which should be stored in /tmp/percona-toolkit
 # ##############################################################################
 parse_arcconf () {
-   model=$(awk -F: '/Controller Model/{print $2}' /tmp/percona-toolkit)
-   chan="$(awk -F: '/Channel description/{print $2}' /tmp/percona-toolkit)"
-   cache="$(awk -F: '/Installed memory/{print $2}' /tmp/percona-toolkit)"
-   status="$(awk -F: '/Controller Status/{print $2}' /tmp/percona-toolkit)"
+   local file=$1
+   model=$(awk -F: '/Controller Model/{print $2}' $file)
+   chan="$(awk -F: '/Channel description/{print $2}' $file)"
+   cache="$(awk -F: '/Installed memory/{print $2}' $file)"
+   status="$(awk -F: '/Controller Status/{print $2}' $file)"
    name_val Specs "${model/ /},${chan},${cache} cache,${status}"
 
-   battery=$(grep -A5 'Controller Battery Info' /tmp/percona-toolkit \
+   battery=$(grep -A5 'Controller Battery Info' $file \
       | awk '/Capacity remaining/ {c=$4}
              /Status/             {s=$3}
              /Time remaining/     {t=sprintf("%dd%dh%dm", $7, $9, $11)}
@@ -536,9 +547,8 @@ parse_arcconf () {
    echo
    echo "  LogicalDev Size      RAID Disks Stripe Status  Cache"
    echo "  ========== ========= ==== ===== ====== ======= ======="
-   for dev in $(awk '/Logical device number/{print $4}' /tmp/percona-toolkit); do
-      sed -n -e "/^Logical device .* ${dev}$/,/^$\|^Logical device number/p" \
-         /tmp/percona-toolkit \
+   for dev in $(awk '/Logical device number/{print $4}' $file); do
+      sed -n -e "/^Logical device .* ${dev}$/,/^$\|^Logical device number/p" $file \
       | awk '
          /Logical device name/               {d=$5}
          /Size/                              {z=$3 " " $4}
@@ -564,7 +574,7 @@ parse_arcconf () {
 
    # Find the paragraph with physical devices, tabularize with assoc arrays.
    tempresult=""
-   sed -n -e '/Physical Device information/,/^$/p' /tmp/percona-toolkit \
+   sed -n -e '/Physical Device information/,/^$/p' $file \
       | awk -F: '
          /Device #[0-9]/ {
             device=substr($0, index($0, "#"));
@@ -611,32 +621,33 @@ parse_arcconf () {
                }
             }
          }'
-
 }
 
 # ##############################################################################
-# Parse the output of "lsiutil -i -s" from /tmp/percona-toolkit
+# Parse the output of "lsiutil -i -s".
 # ##############################################################################
 parse_fusionmpt_lsiutil () {
+   local file=$1
    echo
-   awk '/LSI.*Firmware/ { print " ", $0 }' /tmp/percona-toolkit
-   grep . /tmp/percona-toolkit | sed -n -e '/B___T___L/,$ {s/^/  /; p}'
+   awk '/LSI.*Firmware/ { print " ", $0 }' $file
+   grep . $file | sed -n -e '/B___T___L/,$ {s/^/  /; p}'
 }
 
 # ##############################################################################
 # Parse the output of MegaCli64 -AdpAllInfo -aALL from /tmp/percona-toolkit.
 # ##############################################################################
 parse_lsi_megaraid_adapter_info () {
-   name=$(awk -F: '/Product Name/{print substr($2, 2)}' /tmp/percona-toolkit);
-   int=$(awk '/Host Interface/{print $4}' /tmp/percona-toolkit);
-   prt=$(awk '/Number of Backend Port/{print $5}' /tmp/percona-toolkit);
-   bbu=$(awk '/^BBU             :/{print $3}' /tmp/percona-toolkit);
-   mem=$(awk '/Memory Size/{print $4}' /tmp/percona-toolkit);
-   vdr=$(awk '/Virtual Drives/{print $4}' /tmp/percona-toolkit);
-   dvd=$(awk '/Degraded/{print $3}' /tmp/percona-toolkit);
-   phy=$(awk '/^  Disks/{print $3}' /tmp/percona-toolkit);
-   crd=$(awk '/Critical Disks/{print $4}' /tmp/percona-toolkit);
-   fad=$(awk '/Failed Disks/{print $4}' /tmp/percona-toolkit);
+   local file=$1
+   name=$(awk -F: '/Product Name/{print substr($2, 2)}' $file);
+   int=$(awk '/Host Interface/{print $4}' $file);
+   prt=$(awk '/Number of Backend Port/{print $5}' $file);
+   bbu=$(awk '/^BBU             :/{print $3}' $file);
+   mem=$(awk '/Memory Size/{print $4}' $file);
+   vdr=$(awk '/Virtual Drives/{print $4}' $file);
+   dvd=$(awk '/Degraded/{print $3}' $file);
+   phy=$(awk '/^  Disks/{print $3}' $file);
+   crd=$(awk '/Critical Disks/{print $4}' $file);
+   fad=$(awk '/Failed Disks/{print $4}' $file);
    name_val Model "${name}, ${int} interface, ${prt} ports"
    name_val Cache "${mem} Memory, BBU ${bbu}"
 }
@@ -646,9 +657,10 @@ parse_lsi_megaraid_adapter_info () {
 # /opt/MegaRAID/MegaCli/MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL
 # ##############################################################################
 parse_lsi_megaraid_bbu_status () {
-   charge=$(awk '/Relative State/{print $5}' /tmp/percona-toolkit);
-   temp=$(awk '/^Temperature/{print $2}' /tmp/percona-toolkit);
-   soh=$(awk '/isSOHGood:/{print $2}' /tmp/percona-toolkit);
+   local file=$1
+   charge=$(awk '/Relative State/{print $5}' $file);
+   temp=$(awk '/^Temperature/{print $2}' $file);
+   soh=$(awk '/isSOHGood:/{print $2}' $file);
    name_val BBU "${charge}% Charged, Temperature ${temp}C, isSOHGood=${soh}"
 }
 
@@ -659,11 +671,12 @@ parse_lsi_megaraid_bbu_status () {
 # /opt/MegaRAID/MegaCli/MegaCli64 -PDList -aALL
 # ##############################################################################
 parse_lsi_megaraid_devices () {
+   local file=$1
    echo
    echo "  PhysiclDev Type State   Errors Vendor  Model        Size"
    echo "  ========== ==== ======= ====== ======= ============ ==========="
-   for dev in $(awk '/Device Id/{print $3}' /tmp/percona-toolkit); do
-      sed -e '/./{H;$!d;}' -e "x;/Device Id: ${dev}/!d;" /tmp/percona-toolkit \
+   for dev in $(awk '/Device Id/{print $3}' $file); do
+      sed -e '/./{H;$!d;}' -e "x;/Device Id: ${dev}/!d;" $file \
       | awk '
          /Media Type/                        {d=substr($0, index($0, ":") + 2)}
          /PD Type/                           {t=$3}
@@ -687,6 +700,7 @@ parse_lsi_megaraid_devices () {
 # /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -Lall -aAll
 # ##############################################################################
 parse_lsi_megaraid_virtual_devices () {
+   local file=$1
    # Somewhere on the Internet, I found the following guide to understanding the
    # RAID level, but I don't know the source anymore.
    #    Primary-0, Secondary-0, RAID Level Qualifier-0 = 0
@@ -757,7 +771,7 @@ parse_lsi_megaraid_virtual_devices () {
                devices[device ",stripe"], devices[device ",state"],
                devices[device ",wpolicy"] ", " devices[device ",rpolicy"]);
          }
-      }' /tmp/percona-toolkit
+      }' $file
 }
 
 # ##############################################################################
@@ -930,7 +944,7 @@ main () {
       dmesg > /tmp/percona-toolkit 2>/dev/null
    fi
    if [ -s /tmp/percona-toolkit ]; then
-      virt="$(parse_virtualization_dmesg)"
+      virt="$(parse_virtualization_dmesg /tmp/percona-toolkit)"
    fi
    if [ -z "${virt}" ]; then
       if which lspci >/dev/null 2>&1; then
@@ -962,7 +976,7 @@ main () {
    section Processor
    if [ -f /proc/cpuinfo ]; then
       cat /proc/cpuinfo > /tmp/percona-toolkit 2>/dev/null
-      parse_proc_cpuinfo
+      parse_proc_cpuinfo /tmp/percona-toolkit
    elif [ "${platform}" = "FreeBSD" ]; then
       parse_sysctl_cpu_freebsd /tmp/percona-toolkit.sysctl
    elif [ "${platform}" = "SunOS" ]; then
@@ -994,7 +1008,7 @@ main () {
    fi
 
    if which dmidecode >/dev/null 2>&1 && dmidecode > /tmp/percona-toolkit 2>/dev/null; then
-      parse_dmidecode_mem_devices
+      parse_dmidecode_mem_devices /tmp/percona-toolkit
    fi
 
    # ########################################################################
@@ -1027,7 +1041,7 @@ main () {
 
       # Relies on /tmp/percona-toolkit having data from the Disk Schedulers loop.
       section "Disk_Partioning"
-      parse_fdisk
+      parse_fdisk /tmp/percona-toolkit
 
       section "Kernel_Inode_State"
       for file in dentry-state file-nr inode-nr; do
@@ -1051,14 +1065,14 @@ main () {
    # /var/log/dmesg if possible.
    # ########################################################################
    if which lspci >/dev/null 2>&1 && lspci > /tmp/percona-toolkit 2>/dev/null; then
-      controller="$(parse_raid_controller_lspci)"
+      controller="$(parse_raid_controller_lspci /tmp/percona-toolkit)"
    fi
    if [ -z "${controller}" ]; then
       cat /var/log/dmesg > /tmp/percona-toolkit 2>/dev/null
       if [ ! -s /tmp/percona-toolkit ]; then
          dmesg > /tmp/percona-toolkit 2>/dev/null
       fi
-      controller="$(parse_raid_controller_dmesg)"
+      controller="$(parse_raid_controller_dmesg /tmp/percona-toolkit)"
    fi
 
    name_val Controller "${controller:-No RAID controller detected}"
@@ -1072,28 +1086,28 @@ main () {
    notfound=""
    if [ "${controller}" = "AACRAID" ]; then
       if arcconf getconfig 1 > /tmp/percona-toolkit 2>/dev/null; then
-         parse_arcconf
+         parse_arcconf /tmp/percona-toolkit
       elif ! which arcconf >/dev/null 2>&1; then
          notfound="e.g. http://www.adaptec.com/en-US/support/raid/scsi_raid/ASR-2120S/"
       fi
    elif [ "${controller}" = "HP Smart Array" ]; then
       if hpacucli ctrl all show config > /tmp/percona-toolkit 2>/dev/null; then
-         parse_hpacucli
+         parse_hpacucli /tmp/percona-toolkit
       elif ! which hpacucli >/dev/null 2>&1; then
          notfound="your package repository or the manufacturer's website"
       fi
    elif [ "${controller}" = "LSI Logic MegaRAID SAS" ]; then
       if MegaCli64 -AdpAllInfo -aALL -NoLog > /tmp/percona-toolkit 2>/dev/null; then
-         parse_lsi_megaraid_adapter_info
+         parse_lsi_megaraid_adapter_info /tmp/percona-toolkit
       elif ! which MegaCli64 >/dev/null 2>&1; then
          notfound="your package repository or the manufacturer's website"
       fi
       if MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL -NoLog > /tmp/percona-toolkit 2>/dev/null; then
-         parse_lsi_megaraid_bbu_status
+         parse_lsi_megaraid_bbu_status /tmp/percona-toolkit
       fi
       if MegaCli64 -LdPdInfo -aALL -NoLog > /tmp/percona-toolkit 2>/dev/null; then
-         parse_lsi_megaraid_virtual_devices
-         parse_lsi_megaraid_devices
+         parse_lsi_megaraid_virtual_devices /tmp/percona-toolkit
+         parse_lsi_megaraid_devices /tmp/percona-toolkit
       fi
    fi
 
@@ -1109,7 +1123,7 @@ main () {
       if [ "${platform}" = "Linux" ]; then
          section Network_Config
          if which lspci > /dev/null 2>&1 && lspci > /tmp/percona-toolkit 2>/dev/null; then
-            parse_ethernet_controller_lspci
+            parse_ethernet_controller_lspci /tmp/percona-toolkit
          fi
          if sysctl net.ipv4.tcp_fin_timeout > /dev/null 2>&1; then
             name_val "FIN Timeout" "$(sysctl net.ipv4.tcp_fin_timeout)"
@@ -1129,7 +1143,7 @@ main () {
       if [ "${platform}" = "Linux" ]; then
          section Network_Connections
          if netstat -antp > /tmp/percona-toolkit 2>/dev/null; then
-            parse_netstat
+            parse_netstat /tmp/percona-toolkit
          fi
       fi
    fi
@@ -1152,7 +1166,7 @@ main () {
          section "Simplified_and_fuzzy_rounded_vmstat_(wait_please)"
          vmstat 1 5 > /tmp/percona-toolkit
          if [ "${platform}" = "Linux" ]; then
-            format_vmstat
+            format_vmstat /tmp/percona-toolkit
          else
             # TODO: simplify/format for other platforms
             cat /tmp/percona-toolkit

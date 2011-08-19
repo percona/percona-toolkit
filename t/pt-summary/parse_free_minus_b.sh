@@ -1,7 +1,8 @@
 #!/bin/bash
-#parse_free_minus_b /tmp/percona-toolkit
 
-cat <<EOF > $1
+TESTS=1
+
+cat <<EOF > $TMPDIR/expected
        Total | 3.89G
         Free | 1.42G
         Used | physical = 2.47G, swap = 0.00k, virtual = 2.47G
@@ -10,7 +11,7 @@ cat <<EOF > $1
        Dirty | 60 kB
 EOF
 
-cat <<EOF > $2
+cat <<EOF > $TMPDIR/in
              total       used       free     shared    buffers     cached
 Mem:    4182048768 2653696000 1528352768          0  138240000 2060787712
 -/+ buffers/cache:  454668288 3727380480
@@ -61,3 +62,5 @@ Hugepagesize:       2048 kB
 DirectMap4k:       10232 kB
 DirectMap2M:      897024 kB
 EOF
+parse_free_minus_b $TMPDIR/in > $TMPDIR/got
+no_diff $TMPDIR/got $TMPDIR/expected

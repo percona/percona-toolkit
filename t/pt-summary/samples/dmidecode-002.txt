@@ -1,20 +1,3 @@
-#!/bin/bash
-#parse_dmidecode_mem_devices
-
-cat <<EOF > $1
-  Locator   Size     Speed             Form Factor   Type          Type Detail
-  ========= ======== ================= ============= ============= ===========
-  DIMM1     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM2     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM3     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM4     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM5     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM6     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM7     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-  DIMM8     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
-EOF
-
-cat <<EOF > $2
 # dmidecode 2.7
 SMBIOS 2.4 present.
 64 structures occupying 3240 bytes.
@@ -747,4 +730,3 @@ OEM-specific Type
 
 Handle 0x7F00, DMI type 127, 4 bytes.
 End Of Table
-EOF
