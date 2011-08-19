@@ -161,7 +161,7 @@ parse_proc_cpuinfo () {
    name_val "Speeds" "$(group_concat "$file.unq")"
 
    awk -F: '/model name/{print $2}' $file \
-      | sort | uniq -c > "$file-2"
+      | sort | uniq -c > "$file.unq"
    name_val "Models" "$(group_concat "$file.unq")"
 
    awk -F: '/cache size/{print $2}' $file \
@@ -348,19 +348,19 @@ parse_filesystems () {
    local file=$1
    local platform=$2
 
-   local spec=$(awk '
+   local spec=$(awk "
       BEGIN {
          device     = 10;
          fstype     = 4;
          options    = 4;
       }
       /./ {
-         f_device     = $1;
-         f_fstype     = $10;
-         f_options    = substr($11, 2, length($11) - 2);
-         if ( "$2" == "FreeBSD" ) {
-            f_fstype  = substr($9, 2, length($9) - 2);
-            f_options = substr($0, index($0, ",") + 2);
+         f_device     = \$1;
+         f_fstype     = \$10;
+         f_options    = substr(\$11, 2, length(\$11) - 2);
+         if ( \"$2\" == \"FreeBSD\" ) {
+            f_fstype  = substr(\$9, 2, length(\$9) - 2);
+            f_options = substr(\$0, index(\$0, \",\") + 2);
             f_options = substr(f_options, 1, length(f_options) - 1);
          }
          if ( length(f_device) > device ) {
@@ -374,9 +374,9 @@ parse_filesystems () {
          }
       }
       END{
-         print "%-" device "s %5s %4s %-" fstype "s %-" options "s %s";
+         print \"%-\" device \"s %5s %4s %-\" fstype \"s %-\" options \"s %s\";
       }
-   ' $file)
+   " $file)
 
    awk "
       BEGIN {

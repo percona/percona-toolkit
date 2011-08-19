@@ -82,7 +82,7 @@ run_test() {
    local t_dir=$(dirname $t)
    TEST_FILE=$(basename $t)
    cd $t_dir
-   source $TEST_FILE
+   source ./$TEST_FILE
    cd $cwd
 
    return $?
