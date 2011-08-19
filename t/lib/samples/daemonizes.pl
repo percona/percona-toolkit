@@ -4,9 +4,9 @@
 # cannot daemonize itself.
 
 BEGIN {
-   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.  See http://code.google.com/p/maatkit/wiki/Testing"
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
-   unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/common";
+   unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 };
 
 use strict;
@@ -17,9 +17,9 @@ use constant MKDEBUG => $ENV{MKDEBUG};
 
 use Daemon;
 use OptionParser;
-use MaatkitTest;
+use PerconaTest;
 
-my $o = new OptionParser(file => "$trunk/common/t/samples/daemonizes.pl");
+my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
 $o->get_specs();
 $o->get_opts();
 

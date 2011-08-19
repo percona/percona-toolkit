@@ -133,7 +133,8 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => "$out/all-dbs-tbls.txt",
+      result    => $sandbox_version eq '5.1' ? "$out/all-dbs-tbls.txt"
+                                             : "$out/all-dbs-tbls-5.0.txt",
       test_name => "Iterate all schema objects with dbh",
    );
 
@@ -314,7 +315,8 @@ SKIP: {
    $du = new MySQLDump();
    test_so(
       filters   => [qw(-t mysql.user)],
-      result    => "$out/mysql-user-ddl.txt",
+      result    => $sandbox_version eq '5.1' ? "$out/mysql-user-ddl.txt"
+                                             : "$out/mysql-user-ddl-5.0.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
 
