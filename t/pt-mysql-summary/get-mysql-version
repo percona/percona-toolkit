@@ -1,9 +1,0 @@
-#!/bin/bash
-#get_mysql_version
-
-cat <<EOF > $1
-             Version | 5.0.51a-24+lenny2 (Debian)
-            Built On | debian-linux-gnu i486
-EOF
-
-cp samples/mysql-variables-001.txt /tmp/percona-toolkit-mysql-variables

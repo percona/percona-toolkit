@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+
+# This script is a test harness and TAP producer for testing bash functions
+# in a bash file.  A bash and test file are sourced; the former provides the
+# functions to test and the latter provides the testing.
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+LANG='en_US.UTF-8'
+
+die() {
+   echo $1 >&2
+   exit 255
+}
+
+(
+   if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+      BRANCH=$PERCONA_TOOLKIT_BRANCH
+      cd $BRANCH
+   else
+      while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+         cd ..
+      done
+      if [ ! -f Makefile.PL ]; then
+         die "Cannot find the root directory of the Percona Toolkit branch"
+         exit 1
+      fi
+      BRANCH=`pwd`
+   fi
+)
+
+# ############################################################################
+# Paths
+# ############################################################################
+
+TMPDIR="/tmp/percona-toolkit.test"
+if [ ! -d $TMPDIR ]; then
+   mkdir $TMPDIR
+fi
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+# Load (count) the tests and print a TAP-style test plan.
+load_tests() {
+   local test_files="$@"
+   local i=0
+   for t in $test_files; do
+      # Return unless the test file is bash.  There may be other types of
+      # files in the tool's test dir.
+      if [ ! -f $t ]; then
+         continue
+      fi
+      head -n 1 $t | grep -q bash || continue
+
+      tests[$i]=$t
+      number_of_tests=$(grep --max-count 1 '^TESTS=[0-9]' $t | cut -d'=' -f2)
+      if [ -z "$number_of_tests" ]; then
+         i=$(( i + 1 ))
+      else
+         i=$(( i + $number_of_tests ))
+      fi
+   done
+   echo "1..$i"
+}
+
+# Source a test file to run whatever it contains (hopefully tests!).
+run_test() {
+   local t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
+   rm -rf $TMPDIR/* >/dev/null 2>&1
+
+   TEST_NUMBER=1  # test number in this test file
+
+   # Tests assume that they're being ran from their own dir, so they access
+   # sample files like "samples/foo.txt".  So cd to the dir of the test file
+   # and run it.  But the test file may have been given as a relative path,
+   # so run its basename after cd'ing to its directory.  Then cd back in case
+   # other test files are in other dirs.
+   cwd="$PWD"
+   local t_dir=$(dirname $t)
+   TEST_FILE=$(basename $t)
+   cd $t_dir
+   source ./$TEST_FILE
+   cd $cwd
+
+   return $?
+}
+
+# Print a TAP-style test result.
+result() {
+   local result=$1
+   local test_name=${TEST_NAME:-"$TEST_NUMBER"}
+   if [ $result -eq 0 ]; then
+      echo "ok $testno - $TEST_FILE $test_name"
+   else
+      echo "not ok $testno - $TEST_FILE $test_name"
+      failed_tests=$(( failed_tests + 1))
+      echo "#   Failed '$test_command'" >&2
+      if [ -f $TMPDIR/failed_result ]; then
+         cat $TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
+      fi
+   fi
+   testno=$((testno + 1))
+   TEST_NUMBER=$((TEST_NUMBER + 1))
+   return $result
+}
+
+#
+# The following subs are for the test files to call.
+#
+
+no_diff() {
+   local got=$1
+   local expected=$2
+   test_command="diff $got $expected"
+   eval $test_command > $TMPDIR/failed_result 2>&1
+   result $?
+}
+
+is() {
+   local got=$1
+   local expected=$2
+   test_command="\"$got\" == \"$expected\""
+   test "$got" = "$expected"
+   result $?
+}
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+if [ $# -lt 2 ]; then
+   die "Usage: test-back-functions FILE TESTS"
+fi
+
+# Check and source the bash file.  This is the code being tested.
+# All its global vars and subs will be imported.
+bash_file=$1
+shift
+if [ ! -f "$bash_file" ]; then
+   die "$bash_file does not exist"
+fi
+head -n1 $bash_file | grep -q -E 'bash|sh' || die "$bash_file is not a bash file"
+source $bash_file
+
+# Load (count) the tests so that we can write a TAP test plan like 1..5
+# for expecting 5 tests.  Perl prove needs this.
+declare -a tests
+load_tests "$@"
+
+# Run the test files.
+testno=1
+failed_tests=0
+for t in "${tests[@]}"; do
+   run_test $t
+done
+
+rm -rf $TMPDIR
+
+exit $failed_tests
