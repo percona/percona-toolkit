@@ -1,0 +1,452 @@
+# dmidecode 2.10
+SMBIOS 2.5 present.
+41 structures occupying 1867 bytes.
+Table at 0x000FCCE0.
+
+Handle 0x0000, DMI type 0, 24 bytes
+BIOS Information
+	Vendor: American Megatrends Inc.
+	Version: 211    
+	Release Date: 10/20/2009
+	Address: 0xF0000
+	Runtime Size: 64 kB
+	ROM Size: 1024 kB
+	Characteristics:
+		ISA is supported
+		PCI is supported
+		PNP is supported
+		BIOS is upgradeable
+		BIOS shadowing is allowed
+		ESCD support is available
+		Boot from CD is supported
+		Selectable boot is supported
+		EDD is supported
+		5.25"/1.2 MB floppy services are supported (int 13h)
+		3.5"/720 kB floppy services are supported (int 13h)
+		3.5"/2.88 MB floppy services are supported (int 13h)
+		Print screen service is supported (int 5h)
+		8042 keyboard services are supported (int 9h)
+		Printer services are supported (int 17h)
+		CGA/mono video services are supported (int 10h)
+		ACPI is supported
+		USB legacy is supported
+		Smart battery is supported
+		BIOS boot specification is supported
+		Function key-initiated network boot is supported
+		Targeted content distribution is supported
+	BIOS Revision: 2.11
+	Firmware Revision: 32.1
+
+Handle 0x0001, DMI type 1, 27 bytes
+System Information
+	Manufacturer: ASUSTeK Computer Inc.        
+	Product Name: UL30A               
+	Version: 1.0       
+	Serial Number: 102677490240        
+	UUID: 009FC67B-8AD1-DE81-2E8E-90E6BAF39C70
+	Wake-up Type: Power Switch
+	SKU Number:                     
+	Family:                     
+
+Handle 0x0002, DMI type 2, 15 bytes
+Base Board Information
+	Manufacturer: ASUSTeK Computer Inc.        
+	Product Name: UL30A     
+	Version: 1.0       
+	Serial Number: BSN12345678901234567
+	Asset Tag: ATN12345678901234567
+	Features:
+		Board is a hosting board
+		Board requires at least one daughter board
+		Board is replaceable
+	Location In Chassis: MIDDLE              
+	Chassis Handle: 0x0003
+	Type: Motherboard
+	Contained Object Handles: 0
+
+Handle 0x0003, DMI type 3, 21 bytes
+Chassis Information
+	Manufacturer: ASUSTeK Computer Inc.        
+	Type: Notebook
+	Lock: Not Present
+	Version: 1.0       
+	Serial Number: CSN12345678901234567
+	Asset Tag: ATN12345678901234567
+	Boot-up State: Safe
+	Power Supply State: Safe
+	Thermal State: Other
+	Security Status: Other
+	OEM Information: 0x00000000
+	Height: Unspecified
+	Number Of Power Cords: 1
+	Contained Elements: 0
+
+Handle 0x0004, DMI type 4, 40 bytes
+Processor Information
+	Socket Designation: Socket 478
+	Type: Central Processor
+	Family: Other
+	Manufacturer: Intel            
+	ID: 7A 06 01 00 FF FB EB BF
+	Version: Genuine Intel(R) CPU U7300 @ 1.30GHz                
+	Voltage: 1.0 V
+	External Clock: 200 MHz
+	Max Speed: 1300 MHz
+	Current Speed: 1300 MHz
+	Status: Populated, Enabled
+	Upgrade: Socket 478
+	L1 Cache Handle: 0x0005
+	L2 Cache Handle: 0x0007
+	L3 Cache Handle: Not Provided
+	Serial Number: PSN12345678901234567
+	Asset Tag: PATN1234567890123456
+	Part Number: PPN12345678901234567
+	Core Count: 2
+	Core Enabled: 2
+	Thread Count: 2
+	Characteristics:
+		64-bit capable
+
+Handle 0x0005, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L1-Cache
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 64 kB
+	Maximum Size: 64 kB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Data
+	Associativity: 8-way Set-associative
+
+Handle 0x0006, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L1-Cache
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 64 kB
+	Maximum Size: 64 kB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Instruction
+	Associativity: 8-way Set-associative
+
+Handle 0x0007, DMI type 7, 19 bytes
+Cache Information
+	Socket Designation: L2-Cache
+	Configuration: Enabled, Not Socketed, Level 2
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 3072 kB
+	Maximum Size: 3072 kB
+	Supported SRAM Types:
+		Other
+	Installed SRAM Type: Other
+	Speed: Unknown
+	Error Correction Type: Single-bit ECC
+	System Type: Unified
+	Associativity: Other
+
+Handle 0x0008, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J3401
+	Internal Connector Type: None
+	External Reference Designator: LAN
+	External Connector Type: RJ-45
+	Port Type: Network Port
+
+Handle 0x0009, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J4501
+	Internal Connector Type: None
+	External Reference Designator: VGA
+	External Connector Type: DB-15 female
+	Port Type: Video Port
+
+Handle 0x000A, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J5201
+	Internal Connector Type: None
+	External Reference Designator: USB1
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x000B, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J5201
+	Internal Connector Type: None
+	External Reference Designator: USB2
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x000C, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J4800
+	Internal Connector Type: None
+	External Reference Designator: HDMI
+	External Connector Type: Other
+	Port Type: Other
+
+Handle 0x000D, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J5101
+	Internal Connector Type: None
+	External Reference Designator: SATA 1
+	External Connector Type: SAS/SATA Plug Receptacle
+	Port Type: SATA
+
+Handle 0x000E, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J4202
+	Internal Connector Type: None
+	External Reference Designator: FlashCard
+	External Connector Type: Other
+	Port Type: Other
+
+Handle 0x000F, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J4301
+	Internal Connector Type: None
+	External Reference Designator: ExpressCard
+	External Connector Type: Other
+	Port Type: Other
+
+Handle 0x0010, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J6601
+	Internal Connector Type: None
+	External Reference Designator: eSATA
+	External Connector Type: SAS/SATA Plug Receptacle
+	Port Type: SATA
+
+Handle 0x0011, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J3703
+	Internal Connector Type: None
+	External Reference Designator: Audio Out
+	External Connector Type: Mini Jack (headphones)
+	Port Type: Audio Port
+
+Handle 0x0012, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J3801
+	Internal Connector Type: None
+	External Reference Designator: Mic In
+	External Connector Type: Mini Jack (headphones)
+	Port Type: Audio Port
+
+Handle 0x0013, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J2502
+	Internal Connector Type: None
+	External Reference Designator: USB3
+	External Connector Type: Access Bus (USB)
+	Port Type: USB
+
+Handle 0x0014, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J4203
+	Internal Connector Type: None
+	External Reference Designator: 1394
+	External Connector Type: IEEE 1394
+	Port Type: Firewire (IEEE P1394)
+
+Handle 0x0015, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J5401
+	Internal Connector Type: None
+	External Reference Designator: DockPort
+	External Connector Type: Other
+	Port Type: Other
+
+Handle 0x0016, DMI type 9, 13 bytes
+System Slot Information
+	Designation: PCIE1
+	Type: x1 PCI Express
+	Current Usage: In Use
+	Length: Short
+	ID: 0
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+
+Handle 0x0017, DMI type 9, 13 bytes
+System Slot Information
+	Designation: PCIE2
+	Type: x1 PCI Express
+	Current Usage: Available
+	Length: Short
+	ID: 1
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+
+Handle 0x0018, DMI type 9, 13 bytes
+System Slot Information
+	Designation: PCIE3
+	Type: x1 PCI Express
+	Current Usage: Available
+	Length: Short
+	ID: 2
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+
+Handle 0x0019, DMI type 9, 13 bytes
+System Slot Information
+	Designation: PCIE4
+	Type: x1 PCI Express
+	Current Usage: Available
+	Length: Short
+	ID: 3
+	Characteristics:
+		3.3 V is provided
+		PME signal is supported
+
+Handle 0x001A, DMI type 10, 6 bytes
+On Board Device Information
+	Type: Video
+	Status: Enabled
+	Description:  UMA
+
+Handle 0x001B, DMI type 10, 6 bytes
+On Board Device Information
+	Type: Ethernet
+	Status: Enabled
+	Description:  NIC
+
+Handle 0x001C, DMI type 10, 6 bytes
+On Board Device Information
+	Type: Sound
+	Status: Enabled
+	Description:  Audio Codec
+
+Handle 0x001D, DMI type 10, 6 bytes
+On Board Device Information
+	Type: SATA Controller
+	Status: Enabled
+	Description:  SATA Controller
+
+Handle 0x001E, DMI type 10, 6 bytes
+On Board Device Information
+	Type: Other
+	Status: Enabled
+	Description:  1394/FlashCardReader
+
+Handle 0x001F, DMI type 13, 22 bytes
+BIOS Language Information
+	Installable Languages: 1
+		en|US|iso8859-1
+	Currently Installed Language: en|US|iso8859-1
+
+Handle 0x0020, DMI type 16, 15 bytes
+Physical Memory Array
+	Location: System Board Or Motherboard
+	Use: System Memory
+	Error Correction Type: None
+	Maximum Capacity: 8 GB
+	Error Information Handle: Not Provided
+	Number Of Devices: 2
+
+Handle 0x0021, DMI type 19, 15 bytes
+Memory Array Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x000FFFFFFFF
+	Range Size: 4 GB
+	Physical Array Handle: 0x0020
+	Partition Width: 0
+
+Handle 0x0022, DMI type 17, 27 bytes
+Memory Device
+	Array Handle: 0x0020
+	Error Information Handle: Not Provided
+	Total Width: 64 bits
+	Data Width: 64 bits
+	Size: 2048 MB
+	Form Factor: SODIMM
+	Set: None
+	Locator: SODIMM0
+	Bank Locator: BANK0
+	Type: Other
+	Type Detail: Synchronous
+	Speed: 800 MHz
+	Manufacturer: N/A                           
+	Serial Number: N/A                           
+	Asset Tag: N/A                           
+	Part Number: N/A                           
+
+Handle 0x0023, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00000000000
+	Ending Address: 0x0007FFFFFFF
+	Range Size: 2 GB
+	Physical Device Handle: 0x0022
+	Memory Array Mapped Address Handle: 0x0021
+	Partition Row Position: Unknown
+	Interleave Position: Unknown
+	Interleaved Data Depth: Unknown
+
+Handle 0x0024, DMI type 17, 27 bytes
+Memory Device
+	Array Handle: 0x0020
+	Error Information Handle: Not Provided
+	Total Width: 64 bits
+	Data Width: 64 bits
+	Size: 2048 MB
+	Form Factor: SODIMM
+	Set: None
+	Locator: SODIMM1
+	Bank Locator: BANK1
+	Type: Other
+	Type Detail: Synchronous
+	Speed: 800 MHz
+	Manufacturer: N/A                           
+	Serial Number: N/A                           
+	Asset Tag: N/A                           
+	Part Number: N/A                           
+
+Handle 0x0025, DMI type 20, 19 bytes
+Memory Device Mapped Address
+	Starting Address: 0x00080000000
+	Ending Address: 0x000FFFFFFFF
+	Range Size: 2 GB
+	Physical Device Handle: 0x0024
+	Memory Array Mapped Address Handle: 0x0021
+	Partition Row Position: Unknown
+	Interleave Position: Unknown
+	Interleaved Data Depth: Unknown
+
+Handle 0x0026, DMI type 22, 26 bytes
+Portable Battery
+	Location: In the back
+	Manufacturer: AS176NC2KF
+	Manufacture Date: 09/08/03
+	Serial Number: @800
+	Name: UL50-44         
+	Chemistry: Other
+	Design Capacity: 4400 mWh
+	Design Voltage: 14400 mV
+	SBDS Version: SMART Ver 0123
+	Maximum Error: Unknown
+	OEM-specific Information: 0x00000000
+
+Handle 0x0027, DMI type 200, 27 bytes
+OEM-specific Type
+	Header and Data:
+		C8 1B 27 00 01 02 03 00 00 00 00 00 00 00 00 00
+		00 00 00 00 00 00 00 00 00 00 00
+	Strings:
+		ASUSTeK Computer Inc.        
+		Notebook  
+		1.0       
+
+Handle 0x0028, DMI type 127, 4 bytes
+End Of Table

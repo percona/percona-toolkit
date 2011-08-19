@@ -202,9 +202,10 @@ fuzzy_pct () {
 # Parses the output of 'ps -e -o args | $AP_GREP mysqld' or 'ps auxww...'
 # which should be in /tmp/percona-toolkit.
 parse_mysqld_instances () {
+   local file=$1
    echo "  Port  Data Directory             Socket"
    echo "  ===== ========================== ======"
-   $AP_GREP '/mysqld ' /tmp/percona-toolkit | while read line; do
+   $AP_GREP '/mysqld ' $file | while read line; do
       for word in ${line}; do
          # Some grep doesn't have -o, so I have to pull out the words I want by
          # looking at each word
@@ -226,12 +227,14 @@ parse_mysqld_instances () {
 # /tmp/percona-toolkit.  You have to specify the port for the instance you are
 # interested in, in case there are multiple instances.
 find_my_cnf_file() {
-   if test -n "$1" && $AP_GREP -- "/mysqld.*--port=$1" /tmp/percona-toolkit >/dev/null 2>&1 ; then
-      $AP_GREP -- "/mysqld.*--port=$1" /tmp/percona-toolkit \
+   local file=$1
+   local port=$2
+   if test -n "$port" && $AP_GREP -- "/mysqld.*--port=$port" $file >/dev/null 2>&1 ; then
+      $AP_GREP -- "/mysqld.*--port=$port" $file \
          | $AP_AWK 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
          | head -n1
    else
-      $AP_GREP '/mysqld' /tmp/percona-toolkit \
+      $AP_GREP '/mysqld' $file \
          | $AP_AWK 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
          | head -n1
    fi
@@ -255,7 +258,8 @@ get_mysql_version () {
 # Gets the system start and uptime in human readable format.  Last restart date
 # should be in /tmp/percona-toolkit.
 get_mysql_uptime () {
-   restart="$(cat /tmp/percona-toolkit)"
+   local file=$1
+   restart="$(cat $file)"
    uptime="$(get_stat Uptime)"
    uptime="$(secs_to_time ${uptime})"
    echo "${restart} (up ${uptime})"
@@ -263,16 +267,18 @@ get_mysql_uptime () {
 
 # Summarizes the output of SHOW MASTER LOGS, which is in /tmp/percona-toolkit
 summarize_binlogs () {
-   name_val "Binlogs" $(wc -l /tmp/percona-toolkit)
-   name_val "Zero-Sized" $($AP_GREP -c '\<0$' /tmp/percona-toolkit)
-   size=$($AP_AWK '{t += $2} END{printf "%0.f\n", t}' /tmp/percona-toolkit)
+   local file=$1
+   name_val "Binlogs" $(wc -l $file)
+   name_val "Zero-Sized" $($AP_GREP -c '\<0$' $file)
+   size=$($AP_AWK '{t += $2} END{printf "%0.f\n", t}' $file)
    name_val "Total Size" $(shorten ${size} 1)
 }
 
 # Print out binlog_do_db and binlog_ignore_db
 format_binlog_filters () {
-   name_val "binlog_do_db" $(cut -f3 /tmp/percona-toolkit)
-   name_val "binlog_ignore_db" $(cut -f4 /tmp/percona-toolkit)
+   local file=$1
+   name_val "binlog_do_db" $(cut -f3 $file)
+   name_val "binlog_ignore_db" $(cut -f4 $file)
 }
 
 # Takes as input a file that has two samples of SHOW STATUS, columnized next to
@@ -280,9 +286,10 @@ format_binlog_filters () {
 # absolute, all-time per second, and per-second over the interval between the
 # samples.  Omits any rows that are all zeroes.
 format_status_variables () {
+   local file=$1
    # First, figure out the intervals.
-   utime1=$($AP_AWK '/Uptime /{print $2}' /tmp/percona-toolkit);
-   utime2=$($AP_AWK '/Uptime /{print $3}' /tmp/percona-toolkit);
+   utime1=$($AP_AWK '/Uptime /{print $2}' $file);
+   utime2=$($AP_AWK '/Uptime /{print $3}' $file);
    ${AP_AWK} "
    BEGIN {
       utime1 = ${utime1};
@@ -319,12 +326,12 @@ format_status_variables () {
             printf(format, \$1, perday, persec, nowsec);
          }
       }
-   }" /tmp/percona-toolkit
+   }" $file
 }
 
-# Slices the processlist a bunch of different ways.  Uses input from
-# /tmp/percona-toolkit-mysql-processlist.  The processlist should be created with the \G
-# flag so it's vertical.  The parsing is a bit awkward because different
+# Slices the processlist a bunch of different ways.  The processlist should be
+# created with the \G flag so it's vertical.
+# The parsing is a bit awkward because different
 # versions of awk have limitations like "too many fields on line xyz".  So we
 # use 'cut' to shorten the lines.  We count all things into temporary variables
 # for each process in the processlist, and when we hit the Info: line which
@@ -332,13 +339,14 @@ format_status_variables () {
 # variables.  If we're summarizing Command, we count everything; otherwise, only
 # non-Sleep processes get counted towards the sum and max of Time.
 summarize_processlist () {
+   local file=$1
    for param in Command User Host db State; do
       echo
       printf '  %-30s %8s %7s %9s %9s\n' \
          "${param}" "COUNT(*)" Working "SUM(Time)" "MAX(Time)"
       echo "  ------------------------------" \
          "-------- ------- --------- ---------"
-      cut -c1-80 /tmp/percona-toolkit-mysql-processlist \
+      cut -c1-80 $file \
          | $AP_AWK "
          \$1 == \"${param}:\" {
             p = substr(\$0, index(\$0, \":\") + 2);
@@ -384,6 +392,7 @@ summarize_processlist () {
 # sets in regular expressions, like [[:space:]] (looking at you, Debian).  So
 # the below patterns contain [<space><tab>] and must remain that way.
 pretty_print_cnf_file () {
+   local file=$1
    $AP_AWK '
    BEGIN {
       FS="="
@@ -403,7 +412,7 @@ pretty_print_cnf_file () {
       else {
          print $1;
       }
-   }' /tmp/percona-toolkit
+   }' $file
 }
 
 find_checkpoint_age() {
@@ -525,37 +534,38 @@ find_max_trx_time() {
 
 # Summarizes various things about InnoDB status that are not easy to see by eye.
 format_innodb_status () {
-   name_val "Checkpoint Age"       $(shorten $(find_checkpoint_age "${1}"))
-   name_val "InnoDB Queue"        "$(awk '/queries inside/{print}' "${1}")"
-   name_val "Oldest Transaction"  "$(find_max_trx_time "${1}") Seconds";
-   name_val "History List Len"     $(awk '/History list length/{print $4}' "$1")
-   name_val "Read Views"           $(awk '/read views open inside/{print $1}' "${1}")
-   name_val "Undo Log Entries"    "$(summarize_undo_log_entries "${1}")"
-   name_val "Pending I/O Reads"   "$(find_pending_io_reads "${1}")"
-   name_val "Pending I/O Writes"  "$(find_pending_io_writes "${1}")"
-   name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${1}")"
-   $AP_AWK -F, '/^---TRANSACTION/{print $2}' "${1}" \
+   local file=$1
+   name_val "Checkpoint Age"       $(shorten $(find_checkpoint_age "${file}"))
+   name_val "InnoDB Queue"        "$(awk '/queries inside/{print}' "${file}")"
+   name_val "Oldest Transaction"  "$(find_max_trx_time "${file}") Seconds";
+   name_val "History List Len"     $(awk '/History list length/{print $4}' "${file}")
+   name_val "Read Views"           $(awk '/read views open inside/{print $1}' "${file}")
+   name_val "Undo Log Entries"    "$(summarize_undo_log_entries "${file}")"
+   name_val "Pending I/O Reads"   "$(find_pending_io_reads "${file}")"
+   name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
+   name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
+   $AP_AWK -F, '/^---TRANSACTION/{print $2}' "${file}" \
       | $AP_SED -e 's/ [0-9]* sec.*//' | sort | uniq -c > /tmp/percona-toolkit2
    name_val "Transaction States" "$(group_concat /tmp/percona-toolkit2)"
-   if $AP_GREP 'TABLE LOCK table' "${1}" >/dev/null ; then
+   if $AP_GREP 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
-      $AP_AWK '/^TABLE LOCK table/{print $4}' "${1}" \
+      $AP_AWK '/^TABLE LOCK table/{print $4}' "${file}" \
          | sort | uniq -c | sort -rn
    fi
-   if $AP_GREP 'has waited at' "${1}" > /dev/null ; then
+   if $AP_GREP 'has waited at' "${file}" > /dev/null ; then
       echo "Semaphore Waits"
-      $AP_GREP 'has waited at' "${1}" | cut -d' ' -f6-8 \
+      $AP_GREP 'has waited at' "${file}" | cut -d' ' -f6-8 \
          | sort | uniq -c | sort -rn
    fi
-   if $AP_GREP 'reserved it in mode' "${1}" > /dev/null; then
+   if $AP_GREP 'reserved it in mode' "${file}" > /dev/null; then
       echo "Semaphore Holders"
       $AP_AWK '/has reserved it in mode/{
          print substr($0, 1 + index($0, "("), index($0, ")") - index($0, "(") - 1);
-      }' "${1}" | sort | uniq -c | sort -rn
+      }' "${file}" | sort | uniq -c | sort -rn
    fi
-   if $AP_GREP -e 'Mutex at' -e 'lock on' "${1}" >/dev/null 2>&1; then
+   if $AP_GREP -e 'Mutex at' -e 'lock on' "${file}" >/dev/null 2>&1; then
       echo "Mutexes/Locks Waited For"
-      $AP_GREP -e 'Mutex at' -e 'lock on' "${1}" | $AP_SED -e 's/^[XS]-//' -e 's/,.*$//' \
+      $AP_GREP -e 'Mutex at' -e 'lock on' "${file}" | $AP_SED -e 's/^[XS]-//' -e 's/,.*$//' \
          | sort | uniq -c | sort -rn
    fi
 }
@@ -564,6 +574,7 @@ format_innodb_status () {
 # tables, views, etc.  $1 is the file name.  $2 is the database name; if none,
 # then there should be multiple databases.
 format_overall_db_stats () {
+   local file=$1
    echo
    # We keep counts of everything in an associative array keyed by db name, and
    # what it is.  The num_dbs counter is to ensure sort order is consistent when
@@ -622,7 +633,7 @@ format_overall_db_stats () {
             printf fmt, db, counts[db ",tables"], counts[db ",views"], counts[db ",sps"], counts[db ",trg"], counts[db ",func"], counts[db ",fk"], counts[db ",partn"];
          }
       }
-   ' /tmp/percona-toolkit-mysqldump > /tmp/percona-toolkit
+   ' $file > /tmp/percona-toolkit
    head -n2 /tmp/percona-toolkit
    tail -n +3 /tmp/percona-toolkit | sort
 
@@ -682,7 +693,7 @@ format_overall_db_stats () {
             print "";
          }
       }
-   ' /tmp/percona-toolkit-mysqldump > /tmp/percona-toolkit
+   ' $file > /tmp/percona-toolkit
    head -n1 /tmp/percona-toolkit
    tail -n +2 /tmp/percona-toolkit | sort
 
@@ -755,7 +766,7 @@ format_overall_db_stats () {
             print "";
          }
       }
-   ' /tmp/percona-toolkit-mysqldump > /tmp/percona-toolkit
+   ' $file > /tmp/percona-toolkit
    head -n1 /tmp/percona-toolkit
    tail -n +2 /tmp/percona-toolkit | sort
 
@@ -846,12 +857,11 @@ format_overall_db_stats () {
             print "";
          }
       }
-   ' /tmp/percona-toolkit-mysqldump > /tmp/percona-toolkit
+   ' $file > /tmp/percona-toolkit
    hdr=$($AP_GREP -n Database /tmp/percona-toolkit | cut -d: -f1);
    head -n${hdr} /tmp/percona-toolkit
    tail -n +$((${hdr} + 1)) /tmp/percona-toolkit | sort
    echo
-
 }
 
 # ##############################################################################
@@ -878,7 +888,7 @@ main() {
    name_val "System time" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
    section Instances
    ps auxww 2>/dev/null | $AP_GREP mysqld > /tmp/percona-toolkit
-   parse_mysqld_instances
+   parse_mysqld_instances /tmp/percona-toolkit
 
    # ########################################################################
    # Fetch some basic info so we can start
@@ -890,13 +900,13 @@ main() {
       exit 1
    fi
    user="$(cat /tmp/percona-toolkit)";
-   mysql -ss -e 'SHOW /*!40100 GLOBAL*/ VARIABLES' "$@" > /tmp/percona-toolkit-mysql-variables
-   mysql -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' "$@" > /tmp/percona-toolkit-mysql-status
-   mysql -ss -e 'SHOW DATABASES' "$@" > /tmp/percona-toolkit-mysql-databases 2>/dev/null
-   mysql -ssE -e 'SHOW SLAVE STATUS' "$@" > /tmp/percona-toolkit-mysql-slave 2>/dev/null
-   mysql -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' "$@" > /tmp/percona-toolkit-innodb-status 2>/dev/null
-   mysql -ssE -e 'SHOW FULL PROCESSLIST' "$@" > /tmp/percona-toolkit-mysql-processlist 2>/dev/null
-   now="$(mysql -ss -e 'SELECT NOW()' "$@")"
+   mysql "$@" -ss  -e 'SHOW /*!40100 GLOBAL*/ VARIABLES' > /tmp/percona-toolkit-mysql-variables
+   mysql "$@" -ss  -e 'SHOW /*!50000 GLOBAL*/ STATUS' > /tmp/percona-toolkit-mysql-status
+   mysql "$@" -ss  -e 'SHOW DATABASES' > /tmp/percona-toolkit-mysql-databases 2>/dev/null
+   mysql "$@" -ssE -e 'SHOW SLAVE STATUS' > /tmp/percona-toolkit-mysql-slave 2>/dev/null
+   mysql "$@" -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' > /tmp/percona-toolkit-innodb-status 2>/dev/null
+   mysql "$@" -ssE -e 'SHOW FULL PROCESSLIST' > /tmp/percona-toolkit-mysql-processlist 2>/dev/null
+   now="$(mysql "$@" -ss -e 'SELECT NOW()')"
    port="$(get_var port)"
 
    # ########################################################################
@@ -909,9 +919,9 @@ main() {
    get_mysql_version
 
    uptime="$(get_stat Uptime)"
-   mysql -ss -e "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)" "$@" \
+   mysql "$@" -ss -e "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)" \
       > /tmp/percona-toolkit
-   name_val Started "$(get_mysql_uptime)"
+   name_val Started "$(get_mysql_uptime /tmp/percona-toolkit)"
 
    name_val Databases "$($AP_GREP -c . /tmp/percona-toolkit-mysql-databases)"
    name_val Datadir "$(get_var datadir)"
@@ -932,7 +942,7 @@ main() {
    # Processlist, sliced several different ways
    # ########################################################################
    section Processlist
-   summarize_processlist
+   summarize_processlist /tmp/percona-toolkit-mysql-processlist
 
    # ########################################################################
    # Queries and query plans
@@ -940,7 +950,7 @@ main() {
    section "Status_Counters_(Wait_10_Seconds)"
    sleep 10
    # TODO: gather this data in the same format as normal: stats, TS line
-   mysql -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' "$@" \
+   mysql "$@" -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' \
       | join /tmp/percona-toolkit-mysql-status - > /tmp/percona-toolkit 
    # Make a file with a list of things we want to omit because they aren't
    # counters, they are gauges (in RRDTool terminology).  Gauges are shown
@@ -967,7 +977,7 @@ main() {
    do
       echo "${var}" >> /tmp/percona-toolkit-noncounters
    done
-   format_status_variables | $AP_GREP -v -f /tmp/percona-toolkit-noncounters
+   format_status_variables /tmp/percona-toolkit | $AP_GREP -v -f /tmp/percona-toolkit-noncounters
 
    # ########################################################################
    # Table cache
@@ -1035,7 +1045,7 @@ main() {
          # that option to mysqldump, because when mysqldump checks for them, it
          # can take a long time, one table at a time.
          triggers="--skip-triggers"
-         trg=$(mysql -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null);
+         trg=$(mysql "$@" -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null);
          if [ "${res}" ]; then
             if [ "${res}" -gt 0 ]; then
                triggers="--triggers"
@@ -1048,15 +1058,15 @@ main() {
       echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
       echo -n "Type the name of the database, or press Enter to dump all of them. "
       read dbtodump
-      mysqldump --no-data --skip-comments \
+      mysqldump "$@" --no-data --skip-comments \
          --skip-add-locks --skip-add-drop-table --compact \
          --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-         ${trg_arg} "$@" ${dbtodump:---all-databases} > /tmp/percona-toolkit-mysqldump
+         ${trg_arg} ${dbtodump:---all-databases} > /tmp/percona-toolkit-mysqldump
       # Test the result by checking the file, not by the exit status, because we
       # might get partway through and then die, and the info is worth analyzing
       # anyway.
       if $AP_GREP 'CREATE TABLE' /tmp/percona-toolkit-mysqldump >/dev/null 2>&1; then
-         format_overall_db_stats
+         format_overall_db_stats /tmp/percona-toolkit-mysqldump
       else
          echo "Skipping schema analysis due to apparent error in dump file"
          rm -f /tmp/percona-toolkit-mysqldump
@@ -1189,8 +1199,8 @@ main() {
    # Users & Security
    # ########################################################################
    section Security
-   users="$(mysql -ss \
-      -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' "$@" 2>/dev/null \
+   users="$(mysql "$@" -ss \
+      -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null \
       | $AP_AWK '{printf "%d users, %d anon, %d w/o pw, %d old pw\n", $1, $2, $3, $4}')"
    name_val Users "${users}"
    name_val "Old Passwords" $(get_var old_passwords)
@@ -1201,15 +1211,15 @@ main() {
    section Binary_Logging
    binlog=$(get_var log_bin)
    if [ "${binlog}" ]; then
-      mysql -ss -e 'SHOW MASTER LOGS' "$@" > /tmp/percona-toolkit 2>/dev/null
-      summarize_binlogs
+      mysql "$@" -ss -e 'SHOW MASTER LOGS' > /tmp/percona-toolkit 2>/dev/null
+      summarize_binlogs /tmp/percona-toolkit
       format="$(get_var binlog_format)"
       name_val binlog_format "${format:-STATEMENT}"
       name_val expire_logs_days $(get_var expire_logs_days)
       name_val sync_binlog $(get_var sync_binlog)
       name_val server_id $(get_var server_id)
-      mysql -ss -e 'SHOW MASTER STATUS' "$@" > /tmp/percona-toolkit 2>/dev/null
-      format_binlog_filters
+      mysql "$@" -ss -e 'SHOW MASTER STATUS' > /tmp/percona-toolkit 2>/dev/null
+      format_binlog_filters /tmp/percona-toolkit
    fi
 
 # Replication: seconds behind, running, filters, skip_slave_start, skip_errors,
@@ -1243,7 +1253,7 @@ main() {
    # ########################################################################
    section Configuration_File
    ps auxww 2>/dev/null | $AP_GREP mysqld > /tmp/percona-toolkit
-   cnf_file=$(find_my_cnf_file ${port});
+   cnf_file=$(find_my_cnf_file /tmp/percona-toolkit ${port});
    if [ ! -e "${cnf_file}" ]; then
       name_val "Config File" "Cannot autodetect, trying common locations"
       cnf_file="/etc/my.cnf";
@@ -1257,7 +1267,7 @@ main() {
    if [ -e "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
       cat "${cnf_file}" > /tmp/percona-toolkit
-      pretty_print_cnf_file
+      pretty_print_cnf_file /tmp/percona-toolkit
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi

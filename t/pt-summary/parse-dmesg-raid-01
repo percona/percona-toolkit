@@ -1,8 +1,0 @@
-#!/bin/bash
-#parse_raid_controller_dmesg
-
-cat <<EOF > $1
-Fusion-MPT SAS
-EOF
-
-cat samples/dmesg-001.txt > $2
