@@ -1,8 +1,0 @@
-#!/bin/bash
-#parse_raid_controller_lspci
-
-cat <<EOF > $1
-HP Smart Array
-EOF
-
-cat samples/lspci-006.txt > $2
