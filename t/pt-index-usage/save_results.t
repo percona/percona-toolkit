@@ -144,15 +144,15 @@ $rows = $dbh->selectall_arrayref("select * from mk.queries order by query_id");
 is_deeply(
    $rows,
    [
-      [  4950186562421969363,
+      [  "4950186562421969363",
          "select * from sakila.actor where last_name like ?",
          "select * from sakila.actor where last_name like 'A%'",
       ],
-      [  10334408417593890092,
+      [  "10334408417593890092",
          "select * from sakila.actor where last_name like ? order by actor_id",
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
       ],
-      [  10891801448710051322,
+      [  "10891801448710051322",
          "select * from sakila.actor where actor_id>?",
          "select * from sakila.actor where actor_id>10",
       ],
@@ -165,19 +165,19 @@ $res = $sandbox_version ge '5.1' ?
    # v5.1 and newer
    [
       [
-         4950186562421969363,
+         "4950186562421969363",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          1,
       ], 
       [
-         10891801448710051322,
+         "10891801448710051322",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          2,
       ],
       [
-         10334408417593890092,
+         "10334408417593890092",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          1,
@@ -187,19 +187,19 @@ $res = $sandbox_version ge '5.1' ?
    # v5.0 and older
    [
       [
-         4950186562421969363,
+         "4950186562421969363",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          1,
       ], 
       [
-         10334408417593890092,
+         "10334408417593890092",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          1,
       ],
       [
-         10891801448710051322,
+         "10891801448710051322",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          2,
@@ -266,15 +266,15 @@ $rows = $dbh->selectall_arrayref("select * from mk.queries order by query_id");
 is_deeply(
    $rows,
    [
-      [  4950186562421969363,
+      [  "4950186562421969363",
          "select * from sakila.actor where last_name like ?",
          "select * from sakila.actor where last_name like 'A%'",
       ],
-      [  10334408417593890092,
+      [  "10334408417593890092",
          "select * from sakila.actor where last_name like ? order by actor_id",
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
       ],
-      [  10891801448710051322,
+      [  "10891801448710051322",
          "select * from sakila.actor where actor_id>?",
          "select * from sakila.actor where actor_id>10",
       ],
@@ -287,19 +287,19 @@ $res = $sandbox_version ge '5.1' ?
    # v5.1 and newer
    [
       [
-         4950186562421969363,
+         "4950186562421969363",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          2,
       ], 
       [
-         10891801448710051322,
+         "10891801448710051322",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          4,
       ],
       [
-         10334408417593890092,
+         "10334408417593890092",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          2,
@@ -309,19 +309,19 @@ $res = $sandbox_version ge '5.1' ?
    # v5.0 and older
    [
       [
-         4950186562421969363,
+         "4950186562421969363",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%'",
          2,
       ], 
       [
-         10334408417593890092,
+         "10334408417593890092",
          qw(sakila  actor  idx_actor_last_name),
          "select * from sakila.actor where last_name like 'A%' order by actor_id",
          2,
       ],
       [
-         10891801448710051322,
+         "10891801448710051322",
          qw(sakila  actor  PRIMARY),
          "select * from sakila.actor where actor_id>10",
          4,
