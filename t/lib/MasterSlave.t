@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 39;
+use Test::More tests => 42;
 
 use MasterSlave;
 use DSNParser;
@@ -341,6 +341,58 @@ throws_ok(
    sub { $ms->is_replication_thread($query, type=>'foo') },
    qr/Invalid type: foo/,
    "Invalid repl thread type"
+);
+
+# ############################################################################
+# Bug 819421: MasterSlave::is_replication_thread() doesn't match all
+# Issue 1339: MasterSlave::is_replication_thread() doesn't match all
+# ############################################################################
+$query = {
+   Id      => '7',
+   User    => 'msandbox',
+   Host    => 'localhost:53246',
+   db      => 'NULL',
+   Command => 'Binlog Dump',
+   Time    => '1174',
+   State   => 'Sending binlog event to slave',
+   Info    => 'NULL',
+},
+
+ok(
+   $ms->is_replication_thread($query, type=>'all'),
+   'Explicit all matches binlog dump'
+);
+
+$query = {
+   Id      => '7',
+   User    => 'system user',
+   Host    => '',
+   db      => 'NULL',
+   Command => 'Connect',
+   Time    => '1174',
+   State   => 'Waiting for master to send event',
+   Info    => 'NULL',
+};
+
+ok(
+   $ms->is_replication_thread($query, type=>'all'),
+   'Explicit all matches slave io thread'
+);
+
+$query = {
+   Id      => '7',
+   User    => 'system user',
+   Host    => '',
+   db      => 'NULL',
+   Command => 'Connect',
+   Time    => '1174',
+   State   => 'Has read all relay log; waiting for the slave I/O thread to update it',
+   Info    => 'NULL',
+};
+
+ok(
+   $ms->is_replication_thread($query, type=>'all'),
+   'Explicit all matches slave sql thread'
 );
 
 # #############################################################################
