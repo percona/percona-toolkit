@@ -643,7 +643,7 @@ sub is_replication_thread {
    my ( $self, $query, %args ) = @_; 
    return unless $query;
 
-   my $type = lc $args{type} || 'all';
+   my $type = lc($args{type} || 'all');
    die "Invalid type: $type"
       unless $type =~ m/^binlog_dump|slave_io|slave_sql|all$/i;
 
