@@ -30,6 +30,8 @@ else {
    plan tests => 2;
 }
 
+`$trunk/sandbox/test-env reset >/dev/null`;
+
 my $output;
 my $cnf='/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";

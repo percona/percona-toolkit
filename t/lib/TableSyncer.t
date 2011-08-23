@@ -946,7 +946,7 @@ SKIP: {
    );
 
    $sb->wipe_clean($dbh2);
-   diag(`$trunk/sandbox/stop-sandbox remove 12347 >/dev/null &`);
+   diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null &`);
 }
 }
 

@@ -39,7 +39,7 @@ SKIP: {
    $output = `/tmp/12348/use -e 'select b from test.test1 where a=1' -N`;
    like($output, qr/mm/, 'Master-master sync worked');
 
-   diag(`$trunk/sandbox/stop-sandbox remove 12348 12349 >/dev/null`);
+   diag(`$trunk/sandbox/stop-sandbox 12348 12349 >/dev/null`);
 };
 
 # #############################################################################

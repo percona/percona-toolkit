@@ -40,7 +40,9 @@ my %port_for = (
    slave2 => 2903,
 );
 foreach my $port ( values %port_for ) {
-   diag(`$trunk/sandbox/stop-sandbox remove $port >/dev/null`);
+   if ( -d "/tmp/$port" ) {
+      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null`);
+   }
 }
 diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null`);
 diag(`$trunk/sandbox/start-sandbox slave 2903 2900 >/dev/null`);
@@ -464,5 +466,5 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox remove 2903 2902 2901 2900 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
 exit;

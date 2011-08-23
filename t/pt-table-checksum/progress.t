@@ -16,7 +16,7 @@ use Sandbox;
 require "$trunk/bin/pt-table-checksum";
 
 diag(`$trunk/sandbox/test-env reset`);
-diag(`$trunk/sandbox/stop-sandbox remove 12347 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
 diag(`$trunk/sandbox/start-sandbox slave 12347 12346 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -94,7 +94,7 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox remove 12347 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
 diag(`/tmp/12346/stop >/dev/null`);  # Start/stop clears SHOW SLAVE HOSTS.
 diag(`/tmp/12346/start >/dev/null`);
 $sb->wipe_clean($master_dbh);

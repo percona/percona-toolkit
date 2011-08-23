@@ -121,7 +121,7 @@ is_deeply(
 );
 
 $dbh3->disconnect();
-diag(`$trunk/sandbox/stop-sandbox remove 12348 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 
 # #############################################################################
 # Done.
