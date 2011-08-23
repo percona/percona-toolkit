@@ -309,21 +309,19 @@ case $opt in
          set_mysql_version
          echo "Percona Toolkit test environment started with MySQL v$MYSQL_VERSION."
       else
-         # Stop but don't remove the sandboxes.  The mysql error log
-         # may say why MySQL failed to start.
-         ./stop-sandbox all >/dev/null 2>&1
          err "There was an error starting the Percona Toolkit test environment."
       fi
       ;;
    stop)
       cd $PERCONA_TOOLKIT_BRANCH/sandbox
-      ./stop-sandbox remove all
-      exit_status=$?
+      ./stop-sandbox 12349 12348 12347 12346 12345 
+      exit_status=$((exit_status | $?))
+      ./stop-sandbox 2903 2902 2901 2900
+      exit_status=$((exit_status | $?))
       if [ $exit_status -eq 0 ]; then
          echo "Percona Toolkit test environment stopped."
       else
-         err "There was an error stopping the Percona Toolkit test environment." \
-             "The MySQL test servers may still be running."
+         err "Error stopping the Percona Toolkit test environment."
       fi
       ;;
    kill)

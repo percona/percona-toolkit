@@ -4,13 +4,9 @@
 # It's a "low level" script that is not usually called directly.
 # Exit 0 means everything was successful, else exit 1 on problems.
 
-err() {
-   echo
-   for msg; do
-      echo $msg
-   done
-   echo "See http://code.google.com/p/maatkit/wiki/Testing for more information."
-   echo
+die() {
+   echo $1 >&2
+   exit 1
 }
 
 make_sandbox() {
@@ -30,7 +26,7 @@ make_sandbox() {
       # Use ! instead of / because the replacment has / (it's a directory)
       sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
    done
-   rm /tmp/$port/*.bak
+   rm /tmp/$port/*.bak >/dev/null 2>&1
 
    if [ -n "$BINLOG_FORMAT" ]; then
       echo "binlog-format=$BINLOG_FORMAT" >> /tmp/$port/my.sandbox.cnf
@@ -65,10 +61,7 @@ make_sandbox() {
 # Sanity check the cmd line options.
 # ###########################################################################
 if [ $# -lt 2 ]; then
-   err "Usage: start-sandbox master|slave|master-master port [master port]" \
-       "Example: start-sandbox master 12345"                  \
-       "Example: start-sandbox slave 12346 12345"
-   exit 1
+   die "Usage: start-sandbox master|slave|master-master port [master port]"
 fi
 
 type=$1         # master, slave or master-master

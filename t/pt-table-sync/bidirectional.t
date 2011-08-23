@@ -534,7 +534,7 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox remove 12347 >/dev/null &`);
-diag(`$trunk/sandbox/stop-sandbox remove 12348 >/dev/null &`);
+diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 $sb->wipe_clean($c1_dbh);
 exit;

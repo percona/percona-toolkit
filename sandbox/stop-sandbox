@@ -1,60 +1,26 @@
 #!/bin/sh
 
-err() {
-   echo
-   for msg; do
-      echo $msg
-   done
-   echo "See http://code.google.com/p/maatkit/wiki/Testing for more information."
-   echo
+die() {
+   echo $1 >&2
+   exit 1
 }
 
-# ###########################################################################
-# Sanity check the cmd line options.
-# ###########################################################################
 if [ $# -lt 1 ]; then
-   err "Usage: stop-sandbox [remove] all|port [port...]"  \
-       "The 'all' option stops sandboxes /tmp/123[0-9]*." \
-       "The sandbox directories are removed if the first option is 'remove'."
-   exit 1
+   die "Usage: stop-sandbox PORTS"
 fi
-
-# ###########################################################################
-# Stop the sandboxes.
-# ###########################################################################
 
 exit_status=0
 
-for port in $@; do
-   if [ "$port" = "remove" ]; then
+for port in "$@"; do
+   if ! [ -d "/tmp/$port" ]; then
+      echo "MySQL test server on port $port does not exist."
       continue
    fi
 
-   if [ "$port" = "all" ]; then
-      ls /tmp/1234* >/dev/null 2>&1
-      if [ $? -eq 0 ]; then
-         for a in /tmp/123[0-9]*; do 
-            $a/stop
-            if [ $? -ne 0 ]; then
-               exit_status=1
-            fi
-            if [ $1 = "remove" ]; then
-               rm -rf $a
-            fi
-         done
-         break
-      fi
-   fi
-
-   if [ -d "/tmp/$port" ]; then
-      /tmp/$port/stop
-      if [ $? -ne 0 ]; then
-         exit_status=1
-      fi
-      if [ $1 = "remove" ]; then
-         rm -rf /tmp/$port
-      fi
-   fi
+   /tmp/$port/stop
+   exit_status=$((exit_status | $?))
+   rm -rf /tmp/$port
+   exit_status=$((exit_status | $?))
 done
 
 exit $exit_status

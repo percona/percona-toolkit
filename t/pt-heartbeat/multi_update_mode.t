@@ -17,7 +17,7 @@ use Sandbox;
 require "$trunk/bin/pt-heartbeat";
 
 diag(`$trunk/sandbox/test-env reset`);  # don't repl sakila db to 12347
-diag(`$trunk/sandbox/stop-sandbox remove 12347 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
 diag(`$trunk/sandbox/start-sandbox slave 12347 12346 >/dev/null`);
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -247,7 +247,7 @@ foreach my $port (@ports) {
 }
 
 diag(`rm -rf /tmp/mk-heartbeat-sentinel >/dev/null`);
-diag(`$trunk/sandbox/stop-sandbox remove 12347 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
 
 # #############################################################################
 # Done.
