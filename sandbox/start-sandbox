@@ -11,7 +11,10 @@ die() {
 
 make_sandbox() {
    # Make the sandbox dir and extract the base files.
-   mkdir /tmp/$port >/dev/null 2>&1
+   mkdir /tmp/$port
+   if [ $? -ne 0 ]; then
+      die "mkdir /tmp/$port failed"
+   fi
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
@@ -44,13 +47,13 @@ make_sandbox() {
       /tmp/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
       # grep exits 0 if lines are found
       if [ $? -ne 0 ]; then
-         echo "****** WARNING sandbox doesn't have a working InnoDB! ******"
-         cat /tmp/$port/data/mysqld.log
+         echo "****** WARNING sandbox doesn't have a working InnoDB! ******" >&2
+         cat /tmp/$port/data/mysqld.log >&2
          exit 1
       fi
    else
-      echo "Sandbox $type $port failed to start."
-      cat /tmp/$port/data/mysqld.log
+      echo "Sandbox $type $port failed to start." >&2
+      cat /tmp/$port/data/mysqld.log >&2
       exit 1
    fi
 
@@ -69,40 +72,32 @@ port=$2         # sandbox port number, e.g. 12345
 master_port=$3  # master port if slave or master-master
 
 if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ]; then
-   err "Invalid sandbox type: $type"          \
-       "Type must be either master, slave or master-master."
-   exit 1
+   die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
 fi
 
 if [ $port -le 1024 ]; then
-   err "Invalid port number: $port"  \
-       "Port number must be > 1024"
-   exit 1
+   die "Invalid port: $port.  Ports must be > 1024."
 fi
 
 if [ "$type" = "slave" -o "$type" = "master-master" ] && [ -z "$master_port" ]; then
-   err "No master port given for the $type."
-   exit 1
+   die "No master port given for the $type."
 fi
 
 # If creating a slave, the master must exist first.  Not true for creating
 # a master-master though.
 if [ "$type" = "slave" ] && [ ! -d "/tmp/$master_port" ]; then
-   err "Master sandbox does not exist: /tmp/$master_port"
-   exit 1
+   die "Master sandbox does not exist: /tmp/$master_port"
 fi
 
 # ###########################################################################
 # Sanity check the environment.
 # ###########################################################################
 if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
-   err "PERCONA_TOOLKIT_BRANCH environment variable is not set."
-   exit 1
+   die "PERCONA_TOOLKIT_BRANCH environment variable is not set."
 fi
 
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
-   err "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
-   exit 1
+   die "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
 fi
 
 cd $PERCONA_TOOLKIT_BRANCH/sandbox
@@ -116,11 +111,9 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
    PERCONA_TOOLKIT_SANDBOX=`./mk-test-env checkconfig | grep PERCONA_TOOLKIT_SANDBOX | cut -d= -f2 | awk '{print $1}'`
    if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
-      err "PERCONA_TOOLKIT_SANDBOX environment variable is not set."
-      exit 1
+      die "PERCONA_TOOLKIT_SANDBOX environment variable is not set."
    fi
 fi
-
 
 # ###########################################################################
 # Get server version.
@@ -132,12 +125,11 @@ elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
 elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
    mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
 else
-   err "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
+   die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
 version=`$mysqld -V | awk '{print $3}' | cut -d. -f 1,2`;
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
-   err "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
-   exit 1
+   die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
 fi
 
 # ###########################################################################
