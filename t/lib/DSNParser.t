@@ -396,6 +396,7 @@ is_deeply(
 # Issue 93: DBI error messages can include full SQL
 # #############################################################################
 SKIP: {
+   skip 'ShowErrorStatement requires DBD::mysql 4.003', 1 unless $DBD::mysql::VERSION ge '4.003';
    skip 'Cannot connect to sandbox master', 1 unless $dbh;
    eval { $dbh->do('SELECT * FROM doesnt.exist WHERE foo = 1'); };
    like(
