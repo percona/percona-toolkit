@@ -10,7 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 22;
-
+use Time::HiRes qw(sleep);
 use Daemon;
 use OptionParser;
 use PerconaTest;
@@ -51,6 +51,7 @@ ok(! -f $pid_file, 'Removes PID file upon exit');
 rm_tmp_files();
 
 system("$cmd 2 --daemonize --log $log_file");
+PerconaTest::wait_for_files($log_file);
 ok(-f $log_file, 'Log file exists');
 
 sleep 2;
@@ -59,6 +60,7 @@ like($output, qr/STDOUT\nSTDERR\n/, 'STDOUT and STDERR went to log file');
 
 # Check that the log file is appended to.
 system("$cmd 0 --daemonize --log $log_file");
+PerconaTest::wait_for_files($log_file);
 $output = `cat $log_file`;
 like(
    $output,
@@ -99,6 +101,7 @@ SKIP: {
    skip 'No fd in /proc', 2 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
    system("$cmd 1 --daemonize --pid $pid_file --log $log_file");
+   PerconaTest::wait_for_files($pid_file);
    chomp($pid = `cat $pid_file`);
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
@@ -112,6 +115,7 @@ SKIP: {
 
    sleep 1;
    system("echo foo | $cmd 1 --daemonize --pid $pid_file --log $log_file");
+   PerconaTest::wait_for_files($pid_file, $log_file);
    chomp($pid = `cat $pid_file`);
    $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
               : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
@@ -131,6 +135,7 @@ SKIP: {
 # ##########################################################################
 rm_tmp_files();
 system("$cmd 5 --daemonize --pid $pid_file 2>&1");
+PerconaTest::wait_for_files($pid_file);
 chomp($pid = `cat $pid_file`);
 kill 9, $pid;
 $output = `ps wx | grep '^[ ]*$pid' | grep -v grep`;
@@ -145,6 +150,7 @@ ok(
 );
 
 system("$cmd 1 --daemonize --log $log_file --pid $pid_file 2>/tmp/pre-daemonizes");
+PerconaTest::wait_for_files($log_file);
 $output = `ps wx | grep '$cmd 1' | grep -v grep`;
 chomp(my $new_pid = `cat $pid_file`);
 sleep 1;
@@ -173,6 +179,7 @@ diag(`rm -rf /tmp/pre-daemonizes`);
 # ############################################################################
 rm_tmp_files();
 system("$cmd 1 --daemonize --log $log_file --pid $pid_file");
+PerconaTest::wait_for_files($pid_file, $log_file);
 chomp($pid = `cat $pid_file`);
 $output = `$cmd 0 --daemonize --pid $pid_file 2>&1`;
 like(

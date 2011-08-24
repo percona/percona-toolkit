@@ -272,6 +272,20 @@ sub wait_for_table {
    );
 }
 
+sub wait_for_files {
+   my (@files) = @_;
+   return wait_until(
+      sub {
+         foreach my $file (@files) {
+            return 0 if ! -f $file;
+         }
+         return 1;
+      },
+      0.25,
+      15,
+   );
+}
+
 sub _read {
    my ( $fh ) = @_;
    return <$fh>;
