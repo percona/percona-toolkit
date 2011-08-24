@@ -34,6 +34,8 @@ my $ret_val = system("$cmd 2 --daemonize --pid $pid_file");
 die 'Cannot test Daemon.pm because t/daemonizes.pl is not working'
    unless $ret_val == 0;
 
+PerconaTest::wait_for_files($pid_file);
+
 my $output = `ps wx | grep '$cmd 2' | grep -v grep`;
 like($output, qr/$cmd/, 'Daemonizes');
 ok(-f $pid_file, 'Creates PID file');
