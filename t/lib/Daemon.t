@@ -138,6 +138,7 @@ system("$cmd 5 --daemonize --pid $pid_file 2>&1");
 PerconaTest::wait_for_files($pid_file);
 chomp($pid = `cat $pid_file`);
 kill 9, $pid;
+sleep 0.25;
 $output = `ps wx | grep '^[ ]*$pid' | grep -v grep`;
 unlike(
    $output,
