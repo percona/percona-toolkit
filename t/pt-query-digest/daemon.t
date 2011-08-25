@@ -9,6 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use Time::HiRes qw(sleep);
 use Test::More tests => 6;
 
 use PerconaTest;
@@ -21,17 +22,20 @@ my $dbh = $sb->get_dbh_for('master');
 
 my $output;
 
+my $pid_file = '/tmp/pt-query-digest.test.pid';
+`rm $pid_file >/dev/null 2>&1`;
+
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/pt-script.pid`;
-$output = `$trunk/bin/pt-query-digest $trunk/commont/t/samples/slow002.txt --pid /tmp/pt-script.pid 2>&1`;
+`touch $pid_file`;
+$output = `$trunk/bin/pt-query-digest $trunk/commont/t/samples/slow002.txt --pid $pid_file 2>&1`;
 like(
    $output,
-   qr{PID file /tmp/pt-script.pid already exists},
+   qr{PID file $pid_file already exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
-`rm -rf /tmp/pt-script.pid`;
+`rm $pid_file >/dev/null 2>&1`;
 
 # #########################################################################
 # Daemonizing and pid creation
@@ -39,22 +43,22 @@ like(
 SKIP: {
    skip "Cannot connect to sandbox master", 5 unless $dbh;
 
-   my $cmd = "$trunk/bin/pt-query-digest --daemonize --pid /tmp/pt-query-digest.pid --processlist h=127.1,P=12345,u=msandbox,p=msandbox --log /dev/null";
+   my $cmd = "$trunk/bin/pt-query-digest --daemonize --pid $pid_file --processlist h=127.1,P=12345,u=msandbox,p=msandbox --log /dev/null";
    `$cmd`;
-   $output = `ps -eaf | grep -v grep | grep pt-query-digest`;
+   $output = `ps xw | grep -v grep | grep '$cmd'`;
    like($output, qr/$cmd/, 'It is running');
-   ok(-f '/tmp/pt-query-digest.pid', 'PID file created');
+   ok(-f $pid_file, 'PID file created');
 
-   my ($pid) = $output =~ /\s+(\d+)\s+/;
-   $output = `cat /tmp/pt-query-digest.pid`;
+   my ($pid) = $output =~ /^\s*(\d+)/;
+   chomp($output = `cat $pid_file`);
    is($output, $pid, 'PID file has correct PID');
 
    kill 15, $pid;
-   sleep 1;
-   $output = `ps -eaf | grep pt-query-digest | grep daemonize`;
-   unlike($output, qr/$trunk\/pt-query-digest\/pt-query-digest/, 'It is not running');
+   sleep 0.25;
+   $output = `ps xw | grep -v grep | grep '$cmd'`;
+   is($output, "", 'It is not running');
    ok(
-      !-f '/tmp/pt-query-digest.pid',
+      !-f $pid_file,
       'Removes its PID file'
    );
 };
@@ -62,4 +66,5 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
+`rm $pid_file >/dev/null 2>&1`;
 exit;

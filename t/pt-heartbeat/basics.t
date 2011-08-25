@@ -29,12 +29,13 @@ else {
 $sb->create_dbs($dbh, ['test']);
 
 my $output;
-my $cnf      = '/tmp/12345/my.sandbox.cnf';
-my $cmd      = "$trunk/bin/pt-heartbeat -F $cnf ";
-my $pid_file = "/tmp/__pt-heartbeat-test.pid";
+my $cnf       = '/tmp/12345/my.sandbox.cnf';
+my $cmd       = "$trunk/bin/pt-heartbeat -F $cnf ";
+my $pid_file  = "/tmp/__pt-heartbeat-test.pid";
+my $sent_file = "/tmp/pt-heartbeat-sentinel";
 my $ps_grep_cmd = "ps x | grep pt-heartbeat | grep daemonize | grep -v grep";
 
-`rm /tmp/pt-heartbeat-sentinel 2>/dev/null`;
+`rm $sent_file 2>/dev/null`;
 
 $dbh->do('drop table if exists test.heartbeat');
 $dbh->do(q{CREATE TABLE test.heartbeat (
@@ -102,8 +103,8 @@ like($output, qr/Successfully created/, 'Created sentinel');
 sleep(2);
 $output = `$ps_grep_cmd`;
 unlike($output, qr/$cmd/, 'It is not running');
-ok(-f '/tmp/pt-heartbeat-sentinel', 'Sentinel file is there');
-unlink('/tmp/pt-heartbeat-sentinel');
+ok(-f $sent_file, 'Sentinel file is there');
+unlink($sent_file);
 $dbh->do('drop table if exists test.heartbeat'); # This will kill it
 
 # #############################################################################
@@ -137,5 +138,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+`rm $pid_file $sent_file 2>/dev/null`;
 $sb->wipe_clean($dbh);
 exit;
