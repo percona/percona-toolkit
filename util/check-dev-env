@@ -30,6 +30,8 @@ use Test::More;
 use Time::HiRes;
 use Time::Local;
 
+print `perl --version | grep 'v5'`;
+
 my $file    = __FILE__;
 my $m       = `cat $file | grep '^use'`;
 my @modules = map { m/use (.+?);/; $1 } split("\n", $m);
