@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(sleep);
 
 use PerconaTest;
 use DSNParser;
@@ -33,6 +34,9 @@ else {
 my $output;
 my $cmd;
 
+my $pid_file = '/tmp/pt-query-digest.test.pid';
+`rm -rf $pid_file >/dev/null`;
+
 # ##########################################################################
 # Tests for swapping --processlist and --execute
 # ##########################################################################
@@ -41,35 +45,29 @@ $dbh2->do('set global read_only=1');
 $cmd  = "$trunk/bin/pt-query-digest "
          . "--processlist h=127.1,P=12345,u=msandbox,p=msandbox "
          . "--execute h=127.1,P=12346,u=msandbox,p=msandbox --mirror 1 "
-         . "--pid foobar";
-# --pid actually does nothing because the script is not daemonizing.
-# I include it for the identifier (foobar) so that we can more easily
-# grep the PID below. Otherwise, a ps | grep mk-query-digest will
-# match this test script and any vi mk-query-digest[.t] that may happen
-# to be running.
+         . "--pid $pid_file";
 
 $ENV{MKDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
 $ENV{MKDEBUG}=0;
-sleep 5;
+sleep 3;
 $dbh1->do('select sleep(1)');
 sleep 1;
 $dbh1->do('set global read_only=1');
 $dbh2->do('set global read_only=0');
 $dbh1->do('select sleep(1)');
-sleep 2;
-$output = `ps -eaf | grep mk-query-diges[t] | grep foobar | awk '{print \$2}'`;
-kill 15, $output =~ m/(\d+)/g;
 sleep 1;
+chomp(my $pid = `cat $pid_file`);
+kill 15, $pid;
+sleep 0.25;
 # Verify that it's dead...
-$output = `ps -eaf | grep mk-query-diges[t] | grep foobar`;
-if ( $output =~ m/digest/ ) {
-   $output = `ps -eaf | grep mk-query-diges[t] | grep foobar`;
-}
-unlike($output, qr/mk-query-digest/, 'It is stopped now'); 
+$output = `ps x | grep '^[ ]*$pid'`;
+is(
+   $output,
+   '',
+   'It is stopped now'
+);
 
-$dbh1->do('set global read_only=0');
-$dbh2->do('set global read_only=1');
 $output = `grep read_only /tmp/read_only.txt`;
 # Sample output:
 # # main:3619 6897 read_only on execute for --execute: 1 (want 1)

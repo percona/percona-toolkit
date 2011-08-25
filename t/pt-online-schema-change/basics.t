@@ -116,7 +116,7 @@ is(
 # #############################################################################
 # No --alter and --drop-old-table.
 # #############################################################################
-$dbh->do('drop table mkosc.__old_a');  # from previous run
+$dbh->do('drop table if exists mkosc.__old_a');  # from previous run
 $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
 
 output(

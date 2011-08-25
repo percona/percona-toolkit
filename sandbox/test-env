@@ -9,7 +9,7 @@
 err() {
    echo
    for msg; do
-      echo "$msg"
+      echo "$msg" >&2
    done
 }
 
