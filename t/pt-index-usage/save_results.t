@@ -116,24 +116,33 @@ is_deeply(
    "Table access counts"
 );
 
-# EXPLAIN results differ a little between 5.0 and 5.1.  5.1 is smarter.
-my $res = $sandbox_version ge '5.1' ?
-   # v5.1 and newer
-   [
+$rows = $dbh->selectall_arrayref("select * from mk.indexes order by db, tbl");
+# EXPLAIN results differ a little between 5.0 and 5.1, and sometimes 5.1 acts
+# like 5.0.  So here we detect which verison MySQL is acting like and future
+# tests will select between 2 possibilities based on exp_plan.  Note: both
+# possibilities are correct; they're variants of the same result.
+my $res;
+my $exp_plan;
+if ( $rows->[0]->[3] == 1 ) {
+   # Usually v5.1 and newer
+   $res = [
       [qw(sakila  actor   idx_actor_last_name 1)],
       [qw(sakila  actor   PRIMARY             3)],
       [qw(sakila  address idx_fk_city_id      0)],
       [qw(sakila  address PRIMARY             0)],
-   ]
-   : # v5.0 and older
-   [
+   ];
+   $exp_plan = '5.1';  # acting like 5.1
+}
+else {
+   # Usually v5.0 and older, but somtimes 5.1.
+   $res = [
       [qw(sakila  actor   idx_actor_last_name 2)],
       [qw(sakila  actor   PRIMARY             2)],
       [qw(sakila  address idx_fk_city_id      0)],
       [qw(sakila  address PRIMARY             0)],
    ];
-
-$rows = $dbh->selectall_arrayref("select * from mk.indexes order by db, tbl");
+   $exp_plan = '5.0';  # acting like 5.0
+}
 is_deeply(
    $rows,
    $res,
@@ -161,7 +170,7 @@ is_deeply(
 );
 
 $rows = $dbh->selectall_arrayref("select query_id, db, tbl, idx, sample, cnt from index_usage iu left join queries q using (query_id) order by db, tbl, idx");
-$res = $sandbox_version ge '5.1' ?
+$res = $exp_plan eq '5.1' ?
    # v5.1 and newer
    [
       [
@@ -212,7 +221,7 @@ is_deeply(
 );
 
 $rows = $dbh->selectall_arrayref("select db,tbl,idx,alt_idx,sample from index_alternatives a left join queries q using (query_id)");
-$res = $sandbox_version ge '5.1' ?
+$res = $exp_plan eq '5.1' ?
    [[qw(sakila actor PRIMARY idx_actor_last_name),
     "select * from sakila.actor where last_name like 'A%' order by actor_id"]]
    : [];
@@ -239,7 +248,7 @@ is_deeply(
 );
 
 # EXPLAIN results differ a little between 5.0 and 5.1.  5.1 is smarter.
-$res = $sandbox_version ge '5.1' ?
+$res = $exp_plan eq '5.1' ?
    # v5.1 and newer
    [
       [qw(sakila  actor   idx_actor_last_name 2)],
@@ -283,7 +292,7 @@ is_deeply(
 );
 
 $rows = $dbh->selectall_arrayref("select query_id, db, tbl, idx, sample, cnt from index_usage iu left join queries q using (query_id) order by db, tbl, idx");
-$res = $sandbox_version ge '5.1' ?
+$res = $exp_plan eq '5.1' ?
    # v5.1 and newer
    [
       [
@@ -334,7 +343,7 @@ is_deeply(
 );
 
 $rows = $dbh->selectall_arrayref("select db,tbl,idx,alt_idx,sample from index_alternatives a left join queries q using (query_id)");
-$res = $sandbox_version ge '5.1' ?
+$res = $exp_plan eq '5.1' ?
    [[qw(sakila actor PRIMARY idx_actor_last_name),
     "select * from sakila.actor where last_name like 'A%' order by actor_id"]]
    : [];
