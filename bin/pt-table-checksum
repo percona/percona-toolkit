@@ -5560,6 +5560,7 @@ sub save_tbl_to_checksum {
                tbl        => $tbl,
                chunk_col  => $chunk_col,
                tbl_struct => $struct,
+               where      => $final_o->get('where'),
             );
             if ( !grep { !defined $params{$_} } qw(min max rows_in_range) ) {
                @chunks = $ch->calculate_chunks(

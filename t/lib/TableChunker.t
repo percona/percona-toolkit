@@ -27,7 +27,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 86;
+   plan tests => 88;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -1230,6 +1230,30 @@ SKIP: {
       'openclosed chunk range adds AND chunk_col <= max (issue 1182)'
    );
 };
+
+# ############################################################################
+# Bug 821673: pt-table-checksum doesn't included --where in min max queries
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/where01.sql");
+$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'checksum_test') );
+%params = $c->get_range_statistics(
+   dbh        => $dbh,
+   db         => 'test',
+   tbl        => 'checksum_test',
+   chunk_col  => 'id',
+   tbl_struct => $t,
+   where      => "date = '2011-03-03'",
+);
+is(
+   $params{min},
+   11,
+   'MIN range stats with --where (bug 821673)'
+);
+is(
+   $params{max},
+   15,
+   'MAX range stats with --where (bug 821673)'
+);
 
 # #############################################################################
 # Done.
