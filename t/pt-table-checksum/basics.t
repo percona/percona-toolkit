@@ -132,7 +132,7 @@ ok(
          qw(--no-zero-chunk --chunk-size 5), '--where', "date = '2011-03-03'");
       },
       "t/pt-table-checksum/samples/where01.out",
-      trf => "awk '{print \$1 \" \" \$2 \" \" \$3}'",
+      trf => "awk '{print \$1 \" \" \$2 \" \" \$3 \" \" \$6}'",
    ),
    "--where affects int range stats (bug 821673)"
 );
@@ -150,7 +150,7 @@ ok(
          qw(--no-zero-chunk --chunk-size 5), '--where', "date = '2011-03-03'");
       },
       "t/pt-table-checksum/samples/where02.out",
-      trf => "awk '{print \$1 \" \" \$2 \" \" \$3}'",
+      trf => "awk '{print \$1 \" \" \$2 \" \" \$3 \" \" \$6}'",
    ),
    "--where affects char range stats (bug 821673)"
 );
