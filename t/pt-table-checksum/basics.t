@@ -24,7 +24,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 12;
+   plan tests => 14;
 }
 
 my ($output, $output2);
@@ -118,6 +118,41 @@ output(
 ok(
    time - $t0 < 1,
    "--sleep doesn't sleep unless table is chunked"
+);
+
+
+# ############################################################################
+# Bug 821673: pt-table-checksum doesn't included --where in min max queries
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/where01.sql");
+
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, 
+         qw(--no-zero-chunk --chunk-size 5), '--where', "date = '2011-03-03'");
+      },
+      "t/pt-table-checksum/samples/where01.out",
+      trf => "awk '{print \$1 \" \" \$2 \" \" \$3 \" \" \$6}'",
+   ),
+   "--where affects int range stats (bug 821673)"
+);
+
+# Test it again with a varchar primary key.  The resulting 5 rows are:
+# | Apple     | 2011-03-03 |
+# | lemon     | 2011-03-03 |
+# | lime      | 2011-03-03 |
+# | pineapple | 2011-03-03 |
+# | raspberry | 2011-03-03 |
+$sb->load_file('master', "t/pt-table-checksum/samples/where02.sql");
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, 
+         qw(--no-zero-chunk --chunk-size 5), '--where', "date = '2011-03-03'");
+      },
+      "t/pt-table-checksum/samples/where02.out",
+      trf => "awk '{print \$1 \" \" \$2 \" \" \$3 \" \" \$6}'",
+   ),
+   "--where affects char range stats (bug 821673)"
 );
 
 # #############################################################################

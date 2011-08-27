@@ -204,6 +204,7 @@ sub find_chunk_columns {
 #   exact       - Use exact chunk_size? Use approximates is not.
 #   tries       - Fetch up to this many rows to find a non-zero value
 #   chunk_range - Make chunk range open (default) or openclosed
+#   where       - WHERE clause.
 #
 # Returns:
 #   Array of WHERE predicates like "`col` >= '10' AND `col` < '20'",
@@ -510,6 +511,9 @@ sub _chunk_numeric {
 #                   <TableChunker::get_range_statistics()>
 #   chunk_size    - requested size of each chunk
 #
+# Optional Arguments:
+#   where - WHERE clause.
+#
 # Returns:
 #   Array of chunker info that <calculate_chunks()> uses to create
 #   chunks, like:
@@ -522,7 +526,7 @@ sub _chunk_numeric {
 #   (end code)
 sub _chunk_char {
    my ( $self, %args ) = @_;
-   my @required_args = qw(dbh db tbl tbl_struct chunk_col rows_in_range chunk_size);
+   my @required_args = qw(dbh db tbl tbl_struct chunk_col min max rows_in_range chunk_size);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
@@ -533,15 +537,8 @@ sub _chunk_char {
    my $row;
    my $sql;
 
-   # Get what MySQL says are the min and max column values.
-   # For example, is 'a' or 'A' the min according to MySQL?
-   $sql = "SELECT MIN($chunk_col), MAX($chunk_col) FROM $db_tbl "
-        . "ORDER BY `$chunk_col`";
-   MKDEBUG && _d($dbh, $sql);
-   $row = $dbh->selectrow_arrayref($sql);
-   my ($min_col, $max_col) = ($row->[0], $row->[1]);
-
    # Get the character codes between the min and max column values.
+   my ($min_col, $max_col) = @{args}{qw(min max)};
    $sql = "SELECT ORD(?) AS min_col_ord, ORD(?) AS max_col_ord";
    MKDEBUG && _d($dbh, $sql);
    my $ord_sth = $dbh->prepare($sql);  # avoid quoting issues
@@ -642,7 +639,9 @@ sub _chunk_char {
    # [ant, apple, azur, boy].  We assume data is more evenly distributed
    # than not so we use the minimum number of characters to express a chunk
    # size.
-   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl ORDER BY `$chunk_col`";
+   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl "
+        . ($args{where} ? "WHERE $args{where} " : "") 
+        . "ORDER BY `$chunk_col`";
    MKDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
    my $max_col_len = $row->[0];
