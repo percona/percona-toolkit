@@ -127,12 +127,8 @@ $output = output(
 
 is(
    $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`y`) WHERE (`y` = 0) AND ((y > 2009))
-issue_519 t     `y` = 0
-issue_519 t     `y` > 0 AND `y` < '2003'
-issue_519 t     `y` >= '2003' AND `y` < '2006'
-issue_519 t     `y` >= '2006' AND `y` < '2009'
-issue_519 t     `y` >= '2009'
+"issue_519 t     SELECT /*issue_519.t:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`y`) WHERE (1=1) AND ((y > 2009))
+issue_519 t     1=1
 ",
    "Auto-chosen --chunk-index for --where (issue 378)"
 );
