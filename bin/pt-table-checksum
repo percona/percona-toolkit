@@ -5569,6 +5569,7 @@ sub save_tbl_to_checksum {
                   chunk_size   => $rows_per_chunk,
                   zero_chunk   => $final_o->get('zero-chunk'),
                   chunk_range  => $final_o->get('chunk-range'),
+                  where        => $final_o->get('where'),
                   %params,
                );
                $maxval = $params{max};
