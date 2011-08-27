@@ -27,7 +27,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 86;
+   plan tests => 90;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -1174,21 +1174,27 @@ SKIP: {
 
 $sb->load_file('master', "t/lib/samples/char-chunking/world-city.sql", 'test');
 $t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'world_city') );
+%params = $c->get_range_statistics(
+   dbh        => $dbh,
+   db         => 'test',
+   tbl        => 'world_city',
+   chunk_col  => 'name',
+   tbl_struct => $t,
+   chunk_size => '500',
+);
 @chunks = $c->calculate_chunks(
-   tbl_struct    => $t,
-   chunk_col     => 'name',
-   min           => 'A Coruña (La Coruña)',
-   max           => '´s-Hertogenbosch',
-   rows_in_range => 4079,
-   chunk_size    => 500,
    dbh           => $dbh,
    db            => 'test',
    tbl           => 'world_city',
+   tbl_struct    => $t,
+   chunk_col     => 'name',
+   chunk_size    => 500,
+   %params,
 );
 ok(
    @chunks >= 9,
    "At least 9 char chunks on test.world_city.name"
-);
+) or print STDERR Dumper(\@chunks);
 
 my $n_rows = count_rows("test.world_city", "name", @chunks);
 is(
@@ -1230,6 +1236,64 @@ SKIP: {
       'openclosed chunk range adds AND chunk_col <= max (issue 1182)'
    );
 };
+
+# ############################################################################
+# Bug 821673: pt-table-checksum doesn't included --where in min max queries
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/where01.sql");
+$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'checksum_test') );
+%params = $c->get_range_statistics(
+   dbh        => $dbh,
+   db         => 'test',
+   tbl        => 'checksum_test',
+   chunk_col  => 'id',
+   tbl_struct => $t,
+   where      => "date = '2011-03-03'",
+);
+is(
+   $params{min},
+   11,
+   'MIN int range stats with --where (bug 821673)'
+);
+is(
+   $params{max},
+   15,
+   'MAX int range stats with --where (bug 821673)'
+);
+
+# char chunking
+$sb->load_file('master', "t/pt-table-checksum/samples/where02.sql");
+$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'checksum_test') );
+%params = $c->get_range_statistics(
+   dbh        => $dbh,
+   db         => 'test',
+   tbl        => 'checksum_test',
+   chunk_col  => 'id',
+   tbl_struct => $t,
+   where      => "date = '2011-03-03'",
+);
+is(
+   $params{min},
+   'Apple',
+   'MIN char range stats with --where (bug 821673)'
+);
+is(
+   $params{max},
+   'raspberry',
+   'MAX char range stats with --where (bug 821673)'
+);
+
+# It's difficult to construct a char chunk test where WHERE will matter.
+#@chunks = $c->calculate_chunks(
+#   dbh           => $dbh,
+#   db            => 'test',
+#   tbl           => 'checksum_test',
+#   tbl_struct    => $t,
+#   chunk_col     => 'id',
+#   chunk_size    => 5,
+#   where         => "date = '2011-03-03'",
+#   %params,
+#);
 
 # #############################################################################
 # Done.

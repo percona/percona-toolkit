@@ -281,6 +281,8 @@ is(
 # Done.
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
+diag(`/tmp/12346/stop >/dev/null`);  # Start/stop clears SHOW SLAVE HOSTS.
+diag(`/tmp/12346/start >/dev/null`);
 $sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/test-env reset >/dev/null`);
 exit;
