@@ -24,7 +24,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 12;
+   plan tests => 13;
 }
 
 my ($output, $output2);
@@ -118,6 +118,23 @@ output(
 ok(
    time - $t0 < 1,
    "--sleep doesn't sleep unless table is chunked"
+);
+
+
+# ############################################################################
+# Bug 821673: pt-table-checksum doesn't included --where in min max queries
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/where01.sql");
+
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, 
+         qw(--no-zero-chunk --chunk-size 5), '--where', "date = '2011-03-03'");
+      },
+      "t/pt-table-checksum/samples/where01.out",
+      trf => "awk '{print \$1 \" \" \$2 \" \" \$3}'",
+   ),
+   "--where affects range stats (bug 821673)"
 );
 
 # #############################################################################
