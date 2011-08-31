@@ -16,8 +16,8 @@ usage() {
 # Make sure the disk isn't getting too full.  Exit if the disk is more than $1
 # percent full, or there is less than $2 megabytes of free space on $3 drive.
 check_disk_space() {
-   PCT="$1"
-   MB="$2"
+   PCT=${1:-"100"}
+   MB=${2:-"0"}
    DEST="$3"
    avail=$(df -m -P "${DEST}" | awk '/^\//{print $4}');
    full=$(df -m -P "${DEST}" | awk '/^\//{print $5}' | sed -e 's/%//g');
@@ -339,11 +339,11 @@ Collect strace data.
 
 =item -f PERCENT
 
-Exit if the disk is more than this percent full.
+Exit if the disk is more than this percent full (default 100).
 
 =item -m MEGABYTES
 
-Exit unless there are this many megabytes free disk space.
+Exit if there are less than this many megabytes free disk space (default 0).
 
 =item -p PREFIX
 
