@@ -149,7 +149,7 @@ echo "Gathering info for $d"
    mysql "$@" -e "${INNOSTAT}"             >> "$OPT_d/$d-innodbstatus1" 2>&1 &
    mysql "$@" -e 'SHOW FULL PROCESSLIST\G' >> "$OPT_d/$d-processlist1"  2>&1 &
    mysql "$@" -e 'SHOW OPEN TABLES'        >> "$OPT_d/$d-opentables1"   2>&1 &
-   if [ "${VER}" > "5.1" ]; then
+   if [ "${VER}" '>' "5.1" ]; then
       mysql "$@" -e 'SHOW ENGINE INNODB MUTEX' >> "$OPT_d/$d-mutex-status1" 2>&1 &
    else
       mysql "$@" -e 'SHOW MUTEX STATUS'        >> "$OPT_d/$d-mutex-status1" 2>&1 &
@@ -249,7 +249,7 @@ echo "Gathering info for $d"
    mysql "$@" -e "${INNOSTAT}"             >> "$OPT_d/$d-innodbstatus2" 2>&1 &
    mysql "$@" -e 'SHOW FULL PROCESSLIST\G' >> "$OPT_d/$d-processlist2"  2>&1 &
    mysql "$@" -e 'SHOW OPEN TABLES'        >> "$OPT_d/$d-opentables2"   2>&1 &
-   if [ "${VER}" > "5.1" ]; then
+   if [ "${VER}" '>' "5.1" ]; then
       mysql "$@" -e 'SHOW ENGINE INNODB MUTEX' >> "$OPT_d/$d-mutex-status2" 2>&1 &
    else
       mysql "$@" -e 'SHOW MUTEX STATUS'        >> "$OPT_d/$d-mutex-status2" 2>&1 &
