@@ -1,10 +1,7 @@
-.. highlight:: perl
-
 
 *******************
 CONFIGURATION FILES
 *******************
-
 
 Percona Toolkit tools can read options from configuration files.  The
 configuration file syntax is simple and direct, and bears some resemblances
@@ -18,9 +15,7 @@ think of the configuration files as a way to write your command lines.
 SYNTAX
 ======
 
-
 The syntax of the configuration files is as follows:
-
 
 \*
  
@@ -28,18 +23,15 @@ The syntax of the configuration files is as follows:
  comment.  This is deleted.
  
 
-
 \*
  
  Whitespace is stripped from the beginning and end of all lines.
  
 
-
 \*
  
  Empty lines are ignored.
  
-
 
 \*
  
@@ -55,12 +47,10 @@ The syntax of the configuration files is as follows:
  Whitespace around the equals sign is deleted during processing.
  
 
-
 \*
  
  Only long options are recognized.
  
-
 
 \*
  
@@ -69,14 +59,10 @@ The syntax of the configuration files is as follows:
  program.
  
 
-
-
 READ ORDER
 ==========
 
-
 The tools read several configuration files in order:
-
 
 1.
  
@@ -84,7 +70,6 @@ The tools read several configuration files in order:
  \ */etc/percona-toolkit/percona-toolkit.conf*\ .  All tools read this file,
  so you should only add options to it that you want to apply to all tools.
  
-
 
 2.
  
@@ -94,14 +79,12 @@ The tools read several configuration files in order:
  only to that tool.
  
 
-
 3.
  
  The user's own Percona Toolkit configuration file,
  \ *$HOME/.percona-toolkit.conf*\ .  All tools read this file, so you should only
  add options to it that you want to apply to all tools.
  
-
 
 4.
  
@@ -111,11 +94,8 @@ The tools read several configuration files in order:
  only to that tool.
  
 
-
-
 SPECIFYING
 ==========
-
 
 There is a special \ ``--config``\  option, which lets you specify which
 configuration files Percona Toolkit should read.  You specify a
@@ -126,13 +106,10 @@ cause an error.  Also, you cannot specify \ ``--config=/path/to/file``\ ;
 you must specify the option and the path to the file separated by whitespace
 \ *without an equal sign*\  between them, like:
 
-
 .. code-block:: perl
 
    --config /path/to/file
 
-
 If you don't want any configuration files at all, specify \ ``--config ''``\  to
 provide an empty list of files.
-
 

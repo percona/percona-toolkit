@@ -96,8 +96,13 @@ write_index() {
       fi
 
       $BRANCH/util/extract-text $DOCS/percona-toolkit.pod "^=head1 $header" "^=head1|=cut" > /tmp/$filename.pod
-      cat /tmp/$filename.pod | pod2rst > $RST/$filename.rst
+      if [ $section = "DESCRIPTION" ]; then
+         sed -i.bak -e 's/DESCRIPTION/Percona Toolkit Documentation/' /tmp/$filename.pod
+      fi
+      cat /tmp/$filename.pod | pod2rst | sed -e 's/.. highlight:: perl//g' > /tmp/$filename.tmp
+      cat -s /tmp/$filename.tmp > $RST/$filename.rst
       rm /tmp/$filename.pod
+      rm /tmp/$filename.tmp
       echo "Wrote $RST/$filename.rst"
    done
 
@@ -126,19 +131,22 @@ write_index() {
 # Script starts here
 # ############################################################################
 
-if [ $# -gt 0 ]; then
-   for tool; do
-      write_rst $tool
-   done
-fi
+WRITE=${WRITE:-1}
+if [ $WRITE -eq 1 ]; then
+   if [ $# -gt 0 ]; then
+      for tool; do
+         write_rst $tool
+      done
+   fi
 
-if [ ! -f "$RST/index.rst" ] || [ "$DOCS/percona-toolkit.pod" -nt "$RST/index.rst" ]; then
-   write_index
-fi
+   if [ ! -f "$RST/index.rst" ] || [ "$DOCS/percona-toolkit.pod" -nt "$RST/index.rst" ]; then
+      write_index
+   fi
 
-if [ ! -f "$RST/release_notes.rst" ] || [ "$DOCS/release_notes.rst" -nt "$RST/release_notes.rst" ]; then
-   cp $DOCS/release_notes.rst $RST/
-   echo "Wrote $RST/release_notes.rst"
+   if [ ! -f "$RST/release_notes.rst" ] || [ "$DOCS/release_notes.rst" -nt "$RST/release_notes.rst" ]; then
+      cp $DOCS/release_notes.rst $RST/
+      echo "Wrote $RST/release_notes.rst"
+   fi
 fi
 
 BUILD=${BUILD:-1}

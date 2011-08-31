@@ -1,10 +1,7 @@
-.. highlight:: perl
 
-
-***********
-DESCRIPTION
-***********
-
+*****************************
+Percona Toolkit Documentation
+*****************************
 
 Percona Toolkit is a collection of advanced command-line tools used by
 Percona (`http://www.percona.com/ <http://www.percona.com/>`_) support staff to perform a variety of

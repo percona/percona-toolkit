@@ -30,10 +30,6 @@ This release of Percona Toolkit includes the following tools:
 
 Archive rows from a MySQL table into another table or a file.
 
-=item pt-checksum-filter
-
-Filter checksums from pt-table-checksum.
-
 =item pt-collect
 
 Collect information from a server for some period of time.
@@ -98,10 +94,6 @@ Perform online, non-blocking table schema changes.
 
 Aggregate GDB stack traces for a selected program.
 
-=item pt-profile-compact
-
-Compact the output from pt-query-profiler.
-
 =item pt-query-advisor
 
 Analyze queries and advise on possible problems.
@@ -109,10 +101,6 @@ Analyze queries and advise on possible problems.
 =item pt-query-digest
 
 Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
-
-=item pt-query-profiler
-
-Execute SQL statements and print statistics, or measure activity caused by other processes.
 
 =item pt-show-grants
 
