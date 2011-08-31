@@ -51,18 +51,42 @@ main() {
    fi
 
    # If the programs we need don't exist, try to get them.
-   for prog in pt-align pt-diskstats pt-pmp pt-mext; do
+   # Aspersa tools:
+   for prog in align; do
       if which $prog >/dev/null 2>&1 ; then
          eval "PR_$prog"="$(which $prog)"
       elif [ -f $prog -a -x $prog ]; then
          eval "PR_$prog"="./$prog"
       elif [ -f "${BASEDIR}/$prog" -a -x "${BASEDIR}/$prog" ]; then
          eval "PR_$prog"="${BASEDIR}/$prog"
-      else
-         echo "Fetching $prog"
-         curl http://percona.com/get/$prog > "$prog" && chmod +x "$prog"
+      elif which "curl" >/dev/null 2>&1; then
+         echo "Fetching $prog" >&2
+         curl http://aspersa.googlecode.com/svn/trunk/$prog > "$prog" && chmod +x "$prog"
          eval "PR_$prog"="./$prog"
+      else
+         echo "Cannot find or fetch required program: $prog" >&2
+         exit 1
       fi
+   done
+   # Percona Toolkit tools:
+   for prog in pt-diskstats pt-pmp pt-mext; do
+      # A var can't be named "PR_pt-pmp" so we chop of "pt-" to get
+      # the program's basename, resulting in "PR_pmp".
+      prog_base=${prog#"pt-"}
+      if which "$prog" >/dev/null 2>&1 ; then
+         eval "PR_$prog_base"="$(which "$prog")"
+      elif [ -f "$prog" -a -x "$prog" ]; then
+         eval "PR_$prog_base"="./$prog"
+      elif [ -f "${BASEDIR}/$prog" -a -x "${BASEDIR}/$prog" ]; then
+         eval "PR_$prog_base"="${BASEDIR}/$prog"
+      elif which "curl" >/dev/null 2>&1; then
+         echo "Fetching $prog" >&2
+         curl "http://percona.com/get/$prog" > "$prog" && chmod +x "$prog"
+         eval "PR_$prog_base"="./$prog"
+      else
+         echo "Cannot find or fetch required program: $prog" >&2
+         exit 1
+      fi 
    done
 
    # We need to generate a list of timestamps, and ask the user to choose one if
@@ -565,7 +589,9 @@ This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires Bash v3 or newer.
+This tool requires Bash v3 and the following programs: pt-diskstats, pt-pmp,
+pt-mext, and align (from Aspersa).  If these programs are not in your PATH,
+they will be fetched from the Internet if curl is available.
 
 =head1 BUGS
 
