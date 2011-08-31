@@ -125,7 +125,7 @@ update_version() {
    echo -n "Updating version in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      sed -i'.bak' -e "s/^$tool [0-9]\./$tool $VERSION/" $tool_file
+      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9]\.[0-9][0-9]*/$tool_file $VERSION/" $tool_file
       if [ $? -ne 0 ]; then
          die "Error updating version in $tool_file"
       fi
@@ -134,7 +134,7 @@ update_version() {
 
    local new_versions=$(grep --no-filename '^pt-[^ ]\+ [0-9]\.' * | cut -d' ' -f2 | sort -u)
    if [ "$new_versions" != "$VERSION" ]; then
-      die "The version in some tool did not update correctly"
+      die "The version in some tools did not update correctly"
    fi
    echo "OK"
 
@@ -160,12 +160,12 @@ update_version() {
    # What Sphinx calls verison, we call series; what it calls release we
    # call version.
    cd $SPHINX_CONFIG_DIR
-   sed -i'.bak' -e "s/^version =/version = '$SERIES'/" conf.py
+   sed -i'.bak' -e "s/^version = .*/version = '$SERIES'/" conf.py
    if [ $? -ne 0 ]; then
       die "Error updating version in conf.py"
    fi
    rm "conf.py.bak"
-   sed -i'.bak' -e "s/^release =/version = '$VERSION'/" conf.py
+   sed -i'.bak' -e "s/^release = .*/release = '$VERSION'/" conf.py
    if [ $? -ne 0 ]; then
       die "Error updating release in conf.py"
    fi
@@ -428,7 +428,7 @@ fi
 # Setting LANG as such works for me; hopefully it works for you, too.
 LANG='en_US.UTF-8'
 
-SERIES=$(echo $VERISON | sed 's/\.[0-9][0-9]*$//')
+SERIES=$(echo $VERSION | sed 's/\.[0-9][0-9]*$//')
 YEAR=$(date -u +'%Y')                      # for updating copyright year
 DATE=$(date -u +'%F')                      # for updating release date
 DEB_DATE=$(date -u +'%a, %d %b %Y %T %z')  # for updating deb/changelog
