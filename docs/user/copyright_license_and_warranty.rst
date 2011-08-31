@@ -1,10 +1,7 @@
-.. highlight:: perl
-
 
 ********************************
 COPYRIGHT, LICENSE, AND WARRANTY
 ********************************
-
 
 Percona Toolkit is copyright 2011 Percona Inc. and others.
 See each program's documentation for complete copyright notices.
