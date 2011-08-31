@@ -1,5 +1,13 @@
 Changelog for Percona Toolkit
 
+  * Fixed bug 819421: MasterSlave::is_replication_thread() doesn't match all
+  * Fixed bug 821587: pt-index-usage test save_results.t fails
+  * Fixed bug 821673: pt-table-checksum doesn't include --where in min max queries
+  * Fixed bug 823394: --version doesn't work
+  * Fixed bug 824717: pt-sift doesn't run
+  * Fixed bug 824722: pt-stalk invokes pt-collect wrong
+  * Fixed bug 821688: pt-table-checksum SELECT MIN MAX for char chunking is wrong
+
 v0.9.5 released 2011-08-04
 
   * Forked, combined, and rebranded Maatkit and Aspersa as Percona Toolkit.
