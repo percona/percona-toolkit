@@ -888,7 +888,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-diskstats 0.9.5
+pt-diskstats 1.0.1
 
 =cut
 

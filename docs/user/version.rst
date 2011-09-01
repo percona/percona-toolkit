@@ -3,5 +3,5 @@
 VERSION
 *******
 
-Percona Toolkit v0.9.5 released 2011-08-04
+Percona Toolkit v1.0.1 released 2011-09-01
 
