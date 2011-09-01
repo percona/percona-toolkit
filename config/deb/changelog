@@ -1,3 +1,13 @@
+percona-toolkit (1.0.1) unstable; urgency=low
+
+  * Fixed bug 819421: MasterSlave::is_replication_thread() doesn't match all
+  * Fixed bug 821673: pt-table-checksum doesn't include --where in min max queries
+  * Fixed bug 821688: pt-table-checksum SELECT MIN MAX for char chunking is wrong
+  * Fixed bug 838211: pt-collect: line 24: [: : integer expression expected
+  * Fixed bug 838248: pt-collect creates a "5.1" file
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 01 Sep 2011 15:59:21 +0000
+
 percona-toolkit (0.9.5) unstable; urgency=low
 
   * Forked, combined, and rebranded Maatkit and Aspersa as Percona Toolkit.

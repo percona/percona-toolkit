@@ -103,13 +103,13 @@ OPTIONS
 
 -f PERCENT
  
- Exit if the disk is more than this percent full.
+ Exit if the disk is more than this percent full (default 100).
  
 
 
 -m MEGABYTES
  
- Exit unless there are this many megabytes free disk space.
+ Exit if there are less than this many megabytes free disk space (default 0).
  
 
 
@@ -260,5 +260,5 @@ VERSION
 *******
 
 
-Percona Toolkit v0.9.5 released 2011-08-04
+pt-collect 1.0.1
 

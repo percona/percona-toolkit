@@ -31,9 +31,9 @@ Change the table's engine to InnoDB:
 
 .. code-block:: perl
 
-   pt-online-schema-change                            \
-     h=127.1,t=db.tbl                                 \
-     --alter-table "ALTER TABLE db.tbl ENGINE=InnoDB" \
+   pt-online-schema-change   \
+     h=127.1,t=db.tbl        \
+     --alter "ENGINE=InnoDB" \
      --drop-tmp-table
 
 
@@ -50,10 +50,10 @@ Add column to parent table, update child table foreign key constraints:
 
 .. code-block:: perl
 
-   pt-online-schema-change                                   \
-     h=127.1,D=db,t=parent                                   \
-     --alter-table 'ALTER TABLE parent ADD COLUMN (foo INT)' \
-     --child-tables child1,child2                            \
+   pt-online-schema-change          \
+     h=127.1,D=db,t=parent          \
+     --alter "ADD COLUMN (foo INT)" \
+     --child-tables child1,child2   \
      --update-foreign-keys-method drop_tmp_table
 
 
@@ -803,5 +803,5 @@ VERSION
 *******
 
 
-Percona Toolkit v0.9.5 released 2011-08-04
+pt-online-schema-change 1.0.1
 

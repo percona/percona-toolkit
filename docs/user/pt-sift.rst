@@ -150,7 +150,9 @@ SYSTEM REQUIREMENTS
 *******************
 
 
-This tool requires Bash v3 or newer.
+This tool requires Bash v3 and the following programs: pt-diskstats, pt-pmp,
+pt-mext, and align (from Aspersa).  If these programs are not in your PATH,
+they will be fetched from the Internet if curl is available.
 
 
 ****
@@ -267,5 +269,5 @@ VERSION
 *******
 
 
-Percona Toolkit v0.9.5 released 2011-08-04
+pt-sift 1.0.1
 
