@@ -56,7 +56,7 @@ like(
 $output = `$trunk/bin/pt-visual-explain --version 2>&1`;
 like(
    $output,
-   qr/v\d\.\d.\d+/,
+   qr/^pt-visual-explain \d\.\d\.\d+/m,
    '--version works (bug 823394)'
 );
 
