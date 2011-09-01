@@ -581,7 +581,7 @@ sub get_specs {
       $self->{DSNParser} = DSNParser->new(opts => \@dsn_opts);
    }
 
-   if ( $contents =~ m/^(Percona Toolkit v.+)$/m ) {
+   if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
       $self->{version} = $1;
       MKDEBUG && _d($self->{version});
    }
