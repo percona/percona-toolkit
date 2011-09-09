@@ -38,9 +38,8 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 6;
+   plan tests => 12;
 }
-
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter=>$q);
@@ -79,14 +78,18 @@ sub make_nibble_iter {
    1 while $si->next_schema_object();
 
    my $ni = new NibbleIterator(
-      dbh => $dbh,
-      tbl => $schema->get_table($args{db}, $args{tbl}),
+      dbh       => $dbh,
+      tbl       => $schema->get_table($args{db}, $args{tbl}),
+      callbacks => $args{callbacks},
       %common_modules,
    );
 
    return $ni;
 }
 
+# ############################################################################
+# a-z w/ chunk-size 5, z is final boundary and single value
+# ############################################################################
 my $ni = make_nibble_iter(
    sql_file => "a-z.sql",
    db       => 'test',
@@ -154,6 +157,155 @@ is_deeply(
    [['z']],
    'a-z nibble 6'
 ) or print Dumper(\@rows);
+
+# ############################################################################
+# a-y w/ chunk-size 5, even nibbles
+# ############################################################################
+$dbh->do('delete from test.t where c="z"');
+my $all_rows = $dbh->selectall_arrayref('select * from test.t order by c');
+$ni = make_nibble_iter(
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 5)],
+);
+
+@rows = ();
+for (1..26) {
+   push @rows, $ni->next();
+}
+is_deeply(
+   \@rows,
+   $all_rows,
+   'a-y even nibble'
+) or print Dumper(\@rows);
+
+# ############################################################################
+# chunk-size exceeds number of rows, 1 nibble
+# ############################################################################
+$ni = make_nibble_iter(
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 100)],
+);
+
+@rows = ();
+for (1..27) {
+   push @rows, $ni->next();
+}
+is_deeply(
+   \@rows,
+   $all_rows,
+   '1 nibble'
+) or print Dumper(\@rows);
+
+# ############################################################################
+# single row table
+# ############################################################################
+$dbh->do('delete from test.t where c != "d"');
+$ni = make_nibble_iter(
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 100)],
+);
+
+@rows = ();
+for (1..3) {
+   push @rows, $ni->next();
+}
+is_deeply(
+   \@rows,
+   [['d']],
+   'single row table'
+) or print Dumper(\@rows);
+
+# ############################################################################
+# empty table
+# ############################################################################
+$dbh->do('truncate table test.t');
+$ni = make_nibble_iter(
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 100)],
+);
+
+@rows = ();
+for (1..3) {
+   push @rows, $ni->next();
+}
+is_deeply(
+   \@rows,
+   [],
+   'empty table'
+) or print Dumper(\@rows);
+
+# ############################################################################
+# Callbacks
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file  => "a-z.sql",
+   db        => 'test',
+   tbl       => 't',
+   argv      => [qw(--databases test --chunk-size 2)],
+   callbacks => {
+      init          => sub { print "init\n" },
+      before_nibble => sub { print "before nibble ".$ni->nibble_number()."\n" },
+      before_row    => sub { print "before row\n" },
+      after_nibble  => sub { print "after nibble ".$ni->nibble_number()."\n" },
+      done          => sub { print "done\n" },
+   }
+);
+
+$dbh->do('delete from test.t limit 20');  # 6 rows left
+
+my $output = output(
+   sub {
+      for (1..8) { $ni->next() }
+   },
+);
+
+is(
+   $output,
+"init
+before nibble 1
+before row
+before row
+after nibble 1
+before nibble 2
+before row
+before row
+after nibble 2
+before nibble 3
+before row
+before row
+after nibble 3
+done
+done
+",
+   "callbacks"
+);
+
+
+# ############################################################################
+# Nibble a larger table by numeric pk id
+# ############################################################################
+SKIP: {
+   skip "Sakila database is not loaded", 1
+      unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
+
+   $ni = make_nibble_iter(
+      db       => 'sakila',
+      tbl      => 'payment',
+      argv     => [qw(--databases sakila --tables payment --chunk-size 100)],
+   );
+
+   my $n_nibbles = 0;
+   $n_nibbles++ while $ni->next();
+   is(
+      $n_nibbles,
+      16049,
+      "Nibble sakila.payment (16049 rows)"
+   );
+}
 
 # #############################################################################
 # Done.
