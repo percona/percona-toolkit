@@ -19,7 +19,7 @@
 # ###########################################################################
 {
 # Package: TableChecksum
-# TableChecksum makes checksum expressions for checksumming rows and chunks.
+# TableChecksum checksums tables.
 package TableChecksum;
 
 use strict;
@@ -29,44 +29,261 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use List::Util qw(max);
 
+# BXT_XOR is actually faster than ACCUM as long as the user-variable
+# optimization can be used.  I've never seen a case where it can't be.
+our %ALGOS = (
+   CHECKSUM => { pref => 0, hash => 0 },
+   BIT_XOR  => { pref => 2, hash => 1 },
+   ACCUM    => { pref => 3, hash => 1 },
+);
+
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(OptionParser Quoter) ) {
+   foreach my $arg ( qw(Quoter VersionParser) ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my $self = { %args };
    return bless $self, $class;
 }
 
-# Sub: make_row_checksum
-#   Make a SELECT column list to checksum a row.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   tbl  - Table ref
-#
-# Optional Arguments:
-#   sep        - Separator for CONCAT_WS(); default #
-#   cols       - Arrayref of columns to checksum
-#   trim       - Wrap VARCHAR cols in TRIM() for v4/v5 compatibility
-#   ignorecols - Arrayref of columns to exclude from checksum
-#
-# Returns:
-#   Column list for SELECT
+# Perl implementation of CRC32, ripped off from Digest::Crc32.  The results
+# ought to match what you get from any standard CRC32 implementation, such as
+# that inside MySQL.
+sub crc32 {
+   my ( $self, $string ) = @_;
+   my $poly = 0xEDB88320;
+   my $crc  = 0xFFFFFFFF;
+   foreach my $char ( split(//, $string) ) {
+      my $comp = ($crc ^ ord($char)) & 0xFF;
+      for ( 1 .. 8 ) {
+         $comp = $comp & 1 ? $poly ^ ($comp >> 1) : $comp >> 1;
+      }
+      $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
+   }
+   return $crc ^ 0xFFFFFFFF;
+}
+
+# Returns how wide/long, in characters, a CRC function is.
+sub get_crc_wid {
+   my ( $self, $dbh, $func ) = @_;
+   my $crc_wid = 16;
+   if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
+      eval {
+         my ($val) = $dbh->selectrow_array("SELECT $func('a')");
+         $crc_wid = max(16, length($val));
+      };
+   }
+   return $crc_wid;
+}
+
+# Returns a CRC function's MySQL type as a list of (type, length).
+sub get_crc_type {
+   my ( $self, $dbh, $func ) = @_;
+   my $type   = '';
+   my $length = 0;
+   my $sql    = "SELECT $func('a')";
+   my $sth    = $dbh->prepare($sql);
+   eval {
+      $sth->execute();
+      $type   = $sth->{mysql_type_name}->[0];
+      $length = $sth->{mysql_length}->[0];
+      MKDEBUG && _d($sql, $type, $length);
+      if ( $type eq 'bigint' && $length < 20 ) {
+         $type = 'int';
+      }
+   };
+   $sth->finish;
+   MKDEBUG && _d('crc_type:', $type, 'length:', $length);
+   return ($type, $length);
+}
+
+# Arguments:
+#   algorithm   (optional) One of CHECKSUM, ACCUM, BIT_XOR
+#   dbh         DB handle
+#   where       bool: whether user wants a WHERE clause applied
+#   chunk       bool: whether user wants to checksum in chunks
+#   replicate   bool: whether user wants to do via replication
+#   count       bool: whether user wants a row count too
+sub best_algorithm {
+   my ( $self, %args ) = @_;
+   my ( $alg, $dbh ) = @args{ qw(algorithm dbh) };
+   my $vp = $self->{VersionParser};
+   my @choices = sort { $ALGOS{$a}->{pref} <=> $ALGOS{$b}->{pref} } keys %ALGOS;
+   die "Invalid checksum algorithm $alg"
+      if $alg && !$ALGOS{$alg};
+
+   # CHECKSUM is eliminated by lots of things...
+   if (
+      $args{where} || $args{chunk}        # CHECKSUM does whole table
+      || $args{replicate}                 # CHECKSUM can't do INSERT.. SELECT
+      || !$vp->version_ge($dbh, '4.1.1')) # CHECKSUM doesn't exist
+   {
+      MKDEBUG && _d('Cannot use CHECKSUM algorithm');
+      @choices = grep { $_ ne 'CHECKSUM' } @choices;
+   }
+
+   # BIT_XOR isn't available till 4.1.1 either
+   if ( !$vp->version_ge($dbh, '4.1.1') ) {
+      MKDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
+      @choices = grep { $_ ne 'BIT_XOR' } @choices;
+   }
+
+   # Choose the best (fastest) among the remaining choices.
+   if ( $alg && grep { $_ eq $alg } @choices ) {
+      # Honor explicit choices.
+      MKDEBUG && _d('User requested', $alg, 'algorithm');
+      return $alg;
+   }
+
+   # If the user wants a count, prefer something other than CHECKSUM, because it
+   # requires an extra query for the count.
+   if ( $args{count} && grep { $_ ne 'CHECKSUM' } @choices ) {
+      MKDEBUG && _d('Not using CHECKSUM algorithm because COUNT desired');
+      @choices = grep { $_ ne 'CHECKSUM' } @choices;
+   }
+
+   MKDEBUG && _d('Algorithms, in order:', @choices);
+   return $choices[0];
+}
+
+sub is_hash_algorithm {
+   my ( $self, $algorithm ) = @_;
+   return $ALGOS{$algorithm} && $ALGOS{$algorithm}->{hash};
+}
+
+# Picks a hash function, in order of speed.
+# Arguments:
+#   * dbh
+#   * function  (optional) Preferred function: SHA1, MD5, etc.
+sub choose_hash_func {
+   my ( $self, %args ) = @_;
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   if ( $args{function} ) {
+      unshift @funcs, $args{function};
+   }
+   my ($result, $error);
+   do {
+      my $func;
+      eval {
+         $func = shift(@funcs);
+         my $sql = "SELECT $func('test-string')";
+         MKDEBUG && _d($sql);
+         $args{dbh}->do($sql);
+         $result = $func;
+      };
+      if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
+         $error .= qq{$func cannot be used because "$1"\n};
+         MKDEBUG && _d($func, 'cannot be used because', $1);
+      }
+   } while ( @funcs && !$result );
+
+   die $error unless $result;
+   MKDEBUG && _d('Chosen hash func:', $result);
+   return $result;
+}
+
+# Figure out which slice in a sliced BIT_XOR checksum should have the actual
+# concat-columns-and-checksum, and which should just get variable references.
+# Returns the slice.  I'm really not sure if this code is needed.  It always
+# seems the last slice is the one that works.  But I'd rather be paranoid.
+   # TODO: this function needs a hint to know when a function returns an
+   # integer.  CRC32 is an example.  In these cases no optimization or slicing
+   # is necessary.
+sub optimize_xor {
+   my ( $self, %args ) = @_;
+   my ($dbh, $func) = @args{qw(dbh function)};
+
+   die "$func never needs the BIT_XOR optimization"
+      if $func =~ m/^(?:FNV1A_64|FNV_64|CRC32)$/i;
+
+   my $opt_slice = 0;
+   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a')")->[0]->[0];
+   my $sliced    = '';
+   my $start     = 1;
+   my $crc_wid   = length($unsliced) < 16 ? 16 : length($unsliced);
+
+   do { # Try different positions till sliced result equals non-sliced.
+      MKDEBUG && _d('Trying slice', $opt_slice);
+      $dbh->do('SET @crc := "", @cnt := 0');
+      my $slices = $self->make_xor_slices(
+         query     => "\@crc := $func('a')",
+         crc_wid   => $crc_wid,
+         opt_slice => $opt_slice,
+      );
+
+      my $sql = "SELECT CONCAT($slices) AS TEST FROM (SELECT NULL) AS x";
+      $sliced = ($dbh->selectrow_array($sql))[0];
+      if ( $sliced ne $unsliced ) {
+         MKDEBUG && _d('Slice', $opt_slice, 'does not work');
+         $start += 16;
+         ++$opt_slice;
+      }
+   } while ( $start < $crc_wid && $sliced ne $unsliced );
+
+   if ( $sliced eq $unsliced ) {
+      MKDEBUG && _d('Slice', $opt_slice, 'works');
+      return $opt_slice;
+   }
+   else {
+      MKDEBUG && _d('No slice works');
+      return undef;
+   }
+}
+
+# Returns an expression that will do a bitwise XOR over a very wide integer,
+# such as that returned by SHA1, which is too large to just put into BIT_XOR().
+# $query is an expression that returns a row's checksum, $crc_wid is the width
+# of that expression in characters.  If the opt_slice argument is given, use a
+# variable to avoid calling the $query expression multiple times.  The variable
+# goes in slice $opt_slice.
+# Arguments:
+#   * query
+#   * crc_wid
+#   * opt_slice  (optional)
+sub make_xor_slices {
+   my ( $self, %args ) = @_;
+   foreach my $arg ( qw(query crc_wid) ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ( $query, $crc_wid, $opt_slice ) = @args{qw(query crc_wid opt_slice)};
+
+   # Create a series of slices with @crc as a placeholder.
+   my @slices;
+   for ( my $start = 1; $start <= $crc_wid; $start += 16 ) {
+      my $len = $crc_wid - $start + 1;
+      if ( $len > 16 ) {
+         $len = 16;
+      }
+      push @slices,
+         "LPAD(CONV(BIT_XOR("
+         . "CAST(CONV(SUBSTRING(\@crc, $start, $len), 16, 10) AS UNSIGNED))"
+         . ", 10, 16), $len, '0')";
+   }
+
+   # Replace the placeholder with the expression.  If specified, add a
+   # user-variable optimization so the expression goes in only one of the
+   # slices.  This optimization relies on @crc being '' when the query begins.
+   if ( defined $opt_slice && $opt_slice < @slices ) {
+      $slices[$opt_slice] =~ s/\@crc/\@crc := $query/;
+   }
+   else {
+      map { s/\@crc/$query/ } @slices;
+   }
+
+   return join(', ', @slices);
+}
+
+# Generates a checksum query for a given table.  Arguments:
+# *   tbl_struct  Struct as returned by TableParser::parse()
+# *   function    SHA1, MD5, etc
+# *   sep         (optional) Separator for CONCAT_WS(); default #
+# *   cols        (optional) arrayref of columns to checksum
+# *   trim        (optional) wrap VARCHAR cols in TRIM() for v4/v5 compatibility
+# *   ignorecols  (optional) arrayref of columns to exclude from checksum
 sub make_row_checksum {
    my ( $self, %args ) = @_;
-   my @required_args = qw(tbl);
-   foreach my $arg( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($tbl) = @args{@required_args};
-
-   my $o          = $self->{OptionParser};
-   my $q          = $self->{Quoter};
-   my $tbl_struct = $tbl->{tbl_struct};
-   my $func       = $args{func} || uc($o->get('function'));
+   my ( $tbl_struct, $func ) = @args{ qw(tbl_struct function) };
+   my $q = $self->{Quoter};
 
    my $sep = $args{sep} || '#';
    $sep =~ s/'//g;
@@ -104,7 +321,7 @@ sub make_row_checksum {
 
    # Prepend columns to query, resulting in "col1, col2, FUNC(..col1, col2...)",
    # unless caller says not to.  The only caller that says not to is
-   # make_chunk_checksum() which uses this row checksum as part of a larger
+   # make_checksum_query() which uses this row checksum as part of a larger
    # checksum.  Other callers, like TableSyncer::make_checksum_queries() call
    # this sub directly and want the actual columns.
    my $query;
@@ -151,270 +368,102 @@ sub make_row_checksum {
    return $query;
 }
 
-# Sub: make_chunk_checksum
-#   Make a SELECT column list to checksum a chunk of rows.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   tbl - Table ref
-#   dbh - dbh if func, crc_width, and crc_type aren't given
-#
-# Optional Arguments:
-#   func      - Hash function name
-#   crc_width - CRC width
-#   crc_type  - CRC type
-# 
-# Returns:
-#   Column list for SELECT
-sub make_chunk_checksum {
+# Generates a checksum query for a given table.  Arguments:
+# *   db          Database name
+# *   tbl         Table name
+# *   tbl_struct  Struct as returned by TableParser::parse()
+# *   algorithm   Any of @ALGOS
+# *   function    (optional) SHA1, MD5, etc
+# *   crc_wid     Width of the string returned by function
+# *   crc_type    Type of function's result
+# *   opt_slice   (optional) Which slice gets opt_xor (see make_xor_slices()).
+# *   cols        (optional) see make_row_checksum()
+# *   sep         (optional) see make_row_checksum()
+# *   replicate   (optional) generate query to REPLACE into this table.
+# *   trim        (optional) see make_row_checksum().
+# *   buffer      (optional) Adds SQL_BUFFER_RESULT.
+sub make_checksum_query {
    my ( $self, %args ) = @_;
-   my @required_args = qw(tbl);
+   my @required_args = qw(db tbl tbl_struct algorithm crc_wid crc_type);
    foreach my $arg( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   die "I need a dbh argument"
-      unless $args{func} && $args{crc_width} && $args{crc_type} && !$args{dbh};
-
-   my ($tbl) = @args{@required_args};
-   my $o = $self->{OptionParser};
+   my ( $db, $tbl, $tbl_struct, $algorithm,
+        $crc_wid, $crc_type) = @args{@required_args};
+   my $func = $args{function};
    my $q = $self->{Quoter};
+   my $result;
 
-   my $func      = $args{func}     || $self->_get_hash_func(%args);
-   my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
-   my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
-   my $opt_slice; 
-   if ( $o->get('optimize-xor') ) {
-      if ( $crc_type !~ m/int$/ ) {
-         $opt_slice = $self->_optimize_xor(%args, func => $func);
-         warn "Cannot use --optimize-xor" unless defined $opt_slice;
-      }
+   die "Invalid or missing checksum algorithm"
+      unless $algorithm && $ALGOS{$algorithm};
+
+   if ( $algorithm eq 'CHECKSUM' ) {
+      return "CHECKSUM TABLE " . $q->quote($db, $tbl);
    }
-   MKDEBUG && _d("Checksum strat:", $func, $crc_width, $crc_type, $opt_slice);
 
-   # This checksum algorithm concatenates the columns in each row and
-   # checksums them, then slices this checksum up into 16-character chunks.
-   # It then converts them BIGINTs with the CONV() function, and then
-   # groupwise XORs them to produce an order-independent checksum of the
-   # slice over all the rows.  It then converts these back to base 16 and
-   # puts them back together.  The effect is the same as XORing a very wide
-   # (32 characters = 128 bits for MD5, and SHA1 is even larger) unsigned
-   # integer over all the rows.
-   #
-   # As a special case, integer functions do not need to be sliced.  They
-   # can be fed right into BIT_XOR after a cast to UNSIGNED.
-   my $row_checksum = $self->make_row_checksum(%args, no_cols=>1);
-   my $crc;
-   if ( $crc_type =~ m/int$/ ) {
-      $crc = "COALESCE(LOWER(CONV(BIT_XOR(CAST($row_checksum AS UNSIGNED)), "
-           . "10, 16)), 0)";
+   my $expr = $self->make_row_checksum(%args, no_cols=>1);
+
+   if ( $algorithm eq 'BIT_XOR' ) {
+      # This checksum algorithm concatenates the columns in each row and
+      # checksums them, then slices this checksum up into 16-character chunks.
+      # It then converts them BIGINTs with the CONV() function, and then
+      # groupwise XORs them to produce an order-independent checksum of the
+      # slice over all the rows.  It then converts these back to base 16 and
+      # puts them back together.  The effect is the same as XORing a very wide
+      # (32 characters = 128 bits for MD5, and SHA1 is even larger) unsigned
+      # integer over all the rows.
+      #
+      # As a special case, integer functions do not need to be sliced.  They
+      # can be fed right into BIT_XOR after a cast to UNSIGNED.
+      if ( $crc_type =~ m/int$/ ) {
+         $result = "COALESCE(LOWER(CONV(BIT_XOR(CAST($expr AS UNSIGNED)), 10, 16)), 0) AS crc ";
+      }
+      else {
+         my $slices = $self->make_xor_slices( query => $expr, %args );
+         $result = "COALESCE(LOWER(CONCAT($slices)), 0) AS crc ";
+      }
    }
    else {
-      my $slices = $self->_make_xor_slices(
-         row_checksum => $row_checksum,
-         crc_width    => $crc_width
-      );
-      $crc = "COALESCE(LOWER(CONCAT($slices)), 0)";
-   }
-
-   my $select = "COUNT(*) AS cnt, $crc AS crc";
-   MKDEBUG && _d($select);
-   return $select;
-}
-
-# Sub: _get_hash_func
-#   Get the fastest available hash function.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   dbh - dbh
-#
-# Returns:
-#   Function name
-sub _get_hash_func {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh);
-   foreach my $arg( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($dbh) = @args{@required_args};
-   my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
-
-   if ( my $func = $o->get('function') ) {
-      unshift @funcs, $func;
-   }
-
-   my ($result, $error);
-   foreach my $func ( @funcs ) {
-      eval {
-         my $sql = "SELECT $func('test-string')";
-         MKDEBUG && _d($sql);
-         $args{dbh}->do($sql);
-      };
-      if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
-         $error .= qq{$func cannot be used because "$1"\n};
-         MKDEBUG && _d($func, 'cannot be used because', $1);
+      # Use an accumulator variable.  This query relies on @crc being '', and
+      # @cnt being 0 when it begins.  It checksums each row, appends it to the
+      # running checksum, and checksums the two together.  In this way it acts
+      # as an accumulator for all the rows.  It then prepends a steadily
+      # increasing number to the left, left-padded with zeroes, so each checksum
+      # taken is stringwise greater than the last.  In this way the MAX()
+      # function can be used to return the last checksum calculated.  @cnt is
+      # not used for a row count, it is only used to make MAX() work correctly.
+      #
+      # As a special case, int funcs must be converted to base 16 so it's a
+      # predictable width (it's also a shorter string, but that's not really
+      # important).
+      #
+      # On MySQL 4.0 and older, crc is NULL/undef if no rows are selected.
+      # We COALESCE to avoid having to check that crc is defined; see
+      # http://code.google.com/p/maatkit/issues/detail?id=672
+      if ( $crc_type =~ m/int$/ ) {
+         $result = "COALESCE(RIGHT(MAX("
+            . "\@crc := CONCAT(LPAD(\@cnt := \@cnt + 1, 16, '0'), "
+            . "CONV(CAST($func(CONCAT(\@crc, $expr)) AS UNSIGNED), 10, 16))"
+            . "), $crc_wid), 0) AS crc ";
       }
-      MKDEBUG && _d('Chosen hash func:', $result);
-      return $func;
-   }
-   die $error || 'No hash functions (CRC32, MD5, etc.) are available';
-}
-
-# Returns how wide/long, in characters, a CRC function is.
-sub _get_crc_width {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh func);
-   foreach my $arg( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($dbh, $func) = @args{@required_args};
-
-   my $crc_width = 16;
-   if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
-      eval {
-         my ($val) = $dbh->selectrow_array("SELECT $func('a')");
-         $crc_width = max(16, length($val));
-      };
-   }
-   return $crc_width;
-}
-
-# Returns a CRC function's MySQL type.
-sub _get_crc_type {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh func);
-   foreach my $arg( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($dbh, $func) = @args{@required_args};
-
-   my $type   = '';
-   my $length = 0;
-   my $sql    = "SELECT $func('a')";
-   my $sth    = $dbh->prepare($sql);
-   eval {
-      $sth->execute();
-      $type   = $sth->{mysql_type_name}->[0];
-      $length = $sth->{mysql_length}->[0];
-      MKDEBUG && _d($sql, $type, $length);
-      if ( $type eq 'bigint' && $length < 20 ) {
-         $type = 'int';
+      else {
+         $result = "COALESCE(RIGHT(MAX("
+            . "\@crc := CONCAT(LPAD(\@cnt := \@cnt + 1, 16, '0'), "
+            . "$func(CONCAT(\@crc, $expr)))"
+            . "), $crc_wid), 0) AS crc ";
       }
-   };
-   $sth->finish;
-   MKDEBUG && _d('crc_type:', $type, 'length:', $length);
-   return $type;
-}
-
-# Figure out which slice in a sliced BIT_XOR checksum should have the actual
-# concat-columns-and-checksum, and which should just get variable references.
-# Returns the slice.  I'm really not sure if this code is needed.  It always
-# seems the last slice is the one that works.  But I'd rather be paranoid.
-   # TODO: this function needs a hint to know when a function returns an
-   # integer.  CRC32 is an example.  In these cases no optimization or slicing
-   # is necessary.
-sub _optimize_xor {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh func);
-   foreach my $arg( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $func) = @args{@required_args};
-
-   die "$func never needs BIT_XOR optimization"
-      if $func =~ m/^(?:FNV1A_64|FNV_64|CRC32)$/i;
-
-   my $opt_slice = 0;
-   my $unsliced  = uc $dbh->selectall_arrayref("SELECT $func('a')")->[0]->[0];
-   my $sliced    = '';
-   my $start     = 1;
-   my $crc_width = length($unsliced) < 16 ? 16 : length($unsliced);
-
-   do { # Try different positions till sliced result equals non-sliced.
-      MKDEBUG && _d('Trying slice', $opt_slice);
-      $dbh->do('SET @crc := "", @cnt := 0');
-      my $slices = $self->_make_xor_slices(
-         row_checksum => "\@crc := $func('a')",
-         crc_width    => $crc_width,
-         opt_slice    => $opt_slice,
-      );
-
-      my $sql = "SELECT CONCAT($slices) AS TEST FROM (SELECT NULL) AS x";
-      $sliced = ($dbh->selectrow_array($sql))[0];
-      if ( $sliced ne $unsliced ) {
-         MKDEBUG && _d('Slice', $opt_slice, 'does not work');
-         $start += 16;
-         ++$opt_slice;
-      }
-   } while ( $start < $crc_width && $sliced ne $unsliced );
-
-   if ( $sliced eq $unsliced ) {
-      MKDEBUG && _d('Slice', $opt_slice, 'works');
-      return $opt_slice;
+   if ( $args{replicate} ) {
+      $result = "REPLACE /*PROGRESS_COMMENT*/ INTO $args{replicate} "
+         . "(db, tbl, chunk, boundaries, this_cnt, this_crc) "
+         . "SELECT ?, ?, /*CHUNK_NUM*/ ?, COUNT(*) AS cnt, $result";
    }
    else {
-      MKDEBUG && _d('No slice works');
-      return undef;
+      $result = "SELECT "
+         . ($args{buffer} ? 'SQL_BUFFER_RESULT ' : '')
+         . "/*PROGRESS_COMMENT*//*CHUNK_NUM*/ COUNT(*) AS cnt, $result";
    }
-}
-
-# Sub: _make_xor_slices
-#   Make an expression that will do a bitwise XOR over a very wide integer,
-#   such as that returned by SHA1, which is too large to put into BIT_XOR().
-#   If an opt_slice is given, a variable is used to avoid calling row_checksum
-#   multiple times.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   row_checksum - <make_row_checksum()> query
-#   crc_width    - CRC width (<_get_crc_width()>
-#
-# Optional Arguments:
-#   opt_slice - Slice number.  Use a variable to avoid calling row_checksum
-#               multiple times.
-#
-# Returns:
-#   SQL expression
-sub _make_xor_slices {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(row_checksum crc_width);
-   foreach my $arg( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($row_checksum, $crc_width) = @args{@required_args};
-   my ($opt_slice) = $args{opt_slice};
-
-   # Create a series of slices with @crc as a placeholder.
-   my @slices;
-   for ( my $start = 1; $start <= $crc_width; $start += 16 ) {
-      my $len = $crc_width - $start + 1;
-      if ( $len > 16 ) {
-         $len = 16;
-      }
-      push @slices,
-         "LPAD(CONV(BIT_XOR("
-         . "CAST(CONV(SUBSTRING(\@crc, $start, $len), 16, 10) AS UNSIGNED))"
-         . ", 10, 16), $len, '0')";
-   }
-
-   # Replace the placeholder with the expression.  If specified, add a
-   # user-variable optimization so the expression goes in only one of the
-   # slices.  This optimization relies on @crc being '' when the query begins.
-   if ( defined $opt_slice && $opt_slice < @slices ) {
-      $slices[$opt_slice] =~ s/\@crc/\@crc := $row_checksum/;
-   }
-   else {
-      map { s/\@crc/$row_checksum/ } @slices;
-   }
-
-   return join(', ', @slices);
+   return $result . "FROM /*DB_TBL*//*INDEX_HINT*//*WHERE*/";
 }
 
 # Queries the replication table for chunks that differ from the master's data.

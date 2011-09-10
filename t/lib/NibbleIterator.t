@@ -20,6 +20,7 @@ use OptionParser;
 use MySQLDump;
 use TableParser;
 use TableNibbler;
+use TableChecksum;
 use NibbleIterator;
 use PerconaTest;
 
@@ -38,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 12;
+   plan tests => 17;
 }
 
 my $q  = new Quoter();
@@ -46,6 +47,7 @@ my $tp = new TableParser(Quoter=>$q);
 my $du = new MySQLDump();
 my $nb = new TableNibbler(TableParser=>$tp, Quoter=>$q);
 my $o  = new OptionParser(description => 'NibbleIterator');
+my $tc = new TableChecksum(OptionParser => $o, Quoter=>$q);
 
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
@@ -81,6 +83,7 @@ sub make_nibble_iter {
       dbh       => $dbh,
       tbl       => $schema->get_table($args{db}, $args{tbl}),
       callbacks => $args{callbacks},
+      select    => $args{select},
       %common_modules,
    );
 
@@ -289,7 +292,7 @@ done
 # Nibble a larger table by numeric pk id
 # ############################################################################
 SKIP: {
-   skip "Sakila database is not loaded", 1
+   skip "Sakila database is not loaded", 6
       unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
 
    $ni = make_nibble_iter(
@@ -305,6 +308,58 @@ SKIP: {
       16049,
       "Nibble sakila.payment (16049 rows)"
    );
+
+   my $tbl = {
+      db         => 'sakila',
+      tbl        => 'country',
+      tbl_struct => $tp->parse(
+         $du->get_create_table($dbh, $q, 'sakila', 'country')),
+   };
+   my $chunk_checksum = $tc->make_chunk_checksum(
+      dbh => $dbh,
+      tbl => $tbl,
+   );
+   $ni = make_nibble_iter(
+      db     => 'sakila',
+      tbl    => 'country',
+      argv   => [qw(--databases sakila --tables country --chunk-size 25)],
+      select => $chunk_checksum,
+   );
+
+   my $row = $ni->next();
+   is_deeply(
+      $row,
+      [25, 'da79784d'],
+      "SELECT chunk checksum 1 FROM sakila.country"
+   ) or print STDERR Dumper($row); 
+   
+   $row = $ni->next();
+   is_deeply(
+      $row,
+      [25, 'e860c4f9'],
+      "SELECT chunk checksum 2 FROM sakila.country"
+   ) or print STDERR Dumper($row); 
+   
+   $row = $ni->next();
+   is_deeply(
+      $row,
+      [25, 'eb651f58'],
+      "SELECT chunk checksum 3 FROM sakila.country"
+   ) or print STDERR Dumper($row); 
+  
+   $row = $ni->next();
+   is_deeply(
+      $row,
+      [25, '2d87d588'],
+      "SELECT chunk checksum 4 FROM sakila.country"
+   ) or print STDERR Dumper($row); 
+   
+   $row = $ni->next();
+   is_deeply(
+      $row,
+      [9, 'beb4a180'],
+      "SELECT chunk checksum 5 FROM sakila.country"
+   ) or print STDERR Dumper($row); 
 }
 
 # #############################################################################
