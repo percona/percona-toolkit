@@ -104,8 +104,9 @@ sub new {
    MKDEBUG && _d('Next upper boundary statement:', $ub_sql);
 
    my $nibble_sql
-      = "SELECT /*!40001 SQL_NO_CACHE */ "
-      . join(', ', map { $q->quote($_) } @{$asc->{cols}})
+      = "SELECT "
+      . ($args{select} ? $args{select}
+                       : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
       . " $from "
       . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
       . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
