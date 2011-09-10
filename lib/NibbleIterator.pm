@@ -59,17 +59,16 @@ sub new {
    # Make SQL statements, prepared on first call to next().  FROM and
    # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
    # are needed to ensure deterministic nibbling.
-   my $from = " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-            . " FORCE INDEX(`$index`)";
-   my $order_by = "ORDER BY " . join(', ', map {$q->quote($_)} @{$index_cols});
+   my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+   my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
    # These statements are only executed once, so they don't use sths.
    my $first_lb_sql
       = "SELECT /*!40001 SQL_NO_CACHE */ "
       . join(', ', map { $q->quote($_) } @{$index_cols})
-      . " $from "
+      . " FROM $from "
       . ($args{where} ? " WHERE $args{where}" : '')
-      . " $order_by "
+      . " ORDER BY $order_by "
       . " LIMIT 1"
       . " /*first lower boundary*/";
    MKDEBUG && _d('First lower boundary statement:', $first_lb_sql);
@@ -77,9 +76,9 @@ sub new {
    my $last_ub_sql
       = "SELECT /*!40001 SQL_NO_CACHE */ "
       . join(', ', map { $q->quote($_) } @{$index_cols})
-      . " $from "
+      . " FROM $from "
       . ($args{where} ? " WHERE $args{where}" : '')
-      . " $order_by DESC "
+      . " ORDER BY $order_by DESC "
       . " LIMIT 1"
       . " /*last upper boundary*/";
    MKDEBUG && _d('Last upper boundary statement:', $last_ub_sql);
@@ -95,10 +94,10 @@ sub new {
    my $ub_sql
       = "SELECT /*!40001 SQL_NO_CACHE */ "
       . join(', ', map { $q->quote($_) } @{$index_cols})
-      . " $from "
+      . " FROM $from "
       . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
       . ($args{where} ? " AND ($args{where})" : '')
-      . " $order_by "
+      . " ORDER BY $order_by "
       . " LIMIT 2 OFFSET " . (($o->get('chunk-size') || 1) - 1)
       . " /*upper boundary*/";
    MKDEBUG && _d('Next upper boundary statement:', $ub_sql);
@@ -107,22 +106,23 @@ sub new {
       = "SELECT "
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
-      . " $from "
+      . " FROM $from "
       . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
       . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
       . ($args{where} ? " AND ($args{where})" : '')
-      . " $order_by"
+      . " ORDER BY $order_by"
       . " /*nibble*/";
    MKDEBUG && _d('Nibble statement:', $nibble_sql);
 
    # If the chunk size is >= number of rows in table, then we don't
    # need to chunk; we can just select all rows, in order, at once.
    my $one_nibble_sql
-      = "SELECT /*!40001 SQL_NO_CACHE */ "
-      . join(', ', map { $q->quote($_) } @{$asc->{cols}})
-      . " $from "
+      = "SELECT "
+      . ($args{select} ? $args{select}
+                       : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+      . " FROM $from "
       . ($args{where} ? " AND ($args{where})" : '')
-      . " $order_by"
+      . " ORDER BY $order_by"
       . " /*one nibble*/";
    MKDEBUG && _d('One nibble statement:', $one_nibble_sql);
 
