@@ -4913,6 +4913,7 @@ sub main {
          # First, check if the chunk is too large.
          if ( $o->get('chunk-size-limit')
               && is_oversize_chunk(%args, %common_modules) ) {
+            warn "Chunk $args{nibbleno} of table $tbl->{db}.$tbl->{tbl} is too large\n";
             $tbl->{checksum_results}->{oversize_chunks}++;
             $tbl->{checksum_results}->{exit_status} |= 1;
             return 0;  # next boundary
@@ -4943,7 +4944,7 @@ sub main {
    );
 
    TABLE:
-   foreach my $tbl ( $schema_iter->next_schema_object() ) {
+   while ( my $tbl = $schema_iter->next_schema_object() ) {
       use_repl_db(
          dbh        => $dbh,
          tbl        => $tbl,
@@ -4974,7 +4975,7 @@ sub main {
          }
       };
       if ($EVAL_ERROR) {
-         warn "Error checksumming $tbl->{db}.$tbl->{$tbl}: $EVAL_ERROR\n";
+         warn "Error checksumming $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
          $tbl->{checksum_results}->{exit_status} |= 1;
       }
 
