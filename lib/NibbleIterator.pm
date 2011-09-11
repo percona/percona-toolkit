@@ -103,7 +103,7 @@ sub new {
    MKDEBUG && _d('Next upper boundary statement:', $ub_sql);
 
    my $nibble_sql
-      = "SELECT "
+      = ($args{dms} ? "$args{dms} " : "SELECT ")
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
       . " FROM $from "
@@ -117,7 +117,7 @@ sub new {
    # If the chunk size is >= number of rows in table, then we don't
    # need to chunk; we can just select all rows, in order, at once.
    my $one_nibble_sql
-      = "SELECT "
+      = ($args{dms} ? "$args{dms} " : "SELECT ")
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
       . " FROM $from "
@@ -166,39 +166,53 @@ sub next {
       if ( $row ) {
          $self->{rowno}++;
          MKDEBUG && _d('Row', $self->{rowno}, 'in nibble', $self->{nibbleno});
-         if ( my $callback = $self->{callbacks}->{before_row} ) {
-            $callback->();
-         }
          # fetchrow_arraryref re-uses its internal arrayref, so we must copy.
          return [ @$row ];
       }
       MKDEBUG && _d('No more rows in nibble', $self->{nibbleno});
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
-         $callback->();
+         $callback->(
+            dbh => $self->{dbh},
+            tbl => $self->{tbl},
+         );
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
    }
 
    # If there's another boundary, fetch the rows within it.
-   if ( $self->_next_boundaries() ) {
+   BOUNDARY:
+   while ( $self->_next_boundaries() ) {
       $self->{nibbleno}++;
       MKDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
          join(', ', (@{$self->{lb}}, @{$self->{ub}})));
-      $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
-      $self->{have_rows} = $self->{nibble_sth}->rows();
+      if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
+         $self->{have_rows} = $callback->(
+            dbh => $self->{dbh},
+            tbl => $self->{tbl},
+            sth => $self->{nibble_sth},
+            lb  => $self->{lb},
+            ub  => $self->{ub},
+         );
+      }
+      else {
+         $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
+         $self->{have_rows} = $self->{nibble_sth}->rows();
+      }
       if ( $self->{have_rows} ) {
          MKDEBUG && _d($self->{have_rows}, 'rows in nibble', $self->{nibbleno});
-         if ( my $callback = $self->{callbacks}->{before_nibble} ) {
-            $callback->();
-         }
          return $self->next();
       }
+      MKDEBUG && _d('No rows in nibble or nibble skipped');
+      next BOUNDARY;
    }
 
    MKDEBUG && _d('Done nibbling');
    if ( my $callback = $self->{callbacks}->{done} ) {
-      $callback->();
+      $callback->(
+         dbh => $self->{dbh},
+         tbl => $self->{tbl},
+      );
    }
    return;
 }
@@ -207,17 +221,6 @@ sub nibble_number {
    my ($self) = @_;
    return $self->{nibbleno};
 }
-
-sub number_of_rows {
-   my ($self) = @_;
-   return $self->{have_rows};
-}
-
-sub row_number {
-   my ($self) = @_;
-   return $self->{nibbleno};
-}
-
 
 sub _can_nibble_once {
    my ($self) = @_;
