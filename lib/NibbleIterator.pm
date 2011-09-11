@@ -181,19 +181,47 @@ sub next {
       }
    }
 
-   # Return rows in nibble.  sth->{Active} is always true with DBD::mysql v3,
-   # so we track the status manually.  have_rows will be true if a previous
-   # call got a nibble with rows.  When there's no more rows in this nibble,
-   # try to get the next nibble.
-   if ( $self->{have_rows} ) {
-      my $row = $self->{nibble_sth}->fetchrow_arrayref();
-      if ( $row ) {
-         $self->{rowno}++;
-         MKDEBUG && _d('Row', $self->{rowno}, 'in nibble', $self->{nibbleno});
-         # fetchrow_arraryref re-uses its internal arrayref, so we must copy.
-         return [ @$row ];
+   # If there's another boundary, fetch the rows within it.
+   BOUNDARY:
+   while ( $self->{have_rows} || $self->_next_boundaries() ) {
+      # If no rows, then we just got the next boundaries, which start
+      # the next nibble.
+      if ( !$self->{have_rows} ) {
+         $self->{nibbleno}++;
+         MKDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
+            join(', ', (@{$self->{lb}}, @{$self->{ub}})));
+         if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
+            $self->{have_rows} = $callback->(
+               dbh         => $self->{dbh},
+               tbl         => $self->{tbl},
+               sth         => $self->{nibble_sth},
+               lb          => $self->{lb},
+               ub          => $self->{ub},
+               nibbleno    => $self->{nibbleno},
+               explain_sth => $self->{explain_sth},
+            );
+         }
+         else {
+            $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
+            $self->{have_rows} = $self->{nibble_sth}->rows();
+         }
       }
-      MKDEBUG && _d('No more rows in nibble', $self->{nibbleno});
+
+      # Return rows in this nibble.
+      if ( $self->{have_rows} ) {
+         MKDEBUG && _d($self->{have_rows}, 'rows in nibble', $self->{nibbleno});
+         # Return rows in nibble.  sth->{Active} is always true with
+         # DBD::mysql v3, so we track the status manually.
+         my $row = $self->{nibble_sth}->fetchrow_arrayref();
+         if ( $row ) {
+            $self->{rowno}++;
+            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno});
+            # fetchrow_arraryref re-uses an internal arrayref, so we must copy.
+            return [ @$row ];
+         }
+      }
+
+      MKDEBUG && _d('No rows in nibble or nibble skipped');
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
          $callback->(
             dbh         => $self->{dbh},
@@ -204,35 +232,6 @@ sub next {
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
-   }
-
-   # If there's another boundary, fetch the rows within it.
-   BOUNDARY:
-   while ( $self->_next_boundaries() ) {
-      $self->{nibbleno}++;
-      MKDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
-         join(', ', (@{$self->{lb}}, @{$self->{ub}})));
-      if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
-         $self->{have_rows} = $callback->(
-            dbh         => $self->{dbh},
-            tbl         => $self->{tbl},
-            sth         => $self->{nibble_sth},
-            lb          => $self->{lb},
-            ub          => $self->{ub},
-            nibbleno    => $self->{nibbleno},
-            explain_sth => $self->{explain_sth},
-         );
-      }
-      else {
-         $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
-         $self->{have_rows} = $self->{nibble_sth}->rows();
-      }
-      if ( $self->{have_rows} ) {
-         MKDEBUG && _d($self->{have_rows}, 'rows in nibble', $self->{nibbleno});
-         return $self->next();
-      }
-      MKDEBUG && _d('No rows in nibble or nibble skipped');
-      next BOUNDARY;
    }
 
    MKDEBUG && _d('Done nibbling');
