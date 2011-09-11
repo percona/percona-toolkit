@@ -172,8 +172,9 @@ sub next {
       MKDEBUG && _d('No more rows in nibble', $self->{nibbleno});
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
          $callback->(
-            dbh => $self->{dbh},
-            tbl => $self->{tbl},
+            dbh      => $self->{dbh},
+            tbl      => $self->{tbl},
+            nibbleno => $self->{nibbleno},
          );
       }
       $self->{rowno}     = 0;
@@ -188,11 +189,12 @@ sub next {
          join(', ', (@{$self->{lb}}, @{$self->{ub}})));
       if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
          $self->{have_rows} = $callback->(
-            dbh => $self->{dbh},
-            tbl => $self->{tbl},
-            sth => $self->{nibble_sth},
-            lb  => $self->{lb},
-            ub  => $self->{ub},
+            dbh      => $self->{dbh},
+            tbl      => $self->{tbl},
+            sth      => $self->{nibble_sth},
+            lb       => $self->{lb},
+            ub       => $self->{ub},
+            nibbleno => $self->{nibbleno},
          );
       }
       else {
