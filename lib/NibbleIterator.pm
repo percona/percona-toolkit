@@ -114,6 +114,18 @@ sub new {
       . " /*nibble*/";
    MKDEBUG && _d('Nibble statement:', $nibble_sql);
 
+   my $explain_nibble_sql 
+      = "EXPLAIN SELECT "
+      . ($args{select} ? $args{select}
+                       : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+      . " FROM $from "
+      . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
+      . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
+      . ($args{where} ? " AND ($args{where})" : '')
+      . " ORDER BY $order_by"
+      . " /*explain nibble*/";
+   MKDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
+
    # If the chunk size is >= number of rows in table, then we don't
    # need to chunk; we can just select all rows, in order, at once.
    my $one_nibble_sql
@@ -126,17 +138,29 @@ sub new {
       . " /*one nibble*/";
    MKDEBUG && _d('One nibble statement:', $one_nibble_sql);
 
+   my $explain_one_nibble_sql
+      = "EXPLAIN SELECT "
+      . ($args{select} ? $args{select}
+                       : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
+      . " FROM $from "
+      . ($args{where} ? " AND ($args{where})" : '')
+      . " ORDER BY $order_by"
+      . " /*explain one nibble*/";
+   MKDEBUG && _d('Explain one nibble statement:', $explain_one_nibble_sql);
+
    my $self = {
       %args,
-      index          => $index,
-      first_lb_sql   => $first_lb_sql,
-      last_ub_sql    => $last_ub_sql,
-      ub_sql         => $ub_sql,
-      nibble_sql     => $nibble_sql,
-      one_nibble_sql => $one_nibble_sql,
-      nibbleno       => 0,
-      have_rows      => 0,
-      rowno          => 0,
+      index                  => $index,
+      first_lb_sql           => $first_lb_sql,
+      last_ub_sql            => $last_ub_sql,
+      ub_sql                 => $ub_sql,
+      nibble_sql             => $nibble_sql,
+      explain_nibble_sql     => $explain_nibble_sql,
+      one_nibble_sql         => $one_nibble_sql,
+      explain_one_nibble_sql => $explain_one_nibble_sql,
+      nibbleno               => 0,
+      have_rows              => 0,
+      rowno                  => 0,
    };
 
    return bless $self, $class;
@@ -172,9 +196,10 @@ sub next {
       MKDEBUG && _d('No more rows in nibble', $self->{nibbleno});
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
          $callback->(
-            dbh      => $self->{dbh},
-            tbl      => $self->{tbl},
-            nibbleno => $self->{nibbleno},
+            dbh         => $self->{dbh},
+            tbl         => $self->{tbl},
+            nibbleno    => $self->{nibbleno},
+            explain_sth => $self->{explain_sth},
          );
       }
       $self->{rowno}     = 0;
@@ -189,12 +214,13 @@ sub next {
          join(', ', (@{$self->{lb}}, @{$self->{ub}})));
       if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
          $self->{have_rows} = $callback->(
-            dbh      => $self->{dbh},
-            tbl      => $self->{tbl},
-            sth      => $self->{nibble_sth},
-            lb       => $self->{lb},
-            ub       => $self->{ub},
-            nibbleno => $self->{nibbleno},
+            dbh         => $self->{dbh},
+            tbl         => $self->{tbl},
+            sth         => $self->{nibble_sth},
+            lb          => $self->{lb},
+            ub          => $self->{ub},
+            nibbleno    => $self->{nibbleno},
+            explain_sth => $self->{explain_sth},
          );
       }
       else {
@@ -252,11 +278,13 @@ sub _prepare_sths {
    my ($self) = @_;
    MKDEBUG && _d('Preparing statement handles');
    if ( $self->{one_nibble} ) {
-      $self->{nibble_sth} = $self->{dbh}->prepare($self->{one_nibble_sql});
+      $self->{nibble_sth}  = $self->{dbh}->prepare($self->{one_nibble_sql});
+      $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_one_nibble_sql});
    }
    else {
-      $self->{ub_sth} = $self->{dbh}->prepare($self->{ub_sql});
-      $self->{nibble_sth} = $self->{dbh}->prepare($self->{nibble_sql});
+      $self->{ub_sth}      = $self->{dbh}->prepare($self->{ub_sql});
+      $self->{nibble_sth}  = $self->{dbh}->prepare($self->{nibble_sql});
+      $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_nibble_sql});
    }
 }
 
