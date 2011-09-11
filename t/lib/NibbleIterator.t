@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 17;
+   plan tests => 18;
 }
 
 my $q  = new Quoter();
@@ -276,13 +276,11 @@ done
    "callbacks"
 );
 
-# TODO: test exec_nibble callback
-
 # ############################################################################
 # Nibble a larger table by numeric pk id
 # ############################################################################
 SKIP: {
-   skip "Sakila database is not loaded", 6
+   skip "Sakila database is not loaded", 7
       unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
 
    $ni = make_nibble_iter(
@@ -350,6 +348,59 @@ SKIP: {
       [9, 'beb4a180'],
       "SELECT chunk checksum 5 FROM sakila.country"
    ) or print STDERR Dumper($row); 
+
+
+   # #########################################################################
+   # exec_nibble callback and explain_sth
+   # #########################################################################
+   my @expl;
+   $ni = make_nibble_iter(
+      db     => 'sakila',
+      tbl    => 'country',
+      argv   => [qw(--databases sakila --tables country --chunk-size 60)],
+      select => $chunk_checksum,
+      callbacks => {
+         exec_nibble  => sub {
+            my (%args) = @_;
+            my ($expl_sth, $lb, $ub) = @args{qw(explain_sth lb ub)};
+            $expl_sth->execute(@$lb, @$ub);
+            push @expl, $expl_sth->fetchrow_hashref();
+            return 0;
+         },
+      }
+   );
+   $ni->next();
+   $ni->next();
+   is_deeply(
+      \@expl,
+      [
+         {
+            id            => '1',
+            key           => 'PRIMARY',
+            key_len       => '2',
+            possible_keys => 'PRIMARY',
+            ref           => undef,
+            rows          => '54',
+            select_type   => 'SIMPLE',
+            table         => 'country',
+            type          => 'range',
+            extra         => 'Using where',
+         },
+         {
+            id             => '1',
+            key            => 'PRIMARY',
+            key_len        => '2',
+            possible_keys  => 'PRIMARY',
+            ref            => undef,
+            rows           => '49',
+            select_type    => 'SIMPLE',
+            table          => 'country',
+            type           => 'range',
+            extra          => 'Using where',
+         },
+      ],
+   'exec_nibble callbackup and explain_sth'
+   );
 }
 
 # #############################################################################
