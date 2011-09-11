@@ -20,7 +20,7 @@ use OptionParser;
 use MySQLDump;
 use TableParser;
 use TableNibbler;
-use TableChecksum;
+use RowChecksum;
 use NibbleIterator;
 use PerconaTest;
 
@@ -47,7 +47,7 @@ my $tp = new TableParser(Quoter=>$q);
 my $du = new MySQLDump();
 my $nb = new TableNibbler(TableParser=>$tp, Quoter=>$q);
 my $o  = new OptionParser(description => 'NibbleIterator');
-my $tc = new TableChecksum(OptionParser => $o, Quoter=>$q);
+my $rc = new RowChecksum(OptionParser => $o, Quoter=>$q);
 
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
@@ -251,8 +251,6 @@ $ni = make_nibble_iter(
    argv      => [qw(--databases test --chunk-size 2)],
    callbacks => {
       init          => sub { print "init\n" },
-      before_nibble => sub { print "before nibble ".$ni->nibble_number()."\n" },
-      before_row    => sub { print "before row\n" },
       after_nibble  => sub { print "after nibble ".$ni->nibble_number()."\n" },
       done          => sub { print "done\n" },
    }
@@ -269,17 +267,8 @@ my $output = output(
 is(
    $output,
 "init
-before nibble 1
-before row
-before row
 after nibble 1
-before nibble 2
-before row
-before row
 after nibble 2
-before nibble 3
-before row
-before row
 after nibble 3
 done
 done
@@ -287,6 +276,7 @@ done
    "callbacks"
 );
 
+# TODO: test exec_nibble callback
 
 # ############################################################################
 # Nibble a larger table by numeric pk id
@@ -315,7 +305,7 @@ SKIP: {
       tbl_struct => $tp->parse(
          $du->get_create_table($dbh, $q, 'sakila', 'country')),
    };
-   my $chunk_checksum = $tc->make_chunk_checksum(
+   my $chunk_checksum = $rc->make_chunk_checksum(
       dbh => $dbh,
       tbl => $tbl,
    );
