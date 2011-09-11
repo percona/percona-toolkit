@@ -365,6 +365,16 @@ sub _next_boundaries {
    return 1; # have boundary
 }
 
+sub DESTROY {
+   my ( $self ) = @_;
+   foreach my $key ( keys %$self ) {
+      if ( $key =~ m/_sth$/ ) {
+         $self->{$key}->finish();
+      }
+   }
+   return;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
