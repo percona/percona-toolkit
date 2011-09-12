@@ -4701,7 +4701,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-use Time::HiRes qw(sleep);
+use Time::HiRes qw(sleep time);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
@@ -4997,6 +4997,7 @@ sub main {
          my $tbl = $args{tbl};
          $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $args{nibbleno});
          my ($crc, $cnt) = $fetch_sth->fetchrow_array();
+         $tbl->{checksum_results}->{n_rows} += $cnt || 0;
          $update_sth->execute($crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
          return;
       },
@@ -5041,6 +5042,8 @@ sub main {
          callbacks => $callbacks,
          %common_modules,
       );
+
+      $tbl->{checksum_results}->{start_time} = time;
       eval {
          1 while $nibble_iter->next();
       };
@@ -5195,13 +5198,14 @@ sub print_checksum_results {
       printf $line_fmt, qw(STATUS ROWS CHUNKS SKIPPED ERRORS TIME TABLE);
       $print_header = 0;
    }
+
    printf $line_fmt,
-      $tbl->{checksum_results}->{exit_status}      || 0,
-      $tbl->{checksum_results}->{n_rows}           || 0,
-      $tbl->{checksum_results}->{n_chunks}         || 0,
-      $tbl->{checksum_results}->{oversize_chunks}  || 0,
+      $tbl->{checksum_results}->{exit_status}        || 0,
+      $tbl->{checksum_results}->{n_rows}             || 0,
+      $tbl->{checksum_results}->{n_chunks}           || 0,
+      $tbl->{checksum_results}->{oversize_chunks}    || 0,
       0,
-      $tbl->{checksum_results}->{total_time}       || 0,
+      int(time - ($tbl->{checksum_results}->{start_time}  || 0)),
       "$tbl->{db}.$tbl->{tbl}";
 
    return;
