@@ -55,6 +55,7 @@ sub new {
       index      => $index,
       asc_only   => 1,
    );
+   MKDEBUG && _d('Ascend params:', Dumper($asc));
 
    # Make SQL statements, prepared on first call to next().  FROM and
    # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
@@ -65,20 +66,21 @@ sub new {
    # These statements are only executed once, so they don't use sths.
    my $first_lb_sql
       = "SELECT /*!40001 SQL_NO_CACHE */ "
-      . join(', ', map { $q->quote($_) } @{$index_cols})
-      . " FROM $from "
+      . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+      . " FROM $from"
       . ($args{where} ? " WHERE $args{where}" : '')
-      . " ORDER BY $order_by "
+      . " ORDER BY $order_by"
       . " LIMIT 1"
       . " /*first lower boundary*/";
    MKDEBUG && _d('First lower boundary statement:', $first_lb_sql);
 
    my $last_ub_sql
       = "SELECT /*!40001 SQL_NO_CACHE */ "
-      . join(', ', map { $q->quote($_) } @{$index_cols})
-      . " FROM $from "
+      . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+      . " FROM $from"
       . ($args{where} ? " WHERE $args{where}" : '')
-      . " ORDER BY $order_by DESC "
+      . " ORDER BY "
+      . join(' DESC, ', map {$q->quote($_)} @{$index_cols}) . ' DESC'
       . " LIMIT 1"
       . " /*last upper boundary*/";
    MKDEBUG && _d('Last upper boundary statement:', $last_ub_sql);
@@ -92,7 +94,7 @@ sub new {
    # the upper boundary for the current nibble *and* the lower boundary
    # for the next nibble.  See _next_boundaries().
    my $ub_sql = _make_ub_sql(
-      cols     => $index_cols,
+      cols     => $asc->{scols},
       from     => $from,
       where    => $asc->{boundaries}->{'>='}
                 . ($args{where} ? " AND ($args{where})" : ''),
@@ -107,7 +109,7 @@ sub new {
       = ($args{dms} ? "$args{dms} " : "SELECT ")
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
-      . " FROM $from "
+      . " FROM $from"
       . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
       . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
       . ($args{where} ? " AND ($args{where})" : '')
@@ -119,7 +121,7 @@ sub new {
       = "EXPLAIN SELECT "
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
-      . " FROM $from "
+      . " FROM $from"
       . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
       . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
       . ($args{where} ? " AND ($args{where})" : '')
@@ -133,7 +135,7 @@ sub new {
       = ($args{dms} ? "$args{dms} " : "SELECT ")
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
-      . " FROM $from "
+      . " FROM $from"
       . ($args{where} ? " AND ($args{where})" : '')
       . " ORDER BY $order_by"
       . " /*one nibble*/";
@@ -143,7 +145,7 @@ sub new {
       = "EXPLAIN SELECT "
       . ($args{select} ? $args{select}
                        : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
-      . " FROM $from "
+      . " FROM $from"
       . ($args{where} ? " AND ($args{where})" : '')
       . " ORDER BY $order_by"
       . " /*explain one nibble*/";
@@ -153,7 +155,6 @@ sub new {
       %args,
       asc                    => $asc,
       index                  => $index,
-      index_cols             => $index_cols,
       from                   => $from,
       order_by               => $order_by,
       first_lb_sql           => $first_lb_sql,
@@ -259,7 +260,7 @@ sub set_chunk_size {
    MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
 
    $self->{ub_sql} = _make_ub_sql(
-      cols     => $self->{index_cols},
+      cols     => $self->{asc}->{scols},
       from     => $self->{from},
       where    => $self->{asc}->{boundaries}->{'>='}
                 . ($self->{where} ? " AND ($self->{where})" : ''),
@@ -289,9 +290,9 @@ sub _make_ub_sql {
    my $ub_sql
       = "SELECT /*!40001 SQL_NO_CACHE */ "
       . join(', ', map { $q->quote($_) } @{$cols})
-      . " FROM $from "
-      . " WHERE $where "
-      . " ORDER BY $order_by "
+      . " FROM $from"
+      . " WHERE $where"
+      . " ORDER BY $order_by"
       . " LIMIT 2 OFFSET " . ((int($limit) || 1) - 1)
       . " /*upper boundary*/";
    MKDEBUG && _d('Upper boundary statement:', $ub_sql);
