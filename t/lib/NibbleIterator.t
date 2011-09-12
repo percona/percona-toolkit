@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 19;
+   plan tests => 20;
 }
 
 my $q  = new Quoter();
@@ -280,7 +280,7 @@ done
 # Nibble a larger table by numeric pk id
 # ############################################################################
 SKIP: {
-   skip "Sakila database is not loaded", 7
+   skip "Sakila database is not loaded", 8
       unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
 
    $ni = make_nibble_iter(
@@ -400,6 +400,23 @@ SKIP: {
          },
       ],
    'exec_nibble callbackup and explain_sth'
+   );
+    
+   # #########################################################################
+   # film_actor, multi-column pk
+   # #########################################################################
+   $ni = make_nibble_iter(
+      db       => 'sakila',
+      tbl      => 'film_actor',
+      argv     => [qw(--tables sakila.film_actor --chunk-size 1000)],
+   );
+
+   $n_nibbles = 0;
+   $n_nibbles++ while $ni->next();
+   is(
+      $n_nibbles,
+      5462,
+      "Nibble sakila.film_actor (multi-column pk)"
    );
 }
 
