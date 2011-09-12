@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 18;
+   plan tests => 20;
 }
 
 my $q  = new Quoter();
@@ -280,7 +280,7 @@ done
 # Nibble a larger table by numeric pk id
 # ############################################################################
 SKIP: {
-   skip "Sakila database is not loaded", 7
+   skip "Sakila database is not loaded", 8
       unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
 
    $ni = make_nibble_iter(
@@ -401,7 +401,54 @@ SKIP: {
       ],
    'exec_nibble callbackup and explain_sth'
    );
+    
+   # #########################################################################
+   # film_actor, multi-column pk
+   # #########################################################################
+   $ni = make_nibble_iter(
+      db       => 'sakila',
+      tbl      => 'film_actor',
+      argv     => [qw(--tables sakila.film_actor --chunk-size 1000)],
+   );
+
+   $n_nibbles = 0;
+   $n_nibbles++ while $ni->next();
+   is(
+      $n_nibbles,
+      5462,
+      "Nibble sakila.film_actor (multi-column pk)"
+   );
 }
+
+# ############################################################################
+# Reset chunk size on-the-fly. 
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file  => "a-z.sql",
+   db        => 'test',
+   tbl       => 't',
+   argv      => [qw(--databases test --chunk-size 5)],
+);
+
+@rows = ();
+my $i = 0;
+while (my $row = $ni->next()) {
+   push @{$rows[$ni->nibble_number()]}, @$row;
+   if ( ++$i == 5 ) {
+      $ni->set_chunk_size(20);
+   }
+}
+
+is_deeply(
+   \@rows,
+   [
+      undef,          # no 0 nibble
+      [ ('a'..'e') ], # nibble 1
+      [ ('f'..'y') ], # nibble 2, should contain 20 chars
+      [ 'z'        ], # last nibble
+   ],
+   "Change chunk size while nibbling"
+) or print STDERR Dumper(\@rows);
 
 # #############################################################################
 # Done.
