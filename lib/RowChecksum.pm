@@ -178,22 +178,19 @@ sub make_chunk_checksum {
    if ( !$args{dbh} && !($args{func} && $args{crc_width} && $args{crc_type}) ) {
       die "I need a dbh argument"
    }
-
    my ($tbl) = @args{@required_args};
-   my $o = $self->{OptionParser};
-   my $q = $self->{Quoter};
+   my $o     = $self->{OptionParser};
+   my $q     = $self->{Quoter};
 
-   my $func      = $args{func}     || $self->_get_hash_func(%args);
-   my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
-   my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
+   my %crc_args = $self->get_crc_args(%args);
    my $opt_slice; 
    if ( $o->get('optimize-xor') ) {
-      if ( $crc_type !~ m/int$/ ) {
-         $opt_slice = $self->_optimize_xor(%args, func => $func);
+      if ( $crc_args{crc_type} !~ m/int$/ ) {
+         $opt_slice = $self->_optimize_xor(%args, %crc_args);
          warn "Cannot use --optimize-xor" unless defined $opt_slice;
       }
    }
-   MKDEBUG && _d("Checksum strat:", $func, $crc_width, $crc_type, $opt_slice);
+   MKDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
 
    # This checksum algorithm concatenates the columns in each row and
    # checksums them, then slices this checksum up into 16-character chunks.
@@ -208,18 +205,18 @@ sub make_chunk_checksum {
    # can be fed right into BIT_XOR after a cast to UNSIGNED.
    my $row_checksum = $self->make_row_checksum(
       %args,
-      func    => $func,
+      %crc_args,
       no_cols => 1
    );
    my $crc;
-   if ( $crc_type =~ m/int$/ ) {
+   if ( $crc_args{crc_type} =~ m/int$/ ) {
       $crc = "COALESCE(LOWER(CONV(BIT_XOR(CAST($row_checksum AS UNSIGNED)), "
            . "10, 16)), 0)";
    }
    else {
       my $slices = $self->_make_xor_slices(
          row_checksum => $row_checksum,
-         crc_width    => $crc_width
+         %crc_args,
       );
       $crc = "COALESCE(LOWER(CONCAT($slices)), 0)";
    }
@@ -227,6 +224,18 @@ sub make_chunk_checksum {
    my $select = "COUNT(*) AS cnt, $crc AS crc";
    MKDEBUG && _d('Chunk checksum:', $select);
    return $select;
+}
+
+sub get_crc_args {
+   my ($self, %args) = @_;
+   my $func      = $args{func}     || $self->_get_hash_func(%args);
+   my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
+   my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
+   return (
+      func      => $func,
+      crc_width => $crc_width,
+      crc_type  => $crc_type,
+   );
 }
 
 # Sub: _get_hash_func
