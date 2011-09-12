@@ -91,17 +91,18 @@ sub new {
    # does (col > a AND col <= e).  Hence the fancy LIMIT 2 which returns
    # the upper boundary for the current nibble *and* the lower boundary
    # for the next nibble.  See _next_boundaries().
-   my $ub_sql
-      = "SELECT /*!40001 SQL_NO_CACHE */ "
-      . join(', ', map { $q->quote($_) } @{$index_cols})
-      . " FROM $from "
-      . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
-      . ($args{where} ? " AND ($args{where})" : '')
-      . " ORDER BY $order_by "
-      . " LIMIT 2 OFFSET " . (($o->get('chunk-size') || 1) - 1)
-      . " /*upper boundary*/";
-   MKDEBUG && _d('Next upper boundary statement:', $ub_sql);
+   my $ub_sql = _make_ub_sql(
+      cols     => $index_cols,
+      from     => $from,
+      where    => $asc->{boundaries}->{'>='}
+                . ($args{where} ? " AND ($args{where})" : ''),
+      order_by => $order_by,
+      limit    => $o->get('chunk-size'),
+      Quoter   => $q,
+   );
 
+   # This statement does the actual nibbling work; its rows are returned
+   # to the caller via next().
    my $nibble_sql
       = ($args{dms} ? "$args{dms} " : "SELECT ")
       . ($args{select} ? $args{select}
@@ -150,7 +151,11 @@ sub new {
 
    my $self = {
       %args,
+      asc                    => $asc,
       index                  => $index,
+      index_cols             => $index_cols,
+      from                   => $from,
+      order_by               => $order_by,
       first_lb_sql           => $first_lb_sql,
       last_ub_sql            => $last_ub_sql,
       ub_sql                 => $ub_sql,
@@ -181,8 +186,8 @@ sub next {
       }
    }
 
-   # If there's another boundary, fetch the rows within it.
-   BOUNDARY:
+   # If there's another nibble, fetch the rows within it.
+   NIBBLE:
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
       # If no rows, then we just got the next boundaries, which start
       # the next nibble.
@@ -249,6 +254,50 @@ sub nibble_number {
    return $self->{nibbleno};
 }
 
+sub set_chunk_size {
+   my ($self, $limit) = @_;
+   MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
+
+   $self->{ub_sql} = _make_ub_sql(
+      cols     => $self->{index_cols},
+      from     => $self->{from},
+      where    => $self->{asc}->{boundaries}->{'>='}
+                . ($self->{where} ? " AND ($self->{where})" : ''),
+      order_by => $self->{order_by},
+      limit    => $limit,
+      Quoter   => $self->{Quoter},
+   );
+
+   # ub_sth won't exist if user calls this sub before calling next() once.
+   if ($self->{ub_sth}) {
+      $self->{ub_sth}->finish();
+      $self->{ub_sth} = undef;
+   }
+
+   $self->_prepare_sths();
+
+   return;
+}
+
+sub _make_ub_sql {
+   my (%args) = @_;
+   my @required_args = qw(cols from where order_by limit Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cols, $from, $where, $order_by, $limit, $q) = @args{@required_args};
+   my $ub_sql
+      = "SELECT /*!40001 SQL_NO_CACHE */ "
+      . join(', ', map { $q->quote($_) } @{$cols})
+      . " FROM $from "
+      . " WHERE $where "
+      . " ORDER BY $order_by "
+      . " LIMIT 2 OFFSET " . ((int($limit) || 1) - 1)
+      . " /*upper boundary*/";
+   MKDEBUG && _d('Upper boundary statement:', $ub_sql);
+   return $ub_sql;
+}
+
 sub _can_nibble_once {
    my ($self) = @_;
    my ($dbh, $tbl, $q) = @{$self}{qw(dbh tbl Quoter)};
@@ -277,13 +326,18 @@ sub _prepare_sths {
    my ($self) = @_;
    MKDEBUG && _d('Preparing statement handles');
    if ( $self->{one_nibble} ) {
-      $self->{nibble_sth}  = $self->{dbh}->prepare($self->{one_nibble_sql});
-      $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_one_nibble_sql});
+      $self->{nibble_sth}  = $self->{dbh}->prepare($self->{one_nibble_sql})
+         unless $self->{nibble_sth};
+      $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_one_nibble_sql})
+         unless $self->{explain_sth};
    }
    else {
-      $self->{ub_sth}      = $self->{dbh}->prepare($self->{ub_sql});
-      $self->{nibble_sth}  = $self->{dbh}->prepare($self->{nibble_sql});
-      $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_nibble_sql});
+      $self->{ub_sth} = $self->{dbh}->prepare($self->{ub_sql})
+         unless $self->{ub_sth};
+      $self->{nibble_sth}  = $self->{dbh}->prepare($self->{nibble_sql})
+         unless $self->{nibble_sth};
+      $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_nibble_sql})
+         unless $self->{explain_sth};
    }
 }
 
