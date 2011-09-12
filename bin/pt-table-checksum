@@ -5233,6 +5233,9 @@ sub check_repl_table {
 # won't pass a tbl arg because they're just doing something to
 # the --replicate table.
 # See http://code.google.com/p/maatkit/issues/detail?id=982
+{
+my $current_db;
+
 sub use_repl_db {
    my ( %args ) = @_;
    my @required_args = qw(dbh repl_table OptionParser Quoter);
@@ -5255,24 +5258,28 @@ sub use_repl_db {
       $db = $o->get('replicate-database') if $o->get('replicate-database');
    }
 
-   eval {
-      my $sql = "USE " . $q->quote($db);
-      MKDEBUG && _d($sql);
-      $dbh->do($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      # Report which option db really came from.
-      my $opt = $o->get('replicate-database') ? "--replicate-database"
-              :                                 "--replicate database";
-      if ( $EVAL_ERROR =~ m/unknown database/i ) {
-         die "$opt `$db` does not exist: $EVAL_ERROR";
+   if ( !$current_db || $current_db ne $db ) {
+      eval {
+         my $sql = "USE " . $q->quote($db);
+         MKDEBUG && _d($sql);
+         $dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         # Report which option db really came from.
+         my $opt = $o->get('replicate-database') ? "--replicate-database"
+                 :                                 "--replicate database";
+         if ( $EVAL_ERROR =~ m/unknown database/i ) {
+            die "$opt `$db` does not exist: $EVAL_ERROR";
+         }
+         else {
+            die "Error using $opt `$db`: $EVAL_ERROR";
+         }
       }
-      else {
-         die "Error using $opt `$db`: $EVAL_ERROR";
-      }
+      $current_db = $db;
    }
 
    return;
+}
 }
 
 sub create_repl_table {
