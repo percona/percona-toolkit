@@ -4972,10 +4972,12 @@ sub main {
       exec_nibble => sub {
          my (%args) = @_;
          my $tbl = $args{tbl};
+         $tbl->{checksum_results}->{n_chunks}++;
          # First, check if the chunk is too large.
          if ( $o->get('chunk-size-limit')
               && is_oversize_chunk(%args, %common_modules) ) {
-            warn "Chunk $args{nibbleno} of table $tbl->{db}.$tbl->{tbl} is too large\n";
+            MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
+               "$tbl->{db}.$tbl->{tbl}", 'is too large');
             $tbl->{checksum_results}->{oversize_chunks}++;
             $tbl->{checksum_results}->{exit_status} |= 1;
             return 0;  # next boundary
@@ -4988,7 +4990,11 @@ sub main {
       },
       after_nibble => sub {
          my (%args) = @_;
-         return after_nibble(%args);
+         my $tbl = $args{tbl};
+         $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $args{nibbleno});
+         my ($crc, $cnt) = $fetch_sth->fetchrow_array();
+         $update_sth->execute($crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
+         return;
       },
       done => sub {
          my (%args) = @_;
@@ -5032,13 +5038,7 @@ sub main {
          %common_modules,
       );
       eval {
-         NIBBLE:
-         while ( my $checksum = $nibble_iter->next() ) {
-            my $chunkno = $nibble_iter->nibble_number();
-            $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $chunkno);
-            my ($crc, $cnt) = $fetch_sth->fetchrow_array();
-            $update_sth->execute($crc, $cnt, @{$tbl}{qw(db tbl)}, $chunkno);
-         }
+         1 while $nibble_iter->next();
       };
       if ($EVAL_ERROR) {
          warn "Error checksumming $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
@@ -5148,7 +5148,9 @@ sub exec_nibble {
 
 sub after_nibble {
    my (%args) = @_;
+   my ($tbl) = @args{qw(tbl)};
    MKDEBUG && _d('After nibble');
+
 #   my $o = $args{OptionParser};
 #
 #   if ( $throttle_method eq 'slavelag' ) {
@@ -5173,6 +5175,10 @@ sub after_nibble {
    return;
 };
 
+{
+my $print_header = 1;
+my $line_fmt     = "%6s %9s %6s %7s %6s %6s %-s\n";
+
 sub print_checksum_results {
    my (%args) = @_;
    my @required_args = qw(tbl);
@@ -5181,9 +5187,21 @@ sub print_checksum_results {
    }
    my ($tbl) = @args{@required_args};
 
-   print "$tbl->{db}.$tbl->{tbl} $tbl->{checksum_results}->{exit_status}\n";
+   if ($print_header) {
+      printf $line_fmt, qw(STATUS ROWS CHUNKS SKIPPED ERRORS TIME TABLE);
+      $print_header = 0;
+   }
+   printf $line_fmt,
+      $tbl->{checksum_results}->{exit_status}      || 0,
+      $tbl->{checksum_results}->{n_rows}           || 0,
+      $tbl->{checksum_results}->{n_chunks}         || 0,
+      $tbl->{checksum_results}->{oversize_chunks}  || 0,
+      0,
+      $tbl->{checksum_results}->{total_time}       || 0,
+      "$tbl->{db}.$tbl->{tbl}";
 
    return;
+}
 }
 
 # Check for existence and privileges on the replication table before
