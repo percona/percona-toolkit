@@ -5265,14 +5265,47 @@ sub check_repl_table {
    return;
 }
 
-# This sub should be called before any work is done with the
-# --replicate table.  It will USE the correct replicate db.
-# If there's a tbl arg then its db will be used unless --replicate-database
-# was specified.  A tbl arg means we're checksumming that table,
-# so we've been called from do_tbl_replicate().  Other callers
-# won't pass a tbl arg because they're just doing something to
-# the --replicate table.
-# See http://code.google.com/p/maatkit/issues/detail?id=982
+
+# Sub: use_repl_db
+#   USE the correct database for the --replicate table.
+#   This sub must be called before any work is done with the --replicatte
+#   table because replication filters can really complicate replicating the
+#   checksums.  The originally issue is,
+#   http://code.google.com/p/maatkit/issues/detail?id=982,
+#   but here's what you need to know:
+#   - If there is no active DB, then if there's any do-db or ignore-db
+#     settings, the checksums will get filtered out of replication. So we
+#     have to have some DB be the current one.
+#   - Other places in the code may change the DB and we might not know it.
+#     Opportunity for bugs.  The SHOW CREATE TABLE, for example. In the
+#     end, a bunch of USE statements isn't a big deal, it just looks noisy
+#     when you analyze the logs this tool creates. But it's better to just
+#     have them even if they're no-op.
+#   - We need to always let the user specify, because there are so many
+#     possibilities that the tool can't guess the right thing in all of
+#     them.
+#   - The right default behavior, which the user can override, is:
+#       * When running queries on the --replicate table itself, such as
+#         emptying it, USE that table's database.
+#       * When running checksum queries, USE the database of the table that's
+#         being checksummed.
+#       * When the user specifies --replicate-database, in contrast, always
+#         USE that database.
+#   - This behavior is the best compromise by default, because users who
+#     explicitly replicate some databases and filter out others will be
+#     very likely to run pt-table-checksum and limit its checksumming to
+#     only the databases that are replicated. I've seen people do this,
+#     including Peter. In this case, the tool will work okay even without
+#     an explicit --replicate-database setting.
+#
+# Required Arguments:
+#   dbh          - dbh
+#   repl_table   - Full quoted --replicate table name
+#   OptionParser - <OptionParser>
+#   Quoter       - <Quoter>
+#
+# Returns:
+#   Nothing or dies on error
 {
 my $current_db;
 
@@ -5286,8 +5319,11 @@ sub use_repl_db {
 
    my ($db, $tbl) = $q->split_unquote($repl_table);
    if ( my $tbl = $args{tbl} ) {
-      # Caller is checksumming this table, USE its db unless
-      # --replicate-database is in effect.
+      # If there's a tbl arg then its db will be used unless
+      # --replicate-database was specified.  A tbl arg means
+      # we're checksumming that table.  Other callers won't
+      # pass a tbl arg when they're just doing something to
+      # the --replicate table.
       $db = $o->get('replicate-database') ? $o->get('replicate-database')
           :                                 $tbl->{db};
    }
