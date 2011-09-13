@@ -2537,6 +2537,56 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_slaves {
+   my ($self, %args) = @_;
+   my @required_args = qw(OptionParser DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($o, $dp) = @args{@required_args};
+
+   my $slaves = [];
+   my $method = $o->get('recursion-method');
+   MKDEBUG && _d('Slave recursion method:', $method);
+   if ( !$method || $method =~ m/proocesslist|hosts/i ) {
+      my @required_args = qw(dbh dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dbh, $dsn) = @args{@required_args};
+      $self->recurse_to_slaves(
+         {  dbh        => $dbh,
+            dsn        => $dsn,
+            dsn_parser => $dp,
+            recurse    => $o->get('recurse'),
+            method     => $o->get('recursion-method'),
+            callback   => sub {
+               my ( $dsn, $dbh, $level, $parent ) = @_;
+               return unless $level;
+               MKDEBUG && _d('Found slave:', $dp->as_string($dsn));
+               $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
+               $dbh->{FetchHashKeyName} = 'NAME_lc';
+               push @$slaves, { dsn=>$dsn, dbh=>$dbh };
+               return;
+            },
+         }
+      );
+   }
+   elsif ( $method =~ m/^dsn=/i ) {
+      my ($dsn_table_dsn) = $method =~ m/^dsn=(.+)/i;
+      $slaves = $self->get_cxn_from_dsn_table(
+         %args,
+         dsn_table_dsn => $dsn_table_dsn,
+      );
+   }
+   else {
+      die "Invalid --recusion-method: $method.  Valid values are: "
+        . "dsn=DSN, hosts, or processlist.\n";
+   }
+
+   return $slaves;
+}
+
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
@@ -3111,6 +3161,45 @@ sub reset_known_replication_threads {
    my ( $self ) = @_;
    $self->{replication_thread} = {};
    return;
+}
+
+sub get_cxn_from_dsn_table {
+   my ($self, %args) = @_;
+   my @required_args = qw(dsn_table_dsn DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dsn_table_dsn, $dp, $q) = @args{@required_args};
+   MKDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
+
+   my $dsn = $dp->parse($dsn_table_dsn);
+   my $dsn_table;
+   if ( $dsn->{D} && $dsn->{t} ) {
+      $dsn_table = $q->quote($dsn->{D}, $dsn->{t});
+   }
+   elsif ( $dsn->{t} && $dsn->{t} =~ m/\./ ) {
+      $dsn_table = $q->quote($q->split_unquote($dsn->{t}));
+   }
+   else {
+      die "DSN table DSN does not specify a database (D) "
+        . "or a database-qualified table (t)";
+   }
+
+   my @cxn;
+   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
+   my $sql = "SELECT dsn FROM $dsn_table ORDER BY id";
+   MKDEBUG && _d($sql);
+   my $dsns = $dbh->selectcol_arrayref($sql);
+   if ( $dsns ) {
+      foreach my $dsn ( @$dsns ) {
+         MKDEBUG && _d('DSN from DSN table:', $dsn);
+         my $dsn = $dp->parse($dsn);
+         my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
+         push @cxn, {dsn=>$dsn, dbh=>$dbh};
+      }
+   }
+   $dbh->disconnect();
+   return \@cxn;
 }
 
 sub _d {
@@ -4763,7 +4852,7 @@ sub main {
    }
 
    # ########################################################################
-   # Connect to MySQL.
+   # Connect to the master.
    # ########################################################################
    my $dsn_defaults = $dp->parse_options($o);
    my $dsn          = $dp->parse(shift @ARGV, undef, $dsn_defaults);
@@ -4797,11 +4886,58 @@ sub main {
       Retry         => $rr,
       Quoter        => $q,
    );
+
+   # ########################################################################
+   # Find and connect to slaves.
+   # ########################################################################
+   my $slaves = $ms->get_slaves(
+      dbh          => $dbh,
+      dsn          => $dsn,
+      OptionParser => $o,
+      DSNParser    => $dp,
+      Quoter       => $q,
+   );
+   MKDEBUG && _d(scalar @$slaves, 'slaves found');
+
+   my $slave_lag_cxn;
+   if ( $o->get('check-slave-lag') ) {
+      MKDEBUG && _d('Will use --check-slave-lag DSN to check for slave lag');
+      # OptionParser can't auto-copy DSN vals from a cmd line DSN
+      # to an opt DSN, so we copy them manually.
+      my $dsn = $dp->copy($dsn, $o->get('check-slave-lag'));
+      my $dbh = get_cxn(
+         dsn          => $dsn,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $slave_lag_cxn = {dsn=>$dsn, dbh=>$dbh};
+   }
    
+   # ########################################################################
+   # Check replication slaves if desired.  If only --replicate-check is given,
+   # then we will exit here.  If --recheck is also given, then we'll continue
+   # through the entire script but checksum only the inconsistent tables found
+   # here.
+   # ########################################################################
+   my $repl_table = $q->quote($q->split_unquote($o->get('replicate')));
+
+   if ( defined $o->get('replicate-check') ) {
+      foreach my $host ( @$slaves ) {
+         my @tbls = $rc->find_replication_differences($host->{dbh},$repl_table);
+         next unless @tbls;
+         $exit_status |= 1;
+         print_inconsistent_tbls(
+            dsn  => $host->{dsn},
+            tbls => \@tbls,
+            %common_modules,
+         );
+      }
+      return $exit_status unless $o->get('recheck');
+   }
+
    # ########################################################################
    # Check that the replication table exists, or possibly create it.
    # ########################################################################
-   my $repl_table = $q->quote($q->split_unquote($o->get('replicate')));
    eval {
       check_repl_table(
          dbh        => $dbh,
@@ -4812,6 +4948,38 @@ sub main {
    if ($EVAL_ERROR) {
       $dbh->disconnect();
       die $EVAL_ERROR;
+   }
+
+   # ########################################################################
+   # Check for replication filters.
+   # ########################################################################
+   if ( $o->get('check-replication-filters') ) {
+      MKDEBUG && _d("Checking slaves for replication filters");
+      my @all_repl_filters;
+      foreach my $host ( @$slaves ) {
+         my $repl_filters = $ms->get_replication_filters(dbh=>$host->{dbh});
+         if ( keys %$repl_filters ) {
+            my $host = $dp->as_string($host->{dsn});
+            push @all_repl_filters,
+               { name    => $host,
+                 filters => $repl_filters,
+               };
+         }
+      }
+      if ( @all_repl_filters ) {
+         my $msg = "Replication filters are set on these hosts:\n";
+         foreach my $host ( @all_repl_filters ) {
+            my $filters = $host->{filters};
+            $msg .= "  $host->{name}\n"
+                  . join("\n", map { "    $_ = $host->{filters}->{$_}" }
+                         keys %{$host->{filters}})
+                  . "\n";
+         }
+         $msg .= "Please read the --check-replication-filters documentation "
+               . "to learn how to solve this problem.";
+         warn $msg;
+         return 1;
+      }
    }
 
    # ########################################################################
@@ -4833,125 +5001,6 @@ sub main {
          . "InnoDB is not safe for binlog mode 'STATEMENT'\".  In that "
          . "case you will need to manually set the transaction isolation "
          . "level to REPEATABLE-READ.";
-   }
-
-   # #########################################################################
-   # Prepare --throttle-method.
-   # #########################################################################
-   my $throttle_method = $o->get('throttle-method');
-   my @slaves;
-   if ( lc($throttle_method) eq 'slavelag' ) {
-      if ( $o->get('check-slave-lag') ) {
-         MKDEBUG && _d('Using --check-slave-lag DSN for throttle');
-         # OptionParser can't auto-copy DSN vals from a cmd line DSN
-         # to an opt DSN, so we copy them manually.
-         my $dsn = $dp->copy($dsn, $o->get('check-slave-lag'));
-         push @slaves, { dsn=>$dsn, dbh=>get_cxn($dsn, %common_modules) };
-      }
-      else {
-         MKDEBUG && _d('Recursing to slaves for throttle');
-         $ms->recurse_to_slaves(
-            {  dbh        => $dbh,
-               dsn        => $dsn,
-               dsn_parser => $dp,
-               recurse    => $o->get('recurse'),
-               method     => $o->get('recursion-method'),
-               callback   => sub {
-                  my ( $dsn, $dbh, $level, $parent ) = @_;
-                  return unless $level;
-                  MKDEBUG && _d('throttle slave:', $dp->as_string($dsn));
-                  $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
-                  $dbh->{FetchHashKeyName} = 'NAME_lc';
-                  push @slaves, { dsn=>$dsn, dbh=>$dbh };
-                  return;
-               },
-            }
-         );
-      }
-   }
-
-   # ########################################################################
-   # Check for replication filters.
-   # ########################################################################
-   if ( $o->get('check-replication-filters') ) {
-      MKDEBUG && _d("Recursing to slaves to check for replication filters");
-      my @all_repl_filters;
-      $ms->recurse_to_slaves(
-         {  dbh        => $dbh,
-            dsn        => $dsn,
-            dsn_parser => $dp,
-            recurse    => undef,  # check for filters anywhere
-            method     => $o->get('recursion-method'),
-            callback   => sub {
-               my ( $dsn, $dbh, $level, $parent ) = @_;
-               my $repl_filters = $ms->get_replication_filters(dbh=>$dbh);
-               if ( keys %$repl_filters ) {
-                  my $host = $dp->as_string($dsn);
-                  push @all_repl_filters,
-                     { name    => $host,
-                       filters => $repl_filters,
-                     };
-               }
-               return;
-            },
-         }
-      );
-      if ( @all_repl_filters ) {
-         my $msg = "Cannot checksum with --replicate because replication "
-                 . "filters are set on these hosts:\n";
-         foreach my $host ( @all_repl_filters ) {
-            my $filters = $host->{filters};
-            $msg .= "  $host->{name}\n"
-                  . join("\n", map { "    $_ = $host->{filters}->{$_}" }
-                        keys %{$host->{filters}})
-                  . "\n";
-         }
-         $msg .= "Please read the --check-replication-filters documentation "
-               . "to learn how to solve this problem.";
-         warn $msg;
-         return 1;
-      }
-   }
-
-   # ########################################################################
-   # Check replication slaves if desired.  If only --replicate-check is given,
-   # then we will exit here.  If --recheck is also given, then we'll continue
-   # through the entire script but checksum only the inconsistent tables found
-   # here.
-   # ########################################################################
-   if ( defined $o->get('replicate-check') ) {
-      MKDEBUG && _d("Recursing to slaves for replicate check, depth",
-         $o->get('replicate-check'));
-      my $callback = $o->get('recheck')
-                   ? \&save_inconsistent_tbls
-                   : \&print_inconsistent_tbls;
-      $ms->recurse_to_slaves(
-         {  dbh        => $dbh,
-            dsn        => $dsn,
-            dsn_parser => $dp,
-            recurse    => $o->get('replicate-check'),
-            method     => $o->get('recursion-method'),
-            callback   => sub {
-               my ( $dsn, $dbh, $level, $parent ) = @_;
-               my @tbls = $rc->find_replication_differences(
-                  $dbh, $o->get('replicate'));
-               return unless @tbls;
-               $exit_status = 1;
-               # Call the callback that does something useful with
-               # the inconsistent tables.
-               # o dbh db tbl args_for
-               $callback->(
-                  dsn    => $dsn,
-                  dbh    => $dbh,
-                  level  => $level,
-                  parent => $parent,
-                  tbls   => \@tbls,
-                  %common_modules
-               );
-            },
-         }
-      );
-      return $exit_status unless $o->get('recheck');
    }
 
    # ########################################################################
@@ -4982,8 +5031,7 @@ sub main {
               && is_oversize_chunk(%args, %common_modules) ) {
             MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                "$tbl->{db}.$tbl->{tbl}", 'is too large');
-            $tbl->{checksum_results}->{oversize_chunks}++;
-            $tbl->{checksum_results}->{exit_status} |= 1;
+            $tbl->{checksum_results}->{skipped}++;
             return 0;  # next boundary
          }
          # Exec and time the chunk checksum query.  If it fails, retry.
@@ -4999,6 +5047,23 @@ sub main {
          my ($crc, $cnt) = $fetch_sth->fetchrow_array();
          $tbl->{checksum_results}->{n_rows} += $cnt || 0;
          $update_sth->execute($crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
+
+         my $pr;
+         if ( $o->get('progress') ) {
+            $pr = new Progress(
+               jobsize => scalar @$slaves,
+               spec    => $o->get('progress'),
+               name    => "Waiting for " . (@$slaves > 1 ? "slaves" : "slave")
+                        . " to catch up",
+            );
+         }
+         wait_for_slaves(
+            slaves        => $slaves,
+            slave_lag_cxn => $slave_lag_cxn,
+            Progress => $pr,
+            %common_modules,
+         );
+
          return;
       },
       done => sub {
@@ -5027,7 +5092,7 @@ sub main {
 
       # Results, stats, and info related to checksuming this table can
       # be saved here.  print_checksum_results() uses this info.
-      $tbl->{checksum_results}->{exit_status} = 0;
+      $tbl->{checksum_results} = {};
 
       my $checksum_cols = $rc->make_chunk_checksum(
          dbh => $dbh,
@@ -5049,15 +5114,18 @@ sub main {
       };
       if ($EVAL_ERROR) {
          warn "Error checksumming $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
-         $tbl->{checksum_results}->{exit_status} |= 1;
+         $tbl->{checksum_results}->{errors}++;
       }
 
-      $exit_status |= $tbl->{checksum_results}->{exit_status};
+      $exit_status |= 1 if $tbl->{checksum_results}->{errors};
    }
 
    $fetch_sth->finish();
    $update_sth->finish();
    $dbh->disconnect();
+   foreach my $host ( @$slaves ) {
+      $host->{dbh}->disconnect();
+   }
 
    return $exit_status;
 }
@@ -5146,45 +5214,15 @@ sub exec_nibble {
          return 0;
       },
       on_failure => sub {
-         $tbl->{checksum_results}->{checksum_errors}++;
-         $tbl->{checksum_results}->{exit_status} |= 1;
+         $tbl->{checksum_results}->{errors}++;
          warn $EVAL_ERROR;
       },
    );
 }
 
-sub after_nibble {
-   my (%args) = @_;
-   my ($tbl) = @args{qw(tbl)};
-   MKDEBUG && _d('After nibble');
-
-#   my $o = $args{OptionParser};
-#
-#   if ( $throttle_method eq 'slavelag' ) {
-#      my $pr;
-#      if ( $o->get('progress') ) {
-#         $pr = new Progress(
-#            jobsize => scalar @{$args{slaves}},
-#            spec    => $o->get('progress'),
-#            name    => "Wait for slave(s) to catch up",
-#         );
-#      }
-#      wait_for_slaves(
-#         slaves         => $args{slaves},
-#         max_lag        => $o->get('max-lag'),
-#         check_interval => $o->get('check-interval'),
-#         DSNParser      => $dp,
-#         MasterSlave    => $ms,
-#         progress       => $pr,
-#      );
-#   }
-
-   return;
-};
-
 {
 my $print_header = 1;
-my $line_fmt     = "%6s %9s %6s %7s %6s %6s %-s\n";
+my $line_fmt     = "%6s %6s %7s %7s %7s %6s %-s\n";
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -5195,17 +5233,18 @@ sub print_checksum_results {
    my ($tbl) = @args{@required_args};
 
    if ($print_header) {
-      printf $line_fmt, qw(STATUS ROWS CHUNKS SKIPPED ERRORS TIME TABLE);
+      printf $line_fmt, qw(ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
       $print_header = 0;
    }
 
+   my $res = $tbl->{checksum_results};
    printf $line_fmt,
-      $tbl->{checksum_results}->{exit_status}        || 0,
-      $tbl->{checksum_results}->{n_rows}             || 0,
-      $tbl->{checksum_results}->{n_chunks}           || 0,
-      $tbl->{checksum_results}->{oversize_chunks}    || 0,
-      0,
-      int(time - ($tbl->{checksum_results}->{start_time}  || 0)),
+      $res->{errors}   || 0,
+      $res->{diffs}    || 0,
+      $res->{n_rows}   || 0,
+      $res->{n_chunks} || 0,
+      $res->{skipped}  || 0,
+      int(time - ($res->{start_time}  || 0)),
       "$tbl->{db}.$tbl->{tbl}";
 
    return;
@@ -5385,16 +5424,28 @@ sub create_repl_table {
 # if a slave is lagging too much.
 sub wait_for_slaves {
    my ( %args ) = @_;
-   my $slaves         = $args{slaves};
-   my $max_lag        = $args{max_lag};
-   my $check_interval = $args{check_interval};
-   my $dp             = $args{DSNParser};
-   my $ms             = $args{MasterSlave};
-   my $pr             = $args{progress};
+   my @required_args = qw(Progress OptionParser DSNParser MasterSlave);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($pr, $o, $dp, $ms) = @args{@required_args};
 
-   return unless scalar @$slaves;
-   my $n_slaves = @$slaves;
+   my $slaves;
+   my $n_slaves;
+   if ( $args{slave_lag_cxn} ) {
+      push @$slaves, $args{slave_lag_cxn};
+      $n_slaves = 1;
+   }
+   elsif ( $args{slaves} ) {
+      $slaves   = $args{slaves};
+      $n_slaves = scalar @$slaves;
+   }
+   else {
+      die "I need a slaves or slave_lag_cxn argument";
+   }
 
+   my $max_lag        = $o->get('max-lag'),
+   my $check_interval = $o->get('check-interval'),
    my $pr_callback;
    if ( $pr ) {
       # If you use the default Progress report callback, you'll need to
@@ -5403,7 +5454,8 @@ sub wait_for_slaves {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $slave_no) = @_;
          if ( !$reported ) {
-            print STDERR "Waiting for slave(s) to catchup...\n";
+            print STDERR "Waiting for " . ($n_slaves > 1 ? "slave" : "slave")
+               . " to catchup...\n";
             $reported = 1;
          }
          else {
@@ -5416,8 +5468,7 @@ sub wait_for_slaves {
 
    for my $slave_no ( 0..($n_slaves-1) ) {
       my $slave = $slaves->[$slave_no];
-      MKDEBUG && _d('Checking slave', $dp->as_string($slave->{dsn}),
-         'lag for throttle');
+      MKDEBUG && _d('Checking slave lag on', $dp->as_string($slave->{dsn}));
       my $lag = $ms->get_slave_lag($slave->{dbh});
       while ( !defined $lag || $lag > $max_lag ) {
          MKDEBUG && _d('Slave lag', $lag, '>', $max_lag,
@@ -5476,6 +5527,27 @@ sub is_oversize_chunk {
 
    return ($expl_res->{rows} || 0)
           >= $o->get('chunk-size') * $o->get('chunk-size-limit') ? 1 : 0;
+}
+
+sub print_inconsistent_tbls {
+   my ( %args ) = @_;
+   my @required_args = qw(dsn tbls OptionParser DSNParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dsn, $tbls, $o, $dp) = @args{@required_args};
+
+   my @headers = qw(DB TBL CHUNK CNT_DIFF CRC_DIFF BOUNDARIES);
+   print "Differences on " . $dp->as_string($dsn, [qw(h P F)]) . "\n";
+   my $max_db   = max(5, map { length($_->{db})  } @$tbls);
+   my $max_tbl  = max(5, map { length($_->{tbl}) } @$tbls);
+   my $fmt      = "%-${max_db}s %-${max_tbl}s %5s %8s %8s %s\n";
+   printf($fmt, map { uc } @headers) or die "Cannot print: $OS_ERROR";
+   foreach my $tbl ( @$tbls ) {
+      printf($fmt, @{$tbl}{@headers}) or die "Cannot print: $OS_ERROR";
+   }
+   print "\n" or die "Cannot print: $OS_ERROR";
+   return;
 }
 
 
@@ -5579,7 +5651,7 @@ the L<"--replicate"> option, in which case it inserts a small amount of data
 into the specified table.
 
 At the time of this release, we know of no bugs that could cause serious harm to
-users.  There are miscellaneous bugs that might be annoying.
+users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -5597,7 +5669,7 @@ traffic as a result.
 
 Checksums typically take about twice as long as COUNT(*) on very large InnoDB
 tables in my tests.  For smaller tables, COUNT(*) is a good bit faster than
-the checksums.  See L<"--algorithm"> for more details on performance.
+the checksums.
 
 If you specify more than one server, pt-table-checksum assumes the first
 server is the master and others are slaves.  Checksums are parallelized for
@@ -5641,15 +5713,6 @@ the short form of each option.  For example, the short form of L<"--user">
 is C<-u> which corresponds to the C<u> DSN option, so C<--user bob h=host>
 is equivalent to C<h=host,u=bob>.  These defaults apply to all DSNs that
 do not specify the DSN option.
-
-The DSN option value precedence from higest to lowest is:
-
-   * explicit values in each DSN on the command-line
-   * copied values from the first DSN
-   * default values from connection-related command-line options
-
-If you are confused about how pt-table-checksum will connect to your servers,
-use the L<"--explain-hosts"> option and it will tell you.
 
 =head1 HOW FAST IS IT?
 
@@ -5725,65 +5788,7 @@ master.  Try the following:
   WHERE master_cnt <> this_cnt OR master_crc <> this_crc
      OR ISNULL(master_crc) <> ISNULL(this_crc);
 
-The L<"--replicate-check"> option can do this query for you.  If you can't use
-this method, try the following:
-
-=over
-
-=item *
-
-If your servers are not being written to, you can just run the tool with no
-further ado:
-
-  pt-table-checksum server1 server2 ... serverN
-
-=item *
-
-If the servers are being written to, you need some way to make sure they are
-consistent at the moment you run the checksums.  For situations other than
-master-slave replication, you will have to figure this out yourself.  You may be
-able to use the L<"--where"> option with a date or time column to only checksum
-data that's not recent.
-
-=item *
-
-If you are checksumming a master and slaves, you can do a fast parallel
-checksum and assume the slaves are caught up to the master.  In practice, this
-tends to work well except for tables which are constantly updated.  You can
-use the L<"--slave-lag"> option to see how far behind each slave was when it
-checksummed a given table.  This can help you decide whether to investigate
-further.
-
-=item *
-
-The next most disruptive technique is to lock the table on the master, then take
-checksums.  This should prevent changes from propagating to the slaves.  You can
-just lock on the master (with L<"--lock">), or you can both lock on the master
-and wait on the slaves till they reach that point in the master's binlog
-(L<"--wait">).  Which is better depends on your workload; only you know that.
-
-=item *
-
-If you decide to make the checksums on the slaves wait until they're guaranteed
-to be caught up to the master, the algorithm looks like this:
-
- For each table,
-   Master: lock table
-   Master: get pos
-   In parallel,
-     Master: checksum
-     Slave(s): wait for pos, then checksum
-   End
-   Master: unlock table
- End
-
-=back
-
-What I typically do when I'm not using the L<"--replicate"> option is simply run
-the tool on all servers with no further options.  This runs fast, parallel,
-non-blocking checksums simultaneously.  If there are tables that look different,
-I re-run with L<"--wait">=600 on the tables in question.  This makes the tool
-lock on the master as explained above.
+The L<"--replicate-check"> option can do this query for you.
 
 =head1 OUTPUT
 
@@ -5792,9 +5797,6 @@ database.  I tried to make the output easy to process with awk.  For this reason
 columns are always present.  If there's no value, pt-table-checksum prints
 'NULL'.
 
-The default is column-aligned output for human readability, but you can change
-it to tab-separated if you want.  Use the L<"--tab"> option for this.
-
 Output is unsorted, though all lines for one table should be output together.
 For speed, all checksums are done in parallel (as much as possible) and may
 complete out of the order in which they were started.  You might want to run
@@ -5802,66 +5804,6 @@ them through another script or command-line utility to make sure they are in the
 order you want.  If you pipe the output through L<pt-checksum-filter>, you
 can sort the output and/or avoid seeing output about tables that have no
 differences.
-
-The columns in the output are as follows.  The database, table, and chunk come
-first so you can sort by them easily (they are the "primary key").
-
-Output from L<"--replicate-check"> and L<"--checksum"> are different.
-
-=over
-
-=item DATABASE
-
-The database the table is in.
-
-=item TABLE
-
-The table name.
-
-=item CHUNK
-
-The chunk (see L<"--chunk-size">).  Zero if you are not doing chunked checksums.
-
-=item HOST
-
-The server's hostname.
-
-=item ENGINE
-
-The table's storage engine.
-
-=item COUNT
-
-The table's row count, unless you specified to skip it.  If C<OVERSIZE> is
-printed, the chunk was skipped because the actual number of rows was greater
-than L<"--chunk-size"> times L<"--chunk-size-limit">.
-
-=item CHECKSUM
-
-The table's checksum, unless you specified to skip it or the table has no rows.
-some types of checksums will be 0 if there are no rows; others will print NULL.
-
-=item TIME
-
-How long it took to checksum the C<CHUNK>, not including C<WAIT> time.
-Total checksum time is C<WAIT + TIME>.
-
-=item WAIT
-
-How long the slave waited to catch up to its master before beginning to
-checksum.  C<WAIT> is always 0 for the master.  See L<"--wait">.
-
-=item STAT
-
-The return value of MASTER_POS_WAIT().  C<STAT> is always C<NULL> for the
-master.
-
-=item LAG
-
-How far the slave lags the master, as reported by SHOW SLAVE STATUS.
-C<LAG> is always C<NULL> for the master.
-
-=back
 
 =head1 REPLICATE TABLE MAINTENANCE
 
@@ -5881,20 +5823,6 @@ if a table is chunked into 100 chunks, 0-99, then pt-table-checksum does:
 
 That removes any high-end chunks from previous runs which no longer exist.
 Currently, this operation cannot be disabled.
-
-If you use L<"--resume">, L<"--resume-replicate">, or L<"--modulo">, then
-you need to be careful that the number of rows in a table does not decrease
-so much that the number of chunks decreases too, else some checksum chunks may
-be deleted.  The one exception is if only rows at the high end of the range
-are deleted.  In that case, the high-end chunks are deleted and lower chunks
-remain unchanged.  An increasing number of rows or chunks should not cause
-any adverse affects.
-
-Changing the L<"--chunk-size"> between runs with L<"--resume">,
-L<"--resume-replicate">, or L<"--modulo"> can cause odd or invalid checksums.
-You should not do this.  It won't work with the resume options.  With
-L<"--modulo">, the safest thing to do is manually delete all the rows in
-the replicate table for the table in question and start over.
 
 If the replicate table becomes cluttered with old or invalid checksums
 and the auto-delete operation is not deleting them, then you will need to
@@ -5929,101 +5857,10 @@ checksumming chunk 2 of 5 in table test.test_tbl.
 
 =head1 OPTIONS
 
-L<"--schema"> is restricted to option groups Connection, Filter, Output, Help, Config, Safety.
-
-L<"--empty-replicate-table">, L<"--resume"> and L<"--resume-replicate"> are mutually exclusive.
-
 This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
 
 =over
-
-=item --algorithm
-
-type: string
-
-Checksum algorithm (ACCUM|CHECKSUM|BIT_XOR).
-
-Specifies which checksum algorithm to use.  Valid arguments are CHECKSUM,
-BIT_XOR and ACCUM.  The latter two do cryptographic hash checksums.
-See also L<"ALGORITHM SELECTION">.
-
-CHECKSUM is built into MySQL, but has some disadvantages.  BIT_XOR and ACCUM are
-implemented by SQL queries.  They use a cryptographic hash of all columns
-concatenated together with a separator, followed by a bitmap of each nullable
-column that is NULL (necessary because CONCAT_WS() skips NULL columns).
-
-CHECKSUM is the default.  This method uses MySQL's built-in CHECKSUM TABLE
-command, which is a CRC32 behind the scenes.  It cannot be used before MySQL
-4.1.1, and various options disable it as well.  It does not simultaneously count
-rows; that requires an extra COUNT(*) query.  This is a good option when you are
-using MyISAM tables with live checksums enabled; in this case both the COUNT(*)
-and CHECKSUM queries will run very quickly.
-
-The BIT_XOR algorithm is available for MySQL 4.1.1 and newer.  It uses
-BIT_XOR(), which is order-independent, to reduce all the rows to a single
-checksum.
-
-ACCUM uses a user variable as an accumulator.  It reduces each row to a single
-checksum, which is concatenated with the accumulator and re-checksummed.  This
-technique is order-dependent.  If the table has a primary key, it will be used
-to order the results for consistency; otherwise it's up to chance.
-
-The pathological worst case is where identical rows will cancel each other out
-in the BIT_XOR.  In this case you will not be able to distinguish a table full
-of one value from a table full of another value.  The ACCUM algorithm will
-distinguish them.
-
-However, the ACCUM algorithm is order-dependent, so if you have two tables
-with identical data but the rows are out of order, you'll get different
-checksums with ACCUM.
-
-If a given algorithm won't work for some reason, pt-table-checksum falls back to
-another.  The least common denominator is ACCUM, which works on MySQL 3.23.2 and
-newer.
-
-=item --arg-table
-
-type: string
-
-The database.table with arguments for each table to checksum.
-
-This table may be named anything you wish.  It must contain at least the
-following columns:
-
-  CREATE TABLE checksum_args (
-     db         char(64)     NOT NULL,
-     tbl        char(64)     NOT NULL,
-     -- other columns as desired
-     PRIMARY KEY (db, tbl)
-  );
-
-In addition to the columns shown, it may contain any of the other columns listed
-here (Note: this list is used by the code, MAGIC_overridable_args):
-
-  algorithm chunk-column chunk-index chunk-size columns count crc function lock
-  modulo use-index offset optimize-xor chunk-size-limit probability separator
-  save-since single-chunk since since-column sleep sleep-coef trim wait where
-
-Each of these columns corresponds to the long form of a command-line option.
-Each column should be NULL-able.  Column names with hyphens should be enclosed
-in backticks (e.g. `chunk-size`) when the table is created.  The data type does
-not matter, but it's suggested you use a sensible data type to prevent garbage
-data.
-
-When C<pt-table-checksum> checksums a table, it will look for a matching entry
-in this table.  Any column that has a defined value will override the
-corresponding command-line argument for the table being currently processed.
-In this way it is possible to specify custom command-line arguments for any
-table.
-
-If you add columns to the table that aren't in the above list of allowable
-columns, it's an error.  The exceptions are C<db>, C<tbl>, and C<ts>.  The C<ts>
-column can be used as a timestamp for easy visibility into the last time the
-C<since> column was updated with L<"--save-since">.
-
-This table is assumed to be located on the first server given on the
-command-line.
 
 =item --ask-pass
 
@@ -6056,9 +5893,6 @@ type: DSN; group: Throttle
 
 Pause checksumming until the specified slave's lag is less than L<"--max-lag">.
 
-If this option is specified and L<"--throttle-method"> is set to C<slavelag>
-then L<"--throttle-method"> only checks this slave.
-
 =item --chunk-column
 
 type: string
@@ -6090,7 +5924,7 @@ checksumming only a single table, not an entire server.
 type: string; default: 1000
 
 Approximate number of rows or size of data to checksum at a time.  Allowable
-suffixes are k, M, G. Disallows C<--algorithm CHECKSUM>.
+suffixes are k, M, G.
 
 If you specify a chunk size, pt-table-checksum will try to find an index that
 will let it split the table into ranges of approximately L<"--chunk-size">
@@ -6137,14 +5971,6 @@ the real number of rows in the chunk.  If too many chunks are skipped because
 they are oversize, you might want to specify a value larger than 2.
 
 You can disable oversize chunk checking by specifying L<"--chunk-size-limit"> 0.
-
-See also L<"--unchunkable-tables">.
-
-=item --columns
-
-short form: -c; type: array; group: Filter
-
-Checksum only this comma-separated list of columns.
 
 =item --config
 
@@ -6204,20 +6030,6 @@ short form: -e; type: hash; group: Filter
 
 Do only this comma-separated list of storage engines.
 
-=item --explain
-
-group: Output
-
-Show, but do not execute, checksum queries (disables L<"--empty-replicate-table">).
-
-=item --explain-hosts
-
-group: Help
-
-Print full DSNs for each host and exit.  This option allows you to see how
-pt-table-checksum parses DSNs from the command-line and how it will connect
-to those hosts.  See L<"SPECIFYING HOSTS">.
-
 =item --float-precision
 
 type: int
@@ -6237,8 +6049,7 @@ type: string
 
 Hash function for checksums (FNV1A_64, MURMUR_HASH, SHA1, MD5, CRC32, etc).
 
-You can use this option to choose the cryptographic hash function used for
-L<"--algorithm">=ACCUM or L<"--algorithm">=BIT_XOR.  The default is to use
+The default is to use
 C<CRC32>, but C<MD5> and C<SHA1> also work, and you can use your own function,
 such as a compiled UDF, if you wish.  Whatever function you specify is run in
 SQL, not in Perl, so it must be available to MySQL.
@@ -6262,9 +6073,6 @@ Show help and exit.
 type: Hash; group: Filter
 
 Ignore this comma-separated list of columns when calculating the checksum.
-
-This option only affects the checksum when using the ACCUM or BIT_XOR
-L<"--algorithm">.
 
 =item --ignore-databases
 
@@ -6298,22 +6106,6 @@ type: string
 
 Ignore tables whose names match the Perl regex.
 
-=item --lock
-
-Lock on master until done on slaves (implies L<"--slave-lag">).
-
-This option can help you to get a consistent read on a master and many slaves.
-If you specify this option, pt-table-checksum will lock the table on the
-first server on the command line, which it assumes to be the master.  It will
-keep this lock until the checksums complete on the other servers.
-
-This option isn't very useful by itself, so you probably want to use L<"--wait">
-instead.
-
-Note: if you're checksumming a slave against its master, you should use
-L<"--replicate">.  In that case, there's no need for locking, waiting, or any of
-that.
-
 =item --max-lag
 
 type: time; group: Throttle; default: 1s
@@ -6328,33 +6120,7 @@ the slave is caught up, then proceeds to checksum the chunk.
 
 This option is useful to let you checksum data as fast as the slaves can handle
 it, assuming the slave you directed pt-table-checksum to monitor is
-representative of all the slaves that may be replicating from this server.  It
-should eliminate the need for L<"--sleep"> or L<"--sleep-coef">.
-
-=item --modulo
-
-type: int
-
-Do only every Nth chunk on chunked tables.
-
-This option lets you checksum only some chunks of the table.  This is a useful
-alternative to L<"--probability"> when you want to be sure you get full coverage
-in some specified number of runs; for example, you can do only every 7th chunk,
-and then use L<"--offset"> to rotate the modulo every day of the week.
-
-Just like with L<"--probability">, a table that cannot be chunked is done every
-time.
-
-=item --offset
-
-type: string; default: 0
-
-Modulo offset expression for use with L<"--modulo">.
-
-The argument may be an SQL expression, such as C<WEEKDAY(NOW())> (which returns
-a number from 0 through 6).  The argument is evaluated by MySQL.  The result is
-used as follows: if chunk_num % L<"--modulo"> == L<"--offset">, the chunk will
-be checksummed.
+representative of all the slaves that may be replicating from this server.
 
 =item --[no]optimize-xor
 
@@ -6413,38 +6179,15 @@ short form: -P; type: int; group: Connection
 
 Port number to use for connection.
 
-=item --probability
-
-type: int; default: 100
-
-Checksums will be run with this percent probability.
-
-This is an integer between 1 and 100.  If 100, every chunk of every table will
-certainly be checksummed.  If less than that, there is a chance that some chunks
-of some tables will be skipped.  This is useful for routine jobs designed to
-randomly sample bits of tables without checksumming the whole server.  By
-default, if a table is not chunkable, it will be checksummed every time even
-when the probability is less than 100.  You can override this with
-L<"--single-chunk">.
-
-See also L<"--modulo">.
-
 =item --progress
 
 type: array; default: time,30
 
-Print progress reports to STDERR.  Currently, this feature is only for when
-L<"--throttle-method"> waits for slaves to catch up.
+Print progress reports to STDERR.
 
 The value is a comma-separated list with two parts.  The first part can be
 percentage, time, or iterations; the second part specifies how often an update
 should be printed, in percentage, seconds, or number of iterations.
-
-=item --quiet
-
-short form: -q; group: Output
-
-Do not print checksum results.
 
 =item --recheck
 
@@ -6468,15 +6211,29 @@ Preferred recursion method for discovering slaves.
 Possible methods are:
 
   METHOD       USES
-  ===========  ================
+  ===========  ==================
   processlist  SHOW PROCESSLIST
   hosts        SHOW SLAVE HOSTS
+  dsn=DSN      DSNs from a table
 
-The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
-However, the hosts method is required if the server uses a non-standard
-port (not 3306).  Usually pt-table-checksum does the right thing and finds
-the slaves, but you may give a preferred method and it will be used first.
-If it doesn't find any slaves, the other methods will be tried.
+The C<processlist> method is preferred because SHOW SLAVE HOSTS is not reliable.
+However, the C<hosts> method is required if the server uses a non-standard
+port (not 3306).  Usually the tool does the right thing and finds all slaves,
+but you may give a preferred method and it will be used first.
+
+The C<dsn> method is special: it specifies a DSN from which other DSN strings
+are read.  The specified DSN must specify a D and t, or a database-qualified
+t.  The DSN table should have the following structure:
+
+  CREATE TABLE `dsns` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `parent_id` int(11) DEFAULT NULL,
+    `dsn` varchar(255) NOT NULL,
+    PRIMARY KEY (`id`)
+  );
+
+One row specifies one DSN in the C<dsn> column.  Currently, the DSNs are
+ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
 
 =item --replicate
 
@@ -6533,9 +6290,7 @@ uses row-based replication).
 In contrast to running the tool against multiple servers at once, using this
 option eliminates the complexities of synchronizing checksum queries across
 multiple servers, which normally requires locking and unlocking, waiting for
-master binlog positions, and so on.  Thus, it disables L<"--lock">, L<"--wait">,
-and L<"--slave-lag"> (but not L<"--check-slave-lag">, which is a way to throttle
-the execution speed).
+master binlog positions, and so on.
 
 The checksum queries actually do a REPLACE into this table, so existing rows
 need not be removed before running.  However, you may wish to do this anyway to
@@ -6577,7 +6332,7 @@ and prints results, then exits after printing.  This is just a convenient way of
 running the query so you don't have to do it manually.
 
 The output is one informational line per slave host, followed by the results
-of the query, if any.  If L<"--quiet"> is specified, there is no output.  If
+of the query, if any.  If
 there are no differences between the master and any slave, there is no output.
 If any slave has chunks that differ from the master, pt-table-checksum's
 exit status is 1; otherwise it is 0.
@@ -6612,57 +6367,13 @@ specify a safe default database.  This option specifies a default database that
 pt-table-checksum selects with USE, and never changes afterwards.  See also
 <L"--[no]check-replication-filters">.
 
-=item --resume
-
-type: string
-
-Resume checksum using given output file from a previously interrupted run.
-
-The given output file should be the literal output from a previous run of
-C<pt-table-checksum>.  For example:
-
-   pt-table-checksum host1 host2 -C 100 > checksum_results.txt
-   pt-table-checksum host1 host2 -C 100 --resume checksum_results.txt
-
-The command line options given to the first run and the resumed run must
-be identical (except, of course, for --resume).  If they are not, the result
-will be unpredictable and probably wrong.
-
-L<"--resume"> does not work with L<"--replicate">; for that, use
-L<"--resume-replicate">.
-
-=item --resume-replicate
-
-Resume L<"--replicate">.
-
-This option resumes a previous checksum operation using L<"--replicate">.
-It is like L<"--resume"> but does not require an output file.  Instead,
-it uses the checksum table given to L<"--replicate"> to determine where to
-resume the checksum operation.
-
-=item --save-since
-
-When L<"--arg-table"> and L<"--since"> are given, save the current L<"--since">
-value into that table's C<since> column after checksumming.  In this way you can
-incrementally checksum tables by starting where the last one finished.
-
-The value to be saved could be the current timestamp, or it could be the maximum
-existing value of the column given by L<"--since-column">.  It depends on what
-options are in effect.  See the description of L<"--since"> to see how
-timestamps are different from ordinary values.
-
-=item --schema
-
-Checksum C<SHOW CREATE TABLE> instead of table data.
-
 =item --separator
 
 type: string; default: #
 
 The separator character used for CONCAT_WS().
 
-This character is used to join the values of columns when checksumming with
-L<"--algorithm"> of BIT_XOR or ACCUM.
+This character is used to join the values of columns when checksumming.
 
 =item --set-vars
 
@@ -6671,102 +6382,11 @@ type: string; default: wait_timeout=10000; group: Connection
 Set these MySQL variables.  Immediately after connecting to MySQL, this
 string will be appended to SET and executed.
 
-=item --since
-
-type: string
-
-Checksum only data newer than this value.
-
-If the table is chunk-able or nibble-able, this value will apply to the first
-column of the chunked or nibbled index.
-
-This is not too different to L<"--where">, but instead of universally applying a
-WHERE clause to every table, it selectively finds the right column to use and
-applies it only if such a column is found.  See also L<"--since-column">.
-
-The argument may be an expression, which is evaluated by MySQL.  For example,
-you can specify C<CURRENT_DATE - INTERVAL 7 DAY> to get the date of one week
-ago.
-
-A special bit of extra magic: if the value is temporal (looks like a date or
-datetime), then the table is checksummed only if the create time (or last
-modified time, for tables that report the last modified time, such as MyISAM
-tables) is newer than the value.  In this sense it's not applied as a WHERE
-clause at all.
-
-=item --since-column
-
-type: string
-
-The column name to be used for L<"--since">.
-
-The default is for the tool to choose the best one automatically.  If you
-specify a value, that will be used if possible; otherwise the best
-auto-determined one; otherwise none.  If the column doesn't exist in the table,
-it is just ignored.
-
-=item --single-chunk
-
-Permit skipping with L<"--probability"> if there is only one chunk.
-
-Normally, if a table isn't split into many chunks, it will always be
-checksummed regardless of L<"--probability">.  This setting lets the
-probabilistic behavior apply to tables that aren't divided into chunks.
-
-=item --slave-lag
-
-group: Output
-
-Report replication delay on the slaves.
-
-If this option is enabled, the output will show how many seconds behind the
-master each slave is.  This can be useful when you want a fast, parallel,
-non-blocking checksum, and you know your slaves might be delayed relative to the
-master.  You can inspect the results and make an educated guess whether any
-discrepancies on the slave are due to replication delay instead of corrupt data.
-
-If you're using L<"--replicate">, a slave that is delayed relative to the master
-does not invalidate the correctness of the results, so this option is disabled.
-
-=item --sleep
-
-type: int; group: Throttle 
-
-Sleep time between checksums.
-
-If this option is specified, pt-table-checksum will sleep the specified
-number of seconds between checksums.  That is, it will sleep between every
-table, and if you specify L<"--chunk-size">, it will also sleep between chunks.
-
-This is a very crude way to throttle checksumming; see L<"--sleep-coef"> and
-L<"--check-slave-lag"> for techniques that permit greater control.
-
-=item --sleep-coef
-
-type: float; group: Throttle
-
-Calculate L<"--sleep"> as a multiple of the last checksum time.
-
-If this option is specified, pt-table-checksum will sleep the amount of
-time elapsed during the previous checksum, multiplied by the specified
-coefficient.  This option is ignored if L<"--sleep"> is specified.
-
-This is a slightly more sophisticated way to throttle checksum speed: sleep a
-varying amount of time between chunks, depending on how long the chunks are
-taking.  Even better is to use L<"--check-slave-lag"> if you're checksumming
-master/slave replication.
-
 =item --socket
 
 short form: -S; type: string; group: Connection
 
 Socket file to use for connection.
-
-=item --tab
-
-group: Output
-
-Print tab-separated output, not column-aligned output.
 
 =item --tables
 
@@ -6782,21 +6402,6 @@ type: string
 
 Only checksum tables whose names match this Perl regex.
 
-=item --throttle-method
-
-type: string; default: none; group: Throttle
-
-Throttle checksumming when doing L<"--replicate">.
-
-At present there is only one method: C<slavelag>.  When L<"--replicate"> is
-used, pt-table-checksum automatically sets L<"--throttle-method"> to
-C<slavelag> and discovers every slave and throttles checksumming if any slave
-lags more than L<"--max-lag">.  Specify C<-throttle-method none> to disable
-this behavior completely, or specify L<"--check-slave-lag"> and
-pt-table-checksum will only check that slave.
-
-See also L<"--recurse"> and L<"--recursion-method">.
-
 =item --trim
 
 Trim C<VARCHAR> columns (helps when comparing 4.1 to >= 5.0).
@@ -6809,56 +6414,11 @@ MySQL versions which vary in their handling of trailing spaces. MySQL 5.0 and
 later all retain trailing spaces in C<VARCHAR>, while previous versions would 
 remove them.
 
-=item --unchunkable-tables
-
-group: Safety
-
-Checksum tables that cannot be chunked when L<"--chunk-size"> is specified.
-
-By default pt-table-checksum will not checksum a table that cannot be chunked
-when L<"--chunk-size"> is specified because this might result in a huge,
-non-chunkable table being checksummed in one huge, memory-intensive chunk.
-
-Specifying this option allows checksumming tables that cannot be chunked.
-Be careful when using this option!  Make sure any non-chunkable tables
-are not so large that they will cause the tool to consume too much memory
-or CPU.
-
-See also L<"--chunk-size-limit">.
-
-=item --[no]use-index
-
-default: yes
-
-Add FORCE INDEX hints to SQL statements.
-
-By default C<pt-table-checksum> adds an index hint (C<FORCE INDEX> for MySQL
-v4.0.9 and newer, C<USE INDEX> for older MySQL versions) to each SQL statement
-to coerce MySQL into using the L<"--chunk-index"> (whether the index is
-specified by the option or auto-detected).  Specifying C<--no-use-index> causes
-C<pt-table-checksum> to omit index hints.
-
 =item --user
 
 short form: -u; type: string; group: Connection
 
 User for login if not current user.
-
-=item --[no]verify
-
-default: yes
-
-Verify checksum compatibility across servers.
-
-This option runs a trivial checksum on all servers to ensure they have
-compatible CONCAT_WS() and cryptographic hash functions.
-
-Versions of MySQL before 4.0.14 will skip empty strings and NULLs in
-CONCAT_WS, and others will only skip NULLs.  The two kinds of behavior will
-produce different results if you have any columns containing the empty string
-in your table.  If you know you don't (for instance, all columns are
-integers), you can safely disable this check and you will get a reliable
-checksum even on servers with different behavior.
 
 =item --version
 
@@ -6866,36 +6426,11 @@ group: Help
 
 Show version and exit.
 
-=item --wait
-
-short form: -w; type: time
-
-Wait this long for slaves to catch up to their master (implies L<"--lock">
-L<"--slave-lag">).
-
-Note: the best way to verify that a slave is in sync with its master is to use
-L<"--replicate"> instead.  The L<"--wait"> option is really only useful if
-you're trying to compare masters and slaves without using L<"--replicate">,
-which is possible but complex and less efficient in some ways.
-
-This option helps you get a consistent checksum across a master server and its
-slaves.  It combines locking and waiting to accomplish this.  First it locks the
-table on the master (the first server on the command line).  Then it finds the
-master's binlog position.  Checksums on slaves will be deferred until they reach
-the same binlog position.
-
-The argument to the option is the number of seconds to wait for the slaves to
-catch up to the master.  It is actually the argument to MASTER_POS_WAIT().  If
-the slaves don't catch up to the master within this time, they will unblock
-and go ahead with the checksum.  You can tell whether this happened by
-examining the STAT column in the output, which is the return value of
-MASTER_POS_WAIT().
-
 =item --where
 
 type: string
 
-Do only rows matching this C<WHERE> clause (disallows L<"--algorithm"> CHECKSUM).
+Do only rows matching this C<WHERE> clause.
 
 You can use this option to limit the checksum to only part of the table.  This
 is particularly useful if you have append-only tables and don't want to
@@ -6906,18 +6441,6 @@ This option is much like the -w option to mysqldump.  Do not specify the WHERE
 keyword.  You may need to quote the value.  Here is an example:
 
   pt-table-checksum --where "foo=bar"
-
-=item --[no]zero-chunk
-
-default: yes
-
-Add a chunk for rows with zero or zero-equivalent values.  The only has an
-effect when L<"--chunk-size"> is specified.  The purpose of the zero chunk
-is to capture a potentially large number of zero values that would imbalance
-the size of the first chunk.  For example, if a lot of negative numbers were
-inserted into an unsigned integer column causing them to be stored as zeros,
-then these zero values are captured by the zero chunk instead of the first
-chunk and all its non-zero values.
 
 =back
 
@@ -6972,6 +6495,12 @@ Port number to use for connection.
 dsn: mysql_socket; copy: yes
 
 Socket file to use for connection.
+
+=item * t
+
+dsn: table; copy: no
+
+Table for DSN L<"--recursion-method">.
 
 =item * u
 
