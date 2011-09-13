@@ -4790,6 +4790,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use List::Util qw(max);
 use Time::HiRes qw(sleep time);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -4932,7 +4933,13 @@ sub main {
             %common_modules,
          );
       }
-      return $exit_status unless $o->get('recheck');
+      if ( !$o->get('recheck') ) {
+         $dbh->disconnect();
+         foreach my $host ( @$slaves ) {
+            $host->{dbh}->disconnect();
+         }
+         return $exit_status;
+      }
    }
 
    # ########################################################################
@@ -5537,7 +5544,7 @@ sub print_inconsistent_tbls {
    }
    my ($dsn, $tbls, $o, $dp) = @args{@required_args};
 
-   my @headers = qw(DB TBL CHUNK CNT_DIFF CRC_DIFF BOUNDARIES);
+   my @headers = qw(db tbl chunk cnt_diff crc_diff boundaries);
    print "Differences on " . $dp->as_string($dsn, [qw(h P F)]) . "\n";
    my $max_db   = max(5, map { length($_->{db})  } @$tbls);
    my $max_tbl  = max(5, map { length($_->{tbl}) } @$tbls);
