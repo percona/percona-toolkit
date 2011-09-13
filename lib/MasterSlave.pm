@@ -36,6 +36,56 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_slaves {
+   my ($self, %args) = @_;
+   my @required_args = qw(OptionParser DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($o, $dp) = @args{@required_args};
+
+   my $slaves = [];
+   my $method = $o->get('recursion-method');
+   MKDEBUG && _d('Slave recursion method:', $method);
+   if ( !$method || $method =~ m/proocesslist|hosts/i ) {
+      my @required_args = qw(dbh dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dbh, $dsn) = @args{@required_args};
+      $self->recurse_to_slaves(
+         {  dbh        => $dbh,
+            dsn        => $dsn,
+            dsn_parser => $dp,
+            recurse    => $o->get('recurse'),
+            method     => $o->get('recursion-method'),
+            callback   => sub {
+               my ( $dsn, $dbh, $level, $parent ) = @_;
+               return unless $level;
+               MKDEBUG && _d('Found slave:', $dp->as_string($dsn));
+               $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
+               $dbh->{FetchHashKeyName} = 'NAME_lc';
+               push @$slaves, { dsn=>$dsn, dbh=>$dbh };
+               return;
+            },
+         }
+      );
+   }
+   elsif ( $method =~ m/^dsn=/i ) {
+      my ($dsn_table_dsn) = $method =~ m/^dsn=(.+)/i;
+      $slaves = $self->get_cxn_from_dsn_table(
+         %args,
+         dsn_table_dsn => $dsn_table_dsn,
+      );
+   }
+   else {
+      die "Invalid --recusion-method: $method.  Valid values are: "
+        . "dsn=DSN, hosts, or processlist.\n";
+   }
+
+   return $slaves;
+}
+
 # Sub: recurse_to_slaves
 #   Descend to slaves by examining SHOW SLAVE HOSTS.
 #   The callback gets the slave's DSN, dbh, parent, and the recursion level
@@ -795,6 +845,45 @@ sub reset_known_replication_threads {
    my ( $self ) = @_;
    $self->{replication_thread} = {};
    return;
+}
+
+sub get_cxn_from_dsn_table {
+   my ($self, %args) = @_;
+   my @required_args = qw(dsn_table_dsn DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dsn_table_dsn, $dp, $q) = @args{@required_args};
+   MKDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
+
+   my $dsn = $dp->parse($dsn_table_dsn);
+   my $dsn_table;
+   if ( $dsn->{D} && $dsn->{t} ) {
+      $dsn_table = $q->quote($dsn->{D}, $dsn->{t});
+   }
+   elsif ( $dsn->{t} && $dsn->{t} =~ m/\./ ) {
+      $dsn_table = $q->quote($q->split_unquote($dsn->{t}));
+   }
+   else {
+      die "DSN table DSN does not specify a database (D) "
+        . "or a database-qualified table (t)";
+   }
+
+   my @cxn;
+   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
+   my $sql = "SELECT dsn FROM $dsn_table ORDER BY id";
+   MKDEBUG && _d($sql);
+   my $dsns = $dbh->selectcol_arrayref($sql);
+   if ( $dsns ) {
+      foreach my $dsn ( @$dsns ) {
+         MKDEBUG && _d('DSN from DSN table:', $dsn);
+         my $dsn = $dp->parse($dsn);
+         my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
+         push @cxn, {dsn=>$dsn, dbh=>$dbh};
+      }
+   }
+   $dbh->disconnect();
+   return \@cxn;
 }
 
 sub _d {
