@@ -1138,7 +1138,7 @@ is_deeply(
 $o->get_opts();
 is_deeply(
    $o->errors(),
-   ['Invalid size for --size'],
+   ['Invalid size for --size: 5z'],
    'Bad size argument sets an error',
 );
 
@@ -1958,7 +1958,7 @@ $o = new OptionParser(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
-$o->get_specs("$trunk/bin/pt-table-checksum");
+$o->get_specs("$trunk/bin/pt-fifo-split");
 @ARGV = ();
 $o->get_opts();
 is(
