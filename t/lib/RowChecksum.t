@@ -155,6 +155,8 @@ is(
    'FNV_64 query for sakila.film',
 );
 
+@ARGV = qw(--columns film_id);
+$o->get_opts();
 is(
    $c->make_row_checksum(
       tbl  => $tbl,
@@ -165,6 +167,8 @@ is(
    'SHA1 query for sakila.film with only one column',
 );
 
+@ARGV = qw(--columns FILM_ID);
+$o->get_opts();
 is(
    $c->make_row_checksum(
       tbl  => $tbl,
@@ -175,28 +179,30 @@ is(
    'Column names are case-insensitive',
 );
 
+@ARGV = ('--columns', 'film_id,title', qw(--separator %));
+$o->get_opts();
 is(
    $c->make_row_checksum(
       tbl  => $tbl,
       func => 'SHA1',
-      cols => [qw(film_id title)],
-      sep  => '%',
    ),
    q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, `title`))},
    'Separator',
 );
 
+@ARGV = ('--columns', 'film_id,title', qw(--separator '%'));
+$o->get_opts();
 is(
    $c->make_row_checksum(
       tbl  => $tbl,
       func => 'SHA1',
-      cols => [qw(film_id title)],
-      sep  => "'%'",
    ),
    q{`film_id`, `title`, SHA1(CONCAT_WS('%', `film_id`, `title`))},
    'Bad separator',
 );
 
+@ARGV = ('--columns', 'film_id,title', qw(--separator ''));
+$o->get_opts();
 is(
    $c->make_row_checksum(
       tbl  => $tbl,
@@ -207,6 +213,9 @@ is(
    q{`film_id`, `title`, SHA1(CONCAT_WS('#', `film_id`, `title`))},
    'Really bad separator',
 );
+
+@ARGV = qw();
+$o->get_opts();
 
 # sakila.rental
 $tbl = {
@@ -224,6 +233,9 @@ is(
    'FLOAT column is like any other',
 );
 
+
+@ARGV = qw(--float-precision 5);
+$o->get_opts();
 is(
    $c->make_row_checksum(
       tbl  => $tbl,
@@ -241,26 +253,32 @@ $tbl = {
    tbl_struct => $tp->parse(load_file('t/lib/samples/sakila.film.sql')),
 };
 
+@ARGV = qw(--trim);
+$o->get_opts();
 like(
    $c->make_row_checksum(
       tbl  => $tbl,
       func => 'SHA1',
-      trim => 1,
+      trim => 0,
    ),
    qr{TRIM\(`title`\)},
    'VARCHAR column is trimmed',
 );
 
+@ARGV = qw();
+$o->get_opts();
+
 # ############################################################################
 # make_chunk_checksum
 # ############################################################################
+@ARGV = qw(--columns film_id --no-optimize-xor);
+$o->get_opts();
 is(
    $c->make_chunk_checksum(
-      tbl      => $tbl,
-      func     => 'SHA1',
-      crc_width=> 40,
-      cols     => [qw(film_id)],
-      crc_type => 'varchar',
+      tbl       => $tbl,
+      func      => 'SHA1',
+      crc_width => 40,
+      crc_type  => 'varchar',
    ),
    q{COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(SHA1(`film_id`), 1, }
@@ -274,11 +292,10 @@ is(
 
 is(
    $c->make_chunk_checksum(
-      tbl      => $tbl,
-      func     => 'FNV_64',
-      crc_width=> 99,
-      cols     => [qw(film_id)],
-      crc_type => 'bigint',
+      tbl       => $tbl,
+      func      => 'FNV_64',
+      crc_width => 99,
+      crc_type  => 'bigint',
    ),
    q{COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONV(BIT_XOR(CAST(FNV_64(`film_id`) AS UNSIGNED)), 10, 16)), 0) AS crc},
@@ -287,12 +304,11 @@ is(
 
 is(
    $c->make_chunk_checksum(
-      tbl      => $tbl,
-      func     => 'FNV_64',
-      crc_width=> 99,
-      cols     => [qw(film_id)],
-      buffer   => 1,
-      crc_type => 'bigint',
+      tbl       => $tbl,
+      func      => 'FNV_64',
+      crc_width => 99,
+      buffer    => 1,
+      crc_type  => 'bigint',
    ),
    q{COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONV(BIT_XOR(CAST(FNV_64(`film_id`) AS UNSIGNED)), 10, 16)), 0) AS crc},
@@ -301,17 +317,19 @@ is(
 
 is(
    $c->make_chunk_checksum(
-      tbl      => $tbl,
-      func     => 'CRC32',
-      crc_width=> 99,
-      cols     => [qw(film_id)],
-      buffer   => 1,
-      crc_type => 'int',
+      tbl       => $tbl,
+      func      => 'CRC32',
+      crc_width => 99,
+      buffer    => 1,
+      crc_type  => 'int',
    ),
    q{COUNT(*) AS cnt, }
    . q{COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(`film_id`) AS UNSIGNED)), 10, 16)), 0) AS crc},
    'sakila.film CRC32',
 );
+
+@ARGV = qw();
+$o->get_opts();
 
 # #############################################################################
 # Sandbox tests.
@@ -391,18 +409,13 @@ $tbl = {
    tbl        => 'issue_94',
    tbl_struct => $tp->parse($du->get_create_table($dbh, $q, 'test', 'issue_94')),
 };
+@ARGV = qw(--ignore-columns c);
+$o->get_opts();
 my $query = $c->make_chunk_checksum(
    tbl        => $tbl,
    func       => 'CRC32',
    crc_width  => 16,
    crc_type   => 'int',
-   opt_slice  => undef,
-   cols       => undef,
-   sep        => '#',
-   replicate  => undef,
-   precision  => undef,
-   trim       => undef,
-   ignorecols => {'c'=>1},
 );
 is(
    $query,

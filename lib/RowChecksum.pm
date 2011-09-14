@@ -45,17 +45,11 @@ sub new {
 # Sub: make_row_checksum
 #   Make a SELECT column list to checksum a row.
 #
-# Parameters:
-#   %args - Arguments
-#
 # Required Arguments:
 #   tbl  - Table ref
 #
 # Optional Arguments:
-#   sep        - Separator for CONCAT_WS(); default #
-#   cols       - Arrayref of columns to checksum
-#   trim       - Wrap VARCHAR cols in TRIM() for v4/v5 compatibility
-#   ignorecols - Arrayref of columns to exclude from checksum
+#   no_cols - Don't append columns to list oustide of functions.
 #
 # Returns:
 #   Column list for SELECT
@@ -72,31 +66,28 @@ sub make_row_checksum {
    my $tbl_struct = $tbl->{tbl_struct};
    my $func       = $args{func} || uc($o->get('function'));
 
-   my $sep = $args{sep} || '#';
+   my $trim            = $o->get('trim');
+   my $float_precision = $o->get('float-precision');
+   my $sep             = $o->get('separator') || '#';
    $sep =~ s/'//g;
    $sep ||= '#';
+   
+   my $ignore_col = $o->get('ignore-columns') || {};
+   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my %cols       = map { lc($_) => 1 } grep { !$ignore_col->{$_} } @$all_cols;
 
-   # This allows a simpler grep when building %cols below.
-   my $ignorecols = $args{ignorecols} || {};
-
-   # Generate the expression that will turn a row into a checksum.
-   # Choose columns.  Normalize query results: make FLOAT and TIMESTAMP
-   # stringify uniformly.
-   my %cols = map { lc($_) => 1 }
-              grep { !exists $ignorecols->{$_} }
-              ($args{cols} ? @{$args{cols}} : @{$tbl_struct->{cols}});
    my %seen;
    my @cols =
       map {
-         my $type = $tbl_struct->{type_for}->{$_};
+         my $type   = $tbl_struct->{type_for}->{$_};
          my $result = $q->quote($_);
          if ( $type eq 'timestamp' ) {
             $result .= ' + 0';
          }
-         elsif ( $args{float_precision} && $type =~ m/float|double/ ) {
-            $result = "ROUND($result, $args{float_precision})";
+         elsif ( $float_precision && $type =~ m/float|double/ ) {
+            $result = "ROUND($result, $float_precision)";
          }
-         elsif ( $args{trim} && $type =~ m/varchar/ ) {
+         elsif ( $trim && $type =~ m/varchar/ ) {
             $result = "TRIM($result)";
          }
          $result;
