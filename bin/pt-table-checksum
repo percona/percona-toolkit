@@ -5229,7 +5229,7 @@ sub exec_nibble {
 
 {
 my $print_header = 1;
-my $line_fmt     = "%6s %6s %7s %7s %7s %6s %-s\n";
+my $line_fmt     = "%6s %6s %7s %7s %7s %7s %-s\n";
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -5251,7 +5251,7 @@ sub print_checksum_results {
       $res->{n_rows}   || 0,
       $res->{n_chunks} || 0,
       $res->{skipped}  || 0,
-      int(time - ($res->{start_time}  || 0)),
+      sprintf('%.3f', time - ($res->{start_time}  || 0)),
       "$tbl->{db}.$tbl->{tbl}";
 
    return;
@@ -5928,7 +5928,7 @@ checksumming only a single table, not an entire server.
 
 =item --chunk-size
 
-type: string; default: 1000
+type: size; default: 1000
 
 Approximate number of rows or size of data to checksum at a time.  Allowable
 suffixes are k, M, G.
