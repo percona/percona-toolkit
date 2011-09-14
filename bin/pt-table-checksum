@@ -5979,6 +5979,12 @@ they are oversize, you might want to specify a value larger than 2.
 
 You can disable oversize chunk checking by specifying L<"--chunk-size-limit"> 0.
 
+=item --columns
+
+short form: -c; type: array; group: Filter
+
+Checksum only this comma-separated list of columns.
+
 =item --config
 
 type: Array; group: Config
