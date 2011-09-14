@@ -5148,7 +5148,7 @@ sub get_cxn {
    if ( $o->get('ask-pass') ) {
       $dsn->{p} = OptionParser::prompt_noecho("Enter password: "); 
    }
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
+   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
    $dbh->{FetchHashKeyName} = 'NAME_lc';
    return $dbh;
 }
