@@ -209,9 +209,9 @@ sub next_schema_object {
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
       }
+      MKDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
    }
 
-   MKDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
    return $schema_obj;
 }
 
