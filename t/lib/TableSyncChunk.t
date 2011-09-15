@@ -35,7 +35,6 @@ use ChangeHandler;
 use TableChecksum;
 use TableChunker;
 use TableParser;
-use MySQLDump;
 use VersionParser;
 use TableSyncer;
 use MasterSlave;
@@ -47,11 +46,10 @@ diag(`$mysql < $trunk/t/lib/samples/before-TableSyncChunk.sql`);
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
 my $vp = new VersionParser();
 my $ms = new MasterSlave();
 my $rr = new Retry();
-my $chunker    = new TableChunker( Quoter => $q, MySQLDump => $du );
+my $chunker    = new TableChunker( Quoter => $q, TableParser => $tp );
 my $checksum   = new TableChecksum( Quoter => $q, VersionParser => $vp );
 my $syncer     = new TableSyncer(
    MasterSlave   => $ms,
@@ -93,7 +91,7 @@ my $t = new TableSyncChunk(
 );
 isa_ok($t, 'TableSyncChunk');
 
-$ddl        = $du->get_create_table($dbh, $q, 'test', 'test1');
+$ddl        = $tp->get_create_table($dbh, 'test', 'test1');
 $tbl_struct = $tp->parse($ddl);
 %args       = (
    src           => $src,
@@ -296,7 +294,7 @@ is($t->pending_changes(), 0, 'No pending changes');
 # be chunked.  But to keep the spirit of this test the same, we drop
 # the index which makes the table unchunkable again.
 $dbh->do('alter table test.test6 drop index a');
-$ddl        = $du->get_create_table($dbh, $q, 'test', 'test6');
+$ddl        = $tp->get_create_table($dbh, 'test', 'test6');
 $tbl_struct = $tp->parse($ddl);
 is_deeply(
    [ $t->can_sync(tbl_struct=>$tbl_struct) ],
@@ -304,7 +302,7 @@ is_deeply(
    'Cannot sync table1 (no good single column index)'
 );
 
-$ddl        = $du->get_create_table($dbh, $q, 'test', 'test5');
+$ddl        = $tp->get_create_table($dbh, 'test', 'test5');
 $tbl_struct = $tp->parse($ddl);
 is_deeply(
    [ $t->can_sync(tbl_struct=>$tbl_struct) ],
@@ -314,7 +312,7 @@ is_deeply(
 
 # create table test3(a int not null primary key, b int not null, unique(b));
 
-$ddl        = $du->get_create_table($dbh, $q, 'test', 'test3');
+$ddl        = $tp->get_create_table($dbh, 'test', 'test3');
 $tbl_struct = $tp->parse($ddl);
 is_deeply(
    [ $t->can_sync(tbl_struct=>$tbl_struct) ],

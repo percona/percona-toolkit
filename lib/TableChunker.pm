@@ -62,11 +62,11 @@ $Data::Dumper::Quotekeys = 0;
 #   %args  - Arguments
 #
 # Required Arguments:
-#   Quoter    - <Quoter> object
-#   MySQLDump - <MySQLDump> object
+#   Quoter      - <Quoter> object
+#   TableParser - <TableParser> object
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter MySQLDump) ) {
+   foreach my $arg ( qw(Quoter TableParser) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
@@ -800,7 +800,7 @@ sub size_to_rows {
    }
    my ($dbh, $db, $tbl, $chunk_size) = @args{@required_args};
    my $q  = $self->{Quoter};
-   my $du = $self->{MySQLDump};
+   my $tp = $self->{TableParser};
 
    my ($n_rows, $avg_row_length);
 
@@ -819,7 +819,7 @@ sub size_to_rows {
    }
 
    if ( $suffix || $args{avg_row_length} ) {
-      my ($status) = $du->get_table_status($dbh, $q, $db, $tbl);
+      my ($status) = $tp->get_table_status($dbh, $db, $tbl);
       $avg_row_length = $status->{avg_row_length};
       if ( !defined $n_rows ) {
          $n_rows = $avg_row_length ? ceil($chunk_size / $avg_row_length) : undef;

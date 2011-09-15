@@ -17,7 +17,6 @@ use Quoter;
 use DSNParser;
 use Sandbox;
 use OptionParser;
-use MySQLDump;
 use TableParser;
 use TableNibbler;
 use RowChecksum;
@@ -44,7 +43,6 @@ else {
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump();
 my $nb = new TableNibbler(TableParser=>$tp, Quoter=>$q);
 my $o  = new OptionParser(description => 'NibbleIterator');
 my $rc = new RowChecksum(OptionParser => $o, Quoter=>$q);
@@ -54,7 +52,6 @@ $o->get_specs("$trunk/bin/pt-table-checksum");
 my %common_modules = (
    Quoter       => $q,
    TableParser  => $tp,
-   MySQLDump    => $du,
    TableNibbler => $nb,
    OptionParser => $o,
 );
@@ -301,7 +298,7 @@ SKIP: {
       db         => 'sakila',
       tbl        => 'country',
       tbl_struct => $tp->parse(
-         $du->get_create_table($dbh, $q, 'sakila', 'country')),
+         $tp->get_create_table($dbh, 'sakila', 'country')),
    };
    my $chunk_checksum = $rc->make_chunk_checksum(
       dbh => $dbh,
