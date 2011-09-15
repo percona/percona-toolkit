@@ -4128,8 +4128,8 @@ sub _iterate_dbh {
 
       if ( !$engine || $self->engine_is_allowed($engine) ) {
          my $ddl;
-         if ( my $du = $self->{TableParser} ) {
-            $ddl = $du->get_create_table($dbh, $self->{db}, $tbl);
+         if ( my $tp = $self->{TableParser} ) {
+            $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
          }
 
          return {
@@ -4807,38 +4807,39 @@ sub main {
 
    TABLE:
    while ( my $tbl = $schema_iter->next_schema_object() ) {
-      use_repl_db(
-         dbh        => $dbh,
-         tbl        => $tbl,
-         repl_table => $repl_table,
-         %common_modules
-      );
-
-      # Results, stats, and info related to checksuming this table can
-      # be saved here.  print_checksum_results() uses this info.
-      $tbl->{checksum_results} = {};
-
-      my $checksum_cols = $rc->make_chunk_checksum(
-         dbh => $dbh,
-         tbl => $tbl,
-         %crc_args
-      );
-      my $nibble_iter   = new NibbleIterator(
-         dbh       => $dbh,
-         tbl       => $tbl,
-         dms       => $checksum_dms,
-         select    => $checksum_cols,
-         callbacks => $callbacks,
-         %common_modules,
-      );
-
-      $tbl->{checksum_results}->{start_time} = time;
       eval {
+         use_repl_db(
+            dbh        => $dbh,
+            tbl        => $tbl,
+            repl_table => $repl_table,
+            %common_modules
+         );
+
+         # Results, stats, and info related to checksuming this table can
+         # be saved here.  print_checksum_results() uses this info.
+         $tbl->{checksum_results} = {};
+
+         my $checksum_cols = $rc->make_chunk_checksum(
+            dbh => $dbh,
+            tbl => $tbl,
+            %crc_args
+         );
+         my $nibble_iter   = new NibbleIterator(
+            dbh       => $dbh,
+            tbl       => $tbl,
+            dms       => $checksum_dms,
+            select    => $checksum_cols,
+            callbacks => $callbacks,
+            %common_modules,
+         );
+
+         $tbl->{checksum_results}->{start_time} = time;
          1 while $nibble_iter->next();
       };
       if ($EVAL_ERROR) {
          warn "Error checksumming $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
          $tbl->{checksum_results}->{errors}++;
+         print_checksum_results(tbl => $tbl);
       }
 
       $exit_status |= 1 if $tbl->{checksum_results}->{errors};
@@ -4968,7 +4969,7 @@ sub print_checksum_results {
       $res->{n_rows}   || 0,
       $res->{n_chunks} || 0,
       $res->{skipped}  || 0,
-      sprintf('%.3f', time - ($res->{start_time}  || 0)),
+      sprintf('%.3f', $res->{start_time} ? time - $res->{start_time} : 0),
       "$tbl->{db}.$tbl->{tbl}";
 
    return;
@@ -5967,7 +5968,7 @@ ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
 
 =item --replicate
 
-type: string; default: percona_toolkit.checksums
+type: string; default: percona.checksums
 
 Replicate checksums to slaves.
 
