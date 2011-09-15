@@ -23,9 +23,6 @@
 #
 # Several subs in this module require either a $ddl or $tbl param.
 #
-# $ddl is the return value from MySQLDump::get_create_table() (which returns
-# the output of SHOW CREATE TALBE).
-#
 # $tbl is the return value from the sub below, parse().
 #
 # And some subs have an optional $opts param which is a hashref of options.
@@ -54,6 +51,55 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+           . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+           . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+           . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+   MKDEBUG && _d($sql);
+   eval { $dbh->do($sql); };
+   MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   # Must USE the tbl's db because some bug with SHOW CREATE TABLE on a
+   # view when the current db isn't the view's db causes MySQL to crash.
+   $sql = 'USE ' . $q->quote($db);
+   MKDEBUG && _d($dbh, $sql);
+   $dbh->do($sql);
+
+   $sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   MKDEBUG && _d($sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($sql); };
+   if ( $EVAL_ERROR ) {
+      MKDEBUG && _d($EVAL_ERROR);
+      return;
+   }
+
+   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+        . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   MKDEBUG && _d($sql);
+   $dbh->do($sql);
+
+   my ($key) = grep { m/create table/i } keys %$href;
+   if ( $key ) {
+      MKDEBUG && _d('This table is a base table');
+      $href->{$key}  =~ s/\b[ ]{2,}/ /g;
+      $href->{$key} .= "\n";
+   }
+   else {
+      MKDEBUG && _d('This table is a view');
+      ($key) = grep { m/create view/i } keys %$href;
+   }
+
+   return $href->{$key};
+}
+
 # Sub: parse
 #   Parse SHOW CREATE TABLE.
 #
@@ -62,16 +108,6 @@ sub new {
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -310,7 +346,7 @@ sub get_engine {
    return $engine || undef;
 }
 
-# $ddl is a SHOW CREATE TABLE returned from MySQLDumper::get_create_table().
+# $ddl is a SHOW CREATE TABLE returned from get_create_table().
 # The general format of a key is
 # [FOREIGN|UNIQUE|PRIMARY|FULLTEXT|SPATIAL] KEY `name` [USING BTREE|HASH] (`cols`).
 # Returns a hashref of keys and their properties and the clustered key (if
@@ -452,52 +488,27 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         # Remove key from CREATE TABLE ddl.
-         my $key_def = $_->{ddl};
-         # Escape ( ) in the key def so Perl treats them literally.
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         # Last key in table won't have trailing comma, but since
-         # we're iterating through a hash the last key may not be
-         # the last in the list we're creating.
-         # http://code.google.com/p/maatkit/issues/detail?id=833
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      MKDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      # Remove trailing comma on last key.  Cases like:
-      #   PK,
-      #   KEY,
-      # ) ENGINE=...
-      # will leave a trailing comma on PK.
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      MKDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
-   }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   MKDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   $sth->execute(@params);
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {

@@ -14,7 +14,6 @@ use Test::More;
 use Transformers;
 use QueryReview;
 use QueryRewriter;
-use MySQLDump;
 use TableParser;
 use Quoter;
 use SlowLogParser;
@@ -41,10 +40,9 @@ my $qr = new QueryRewriter();
 my $lp = new SlowLogParser;
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
 my $opt_parser = new OptionParser( description => 'hi' );
 my $tbl_struct = $tp->parse(
-   $du->get_create_table($dbh, $q, 'test', 'query_review'));
+   $tp->get_create_table($dbh, 'test', 'query_review'));
 
 my $qv = new QueryReview(
    dbh        => $dbh,
@@ -159,7 +157,7 @@ my $create_table = $opt_parser->read_para_after(
 $create_table =~ s/query_review_history/test.query_review_history/;
 $dbh->do($create_table);
 my $hist_struct = $tp->parse(
-   $du->get_create_table($dbh, $q, 'test', 'query_review_history'));
+   $tp->get_create_table($dbh, 'test', 'query_review_history'));
 
 $qv->set_history_options(
    table      => 'test.query_review_history',
@@ -256,7 +254,7 @@ my $min_tbl = "CREATE TABLE query_review_history (
 $dbh->do($min_tbl);
 
 $hist_struct = $tp->parse(
-   $du->get_create_table($dbh, $q, 'test', 'query_review_history'));
+   $tp->get_create_table($dbh, 'test', 'query_review_history'));
 $qv->set_history_options(
    table      => 'test.query_review_history',
    dbh        => $dbh,

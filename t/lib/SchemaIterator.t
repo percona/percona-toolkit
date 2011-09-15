@@ -17,7 +17,6 @@ use Quoter;
 use DSNParser;
 use Sandbox;
 use OptionParser;
-use MySQLDump;
 use TableParser;
 use PerconaTest;
 
@@ -33,7 +32,7 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
-my ($du, $tp);
+my $tp;
 my $fi = new FileIterator();
 my $o  = new OptionParser(description => 'SchemaIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
@@ -68,7 +67,6 @@ sub test_so {
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          OptionParser => $o,
          Quoter       => $q,
-         MySQLDump    => $du,
          TableParser  => $tp,
       );
    }
@@ -86,7 +84,7 @@ sub test_so {
       else {
          if ( $result_file || $args{ddl} ) {
             $res .= "$obj->{db}.$obj->{tbl}\n";
-            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $du;
+            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
          }
          else {
             $res .= "$obj->{db}.$obj->{tbl} ";
@@ -102,7 +100,6 @@ sub test_so {
             $res,
             $args{result},
             cmd_output    => 1,
-            update_sample => $args{update_sample},
          ),
          $args{test_name},
       );
@@ -312,7 +309,7 @@ SKIP: {
    # ########################################################################
    # Getting CREATE TALBE (ddl).
    # ########################################################################
-   $du = new MySQLDump();
+   $tp = new TableParser(Quoter => $q);
    test_so(
       filters   => [qw(-t mysql.user)],
       result    => $sandbox_version eq '5.1' ? "$out/mysql-user-ddl.txt"
@@ -320,8 +317,8 @@ SKIP: {
       test_name => "Get CREATE TABLE with dbh",
    );
 
-   # Kill the MySQLDump obj in case the next tests don't want to use it.
-   $du = undef;
+   # Kill the TableParser obj in case the next tests don't want to use it.
+   $tp = undef;
 
    $sb->wipe_clean($dbh);
 };

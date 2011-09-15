@@ -58,7 +58,6 @@ my $tbl_name     = qr{
 #
 # Optional Arguments:
 #   Schema      - <Schema> object to initialize while iterating.
-#   MySQLDump   - <MySQLDump> object to get CREATE TABLE when iterating dbh.
 #   TableParser - <TableParser> object to parse CREATE TABLE for tbl_struct.
 #   keep_ddl    - Keep CREATE TABLE (default false)
 #
@@ -172,7 +171,7 @@ sub _make_filters {
 #   Only filtered schema objects are returned.  If iterating dump files
 #   (i.e. the obj was created with a file_itr arg), then the returned
 #   schema object will always have a ddl (see below).  But if iterating
-#   a dbh, then you must create the obj with a MySQLDump obj to get a ddl.
+#   a dbh, then you must create the obj with a TableParser obj to get a ddl.
 #   If this object was created with a TableParser, then the ddl, if present,
 #   is parsed, too.
 #
@@ -344,8 +343,8 @@ sub _iterate_dbh {
 
       if ( !$engine || $self->engine_is_allowed($engine) ) {
          my $ddl;
-         if ( my $du = $self->{MySQLDump} ) {
-            $ddl = $du->get_create_table($dbh, $q, $self->{db}, $tbl)->[1];
+         if ( my $du = $self->{TableParser} ) {
+            $ddl = $du->get_create_table($dbh, $self->{db}, $tbl);
          }
 
          return {

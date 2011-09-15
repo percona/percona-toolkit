@@ -14,7 +14,6 @@ use Test::More;
 use RowChecksum;
 use TableParser;
 use Quoter;
-use MySQLDump;
 use DSNParser;
 use OptionParser;
 use Sandbox;
@@ -35,7 +34,6 @@ $sb->create_dbs($dbh, ['test']);
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
 my $o  = new OptionParser(description => 'NibbleIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
@@ -407,7 +405,7 @@ $sb->load_file('master', 't/lib/samples/issue_94.sql');
 $tbl = {
    db         => 'test',
    tbl        => 'issue_94',
-   tbl_struct => $tp->parse($du->get_create_table($dbh, $q, 'test', 'issue_94')),
+   tbl_struct => $tp->parse($tp->get_create_table($dbh, 'test', 'issue_94')),
 };
 @ARGV = qw(--ignore-columns c);
 $o->get_opts();

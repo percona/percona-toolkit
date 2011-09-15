@@ -30,7 +30,6 @@ use TableNibbler;
 use ChangeHandler;
 use RowDiff;
 # And other modules:
-use MySQLDump;
 use TableParser;
 use DSNParser;
 use Sandbox;
@@ -59,7 +58,6 @@ $sb->load_file('master', 't/lib/samples/before-TableSyncChunk.sql');
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump( cache => 0 );
 
 # ###########################################################################
 # Make a TableSyncer object.
@@ -103,8 +101,8 @@ my $syncer = new TableSyncer(
 );
 isa_ok($syncer, 'TableSyncer');
 
-my $chunker = new TableChunker( Quoter => $q, MySQLDump => $du );
-my $nibbler = new TableNibbler( TableParser => $tp, Quoter => $q );
+my $chunker = new TableChunker( Quoter => $q, TableParser => $tp );
+my $nibbler = new TableNibbler( Quoter => $q, TableParser => $tp );
 
 # Global vars used/set by the subs below and accessed throughout the tests.
 my $src;
@@ -182,7 +180,7 @@ sub sync_table {
       make_plugins();
    }
    $tbl_struct = $tp->parse(
-      $du->get_create_table($src_dbh, $q, $src_db, $src_tbl));
+      $tp->get_create_table($src_dbh, $src_db, $src_tbl));
    $src = {
       dbh      => $src_dbh,
       dsn      => {h=>'127.1',P=>'12345',},
@@ -221,7 +219,7 @@ sub sync_table {
 # Test get_best_plugin() (formerly best_algorithm()).
 # ###########################################################################
 make_plugins();
-$tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q, 'test', 'test5'));
+$tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'test', 'test5'));
 is_deeply(
    [
       $syncer->get_best_plugin(
@@ -233,7 +231,7 @@ is_deeply(
    'Best plugin GroupBy'
 );
 
-$tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q,'test','test3'));
+$tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'test', 'test3'));
 my ($plugin, %plugin_args) = $syncer->get_best_plugin(
    plugins     => $plugins,
    tbl_struct  => $tbl_struct,
@@ -247,7 +245,7 @@ is_deeply(
 # With the introduction of char chunking (issue 568), test6 can be chunked
 # with Chunk or Nibble.  Chunk will be prefered.
 
-$tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q,'test','test6'));
+$tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'test', 'test6'));
 ($plugin, %plugin_args) = $syncer->get_best_plugin(
    plugins     => $plugins,
    tbl_struct  => $tbl_struct,
@@ -842,7 +840,7 @@ SKIP: {
    $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
    make_plugins();
    set_bidi_callbacks();
-   $tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q, 'bidi','t'));
+   $tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'bidi', 't'));
 
    $src->{db}           = 'bidi';
    $src->{tbl}          = 't';

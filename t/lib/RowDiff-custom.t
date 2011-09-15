@@ -73,13 +73,11 @@ use RowDiff;
 use Sandbox;
 use DSNParser;
 use TableParser;
-use MySQLDump;
 use Quoter;
 
 my $d  = new RowDiff(dbh => 1);
 my $s  = new MockSync();
 my $q  = new Quoter();
-my $du = new MySQLDump();
 my $tp = new TableParser(Quoter => $q);
 my $dp = new DSNParser(opts=>$dsn_opts);
 
@@ -102,7 +100,7 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/lib/samples/issue_11.sql');
 
 my $tbl = $tp->parse(
-   $du->get_create_table($master_dbh, $q, 'test', 'issue_11'));
+   $tp->get_create_table($master_dbh, 'test', 'issue_11'));
 
 my $left_sth  = $master_dbh->prepare('SELECT * FROM test.issue_11');
 my $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');

@@ -42,7 +42,7 @@ $Data::Dumper::Quotekeys = 0;
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(method base-dir plugins get_id
-                          QueryParser MySQLDump TableParser TableSyncer Quoter);
+                          QueryParser TableParser TableSyncer Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -767,7 +767,6 @@ sub add_indexes {
    my $qp = $self->{QueryParser};
    my $tp = $self->{TableParser};
    my $q  = $self->{Quoter};
-   my $du = $self->{MySQLDump};
 
    my @src_tbls = $qp->get_tables($query);
    my @keys;
@@ -777,8 +776,11 @@ sub add_indexes {
          my $tbl_struct;
          eval {
             $tbl_struct = $tp->parse(
-               $du->get_create_table($dsts->[0]->{dbh}, $q, $db, $tbl)
-            );
+               $tp->get_create_table(
+                  dbh => $dsts->[0]->{dbh},
+                  db  => $db,
+                  tbl => $tbl,
+               ));
          };
          if ( $EVAL_ERROR ) {
             MKDEBUG && _d('Error parsing', $db, '.', $tbl, ':', $EVAL_ERROR);
