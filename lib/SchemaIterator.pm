@@ -343,8 +343,8 @@ sub _iterate_dbh {
 
       if ( !$engine || $self->engine_is_allowed($engine) ) {
          my $ddl;
-         if ( my $du = $self->{TableParser} ) {
-            $ddl = $du->get_create_table($dbh, $self->{db}, $tbl);
+         if ( my $tp = $self->{TableParser} ) {
+            $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
          }
 
          return {
