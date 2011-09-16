@@ -499,7 +499,11 @@ sub get_table_status {
    }
    MKDEBUG && _d($sql, @params);
    my $sth = $dbh->prepare($sql);
-   $sth->execute(@params);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      MKDEBUG && _d($EVAL_ERROR);
+      return;
+   }
    my @tables = @{$sth->fetchall_arrayref({})};
    @tables = map {
       my %tbl; # Make a copy with lowercased keys
