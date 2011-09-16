@@ -301,24 +301,11 @@ sub _make_ub_sql {
 
 sub _can_nibble_once {
    my ($self) = @_;
-   my ($dbh, $tbl, $q) = @{$self}{qw(dbh tbl Quoter)};
-   my $table_status;
-   eval {
-      my $sql = "SHOW TABLE STATUS FROM " . $q->quote($tbl->{db})
-              . " LIKE " . $q->literal_like($tbl->{tbl});
-      MKDEBUG && _d($sql);
-      $table_status = $dbh->selectrow_hashref($sql);
-      MKDEBUG && _d('Table status:', Dumper($table_status));
-   };
-   if ( $EVAL_ERROR ) {
-      warn $EVAL_ERROR;
-      return 0;
-   }
-   my $n_rows = defined $table_status->{Rows} ? $table_status->{Rows}
-              : defined $table_status->{rows} ? $table_status->{rows}
-              : 0;
-   my $chunk_size = $self->{OptionParser}->get('chunk-size') || 1;
-   $self->{one_nibble} = $n_rows <= $chunk_size ? 1 : 0;
+   my ($dbh, $tbl, $tp) = @{$self}{qw(dbh tbl TableParser)};
+   my ($table_status)   = $tp->get_table_status($dbh, $tbl->{db}, $tbl->{tbl});
+   my $n_rows           = $table_status->{rows} || 0;
+   my $chunk_size       = $self->{OptionParser}->get('chunk-size') || 1;
+   $self->{one_nibble}  = $n_rows <= $chunk_size ? 1 : 0;
    MKDEBUG && _d('One nibble:', $self->{one_nibble} ? 'yes' : 'no');
    return $self->{one_nibble};
 }
