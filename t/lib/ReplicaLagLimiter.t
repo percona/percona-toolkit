@@ -21,7 +21,7 @@ my $rll = new ReplicaLagLimiter(
       { dsn=>{n=>'slave2'}, dbh=>2 },
    ],
    get_lag     => \&get_lag,
-   target_time => [0.9,1.1],
+   target_time => 1,
 );
 
 # ############################################################################
@@ -69,38 +69,40 @@ throws_ok(
 # Update master op, see if we get correct adjustment result.
 # ############################################################################
 for (1..4) {
-   $rll->update(1);
+   $rll->update(1000, 1);
 }
 is(
-   $rll->update(1),
+   $rll->update(1000, 1),
    0,
    "5 time samples, no adjustmenet"
 );
 
 for (1..4) {
-   $rll->update(1);
+   $rll->update(1000, 1);
 }
 is(
-   $rll->update(1),
+   $rll->update(1000, 1),
    0,
-   "Moving avg hasn't changed"
+   "Avg hasn't changed"
 );
 
-$rll->update(2);
-$rll->update(2);
-$rll->update(2);
+# Results in: Weighted avg n: 1000 s: 1.683593 rate: 593 n/s
+$rll->update(1000, 2);
+$rll->update(1000, 2);
+$rll->update(1000, 2);
 is(
-   $rll->update(2),
+   $rll->update(1000, 2),
    -1,
-   "Adjust down (moving avg = 1.8)"
+   "Adjust down"
 );
 
-$rll->update(0.1);
-$rll->update(0.1);
+# Results in: Weighted avg n: 1000 s: 0.768078 rate: 1301 n/s
+$rll->update(1000, 0.1);
+$rll->update(1000, 0.1);
 is(
-   $rll->update(0.1),
+   $rll->update(1000, 0.1),
    1,
-   "Adjust up (moving avg = 0.86)"
+   "Adjust up"
 );
 
 # ############################################################################

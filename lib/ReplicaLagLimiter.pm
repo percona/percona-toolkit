@@ -24,13 +24,13 @@
 # slave lag.  Master ops that replicate can affect slave lag, so they
 # should be adjusted to prevent overloading slaves.  <update()> returns
 # and adjustment (-1=down/decrease, 0=none, 1=up/increase) based on
-# a moving average of how long operations are taking on the master.
-# The desired master op time range is specified by target_time.  By
-# default, the moving average sample_size is 5, so the last 5 master op
-# times are used.  Increasing sample_size will smooth out variations
-# and make adjustments less volatile.  Regardless of all that, slaves may
-# still lag, so <wait()> waits for them to catch up based on the spec
-# passed to <new()>.
+# an weighted decaying average of how long operations are taking on the
+# master.  The desired master op time range is specified by target_time.
+# By default, the running avg is weight is 0.75; or, new times weight
+# only 0.25 so temporary variations won't cause volatility.
+#
+# Regardless of all that, slaves may still lag, so <wait()> waits for them
+# to catch up based on the spec passed to <new()>.
 package ReplicaLagLimiter;
 
 use strict;
@@ -46,10 +46,11 @@ use Time::HiRes qw(sleep time);
 #   spec        - --replicat-lag spec (arrayref of option=value pairs)
 #   slaves      - Arrayref of slave cxn, like [{dsn=>{...}, dbh=>...},...]
 #   get_lag     - Callback passed slave dbh and returns slave's lag
-#   target_time - Arrayref with lower and upper range for master op time
+#   target_time - Target time for master ops
 #
 # Optional Arguments:
 #   sample_size - Number of master op samples to use for moving avg (default 5)
+#   weight      - Weight of previous average (default 0.75).
 #
 # Returns:
 #   ReplicaLagLimiter object 
@@ -79,6 +80,7 @@ sub new {
       get_lag     => $args{get_lag},
       target_time => $args{target_time},
       sample_size => $args{sample_size} || 5,
+      weight      => $args{weight}      || 0.75,
    };
 
    return bless $self, $class;
@@ -115,39 +117,49 @@ sub validate_spec {
 }
 
 # Sub: update
-#   Update moving average of master operation time.
+#   Update weighted decaying average of master operation time.  Param n is
+#   generic; it's how many of whatever the caller is doing (rows, checksums,
+#   etc.).  Param s is how long this n took, in seconds (hi-res or not).
 #
 # Parameters:
-#   t - Master operation time (int or float).
+#   n - Number of operations (rows, etc.)
+#   s - Amount of time in seconds that n took
 #
 # Returns:
 #   -1 master op is too slow, it should be reduced
 #    0 master op is within target time range, no adjustment
 #    1 master is too fast; it can be increased 
 sub update {
-   my ($self, $t) = @_;
-   MKDEBUG && _d('Sample time:', $t);
-   my $sample_size = $self->{sample_size};
-   my $samples     = $self->{samples};
-
+   my ($self, $n, $s) = @_;
+   MKDEBUG && _d('Master op time:', $n, 'n /', $s, 's');
    my $adjust = 0;
-   if ( @$samples == $sample_size ) {
-      shift @$samples;
-      push @$samples, $t;
-      my $sum = 0;
-      map { $sum += $_ } @$samples;
-      $self->{moving_avg} = $sum / $sample_size;
+   if ( $self->{avg_rate} ) { 
+      # Calculated new weighted averages.
+      $self->{avg_n}    = ($self->{avg_n} * (    $self->{weight}))
+                        + ($n             * (1 - $self->{weight}));
+      $self->{avg_s}    = ($self->{avg_s} * (    $self->{weight}))
+                        + ($s             * (1 - $self->{weight}));
+      $self->{avg_rate} = int($self->{avg_n} / $self->{avg_s});
+      MKDEBUG && _d('Weighted avg n:', $self->{avg_n}, 's:', $self->{avg_s},
+         'rate:', $self->{avg_rate}, 'n/s');
 
-      MKDEBUG && _d('Moving average:', $self->{moving_avg});
-      $adjust = $self->{moving_avg} < $self->{target_time}->[0] ?  1
-              : $self->{moving_avg} > $self->{target_time}->[1] ? -1
-              :                                                    0;
+      $adjust = $self->{avg_s} < $self->{target_time} ?  1
+              : $self->{avg_s} > $self->{target_time} ? -1
+              :                                          0;
    }
    else {
-      MKDEBUG && _d('Saving sample', @$samples + 1, 'of', $sample_size);
-      push @$samples, $t;
+      MKDEBUG && _d('Saved values; initializing averages');
+      $self->{n_vals}++;
+      $self->{total_n} += $n;
+      $self->{total_s} += $s;
+      if ( $self->{n_vals} == $self->{sample_size} ) {
+         $self->{avg_n}    = $self->{total_n} / $self->{n_vals};
+         $self->{avg_s}    = $self->{total_s} / $self->{n_vals};
+         $self->{avg_rate} = int($self->{avg_n}   / $self->{avg_s});
+         MKDEBUG && _d('Initial avg n:', $self->{avg_n}, 's:', $self->{avg_s},
+            'rate:', $self->{avg_rate}, 'n/s');
+      }
    }
-
    return $adjust;
 }
 
