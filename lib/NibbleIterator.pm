@@ -93,15 +93,16 @@ sub new {
    # does (col > a AND col <= e).  Hence the fancy LIMIT 2 which returns
    # the upper boundary for the current nibble *and* the lower boundary
    # for the next nibble.  See _next_boundaries().
-   my $ub_sql = _make_ub_sql(
-      cols     => $asc->{scols},
-      from     => $from,
-      where    => $asc->{boundaries}->{'>='}
-                . ($args{where} ? " AND ($args{where})" : ''),
-      order_by => $order_by,
-      limit    => $o->get('chunk-size'),
-      Quoter   => $q,
-   );
+   my $ub_sql
+      = "SELECT /*!40001 SQL_NO_CACHE */ "
+      . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+      . " FROM $from"
+      . " WHERE " . $asc->{boundaries}->{'>='}
+                  . ($args{where} ? " AND ($args{where})" : '')
+      . " ORDER BY $order_by"
+      . " LIMIT ?, 2"
+      . " /*upper boundary*/";
+   MKDEBUG && _d('Upper boundary statement:', $ub_sql);
 
    # This statement does the actual nibbling work; its rows are returned
    # to the caller via next().
@@ -157,6 +158,7 @@ sub new {
       index                  => $index,
       from                   => $from,
       order_by               => $order_by,
+      limit                  => $o->get('chunk-size') - 1,
       first_lb_sql           => $first_lb_sql,
       last_ub_sql            => $last_ub_sql,
       ub_sql                 => $ub_sql,
@@ -258,45 +260,8 @@ sub nibble_number {
 sub set_chunk_size {
    my ($self, $limit) = @_;
    MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
-
-   $self->{ub_sql} = _make_ub_sql(
-      cols     => $self->{asc}->{scols},
-      from     => $self->{from},
-      where    => $self->{asc}->{boundaries}->{'>='}
-                . ($self->{where} ? " AND ($self->{where})" : ''),
-      order_by => $self->{order_by},
-      limit    => $limit,
-      Quoter   => $self->{Quoter},
-   );
-
-   # ub_sth won't exist if user calls this sub before calling next() once.
-   if ($self->{ub_sth}) {
-      $self->{ub_sth}->finish();
-      $self->{ub_sth} = undef;
-   }
-
-   $self->_prepare_sths();
-
+   $self->{limit} = $limit - 1;
    return;
-}
-
-sub _make_ub_sql {
-   my (%args) = @_;
-   my @required_args = qw(cols from where order_by limit Quoter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($cols, $from, $where, $order_by, $limit, $q) = @args{@required_args};
-   my $ub_sql
-      = "SELECT /*!40001 SQL_NO_CACHE */ "
-      . join(', ', map { $q->quote($_) } @{$cols})
-      . " FROM $from"
-      . " WHERE $where"
-      . " ORDER BY $order_by"
-      . " LIMIT 2 OFFSET " . ((int($limit) || 1) - 1)
-      . " /*upper boundary*/";
-   MKDEBUG && _d('Upper boundary statement:', $ub_sql);
-   return $ub_sql;
 }
 
 sub _can_nibble_once {
@@ -382,8 +347,8 @@ sub _next_boundaries {
    $self->{lb} = $self->{next_lb};
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
-      join(', ', @{$self->{lb}}));
-   $self->{ub_sth}->execute(@{$self->{lb}});
+      join(', ', @{$self->{lb}}), $self->{limit});
+   $self->{ub_sth}->execute(@{$self->{lb}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    MKDEBUG && _d('Next boundary:', Dumper($boundary));
    if ( $boundary && @$boundary ) {
