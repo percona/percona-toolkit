@@ -57,7 +57,7 @@ sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(spec slaves get_lag initial_n initial_t target_t);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($spec) = @args{@required_args};
 
@@ -146,7 +146,7 @@ sub update {
 #   Progress - <Progress> object to report waiting
 #
 # Returns:
-#   True if all slaves catch up before timeout, else die unless continue is true
+#   1 if all slaves catch up before timeout, else 0 if continue=yes, else die.
 sub wait {
    my ( $self, %args ) = @_;
    my @required_args = qw();
@@ -196,13 +196,19 @@ sub wait {
          $slave = $slaves->[++$slave_no];
       }
    }
-   if ( $slave_no < @$slaves && $self->{continue} eq 'no' ) {
-      die "Timeout waiting for replica " . $slaves->[$slave_no]->{dsn}->{n}
-        . " to catch up\n";
+   if ( $slave_no < @$slaves ) {
+      if ( $self->{continue} eq 'no' ) {
+         die "Timeout waiting for replica " . $slaves->[$slave_no]->{dsn}->{n}
+            . " to catch up\n";
+      }
+      else {
+         MKDEBUG && _d('Some slave are not caught up');
+         return 0; # not ready
+      }
    }
 
    MKDEBUG && _d('All slaves caught up');
-   return 1;
+   return 1; # ready
 }
 
 sub _d {
