@@ -200,13 +200,14 @@ sub next {
             join(', ', (@{$self->{lb}}, @{$self->{ub}})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(
-               dbh         => $self->{dbh},
-               tbl         => $self->{tbl},
-               sth         => $self->{nibble_sth},
-               lb          => $self->{lb},
-               ub          => $self->{ub},
-               nibbleno    => $self->{nibbleno},
-               explain_sth => $self->{explain_sth},
+               dbh            => $self->{dbh},
+               tbl            => $self->{tbl},
+               sth            => $self->{nibble_sth},
+               lb             => $self->{lb},
+               ub             => $self->{ub},
+               nibbleno       => $self->{nibbleno},
+               explain_sth    => $self->{explain_sth},
+               NibbleIterator => $self,
             );
          }
          else {
@@ -232,10 +233,11 @@ sub next {
       MKDEBUG && _d('No rows in nibble or nibble skipped');
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
          $callback->(
-            dbh         => $self->{dbh},
-            tbl         => $self->{tbl},
-            nibbleno    => $self->{nibbleno},
-            explain_sth => $self->{explain_sth},
+            dbh            => $self->{dbh},
+            tbl            => $self->{tbl},
+            nibbleno       => $self->{nibbleno},
+            explain_sth    => $self->{explain_sth},
+            NibbleIterator => $self,
          );
       }
       $self->{rowno}     = 0;
