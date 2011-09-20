@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 use ReplicaLagLimiter;
 use PerconaTest;
@@ -21,7 +21,9 @@ my $rll = new ReplicaLagLimiter(
       { dsn=>{n=>'slave2'}, dbh=>2 },
    ],
    get_lag     => \&get_lag,
-   target_time => 1,
+   initial_n   => 1000,
+   initial_t   => 1,
+   target_t    => 1,
 );
 
 # ############################################################################
@@ -68,41 +70,53 @@ throws_ok(
 # ############################################################################
 # Update master op, see if we get correct adjustment result.
 # ############################################################################
-for (1..4) {
+
+# stay the same
+for (1..5) {
    $rll->update(1000, 1);
 }
 is(
    $rll->update(1000, 1),
-   0,
-   "5 time samples, no adjustmenet"
+   1000,
+   "Same rate, same n"
 );
 
-for (1..4) {
-   $rll->update(1000, 1);
+# slow down
+for (1..5) {
+   $rll->update(1000, 2);
 }
-is(
-   $rll->update(1000, 1),
-   0,
-   "Avg hasn't changed"
-);
-
-# Results in: Weighted avg n: 1000 s: 1.683593 rate: 593 n/s
-$rll->update(1000, 2);
-$rll->update(1000, 2);
-$rll->update(1000, 2);
 is(
    $rll->update(1000, 2),
-   -1,
-   "Adjust down"
+   542,
+   "Decrease rate, decrease n"
 );
 
-# Results in: Weighted avg n: 1000 s: 0.768078 rate: 1301 n/s
-$rll->update(1000, 0.1);
-$rll->update(1000, 0.1);
+for (1..15) {
+   $rll->update(1000, 2);
+}
 is(
-   $rll->update(1000, 0.1),
-   1,
-   "Adjust up"
+   $rll->update(1000, 2),
+   500,
+   "limit n=500 decreasing"
+);
+
+# speed up
+for (1..5) {
+   $rll->update(1000, 1);
+}
+is(
+   $rll->update(1000, 1),
+   849,
+   "Increase rate, increase n"
+);
+
+for (1..20) {
+   $rll->update(1000, 1);
+}
+is(
+   $rll->update(1000, 1),
+   999,
+   "limit n=1000 increasing"
 );
 
 # ############################################################################
@@ -153,7 +167,9 @@ $rll = new ReplicaLagLimiter(
       { dsn=>{n=>'slave2'}, dbh=>2 },
    ],
    get_lag     => \&get_lag,
-   target_time => [0.9,1.1],
+   initial_n   => 1000,
+   initial_t   => 1,
+   target_t    => 1,
 );
 
 @waited = ();
@@ -172,7 +188,9 @@ $rll = new ReplicaLagLimiter(
       { dsn=>{n=>'slave2'}, dbh=>2 },
    ],
    get_lag     => \&get_lag,
-   target_time => [0.9,1.1],
+   initial_n   => 1000,
+   initial_t   => 1,
+   target_t    => 1,
 );
 
 @waited = ();
