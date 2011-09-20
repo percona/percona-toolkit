@@ -38,7 +38,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 20;
+   plan tests => 21;
 }
 
 my $q  = new Quoter();
@@ -446,6 +446,27 @@ is_deeply(
    ],
    "Change chunk size while nibbling"
 ) or print STDERR Dumper(\@rows);
+
+# ############################################################################
+# Nibble one row at a time.
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file  => "a-z.sql",
+   db        => 'test',
+   tbl       => 't',
+   argv      => [qw(--databases test --chunk-size 1)],
+);
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, @$row;
+}
+
+is_deeply(
+   \@rows,
+   [ ('a'..'z') ],
+   "Nibble by 1 row"
+);
 
 # #############################################################################
 # Done.

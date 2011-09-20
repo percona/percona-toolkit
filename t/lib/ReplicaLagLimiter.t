@@ -197,8 +197,8 @@ $rll = new ReplicaLagLimiter(
 @lag    = (5, 0, 0);
 is(
    $rll->wait(),
-   1,
-   "wait() returns 1 despite timeout if continue=yes"
+   0,
+   "wait() returns 0 if timeout and continue=yes"
 );
 
 # #############################################################################
