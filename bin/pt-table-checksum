@@ -4954,7 +4954,7 @@ sub main {
                # chunk size can't be set less than 1.
                warn "Checksums are executing very slowly.  --chunk-size has "
                   . "been automatically reduced to 1.  Check that the server "
-                  . "is not being overloaded, or increase --chunk-time.\n\n"
+                  . "is not being overloaded, or increase --chunk-time.  "
                   . "The last chunk, number $args{nibbleno} of table "
                   . "$tbl->{db}.$tbl->{tbl}, selected $cnt rows and took "
                   . sprintf('%.3f', $nibble_time) . " seconds to execute.\n";
