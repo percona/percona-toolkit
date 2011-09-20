@@ -152,13 +152,16 @@ sub new {
       . " /*explain one nibble*/";
    MKDEBUG && _d('Explain one nibble statement:', $explain_one_nibble_sql);
 
+   my $limit = $o->get('chunk-size') - 1;
+   MKDEBUG && _d('Initial chunk size (LIMIT):', $limit);
+
    my $self = {
       %args,
       asc                    => $asc,
       index                  => $index,
       from                   => $from,
       order_by               => $order_by,
-      limit                  => $o->get('chunk-size') - 1,
+      limit                  => $limit,
       first_lb_sql           => $first_lb_sql,
       last_ub_sql            => $last_ub_sql,
       ub_sql                 => $ub_sql,
