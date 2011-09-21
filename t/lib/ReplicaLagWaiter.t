@@ -9,9 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 10;
+use Test::More tests => 5;
 
-use ReplicaLagLimiter;
+use ReplicaLagWaiter;
 use PerconaTest;
 
 my $oktorun = 1;
@@ -35,75 +35,17 @@ sub sleep {
    sleep $t;
 }
 
-my $rll = new ReplicaLagLimiter(
+my $rll = new ReplicaLagWaiter(
    oktorun   => \&oktorun,
    get_lag   => \&get_lag,
    sleep     => \&sleep,
    max_lag   => 1,
-   initial_n => 1000,
-   initial_t => 1,
-   target_t  => 1,
    slaves    => [
       { dsn=>{n=>'slave1'}, dbh=>1 },
       { dsn=>{n=>'slave2'}, dbh=>2 },
    ],
 );
 
-# ############################################################################
-# Update master op, see if we get correct adjustment result.
-# ############################################################################
-
-# stay the same
-for (1..5) {
-   $rll->update(1000, 1);
-}
-is(
-   $rll->update(1000, 1),
-   1000,
-   "Same rate, same n"
-);
-
-# slow down
-for (1..5) {
-   $rll->update(1000, 2);
-}
-is(
-   $rll->update(1000, 2),
-   542,
-   "Decrease rate, decrease n"
-);
-
-for (1..15) {
-   $rll->update(1000, 2);
-}
-is(
-   $rll->update(1000, 2),
-   500,
-   "limit n=500 decreasing"
-);
-
-# speed up
-for (1..5) {
-   $rll->update(1000, 1);
-}
-is(
-   $rll->update(1000, 1),
-   849,
-   "Increase rate, increase n"
-);
-
-for (1..20) {
-   $rll->update(1000, 1);
-}
-is(
-   $rll->update(1000, 1),
-   999,
-   "limit n=1000 increasing"
-);
-
-# ############################################################################
-# Fake waiting for slaves.
-# ############################################################################
 @lag = (0, 0);
 my $t = time;
 $rll->wait();

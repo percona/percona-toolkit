@@ -4744,26 +4744,6 @@ sub main {
    }
 
    # ########################################################################
-   # Make a lag limiter to help adjust chunk size and wait for slaves.
-   # ########################################################################
-   my $sleep = sub {
-      $dbh->do("SELECT 'pt-table-checksum keepalive'");
-      sleep $o->get('check-interval');
-      return;
-   };
-
-   my $lag_limiter = new ReplicaLagLimiter(
-      oktorun   => sub { return $oktorun },
-      get_lag   => sub { return $ms->get_slave_lag(@_) },
-      sleep     => $sleep,
-      max_lag   => $o->get('max-lag'),
-      initial_n => $o->get('chunk-size'),
-      initial_t => $o->get('chunk-time'),
-      target_t  => $o->get('chunk-time'),
-      slaves    => $slave_lag_cxn,
-   );
-
-   # ########################################################################
    # Check replication slaves if desired.  If only --replicate-check is given,
    # then we will exit here.  If --recheck is also given, then we'll continue
    # through the entire script but checksum only the inconsistent tables found
@@ -4873,6 +4853,22 @@ sub main {
       "UPDATE $repl_table SET master_crc = ?, master_cnt = ? "
       . "WHERE db = ? AND tbl = ? AND chunk = ?");
 
+   # ########################################################################
+   # Make a ReplicaLagWaiter to help wait for slaves after each chunk.
+   # ########################################################################
+   my $sleep = sub {
+      $dbh->do("SELECT 'pt-table-checksum keepalive'");
+      sleep $o->get('check-interval');
+      return;
+   };
+
+   my $replica_lag = new ReplicaLagWaiter(
+      oktorun  => sub { return $oktorun },
+      get_lag  => sub { return $ms->get_slave_lag(@_) },
+      sleep    => $sleep,
+      max_lag  => $o->get('max-lag'),
+      slaves   => $slave_lag_cxn,
+   );
 
    # ########################################################################
    # Callbacks for the nibble iterator.
@@ -4891,7 +4887,7 @@ sub main {
             MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                "$tbl->{db}.$tbl->{tbl}", 'is too large');
             $tbl->{checksum_results}->{skipped}++;
-            $nibble_time = 0;
+            $tbl->{nibble_time} = 0;
             return 0;  # next boundary
          }
 
@@ -4902,7 +4898,7 @@ sub main {
             %args,
             %common_modules,
          );
-         $nibble_time = time - $t_start;
+         $tbl->{nibble_time} = time - $t_start;
          return $rows; 
       },
       after_nibble => sub {
@@ -4918,9 +4914,9 @@ sub main {
          $tbl->{checksum_results}->{n_rows} += $cnt || 0;
          $update_sth->execute($crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
 
-         # Adjust chunk size.  $nibble_time will be 0 if this chunk was skipped.
-         if ( $o->get('chunk-time') && $nibble_time ) {
-            my $new_chunk_size = $lag_limiter->update($cnt, $nibble_time);
+         # Adjust chunk size.  Nibble time will be 0 if this chunk was skipped.
+         if ( $o->get('chunk-time') && $tbl->{nibble_time} ) {
+            my $new_chunk_size = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
             if ( $new_chunk_size < 1 ) {
                # This shouldn't happen, but we must know if it does.  And
                # chunk size can't be set less than 1.
@@ -4929,7 +4925,8 @@ sub main {
                   . "is not being overloaded, or increase --chunk-time.  "
                   . "The last chunk, number $args{nibbleno} of table "
                   . "$tbl->{db}.$tbl->{tbl}, selected $cnt rows and took "
-                  . sprintf('%.3f', $nibble_time) . " seconds to execute.\n";
+                  . sprintf('%.3f', $tbl->{nibble_time}) . " seconds to "
+                  . "execute.\n";
                $new_chunk_size = 1;
             }
             $args{NibbleIterator}->set_chunk_size($new_chunk_size);
@@ -4951,7 +4948,7 @@ sub main {
                name    => "Waiting for replicas to catch up",
             );
          }
-         $lag_limiter->wait(Progress => $pr);
+         $replica_lag->wait(Progress => $pr);
 
          return;
       },
@@ -4996,6 +4993,18 @@ sub main {
             select    => $checksum_cols,
             callbacks => $callbacks,
             %common_modules,
+         );
+
+         # Init a new weighted avg rate calculator for the table.  This
+         # table may be really different from the previous.  E.g., the
+         # prev may have been all INT cols--really fast--so chunk size
+         # was increased dramatically, but this table may have lots of
+         # BLOB cols--potentially really slow--so we want to start
+         # cautiously.
+         $tbl->{rate} = new WeightedAvgRate(
+            intital_n => $o->get('chunk-size'),
+            initial_t => $o->get('chunk-time'),
+            target_t  => $o->get('chunk-time'),
          );
 
          # The "1 while" loop is necessary because we're executing REPLACE

@@ -32,18 +32,34 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Sub: new
+#
+# Required Arguments:
+#   dbh          - dbh
+#   tbl          - Standard tbl ref
+#   chunk_size   - Number of rows to nibble per chunk
+#   OptionParser - <OptionParser> object
+#   TableNibbler - <TableNibbler> object
+#   TableParser  - <TableParser> object
+#   Quoter       - <Quoter> object
+#
+# Optional Arguments:
+#   chunk_indexd - Index to use for nibbling
+#
+# Returns:
+#  NibbleIterator object 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(dbh tbl OptionParser Quoter TableNibbler TableParser);
+   my @required_args = qw(dbh tbl chunk_size OptionParser Quoter TableNibbler TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $o, $q) = @args{@required_args};
+   my ($dbh, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    # Get an index to nibble by.  We'll order rows by the index's columns.
    my $index = $args{TableParser}->find_best_index(
       $tbl->{tbl_struct},
-      $o->get('chunk-index'),
+      $args{chunk_index},
    );
    die "No index to nibble table $tbl->{db}.$tbl->{tbl}" unless $index;
    my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
@@ -152,7 +168,7 @@ sub new {
       . " /*explain one nibble*/";
    MKDEBUG && _d('Explain one nibble statement:', $explain_one_nibble_sql);
 
-   my $limit = $o->get('chunk-size') - 1;
+   my $limit = $chunk_size - 1;
    MKDEBUG && _d('Initial chunk size (LIMIT):', $limit);
 
    my $self = {
