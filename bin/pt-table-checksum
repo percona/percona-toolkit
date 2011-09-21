@@ -3326,15 +3326,15 @@ $Data::Dumper::Quotekeys = 0;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(dbh tbl OptionParser Quoter TableNibbler TableParser);
+   my @required_args = qw(dbh tbl chunk_size OptionParser Quoter TableNibbler TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $o, $q) = @args{@required_args};
+   my ($dbh, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    my $index = $args{TableParser}->find_best_index(
       $tbl->{tbl_struct},
-      $o->get('chunk-index'),
+      $args{chunk_index},
    );
    die "No index to nibble table $tbl->{db}.$tbl->{tbl}" unless $index;
    my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
@@ -3426,7 +3426,7 @@ sub new {
       . " /*explain one nibble*/";
    MKDEBUG && _d('Explain one nibble statement:', $explain_one_nibble_sql);
 
-   my $limit = $o->get('chunk-size') - 1;
+   my $limit = $chunk_size - 1;
    MKDEBUG && _d('Initial chunk size (LIMIT):', $limit);
 
    my $self = {
@@ -4463,15 +4463,15 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# ReplicaLagLimiter package
+# ReplicaLagWaiter package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/ReplicaLagLimiter.pm
-#   t/lib/ReplicaLagLimiter.t
+#   lib/ReplicaLagWaiter.pm
+#   t/lib/ReplicaLagWaiter.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-package ReplicaLagLimiter;
+package ReplicaLagWaiter;
 
 use strict;
 use warnings FATAL => 'all';
@@ -4483,33 +4483,16 @@ use Data::Dumper;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(oktorun get_lag sleep max_lag slaves initial_n initial_t target_t);
+   my @required_args = qw(oktorun get_lag sleep max_lag slaves);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
    my $self = {
       %args,
-      avg_n  => $args{initial_n},
-      avg_t  => $args{initial_t},
-      weight => $args{weight} || 0.75,
    };
 
    return bless $self, $class;
-}
-
-sub update {
-   my ($self, $n, $t) = @_;
-   MKDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
-
-   $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
-   $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
-   $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
-   MKDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
-
-   my $new_n = int($self->{avg_rate} * $self->{target_t});
-   MKDEBUG && _d('Adjust n to', $new_n);
-   return $new_n;
 }
 
 sub wait {
@@ -4593,7 +4576,68 @@ sub _d {
 1;
 }
 # ###########################################################################
-# End ReplicaLagLimiter package
+# End ReplicaLagWaiter package
+# ###########################################################################
+
+# ###########################################################################
+# WeightedAvgRate package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/WeightedAvgRate.pm
+#   t/lib/WeightedAvgRate.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package WeightedAvgRate;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(initial_n initial_t target_t);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $self = {
+      %args,
+      avg_n  => $args{initial_n},
+      avg_t  => $args{initial_t},
+      weight => $args{weight} || 0.75,
+   };
+
+   return bless $self, $class;
+}
+
+sub update {
+   my ($self, $n, $t) = @_;
+   MKDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
+
+   $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
+   $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
+   $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
+   MKDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
+
+   my $new_n = int($self->{avg_rate} * $self->{target_t});
+   MKDEBUG && _d('Adjust n to', $new_n);
+   return $new_n;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End WeightedAvgRate package
 # ###########################################################################
 
 # ###########################################################################
@@ -4873,8 +4917,7 @@ sub main {
    # ########################################################################
    # Callbacks for the nibble iterator.
    # ########################################################################
-   my $nibble_time = 0;
-   my $callbacks   = {
+   my $callbacks = {
       exec_nibble => sub {
          my (%args) = @_;
          my $tbl = $args{tbl};
@@ -4916,8 +4959,8 @@ sub main {
 
          # Adjust chunk size.  Nibble time will be 0 if this chunk was skipped.
          if ( $o->get('chunk-time') && $tbl->{nibble_time} ) {
-            my $new_chunk_size = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
-            if ( $new_chunk_size < 1 ) {
+            $tbl->{chunk_size} = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
+            if ( $tbl->{chunk_size} < 1 ) {
                # This shouldn't happen, but we must know if it does.  And
                # chunk size can't be set less than 1.
                warn "Checksums are executing very slowly.  --chunk-size has "
@@ -4927,16 +4970,9 @@ sub main {
                   . "$tbl->{db}.$tbl->{tbl}, selected $cnt rows and took "
                   . sprintf('%.3f', $tbl->{nibble_time}) . " seconds to "
                   . "execute.\n";
-               $new_chunk_size = 1;
+               $tbl->{chunk_size} = 1;
             }
-            $args{NibbleIterator}->set_chunk_size($new_chunk_size);
-
-            # Don't use a var like $nibble_time because various modules and
-            # subs access $o->get('chunk-size') directly.  This also means
-            # that new NibbleIterators for new tables inherit the adjusted
-            # chunk size from all previous tables.  I.e., in effect, all
-            # tables are single stream of rows.
-            $o->set('chunk-size', $new_chunk_size);
+            $args{NibbleIterator}->set_chunk_size($tbl->{chunk_size});
          }
 
          # Wait for slaves to catch up.
@@ -4987,11 +5023,13 @@ sub main {
             %crc_args
          );
          my $nibble_iter   = new NibbleIterator(
-            dbh       => $dbh,
-            tbl       => $tbl,
-            dms       => $checksum_dms,
-            select    => $checksum_cols,
-            callbacks => $callbacks,
+            dbh         => $dbh,
+            tbl         => $tbl,
+            chunk_size  => $o->get('chunk-size'),
+            chunk_index => $o->get('chunk-index'),
+            dms         => $checksum_dms,
+            select      => $checksum_cols,
+            callbacks   => $callbacks,
             %common_modules,
          );
 
@@ -5001,8 +5039,9 @@ sub main {
          # was increased dramatically, but this table may have lots of
          # BLOB cols--potentially really slow--so we want to start
          # cautiously.
-         $tbl->{rate} = new WeightedAvgRate(
-            intital_n => $o->get('chunk-size'),
+         $tbl->{chunk_size} = $o->get('chunk-size');
+         $tbl->{rate}       = new WeightedAvgRate(
+            initial_n => $o->get('chunk-size'),
             initial_t => $o->get('chunk-time'),
             target_t  => $o->get('chunk-time'),
          );
@@ -5340,11 +5379,11 @@ sub create_repl_table {
 #   True if EXPLAIN rows is >= chunk_size * limit, else false
 sub is_oversize_chunk {
    my ( %args ) = @_;
-   my @required_args = qw(explain_sth lb ub OptionParser);
+   my @required_args = qw(tbl explain_sth lb ub OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($expl_sth, $lb, $ub, $o) = @args{@required_args};
+   my ($tbl, $expl_sth, $lb, $ub, $o) = @args{@required_args};
 
    my $expl_res;
    eval {
@@ -5362,7 +5401,7 @@ sub is_oversize_chunk {
    MKDEBUG && _d('EXPLAIN result:', Dumper($expl_res));
 
    return ($expl_res->{rows} || 0)
-          >= $o->get('chunk-size') * $o->get('chunk-size-limit') ? 1 : 0;
+          >= $tbl->{chunk_size} * $o->get('chunk-size-limit') ? 1 : 0;
 }
 
 sub print_inconsistent_tbls {
