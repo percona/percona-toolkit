@@ -4533,10 +4533,10 @@ sub wait {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is $worst->{lag} seconds on "
-               . "$worst->{n}.  Waiting.\n";
+               . "$worst->{dsn}->{n}.  Waiting.\n";
          }
          else {
-            print STDERR "Replica $worst->{n} is stopped.  Waiting.\n";
+            print STDERR "Replica $worst->{dsn}->{n} is stopped.  Waiting.\n";
          }
          return;
       };
@@ -4611,6 +4611,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use POSIX qw(signal_h);
 use List::Util qw(max);
 use Time::HiRes qw(sleep time);
 use Data::Dumper;
@@ -4618,11 +4619,14 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+use sigtrap 'handler', \&sig_int, 'normal-signals';
+my $oktorun = 1;
+
 sub main {
    @ARGV = @_;  # set global ARGV for this package
 
+   $oktorun = 1;  # global, must reset else tests will fail
    my $exit_status = 0;
-   my $oktorun     = 1;
 
    # ########################################################################
    # Get configuration information.
@@ -4742,10 +4746,16 @@ sub main {
    # ########################################################################
    # Make a lag limiter to help adjust chunk size and wait for slaves.
    # ########################################################################
+   my $sleep = sub {
+      $dbh->do("SELECT 'pt-table-checksum keepalive'");
+      sleep $o->get('check-interval');
+      return;
+   };
+
    my $lag_limiter = new ReplicaLagLimiter(
       oktorun   => sub { return $oktorun },
       get_lag   => sub { return $ms->get_slave_lag(@_) },
-      sleep     => sub { sleep $o->get('check-interval') },
+      sleep     => $sleep,
       max_lag   => $o->get('max-lag'),
       initial_n => $o->get('chunk-size'),
       initial_t => $o->get('chunk-time'),
@@ -5407,6 +5417,20 @@ sub _explain {
    my $expl = $dbh->selectrow_hashref($sql);
    return $expl;
 }
+
+# Catches signals so we can exit gracefully.
+sub sig_int {
+   my ( $signal ) = @_;
+   if ( $oktorun ) {
+      print STDERR "# Caught SIG$signal.\n";
+      $oktorun = 0;
+   }
+   else {
+      print STDERR "# Exiting on SIG$signal.\n";
+      exit 1;
+   }
+}
+
 
 sub _d {
    my ($package, undef, $line) = caller 0;
