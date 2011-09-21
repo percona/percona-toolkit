@@ -77,10 +77,11 @@ sub make_nibble_iter {
    1 while $si->next_schema_object();
 
    my $ni = new NibbleIterator(
-      dbh       => $dbh,
-      tbl       => $schema->get_table($args{db}, $args{tbl}),
-      callbacks => $args{callbacks},
-      select    => $args{select},
+      dbh        => $dbh,
+      tbl        => $schema->get_table($args{db}, $args{tbl}),
+      chunk_size => $o->get('chunk-size'),
+      callbacks  => $args{callbacks},
+      select     => $args{select},
       %common_modules,
    );
 
