@@ -4479,65 +4479,23 @@ use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use Time::HiRes qw(sleep time);
+use Data::Dumper;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(spec slaves get_lag initial_n initial_t target_t);
+   my @required_args = qw(oktorun get_lag sleep max_lag slaves initial_n initial_t target_t);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my ($spec) = @args{@required_args};
-
-   my %specs = map {
-      my ($key, $val) = split '=', $_;
-      MKDEBUG && _d($key, '=', $val);
-      lc($key) => $val;
-   } @$spec;
 
    my $self = {
-      max       => 1,     # max slave lag
-      timeout   => 3600,  # max time to wait for all slaves to catch up
-      check     => 1,     # sleep time between checking slave lag
-      continue  => 'no',  # return true even if timeout
-      %specs,             # slave wait specs from caller
-      slaves    => $args{slaves},
-      get_lag   => $args{get_lag},
-      avg_n     => $args{initial_n},
-      avg_t     => $args{initial_t},
-      target_t  => $args{target_t},
-      weight    => $args{weight} || 0.75,
+      %args,
+      avg_n  => $args{initial_n},
+      avg_t  => $args{initial_t},
+      weight => $args{weight} || 0.75,
    };
 
    return bless $self, $class;
-}
-
-sub validate_spec {
-   shift @_ if $_[0] eq 'ReplicaLagLimiter';
-   my ( $spec ) = @_;
-   if ( @$spec == 0 ) {
-      die "spec array requires at least a max value\n";
-   }
-   my $have_max;
-   foreach my $op ( @$spec ) {
-      my ($key, $val) = split '=', $op;
-      if ( !$key || !$val ) {
-         die "invalid spec format, should be option=value: $op\n";
-      }
-      if ( $key !~ m/(?:max|timeout|continue)/i )  {
-         die "unknown option in spec: $op\n";
-      }
-      if ( $key ne 'continue' && $val !~ m/^\d+$/ ) {
-         die "value must be an integer: $op\n";
-      }
-      if ( $key eq 'continue' && $val !~ m/(?:yes|no)/i ) {
-         die "value for $key must be \"yes\" or \"no\"\n";
-      }
-      $have_max = 1 if $key eq 'max';
-   }
-   if ( !$have_max ) {
-      die "max must be specified"
-   }
-   return 1;
 }
 
 sub update {
@@ -4560,60 +4518,68 @@ sub wait {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my $pr       = $args{Progres};
-   my $get_lag  = $self->{get_lag};
-   my $slaves   = $self->{slaves};
-   my $n_slaves = @$slaves;
+   my $pr = $args{Progress};
 
+   my $oktorun = $self->{oktorun};
+   my $get_lag = $self->{get_lag};
+   my $sleep   = $self->{sleep};
+   my $slaves  = $self->{slaves};
+   my $max_lag = $self->{max_lag};
+
+   my $worst;  # most lagging slave
    my $pr_callback;
    if ( $pr ) {
-      my $reported = 0;
       $pr_callback = sub {
-         my ($fraction, $elapsed, $remaining, $eta, $slave_no) = @_;
-         if ( !$reported ) {
-            print STDERR "Waiting for replica "
-               . ($slaves->[$slave_no]->{dsn}->{n} || '')
-               . " to catch up...\n";
-            $reported = 1;
+         my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
+         if ( defined $worst->{lag} ) {
+            print STDERR "Replica lag is $worst->{lag} seconds on "
+               . "$worst->{n}.  Waiting.\n";
          }
          else {
-            print STDERR "Still waiting ($elapsed seconds)...\n";
+            print STDERR "Replica $worst->{n} is stopped.  Waiting.\n";
          }
          return;
       };
       $pr->set_callback($pr_callback);
    }
 
-   my ($max, $check, $timeout) = @{$self}{qw(max check timeout)};
-   my $slave_no   = 0;
-   my $slave      = $slaves->[$slave_no];
-   my $t_start    = time;
-   while ($slave && time - $t_start < $timeout) {
-      MKDEBUG && _d('Checking slave lag on', $slave->{dsn}->{n});
-      my $lag = $get_lag->($slave->{dbh});
-      if ( !defined $lag || $lag > $max ) {
-         MKDEBUG && _d('Replica lag', $lag, '>', $max, '; sleeping', $check);
-         $pr->update(sub { return $slave_no; }) if $pr;
-         sleep $check;
+   my @lagged_slaves = @$slaves;  # first check all slaves
+   while ( $oktorun->() && @lagged_slaves ) {
+      MKDEBUG && _d('Checking slave lag');
+      for my $i ( 0..$#lagged_slaves ) {
+         my $slave = $lagged_slaves[$i];
+         my $lag   = $get_lag->($slave->{dbh});
+         MKDEBUG && _d($slave->{dsn}->{n}, 'slave lag:', $lag);
+         if ( !defined $lag || $lag > $max_lag ) {
+            $slave->{lag} = $lag;
+         }
+         else {
+            delete $lagged_slaves[$i];
+         }
       }
-      else {
-         MKDEBUG && _d('Replica ready, lag', $lag, '<=', $max);
-         $slave = $slaves->[++$slave_no];
-      }
-   }
-   if ( $slave_no < @$slaves ) {
-      if ( $self->{continue} eq 'no' ) {
-         die "Timeout waiting for replica " . $slaves->[$slave_no]->{dsn}->{n}
-            . " to catch up\n";
-      }
-      else {
-         MKDEBUG && _d('Some slave are not caught up');
-         return 0; # not ready
+
+      @lagged_slaves = grep { defined $_ } @lagged_slaves;
+      if ( @lagged_slaves ) {
+         @lagged_slaves = reverse sort {
+              defined $a && defined $b ? $a <=> $b
+            : defined $a               ? -1
+            :                             1;
+         } @lagged_slaves;
+         $worst = $lagged_slaves[0];
+         MKDEBUG && _d(scalar @lagged_slaves, 'slaves are lagging, worst:',
+            Dumper($worst));
+
+         if ( $pr ) {
+            $pr->update(sub { return 0; });
+         }
+
+         MKDEBUG && _d('Calling sleep callback');
+         $sleep->();
       }
    }
 
    MKDEBUG && _d('All slaves caught up');
-   return 1; # ready
+   return;
 }
 
 sub _d {
@@ -4693,12 +4659,6 @@ sub main {
             $o->save_error("--progress $EVAL_ERROR");
          }
       }
-   
-      eval { ReplicaLagLimiter::validate_spec($o->get('replica-lag')) };
-      if ($EVAL_ERROR) {
-         chomp $EVAL_ERROR;
-         $o->save_error("--replica-lag: $EVAL_ERROR");
-      }
    }
 
    $o->usage_or_errors();
@@ -4762,11 +4722,11 @@ sub main {
    MKDEBUG && _d(scalar @$slaves, 'slaves found');
 
    my $slave_lag_cxn;
-   if ( $o->get('replica-lag-dsn') ) {
-      MKDEBUG && _d('Will use --replica-lag-dsn to check for slave lag');
+   if ( $o->get('check-slave-lag') ) {
+      MKDEBUG && _d('Will use --check-slave-lag to check for slave lag');
       # OptionParser can't auto-copy DSN vals from a cmd line DSN
       # to an opt DSN, so we copy them manually.
-      my $dsn = $dp->copy($dsn, $o->get('replica-lag-dsn'));
+      my $dsn = $dp->copy($dsn, $o->get('check-slave-lag'));
       my $dbh = get_cxn(
          dsn          => $dsn,
          DSNParser    => $dp,
@@ -4783,12 +4743,14 @@ sub main {
    # Make a lag limiter to help adjust chunk size and wait for slaves.
    # ########################################################################
    my $lag_limiter = new ReplicaLagLimiter(
+      oktorun   => sub { return $oktorun },
+      get_lag   => sub { return $ms->get_slave_lag(@_) },
+      sleep     => sub { sleep $o->get('check-interval') },
+      max_lag   => $o->get('max-lag'),
       initial_n => $o->get('chunk-size'),
       initial_t => $o->get('chunk-time'),
       target_t  => $o->get('chunk-time'),
-      spec      => $o->get('replica-lag'),
       slaves    => $slave_lag_cxn,
-      get_lag   => sub { return $ms->get_slave_lag(@_) },
    );
 
    # ########################################################################
@@ -4976,23 +4938,10 @@ sub main {
             $pr = new Progress(
                jobsize => scalar @$slaves,
                spec    => $o->get('progress'),
-               name    => "Waiting for " . (@$slaves > 1 ? "slaves" : "slave")
-                        . " to catch up",
+               name    => "Waiting for replicas to catch up",
             );
          }
-         my $caught_up;
-         eval {
-            $caught_up = $lag_limiter->wait();
-         };
-         if ( $EVAL_ERROR ) { # slaves didn't catch up and continue=no.
-            $tbl->{checksum_results}->{errors}++; 
-            warn $EVAL_ERROR;
-            $oktorun = 0;
-         }
-         elsif ( !$caught_up ) {
-            warn "Some replicas are lagging, but checksumming will "
-               . "continue because --replica-lag continue=yes.\n";
-         }
+         $lag_limiter->wait(Progress => $pr);
 
          return;
       },
@@ -5736,6 +5685,12 @@ group: Connection
 
 Prompt for a password when connecting to MySQL.
 
+=item --check-interval
+
+type: time; default: 1; group: Throttle
+
+Sleep time between checks for L<"--max-lag">.
+
 =item --[no]check-replication-filters
 
 default: yes; group: Safety
@@ -5749,31 +5704,23 @@ queries won't break replication or simply fail to replicate.  If you are sure
 that it's OK to run the checksum queries, you can negate this option to
 disable the checks.  See also L<"--replicate-database">.
 
-=item --chunk-column
+=item --check-slave-lag
 
-type: string
+type: DSN; group: Throttle
 
-Prefer this column for dividing tables into chunks.  By default,
-pt-table-checksum chooses the first suitable column for each table, preferring
-to use the primary key.  This option lets you specify a preferred column, which
-pt-table-checksum uses if it exists in the table and is chunkable.  If not, then
-pt-table-checksum will revert to its default behavior.  Be careful when using
-this option; a poor choice could cause bad performance.  This is probably best
-to use when you are checksumming only a single table, not an entire server.  See
-also L<"--chunk-index">.
+Pause checksumming until the specified slave's lag is less than L<"--max-lag">.
 
 =item --chunk-index
 
 type: string
 
-Prefer this index for chunking tables.  By default, pt-table-checksum chooses an
-appropriate index for the L<"--chunk-column"> (even if it chooses the chunk
-column automatically).  This option lets you specify the index you prefer.  If
-the index doesn't exist, then pt-table-checksum will fall back to its default
-behavior.  pt-table-checksum adds the index to the checksum SQL statements in a
-C<FORCE INDEX> clause.  Be careful when using this option; a poor choice of
-index could cause bad performance.  This is probably best to use when you are
-checksumming only a single table, not an entire server.
+Prefer this index for chunking tables.  By default, pt-table-checksum chooses
+an appropriate index for chunking.  This option lets you specify the index
+that you prefer.  If the index doesn't exist, then pt-table-checksum will fall
+back to its default behavior.  pt-table-checksum adds the index to the checksum
+SQL statements in a C<FORCE INDEX> clause.  Be careful when using this option;
+a poor choice of index could cause bad performance.  This is probably best to
+use when you are checksumming only a single table, not an entire server.
 
 =item --chunk-size
 
@@ -5974,6 +5921,22 @@ type: string; group: Filter
 
 Ignore tables whose names match the Perl regex.
 
+=item --max-lag
+
+type: time; default: 1s; group: Throttle
+
+Suspend checksumming if the slave given by L<"--check-slave-lag"> lags.
+
+This option causes pt-table-checksum to look at slave lag after each checksum.
+If the any slave's lag is greater than the option's value, or if the slave
+isn't running (so its lag is NULL), pt-table-checksum sleeps for
+L<"--check-interval"> seconds and then looks at the lag again.  It repeats
+until all slaves are caught up, then continues checksumming.
+
+This option is useful to let you checksum data as fast as the slaves can handle
+it, assuming the slave you directed pt-table-checksum to monitor is
+representative of all the slaves that may be replicating from this server.
+
 =item --[no]optimize-xor
 
 default: yes
@@ -6086,24 +6049,6 @@ t.  The DSN table should have the following structure:
 
 One row specifies one DSN in the C<dsn> column.  Currently, the DSNs are
 ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
-
-=item --replica-lag
-
-type: array; default: max=1,timeout=3600,continue=no
-
-Limit lag on replicas to C<max> seconds.  After each checksum, the tool
-checks all replica servers, or just the L<"--replica-lag-dsn"> if
-specified, and waits until the lag on all replicas is <= C<max>.
-The tool waits up to C<timeout> seconds and if the lag is still too high,
-it will exit if C<continue> is "no", or it will continue and check replica
-lag again after the next checksum.
-
-=item --replica-lag-dsn
-
-type: DSN
-
-Check L<"--replica-lag"> only on this replica.  If not specified, all replicas
-will be checked.
 
 =item --replicate
 
