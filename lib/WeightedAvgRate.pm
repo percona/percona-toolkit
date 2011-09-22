@@ -30,8 +30,6 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 # Sub: new
 #
 # Required Arguments:
-#   initial_n  - Initial n value for <update()>
-#   initial_t  - Initial t value for <update()>
 #   target_t   - Target time for t in <update()>
 #
 # Optional Arguments:
@@ -41,15 +39,15 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 #   WeightedAvgRate
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(initial_n initial_t target_t);
+   my @required_args = qw(target_t);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
    my $self = {
       %args,
-      avg_n  => $args{initial_n},
-      avg_t  => $args{initial_t},
+      avg_n  => 0,
+      avg_t  => 0,
       weight => $args{weight} || 0.75,
    };
 
@@ -71,10 +69,18 @@ sub update {
    my ($self, $n, $t) = @_;
    MKDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
 
-   $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
-   $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
-   $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
-   MKDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
+   if ( $self->{avg_n} && $self->{avg_t} ) {
+      $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
+      $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
+      $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
+      MKDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
+   }
+   else {
+      $self->{avg_n}    = $n;
+      $self->{avg_t}    = $t;
+      $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
+      MKDEBUG && _d('Initial avg rate:', $self->{avg_rate}, 'n/s');
+   }
 
    my $new_n = int($self->{avg_rate} * $self->{target_t});
    MKDEBUG && _d('Adjust n to', $new_n);

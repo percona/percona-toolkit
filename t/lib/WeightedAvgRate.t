@@ -36,7 +36,7 @@ for (1..5) {
 }
 is(
    $rll->update(1000, 2),
-   542,
+   540,
    "Decrease rate, decrease n"
 );
 
