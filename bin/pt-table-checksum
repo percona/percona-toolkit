@@ -3073,13 +3073,6 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   my $opt_slice; 
-   if ( $o->get('optimize-xor') ) {
-      if ( $crc_args{crc_type} !~ m/int$/ ) {
-         $opt_slice = $self->_optimize_xor(%args, %crc_args);
-         warn "Cannot use --optimize-xor" unless defined $opt_slice;
-      }
-   }
    MKDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
 
    my $row_checksum = $self->make_row_checksum(
@@ -3110,10 +3103,16 @@ sub get_crc_args {
    my $func      = $args{func}     || $self->_get_hash_func(%args);
    my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
    my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
+   my $opt_slice; 
+   if ( $args{dbh} && $crc_type !~ m/int$/ ) {
+      $opt_slice = $self->_optimize_xor(%args, func=>$func);
+   }
+
    return (
       func      => $func,
       crc_width => $crc_width,
       crc_type  => $crc_type,
+      opt_slice => $opt_slice,
    );
 }
 
@@ -5192,8 +5191,9 @@ sub exec_nibble {
 }
 
 {
-my $print_header = 1;
-my $line_fmt     = "%8s %6s %6s %7s %7s %7s %7s %-s\n";
+my $line_fmt     = "%14s %6s %6s %7s %7s %7s %7s %-s\n";
+my @headers      =  qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
+my $print_header = 1; # print headers once
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -5204,15 +5204,15 @@ sub print_checksum_results {
    my ($tbl) = @args{@required_args};
 
    if ($print_header) {
-      printf $line_fmt, qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
+      printf $line_fmt, @headers;
       $print_header = 0;
    }
 
- my ($sec, $min, $hour) = localtime;
+   my ($s, $m, $h, $d, $M) = localtime;
 
    my $res = $tbl->{checksum_results};
    printf $line_fmt,
-      sprintf('%02d:%02d:%02d', $hour, $min, $sec),
+      sprintf('%02d-%02dT%02d:%02d:%02d', $d, $M+1, $h, $m, $s),
       $res->{errors}   || 0,
       $res->{diffs}    || 0,
       $res->{n_rows}   || 0,
@@ -6041,38 +6041,6 @@ until all slaves are caught up, then continues checksumming.
 This option is useful to let you checksum data as fast as the slaves can handle
 it, assuming the slave you directed pt-table-checksum to monitor is
 representative of all the slaves that may be replicating from this server.
-
-=item --[no]optimize-xor
-
-default: yes
-
-Optimize BIT_XOR with user variables.
-
-This option specifies to use user variables to reduce the number of times each
-row must be passed through the cryptographic hash function when you are using
-the BIT_XOR algorithm.
-
-With the optimization, the queries look like this in pseudo-code:
-
-  SELECT CONCAT(
-     BIT_XOR(SLICE_OF(@user_variable)),
-     BIT_XOR(SLICE_OF(@user_variable)),
-     ...
-     BIT_XOR(SLICE_OF(@user_variable := HASH(col1, col2... colN))));
-
-The exact positioning of user variables and calls to the hash function is
-determined dynamically, and will vary between MySQL versions.  Without the
-optimization, it looks like this:
-
-  SELECT CONCAT(
-     BIT_XOR(SLICE_OF(MD5(col1, col2... colN))),
-     BIT_XOR(SLICE_OF(MD5(col1, col2... colN))),
-     ...
-     BIT_XOR(SLICE_OF(MD5(col1, col2... colN))));
-
-The difference is the number of times all the columns must be mashed together
-and fed through the hash function.  If you are checksumming really large
-columns, such as BLOB or TEXT columns, this might make a big difference.
 
 =item --password
 
