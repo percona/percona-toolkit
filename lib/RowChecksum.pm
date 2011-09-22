@@ -178,13 +178,6 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   my $opt_slice; 
-   if ( $o->get('optimize-xor') ) {
-      if ( $crc_args{crc_type} !~ m/int$/ ) {
-         $opt_slice = $self->_optimize_xor(%args, %crc_args);
-         warn "Cannot use --optimize-xor" unless defined $opt_slice;
-      }
-   }
    MKDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
 
    # This checksum algorithm concatenates the columns in each row and
@@ -226,10 +219,16 @@ sub get_crc_args {
    my $func      = $args{func}     || $self->_get_hash_func(%args);
    my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
    my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
+   my $opt_slice; 
+   if ( $args{dbh} && $crc_type !~ m/int$/ ) {
+      $opt_slice = $self->_optimize_xor(%args, func=>$func);
+   }
+
    return (
       func      => $func,
       crc_width => $crc_width,
       crc_type  => $crc_type,
+      opt_slice => $opt_slice,
    );
 }
 
