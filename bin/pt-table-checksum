@@ -5164,7 +5164,7 @@ sub exec_nibble {
 
 {
 my $print_header = 1;
-my $line_fmt     = "%6s %6s %7s %7s %7s %7s %-s\n";
+my $line_fmt     = "%8s %6s %6s %7s %7s %7s %7s %-s\n";
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -5175,12 +5175,15 @@ sub print_checksum_results {
    my ($tbl) = @args{@required_args};
 
    if ($print_header) {
-      printf $line_fmt, qw(ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
+      printf $line_fmt, qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
       $print_header = 0;
    }
 
+ my ($sec, $min, $hour) = localtime;
+
    my $res = $tbl->{checksum_results};
    printf $line_fmt,
+      sprintf('%02d:%02d:%02d', $hour, $min, $sec),
       $res->{errors}   || 0,
       $res->{diffs}    || 0,
       $res->{n_rows}   || 0,
