@@ -4648,6 +4648,55 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# CleanupTask package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/CleanupTask.pm
+#   t/lib/CleanupTask.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package CleanupTask;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+sub new {
+   my ( $class, $task ) = @_;
+   die "I need a task parameter" unless $task;
+   die "The task parameter must be a coderef" unless ref $task eq 'CODE';
+   my $self = {
+      task => $task,
+   };
+   MKDEBUG && _d('Created cleanup task', $task);
+   return bless $self, $class;
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   my $task = $self->{task};
+   MKDEBUG && _d('Calling cleanup task', $task);
+   $task->();
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End CleanupTask package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -4690,7 +4739,6 @@ sub main {
 
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
-
 
    if ( !$o->get('help') ) {
       if ( !@ARGV ) {
@@ -4742,31 +4790,11 @@ sub main {
    );
 
    # ########################################################################
-   # Create common modules.
-   # ########################################################################
-   my $q  = new Quoter();
-   my $vp = new VersionParser();
-   my $tp = new TableParser(Quoter => $q);
-   my $tn = new TableNibbler(TableParser => $tp, Quoter => $q);
-   my $rc = new RowChecksum(Quoter=> $q, OptionParser => $o);
-   my $ms = new MasterSlave(VersionParser => $vp);
-   my $rr = new Retry();
-   my %common_modules = (
-      DSNParser     => $dp,
-      OptionParser  => $o,
-      MasterSlave   => $ms,
-      Quoter        => $q,
-      RowChecksum   => $rc,
-      TableParser   => $tp,
-      TableNibbler  => $tn,
-      VersionParser => $vp,
-      Retry         => $rr,
-      Quoter        => $q,
-   );
-
-   # ########################################################################
    # Find and connect to slaves.
    # ########################################################################
+   my $q      = new Quoter();
+   my $vp     = new VersionParser();
+   my $ms     = new MasterSlave(VersionParser => $vp);
    my $slaves = $ms->get_slaves(
       dbh          => $dbh,
       dsn          => $dsn,
@@ -4794,6 +4822,29 @@ sub main {
       $slave_lag_cxn = $slaves;
    }
 
+   # When we exit main(), either nicely or via death, this object will
+   # be destoryed and its deconstructor will call this callback.
+   my $close_all_dbh = new CleanupTask(
+      sub { 
+         $dbh->disconnect() if $dbh;
+         foreach my $slave ( @$slaves ) {
+            $slave->{dbh}->disconnect() if $slave->{dbh};
+         }
+         if ( $o->get('check-slave-lag') ) {
+            $slave_lag_cxn->[0]->{dbh}->disconnect()
+               if $slave_lag_cxn->[0]->{dbh};
+         }
+      }
+   );
+
+   # ########################################################################
+   # Create modules needed from here forward.
+   # ########################################################################
+   my $tp    = new TableParser(Quoter => $q);
+   my $tn    = new TableNibbler(TableParser => $tp, Quoter => $q);
+   my $rc    = new RowChecksum(Quoter=> $q, OptionParser => $o);
+   my $retry = new Retry();
+
    # ########################################################################
    # Check replication slaves if desired.  If only --replicate-check is given,
    # then we will exit here.  If --recheck is also given, then we'll continue
@@ -4808,34 +4859,25 @@ sub main {
          next unless @tbls;
          $exit_status |= 1;
          print_inconsistent_tbls(
-            dsn  => $host->{dsn},
-            tbls => \@tbls,
-            %common_modules,
+            dsn          => $host->{dsn},
+            tbls         => \@tbls,
+            OptionParser => $o,
+            DSNParser    => $dp,
          );
       }
-      if ( !$o->get('recheck') ) {
-         $dbh->disconnect();
-         foreach my $host ( @$slaves ) {
-            $host->{dbh}->disconnect();
-         }
-         return $exit_status;
-      }
+      return $exit_status unless $o->get('recheck');
    }
 
    # ########################################################################
    # Check that the replication table exists, or possibly create it.
    # ########################################################################
-   eval {
-      check_repl_table(
-         dbh        => $dbh,
-         repl_table => $repl_table,
-         %common_modules,
-      );
-   };
-   if ($EVAL_ERROR) {
-      $dbh->disconnect();
-      die $EVAL_ERROR;
-   }
+   check_repl_table(
+      dbh          => $dbh,
+      repl_table   => $repl_table,
+      OptionParser => $o,
+      TableParser  => $tp,
+      Quoter       => $q,
+   );
 
    # ########################################################################
    # Check for replication filters.
@@ -4864,8 +4906,7 @@ sub main {
          }
          $msg .= "Please read the --check-replication-filters documentation "
                . "to learn how to solve this problem.";
-         warn $msg;
-         return 1;
+         die $msg;
       }
    }
 
@@ -4887,7 +4928,7 @@ sub main {
          . "possible. Message: Transaction level 'READ-COMMITTED' in "
          . "InnoDB is not safe for binlog mode 'STATEMENT'\".  In that "
          . "case you will need to manually set the transaction isolation "
-         . "level to REPEATABLE-READ.";
+         . "level to REPEATABLE-READ.\n";
    }
 
    # ########################################################################
@@ -4960,16 +5001,16 @@ sub main {
          # Exec and time the chunk checksum query.  If it fails, retry.
          # Should return 0 rows which will fetch the next boundary.
          my $t_start = time;
-         my $rows    = exec_nibble(
-            %args,
-            %common_modules,
-         );
+         my $rows    = exec_nibble(%args, Retry => $retry);
          $tbl->{nibble_time} = time - $t_start;
          return $rows; 
       },
       after_nibble => sub {
          my (%args) = @_;
          my $tbl = $args{tbl};
+
+         # Nibble time will be zero if the chunk was skipped.
+         return unless $tbl->{nibble_time};
 
          # Fetch the checksum that we just executed from the replicate table.
          $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $args{nibbleno});
@@ -4978,7 +5019,12 @@ sub main {
          # We're working on the master, so update the checksum's master_cnt
          # and master_crc.
          $tbl->{checksum_results}->{n_rows} += $cnt || 0;
-         $update_sth->execute($crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
+         $update_sth->execute(
+            $crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
+
+         # Should be don't automatically, but I like to be explicit.
+         $fetch_sth->finish();
+         $update_sth->finish();
 
          # Update the rate of rows per second for the entire server.
          # This is used for the initial chunk size of the next table.
@@ -4987,20 +5033,20 @@ sub main {
          $total_rate  = int($total_rows / $total_time);
          MKDEBUG && _d('Total avg rate:', $total_rate);
 
-         # Adjust chunk size.  This affects the next chunk.  Nibble time
-         # will be 0 if this chunk was skipped.
-         if ( $o->get('chunk-time') && $tbl->{nibble_time} ) {
+         # Adjust chunk size.  This affects the next chunk.
+         if ( $o->get('chunk-time') ) {
             $chunk_size  = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
             if ( $chunk_size < 1 ) {
                # This shouldn't happen.  WeightedAvgRate::update() may return
                # a value < 1, but minimum chunk size is 1.
-               warn "Checksums are executing very slowly.  --chunk-size has "
-                  . "been automatically reduced to 1.  Check that the server "
-                  . "is not being overloaded, or increase --chunk-time.  "
-                  . "The last chunk, number $args{nibbleno} of table "
-                  . "$tbl->{db}.$tbl->{tbl}, selected $cnt rows and took "
-                  . sprintf('%.3f', $tbl->{nibble_time}) . " seconds to "
-                  . "execute.\n";
+               warn "Checksums are executing very slowly.  --chunk-size "
+                  . "has been automatically reduced to 1.  Check that the "
+                  . "server is not being overloaded, or increase "
+                  . "--chunk-time.  The last chunk, number $args{nibbleno} "
+                  . "of table $tbl->{db}.$tbl->{tbl}, selected $cnt rows "
+                  . "and took "
+                  . sprintf('%.3f', $tbl->{nibble_time})
+                  . " seconds to execute.\n";
                $chunk_size = 1;
             }
             $args{NibbleIterator}->set_chunk_size($chunk_size);
@@ -5029,9 +5075,10 @@ sub main {
    # Checksum each table.
    # ########################################################################
    my $schema_iter = new SchemaIterator(
-      dbh      => $dbh,
-      keep_ddl => 1,
-      %common_modules,
+      dbh          => $dbh,
+      OptionParser => $o,
+      TableParser  => $tp,
+      Quoter       => $q,
    );
 
    TABLE:
@@ -5088,13 +5135,6 @@ sub main {
 
       # Update the tool's exit status.
       $exit_status |= 1 if $tbl->{checksum_results}->{errors};
-   }
-
-   $fetch_sth->finish();
-   $update_sth->finish();
-   $dbh->disconnect();
-   foreach my $host ( @$slaves ) {
-      $host->{dbh}->disconnect();
    }
 
    return $exit_status;
@@ -5264,7 +5304,7 @@ sub check_repl_table {
          tbl       => $tbl,
          all_privs => 1,
       );
-      die "User does not have all necessary privileges on $repl_table"
+      die "User does not have all privileges on --replicate table $repl_table"
          unless $have_tbl_privs;
    }
 
@@ -5361,10 +5401,11 @@ sub use_repl_db {
          my $opt = $o->get('replicate-database') ? "--replicate-database"
                  :                                 "--replicate database";
          if ( $EVAL_ERROR =~ m/unknown database/i ) {
-            die "$opt `$db` does not exist: $EVAL_ERROR";
+            die "$opt `$db` does not exist.  You need to create the "
+               . "database or specify a database for $opt that exists.\n";
          }
          else {
-            die "Error using $opt `$db`: $EVAL_ERROR";
+            die "Error using $opt `$db`: $EVAL_ERROR\n";
          }
       }
       $current_db = $db;
