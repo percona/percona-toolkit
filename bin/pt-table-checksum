@@ -5249,17 +5249,19 @@ sub main {
 
          # Check if the chunk is too large.  If yes, then return 0 to
          # skip this chunk and get fetch the next boundary.
-         my $is_oversize = is_oversize_chunk(
-            %args,
-            chunk_size       => $tbl->{chunk_size},
-            chunk_size_limit => $o->get('chunk-size-limit'),
-         );
-         if ( $is_oversize ) {
-            MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
-               "$tbl->{db}.$tbl->{tbl}", 'is too large');
-            $tbl->{checksum_results}->{skipped}++;
-            $tbl->{nibble_time} = 0;
-            return 0;  # next boundary
+         if ( $tbl->{chunk_size_limit} ) {
+            my $is_oversize = is_oversize_chunk(
+               %args,
+               chunk_size => $tbl->{chunk_size},
+               limit      => $tbl->{chunk_size_limit},
+            );
+            if ( $is_oversize ) {
+               MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
+                  "$tbl->{db}.$tbl->{tbl}", 'is too large');
+               $tbl->{checksum_results}->{skipped}++;
+               $tbl->{nibble_time} = 0;
+               return 0;  # next boundary
+            }
          }
 
          # Exec and time the chunk checksum query.  If it fails, retry.
@@ -5426,6 +5428,16 @@ sub main {
             TableNibbler => $tn,
             TableParser  => $tp,
          );
+         
+         my $chunk_index = $nibble_iter->nibble_index();
+         if ( $tbl->{tbl_struct}->{keys}->{$chunk_index}->{is_unique} ) {
+            MKDEBUG && _d('Disabling chunk size limit for table because',
+               'chunk index', $chunk_index, 'is unique');
+            $tbl->{chunk_size_limit} = 0;
+         }
+         else {
+            $tbl->{chunk_size_limit} = $o->get('chunk-size-limit');
+         }
 
          # Finally, checksum the table.
          # The "1 while" loop is necessary because we're executing REPLACE
@@ -5487,21 +5499,22 @@ sub exec_nibble {
 
          my $lb_quoted = join(',', map { $q->quote_val($_) } @$lb);
          my $ub_quoted = join(',', map { $q->quote_val($_) } @$ub);
+         my $chunk_idx = $$nibble_iter->nibble_index();
 
          # Execute the REPLACE...SELECT checksum query.
          # MKDEBUG && _d($sth->{Statement}, 'params:',
          # );
          $sth->execute(
             # REPLACE INTO repl_table SELECT
-            $tbl->{db},                   # db
-            $tbl->{tbl},                  # tbl
-            $args{nibbleno},              # chunk
-            $nibble_iter->nibble_index(), # chunk_index
-            $lb_quoted,                   # lower_boundary
-            $ub_quoted,                   # upper_boundary
+            $tbl->{db},       # db
+            $tbl->{tbl},      # tbl
+            $args{nibbleno},  # chunk
+            $chunk_idx,       # chunk_index
+            $lb_quoted,       # lower_boundary
+            $ub_quoted,       # upper_boundary
             # this_cnt, this_crc WHERE
-            @$lb,                         # upper boundary values
-            @$ub,                         # lower boundary values
+            @$lb,             # upper boundary values
+            @$ub,             # lower boundary values
          );
 
          # Check if checksum query caused any warnings.
@@ -5749,12 +5762,12 @@ sub create_repl_table {
 #   Determine if the chunk is oversize.
 #
 # Required Arguments:
-#   * tbl              - Standard tbl hashref
-#   * explain_sth      - Sth to EXPLAIN the chunking query
-#   * lb               - Arrayref with lower boundary values for explain_sth
-#   * ub               - Arrayref with upper boundary values for explain_sth
-#   * chunk_size       - Chunk size
-#   * chunk_size_limit - Chunk size limit
+#   * tbl         - Standard tbl hashref
+#   * explain_sth - Sth to EXPLAIN the chunking query
+#   * lb          - Arrayref with lower boundary values for explain_sth
+#   * ub          - Arrayref with upper boundary values for explain_sth
+#   * chunk_size  - Chunk size
+#   * limit       - Chunk size limit
 #
 # Returns:
 #   True if EXPLAIN rows is >= chunk-size * chunk-size-limit, else false
