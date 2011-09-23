@@ -44,7 +44,7 @@ $Data::Dumper::Quotekeys = 0;
 #   Quoter       - <Quoter> object
 #
 # Optional Arguments:
-#   chunk_indexd - Index to use for nibbling
+#   chunk_index - Index to use for nibbling
 #
 # Returns:
 #  NibbleIterator object 
@@ -276,6 +276,11 @@ sub next {
 sub nibble_number {
    my ($self) = @_;
    return $self->{nibbleno};
+}
+
+sub nibble_index {
+   my ($self) = @_;
+   return $self->{index};
 }
 
 sub set_chunk_size {

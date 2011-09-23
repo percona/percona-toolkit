@@ -3525,6 +3525,11 @@ sub nibble_number {
    return $self->{nibbleno};
 }
 
+sub nibble_index {
+   my ($self) = @_;
+   return $self->{index};
+}
+
 sub set_chunk_size {
    my ($self, $limit) = @_;
    MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
@@ -4326,10 +4331,13 @@ sub _d {
 
 # ###########################################################################
 # Transformers package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-# Package: Transformers
-# Transformers exports subroutines that convert and beautify values.
 package Transformers;
 
 use strict;
@@ -4361,7 +4369,6 @@ our @EXPORT_OK   = qw(
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
 our $n_ts      = qr/(\d{1,5})([shmd]?)/; # Limit \d{1,5} because \d{6} looks
-                                         # like a MySQL YYMMDD without hh:mm:ss.
 
 sub micro_t {
    my ( $t, %args ) = @_;
@@ -4371,12 +4378,8 @@ sub micro_t {
 
    $t = 0 if $t < 0;
 
-   # "Remove" scientific notation so the regex below does not make
-   # 6.123456e+18 into 6.123456.
    $t = sprintf('%.17f', $t) if $t =~ /e/;
 
-   # Truncate after 6 decimal places to avoid 0.9999997 becoming 1
-   # because sprintf() rounds.
    $t =~ s/\.(\d{1,6})\d*/\.$1/;
 
    if ($t > 0 && $t <= 0.000999) {
@@ -4397,7 +4400,6 @@ sub micro_t {
    return $f;
 }
 
-# Returns what percentage $is of $of.
 sub percentage_of {
    my ( $is, $of, %args ) = @_;
    my $p   = $args{p} || 0; # float precision
@@ -4410,7 +4412,6 @@ sub secs_to_time {
    $secs ||= 0;
    return '00:00' unless $secs;
 
-   # Decide what format to use, if not given
    $fmt ||= $secs >= 86_400 ? 'd'
           : $secs >= 3_600  ? 'h'
           :                   'm';
@@ -4433,8 +4434,6 @@ sub secs_to_time {
          $secs % 60);
 }
 
-# Convert time values to number of seconds:
-# 1s = 1, 1m = 60, 1h = 3600, 1d = 86400.
 sub time_to_secs {
    my ( $val, $default_suffix ) = @_;
    die "I need a val argument" unless defined $val;
@@ -4472,8 +4471,6 @@ sub shorten {
       $num, $units[$n]);
 }
 
-# Turns a unix timestamp into an ISO8601 formatted date and time.  $gmt makes
-# this relative to GMT, for test determinism.
 sub ts {
    my ( $time, $gmt ) = @_;
    my ( $sec, $min, $hour, $mday, $mon, $year )
@@ -4490,8 +4487,6 @@ sub ts {
    return $val;
 }
 
-# Turns MySQL's 071015 21:43:52 into a properly formatted timestamp.  Also
-# handles a timestamp with fractions after it.
 sub parse_timestamp {
    my ( $val ) = @_;
    if ( my($y, $m, $d, $h, $i, $s, $f)
@@ -4504,9 +4499,6 @@ sub parse_timestamp {
    return $val;
 }
 
-# Turns a properly formatted timestamp like 2007-10-15 01:43:52
-# into an int (seconds since epoch).  Optional microseconds are printed.  $gmt
-# makes it use GMT time instead of local time (to make tests deterministic).
 sub unix_timestamp {
    my ( $val, $gmt ) = @_;
    if ( my($y, $m, $d, $h, $i, $s, $us) = $val =~ m/^$proper_ts$/ ) {
@@ -4522,15 +4514,6 @@ sub unix_timestamp {
    return $val;
 }
 
-# Turns several different types of timestamps into a unix timestamp.
-# Each type is auto-detected.  Supported types are:
-#   * N[shdm]                Now - N[shdm]
-#   * 071015 21:43:52        MySQL slow log timestamp
-#   * 2009-07-01 [3:43:01]   Proper timestamp with options HH:MM:SS
-#   * NOW()                  A MySQL time express
-# For the last type, the callback arg is required.  It is passed the
-# given value/expression and is expected to return a single value
-# (the result of the expression).
 sub any_unix_timestamp {
    my ( $val, $callback ) = @_;
 
@@ -4544,9 +4527,6 @@ sub any_unix_timestamp {
       return time - $n;
    }
    elsif ( $val =~ m/^\d{9,}/ ) {
-      # unix timestamp 100000000 is roughly March, 1973, so older
-      # dates won't be caught here; they'll probably be mistaken
-      # for a MySQL slow log timestamp.
       MKDEBUG && _d('ts is already a unix timestamp');
       return $val;
    }
@@ -4569,7 +4549,6 @@ sub any_unix_timestamp {
    return;
 }
 
-# Returns the rightmost 64 bits of an MD5 checksum of the value.
 sub make_checksum {
    my ( $val ) = @_;
    my $checksum = uc substr(md5_hex($val), -16);
@@ -4577,9 +4556,6 @@ sub make_checksum {
    return $checksum;
 }
 
-# Perl implementation of CRC32, ripped off from Digest::Crc32.  The results
-# ought to match what you get from any standard CRC32 implementation, such as
-# that inside MySQL.
 sub crc32 {
    my ( $string ) = @_;
    return unless $string;
@@ -5225,13 +5201,14 @@ sub main {
    # ########################################################################
    my %crc_args = $rc->get_crc_args(dbh => $dbh);
    my $checksum_dms = "REPLACE INTO $repl_table "
-                   . "(db, tbl, chunk, boundaries, this_cnt, this_crc) "
-                   . "SELECT ?, ?, ?, ?,";
+                   . "(db, tbl, chunk, chunk_index,"
+                   . " lower_boundary, upper_boundary, this_cnt, this_crc) "
+                   . "SELECT ?, ?, ?, ?, ?, ?,";
    my $fetch_sth = $dbh->prepare(
       "SELECT this_crc, this_cnt FROM $repl_table "
       . "WHERE db = ? AND tbl = ? AND chunk = ?");
    my $update_sth = $dbh->prepare(
-      "UPDATE $repl_table SET master_crc = ?, master_cnt = ? "
+      "UPDATE $repl_table SET chunk_time = ?, master_crc = ?, master_cnt = ? "
       . "WHERE db = ? AND tbl = ? AND chunk = ?");
 
    # ########################################################################
@@ -5288,7 +5265,7 @@ sub main {
          # Exec and time the chunk checksum query.  If it fails, retry.
          # Should return 0 rows which will fetch the next boundary.
          my $t_start = time;
-         my $rows    = exec_nibble(%args, Retry => $retry);
+         my $rows    = exec_nibble(%args, Quoter => $q, Retry => $retry);
          $tbl->{nibble_time} = time - $t_start;
          return $rows; 
       },
@@ -5303,11 +5280,20 @@ sub main {
          $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $args{nibbleno});
          my ($crc, $cnt) = $fetch_sth->fetchrow_array();
 
+         $tbl->{checksum_results}->{n_rows} += $cnt || 0;
+
          # We're working on the master, so update the checksum's master_cnt
          # and master_crc.
-         $tbl->{checksum_results}->{n_rows} += $cnt || 0;
          $update_sth->execute(
-            $crc, $cnt, @{$tbl}{qw(db tbl)}, $args{nibbleno});
+            # UPDATE repl_table SET
+            sprintf('%.3f', $tbl->{nibble_time}), # chunk_time
+            $crc,                                 # master_crc
+            $cnt,                                 # master_cnt
+            # WHERE
+            $tbl->{db},       # db 
+            $tbl->{tbl},      # tbl
+            $args{nibbleno},  # chunk
+         );
 
          # Should be don't automatically, but I like to be explicit.
          $fetch_sth->finish();
@@ -5343,6 +5329,7 @@ sub main {
                $args{NibbleIterator}->set_chunk_size($tbl->{chunk_size});
             }
 
+            # Every table should have a Progress obj; update it.
             if ( my $tbl_pr = $tbl->{progress} ) {
                $tbl_pr->update(sub {return $tbl->{checksum_results}->{n_rows}});
             }
@@ -5480,11 +5467,12 @@ sub get_cxn {
 
 sub exec_nibble {
    my (%args) = @_;
-   my @required_args = qw(dbh tbl sth lb ub Retry);
+   my @required_args = qw(dbh tbl sth lb ub NibbleIterator Retry Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $sth, $lb, $ub, $retry) = @args{@required_args};
+   my ($dbh, $tbl, $sth, $lb, $ub, $nibble_iter, $retry, $q)
+      = @args{@required_args};
 
    return $retry->retry(
       tries        => 2,
@@ -5497,22 +5485,23 @@ sub exec_nibble {
          MKDEBUG && _d($sql);
          $dbh->do($sql);
 
-         my $boundaries = @$lb || @$ub ? join(',', @$lb, @$ub) : '1=1';
+         my $lb_quoted = join(',', map { $q->quote_val($_) } @$lb);
+         my $ub_quoted = join(',', map { $q->quote_val($_) } @$ub);
 
          # Execute the REPLACE...SELECT checksum query.
-         MKDEBUG && _d($sth->{Statement}, 'params:',
-            @{$tbl}{qw(db tbl)},
-            $args{nibbleno},
-            $boundaries,
-            @$lb,
-            @$ub,
-         );
+         # MKDEBUG && _d($sth->{Statement}, 'params:',
+         # );
          $sth->execute(
-            @{$tbl}{qw(db tbl)},
-            $args{nibbleno},
-            $boundaries,
-            @$lb,
-            @$ub,
+            # REPLACE INTO repl_table SELECT
+            $tbl->{db},                   # db
+            $tbl->{tbl},                  # tbl
+            $args{nibbleno},              # chunk
+            $nibble_iter->nibble_index(), # chunk_index
+            $lb_quoted,                   # lower_boundary
+            $ub_quoted,                   # upper_boundary
+            # this_cnt, this_crc WHERE
+            @$lb,                         # upper boundary values
+            @$ub,                         # lower boundary values
          );
 
          # Check if checksum query caused any warnings.
@@ -5533,14 +5522,11 @@ sub exec_nibble {
                MKDEBUG && _d('Ignoring warning:', $warning->{message});
             }
             else {
-               # die doesn't permit extra line breaks so warn then die.
-               warn "\nChecksum query caused a warning:\n"
-                  . join("\n",
-                       map { "\t$_: " . $warning->{$_} || '' }
-                       qw(level code message)
-                    )
-                  . "\n\tquery: " . $sth->{Statement} . "\n\n";
-               die;
+               die "Checksum query caused a warning:\n"
+                  . "    Level: " . ($warning->{level} || '')   . "\n"
+                  . "     Code: " . ($warning->{code} || '')    . "\n"
+                  . "  Message: " . ($warning->{message} || '') . "\n"
+                  . "    Query: " . $sth->{Statement}           . "\n";
             }
          }
 
@@ -6498,17 +6484,20 @@ wish.  Here is a suggested table structure, which is automatically used for
 L<"--create-replicate-table"> (MAGIC_create_replicate):
 
   CREATE TABLE checksum (
-     db         char(64)     NOT NULL,
-     tbl        char(64)     NOT NULL,
-     chunk      int          NOT NULL,
-     boundaries char(100)    NOT NULL,
-     this_crc   char(40)     NOT NULL,
-     this_cnt   int          NOT NULL,
-     master_crc char(40)         NULL,
-     master_cnt int              NULL,
-     ts         timestamp    NOT NULL,
+     db             char(64)     NOT NULL,
+     tbl            char(64)     NOT NULL,
+     chunk          int          NOT NULL,
+     chunk_time     float            NULL,
+     chunk_index    varchar(200) NOT NULL,
+     lower_boundary text         NOT NULL,
+     upper_boundary text         NOT NULL,
+     this_crc       char(40)     NOT NULL,
+     this_cnt       int          NOT NULL,
+     master_crc     char(40)         NULL,
+     master_cnt     int              NULL,
+     ts             timestamp    NOT NULL,
      PRIMARY KEY (db, tbl, chunk)
-  );
+  ) ENGINE=InnoDB;
 
 Be sure to choose an appropriate storage engine for the checksum table.  If you
 are checksumming InnoDB tables, for instance, a deadlock will break replication
