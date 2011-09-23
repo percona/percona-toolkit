@@ -38,7 +38,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 21;
+   plan tests => 25;
 }
 
 my $q  = new Quoter();
@@ -467,6 +467,55 @@ is_deeply(
    \@rows,
    [ ('a'..'z') ],
    "Nibble by 1 row"
+);
+
+# ############################################################################
+# Avoid infinite loops.
+# ############################################################################
+$sb->load_file('master', "$in/bad_tables.sql");
+$dbh->do('analyze table bad_tables.inv');
+$ni = make_nibble_iter(
+   db   => 'bad_tables',
+   tbl  => 'inv',
+   argv => [qw(--databases bad_tables --chunk-size 3)],
+);
+
+$all_rows = $dbh->selectall_arrayref('select * from bad_tables.inv order by tee_id, on_id');
+
+is(
+   $ni->nibble_index(),
+   'index_inv_on_tee_id_and_on_id',
+   'Use index with higest cardinality'
+);
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, $row;
+}
+
+is_deeply(
+   \@rows,
+   $all_rows,
+   'Selected all rows from non-unique index'
+);
+
+$dbh->do('alter table bad_tables.inv drop index index_inv_on_tee_id_and_on_id');
+$ni = make_nibble_iter(
+   db   => 'bad_tables',
+   tbl  => 'inv',
+   argv => [qw(--databases bad_tables --chunk-size 7)],
+);
+
+is(
+   $ni->nibble_index(),
+   'index_inv_on_on_id',
+   'Using bad index'
+);
+
+throws_ok(
+   sub { for (1..50) { $ni->next() } },
+   qr/infinite loop/,
+   'Detects infinite loop'
 );
 
 # #############################################################################
