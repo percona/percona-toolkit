@@ -2,7 +2,6 @@ mysql.columns_priv
 mysql.db
 mysql.event
 mysql.func
-mysql.general_log
 mysql.help_category
 mysql.help_keyword
 mysql.help_relation
@@ -13,7 +12,6 @@ mysql.plugin
 mysql.proc
 mysql.procs_priv
 mysql.servers
-mysql.slow_log
 mysql.tables_priv
 mysql.time_zone
 mysql.time_zone_leap_second
