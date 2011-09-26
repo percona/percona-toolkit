@@ -65,37 +65,7 @@ sub make_row_checksum {
    my $q          = $self->{Quoter};
    my $tbl_struct = $tbl->{tbl_struct};
    my $func       = $args{func} || uc($o->get('function'));
-
-   my $trim            = $o->get('trim');
-   my $float_precision = $o->get('float-precision');
-   my $sep             = $o->get('separator') || '#';
-   $sep =~ s/'//g;
-   $sep ||= '#';
-   
-   my $ignore_col = $o->get('ignore-columns') || {};
-   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
-   my %cols       = map { lc($_) => 1 } grep { !$ignore_col->{$_} } @$all_cols;
-
-   my %seen;
-   my @cols =
-      map {
-         my $type   = $tbl_struct->{type_for}->{$_};
-         my $result = $q->quote($_);
-         if ( $type eq 'timestamp' ) {
-            $result .= ' + 0';
-         }
-         elsif ( $float_precision && $type =~ m/float|double/ ) {
-            $result = "ROUND($result, $float_precision)";
-         }
-         elsif ( $trim && $type =~ m/varchar/ ) {
-            $result = "TRIM($result)";
-         }
-         $result;
-      }
-      grep {
-         $cols{$_} && !$seen{$_}++
-      }
-      @{$tbl_struct->{cols}};
+   my $cols       = $self->get_checksum_columns(%args);
 
    # Prepend columns to query, resulting in "col1, col2, FUNC(..col1, col2...)",
    # unless caller says not to.  The only caller that says not to is
@@ -118,29 +88,33 @@ sub make_row_checksum {
                         $col .= " AS $real_col";
                      }
                      $col;
-                  } @cols)
+                  } @{$cols->{select}})
              . ', ';
    }
 
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
+      my $sep = $o->get('separator') || '#';
+      $sep    =~ s/'//g;
+      $sep  ||= '#';
+
       # Add a bitmap of which nullable columns are NULL.
-      my @nulls = grep { $cols{$_} } @{$tbl_struct->{null_cols}};
+      my @nulls = grep { $cols->{allowed}->{$_} } @{$tbl_struct->{null_cols}};
       if ( @nulls ) {
          my $bitmap = "CONCAT("
             . join(', ', map { 'ISNULL(' . $q->quote($_) . ')' } @nulls)
             . ")";
-         push @cols, $bitmap;
+         push @{$cols->{select}}, $bitmap;
       }
 
-      $query .= @cols > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @cols) . '))'
-              : "$func($cols[0])";
+      $query .= @{$cols->{select}} > 1
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @{$cols->{select}}) . '))'
+              : "$func($cols->{select}->[0])";
    }
    else {
       # As a special case, FNV1A_64/FNV_64 doesn't need its arguments
       # concatenated, and doesn't need a bitmap of NULLs.
       my $fnv_func = uc $func;
-      $query .= "$fnv_func(" . join(', ', @cols) . ')';
+      $query .= "$fnv_func(" . join(', ', @{$cols->{select}}) . ')';
    }
 
    MKDEBUG && _d('Row checksum:', $query);
@@ -212,6 +186,50 @@ sub make_chunk_checksum {
    my $select = "COUNT(*) AS cnt, $crc AS crc";
    MKDEBUG && _d('Chunk checksum:', $select);
    return $select;
+}
+
+sub get_checksum_columns {
+   my ($self, %args) = @_;
+   my @required_args = qw(tbl);
+   foreach my $arg( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($tbl) = @args{@required_args};
+   my $o     = $self->{OptionParser};
+   my $q     = $self->{Quoter};
+
+   my $trim            = $o->get('trim');
+   my $float_precision = $o->get('float-precision');
+
+   my $tbl_struct = $tbl->{tbl_struct};
+   my $ignore_col = $o->get('ignore-columns') || {};
+   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my %cols       = map { lc($_) => 1 } grep { !$ignore_col->{$_} } @$all_cols;
+   my %seen;
+   my @cols =
+      map {
+         my $type   = $tbl_struct->{type_for}->{$_};
+         my $result = $q->quote($_);
+         if ( $type eq 'timestamp' ) {
+            $result .= ' + 0';
+         }
+         elsif ( $float_precision && $type =~ m/float|double/ ) {
+            $result = "ROUND($result, $float_precision)";
+         }
+         elsif ( $trim && $type =~ m/varchar/ ) {
+            $result = "TRIM($result)";
+         }
+         $result;
+      }
+      grep {
+         $cols{$_} && !$seen{$_}++
+      }
+      @{$tbl_struct->{cols}};
+
+   return {
+      select  => \@cols,
+      allowed => \%cols,
+   };
 }
 
 sub get_crc_args {
