@@ -447,6 +447,29 @@ sub _next_boundaries {
       return 1;
    }
 
+   # Detect infinite loops.  If the lower boundary we just nibbled from
+   # is identical to the next lower boundary, then this next nibble won't
+   # go anywhere, so to speak, unless perhaps the chunk size has changed
+   # which will cause us to nibble further ahead and maybe get a new lower
+   # boundary that isn't identical, but we can't detect this, and in any
+   # case, if there's one infinite loop there will probably be others.
+   if ( $self->_identical_boundaries($self->{lb}, $self->{next_lb}) ) {
+      MKDEBUG && _d('Infinite loop detected');
+      my $tbl     = $self->{tbl};
+      my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
+      my $n_cols  = scalar @{$index->{cols}};
+      my $chunkno = $self->{nibbleno};
+      die "Possible infinite loop detected!  "
+         . "The lower boundary for chunk $chunkno is "
+         . "<" . join(', ', @{$self->{lb}}) . "> and the lower "
+         . "boundary for chunk " . ($chunkno + 1) . " is also "
+         . "<" . join(', ', @{$self->{next_lb}}) . ">.  "
+         . "This usually happens when using a non-unique single "
+         . "column index.  The current chunk index for table "
+         . "$tbl->{db}.$tbl->{tbl} is $self->{index} which is"
+         . ($index->{is_unique} ? '' : ' not') . " unique and covers "
+         . ($n_cols > 1 ? "$n_cols columns" : "1 column") . ".\n";
+   }
    $self->{lb} = $self->{next_lb};
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
@@ -457,22 +480,6 @@ sub _next_boundaries {
    if ( $boundary && @$boundary ) {
       $self->{ub} = $boundary->[0]; # this nibble
       if ( $boundary->[1] ) {
-         if ( $self->_identical_boundaries($boundary) ) {
-            my $tbl     = $self->{tbl};
-            my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
-            my $n_cols  = scalar @{$index->{cols}};
-            my $chunkno = $self->{nibbleno} + 1;
-            die "Possible infinite loop detected!  "
-               . "The upper boundary for chunk $chunkno is "
-               . "<" . join(', ', @{$boundary->[0]}) . "> and the lower "
-               . "boundary for chunk " . ($chunkno + 1) . " is also "
-               . "<" . join(', ', @{$boundary->[1]}) . ">.  "
-               . "This usually happens when using a non-unique single "
-               . "column index.  The current chunk index for table "
-               . "$tbl->{db}.$tbl->{tbl} is $self->{index} which is"
-               . ($index->{is_unique} ? '' : ' not') . " unique and covers "
-               . ($n_cols > 1 ? "$n_cols columns" : "1 column") . ".\n";
-         }
          $self->{next_lb} = $boundary->[1]; # next nibble
       }
       else {
@@ -491,16 +498,23 @@ sub _next_boundaries {
 }
 
 sub _identical_boundaries {
-   my ($self, $boundaries) = @_;
-   my $ub = $boundaries->[0];
-   my $lb = $boundaries->[1];
-   return 0 unless $ub && $lb;
-   my $n_vals = scalar @$ub;
+   my ($self, $b1, $b2) = @_;
+
+   # If only one boundary isn't defined, then they can't be identical.
+   return 0 if ($b1 && !$b2) || (!$b1 && $b2);
+
+   # If both boundaries aren't defined, then they're identical.
+   return 1 if !$b1 && !$b2;
+
+   # Both boundaries are defined; compare their values and return false
+   # on the fisrt difference because only one diff is needed to prove
+   # that they're not identical.
+   die "Boundaries have different numbers of values"
+      if scalar @$b1 != scalar @$b2;  # shouldn't happen
+   my $n_vals = scalar @$b1;
    for my $i ( 0..($n_vals-1) ) {
-      # One diff means the bounds aren't identical.
-      return 0 if $lb->[$i] ne $ub->[$i];
+      return 0 if $b1->[$i] ne $b2->[$i]; # diff
    }
-   MKDEBUG && _d('Infinite loop detected');
    return 1;
 }
 
