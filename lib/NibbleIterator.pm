@@ -199,7 +199,6 @@ sub next {
       $self->_can_nibble_once();
       $self->_prepare_sths();
       $self->_get_bounds();
-      # $self->_check_index_usage();
       if ( my $callback = $self->{callbacks}->{init} ) {
          $callback->();
       }
@@ -280,9 +279,20 @@ sub nibble_index {
    return $self->{index};
 }
 
+sub boundaries {
+   my ($self) = @_;
+   return $self->{lb}, $self->{ub}, $self->{next_lb};
+}
+
+sub one_nibble {
+   my ($self) = @_;
+   return $self->{one_nibble};
+}
+
 sub set_chunk_size {
    my ($self, $limit) = @_;
    MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
+   die "Chunk size must be > 0" unless $limit;
    $self->{limit} = $limit - 1;
    return;
 }
@@ -372,8 +382,7 @@ sub _can_nibble_once {
    my ($dbh, $tbl, $tp) = @{$self}{qw(dbh tbl TableParser)};
    my ($table_status)   = $tp->get_table_status($dbh, $tbl->{db}, $tbl->{tbl});
    my $n_rows           = $table_status->{rows} || 0;
-   my $chunk_size       = $self->{OptionParser}->get('chunk-size') || 1;
-   $self->{one_nibble}  = $n_rows <= $chunk_size ? 1 : 0;
+   $self->{one_nibble}  = $n_rows <= $self->{limit} ? 1 : 0;
    MKDEBUG && _d('One nibble:', $self->{one_nibble} ? 'yes' : 'no');
    return $self->{one_nibble};
 }
@@ -410,29 +419,6 @@ sub _get_bounds {
    return;
 }
 
-sub _check_index_usage {
-   my ($self) = @_;
-   my ($dbh, $tbl, $q) = @{$self}{qw(dbh tbl Quoter)};
-
-   my $explain;
-   eval {
-      $explain = $dbh->selectall_arrayref("", {Slice => {}});
-   };
-   if ( $EVAL_ERROR ) {
-      warn "Cannot check if MySQL is using the chunk index: $EVAL_ERROR";
-      return;
-   }
-   my $explain_index = lc($explain->[0]->{key} || '');
-   MKDEBUG && _d('EXPLAIN index:', $explain_index);
-   if ( $explain_index ne $self->{index} ) {
-      die "Cannot nibble table $tbl->{db}.$tbl->{tbl} because MySQL chose "
-         . ($explain_index ? "the `$explain_index`" : 'no') . ' index'
-         . " instead of the chunk index `$self->{asc}->{index}`";
-   }
-
-   return;
-}
-
 sub _next_boundaries {
    my ($self) = @_;
 
@@ -453,7 +439,7 @@ sub _next_boundaries {
    # which will cause us to nibble further ahead and maybe get a new lower
    # boundary that isn't identical, but we can't detect this, and in any
    # case, if there's one infinite loop there will probably be others.
-   if ( $self->_identical_boundaries($self->{lb}, $self->{next_lb}) ) {
+   if ( $self->identical_boundaries($self->{lb}, $self->{next_lb}) ) {
       MKDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
@@ -497,7 +483,7 @@ sub _next_boundaries {
    return 1; # have boundary
 }
 
-sub _identical_boundaries {
+sub identical_boundaries {
    my ($self, $b1, $b2) = @_;
 
    # If only one boundary isn't defined, then they can't be identical.
