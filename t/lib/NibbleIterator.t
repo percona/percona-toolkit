@@ -503,7 +503,7 @@ $dbh->do('alter table bad_tables.inv drop index index_inv_on_tee_id_and_on_id');
 $ni = make_nibble_iter(
    db   => 'bad_tables',
    tbl  => 'inv',
-   argv => [qw(--databases bad_tables --chunk-size 7)],
+   argv => [qw(--databases bad_tables --chunk-size 3)],
 );
 
 is(
