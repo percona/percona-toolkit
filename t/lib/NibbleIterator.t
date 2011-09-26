@@ -38,7 +38,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 25;
+   plan tests => 26;
 }
 
 my $q  = new Quoter();
@@ -82,6 +82,7 @@ sub make_nibble_iter {
       chunk_size => $o->get('chunk-size'),
       callbacks  => $args{callbacks},
       select     => $args{select},
+      one_nibble => $args{one_nibble},
       %common_modules,
    );
 
@@ -365,7 +366,8 @@ SKIP: {
             push @expl, $expl_sth->fetchrow_hashref();
             return 0;
          },
-      }
+      },
+      one_nibble => 0,
    );
    $ni->next();
    $ni->next();
@@ -399,7 +401,7 @@ SKIP: {
       ],
    'exec_nibble callbackup and explain_sth'
    );
-    
+
    # #########################################################################
    # film_actor, multi-column pk
    # #########################################################################
@@ -516,6 +518,28 @@ throws_ok(
    sub { for (1..50) { $ni->next() } },
    qr/infinite loop/,
    'Detects infinite loop'
+);
+
+# ############################################################################
+# Nibble small tables without indexes.
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file => "a-z.sql",
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 100)],
+);
+$dbh->do('alter table test.t drop index c');
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, @$row;
+}
+
+is_deeply(
+   \@rows,
+   [ ('a'..'z') ],
+   "Nibble small table without indexes"
 );
 
 # #############################################################################

@@ -269,7 +269,7 @@ $o->get_opts();
 # ############################################################################
 # make_chunk_checksum
 # ############################################################################
-@ARGV = qw(--columns film_id --no-optimize-xor);
+@ARGV = qw(--columns film_id);
 $o->get_opts();
 is(
    $c->make_chunk_checksum(
