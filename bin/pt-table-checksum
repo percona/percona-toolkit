@@ -5372,6 +5372,8 @@ sub main {
    my $update_sth = $dbh->prepare(
       "UPDATE $repl_table SET chunk_time = ?, master_crc = ?, master_cnt = ? "
       . "WHERE db = ? AND tbl = ? AND chunk = ?");
+   my $delete_sth = $dbh->prepare(
+      "DELETE FROM $repl_table WHERE db = ? AND tbl = ?");
 
    # ########################################################################
    # Make a ReplicaLagWaiter to help wait for slaves after each chunk.
@@ -5405,6 +5407,15 @@ sub main {
    # in these callbacks and the subs that they call.
    # ########################################################################
    my $callbacks = {
+      init => sub {
+         my (%args) = @_;
+         my $tbl = $args{tbl};
+         if ( $o->get('empty-replicate-table') ) {
+            MKDEBUG && _d($delete_sth->{Statement});
+            $delete_sth->execute($tbl->{db}, $tbl->{tbl});
+         }
+         return 1; # continue nibbling
+      },
       next_boundaries => sub {
          my (%args) = @_;
          my $tbl         = $args{tbl};
@@ -5867,13 +5878,6 @@ sub check_repl_table {
          unless $have_tbl_privs;
    }
 
-   # Clean out the replicate table globally.
-   if ( $o->get('empty-replicate-table') ) {
-      my $del_sql = "DELETE FROM $repl_table";
-      MKDEBUG && _d($dbh, $del_sql);
-      $dbh->do($del_sql);
-   }
-
    return;
 }
 
@@ -6325,7 +6329,7 @@ Currently, this operation cannot be disabled.
 If the replicate table becomes cluttered with old or invalid checksums
 and the auto-delete operation is not deleting them, then you will need to
 manually clean up the replicate table.  Alternatively, if you specify
-L<"--empty-replicate-table">, then the tool deletes every row in the
+L<"--[no]empty-replicate-table">, then the tool deletes every row in the
 replicate table.
 
 =head1 EXIT STATUS
@@ -6508,17 +6512,19 @@ short form: -F; type: string; group: Connection
 Only read mysql options from the given file.  You must give an absolute
 pathname.
 
-=item --empty-replicate-table
+=item --[no]empty-replicate-table
 
-DELETE all rows in the L<"--replicate"> table before starting.
+default: yes
 
-Issues a DELETE against the table given by L<"--replicate"> before beginning
-work.  Ignored if L<"--replicate"> is not specified.  This can be useful to
-remove entries related to tables that no longer exist, or just to clean out the
-results of a previous run.
+Delete previous checksums for each table before checksumming the table.
+This option does not truncate the entire L<"--replicate"> table, it
+only deletes rows (checksums) for each table right before checksumming
+the table.  Therefore, if checksumming stops prematurely, the L<"--replicate">
+table will still contain rows for tables that were not checksumed before
+the tool was stopped.
 
-If you want to delete entries for specific databases or tables you must
-do this manually.
+L<"--resume"> disables this option because if previous checksums are
+deleted then there is nothing to resume.
 
 =item --engines
 
@@ -6762,7 +6768,7 @@ master binlog positions, and so on.
 The checksum queries actually do a REPLACE into this table, so existing rows
 need not be removed before running.  However, you may wish to do this anyway to
 remove rows related to tables that don't exist anymore.  The
-L<"--empty-replicate-table"> option does this for you.
+L<"--[no]empty-replicate-table"> option does this for you.
 
 Since the table must be qualified with a database (e.g. C<db.checksums>),
 pt-table-checksum will only USE this database.  This may be important if any
@@ -6833,6 +6839,15 @@ replication to fail on the slaves.  In such cases, it is up to the user to
 specify a safe default database.  This option specifies a default database that
 pt-table-checksum selects with USE, and never changes afterwards.  See also
 <L"--[no]check-replication-filters">.
+
+=item --resume
+
+Resume checksumming (disables L<"--[no]empty-replicate-table">).
+If the tool is stopped prematurely, checksumming can
+be resumed from the last successful checksum by specifying this option.
+
+This option disables L<"--[no]empty-replicate-table"> because if previous
+checksums are deleted then there is nothing to resume.
 
 =item --separator
 
