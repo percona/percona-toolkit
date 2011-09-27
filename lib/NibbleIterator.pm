@@ -318,6 +318,11 @@ sub one_nibble {
    return $self->{one_nibble};
 }
 
+sub chunk_size {
+   my ($self) = @_;
+   return $self->{limit};
+}
+
 sub set_chunk_size {
    my ($self, $limit) = @_;
    return if $self->{one_nibble};
@@ -449,13 +454,13 @@ sub _next_boundaries {
 
    if ( $self->{no_more_boundaries} ) {
       MKDEBUG && _d('No more boundaries');
-      return;
+      return; # stop nibbling
    }
 
    if ( $self->{one_nibble} ) {
       $self->{lb} = $self->{ub} = [];
       $self->{no_more_boundaries} = 1;  # for next call
-      return 1;
+      return 1; # continue nibbling
    }
 
    # Detect infinite loops.  If the lower boundary we just nibbled from
@@ -481,7 +486,21 @@ sub _next_boundaries {
          . ($index->{is_unique} ? '' : ' not') . " unique and covers "
          . ($n_cols > 1 ? "$n_cols columns" : "1 column") . ".\n";
    }
+
    $self->{lb} = $self->{next_lb};
+
+   if ( my $callback = $self->{callbacks}->{next_boundaries} ) {
+      my $oktonibble = $callback->(
+         dbh            => $self->{dbh},
+         tbl            => $self->{tbl},
+         NibbleIterator => $self,
+      );
+      MKDEBUG && _d('next_boundaries callback returned', $oktonibble);
+      if ( !$oktonibble ) {
+         $self->{no_more_boundaries} = 1;
+         return; # stop nibbling
+      }
+   }
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lb}}), $self->{limit});
@@ -505,7 +524,7 @@ sub _next_boundaries {
    }
    $self->{ub_sth}->finish();
 
-   return 1; # have boundary
+   return 1; # continue nibbling
 }
 
 sub identical_boundaries {
