@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 29;
+use Test::More tests => 30;
 
 use SchemaIterator;
 use FileIterator;
@@ -56,6 +56,7 @@ sub test_so {
       $si = new SchemaIterator(
          file_itr     => $file_itr,
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
+         resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
          TableParser  => $tp,
@@ -65,6 +66,7 @@ sub test_so {
       $si = new SchemaIterator(
          dbh          => $dbh,
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
+         resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
          TableParser  => $tp,
@@ -77,7 +79,7 @@ sub test_so {
 
    my $res = "";
    my @objs;
-   while ( my $obj = $si->next_schema_object() ) {
+   while ( my $obj = $si->next() ) {
       if ( $args{return_objs} ) {
          push @objs, $obj;
       }
@@ -222,7 +224,7 @@ SKIP: {
          unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
 
       test_so(
-         filteres  => [qw(-d sakila)],
+         filters   => [qw(-d sakila)],
          result    => "",  # hack; uses unlike instead
          unlike    => qr/
              actor_info
@@ -410,6 +412,21 @@ is(
    0,
    'DDL deleted unless keep_ddl'
 );
+
+# ############################################################################
+# Resume
+# ############################################################################
+SKIP: {
+   skip 'Sandbox master does not have the sakila database', 1
+      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+
+   test_so(
+      filters   => [qw(-d sakila)],
+      result    => "$out/resume-from-sakila-payment.txt",
+      resume    => 'sakila.payment',
+      test_name => "Resume"
+   );
+};
 
 # #############################################################################
 # Done.
