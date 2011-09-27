@@ -361,9 +361,12 @@ SKIP: {
       callbacks => {
          exec_nibble  => sub {
             my (%args) = @_;
-            my ($expl_sth, $lb, $ub) = @args{qw(explain_sth lb ub)};
-            $expl_sth->execute(@$lb, @$ub);
-            push @expl, $expl_sth->fetchrow_hashref();
+            my $nibble_iter = $args{NibbleIterator};
+            my $sth         = $nibble_iter->statements();
+            my $boundary    = $nibble_iter->boundaries();
+            $sth->{explain_nibble}->execute(
+               @{$boundary->{lower}}, @{$boundary->{upper}});
+            push @expl, $sth->{explain_nibble}->fetchrow_hashref();
             return 0;
          },
       },
@@ -400,7 +403,7 @@ SKIP: {
          },
       ],
    'exec_nibble callbackup and explain_sth'
-   );
+   ) or print STDERR Dumper(\@expl);
 
    # #########################################################################
    # film_actor, multi-column pk
