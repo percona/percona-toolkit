@@ -3355,8 +3355,7 @@ sub new {
 
    my $index = _find_best_index(%args);
    if ( !$index && !$one_nibble ) {
-      die "Cannot chunk table $tbl->{db}.$tbl->{tbl} because there is "
-         . "no good index and the table is oversized.";
+      die "There is no good index and the table is oversized.";
    }
 
    my $self;
@@ -3390,9 +3389,6 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
-         nibbleno           => 0,
-         have_rows          => 0,
-         rowno              => 0,
       };
    }
    else {
@@ -3470,18 +3466,20 @@ sub new {
 
       $self = {
          %args,
-         index                  => $index,
-         limit                  => $limit,
-         first_lb_sql           => $first_lb_sql,
-         last_ub_sql            => $last_ub_sql,
-         ub_sql                 => $ub_sql,
-         nibble_sql             => $nibble_sql,
-         explain_nibble_sql     => $explain_nibble_sql,
-         nibbleno               => 0,
-         have_rows              => 0,
-         rowno                  => 0,
+         index              => $index,
+         limit              => $limit,
+         first_lb_sql       => $first_lb_sql,
+         last_ub_sql        => $last_ub_sql,
+         ub_sql             => $ub_sql,
+         nibble_sql         => $nibble_sql,
+         explain_ub_sql     => "EXPLAIN $ub_sql",
+         explain_nibble_sql => $explain_nibble_sql,
       };
    }
+
+   $self->{nibbleno}  = 0;
+   $self->{have_rows} = 0;
+   $self->{rowno}     = 0;
 
    return bless $self, $class;
 }
@@ -3489,11 +3487,22 @@ sub new {
 sub next {
    my ($self) = @_;
 
+   my %callback_args = (
+      dbh            => $self->{dbh},
+      tbl            => $self->{tbl},
+      NibbleIterator => $self,
+   );
+
    if ($self->{nibbleno} == 0) {
       $self->_prepare_sths();
       $self->_get_bounds();
       if ( my $callback = $self->{callbacks}->{init} ) {
-         $callback->();
+         my $oktonibble = $callback->(%callback_args);
+         MKDEBUG && _d('init callback returned', $oktonibble);
+         if ( !$oktonibble ) {
+            $self->{no_more_boundaries} = 1;
+            return;
+         }
       }
    }
 
@@ -3504,16 +3513,7 @@ sub next {
          MKDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
             join(', ', (@{$self->{lb}}, @{$self->{ub}})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
-            $self->{have_rows} = $callback->(
-               dbh            => $self->{dbh},
-               tbl            => $self->{tbl},
-               sth            => $self->{nibble_sth},
-               lb             => $self->{lb},
-               ub             => $self->{ub},
-               nibbleno       => $self->{nibbleno},
-               explain_sth    => $self->{explain_sth},
-               NibbleIterator => $self,
-            );
+            $self->{have_rows} = $callback->(%callback_args);
          }
          else {
             $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
@@ -3533,13 +3533,7 @@ sub next {
 
       MKDEBUG && _d('No rows in nibble or nibble skipped');
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
-         $callback->(
-            dbh            => $self->{dbh},
-            tbl            => $self->{tbl},
-            nibbleno       => $self->{nibbleno},
-            explain_sth    => $self->{explain_sth},
-            NibbleIterator => $self,
-         );
+         $callback->(%callback_args);
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
@@ -3547,11 +3541,9 @@ sub next {
 
    MKDEBUG && _d('Done nibbling');
    if ( my $callback = $self->{callbacks}->{done} ) {
-      $callback->(
-         dbh => $self->{dbh},
-         tbl => $self->{tbl},
-      );
+      $callback->(%callback_args);
    }
+
    return;
 }
 
@@ -3565,9 +3557,25 @@ sub nibble_index {
    return $self->{index};
 }
 
+sub statements {
+   my ($self) = @_;
+   return {
+      nibble                 => $self->{nibble_sth},
+      explain_nibble         => $self->{explain_nibble_sth},
+      upper_boundary         => $self->{ub_sth},
+      explain_upper_boundary => $self->{explain_ub_sth},
+   }
+}
+
 sub boundaries {
    my ($self) = @_;
-   return $self->{lb}, $self->{ub}, $self->{next_lb};
+   return {
+      first_lower => $self->{first_lb},
+      lower       => $self->{lb},
+      next_lower  => $self->{next_lb},
+      upper       => $self->{ub},
+      last_upper  => $self->{last_ub},
+   };
 }
 
 sub one_nibble {
@@ -3575,8 +3583,14 @@ sub one_nibble {
    return $self->{one_nibble};
 }
 
+sub chunk_size {
+   my ($self) = @_;
+   return $self->{limit};
+}
+
 sub set_chunk_size {
    my ($self, $limit) = @_;
+   return if $self->{one_nibble};
    MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
    die "Chunk size must be > 0" unless $limit;
    $self->{limit} = $limit - 1;
@@ -3672,11 +3686,14 @@ sub _can_nibble_once {
 sub _prepare_sths {
    my ($self) = @_;
    MKDEBUG && _d('Preparing statement handles');
+   $self->{nibble_sth}
+      = $self->{dbh}->prepare($self->{nibble_sql});
+   $self->{explain_nibble_sth}
+      = $self->{dbh}->prepare($self->{explain_nibble_sql});
    if ( !$self->{one_nibble} ) {
       $self->{ub_sth} = $self->{dbh}->prepare($self->{ub_sql});
+      $self->{explain_ub_sth} = $self->{dbh}->prepare($self->{explain_ub_sql});
    }
-   $self->{nibble_sth}  = $self->{dbh}->prepare($self->{nibble_sql});
-   $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_nibble_sql});
    return;
 }
 
@@ -3684,7 +3701,8 @@ sub _get_bounds {
    my ($self) = @_;
    return if $self->{one_nibble};
 
-   $self->{next_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
+   $self->{first_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
+   $self->{next_lb}  = $self->{first_lb};
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lb}));
    
    $self->{last_ub} = $self->{dbh}->selectrow_arrayref($self->{last_ub_sql});
@@ -3698,13 +3716,13 @@ sub _next_boundaries {
 
    if ( $self->{no_more_boundaries} ) {
       MKDEBUG && _d('No more boundaries');
-      return;
+      return; # stop nibbling
    }
 
    if ( $self->{one_nibble} ) {
       $self->{lb} = $self->{ub} = [];
       $self->{no_more_boundaries} = 1;  # for next call
-      return 1;
+      return 1; # continue nibbling
    }
 
    if ( $self->identical_boundaries($self->{lb}, $self->{next_lb}) ) {
@@ -3724,7 +3742,21 @@ sub _next_boundaries {
          . ($index->{is_unique} ? '' : ' not') . " unique and covers "
          . ($n_cols > 1 ? "$n_cols columns" : "1 column") . ".\n";
    }
+
    $self->{lb} = $self->{next_lb};
+
+   if ( my $callback = $self->{callbacks}->{next_boundaries} ) {
+      my $oktonibble = $callback->(
+         dbh            => $self->{dbh},
+         tbl            => $self->{tbl},
+         NibbleIterator => $self,
+      );
+      MKDEBUG && _d('next_boundaries callback returned', $oktonibble);
+      if ( !$oktonibble ) {
+         $self->{no_more_boundaries} = 1;
+         return; # stop nibbling
+      }
+   }
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lb}}), $self->{limit});
@@ -3748,7 +3780,7 @@ sub _next_boundaries {
    }
    $self->{ub_sth}->finish();
 
-   return 1; # have boundary
+   return 1; # continue nibbling
 }
 
 sub identical_boundaries {
@@ -5373,10 +5405,45 @@ sub main {
    # in these callbacks and the subs that they call.
    # ########################################################################
    my $callbacks = {
+      next_boundaries => sub {
+         my (%args) = @_;
+         my $tbl         = $args{tbl};
+         my $nibble_iter = $args{NibbleIterator};
+         my $sth         = $nibble_iter->statements();
+         my $boundary    = $nibble_iter->boundaries();
+
+         return 1 if $nibble_iter->one_nibble();
+
+         # Check that MySQL will use the nibble index for the next upper
+         # boundary sql.  This check applies to the next nibble.  So if
+         # the current nibble number is 5, then nibble 5 is already done
+         # and we're checking nibble number 6.
+         my $expl = explain_statement(
+            tbl  => $tbl,
+            sth  => $sth->{explain_upper_boundary},
+            vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
+         );
+         if ( ($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
+            warn "Aborting $tbl->{db}.$tbl->{tbl} because "
+               . ($nibble_iter->nibble_number() + 1)
+               . " cannot be nibbled safely.\n";
+            $tbl->{checksum_results}->{errors}++;
+            return 0; # stop nibbling table
+         }
+
+         # Once nibbling begins for a table, control does not return to this
+         # tool until nibbling is done because, as noted above, all work is
+         # done in these callbacks.  This callback is the only place where we
+         # can prematurely stop nibbling by returning false.  This allows
+         # Ctrl-C to stop the tool between nibbles instead of between tables.
+         return $oktorun; # continue nibbling table?
+      },
       exec_nibble => sub {
          my (%args) = @_;
-         my $nibble_iter = $args{NibbleIterator};
          my $tbl         = $args{tbl};
+         my $nibble_iter = $args{NibbleIterator};
+         my $sth         = $nibble_iter->statements();
+         my $boundary    = $nibble_iter->boundaries();
 
          # Count every chunk, even if it's ultimately skipped, etc.
          $tbl->{checksum_results}->{n_chunks}++;
@@ -5384,7 +5451,11 @@ sub main {
          # If the table is being chunk (i.e., it's not small enough to be
          # consumed by one nibble), then check index usage and chunk size.
          if ( !$nibble_iter->one_nibble() ) {
-            my $expl = explain_chunk(%args);
+            my $expl = explain_statement(
+               tbl  => $tbl,
+               sth  => $sth->{explain_nibble},
+               vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
+            );
             my $oversize_chunk
                = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
                :          0;
@@ -5398,11 +5469,12 @@ sub main {
                return 0;  # next boundary
             }
 
-            # Check chunk size limit if the upper boundary (ub) and next lower
-            # boundary (next_lb) are identical.
+            # Check chunk size limit if the upper boundary and next lower
+            # boundary are identical.
             if ( $limit ) {
-               my (undef, $ub, $next_lb) = $nibble_iter->boundaries(); 
-               if ( $nibble_iter->identical_boundaries($ub, $next_lb)
+               my $boundary = $nibble_iter->boundaries(); 
+               if ( $nibble_iter->identical_boundaries(
+                       $boundary->{upper}, $boundary->{next_lower})
                     && $oversize_chunk ) {
                   MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                      "$tbl->{db}.$tbl->{tbl} is too large, skipping");
@@ -5413,22 +5485,32 @@ sub main {
             }
          }
 
-         # Exec and time the chunk checksum query.  If it fails, retry.
-         # Should return 0 rows which will fetch the next boundary.
-         my $t_start = time;
-         my $rows    = exec_nibble(%args, Quoter => $q, Retry => $retry);
-         $tbl->{nibble_time} = time - $t_start;
-         return $rows; 
+         # Exec and time the chunk checksum query.
+         $tbl->{nibble_time} = exec_nibble(
+            %args,
+            Retry  => $retry,
+            Quoter => $q
+         );
+         MKDEBUG && _d('Nibble time:', $tbl->{nibble_time});
+
+         # We're executing REPLACE queries which don't return rows.
+         # Returning 0 from this callback causes the nibble iter to
+         # get the next boundaries/nibble.
+         return 0;
       },
       after_nibble => sub {
          my (%args) = @_;
-         my $tbl = $args{tbl};
+         my $tbl         = $args{tbl};
+         my $nibble_iter = $args{NibbleIterator};
 
          # Nibble time will be zero if the chunk was skipped.
          return unless $tbl->{nibble_time};
 
+         # Chunk/nibble number that we just inserted.
+         my $chunk = $nibble_iter->nibble_number();
+
          # Fetch the checksum that we just executed from the replicate table.
-         $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $args{nibbleno});
+         $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $chunk);
          my ($crc, $cnt) = $fetch_sth->fetchrow_array();
 
          $tbl->{checksum_results}->{n_rows} += $cnt || 0;
@@ -5441,12 +5523,12 @@ sub main {
             $crc,                                 # master_crc
             $cnt,                                 # master_cnt
             # WHERE
-            $tbl->{db},       # db 
-            $tbl->{tbl},      # tbl
-            $args{nibbleno},  # chunk
+            $tbl->{db},
+            $tbl->{tbl},
+            $chunk,
          );
 
-         # Should be don't automatically, but I like to be explicit.
+         # Should be done automatically, but I like to be explicit.
          $fetch_sth->finish();
          $update_sth->finish();
 
@@ -5586,7 +5668,7 @@ sub main {
          # the callbacks. -- print_checksum_results(), which is called
          # from the done callback, uses this start time.
          $tbl->{checksum_results}->{start_time} = time;
-         1 while $oktorun && $nibble_iter->next();
+         1 while $nibble_iter->next();
       };
       if ($EVAL_ERROR) {
          warn "Error checksumming $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
@@ -5619,43 +5701,56 @@ sub get_cxn {
 
 sub exec_nibble {
    my (%args) = @_;
-   my @required_args = qw(dbh tbl sth lb ub NibbleIterator Retry Quoter);
+   my @required_args = qw(dbh tbl NibbleIterator Retry Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $sth, $lb, $ub, $nibble_iter, $retry, $q)
-      = @args{@required_args};
+   my ($dbh, $tbl, $nibble_iter, $retry, $q)= @args{@required_args};
+   
+   my $sth         = $nibble_iter->statements();
+   my $boundary    = $nibble_iter->boundaries();
+   my $lb_quoted   = join(',', map { $q->quote_val($_) } @{$boundary->{lower}});
+   my $ub_quoted   = join(',', map { $q->quote_val($_) } @{$boundary->{upper}});
+   my $chunk       = $nibble_iter->nibble_number();
+   my $chunk_index = $nibble_iter->nibble_index();
 
    return $retry->retry(
       tries        => 2,
       wait         => sub { return; },
       retry_on_die => 1,
       try          => sub {
+         # ###################################################################
+         # Start timing the checksum query.
+         # ###################################################################
+         my $t_start = time;        
+
          # Reset the BIT_XOR user vars.
          my $sql = 'SET @crc := "", @cnt := 0 /*!50108 , '
                  . '@@binlog_format := "STATEMENT"*/';
          MKDEBUG && _d($sql);
          $dbh->do($sql);
 
-         my $lb_quoted = join(',', map { $q->quote_val($_) } @$lb);
-         my $ub_quoted = join(',', map { $q->quote_val($_) } @$ub);
-         my $chunk_idx = $nibble_iter->nibble_index();
-
          # Execute the REPLACE...SELECT checksum query.
-         # MKDEBUG && _d($sth->{Statement}, 'params:',
-         # );
-         $sth->execute(
+         MKDEBUG && _d($sth->{nibble}->{Statement},
+            'lower boundary:', @{$boundary->{lower}},
+            'upper boundary:', @{$boundary->{upper}});
+         $sth->{nibble}->execute(
             # REPLACE INTO repl_table SELECT
-            $tbl->{db},       # db
-            $tbl->{tbl},      # tbl
-            $args{nibbleno},  # chunk
-            $chunk_idx,       # chunk_index
-            $lb_quoted,       # lower_boundary
-            $ub_quoted,       # upper_boundary
+            $tbl->{db},             # db
+            $tbl->{tbl},            # tbl
+            $chunk,                 # chunk (number)
+            $chunk_index,           # chunk_index
+            $lb_quoted,             # lower_boundary
+            $ub_quoted,             # upper_boundary
             # this_cnt, this_crc WHERE
-            @$lb,             # upper boundary values
-            @$ub,             # lower boundary values
+            @{$boundary->{lower}},  # upper boundary values
+            @{$boundary->{upper}},  # lower boundary values
          );
+
+         my $t_end = time;
+         # ###################################################################
+         # End timing the checksum query.
+         # ###################################################################
 
          # Check if checksum query caused any warnings.
          my $sql_warn = 'SHOW WARNINGS';
@@ -5683,9 +5778,11 @@ sub exec_nibble {
             }
          }
 
-         return 0;
+         return $t_end - $t_start; # success, return nibble time
       },
       on_failure => sub {
+         # Checksum query caused an error,
+         # or something in the try sub died.
          $tbl->{checksum_results}->{errors}++;
          warn $EVAL_ERROR;
       },
@@ -5898,35 +5995,34 @@ sub create_repl_table {
    return;
 }
 
-# Sub: explain_chunk
-#   EXPLAIN a chunk checksum query.
+# Sub: explain_statement
+#   EXPLAIN a statement.
 #
 # Required Arguments:
-#   * tbl         - Standard tbl hashref
-#   * explain_sth - Sth to EXPLAIN the chunking query
-#   * lb          - Arrayref with lower boundary values for explain_sth
-#   * ub          - Arrayref with upper boundary values for explain_sth
+#   * tbl  - Standard tbl hashref
+#   * sth  - Sth with EXLAIN <statement>
+#   * vals - Values for sth, if any
 #
 # Returns:
-#   Hashref with EXPLAIN plan.
-sub explain_chunk {
+#   Hashref with EXPLAIN plan
+sub explain_statement {
    my ( %args ) = @_;
-   my @required_args = qw(tbl explain_sth lb ub);
+   my @required_args = qw(tbl sth vals);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my ($tbl, $expl_sth, $lb, $ub) = @args{@required_args};
+   my ($tbl, $sth, $vals) = @args{@required_args};
 
    my $expl;
    eval {
-      MKDEBUG && _d($expl_sth->{Statement});
-      $expl_sth->execute(@$lb, @$ub);
-      $expl = $expl_sth->fetchrow_hashref();
-      $expl_sth->finish();
+      MKDEBUG && _d($sth->{Statement}, 'params:', @$vals);
+      $sth->execute(@$vals);
+      $expl = $sth->fetchrow_hashref();
+      $sth->finish();
    };
    if ( $EVAL_ERROR ) {
       # This shouldn't happen.
-      warn "Failed to " . $expl_sth->{Statement} . ": $EVAL_ERROR\n";
+      warn "Failed to " . $sth->{Statement} . ": $EVAL_ERROR\n";
       $tbl->{checksum_results}->{errors}++;
    }
    MKDEBUG && _d('EXPLAIN plan:', Dumper($expl));
