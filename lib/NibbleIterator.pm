@@ -64,8 +64,7 @@ sub new {
    # Get an index to nibble by.  We'll order rows by the index's columns.
    my $index = _find_best_index(%args);
    if ( !$index && !$one_nibble ) {
-      die "Cannot chunk table $tbl->{db}.$tbl->{tbl} because there is "
-         . "no good index and the table is oversized.";
+      die "There is no good index and the table is oversized.";
    }
 
    my $self;
@@ -101,9 +100,6 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
-         nibbleno           => 0,
-         have_rows          => 0,
-         rowno              => 0,
       };
    }
    else {
@@ -196,18 +192,20 @@ sub new {
 
       $self = {
          %args,
-         index                  => $index,
-         limit                  => $limit,
-         first_lb_sql           => $first_lb_sql,
-         last_ub_sql            => $last_ub_sql,
-         ub_sql                 => $ub_sql,
-         nibble_sql             => $nibble_sql,
-         explain_nibble_sql     => $explain_nibble_sql,
-         nibbleno               => 0,
-         have_rows              => 0,
-         rowno                  => 0,
+         index              => $index,
+         limit              => $limit,
+         first_lb_sql       => $first_lb_sql,
+         last_ub_sql        => $last_ub_sql,
+         ub_sql             => $ub_sql,
+         nibble_sql         => $nibble_sql,
+         explain_ub_sql     => "EXPLAIN $ub_sql",
+         explain_nibble_sql => $explain_nibble_sql,
       };
    }
+
+   $self->{nibbleno}  = 0;
+   $self->{have_rows} = 0;
+   $self->{rowno}     = 0;
 
    return bless $self, $class;
 }
@@ -215,13 +213,24 @@ sub new {
 sub next {
    my ($self) = @_;
 
+   my %callback_args = (
+      dbh            => $self->{dbh},
+      tbl            => $self->{tbl},
+      NibbleIterator => $self,
+   );
+
    # First call, init everything.  This could be done in new(), but
    # all work is delayed until actually needed.
    if ($self->{nibbleno} == 0) {
       $self->_prepare_sths();
       $self->_get_bounds();
       if ( my $callback = $self->{callbacks}->{init} ) {
-         $callback->();
+         my $oktonibble = $callback->(%callback_args);
+         MKDEBUG && _d('init callback returned', $oktonibble);
+         if ( !$oktonibble ) {
+            $self->{no_more_boundaries} = 1;
+            return;
+         }
       }
    }
 
@@ -235,16 +244,7 @@ sub next {
          MKDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
             join(', ', (@{$self->{lb}}, @{$self->{ub}})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
-            $self->{have_rows} = $callback->(
-               dbh            => $self->{dbh},
-               tbl            => $self->{tbl},
-               sth            => $self->{nibble_sth},
-               lb             => $self->{lb},
-               ub             => $self->{ub},
-               nibbleno       => $self->{nibbleno},
-               explain_sth    => $self->{explain_sth},
-               NibbleIterator => $self,
-            );
+            $self->{have_rows} = $callback->(%callback_args);
          }
          else {
             $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
@@ -268,13 +268,7 @@ sub next {
 
       MKDEBUG && _d('No rows in nibble or nibble skipped');
       if ( my $callback = $self->{callbacks}->{after_nibble} ) {
-         $callback->(
-            dbh            => $self->{dbh},
-            tbl            => $self->{tbl},
-            nibbleno       => $self->{nibbleno},
-            explain_sth    => $self->{explain_sth},
-            NibbleIterator => $self,
-         );
+         $callback->(%callback_args);
       }
       $self->{rowno}     = 0;
       $self->{have_rows} = 0;
@@ -282,11 +276,9 @@ sub next {
 
    MKDEBUG && _d('Done nibbling');
    if ( my $callback = $self->{callbacks}->{done} ) {
-      $callback->(
-         dbh => $self->{dbh},
-         tbl => $self->{tbl},
-      );
+      $callback->(%callback_args);
    }
+
    return;
 }
 
@@ -300,9 +292,25 @@ sub nibble_index {
    return $self->{index};
 }
 
+sub statements {
+   my ($self) = @_;
+   return {
+      nibble                 => $self->{nibble_sth},
+      explain_nibble         => $self->{explain_nibble_sth},
+      upper_boundary         => $self->{ub_sth},
+      explain_upper_boundary => $self->{explain_ub_sth},
+   }
+}
+
 sub boundaries {
    my ($self) = @_;
-   return $self->{lb}, $self->{ub}, $self->{next_lb};
+   return {
+      first_lower => $self->{first_lb},
+      lower       => $self->{lb},
+      next_lower  => $self->{next_lb},
+      upper       => $self->{ub},
+      last_upper  => $self->{last_ub},
+   };
 }
 
 sub one_nibble {
@@ -312,6 +320,7 @@ sub one_nibble {
 
 sub set_chunk_size {
    my ($self, $limit) = @_;
+   return if $self->{one_nibble};
    MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
    die "Chunk size must be > 0" unless $limit;
    $self->{limit} = $limit - 1;
@@ -410,11 +419,14 @@ sub _can_nibble_once {
 sub _prepare_sths {
    my ($self) = @_;
    MKDEBUG && _d('Preparing statement handles');
+   $self->{nibble_sth}
+      = $self->{dbh}->prepare($self->{nibble_sql});
+   $self->{explain_nibble_sth}
+      = $self->{dbh}->prepare($self->{explain_nibble_sql});
    if ( !$self->{one_nibble} ) {
       $self->{ub_sth} = $self->{dbh}->prepare($self->{ub_sql});
+      $self->{explain_ub_sth} = $self->{dbh}->prepare($self->{explain_ub_sql});
    }
-   $self->{nibble_sth}  = $self->{dbh}->prepare($self->{nibble_sql});
-   $self->{explain_sth} = $self->{dbh}->prepare($self->{explain_nibble_sql});
    return;
 }
 
@@ -422,7 +434,8 @@ sub _get_bounds {
    my ($self) = @_;
    return if $self->{one_nibble};
 
-   $self->{next_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
+   $self->{first_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
+   $self->{next_lb}  = $self->{first_lb};
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lb}));
    
    $self->{last_ub} = $self->{dbh}->selectrow_arrayref($self->{last_ub_sql});
