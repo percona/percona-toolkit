@@ -305,10 +305,9 @@ sub statements {
 sub boundaries {
    my ($self) = @_;
    return {
-      first_lower => $self->{first_lb},
       lower       => $self->{lb},
-      next_lower  => $self->{next_lb},
       upper       => $self->{ub},
+      next_lower  => $self->{next_lb},
       last_upper  => $self->{last_ub},
    };
 }
@@ -439,8 +438,7 @@ sub _get_bounds {
    my ($self) = @_;
    return if $self->{one_nibble};
 
-   $self->{first_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
-   $self->{next_lb}  = $self->{first_lb};
+   $self->{next_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lb}));
    
    $self->{last_ub} = $self->{dbh}->selectrow_arrayref($self->{last_ub_sql});

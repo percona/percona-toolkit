@@ -60,6 +60,7 @@ my $tbl_name     = qr{
 #   Schema      - <Schema> object to initialize while iterating.
 #   TableParser - <TableParser> object to parse CREATE TABLE for tbl_struct.
 #   keep_ddl    - Keep CREATE TABLE (default false)
+#   resume      - Skip tables so first call to <next()> returns this "db.table".
 #
 # Returns:
 #   SchemaIterator object
@@ -75,8 +76,17 @@ sub new {
    die "I need either a dbh or file_itr argument"
       if (!$dbh && !$file_itr) || ($dbh && $file_itr);
 
+   my %resume;
+   if ( my $table = $args{resume} ) {
+      MKDEBUG && _d('Will resume from', $table);
+      my ($db, $tbl) = $args{Quoter}->split_unquote($table);
+      $resume{db}  = $db;
+      $resume{tbl} = $tbl;
+   }
+
    my $self = {
       %args,
+      resume  => \%resume,
       filters => _make_filters(%args),
    };
 
@@ -166,7 +176,7 @@ sub _make_filters {
    return \%filters;
 }
 
-# Sub: next_schema_object
+# Sub: next
 #   Return the next schema object or undef when no more schema objects.
 #   Only filtered schema objects are returned.  If iterating dump files
 #   (i.e. the obj was created with a file_itr arg), then the returned
@@ -186,7 +196,7 @@ sub _make_filters {
 #   }
 #   (end code)
 #   The ddl is suitable for <TableParser::parse()>.
-sub next_schema_object {
+sub next {
    my ( $self ) = @_;
 
    my $schema_obj;
@@ -242,7 +252,8 @@ sub _iterate_files {
          my $db = $1; # XXX
          $db =~ s/^`//;  # strip leading `
          $db =~ s/`$//;  # and trailing `
-         if ( $self->database_is_allowed($db) ) {
+         if ( $self->database_is_allowed($db)
+              && $self->_resume_from_database($db) ) {
             $self->{db} = $db;
          }
       }
@@ -261,7 +272,8 @@ sub _iterate_files {
          my ($tbl) = $chunk =~ m/$tbl_name/;
          $tbl      =~ s/^\s*`//;
          $tbl      =~ s/`\s*$//;
-         if ( $self->table_is_allowed($self->{db}, $tbl) ) {
+         if ( $self->table_is_allowed($self->{db}, $tbl)
+              && $self->_resume_from_table($tbl) ) {
             my ($ddl) = $chunk =~ m/^(?:$open_comment)?(CREATE TABLE.+?;)$/ms;
             if ( !$ddl ) {
                warn "Failed to parse CREATE TABLE from\n" . $chunk;
@@ -308,7 +320,9 @@ sub _iterate_dbh {
    }
 
    if ( !$self->{db} ) {
-      $self->{db} = shift @{$self->{dbs}};
+      do {
+         $self->{db} = shift @{$self->{dbs}};
+      } until $self->_resume_from_database($self->{db});
       MKDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
@@ -330,6 +344,7 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
+      next unless $self->_resume_from_table($tbl);
       my $engine;
       if ( $self->{filters}->{'engines'}
            || $self->{filters}->{'ignore-engines'} ) {
@@ -487,6 +502,36 @@ sub engine_is_allowed {
 
    # MKDEBUG && _d('Engine', $engine, 'is allowed');
    return 1;
+}
+
+sub _resume_from_database {
+   my ($self, $db) = @_;
+
+   # "Resume" from any db if we're not, in fact, resuming.
+   return 1 unless $self->{resume}->{db};
+
+   if ( $db eq $self->{resume}->{db} ) {
+      MKDEBUG && _d('At resume db', $db);
+      delete $self->{resume}->{db};
+      return 1;
+   }
+
+   return 0;
+}
+
+sub _resume_from_table {
+   my ($self, $tbl) = @_;
+
+   # "Resume" from any table if we're not, in fact, resuming.
+   return 1 unless $self->{resume}->{tbl};
+
+   if ( $tbl eq $self->{resume}->{tbl} ) {
+      MKDEBUG && _d('At resume table', $tbl);
+      delete $self->{resume}->{tbl};
+      return 1;
+   }
+
+   return 0;
 }
 
 sub _d {

@@ -1,0 +1,4 @@
+sakila.payment
+sakila.rental
+sakila.staff
+sakila.store
