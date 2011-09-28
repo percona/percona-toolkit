@@ -74,7 +74,7 @@ sub make_nibble_iter {
       Schema       => $schema,
       %common_modules,
    );
-   1 while $si->next_schema_object();
+   1 while $si->next();
 
    my $ni = new NibbleIterator(
       dbh        => $dbh,

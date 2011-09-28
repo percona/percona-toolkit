@@ -287,6 +287,14 @@ sub nibble_number {
    return $self->{nibbleno};
 }
 
+sub set_nibble_number {
+   my ($self, $n) = @_;
+   die "I need a number" unless $n;
+   $self->{nibbleno} = $n;
+   MKDEBUG && _d('Set new nibble number:', $n);
+   return;
+}
+
 sub nibble_index {
    my ($self) = @_;
    return $self->{index};
@@ -325,9 +333,9 @@ sub chunk_size {
 sub set_chunk_size {
    my ($self, $limit) = @_;
    return if $self->{one_nibble};
-   MKDEBUG && _d('Setting new chunk size (LIMIT):', $limit);
    die "Chunk size must be > 0" unless $limit;
    $self->{limit} = $limit - 1;
+   MKDEBUG && _d('Set new chunk size (LIMIT):', $limit);
    return;
 }
 
