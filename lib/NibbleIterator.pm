@@ -200,6 +200,13 @@ sub new {
          nibble_sql         => $nibble_sql,
          explain_ub_sql     => "EXPLAIN $ub_sql",
          explain_nibble_sql => $explain_nibble_sql,
+         sql                => {
+            columns    => $asc->{scols},
+            from       => $from,
+            where      => $args{where},
+            boundaries => $asc->{boundaries},
+            order_by   => $order_by,
+         },
       };
    }
 
@@ -337,6 +344,11 @@ sub set_chunk_size {
    $self->{limit} = $limit - 1;
    MKDEBUG && _d('Set new chunk size (LIMIT):', $limit);
    return;
+}
+
+sub sql {
+   my ($self) = @_;
+   return $self->{sql};
 }
 
 sub _find_best_index {
