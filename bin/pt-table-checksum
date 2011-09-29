@@ -5216,11 +5216,14 @@ $Data::Dumper::Quotekeys = 0;
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun = 1;
+my $print_header = 1; # print headers once
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   # Reset global vars else tests will fail in strange ways.
+   @ARGV         = @_;
+   $oktorun      = 1;  
+   $print_header = 1;
 
-   $oktorun = 1;  # global, must reset else tests will fail
    my $exit_status = 0;
 
    # ########################################################################
@@ -5980,7 +5983,6 @@ sub exec_nibble {
 {
 my $line_fmt     = "%14s %6s %6s %7s %7s %7s %7s %-s\n";
 my @headers      =  qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
-my $print_header = 1; # print headers once
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -6816,7 +6818,9 @@ should be printed, in percentage, seconds, or number of iterations.
 
 Don't print anything to STDOUT.
 
-=item --recheck
+=item --[no]recheck
+
+default: yes
 
 Re-checksum chunks that L<"--replicate-check"> found to be different.
 
