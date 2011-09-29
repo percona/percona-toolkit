@@ -446,24 +446,31 @@ sub _make_xor_slices {
 
 # Queries the replication table for chunks that differ from the master's data.
 sub find_replication_differences {
-   my ( $self, $dbh, $table ) = @_;
+   my ($self, %args) = @_;
+   my @required_args = qw(dbh repl_table);
+   foreach my $arg( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $repl_table) = @args{@required_args};
 
    (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
+      SELECT
+         CONCAT(db, '.', tbl) AS `table`,
+         chunk, chunk_index, lower_boundary, upper_boundary,
          COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
          COALESCE(
             this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
             0
          ) AS crc_diff,
          this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
+      FROM $repl_table
       WHERE master_cnt <> this_cnt OR master_crc <> this_crc
       OR ISNULL(master_crc) <> ISNULL(this_crc)
    EOF
 
    MKDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-   return @$diffs;
+   return $diffs;
 }
 
 sub _d {
