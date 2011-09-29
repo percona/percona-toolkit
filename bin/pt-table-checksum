@@ -5862,7 +5862,10 @@ sub main {
       }
 
       # Update the tool's exit status.
-      $exit_status |= 1 if $tbl->{checksum_results}->{errors};
+      if ( $tbl->{checksum_results}->{errors}
+           || $tbl->{checksum_results}->{diffs} ) {
+         $exit_status |= 1;
+      }
    }
 
    MKDEBUG && _d('Exit status', $exit_status, 'oktorun', $oktorun);
