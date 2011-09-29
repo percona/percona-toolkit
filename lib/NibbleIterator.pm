@@ -249,12 +249,12 @@ sub next {
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
          MKDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lb}}, @{$self->{ub}})));
+            join(', ', (@{$self->{lower}}, @{$self->{upper}})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
          else {
-            $self->{nibble_sth}->execute(@{$self->{lb}}, @{$self->{ub}});
+            $self->{nibble_sth}->execute(@{$self->{lower}}, @{$self->{upper}});
             $self->{have_rows} = $self->{nibble_sth}->rows();
          }
          MKDEBUG && _d($self->{have_rows}, 'rows in nibble', $self->{nibbleno});
@@ -320,11 +320,24 @@ sub statements {
 sub boundaries {
    my ($self) = @_;
    return {
-      lower       => $self->{lb},
-      upper       => $self->{ub},
-      next_lower  => $self->{next_lb},
-      last_upper  => $self->{last_ub},
+      lower       => $self->{lower},
+      upper       => $self->{upper},
+      next_lower  => $self->{next_lower},
+      last_upper  => $self->{last_upper},
    };
+}
+
+sub set_boundary {
+   my ($self, $boundary, $values) = @_;
+   die "I need a boundary parameter"
+      unless $boundary;
+   die "Invalid boundary: $boundary"
+      unless $boundary =~ m/^(?:lower|upper|next_lower|last_upper)$/;
+   die "I need a values arrayref parameter"
+      unless $values && ref $values eq 'ARRAY';
+   $self->{$boundary} = $values;
+   MKDEBUG && _d('Set new', $boundary, 'boundary:', Dumper($values));
+   return;
 }
 
 sub one_nibble {
@@ -458,12 +471,12 @@ sub _get_bounds {
    my ($self) = @_;
    return if $self->{one_nibble};
 
-   $self->{next_lb} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
-   MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lb}));
-   
-   $self->{last_ub} = $self->{dbh}->selectrow_arrayref($self->{last_ub_sql});
-   MKDEBUG && _d('Last upper boundary:', Dumper($self->{last_ub}));
-   
+   $self->{next_lower} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
+   MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
+
+   $self->{last_upper} = $self->{dbh}->selectrow_arrayref($self->{last_ub_sql});
+   MKDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
+
    return;
 }
 
@@ -476,7 +489,7 @@ sub _next_boundaries {
    }
 
    if ( $self->{one_nibble} ) {
-      $self->{lb} = $self->{ub} = [];
+      $self->{lower} = $self->{upper} = [];
       $self->{no_more_boundaries} = 1;  # for next call
       return 1; # continue nibbling
    }
@@ -487,7 +500,7 @@ sub _next_boundaries {
    # which will cause us to nibble further ahead and maybe get a new lower
    # boundary that isn't identical, but we can't detect this, and in any
    # case, if there's one infinite loop there will probably be others.
-   if ( $self->identical_boundaries($self->{lb}, $self->{next_lb}) ) {
+   if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       MKDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
@@ -495,17 +508,16 @@ sub _next_boundaries {
       my $chunkno = $self->{nibbleno};
       die "Possible infinite loop detected!  "
          . "The lower boundary for chunk $chunkno is "
-         . "<" . join(', ', @{$self->{lb}}) . "> and the lower "
+         . "<" . join(', ', @{$self->{lower}}) . "> and the lower "
          . "boundary for chunk " . ($chunkno + 1) . " is also "
-         . "<" . join(', ', @{$self->{next_lb}}) . ">.  "
+         . "<" . join(', ', @{$self->{next_lower}}) . ">.  "
          . "This usually happens when using a non-unique single "
          . "column index.  The current chunk index for table "
          . "$tbl->{db}.$tbl->{tbl} is $self->{index} which is"
          . ($index->{is_unique} ? '' : ' not') . " unique and covers "
          . ($n_cols > 1 ? "$n_cols columns" : "1 column") . ".\n";
    }
-
-   $self->{lb} = $self->{next_lb};
+   $self->{lower} = $self->{next_lower};
 
    if ( my $callback = $self->{callbacks}->{next_boundaries} ) {
       my $oktonibble = $callback->(
@@ -521,14 +533,14 @@ sub _next_boundaries {
    }
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
-      join(', ', @{$self->{lb}}), $self->{limit});
-   $self->{ub_sth}->execute(@{$self->{lb}}, $self->{limit});
+      join(', ', @{$self->{lower}}), $self->{limit});
+   $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    MKDEBUG && _d('Next boundary:', Dumper($boundary));
    if ( $boundary && @$boundary ) {
-      $self->{ub} = $boundary->[0]; # this nibble
+      $self->{upper} = $boundary->[0]; # this nibble
       if ( $boundary->[1] ) {
-         $self->{next_lb} = $boundary->[1]; # next nibble
+         $self->{next_lower} = $boundary->[1]; # next nibble
       }
       else {
          $self->{no_more_boundaries} = 1;  # for next call
@@ -537,8 +549,8 @@ sub _next_boundaries {
    }
    else {
       $self->{no_more_boundaries} = 1;  # for next call
-      $self->{ub} = $self->{last_ub};
-      MKDEBUG && _d('Last upper boundary:', Dumper($self->{ub}));
+      $self->{upper} = $self->{last_upper};
+      MKDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
    }
    $self->{ub_sth}->finish();
 
