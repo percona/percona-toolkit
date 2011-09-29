@@ -492,6 +492,10 @@ sub no_diff {
    if ( my $trf = $args{trf} ) {
       `$trf $tmp_file_orig > $tmp_file`;
    }
+   if ( my $post_pipe = $args{post_pipe} ) {
+      `cat $tmp_file | $post_pipe > $tmp_file-2`;
+       `mv $tmp_file-2 $tmp_file`;
+   }
    if ( my $sed_args = $args{sed} ) {
       foreach my $sed_args ( @{$args{sed}} ) {
          `cat $tmp_file | sed $sed_args > $tmp_file-2`;
