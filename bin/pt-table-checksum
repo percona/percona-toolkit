@@ -3293,21 +3293,17 @@ sub find_replication_differences {
    }
    my ($dbh, $repl_table) = @args{@required_args};
 
-   (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT
-         CONCAT(db, '.', tbl) AS `table`,
-         chunk, chunk_index, lower_boundary, upper_boundary,
-         COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
-         COALESCE(
-            this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
-            0
-         ) AS crc_diff,
-         this_cnt, master_cnt, this_crc, master_crc
-      FROM $repl_table
-      WHERE master_cnt <> this_cnt OR master_crc <> this_crc
-      OR ISNULL(master_crc) <> ISNULL(this_crc)
-   EOF
-
+   my $sql
+      = "SELECT CONCAT(db, '.', tbl) AS `table`, "
+      . "chunk, chunk_index, lower_boundary, upper_boundary, "
+      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE("
+      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      . "FROM $repl_table "
+      . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
+      .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
+      . ($args{where} ? " AND ($args{where})" : "");
    MKDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
    return $diffs;
@@ -5394,7 +5390,7 @@ sub main {
    # Check for replication filters.
    # ########################################################################
    if ( $o->get('check-replication-filters') ) {
-      MKDEBUG && _d("Checking slaves for replication filters");
+      MKDEBUG && _d("Checking slave replication filters");
       my @all_repl_filters;
       foreach my $host ( @$slaves ) {
          my $repl_filters = $ms->get_replication_filters(dbh=>$host->{dbh});
@@ -5717,7 +5713,61 @@ sub main {
       },
       done => sub { # done nibbling table
          my (%args) = @_;
-         return print_checksum_results(%args);
+         my $tbl         = $args{tbl};
+         my $nibble_iter = $args{NibbleIterator};
+         my $max_chunk   = $nibble_iter->nibble_number();
+
+         # Wait for all slaves to run all checksum chunks,
+         # then check for differences.
+         if ( $o->get('replicate-check') && scalar @$slaves ) {
+            MKDEBUG && _d('Checking slave diffs');
+
+            my $check_pr;
+            if ( $o->get('progress') ) {
+               $check_pr = new Progress(
+                  jobsize => $max_chunk,
+                  spec    => $o->get('progress'),
+                  name    => "Waiting to check replicas for differences",
+               );
+            }
+
+            my $sql = "SELECT MAX(chunk) FROM $repl_table "
+                    . "WHERE db='$tbl->{db}' AND tbl='$tbl->{tbl}'";
+            MKDEBUG && _d($sql);
+
+            my $n_slaves = scalar @$slaves - 1;
+            my @chunks   = (0);
+            while ( $chunks[0] < $max_chunk ) {
+               for my $i ( 0..$n_slaves ) {
+                  my $slave = $slaves->[$i];
+                  my ($chunk) = $slave->{dbh}->selectrow_array($sql);
+                  MKDEBUG && _d($slave->{dsn}->{n}, 'max chunk:', $chunk);
+                  $chunks[$i] = $chunk || 0;
+               }
+               @chunks = sort { $a <=> $b } @chunks;
+               if ( $chunks[0] < $max_chunk ) {
+                  $check_pr->update(sub { return $chunks[0]; });
+                  sleep 1;
+               }
+            }
+
+            foreach my $slave ( @$slaves ) {
+               my $diffs = $rc->find_replication_differences(
+                  dbh        => $slave->{dbh},
+                  repl_table => $repl_table,
+                  where      => "db='$tbl->{db}' AND tbl='$tbl->{tbl}'",
+               );
+               MKDEBUG && _d(scalar @$diffs, 'checksum diffs on',
+                  $slave->{dsn}->{n});
+               if ( @$diffs ) {
+                  $tbl->{checksum_results}->{diffs} = scalar @$diffs;
+               }
+            }
+         }
+
+         print_checksum_results(tbl => $tbl);
+
+         return;
       },
    };
 
