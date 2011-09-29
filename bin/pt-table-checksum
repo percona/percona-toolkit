@@ -3286,24 +3286,31 @@ sub _make_xor_slices {
 }
 
 sub find_replication_differences {
-   my ( $self, $dbh, $table ) = @_;
+   my ($self, %args) = @_;
+   my @required_args = qw(dbh repl_table);
+   foreach my $arg( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $repl_table) = @args{@required_args};
 
    (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
+      SELECT
+         CONCAT(db, '.', tbl) AS `table`,
+         chunk, chunk_index, lower_boundary, upper_boundary,
          COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
          COALESCE(
             this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
             0
          ) AS crc_diff,
          this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
+      FROM $repl_table
       WHERE master_cnt <> this_cnt OR master_crc <> this_crc
       OR ISNULL(master_crc) <> ISNULL(this_crc)
    EOF
 
    MKDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-   return @$diffs;
+   return $diffs;
 }
 
 sub _d {
@@ -5345,26 +5352,31 @@ sub main {
    my $retry = new Retry();
 
    # ########################################################################
-   # Check replication slaves if desired.  If only --replicate-check is given,
-   # then we will exit here.  If --recheck is also given, then we'll continue
-   # through the entire script but checksum only the inconsistent tables found
-   # here.
+   # Check replication slaves.
    # ########################################################################
    my $repl_table = $q->quote($q->split_unquote($o->get('replicate')));
 
-   if ( defined $o->get('replicate-check') ) {
-      foreach my $host ( @$slaves ) {
-         my @tbls = $rc->find_replication_differences($host->{dbh},$repl_table);
-         next unless @tbls;
-         $exit_status |= 1;
-         print_inconsistent_tbls(
-            dsn          => $host->{dsn},
-            tbls         => \@tbls,
-            OptionParser => $o,
-            DSNParser    => $dp,
+   if ( $o->get('replicate-check') && !$o->get('recheck') ) {
+      MKDEBUG && _d('Will --replicate-check and exit');
+
+      foreach my $slave ( @$slaves ) {
+         my $diffs = $rc->find_replication_differences(
+            dbh        => $slave->{dbh},
+            repl_table => $repl_table,
          );
+         MKDEBUG && _d(scalar @$diffs, 'checksum diffs on', $slave->{dsn}->{n});
+         if ( @$diffs ) {
+            $exit_status |= 1;
+            next if $o->get('quiet');
+            print_checksum_diffs(
+               cxn   => $slave,
+               diffs => $diffs,
+            );
+         }
       }
-      return $exit_status unless $o->get('recheck');
+
+      MKDEBUG && _d('Exit status', $exit_status, 'oktorun', $oktorun);
+      return $exit_status;
    }
 
    # ########################################################################
@@ -5475,7 +5487,7 @@ sub main {
    my $limit      = $o->get('chunk-size-limit');
 
    # ########################################################################
-   # Resume
+   # Get last chunk for --resume.
    # ########################################################################
    my $last_chunk;
    if ( $o->get('resume') ) {
@@ -5508,14 +5520,17 @@ sub main {
                Quoter     => $q,
             );
             if ( !$next_lb ) {
+               # This can happen if the tool stops after the last checksum
+               # of a table.  So we just start with the next table.
                MKDEBUG && _d('Resuming from last chunk in table;',
                   'getting next table');
                $oktonibble = 0;
             }
             else {
-               MKDEBUG && _d('Resuming from chunk', $last_chunk->{chunk});
                $nibble_iter->set_nibble_number($last_chunk->{chunk});
                $nibble_iter->set_boundary('next_lower', $next_lb);
+               print "Resuming from $tbl->{db}.$tbl->{tbl} at chunk "
+                  . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
             }
 
             # Just need to call us once to kick-start the resume process.
@@ -5944,6 +5959,28 @@ sub print_checksum_results {
 }
 }
 
+{
+my @headers = qw(table chunk cnt_diff crc_diff chunk_index lower_boundary upper_boundary);
+
+sub print_checksum_diffs {
+   my ( %args ) = @_;
+   my @required_args = qw(cxn diffs);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $diffs) = @args{@required_args};
+
+   print "Differences on $cxn->{dsn}->{n}\n";
+   print join(' ', map { uc $_ } @headers), "\n";
+   foreach my $diff ( @$diffs ) {
+      print join(' ', map { defined $_ ? $_ : '' } @{$diff}{@headers}), "\n";
+   }
+   print "\n";
+
+   return;
+}
+}
+
 # Check for existence and privileges on the replication table before
 # starting, and prepare the statements that will be used to update it.
 # Also clean out the checksum table.  And create it if needed.
@@ -6140,27 +6177,6 @@ sub explain_statement {
    }
    MKDEBUG && _d('EXPLAIN plan:', Dumper($expl));
    return $expl;
-}
-
-sub print_inconsistent_tbls {
-   my ( %args ) = @_;
-   my @required_args = qw(dsn tbls OptionParser DSNParser);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($dsn, $tbls, $o, $dp) = @args{@required_args};
-
-   my @headers = qw(db tbl chunk cnt_diff crc_diff boundaries);
-   print "Differences on " . $dp->as_string($dsn, [qw(h P F)]) . "\n";
-   my $max_db   = max(5, map { length($_->{db})  } @$tbls);
-   my $max_tbl  = max(5, map { length($_->{tbl}) } @$tbls);
-   my $fmt      = "%-${max_db}s %-${max_tbl}s %5s %8s %8s %s\n";
-   printf($fmt, map { uc } @headers) or die "Cannot print: $OS_ERROR";
-   foreach my $tbl ( @$tbls ) {
-      printf($fmt, @{$tbl}{@headers}) or die "Cannot print: $OS_ERROR";
-   }
-   print "\n" or die "Cannot print: $OS_ERROR";
-   return;
 }
 
 sub table_progress {
@@ -6841,6 +6857,10 @@ The value is a comma-separated list with two parts.  The first part can be
 percentage, time, or iterations; the second part specifies how often an update
 should be printed, in percentage, seconds, or number of iterations.
 
+=item --quiet
+
+Don't print anything to STDOUT.
+
 =item --recheck
 
 Re-checksum chunks that L<"--replicate-check"> found to be different.
@@ -6970,8 +6990,6 @@ rules, see L<http://dev.mysql.com/doc/en/replication-rules.html>.
 The table specified by L<"--replicate"> will never be checksummed itself.
 
 =item --replicate-check
-
-type: int
 
 Check results in L<"--replicate"> table, to the specified depth.  You must use
 this after you run the tool normally; it skips the checksum step and only checks
