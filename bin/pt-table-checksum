@@ -5734,8 +5734,13 @@ sub main {
                );
             }
 
+            # Requiring "AND master_crc IS NOT NULL" avoids a race condition
+            # when the system is fast but replication is slow.  In such cases,
+            # we can select on the slave before the update for $update_sth
+            # replicates; this causes a false-positive diff.
             my $sql = "SELECT MAX(chunk) FROM $repl_table "
-                    . "WHERE db='$tbl->{db}' AND tbl='$tbl->{tbl}'";
+                    . "WHERE db='$tbl->{db}' AND tbl='$tbl->{tbl}' "
+                    . "AND master_crc IS NOT NULL";
             MKDEBUG && _d($sql);
 
             my $n_slaves = scalar @$slaves - 1;
@@ -6187,7 +6192,7 @@ sub create_repl_table {
    my ($dbh, $repl_table, $o) = @args{@required_args};
    MKDEBUG && _d('Creating --replicate table', $repl_table); 
    my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_replicate/);
-   $sql =~ s/CREATE TABLE checksum/CREATE TABLE $repl_table/;
+   $sql =~ s/CREATE TABLE checksums/CREATE TABLE $repl_table/;
    $sql =~ s/;$//;
    MKDEBUG && _d($dbh, $sql);
    eval {
@@ -6893,7 +6898,7 @@ this_crc, master_crc, this_cnt, master_cnt.  The table may be named anything you
 wish.  Here is a suggested table structure, which is automatically used for
 L<"--create-replicate-table"> (MAGIC_create_replicate):
 
-  CREATE TABLE checksum (
+  CREATE TABLE checksums (
      db             char(64)     NOT NULL,
      tbl            char(64)     NOT NULL,
      chunk          int          NOT NULL,
