@@ -13,7 +13,7 @@ ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 0 0 6 1 0 mysql.proc
 0 0 0 1 0 mysql.procs_priv
 0 0 0 1 0 mysql.servers
-0 1 0 1 0 mysql.tables_priv
+0 0 0 1 0 mysql.tables_priv
 0 0 0 1 0 mysql.time_zone
 0 0 0 1 0 mysql.time_zone_leap_second
 0 0 0 1 0 mysql.time_zone_name
