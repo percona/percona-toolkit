@@ -5215,8 +5215,9 @@ $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
-my $oktorun = 1;
-my $print_header = 1; # print headers once
+
+my $oktorun      = 1;
+my $print_header = 1;
 
 sub main {
    # Reset global vars else tests will fail in strange ways.
@@ -5288,7 +5289,7 @@ sub main {
    # ########################################################################
    my $dsn_defaults = $dp->parse_options($o);
    my $dsn          = $dp->parse(shift @ARGV, undef, $dsn_defaults);
-   my $dbh = get_cxn(
+   my $dbh          = get_cxn(
       dsn          => $dsn,
       DSNParser    => $dp,
       OptionParser => $o,
@@ -5343,16 +5344,9 @@ sub main {
    );
 
    # ########################################################################
-   # Create modules needed from here forward.
+   # Check replication slaves and possibly exit.
    # ########################################################################
-   my $tp    = new TableParser(Quoter => $q);
-   my $tn    = new TableNibbler(TableParser => $tp, Quoter => $q);
-   my $rc    = new RowChecksum(Quoter=> $q, OptionParser => $o);
-   my $retry = new Retry();
-
-   # ########################################################################
-   # Check replication slaves.
-   # ########################################################################
+   my $rc         = new RowChecksum(Quoter=> $q, OptionParser => $o);
    my $repl_table = $q->quote($q->split_unquote($o->get('replicate')));
 
    if ( $o->get('replicate-check') && !$o->get('recheck') ) {
@@ -5366,11 +5360,12 @@ sub main {
          MKDEBUG && _d(scalar @$diffs, 'checksum diffs on', $slave->{dsn}->{n});
          if ( @$diffs ) {
             $exit_status |= 1;
-            next if $o->get('quiet');
-            print_checksum_diffs(
-               cxn   => $slave,
-               diffs => $diffs,
-            );
+            if ( $o->get('quiet') < 2 ) { 
+               print_checksum_diffs(
+                  cxn   => $slave,
+                  diffs => $diffs,
+               );
+            }
          }
       }
 
@@ -5381,6 +5376,7 @@ sub main {
    # ########################################################################
    # Check that the replication table exists, or possibly create it.
    # ########################################################################
+   my $tp = new TableParser(Quoter => $q);
    check_repl_table(
       dbh          => $dbh,
       repl_table   => $repl_table,
@@ -5478,14 +5474,6 @@ sub main {
    );
 
    # ########################################################################
-   # Variables for adjusting chunk size for each table and chunk.
-   # ########################################################################
-   my $total_rows = 0;
-   my $total_time = 0;
-   my $total_rate = 0;
-   my $limit      = $o->get('chunk-size-limit');
-
-   # ########################################################################
    # Get last chunk for --resume.
    # ########################################################################
    my $last_chunk;
@@ -5495,6 +5483,16 @@ sub main {
          repl_table => $repl_table,
       );
    }
+
+   # ########################################################################
+   # Various variables and modules for checksumming the tables.
+   # ########################################################################
+   my $total_rows = 0;
+   my $total_time = 0;
+   my $total_rate = 0;
+   my $limit      = $o->get('chunk-size-limit');
+   my $tn         = new TableNibbler(TableParser => $tp, Quoter => $q);
+   my $retry      = new Retry();
 
    # ########################################################################
    # Callbacks for each table's nibble iterator.  All checksum work is done
@@ -5528,8 +5526,12 @@ sub main {
             else {
                $nibble_iter->set_nibble_number($last_chunk->{chunk});
                $nibble_iter->set_boundary('next_lower', $next_lb);
-               print "Resuming from $tbl->{db}.$tbl->{tbl} at chunk "
-                  . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
+               MKDEBUG && _d('Resuming from', $last_chunk->{chunk},
+                  'at', $last_chunk->{ts});
+               if ( !$o->get('quiet') ) {
+                  print "Resuming from $tbl->{db}.$tbl->{tbl} at chunk "
+                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
+               }
             }
 
             # Just need to call us once to kick-start the resume process.
@@ -5557,10 +5559,13 @@ sub main {
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
          if ( ($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
-            warn "Aborting $tbl->{db}.$tbl->{tbl} because "
-               . ($nibble_iter->nibble_number() + 1)
-               . " cannot be nibbled safely.\n";
-            $tbl->{checksum_results}->{errors}++;
+            MKDEBUG && _d('Cannot nibble next chunk, aborting table');
+            if ( $o->get('quiet') < 2 ) {
+               warn "Aborting $tbl->{db}.$tbl->{tbl} because "
+                  . ($nibble_iter->nibble_number() + 1)
+                  . " cannot be nibbled safely.\n";
+            }
+            $tbl->{checksum_results}->{skipped}++;
             return 0; # stop nibbling table
          }
 
@@ -5621,8 +5626,9 @@ sub main {
          # Exec and time the chunk checksum query.
          $tbl->{nibble_time} = exec_nibble(
             %args,
-            Retry  => $retry,
-            Quoter => $q
+            Retry        => $retry,
+            Quoter       => $q,
+            OptionParser => $o,
          );
          MKDEBUG && _d('Nibble time:', $tbl->{nibble_time});
 
@@ -5682,14 +5688,16 @@ sub main {
                if ( $tbl->{chunk_size} < 1 ) {
                   # This shouldn't happen.  WeightedAvgRate::update() may return
                   # a value < 1, but minimum chunk size is 1.
-                  warn "Checksums are executing very slowly.  --chunk-size "
-                     . "has been automatically reduced to 1.  Check that the "
-                     . "server is not being overloaded, or increase "
-                     . "--chunk-time.  The last chunk, number $args{nibbleno} "
-                     . "of table $tbl->{db}.$tbl->{tbl}, selected $cnt rows "
-                     . "and took "
-                     . sprintf('%.3f', $tbl->{nibble_time})
-                     . " seconds to execute.\n";
+                  if ( $o->get('quiet') < 2 ) {
+                     warn "Checksums are executing very slowly.  --chunk-size "
+                        . "has been automatically reduced to 1.  Check that "
+                        . "the server is not being overloaded, or increase "
+                        . "--chunk-time.  The last chunk, number "
+                        . "$args{nibbleno} of table $tbl->{db}.$tbl->{tbl}, "
+                        . "selected $cnt rows and took "
+                        . sprintf('%.3f', $tbl->{nibble_time})
+                        . " seconds to execute.\n";
+                  }
                   $tbl->{chunk_size} = 1;
                }
                $args{NibbleIterator}->set_chunk_size($tbl->{chunk_size});
@@ -5773,7 +5781,13 @@ sub main {
             }
          }
 
-         print_checksum_results(tbl => $tbl);
+         # Print table's checksum results if we're not being quiet,
+         # else print if table has diffs and we're not being completely
+         # quiet.
+         if ( !$o->get('quiet')
+              || $o->get('quiet') < 2 &&  $tbl->{checksum_results}->{diffs} ) {
+            print_checksum_results(tbl => $tbl);
+         }
 
          return;
       },
@@ -5793,10 +5807,6 @@ sub main {
    TABLE:
    while ( $oktorun &&  (my $tbl = $schema_iter->next()) ) {
       eval {
-         # Results, stats, and info related to checksuming this table can
-         # be saved here.  print_checksum_results() uses this info.
-         $tbl->{checksum_results} = {};
-
          # USE the correct db while checksumming this table.  The "correct"
          # db is a complicated subject; see sub for comments.
          use_repl_db(
@@ -5818,6 +5828,40 @@ sub main {
                         : $o->get('chunk-size');
          $tbl->{chunk_size} = $chunk_size;
 
+         # Make a nibble iterator for this table.  This should only fail
+         # if the table has no indexes and is too large to checksum in
+         # one chunk.
+         my $checksum_cols = $rc->make_chunk_checksum(
+            dbh => $dbh,
+            tbl => $tbl,
+            %crc_args
+         );
+         my $nibble_iter;
+         eval {
+            $nibble_iter = new NibbleIterator(
+               dbh          => $dbh,
+               tbl          => $tbl,
+               chunk_size   => $tbl->{chunk_size},
+               chunk_index  => $o->get('chunk-index'),
+               dms          => $checksum_dms,
+               select       => $checksum_cols,
+               callbacks    => $callbacks,
+               OptionParser => $o,
+               Quoter       => $q,
+               TableNibbler => $tn,
+               TableParser  => $tp,
+               RowChecksum  => $rc,
+            );
+         };
+         if ( $EVAL_ERROR ) {
+            if ( $o->get('quiet') < 2 ) {
+               warn "Cannot checksum table $tbl->{db}.$tbl->{tbl}: "
+                  . "$EVAL_ERROR\n";
+            }
+            $exit_status |= 1;
+            next TABLE;
+         }
+
          # Init a new weighted avg rate calculator for the table.
          $tbl->{rate} = new WeightedAvgRate(target_t => $chunk_time);
 
@@ -5833,26 +5877,10 @@ sub main {
             );
          }
 
-         # Make a nibble iterator for this table.
-         my $checksum_cols = $rc->make_chunk_checksum(
-            dbh => $dbh,
-            tbl => $tbl,
-            %crc_args
-         );
-         my $nibble_iter = new NibbleIterator(
-            dbh          => $dbh,
-            tbl          => $tbl,
-            chunk_size   => $tbl->{chunk_size},
-            chunk_index  => $o->get('chunk-index'),
-            dms          => $checksum_dms,
-            select       => $checksum_cols,
-            callbacks    => $callbacks,
-            OptionParser => $o,
-            Quoter       => $q,
-            TableNibbler => $tn,
-            TableParser  => $tp,
-            RowChecksum  => $rc,
-         );
+         # Results, stats, and info related to checksuming this table can
+         # be saved here.  print_checksum_results() uses this info.
+         $tbl->{checksum_results} = {};
+         $tbl->{checksum_results}->{start_time} = time;
 
          # Finally, checksum the table.
          # The "1 while" loop is necessary because we're executing REPLACE
@@ -5860,12 +5888,16 @@ sub main {
          # returns if it has rows to return.  So all the work is done via
          # the callbacks. -- print_checksum_results(), which is called
          # from the done callback, uses this start time.
-         $tbl->{checksum_results}->{start_time} = time;
          1 while $nibble_iter->next();
       };
-      if ($EVAL_ERROR) {
-         warn "Error checksumming $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
+      if ( $EVAL_ERROR ) {
+         # This should not happen.  If it does, it's probably some bug
+         # or error that we're not catching.
+         warn "Error checksumming table $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
          $tbl->{checksum_results}->{errors}++;
+
+         # Print whatever checksums results we got before dying, regardless
+         # of --quiet because at this point we need all the info we can get.
          print_checksum_results(tbl => $tbl);
       }
 
@@ -5897,11 +5929,11 @@ sub get_cxn {
 
 sub exec_nibble {
    my (%args) = @_;
-   my @required_args = qw(dbh tbl NibbleIterator Retry Quoter);
+   my @required_args = qw(dbh tbl NibbleIterator Retry Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $nibble_iter, $retry, $q)= @args{@required_args};
+   my ($dbh, $tbl, $nibble_iter, $retry, $q, $o)= @args{@required_args};
    
    my $sth         = $nibble_iter->statements();
    my $boundary    = $nibble_iter->boundaries();
@@ -5977,17 +6009,16 @@ sub exec_nibble {
          return $t_end - $t_start; # success, return nibble time
       },
       on_failure => sub {
-         # Checksum query caused an error,
-         # or something in the try sub died.
+         # Checksum query caused an error, or something in the try sub died.
+         warn "Error executing checksum query: $EVAL_ERROR\n";
          $tbl->{checksum_results}->{errors}++;
-         warn $EVAL_ERROR;
       },
    );
 }
 
 {
-my $line_fmt     = "%14s %6s %6s %7s %7s %7s %7s %-s\n";
-my @headers      =  qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
+my $line_fmt = "%14s %6s %6s %7s %7s %7s %7s %-s\n";
+my @headers  =  qw(TS ERRORS DIFFS ROWS CHUNKS SKIPPED TIME TABLE);
 
 sub print_checksum_results {
    my (%args) = @_;
@@ -6232,7 +6263,7 @@ sub explain_statement {
    };
    if ( $EVAL_ERROR ) {
       # This shouldn't happen.
-      warn "Failed to " . $sth->{Statement} . ": $EVAL_ERROR\n";
+      warn "Error executing " . $sth->{Statement} . ": $EVAL_ERROR\n";
       $tbl->{checksum_results}->{errors}++;
    }
    MKDEBUG && _d('EXPLAIN plan:', Dumper($expl));
@@ -6494,12 +6525,10 @@ TODO
 
 =head1 EXIT STATUS
 
-An exit status of 0 (sometimes also called a return value or return code)
-indicates success.  If there is an error checksumming any table, the exit status
-is 1.
-
-When running L<"--replicate-check">, if any slave has chunks that differ from
-the master, the exit status is 1.
+A 0 (zero) exit status indicates complete success: no errors, no warnings,
+and no checksum differences (if L<"--[no]replicate-check"> is enabled).
+Else, a non-zero exit status indicates one or more error, warning, or
+checksum difference.
 
 =head1 QUERIES
 
@@ -6821,13 +6850,22 @@ should be printed, in percentage, seconds, or number of iterations.
 
 =item --quiet
 
-Don't print anything to STDOUT.
+cumulative: yes; default: 0
+
+Print only the most important information (disables L<"--progress">).
+
+Specifying this option once prints only errors, warnings, and tables with
+checksum differences (if L<"--[no]replicate-check"> is enabled).
+
+Specifying this option twice prints only errors.  In this case,
+the tool's L<"EXIT STATUS"> indicates if there were any warnings or
+checksum differences.
 
 =item --[no]recheck
 
 default: yes
 
-Re-checksum chunks that L<"--replicate-check"> found to be different.
+Re-checksum chunks that L<"--[no]replicate-check"> found to be different.
 
 =item --recurse
 
@@ -6886,8 +6924,8 @@ through the binlog to the slaves.
 
 When the queries are finished replicating, you can run a simple query on each
 slave to see which tables have differences from the master.  With the
-L<"--replicate-check"> option, pt-table-checksum can run the query for you to
-make it even easier.  See L<"CONSISTENT CHECKSUMS"> for details.  
+L<"--[no]replicate-check"> option, pt-table-checksum can run the query for
+you to make it even easier.
 
 If you find tables that have differences, you can use the chunk boundaries in a
 WHERE clause with L<pt-table-sync> to help repair them more efficiently.  See
