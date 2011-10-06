@@ -21,6 +21,7 @@ use TableParser;
 use TableNibbler;
 use RowChecksum;
 use NibbleIterator;
+use Cxn;
 use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
@@ -41,11 +42,17 @@ else {
    plan tests => 26;
 }
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter=>$q);
-my $nb = new TableNibbler(TableParser=>$tp, Quoter=>$q);
-my $o  = new OptionParser(description => 'NibbleIterator');
-my $rc = new RowChecksum(OptionParser => $o, Quoter=>$q);
+my $q   = new Quoter();
+my $tp  = new TableParser(Quoter=>$q);
+my $nb  = new TableNibbler(TableParser=>$tp, Quoter=>$q);
+my $o   = new OptionParser(description => 'NibbleIterator');
+my $rc  = new RowChecksum(OptionParser => $o, Quoter=>$q);
+my $cxn = new Cxn(
+   dbh          => $dbh,
+   dsn          => { h=>'127.1', P=>'12345', n=>'h=127.1,P=12345' },
+   DSNParser    => $dp,
+   OptionParser => $o,
+);
 
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
@@ -77,7 +84,7 @@ sub make_nibble_iter {
    1 while $si->next();
 
    my $ni = new NibbleIterator(
-      dbh        => $dbh,
+      Cxn        => $cxn,
       tbl        => $schema->get_table($args{db}, $args{tbl}),
       chunk_size => $o->get('chunk-size'),
       callbacks  => $args{callbacks},

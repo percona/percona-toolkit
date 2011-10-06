@@ -12,6 +12,7 @@ use English qw(-no_match_vars);
 use Test::More tests => 5;
 
 use ReplicaLagWaiter;
+use Cxn;
 use PerconaTest;
 
 my $oktorun = 1;
@@ -36,13 +37,13 @@ sub sleep {
 }
 
 my $rll = new ReplicaLagWaiter(
-   oktorun   => \&oktorun,
-   get_lag   => \&get_lag,
-   sleep     => \&sleep,
-   max_lag   => 1,
-   slaves    => [
-      { dsn=>{n=>'slave1'}, dbh=>1 },
-      { dsn=>{n=>'slave2'}, dbh=>2 },
+   oktorun => \&oktorun,
+   get_lag => \&get_lag,
+   sleep   => \&sleep,
+   max_lag => 1,
+   slaves  => [
+      new Cxn(dsn=>{n=>'slave1'}, dbh=>1, DSNParser=>1, OptionParser=>1),
+      new Cxn(dsn=>{n=>'slave2'}, dbh=>2, DSNParser=>1, OptionParser=>1),
    ],
 );
 

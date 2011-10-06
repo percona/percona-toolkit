@@ -38,11 +38,11 @@ sub new {
 
 sub get_slaves {
    my ($self, %args) = @_;
-   my @required_args = qw(OptionParser DSNParser Quoter);
+   my @required_args = qw(make_cxn OptionParser DSNParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($o, $dp) = @args{@required_args};
+   my ($make_cxn, $o, $dp) = @args{@required_args};
 
    my $slaves = [];
    my $method = $o->get('recursion-method');
@@ -63,9 +63,7 @@ sub get_slaves {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
                MKDEBUG && _d('Found slave:', $dp->as_string($dsn));
-               $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
-               $dbh->{FetchHashKeyName} = 'NAME_lc';
-               push @$slaves, { dsn=>$dsn, dbh=>$dbh };
+               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
                return;
             },
          }
@@ -849,11 +847,11 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn DSNParser Quoter);
+   my @required_args = qw(dsn_table_dsn make_cxn DSNParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $dp, $q) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn, $dp, $q) = @args{@required_args};
    MKDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
 
    my $dsn = $dp->parse($dsn_table_dsn);
@@ -869,20 +867,18 @@ sub get_cxn_from_dsn_table {
         . "or a database-qualified table (t)";
    }
 
-   my @cxn;
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
-   my $sql = "SELECT dsn FROM $dsn_table ORDER BY id";
+   my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
+   my $dbh         = $dsn_tbl_cxn->connect();
+   my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
    MKDEBUG && _d($sql);
-   my $dsns = $dbh->selectcol_arrayref($sql);
-   if ( $dsns ) {
-      foreach my $dsn ( @$dsns ) {
-         MKDEBUG && _d('DSN from DSN table:', $dsn);
-         my $dsn = $dp->parse($dsn);
-         my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn));
-         push @cxn, {dsn=>$dsn, dbh=>$dbh};
+   my $dsn_strings = $dbh->selectcol_arrayref($sql);
+   my @cxn;
+   if ( $dsn_strings ) {
+      foreach my $dsn_string ( @$dsn_strings ) {
+         MKDEBUG && _d('DSN from DSN table:', $dsn_string);
+         push @cxn, $make_cxn->(dsn_string => $dsn_string);
       }
    }
-   $dbh->disconnect();
    return \@cxn;
 }
 

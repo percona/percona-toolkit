@@ -16,6 +16,7 @@ use DSNParser;
 use VersionParser;
 use OptionParser;
 use Quoter;
+use Cxn;
 use Sandbox;
 use PerconaTest;
 
@@ -50,10 +51,19 @@ SKIP: {
       OptionParser => $o,
       DSNParser    => $dp,
       Quoter       => $q,
+      make_cxn     => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
    );
 
    is_deeply(
-      $slaves->[0]->{dsn},
+      $slaves->[0]->dsn(),
       {  A => undef,
          D => undef,
          F => undef,
@@ -63,6 +73,7 @@ SKIP: {
          p => 'msandbox',
          t => undef,
          u => 'msandbox',
+         n => 'h=127.0.0.1,P=12346',
          server_id => 12346,
          master_id => 12345,
          source    => 'hosts',
@@ -70,14 +81,12 @@ SKIP: {
       'get_slaves() from recurse_to_slaves()'
    );
 
-   my ($id) = $slaves->[0]->{dbh}->selectrow_array('SELECT @@SERVER_ID');
+   my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
    is(
       $id,
       '12346',
       'dbh created from get_slaves()'
    );
-
-   $slaves->[0]->{dbh}->disconnect();
 }
 
 # #############################################################################
@@ -170,6 +179,7 @@ is_deeply(
       D => undef,
       A => undef,
       t => undef,
+      n => 'h=127.0.0.1,P=2900',
    },
    'Got master DSN',
 );
@@ -531,6 +541,15 @@ my $slaves = $ms->get_slaves(
    OptionParser => $o,
    DSNParser    => $dp,
    Quoter       => $q,
+   make_cxn     => sub {
+      my $cxn = new Cxn(
+         @_,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $cxn->connect();
+      return $cxn;
+   },
 );
 
 is_deeply(
@@ -543,19 +562,18 @@ is_deeply(
       h => '127.1',
       p => 'msandbox',
       t => undef,
-      u => 'msandbox'
+      u => 'msandbox',
+      n => 'h=127.1,P=12346',
    },
    'get_slaves() from DSN table'
 );
 
-my ($id) = $slaves->[0]->{dbh}->selectrow_array('SELECT @@SERVER_ID');
+my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
 is(
    $id,
    '12346',
    'dbh created from DSN table works'
 );
-
-$slaves->[0]->{dbh}->disconnect();
 
 # #############################################################################
 # Done.

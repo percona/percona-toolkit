@@ -37,7 +37,7 @@ use Data::Dumper;
 #   get_lag - Callback passed slave dbh and returns slave's lag
 #   sleep   - Callback to sleep between checking lag.
 #   max_lag - Max lag
-#   slaves  - Arrayref of slave cxn, like [{dsn=>{...}, dbh=>...},...]
+#   slaves  - Arrayref of <Cxn> objects
 #
 # Returns:
 #   ReplicaLagWaiter object 
@@ -101,7 +101,7 @@ sub wait {
       MKDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
          my $slave = $lagged_slaves[$i];
-         my $lag   = $get_lag->($slave->{dbh});
+         my $lag   = $get_lag->($slave->dbh());
          MKDEBUG && _d($slave->{dsn}->{n}, 'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
             $slave->{lag} = $lag;
