@@ -35,7 +35,7 @@ $Data::Dumper::Quotekeys = 0;
 # Sub: new
 #
 # Required Arguments:
-#   dbh          - dbh
+#   cxn          - <Cxn> object
 #   tbl          - Standard tbl ref
 #   chunk_size   - Number of rows to nibble per chunk
 #   OptionParser - <OptionParser> object
@@ -51,18 +51,18 @@ $Data::Dumper::Quotekeys = 0;
 #  NibbleIterator object 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(dbh tbl chunk_size OptionParser Quoter TableNibbler TableParser);
+   my @required_args = qw(Cxn tbl chunk_size OptionParser Quoter TableNibbler TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $chunk_size, $o, $q) = @args{@required_args};
+   my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ?  _can_nibble_once(%args)
+                  ?  _can_nibble_once(dbh => $cxn->dbh(), %args)
                   : 0;
 
    # Get an index to nibble by.  We'll order rows by the index's columns.
-   my $index = _find_best_index(%args);
+   my $index = _find_best_index(dbh => $cxn->dbh(), %args);
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
@@ -221,7 +221,7 @@ sub next {
    my ($self) = @_;
 
    my %callback_args = (
-      dbh            => $self->{dbh},
+      Cxn            => $self->{Cxn},
       tbl            => $self->{tbl},
       NibbleIterator => $self,
    );
@@ -456,14 +456,17 @@ sub _can_nibble_once {
 sub _prepare_sths {
    my ($self) = @_;
    MKDEBUG && _d('Preparing statement handles');
-   $self->{nibble_sth}
-      = $self->{dbh}->prepare($self->{nibble_sql});
-   $self->{explain_nibble_sth}
-      = $self->{dbh}->prepare($self->{explain_nibble_sql});
+
+   my $dbh = $self->{Cxn}->dbh();
+
+   $self->{nibble_sth}         = $dbh->prepare($self->{nibble_sql});
+   $self->{explain_nibble_sth} = $dbh->prepare($self->{explain_nibble_sql});
+
    if ( !$self->{one_nibble} ) {
-      $self->{ub_sth} = $self->{dbh}->prepare($self->{ub_sql});
-      $self->{explain_ub_sth} = $self->{dbh}->prepare($self->{explain_ub_sql});
+      $self->{ub_sth} = $dbh->prepare($self->{ub_sql});
+      $self->{explain_ub_sth} = $dbh->prepare($self->{explain_ub_sql});
    }
+
    return;
 }
 
@@ -471,10 +474,12 @@ sub _get_bounds {
    my ($self) = @_;
    return if $self->{one_nibble};
 
-   $self->{next_lower} = $self->{dbh}->selectrow_arrayref($self->{first_lb_sql});
+   my $dbh = $self->{Cxn}->dbh();
+
+   $self->{next_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
 
-   $self->{last_upper} = $self->{dbh}->selectrow_arrayref($self->{last_ub_sql});
+   $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
    MKDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
 
    return;
@@ -521,7 +526,7 @@ sub _next_boundaries {
 
    if ( my $callback = $self->{callbacks}->{next_boundaries} ) {
       my $oktonibble = $callback->(
-         dbh            => $self->{dbh},
+         Cxn            => $self->{Cxn},
          tbl            => $self->{tbl},
          NibbleIterator => $self,
       );
