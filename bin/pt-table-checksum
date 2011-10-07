@@ -1431,6 +1431,7 @@ sub new {
       dsn_string   => $args{dsn_string},
       dsn          => $dsn,
       dbh          => $args{dbh},
+      set          => $args{set},
       OptionParser => $o,
       DSNParser    => $dp,
    };
@@ -1447,8 +1448,9 @@ sub connect {
 
    my $dbh = $self->{dbh};
    if ( !$dbh ) {
-      if ( $o->get('ask-pass') ) {
-         $dsn->{p} = OptionParser::prompt_noecho("Enter password: ");
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
       }
 
       $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
@@ -1464,6 +1466,10 @@ sub set_dbh {
    return $dbh if $self->{dbh} && $self->{dbh} == $dbh;
 
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
 
    $self->{dbh} = $dbh;
    return $dbh;
@@ -5340,13 +5346,72 @@ sub main {
    # ########################################################################
    # Connect to the master.
    # ########################################################################
-   my $master_cxn = new Cxn(
-      dsn_string   => shift @ARGV,
-      DSNParser    => $dp,
-      OptionParser => $o,
-   );
-   my $dbh = $master_cxn->connect();  # connect or die trying
-   my $dsn = $master_cxn->dsn();
+   my $set_on_connect = sub {
+      my ($dbh) = @_;
+
+      my $sql = 'SET /*!50108 @@binlog_format := "STATEMENT"*/';
+      MKDEBUG && _d($dbh, $sql);
+      $dbh->do($sql);
+
+      # Set transaction isolation level.
+      # http://code.google.com/p/maatkit/issues/detail?id=720
+      $sql = 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ';
+      eval {
+         MKDEBUG && _d($dbh, $sql);
+         $dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Failed to $sql: $EVAL_ERROR\n"
+            . "If the --replicate table is InnoDB and the default server "
+            . "transaction isolation level is not REPEATABLE-READ then "
+            . "checksumming may fail with errors like \"Binary logging not "
+            . "possible. Message: Transaction level 'READ-COMMITTED' in "
+            . "InnoDB is not safe for binlog mode 'STATEMENT'\".  In that "
+            . "case you will need to manually set the transaction isolation "
+            . "level to REPEATABLE-READ.\n";
+      }
+
+      $sql = 'SHOW SESSION VARIABLES LIKE "innodb_lock_wait_timeout"';
+      MKDEBUG && _d($dbh, $sql);
+      my (undef, $lock_wait_timeout) = $dbh->selectrow_array($sql);
+      MKDEBUG && _d('innodb_lock_wait_timeout', $lock_wait_timeout);
+      if ( ($lock_wait_timeout || 0) > $o->get('lock-wait-timeout') ) {
+         $sql = 'SET SESSION innodb_lock_wait_timeout=1';
+         eval {
+            MKDEBUG && _d($dbh, $sql);
+            $dbh->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            die "Failed to $sql: $EVAL_ERROR\n"
+               . "The current innodb_lock_wait_timeout value "
+               . "$lock_wait_timeout is higher than the --lock-wait-timeout "
+               . "value " . $o->get('lock-wait-timeout') . " and the variable "
+               . "cannot be changed.  innodb_lock_wait_timeout is only dynamic "
+               . "when using the InnoDB plugin.  To prevent this error, either "
+               . "specify --lock-wait-time=$lock_wait_timeout, or manually "
+               . "set innodb_lock_wait_timeout to a value less than or equal "
+               . "to " . $o->get('lock-wait-timeout') . " and restart MySQL.\n";
+         }
+      }
+   };
+
+   # Do not call "new Cxn(" directly; use this sub so that set_on_connect
+   # is applied to every cxn.
+   # TODO: maybe this stuff only needs to be set on master cxn?
+   my $make_cxn = sub {
+      my $cxn = new Cxn(
+         @_,
+         DSNParser    => $dp,
+         OptionParser => $o,
+         set          => $set_on_connect,
+      );
+      $cxn->connect();  # connect or die trying
+      return $cxn;
+   };
+
+   my $master_cxn = $make_cxn->(dsn_string => shift @ARGV);
+   my $dbh        = $master_cxn->dbh();  # just for brevity
+   my $dsn        = $master_cxn->dsn();  # just for brevity
 
    # ########################################################################
    # Find and connect to slaves.
@@ -5360,15 +5425,7 @@ sub main {
       OptionParser => $o,
       DSNParser    => $dp,
       Quoter       => $q,
-      make_cxn     => sub {
-         my $cxn = new Cxn(
-            @_,
-            DSNParser    => $dp,
-            OptionParser => $o,
-         );
-         $cxn->connect();
-         return $cxn;
-      },
+      make_cxn     => $make_cxn,
    );
    MKDEBUG && _d(scalar @$slaves, 'slaves found');
 
@@ -5378,12 +5435,7 @@ sub main {
       # OptionParser can't auto-copy DSN vals from a cmd line DSN
       # to an opt DSN, so we copy them manually.
       my $dsn = $dp->copy($master_cxn->dsn(), $o->get('check-slave-lag'));
-      my $cxn = new Cxn(
-         dsn          => $dsn,
-         DSNParser    => $dp,
-         OptionParser => $o,
-      );
-      $cxn->connect();  # connect or die trying
+      my $cxn = $make_cxn->(dsn => $dsn);
       $slave_lag_cxns = [ $cxn ];
    }
    else {
@@ -5464,26 +5516,6 @@ sub main {
       }
    }
 
-   # ########################################################################
-   # Set transaction isolation level.
-   # http://code.google.com/p/maatkit/issues/detail?id=720
-   # ########################################################################
-   my $sql = "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ";
-   eval {
-      MKDEBUG && _d($dbh, $sql);
-      $dbh->do($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      $dbh->disconnect();
-      die "Failed to $sql: $EVAL_ERROR\n"
-         . "If the --replicate table is InnoDB and the default server "
-         . "transaction isolation level is not REPEATABLE-READ then "
-         . "checksumming may fail with errors like \"Binary logging not "
-         . "possible. Message: Transaction level 'READ-COMMITTED' in "
-         . "InnoDB is not safe for binlog mode 'STATEMENT'\".  In that "
-         . "case you will need to manually set the transaction isolation "
-         . "level to REPEATABLE-READ.\n";
-   }
 
    # ########################################################################
    # Checksum query statementn and sths to update the checksum table.
@@ -6001,8 +6033,7 @@ sub exec_nibble {
          my $t_start = time;        
 
          # Reset the BIT_XOR user vars.
-         my $sql = 'SET @crc := "", @cnt := 0 /*!50108 , '
-                 . '@@binlog_format := "STATEMENT"*/';
+         my $sql = 'SET @crc := "", @cnt := 0';
          MKDEBUG && _d($sql);
          $dbh->do($sql);
 
@@ -6885,6 +6916,12 @@ Table names may be qualified with the database name.
 type: string; group: Filter
 
 Ignore tables whose names match the Perl regex.
+
+=item --lock-wait-timeout
+
+type: int; default: 1
+
+Set innodb_lock_wait_timeout to this value.
 
 =item --max-lag
 
