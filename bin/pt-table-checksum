@@ -5889,6 +5889,10 @@ sub main {
    TABLE:
    while ( $oktorun &&  (my $tbl = $schema_iter->next()) ) {
       eval {
+         # Results, stats, and info related to checksuming this table can
+         # be saved here.  print_checksum_results() uses this info.
+         $tbl->{checksum_results} = {};
+
          # USE the correct db while checksumming this table.  The "correct"
          # db is a complicated subject; see sub for comments.
          use_repl_db(
@@ -5940,7 +5944,7 @@ sub main {
                warn "Cannot checksum table $tbl->{db}.$tbl->{tbl}: "
                   . "$EVAL_ERROR\n";
             }
-            $exit_status |= 1;
+            $tbl->{checksum_results}->{errors}++;
          }
          else {
             # Init a new weighted avg rate calculator for the table.
@@ -5958,17 +5962,13 @@ sub main {
                );
             }
 
-            # Results, stats, and info related to checksuming this table can
-            # be saved here.  print_checksum_results() uses this info.
-            $tbl->{checksum_results} = {};
-            $tbl->{checksum_results}->{start_time} = time;
-
             # Finally, checksum the table.
             # The "1 while" loop is necessary because we're executing REPLACE
             # statements which don't return rows and NibbleIterator only
             # returns if it has rows to return.  So all the work is done via
             # the callbacks. -- print_checksum_results(), which is called
             # from the done callback, uses this start time.
+            $tbl->{checksum_results}->{start_time} = time;
             1 while $nibble_iter->next();
          }
       };
@@ -5999,12 +5999,24 @@ sub main {
 # ############################################################################
 
 {
-my %ignore_warning_code = (
+# Completely ignore these error codes.
+my %ignore_code = (
    # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
    # Message: Statement may not be safe to log in statement format. 
    # Ignore this warning because we have purposely set statement-based
    # replication.
    1592 => 1,
+);
+
+# Warn once per-table for these error codes if the error message
+# matches the pattern.
+my %warn_code = (
+   # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
+   # Message: Data truncated for column '%s' at row %ld
+   1265 => {
+      pattern => qr/for column '(?:lower|upper)_boundary'/,
+      warning => "WHERE clause too large for boundaries.",
+   },
 );
 
 sub exec_nibble {
@@ -6064,13 +6076,30 @@ sub exec_nibble {
          MKDEBUG && _d($sql_warn);
          my $warnings = $dbh->selectall_arrayref($sql_warn, { Slice => {} } );
          foreach my $warning ( @$warnings ) {
-            if ( $ignore_warning_code{ ($warning->{code} || 0) } ) {
-               MKDEBUG && _d('Ignoring warning:', $warning->{code},
-                  $warning->{message});
+            my $code = ($warning->{code} || 0);
+            if ( $ignore_code{$code} ) {
+               MKDEBUG && _d('Ignoring warning:', $code, $warning->{message});
                next;
             }
+            elsif ( $warn_code{$code}
+                    && $warning->{message} =~ m/$warn_code{$code}->{pattern}/ )
+            {
+               if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
+                  if ( $o->get('quiet') < 2 ) {
+                     warn "Checksum query for table $tbl->{db}.$tbl->{tbl} "
+                        . "caused MySQL error $code: "
+                        . $warn_code{$code}->{warning} . "\n";
+                  }
+                  $tbl->{"warned_code_$code"} = 1;
+                  $tbl->{checksum_results}->{errors}++;
+               }
+            }
             else {
-               die "Checksum query caused a warning:\n"
+               # This die will propagate to fail which will return 0
+               # and propagate it to final_fail which will die with
+               # this error message.
+               die "Checksum query for table $tbl->{db}.$tbl->{tbl} "
+                  . "caused MySQL error $code:\n"
                   . "    Level: " . ($warning->{level} || '')   . "\n"
                   . "     Code: " . ($warning->{code} || '')    . "\n"
                   . "  Message: " . ($warning->{message} || '') . "\n"
@@ -6098,13 +6127,8 @@ sub exec_nibble {
             # The 2nd pattern means that MySQL itself died or was stopped.
             # The 3rd pattern means that our cxn was killed (KILL <id>).
             eval { $dbh = $cxn->connect(); };
-            if ( !$EVAL_ERROR ) {
-               # Reconnected, retry checksum query.
-               return 1;
-            }
-
-            # Failed to reconnect, exit tool.
-            $oktorun = 0;
+            return 1 unless $EVAL_ERROR; # reconnected, retry checksum query
+            $oktorun = 0;                # failed to reconnect, exit tool
          }
 
          # At this point, either the error/warning cannot be retried,
@@ -6120,7 +6144,10 @@ sub exec_nibble {
          ) {
             # These errors/warnings are not fatal but only cause this
             # nibble to be skipped.
-            warn "$error\n";
+            if ( $o->get('quiet') < 2 ) {
+               warn "$error\n";
+            }
+            $tbl->{checksum_results}->{errors}++;
             return 0;  # zero nibble time, skip this nibble
          }
 
