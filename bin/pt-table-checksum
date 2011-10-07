@@ -5405,7 +5405,10 @@ sub main {
          OptionParser => $o,
          set          => $set_on_connect,
       );
-      $cxn->connect();  # connect or die trying
+      eval { $cxn->connect() };  # connect or die trying
+      if ( $EVAL_ERROR ) {
+         die ts($EVAL_ERROR);
+      }
       return $cxn;
    };
 
@@ -5512,7 +5515,7 @@ sub main {
          }
          $msg .= "Please read the --check-replication-filters documentation "
                . "to learn how to solve this problem.";
-         die $msg;
+         die ts($msg);
       }
    }
 
@@ -5609,8 +5612,8 @@ sub main {
                MKDEBUG && _d('Resuming from', $last_chunk->{chunk},
                   'at', $last_chunk->{ts});
                if ( !$o->get('quiet') ) {
-                  print "Resuming from $tbl->{db}.$tbl->{tbl} at chunk "
-                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
+                  print ts("Resuming from $tbl->{db}.$tbl->{tbl} at chunk "
+                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n");
                }
             }
 
@@ -5641,9 +5644,9 @@ sub main {
          if ( ($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
             MKDEBUG && _d('Cannot nibble next chunk, aborting table');
             if ( $o->get('quiet') < 2 ) {
-               warn "Aborting $tbl->{db}.$tbl->{tbl} because "
+               warn ts("Aborting $tbl->{db}.$tbl->{tbl} because "
                   . ($nibble_iter->nibble_number() + 1)
-                  . " cannot be nibbled safely.\n";
+                  . " cannot be nibbled safely.\n");
             }
             $tbl->{checksum_results}->{errors}++;
             return 0; # stop nibbling table
@@ -5771,14 +5774,14 @@ sub main {
                   # This shouldn't happen.  WeightedAvgRate::update() may return
                   # a value < 1, but minimum chunk size is 1.
                   if ( $o->get('quiet') < 2 ) {
-                     warn "Checksums are executing very slowly.  --chunk-size "
-                        . "has been automatically reduced to 1.  Check that "
-                        . "the server is not being overloaded, or increase "
-                        . "--chunk-time.  The last chunk, number "
+                     warn ts("Checksums are executing very slowly.  "
+                        . "--chunk-size has been automatically reduced to 1.  "
+                        . "Check that the server is not being overloaded, "
+                        . "or increase --chunk-time.  The last chunk, number "
                         . "$chunk of table $tbl->{db}.$tbl->{tbl}, "
                         . "selected $cnt rows and took "
                         . sprintf('%.3f', $tbl->{nibble_time})
-                        . " seconds to execute.\n";
+                        . " seconds to execute.\n");
                   }
                   $tbl->{chunk_size} = 1;
                }
@@ -5941,8 +5944,8 @@ sub main {
          };
          if ( $EVAL_ERROR ) {
             if ( $o->get('quiet') < 2 ) {
-               warn "Cannot checksum table $tbl->{db}.$tbl->{tbl}: "
-                  . "$EVAL_ERROR\n";
+               warn ts("Cannot checksum table $tbl->{db}.$tbl->{tbl}: "
+                  . "$EVAL_ERROR\n");
             }
             $tbl->{checksum_results}->{errors}++;
          }
@@ -5975,7 +5978,8 @@ sub main {
       if ( $EVAL_ERROR ) {
          # This should not happen.  If it does, it's probably some bug
          # or error that we're not catching.
-         warn "Error checksumming table $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR\n";
+         warn ts("Error checksumming table $tbl->{db}.$tbl->{tbl}: "
+            . "$EVAL_ERROR\n");
          $tbl->{checksum_results}->{errors}++;
 
          # Print whatever checksums results we got before dying, regardless
@@ -5997,6 +6001,12 @@ sub main {
 # ############################################################################
 # Subroutines
 # ############################################################################
+sub ts {
+   my ($msg) = @_;
+   my ($s, $m, $h, $d, $M) = localtime;
+   my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $d, $M+1, $h, $m, $s);
+   return $msg ? "$ts $msg" : $ts;
+}
 
 {
 # Completely ignore these error codes.
@@ -6086,9 +6096,9 @@ sub exec_nibble {
             {
                if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
                   if ( $o->get('quiet') < 2 ) {
-                     warn "Checksum query for table $tbl->{db}.$tbl->{tbl} "
+                     warn ts("Checksum query for table $tbl->{db}.$tbl->{tbl} "
                         . "caused MySQL error $code: "
-                        . $warn_code{$code}->{warning} . "\n";
+                        . $warn_code{$code}->{warning} . "\n");
                   }
                   $tbl->{"warned_code_$code"} = 1;
                   $tbl->{checksum_results}->{errors}++;
@@ -6097,7 +6107,7 @@ sub exec_nibble {
             else {
                # This die will propagate to fail which will return 0
                # and propagate it to final_fail which will die with
-               # this error message.
+               # this error message.  (So don't wrap it in ts().)
                die "Checksum query for table $tbl->{db}.$tbl->{tbl} "
                   . "caused MySQL error $code:\n"
                   . "    Level: " . ($warning->{level} || '')   . "\n"
@@ -6180,11 +6190,9 @@ sub print_checksum_results {
       $print_header = 0;
    }
 
-   my ($s, $m, $h, $d, $M) = localtime;
-
    my $res = $tbl->{checksum_results};
    printf $line_fmt,
-      sprintf('%02d-%02dT%02d:%02d:%02d', $d, $M+1, $h, $m, $s),
+      ts(),
       $res->{errors}   || 0,
       $res->{diffs}    || 0,
       $res->{n_rows}   || 0,
@@ -6244,9 +6252,9 @@ sub check_repl_table {
          create_repl_table(%args)
       }
       else {
-         die  "--replicate table $repl_table does not exist; "
+         die ts("--replicate table $repl_table does not exist; "
             . "read the documentation or use --create-replicate-table "
-            . "to create it.\n";
+            . "to create it.\n");
       }
    }
    else {
@@ -6258,8 +6266,8 @@ sub check_repl_table {
          tbl       => $tbl,
          all_privs => 1,
       );
-      die "User does not have all privileges on --replicate table $repl_table"
-         unless $have_tbl_privs;
+      die ts("User does not have all privileges on --replicate table "
+         . "$repl_table") unless $have_tbl_privs;
    }
 
    return;
@@ -6347,11 +6355,11 @@ sub use_repl_db {
          my $opt = $o->get('replicate-database') ? "--replicate-database"
                  :                                 "--replicate database";
          if ( $EVAL_ERROR =~ m/unknown database/i ) {
-            die "$opt `$db` does not exist.  You need to create the "
-               . "database or specify a database for $opt that exists.\n";
+            die ts("$opt $db does not exist.  You need to create the "
+               . "database or specify a database for $opt that exists.\n");
          }
          else {
-            die "Error using $opt `$db`: $EVAL_ERROR\n";
+            die ts("Error using $opt $db: $EVAL_ERROR\n");
          }
       }
       $current_db = $db;
@@ -6377,7 +6385,7 @@ sub create_repl_table {
       $dbh->do($sql);
    };
    if ( $EVAL_ERROR ) {
-      die "--create-replicate-table failed: $EVAL_ERROR";
+      die ts("--create-replicate-table failed: $EVAL_ERROR");
    }
 
    return;
@@ -6410,7 +6418,7 @@ sub explain_statement {
    };
    if ( $EVAL_ERROR ) {
       # This shouldn't happen.
-      warn "Error executing " . $sth->{Statement} . ": $EVAL_ERROR\n";
+      warn ts("Error executing " . $sth->{Statement} . ": $EVAL_ERROR\n");
       $tbl->{checksum_results}->{errors}++;
    }
    MKDEBUG && _d('EXPLAIN plan:', Dumper($expl));
@@ -6470,8 +6478,11 @@ sub last_chunk {
    MKDEBUG && _d($sql);
    my ($max_chunk) = $dbh->selectrow_array($sql);
    if ( ($last_chunk->{chunk} || 0) ne ($max_chunk || 0) ) {
-      warn "Not resuming from max chunk (" . ($last_chunk->{chunk} || 0)
-         . " != " . ($max_chunk || 0) > "); resuming may not work correctly.\n";
+      warn ts("Not resuming from max chunk ("
+         . ($last_chunk->{chunk} || 0)
+         . " != "
+         . ($max_chunk || 0)
+         . "); resuming may not work correctly.\n");
    }
 
    return $last_chunk;
@@ -6486,10 +6497,10 @@ sub next_lower_boundary {
    my ($dbh, $tbl, $last_chunk, $nibble_iter, $q) = @args{@required_args};
 
    if ( $nibble_iter->nibble_index() ne ($last_chunk->{chunk_index} || '') ) {
-      warn "Cannot resume from table $tbl->{db}.$tbl->{tbl} chunk "
+      warn ts("Cannot resume from table $tbl->{db}.$tbl->{tbl} chunk "
          . "$last_chunk->{chunk} because the chunk index are different: "
          . "$last_chunk->{chunk_index} was used originally but "
-         . $nibble_iter->nibble_index() . " is used now.\n";
+         . $nibble_iter->nibble_index() . " is used now.\n");
       $tbl->{checksum_results}->{errors}++;
       return;
    }
@@ -6527,7 +6538,6 @@ sub sig_int {
       exit 1;
    }
 }
-
 
 sub _d {
    my ($package, undef, $line) = caller 0;
