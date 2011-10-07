@@ -19,7 +19,17 @@
 # ###########################################################################
 {
 # Package: Cxn
-# Cxn creates a connection to MySQL and initializes it properly.
+# Cxn creates and properly initializes a MySQL connection.  This class
+# encapsulates connections for several reasons.  One, initialization
+# may involve setting or changing several things, so centralizing this
+# guarantees that each cxn is properly and consistently initialized.
+# Two, the class's deconstructor (DESTROY) ensures that each cxn is
+# disconnected even if the program dies unexpectedly.  Three, when a cxn
+# is lost and re-connected, accessing the dbh via the sub dbh() instead
+# of via the var $dbh ensures that the program always uses the new, correct
+# dbh.  Four, by encapsulating a cxn with subs that manage that cxn,
+# the receiver of a Cxn obj can re-connect the cxn if it's lost without
+# knowing how that's done (and it shouldn't know; that's not its job).
 package Cxn;
 
 use strict;
@@ -27,6 +37,20 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+# Sub: new
+#
+# Required Arguments:
+#   DSNParser    - <DSNParser> object
+#   OptionParser - <OptionParser> object
+#   dsn          - DSN hashref, or...
+#   dsn_string   - ... DSN string like "h=127.1,P=12345"
+#
+# Optional Arguments:
+#   dbh - Pre-created, uninitialized dbh
+#   set - Callback to set vars on dbh when dbh is first connected
+# 
+# Returns:
+#   Cxn object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(DSNParser OptionParser);
@@ -47,6 +71,7 @@ sub new {
       dsn_string   => $args{dsn_string},
       dsn          => $dsn,
       dbh          => $args{dbh},
+      set          => $args{set},
       OptionParser => $o,
       DSNParser    => $dp,
    };
@@ -63,8 +88,10 @@ sub connect {
 
    my $dbh = $self->{dbh};
    if ( !$dbh ) {
-      if ( $o->get('ask-pass') ) {
-         $dsn->{p} = OptionParser::prompt_noecho("Enter password: ");
+      # Ask for password once.
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
       }
 
       $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
@@ -82,6 +109,10 @@ sub set_dbh {
 
    # Set stuff for this dbh (i.e. initialize it).
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
 
    $self->{dbh} = $dbh;
    return $dbh;
