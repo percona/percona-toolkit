@@ -89,7 +89,8 @@ diag(`rm $outfile >/dev/null 2>&1`);
 # the tool runs without errors or warnings and checksums all tables.
 ok(
    no_diff(
-      sub { pt_table_checksum::main($dsn, '--create-replicate-table') },
+      sub { pt_table_checksum::main($dsn, '--create-replicate-table',
+         qw(--lock-wait-timeout 3)) },
       "$sample/default-results-5.1.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
    ),
@@ -112,7 +113,8 @@ cmp_ok(
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main($dsn, qw(--chunk-time 0)) },
+      sub { pt_table_checksum::main($dsn, qw(--chunk-time 0),
+         qw(--lock-wait-timeout 3)) },
       "$sample/static-chunk-size-results-5.1.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),

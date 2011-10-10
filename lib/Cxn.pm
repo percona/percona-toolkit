@@ -87,7 +87,7 @@ sub connect {
    my $o   = $self->{OptionParser};
 
    my $dbh = $self->{dbh};
-   if ( !$dbh ) {
+   if ( !$dbh || !$dbh->ping() ) {
       # Ask for password once.
       if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");

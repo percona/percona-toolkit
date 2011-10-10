@@ -84,27 +84,29 @@ sub wait {
       # to add Transformers.pm to this tool.
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
+         my $dsn_name = $worst->{cxn}->dsn()->{n} || '?';
          if ( defined $worst->{lag} ) {
-            print STDERR "Replica lag is $worst->{lag} seconds on "
-               . "$worst->{dsn}->{n}.  Waiting.\n";
+            print STDERR "Replica lag is " . ($worst->{lag} || '?')
+               . " seconds on $dsn_name.  Waiting.\n";
          }
          else {
-            print STDERR "Replica $worst->{dsn}->{n} is stopped.  Waiting.\n";
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
          }
          return;
       };
       $pr->set_callback($pr_callback);
    }
 
-   my @lagged_slaves = @$slaves;  # first check all slaves
+   # First check all slaves.
+   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
    while ( $oktorun->() && @lagged_slaves ) {
       MKDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
-         my $slave = $lagged_slaves[$i];
-         my $lag   = $get_lag->($slave->dbh());
-         MKDEBUG && _d($slave->{dsn}->{n}, 'slave lag:', $lag);
+         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         MKDEBUG && _d($lagged_slaves[$i]->{cxn}->dsn()->{n},
+            'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
-            $slave->{lag} = $lag;
+            $lagged_slaves[$i]->{lag} = $lag;
          }
          else {
             delete $lagged_slaves[$i];
@@ -116,13 +118,13 @@ sub wait {
       if ( @lagged_slaves ) {
          # Sort lag, undef is highest because it means the slave is stopped.
          @lagged_slaves = reverse sort {
-              defined $a && defined $b ? $a <=> $b
-            : defined $a               ? -1
-            :                             1;
+              defined $a->{lag} && defined $b->{lag} ? $a->{lag} <=> $b->{lag}
+            : defined $a->{lag}                      ? -1
+            :                                           1;
          } @lagged_slaves;
          $worst = $lagged_slaves[0];
          MKDEBUG && _d(scalar @lagged_slaves, 'slaves are lagging, worst:',
-            Dumper($worst));
+            $worst->{lag}, 'on', Dumper($worst->{cxn}->dsn()));
 
          if ( $pr ) {
             # There's no real progress because we can't estimate how long
@@ -133,7 +135,7 @@ sub wait {
          }
 
          MKDEBUG && _d('Calling sleep callback');
-         $sleep->();
+         $sleep->($worst->{cxn}, $worst->{lag});
       }
    }
 
