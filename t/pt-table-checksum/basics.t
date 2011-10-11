@@ -31,7 +31,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my $cnf = '/tmp/12345/my.sandbox.cnf';
@@ -47,35 +47,6 @@ sub reset_repl_db {
    $master_dbh->do("drop database if exists $repl_db");
    $master_dbh->do("create database $repl_db");
    $master_dbh->do("use $repl_db");
-}
-
-sub set_tx_isolation {
-   my ( $level ) = @_;
-   $master_dbh->do("set global transaction isolation level $level");
-   $master_dbh->disconnect();
-   $master_dbh = $sb->get_dbh_for('master');
-   $row = $master_dbh->selectrow_arrayref("show variables like 'tx_isolation'");
-   $level =~ s/ /-/g;
-   $level = uc $level;
-   is(
-      $row->[1],
-      $level,
-      "Tx isolation $level"
-   );
-}
-
-sub set_binlog_format {
-   my ( $format ) = @_;
-   $master_dbh->do("set global binlog_format=$format");
-   $master_dbh->disconnect();
-   $master_dbh = $sb->get_dbh_for('master');
-   $row = $master_dbh->selectrow_arrayref("show variables like 'binlog_format'");
-   $format = uc $format;
-   is(
-      $row->[1],
-      $format,
-      "Binlog format $format"
-   );
 }
 
 reset_repl_db();
@@ -125,37 +96,18 @@ $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums")
 is(
    $row->[0],
    78,
-   '78 checksums'
+   '78 checksums on master'
 );
 
-# #############################################################################
-# Issue 720: mk-table-checksum --replicate should set transaction isolation
-# level
-# #############################################################################
-#SKIP: {
-#   skip "binlog_format test for MySQL v5.1+", 6
-#      unless $sandbox_version gt '5.0';
-#
-#   empty_repl_tbl();
-#   set_binlog_format('row');
-#   set_tx_isolation('read committed');
-#
-#   $output = output(
-#      sub { pt_table_checksum::main(@args) },
-#      stderr   => 1,
-#   );
-#   like(
-#      $output,
-#      qr/test\s+checksum_test\s+0\s+127.0.0.1\s+MyISAM\s+1\s+83dcefb7/,
-#      "Set session transaction isolation level repeatable read"
-#   );
-#
-#   set_binlog_format('statement');
-#   set_tx_isolation('repeatable read');
-#}
+$row = $slave_dbh->selectrow_arrayref("select count(*) from percona.checksums");
+is(
+   $row->[0],
+   78,
+   '78 checksums on slave'
+);
 
 # #############################################################################
 # Done.
 # #############################################################################
-#$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($master_dbh);
 exit;
