@@ -28,8 +28,8 @@ else {
 }
 
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1', qw(-t test.ascii --chunk-column c));
+my $cnf  ='/tmp/12345/my.sandbox.cnf';
+my @args = ("F=$cnf", qw(--lock-wait-timeout 3 --chunk-time 0 --chunk-size-limit 0 --tables test.ascii));
 
 $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
