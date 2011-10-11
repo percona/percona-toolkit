@@ -1988,7 +1988,7 @@ sub main {
          else {
             printf "%s %5.2f %9.3f %5d %5d %.6f %.6f %.6f %.6f %.6f %.6f\n",
                @{$event}{qw(
-                ts concurrency throughput arrivals completions res_time
+                ts concurrency throughput arrivals completions busy_time
                 weighted_time sum_time variance_mean quantile_time obs_time)};
          }
          $pr->update($tell) if $pr;
