@@ -82,7 +82,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
          . ($args{where} ? " AND ($args{where})" : '')
-         . " /*one nibble*/";
+         . " /*checksum table*/";
       MKDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
@@ -91,7 +91,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
          . ($args{where} ? " AND ($args{where})" : '')
-         . " /*explain one nibble*/";
+         . " /*explain checksum table*/";
       MKDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -158,7 +158,7 @@ sub new {
                      . ($args{where} ? " AND ($args{where})" : '')
          . " ORDER BY $order_by"
          . " LIMIT ?, 2"
-         . " /*upper boundary*/";
+         . " /*next chunk boundary*/";
       MKDEBUG && _d('Upper boundary statement:', $ub_sql);
 
       # This statement does the actual nibbling work; its rows are returned
@@ -172,7 +172,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($args{where} ? " AND ($args{where})" : '')
          . " ORDER BY $order_by"
-         . " /*nibble*/";
+         . " /*checksum chunk*/";
       MKDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -184,7 +184,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($args{where} ? " AND ($args{where})" : '')
          . " ORDER BY $order_by"
-         . " /*explain nibble*/";
+         . " /*explain checksum chunk*/";
       MKDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
@@ -362,6 +362,11 @@ sub set_chunk_size {
 sub sql {
    my ($self) = @_;
    return $self->{sql};
+}
+
+sub more_boundaries {
+   my ($self) = @_;
+   return !$self->{no_more_boundaries};
 }
 
 sub _find_best_index {

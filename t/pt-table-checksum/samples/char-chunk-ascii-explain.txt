@@ -1,9 +1,17 @@
-test     ascii SELECT /*test.ascii:1/8*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `c`)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `test`.`ascii` FORCE INDEX (`c`) WHERE (`c` < ')')
-test     ascii `c` < ')'
-test     ascii `c` >= ')' AND `c` < '1'
-test     ascii `c` >= '1' AND `c` < '9'
-test     ascii `c` >= '9' AND `c` < 'A'
-test     ascii `c` >= 'A' AND `c` < 'I'
-test     ascii `c` >= 'I' AND `c` < 'Q'
-test     ascii `c` >= 'Q' AND `c` < 'Y'
-test     ascii `c` >= 'Y'
+--
+-- test.ascii
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `c`)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `test`.`ascii` FORCE INDEX(`c`) WHERE ((`c` >= ?)) AND ((`c` <= ?)) ORDER BY `c` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `c` FROM `test`.`ascii` FORCE INDEX(`c`) WHERE ((`c` >= ?)) ORDER BY `c` LIMIT ?, 2 /*next chunk boundary*/
+
+1  burt
+2 Cameron Frances
+3 Fred jane
+4 jayne kirk
+5 Kirsten Mr. Rogers
+6 Natalie Sean
+7 sidney Zesus!
+8 Zesus!! ZESUS!!!
+
