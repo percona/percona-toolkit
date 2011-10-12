@@ -34,8 +34,11 @@ else {
    plan tests => 5;
 }
 
-my $cnf = '/tmp/12345/my.sandbox.cnf';
-my $dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
 
 my $row;
 my $output;
@@ -49,19 +52,21 @@ sub reset_repl_db {
    $master_dbh->do("use $repl_db");
 }
 
-reset_repl_db();
+$sb->wipe_clean($master_dbh);
 diag(`rm $outfile >/dev/null 2>&1`);
 
 # ############################################################################
-# Default checksum, results
+# Default checksum and results.  The tool does not technically require any
+# options on well-configured systems (which the test env cannot be).  With
+# nothing but defaults, it should create the repl table, checksum and check
+# all tables, dynamically adjust the chunk size, and throttle itself and based
+# on all slaves' lag.  We don't explicitly test throttling here; that's done
+# in throttle.t.
 # ############################################################################
 
-# Check that without any special options (other than --create-replicate-table)
-# the tool runs without errors or warnings and checksums all tables.
 ok(
    no_diff(
-      sub { pt_table_checksum::main($dsn, '--create-replicate-table',
-         qw(--lock-wait-timeout 3)) },
+      sub { pt_table_checksum::main(@args) },
       "$sample/default-results-5.1.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
    ),
@@ -84,8 +89,7 @@ cmp_ok(
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main($dsn, qw(--chunk-time 0),
-         qw(--lock-wait-timeout 3)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
       "$sample/static-chunk-size-results-5.1.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),

@@ -5501,13 +5501,18 @@ sub main {
       # #####################################################################
       # Check that the replication table exists, or possibly create it.
       # #####################################################################
-      check_repl_table(
-         dbh          => $master_dbh,
-         repl_table   => $repl_table,
-         OptionParser => $o,
-         TableParser  => $tp,
-         Quoter       => $q,
-      );
+      eval {
+         check_repl_table(
+            dbh          => $master_dbh,
+            repl_table   => $repl_table,
+            OptionParser => $o,
+            TableParser  => $tp,
+            Quoter       => $q,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         die ts($EVAL_ERROR);
+      }
 
       # #####################################################################
       # Check for replication filters.
@@ -6305,10 +6310,6 @@ sub print_checksum_diffs {
 }
 }
 
-# Check for existence and privileges on the replication table before
-# starting, and prepare the statements that will be used to update it.
-# Also clean out the checksum table.  And create it if needed.
-# Returns fetch and update statement handles.
 sub check_repl_table {
    my ( %args ) = @_;
    my @required_args = qw(dbh repl_table OptionParser TableParser Quoter);
@@ -6317,9 +6318,27 @@ sub check_repl_table {
    }
    my ($dbh, $repl_table, $o, $tp, $q) = @args{@required_args};
    MKDEBUG && _d('Checking --replicate table', $repl_table);
+
+   # If the repl db doesn't exit, auto-create it, maybe.
+   my ($db, $tbl) = $q->split_unquote($repl_table);
+   my $sql = "SHOW DATABASES LIKE '$db'";
+   MKDEBUG && _d($sql);
+   my @db_exists = $dbh->selectrow_array($sql);
+   if ( !@db_exists && $o->get('create-replicate-table') ) {
+      $sql = "CREATE DATABASE " . $q->quote($db) . " /* pt-table-checksum */";
+      eval {
+         $dbh->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "--replicate database $db does not exist and it cannot be "
+            . "created automatically.  You need to create the database.\n";
+      }
+   }
+
+   # USE the correct db (probably the repl db, but maybe --replicate-database).
    use_repl_db(%args);
 
-   my ($db, $tbl) = $q->split_unquote($repl_table);
+   # Check if the repl table exists; if not, create it, maybe.
    my $tbl_exists = $tp->check_table(
       dbh => $dbh,
       db  => $db,
@@ -6330,9 +6349,9 @@ sub check_repl_table {
          create_repl_table(%args)
       }
       else {
-         die ts("--replicate table $repl_table does not exist; "
+         die "--replicate table $repl_table does not exist; "
             . "read the documentation or use --create-replicate-table "
-            . "to create it.\n");
+            . "to create it.\n";
       }
    }
    else {
@@ -6344,11 +6363,11 @@ sub check_repl_table {
          tbl       => $tbl,
          all_privs => 1,
       );
-      die ts("User does not have all privileges on --replicate table "
-         . "$repl_table") unless $have_tbl_privs;
+      die "User does not have all privileges on --replicate table "
+         . "$repl_table.\n" unless $have_tbl_privs;
    }
 
-   return;
+   return;  # success, repl table is ready to go
 }
 
 # Sub: use_repl_db
@@ -6433,11 +6452,11 @@ sub use_repl_db {
          my $opt = $o->get('replicate-database') ? "--replicate-database"
                  :                                 "--replicate database";
          if ( $EVAL_ERROR =~ m/unknown database/i ) {
-            die ts("$opt $db does not exist.  You need to create the "
-               . "database or specify a database for $opt that exists.\n");
+            die "$opt $db does not exist.  You need to create the "
+               . "database or specify a database for $opt that exists.\n";
          }
          else {
-            die ts("Error using $opt $db: $EVAL_ERROR\n");
+            die "Error using $opt $db: $EVAL_ERROR\n";
          }
       }
       $current_db = $db;
@@ -6903,7 +6922,9 @@ type: Array; group: Config
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --create-replicate-table
+=item --[no]create-replicate-table
+
+default: yes
 
 Create the replicate table given by L<"--replicate"> if it does not exist.
 
