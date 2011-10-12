@@ -3483,7 +3483,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
          . ($args{where} ? " AND ($args{where})" : '')
-         . " /*one nibble*/";
+         . " /*checksum table*/";
       MKDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
@@ -3492,7 +3492,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
          . ($args{where} ? " AND ($args{where})" : '')
-         . " /*explain one nibble*/";
+         . " /*explain checksum table*/";
       MKDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -3546,7 +3546,7 @@ sub new {
                      . ($args{where} ? " AND ($args{where})" : '')
          . " ORDER BY $order_by"
          . " LIMIT ?, 2"
-         . " /*upper boundary*/";
+         . " /*next chunk boundary*/";
       MKDEBUG && _d('Upper boundary statement:', $ub_sql);
 
       my $nibble_sql
@@ -3558,7 +3558,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($args{where} ? " AND ($args{where})" : '')
          . " ORDER BY $order_by"
-         . " /*nibble*/";
+         . " /*checksum chunk*/";
       MKDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -3570,7 +3570,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($args{where} ? " AND ($args{where})" : '')
          . " ORDER BY $order_by"
-         . " /*explain nibble*/";
+         . " /*explain checksum chunk*/";
       MKDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
@@ -3739,6 +3739,11 @@ sub set_chunk_size {
 sub sql {
    my ($self) = @_;
    return $self->{sql};
+}
+
+sub more_boundaries {
+   my ($self) = @_;
+   return !$self->{no_more_boundaries};
 }
 
 sub _find_best_index {
@@ -5650,20 +5655,23 @@ sub main {
          my $nibble_iter = $args{NibbleIterator};
          my $oktonibble  = 1;
 
-         if ( $o->get('explain') ) { # dry run (--explain)
-            # We're not going to checksum the table, just report the
-            # statements that we would use to checksum it.
+         if ( $o->get('explain') ) {
+            # --explain level 1: print the checksum and next boundary
+            # statements.
             print "--\n",
-                  "-- Statements for table $tbl->{db}.$tbl->{tbl}:\n",
+                  "-- $tbl->{db}.$tbl->{tbl}\n",
                   "--\n\n";
             my $statements = $nibble_iter->statements();
             foreach my $sth ( sort keys %$statements ) {
+               next if $sth =~ m/^explain/;
                if ( $statements->{$sth} ) {
                   print $statements->{$sth}->{Statement}, "\n\n";
                }
             }
 
-            $oktonibble = 0; # don't nibble table; next table
+            if ( $o->get('explain') < 2 ) {
+               $oktonibble = 0; # don't nibble table; next table
+            }
          }
          elsif ( $last_chunk ) { # resuming
             my $next_lb = next_lower_boundary(
@@ -5745,6 +5753,22 @@ sub main {
          # Count every chunk, even if it's ultimately skipped, etc.
          $tbl->{checksum_results}->{n_chunks}++;
 
+         # --explain level 2: print chunk,lower boundary values,upper
+         # boundary values.
+         if ( $o->get('explain') > 1 ) {
+            my $lb_quoted = join(',', @{$boundary->{lower}});
+            my $ub_quoted = join(',', @{$boundary->{upper}});
+            my $chunk     = $nibble_iter->nibble_number();
+            printf "%d %s %s\n",
+               $chunk,
+               (defined $lb_quoted ? $lb_quoted : '1=1'),
+               (defined $ub_quoted ? $ub_quoted : '1=1');
+            if ( !$nibble_iter->more_boundaries() ) {
+               print "\n"; # blank line between this table and the next table
+            }
+            return 0;  # next boundary
+         }
+
          # If the table is being chunk (i.e., it's not small enough to be
          # consumed by one nibble), then check index usage and chunk size.
          if ( !$nibble_iter->one_nibble() ) {
@@ -5799,6 +5823,9 @@ sub main {
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
          
+         # Don't need to do anything here if we're just --explain'ing.
+         return if $o->get('explain');
+
          # Chunk/nibble number that we just inserted or skipped.
          my $chunk = $nibble_iter->nibble_number();
 
@@ -5888,6 +5915,9 @@ sub main {
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
          my $max_chunk   = $nibble_iter->nibble_number();
+
+         # Don't need to do anything here if we're just --explain'ing.
+         return if $o->get('explain');
 
          # Wait for all slaves to run all checksum chunks,
          # then check for differences.
@@ -6979,7 +7009,7 @@ Do only this comma-separated list of storage engines.
 
 =item --explain
 
-group: Output
+cumulative: yes; default: 0; group: Output
 
 Show, but do not execute, checksum queries (disables L<"--[no]empty-replicate-table">).
 
