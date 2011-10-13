@@ -23,6 +23,9 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
+# TODO Need to update this test file. I don't have MySQL dev on my box
+# to compile the udf.
+
 my $output;
 my $cnf='/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-table-checksum -F $cnf -d test -t checksum_test 127.0.0.1";
@@ -33,7 +36,7 @@ eval { $master_dbh->do('DROP FUNCTION test.fnv_64'); };
 eval { $master_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'fnv_udf.so';"); };
 if ( $EVAL_ERROR ) {
    chomp $EVAL_ERROR;
-   plan skip_all => "Failed to created FNV_64 UDF: $EVAL_ERROR";
+   plan skip_all => "No FNV_64 UDF lib"
 }
 else {
    plan tests => 5;

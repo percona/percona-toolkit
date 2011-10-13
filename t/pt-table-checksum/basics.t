@@ -31,7 +31,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 5;
+   plan tests => 7;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -41,6 +41,7 @@ my @args       = ($master_dsn, qw(--lock-wait-timeout 3));
 
 my $row;
 my $output;
+my $exit_status;
 my $sample  = "t/pt-table-checksum/samples/";
 my $outfile = '/tmp/pt-table-checksum-results';
 my $repl_db = 'percona';
@@ -108,6 +109,35 @@ is(
    78,
    '78 checksums on slave'
 );
+
+# ############################################################################
+# --[no]replicate-check and, implicitly, the tool's exit status.
+# ############################################################################
+
+# Make one row on the slave differ.
+$row = $slave_dbh->selectrow_arrayref("select city, last_update from sakila.city where city_id=1");
+$slave_dbh->do("update sakila.city set city='test' where city_id=1");
+
+$exit_status = pt_table_checksum::main(@args,
+   qw(--quiet --quiet -t sakila.city));
+
+is(
+   $exit_status,
+   1,
+   "--replicate-check on by default, detects diff"
+);
+
+$exit_status = pt_table_checksum::main(@args,
+   qw(--quiet --quiet -t sakila.city --no-replicate-check));
+
+is(
+   $exit_status,
+   0,
+   "--no-replicate-check, no diff detected"
+);
+
+# Restore the row on the slave, else other tests will fail.
+$slave_dbh->do("update sakila.city set city='$row->[0]', last_update='$row->[1]' where city_id=1");
 
 # #############################################################################
 # Done.
