@@ -23,27 +23,66 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
+
+my $row;
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";
 
-$sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-checksum/samples/before.sql');
+# --chunk-size is dynamic; it varies according to --chunk-time and
+# however fast the server happens to be.  So test this is difficult
+# because it's inherently nondeterministic.  However, with one table,
+# the first chunk should equal the chunk size, and the 2nd chunk should
+# larger, unless it takes your machine > 0.5s to select 100 rows.
 
-# Ensure chunking works
-$output = `$cmd --function sha1 --explain --chunk-size 200 -d test -t chunk --chunk-size-limit 0`;
-like($output, qr/test\s+chunk\s+`film_id` > 0 AND `film_id` < '\d+'/, 'chunking works');
-my $num_chunks = scalar(map { 1 } $output =~ m/^test/gm);
-ok($num_chunks >= 5 && $num_chunks < 8, "Found $num_chunks chunks");
+pt_table_checksum::main(@args, qw(--quiet --chunk-size 100 -t sakila.city));
 
-# Ensure chunk boundaries are put into test.checksum (bug #1850243)
-$output = `$cmd --function sha1 -d test -t chunk --chunk-size 50 --replicate test.checksum 127.0.0.1`;
-$output = `/tmp/12345/use --skip-column-names -e "select boundaries from test.checksum where db='test' and tbl='chunk' and chunk=0"`;
-chomp $output;
-like ( $output, qr/`film_id` = 0/, 'chunk boundaries stored right');
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city' and chunk=1");
+is_deeply(
+   $row,
+   [1, 100],  # 100 rows for --chunk-size=100
+   "First chunk is default size"
+);
+
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city' and chunk=2");
+is(
+   $row->[0],
+   101,
+   "2nd chunk lower boundary"
+);
+
+cmp_ok(
+   $row->[1] - $row->[0],
+   '>',
+   100,
+   "2nd chunk is larger"
+);
+
+# ############################################################################
+# Test --chunk-time here because it's linked to --chunk-size.
+# ############################################################################
+
+pt_table_checksum::main(@args, qw(--quiet --chunk-time 0 --chunk-size 100 -t sakila.city));
+
+# There's 600 rows in sakila.city so there should be 6 chunks.
+$row = $master_dbh->selectall_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city'");
+is_deeply(
+   $row,
+   [
+      [  1, 100],
+      [101, 200],
+      [201, 300],
+      [301, 400],
+      [401, 500],
+      [501, 600],
+   ],
+   "--chunk-time=0 disables auto-adjusting --chunk-size"
+);
 
 # #############################################################################
 # Done.

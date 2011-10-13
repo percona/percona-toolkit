@@ -5990,8 +5990,10 @@ sub main {
                }
                @chunks = sort { $a <=> $b } @chunks;
                if ( $chunks[0] < $max_chunk ) {
-                  $check_pr->update(sub { return $chunks[0]; });
-                  
+                  if ( $check_pr ) {
+                     $check_pr->update(sub { return $chunks[0]; });
+                  }
+
                   # We shouldn't have to wait long here because we already
                   # waited for all slaves to catchup at least until --max-lag.
                   $sleep_time += 0.25 if $sleep_time <= $o->get('max-lag');
