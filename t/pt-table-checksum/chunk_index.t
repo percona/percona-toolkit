@@ -15,7 +15,6 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-checksum";
 
-my $vp  = new VersionParser();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -27,18 +26,29 @@ else {
    plan tests => 6;
 }
 
-my $output;
+
 my $cnf='/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1', qw(-d issue_519 --explain --chunk-size 3));
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3 -d issue_519 --explain --explain --chunk-size 3));
+my $output;
 
 $sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
 
-my $default_output = "issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`PRIMARY`) WHERE (`i` = 0)
-issue_519 t     `i` = 0
-issue_519 t     `i` > 0 AND `i` < '4'
-issue_519 t     `i` >= '4' AND `i` < '7'
-issue_519 t     `i` >= '7' AND `i` < '10'
-issue_519 t     `i` >= '10'
+my $default_output = "--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` >= ?)) AND ((`i` <= ?)) ORDER BY `i` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `i` FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` >= ?)) ORDER BY `i` LIMIT ?, 2 /*next chunk boundary*/
+
+1 1 3
+2 4 6
+3 7 9
+4 10 11
+
 ";
 
 $output = output(
@@ -67,12 +77,19 @@ $output = output(
 
 is(
    $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`myidx`) WHERE (`i` = 0)
-issue_519 t     `i` = 0
-issue_519 t     `i` > 0 AND `i` < '4'
-issue_519 t     `i` >= '4' AND `i` < '7'
-issue_519 t     `i` >= '7' AND `i` < '10'
-issue_519 t     `i` >= '10'
+"--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`myidx`) WHERE ((`i` > ?) OR (`i` = ? AND `y` >= ?)) AND ((`i` < ?) OR (`i` = ? AND `y` <= ?)) ORDER BY `i`, `y` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `i`, `i`, `y` FROM `issue_519`.`t` FORCE INDEX(`myidx`) WHERE ((`i` > ?) OR (`i` = ? AND `y` >= ?)) ORDER BY `i`, `y` LIMIT ?, 2 /*next chunk boundary*/
+
+1 1,1,2000 3,3,2002
+2 4,4,2003 6,6,2005
+3 7,7,2006 9,9,2008
+4 10,10,2009 11,11,2010
+
 ",
    "Use --chunk-index"
 );
@@ -81,36 +98,26 @@ $output = output(
    sub { pt_table_checksum::main(@args, qw(--chunk-index y)) },
 );
 
+# XXX I'm not sure what this tests thinks it's testing because index y
+# is a single column index, so there's really not "left-most".
 is(
    $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`y`) WHERE (`y` = 0)
-issue_519 t     `y` = 0
-issue_519 t     `y` > 0 AND `y` < '2003'
-issue_519 t     `y` >= '2003' AND `y` < '2006'
-issue_519 t     `y` >= '2006' AND `y` < '2009'
-issue_519 t     `y` >= '2009'
+"--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` >= ?)) AND ((`y` <= ?)) ORDER BY `y` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `y` FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` >= ?)) ORDER BY `y` LIMIT ?, 2 /*next chunk boundary*/
+
+1 2000 2002
+2 2003 2005
+3 2006 2008
+4 2009 2010
+
 ",
    "Chunks on left-most --chunk-index column"
 );
-
-# Disabling the index hint with --no-use-index should not affect the
-# chunks.  It should only remove the FORCE INDEX clause from the SQL.
-$output = output(
-   sub { pt_table_checksum::main(@args, qw(--chunk-index y --no-use-index)) },
-);
-
-is(
-   $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t`  WHERE (`y` = 0)
-issue_519 t     `y` = 0
-issue_519 t     `y` > 0 AND `y` < '2003'
-issue_519 t     `y` >= '2003' AND `y` < '2006'
-issue_519 t     `y` >= '2006' AND `y` < '2009'
-issue_519 t     `y` >= '2009'
-",
-   "No index hint with --no-use-index"
-);
-
 
 # #############################################################################
 # Issue 378: Make mk-table-checksum try to use the index preferred by the
@@ -127,10 +134,41 @@ $output = output(
 
 is(
    $output,
-"issue_519 t     SELECT /*issue_519.t:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`y`) WHERE (1=1) AND ((y > 2009))
-issue_519 t     1=1
+"--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` >= ?)) AND ((`y` <= ?)) AND (y > 2009) ORDER BY `y` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `y` FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` >= ?)) AND (y > 2009) ORDER BY `y` LIMIT ?, 2 /*next chunk boundary*/
+
+1 2010 2010
+
 ",
    "Auto-chosen --chunk-index for --where (issue 378)"
+);
+
+# If user specifies --chunk-index, then ignore the index MySQL wants to
+# use (y in this case) and use the user's index.
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(--chunk-index PRIMARY),
+      "--where", "y > 2009") },
+);
+
+is(
+   $output,
+"--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` >= ?)) AND ((`i` <= ?)) AND (y > 2009) ORDER BY `i` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `i` FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` >= ?)) AND (y > 2009) ORDER BY `i` LIMIT ?, 2 /*next chunk boundary*/
+
+1 11 11
+
+",
+   "Explicit --chunk-index overrides MySQL's index for --where"
 );
 
 # #############################################################################

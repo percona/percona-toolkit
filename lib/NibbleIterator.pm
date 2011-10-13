@@ -214,6 +214,7 @@ sub new {
       };
    }
 
+   $self->{row_est}   = $row_est;
    $self->{nibbleno}  = 0;
    $self->{have_rows} = 0;
    $self->{rowno}     = 0;
@@ -373,6 +374,11 @@ sub more_boundaries {
    return !$self->{no_more_boundaries};
 }
 
+sub row_estimate {
+   my ($self) = @_;
+   return $self->{row_est};
+}
+
 sub _find_best_index {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl TableParser);
@@ -381,12 +387,15 @@ sub _find_best_index {
    my $indexes    = $tbl_struct->{keys};
 
    my $want_index = $args{chunk_index};
-   MKDEBUG && _d('Wanted index:', $want_index);
-   if ( $want_index && !exists $indexes->{$want_index} ) {
-      MKDEBUG && _d('Wanted index does not exist; will auto-select best index');
-      $want_index = undef;
+   if ( $want_index ) {
+      MKDEBUG && _d('User wants to use index', $want_index);
+      if ( !exists $indexes->{$want_index} ) {
+         MKDEBUG && _d('Cannot use user index because it does not exist');
+         $want_index = undef;
+      }
    }
-   elsif ( $args{mysql_index} ) {
+
+   if ( !$want_index && $args{mysql_index} ) {
       MKDEBUG && _d('MySQL wants to use index', $args{mysql_index});
       $want_index = $args{mysql_index};
    }
