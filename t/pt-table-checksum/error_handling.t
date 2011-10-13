@@ -23,12 +23,14 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 1;
+   plan tests => 2;
 }
 
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";
 
 $sb->create_dbs($master_dbh, [qw(test)]);
 
@@ -36,8 +38,26 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 # Issue 81: put some data that's too big into the boundaries table
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/checksum_tbl_truncated.sql');
-$output = `$cmd --ignore-databases sakila,mysql --empty-replicate-table --replicate test.checksum 2>&1`;
-like($output, qr/boundaries/, 'Truncation causes an error');
+
+$output = output(
+   sub { pt_table_checksum::main(@args,
+      qw(--replicate test.truncated_checksums -t sakila.film_category),
+      qw(--chunk-time 0 --chunk-size 100) ) },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/MySQL error 1265: Data truncated/,
+   "MySQL error 1265: Data truncated for column"
+);
+
+my (@errors) = $output =~ m/error/;
+is(
+   scalar @errors,
+   1,
+   "Only one warning for MySQL error 1265"
+);
 
 # #############################################################################
 # Done.

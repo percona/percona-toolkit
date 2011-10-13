@@ -6179,8 +6179,8 @@ my %warn_code = (
    # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
    # Message: Data truncated for column '%s' at row %ld
    1265 => {
-      pattern => qr/for column '(?:lower|upper)_boundary'/,
-      warning => "WHERE clause too large for boundaries.",
+      # any pattern
+      # use MySQL's message for this warning
    },
 );
 
@@ -6241,19 +6241,24 @@ sub exec_nibble {
          MKDEBUG && _d($sql_warn);
          my $warnings = $dbh->selectall_arrayref($sql_warn, { Slice => {} } );
          foreach my $warning ( @$warnings ) {
-            my $code = ($warning->{code} || 0);
+            my $code    = ($warning->{code} || 0);
+            my $message = $warning->{message};
             if ( $ignore_code{$code} ) {
-               MKDEBUG && _d('Ignoring warning:', $code, $warning->{message});
+               MKDEBUG && _d('Ignoring warning:', $code, $message);
                next;
             }
             elsif ( $warn_code{$code}
-                    && $warning->{message} =~ m/$warn_code{$code}->{pattern}/ )
+                    && (!$warn_code{$code}->{pattern}
+                        || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
                if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
                   if ( $o->get('quiet') < 2 ) {
                      warn ts("Checksum query for table $tbl->{db}.$tbl->{tbl} "
                         . "caused MySQL error $code: "
-                        . $warn_code{$code}->{warning} . "\n");
+                        . ($warn_code{$code}->{message}
+                           ? $warn_code{$code}->{message}
+                           : $message)
+                        . "\n");
                   }
                   $tbl->{"warned_code_$code"} = 1;
                   $tbl->{checksum_results}->{errors}++;
