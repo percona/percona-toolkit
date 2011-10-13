@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 26;
+   plan tests => 28;
 }
 
 my $q   = new Quoter();
@@ -76,20 +76,22 @@ sub make_nibble_iter {
 
    my $schema = new Schema();
    my $si     = new SchemaIterator(
-      dbh          => $dbh,
-      keep_ddl     => 1,
-      Schema       => $schema,
+      dbh             => $dbh,
+      keep_ddl        => 1,
+      keep_tbl_status => 1,
+      Schema          => $schema,
       %common_modules,
    );
    1 while $si->next();
 
    my $ni = new NibbleIterator(
-      Cxn        => $cxn,
-      tbl        => $schema->get_table($args{db}, $args{tbl}),
-      chunk_size => $o->get('chunk-size'),
-      callbacks  => $args{callbacks},
-      select     => $args{select},
-      one_nibble => $args{one_nibble},
+      Cxn         => $cxn,
+      tbl         => $schema->get_table($args{db}, $args{tbl}),
+      chunk_size  => $o->get('chunk-size'),
+      chunk_index => $o->get('chunk-index'),
+      callbacks   => $args{callbacks},
+      select      => $args{select},
+      one_nibble  => $args{one_nibble},
       %common_modules,
    );
 
@@ -550,6 +552,45 @@ is_deeply(
    \@rows,
    [ ('a'..'z') ],
    "Nibble small table without indexes"
+);
+
+# ############################################################################
+# Auto-select best index if wanted index doesn't exit.
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file   => "a-z.sql",
+   db         => 'test',
+   tbl        => 't',
+   one_nibble => 0,
+   argv       => [qw(--databases test --chunk-index nonexistent)],
+);
+
+is(
+   $ni->nibble_index(),
+   'c',
+   "Auto-chooses index if wanted index does not exist"
+);
+
+# ############################################################################
+# Add a WHERE clause and nibble just the selected range.
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file   => "a-z.sql",
+   db         => 'test',
+   tbl        => 't',
+   one_nibble => 0,
+   argv       => [qw(--databases test --where c>'m')],
+);
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, @$row;
+}
+
+is_deeply(
+   \@rows,
+   [ ('n'..'z') ],
+   "Nibbles only values in --where clause range"
 );
 
 # #############################################################################

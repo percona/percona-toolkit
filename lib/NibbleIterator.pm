@@ -46,6 +46,7 @@ $Data::Dumper::Quotekeys = 0;
 # Optional Arguments:
 #   chunk_index - Index to use for nibbling
 #   one_nibble  - Allow one-chunk tables (default yes)
+#   where       - WHERE clause
 #
 # Returns:
 #  NibbleIterator object 
@@ -57,16 +58,19 @@ sub new {
    }
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
+   my ($row_est, $mysql_index) = _get_row_estimate(%args);
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ?  _can_nibble_once(dbh => $cxn->dbh(), %args)
+                  ? $row_est < $chunk_size * $o->get('chunk-size-limit')
                   : 0;
+   MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
    # Get an index to nibble by.  We'll order rows by the index's columns.
-   my $index = _find_best_index(dbh => $cxn->dbh(), %args);
+   my $index = _find_best_index(%args, mysql_index => $mysql_index);
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
 
+   my $where = $o->get('where');
    my $self;
    if ( $one_nibble ) {
       my $tbl_struct = $tbl->{tbl_struct};
@@ -81,7 +85,7 @@ sub new {
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-         . ($args{where} ? " AND ($args{where})" : '')
+         . ($where ? " AND ($where)" : '')
          . " /*checksum table*/";
       MKDEBUG && _d('One nibble statement:', $nibble_sql);
 
@@ -90,7 +94,7 @@ sub new {
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-         . ($args{where} ? " AND ($args{where})" : '')
+         . ($where ? " AND ($where)" : '')
          . " /*explain checksum table*/";
       MKDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
@@ -125,7 +129,7 @@ sub new {
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
-         . ($args{where} ? " WHERE $args{where}" : '')
+         . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
          . " LIMIT 1"
          . " /*first lower boundary*/";
@@ -135,7 +139,7 @@ sub new {
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
-         . ($args{where} ? " WHERE $args{where}" : '')
+         . ($where ? " WHERE $where" : '')
          . " ORDER BY "
          . join(' DESC, ', map {$q->quote($_)} @{$index_cols}) . ' DESC'
          . " LIMIT 1"
@@ -155,7 +159,7 @@ sub new {
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}
-                     . ($args{where} ? " AND ($args{where})" : '')
+                     . ($where ? " AND ($where)" : '')
          . " ORDER BY $order_by"
          . " LIMIT ?, 2"
          . " /*next chunk boundary*/";
@@ -170,7 +174,7 @@ sub new {
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
-         . ($args{where} ? " AND ($args{where})" : '')
+         . ($where ? " AND ($where)" : '')
          . " ORDER BY $order_by"
          . " /*checksum chunk*/";
       MKDEBUG && _d('Nibble statement:', $nibble_sql);
@@ -182,7 +186,7 @@ sub new {
          . " FROM $from"
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
-         . ($args{where} ? " AND ($args{where})" : '')
+         . ($where ? " AND ($where)" : '')
          . " ORDER BY $order_by"
          . " /*explain checksum chunk*/";
       MKDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
@@ -203,7 +207,7 @@ sub new {
          sql                => {
             columns    => $asc->{scols},
             from       => $from,
-            where      => $args{where},
+            where      => $where,
             boundaries => $asc->{boundaries},
             order_by   => $order_by,
          },
@@ -371,24 +375,36 @@ sub more_boundaries {
 
 sub _find_best_index {
    my (%args) = @_;
-   my @required_args = qw(tbl TableParser dbh Quoter);
-   my ($tbl, $tp) = @args{@required_args};
-
+   my @required_args = qw(Cxn tbl TableParser);
+   my ($cxn, $tbl, $tp) = @args{@required_args};
    my $tbl_struct = $tbl->{tbl_struct};
    my $indexes    = $tbl_struct->{keys};
 
+   my $want_index = $args{chunk_index};
+   MKDEBUG && _d('Wanted index:', $want_index);
+   if ( $want_index && !exists $indexes->{$want_index} ) {
+      MKDEBUG && _d('Wanted index does not exist; will auto-select best index');
+      $want_index = undef;
+   }
+   elsif ( $args{mysql_index} ) {
+      MKDEBUG && _d('MySQL wants to use index', $args{mysql_index});
+      $want_index = $args{mysql_index};
+   }
+
    my $best_index;
    my @possible_indexes;
-   if ( my $want_index = $args{chunk_index} ) {
-      MKDEBUG && _d('Want to use nibble index', $want_index);
-      if ( $want_index eq 'PRIMARY' || $indexes->{$want_index}->{is_unique} ) {
+   if ( $want_index ) {
+      if ( $indexes->{$want_index}->{is_unique} ) {
+         MKDEBUG && _d('Will use wanted index');
          $best_index = $want_index;
       }
       else {
+         MKDEBUG && _d('Wanted index is a possible index');
          push @possible_indexes, $want_index;
       }
    }
    else {
+      MKDEBUG && _d('Auto-selecting best index');
       foreach my $index ( $tp->sort_indexes($tbl_struct) ) {
          if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
             $best_index = $index;
@@ -430,14 +446,14 @@ sub _find_best_index {
 
 sub _get_index_cardinality {
    my (%args) = @_;
-   my @required_args = qw(dbh tbl index Quoter);
-   my ($dbh, $tbl, $index, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl index Quoter);
+   my ($cxn, $tbl, $index, $q) = @args{@required_args};
 
    my $sql = "SHOW INDEXES FROM " . $q->quote(@{$tbl}{qw(db tbl)})
            . " WHERE Key_name = '$index'";
    MKDEBUG && _d($sql);
    my $cardinality = 1;
-   my $rows = $dbh->selectall_hashref($sql, 'key_name');
+   my $rows = $cxn->dbh()->selectall_hashref($sql, 'key_name');
    foreach my $row ( values %$rows ) {
       $cardinality *= $row->{cardinality} if $row->{cardinality};
    }
@@ -445,17 +461,24 @@ sub _get_index_cardinality {
    return $cardinality;
 }
 
-sub _can_nibble_once {
+sub _get_row_estimate {
    my (%args) = @_;
-   my @required_args = qw(dbh tbl chunk_size OptionParser TableParser);
-   my ($dbh, $tbl, $chunk_size, $o, $tp) = @args{@required_args};
-   my ($table_status)   = $tp->get_table_status($dbh, $tbl->{db}, $tbl->{tbl});
-   MKDEBUG && _d('TABLE STATUS', Dumper($table_status));
-   my $n_rows           = $table_status->{rows} || 0;
-   my $limit            = $o->get('chunk-size-limit');
-   my $one_nibble       = $n_rows < $chunk_size * $limit ? 1 : 0;
-   MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
-   return $one_nibble;
+   my @required_args = qw(Cxn tbl OptionParser TableParser Quoter);
+   my ($cxn, $tbl, $o, $tp, $q) = @args{@required_args};
+
+   if ( my $where = $o->get('where') ) {
+      MKDEBUG && _d('WHERE clause, using explain plan for row estimate');
+      my $table = $q->quote(@{$tbl}{qw(db tbl)});
+      my $sql   = "EXPLAIN SELECT COUNT(*) FROM $table WHERE $where";
+      MKDEBUG && _d($sql);
+      my $expl = $cxn->dbh()->selectrow_hashref($sql);
+      MKDEBUG && _d(Dumper($expl));
+      return ($expl->{rows} || 0), $expl->{key};
+   }
+   else {
+      MKDEBUG && _d('No WHERE clause, using table status for row estimate');
+      return $tbl->{tbl_status}->{rows} || 0;
+   }
 }
 
 sub _prepare_sths {

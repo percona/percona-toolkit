@@ -57,10 +57,12 @@ my $tbl_name     = qr{
 #   Quoter       - <Quoter> object.
 #
 # Optional Arguments:
-#   Schema      - <Schema> object to initialize while iterating.
-#   TableParser - <TableParser> object to parse CREATE TABLE for tbl_struct.
-#   keep_ddl    - Keep CREATE TABLE (default false)
-#   resume      - Skip tables so first call to <next()> returns this "db.table".
+#   Schema          - <Schema> object to initialize while iterating.
+#   TableParser     - <TableParser> object get tbl_struct.
+#   keep_ddl        - Keep SHOW CREATE TABLE (default false).
+#   keep_tbl_status - Keep SHOW TABLE STATUS (default false).
+#   resume          - Skip tables so first call to <next()> returns
+#                     this "db.table".
 #
 # Returns:
 #   SchemaIterator object
@@ -214,6 +216,7 @@ sub next {
       }
 
       delete $schema_obj->{ddl} unless $self->{keep_ddl};
+      delete $schema_obj->{tbl_status} unless $self->{keep_tbl_status};
 
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
@@ -345,27 +348,34 @@ sub _iterate_dbh {
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
       next unless $self->_resume_from_table($tbl);
-      my $engine;
+
+      # If there are engine filters, we have to get the table status.
+      # Else, get it if the user wants to keep it since they'll expect
+      # it to be available.
+      my $tbl_status;
       if ( $self->{filters}->{'engines'}
-           || $self->{filters}->{'ignore-engines'} ) {
+           || $self->{filters}->{'ignore-engines'}
+           || $self->{keep_tbl_status} )
+      {
          my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
                  . " LIKE \'$tbl\'";
          MKDEBUG && _d($sql);
-         $engine = $dbh->selectrow_hashref($sql)->{engine};
-         MKDEBUG && _d($tbl, 'uses', $engine, 'engine');
+         $tbl_status = $dbh->selectrow_hashref($sql);
+         MKDEBUG && _d(Dumper($tbl_status));
       }
 
-
-      if ( !$engine || $self->engine_is_allowed($engine) ) {
+      if ( !$tbl_status
+           || $self->engine_is_allowed($tbl_status->{engine}) ) {
          my $ddl;
          if ( my $tp = $self->{TableParser} ) {
             $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
          }
 
          return {
-            db  => $self->{db},
-            tbl => $tbl,
-            ddl => $ddl,
+            db         => $self->{db},
+            tbl        => $tbl,
+            ddl        => $ddl,
+            tbl_status => $tbl_status,
          };
       }
    }
@@ -415,7 +425,6 @@ sub database_is_allowed {
       return 0;
    }
 
-   # MKDEBUG && _d('Database', $db, 'is allowed');
    return 1;
 }
 
@@ -477,7 +486,6 @@ sub table_is_allowed {
       return 0;
    }
 
-   # MKDEBUG && _d('Table', $tbl, 'is allowed');
    return 1;
 }
 
@@ -500,7 +508,6 @@ sub engine_is_allowed {
       return 0;
    }
 
-   # MKDEBUG && _d('Engine', $engine, 'is allowed');
    return 1;
 }
 
