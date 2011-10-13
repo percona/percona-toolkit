@@ -31,7 +31,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 7;
+   plan tests => 8;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -138,6 +138,41 @@ is(
 
 # Restore the row on the slave, else other tests will fail.
 $slave_dbh->do("update sakila.city set city='$row->[0]', last_update='$row->[1]' where city_id=1");
+
+# #############################################################################
+# --[no]empty-replicate-table
+# Issue 21: --empty-replicate-table doesn't empty if previous runs leave info
+# #############################################################################
+
+$sb->wipe_clean($master_dbh);
+$sb->load_file('master', 't/pt-table-checksum/samples/issue_21.sql');
+
+# Run once to populate the repl table.
+pt_table_checksum::main(@args, qw(--quiet --quiet -t test.issue_21),
+   qw(--chunk-time 0 --chunk-size 2));
+
+# Insert two fake rows into the repl table.  The first row tests that
+# --empty-replicate-table deletes all rows for each checksummed table,
+# and the second row tests that if a table isn't checksummed, then its
+# rows aren't deleted.
+$master_dbh->do("INSERT INTO percona.checksums VALUES ('test', 'issue_21', 999, 0.00, 'idx', '0', '0', '0', 0, '0', 0, NOW())");
+$master_dbh->do("INSERT INTO percona.checksums VALUES ('test', 'other_tbl', 1, 0.00, 'idx', '0', '0', '0', 0, '0', 0, NOW())");
+
+pt_table_checksum::main(@args, qw(--quiet --quiet -t test.issue_21),
+   qw(--chunk-time 0 --chunk-size 2));
+
+$row = $master_dbh->selectall_arrayref("SELECT tbl, chunk FROM percona.checksums WHERE db='test' ORDER BY tbl, chunk");
+is_deeply(
+   $row,
+   [
+      [qw(issue_21  1)],
+      [qw(issue_21  2)],
+      [qw(issue_21  3)],
+      # fake row for chunk 999 is gone
+      [qw(other_tbl 1)], # this row is still here
+   ],
+   "--emptry-replicate-table on by default"
+) or print STDERR Dumper($row);
 
 # #############################################################################
 # Done.
