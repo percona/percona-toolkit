@@ -31,7 +31,6 @@ my $cnf='/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";
 
 $sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-checksum/samples/before.sql');
 
 # #############################################################################
 # Issue 81: put some data that's too big into the boundaries table

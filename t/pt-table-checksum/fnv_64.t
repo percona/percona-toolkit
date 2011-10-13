@@ -28,7 +28,6 @@ my $cnf='/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-table-checksum -F $cnf -d test -t checksum_test 127.0.0.1";
 
 $sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-checksum/samples/before.sql');
 
 eval { $master_dbh->do('DROP FUNCTION test.fnv_64'); };
 eval { $master_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'fnv_udf.so';"); };
