@@ -31,7 +31,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 8;
+   plan tests => 9;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -174,8 +174,26 @@ is_deeply(
    "--emptry-replicate-table on by default"
 ) or print STDERR Dumper($row);
 
+
+# ############################################################################
+# --[no]recheck
+# ############################################################################
+
+$exit_status = pt_table_checksum::main(@args,
+   qw(--quiet --quiet --chunk-time 0 --chunk-size 100 -t sakila.city));
+
+$slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='city' and (chunk=1 or chunk=6)");
+
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(--no-recheck)) },
+      "$sample/no-recheck.txt",
+   ),
+   "--no-recheck (just --replicate-check)"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
+#$sb->wipe_clean($master_dbh);
 exit;
