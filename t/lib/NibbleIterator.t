@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 28;
+   plan tests => 29;
 }
 
 my $q   = new Quoter();
@@ -581,6 +581,7 @@ $ni = make_nibble_iter(
    one_nibble => 0,
    argv       => [qw(--databases test --where c>'m')],
 );
+$dbh->do('analyze table test.t');
 
 @rows = ();
 while (my $row = $ni->next()) {
@@ -591,6 +592,14 @@ is_deeply(
    \@rows,
    [ ('n'..'z') ],
    "Nibbles only values in --where clause range"
+);
+
+# The real number of rows is 13, but MySQL may estimate a little.
+cmp_ok(
+   $ni->row_estimate(),
+   '<=',
+   15,
+   "row_estimate()"
 );
 
 # #############################################################################
