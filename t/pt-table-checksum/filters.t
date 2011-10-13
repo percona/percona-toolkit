@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use Data::Dumper;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-checksum";
@@ -24,59 +25,85 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 7;
 }
 
-my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1');
-
-$sb->create_dbs($dbh, [qw(test)]);
-$dbh->do('use test');
-$dbh->do('create table t1 (i int) engine=myisam');
-$dbh->do('create table t2 (i int) engine=innodb');
-
-$output = output(
-   sub { pt_table_checksum::main(@args,
-         qw(--explain -d test --engines InnoDB)) },
-);
-
-is(
-   $output,
-"test     t2    CHECKSUM TABLE `test`.`t2`
-",
-   '--engines'
-);
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
 
 
-$output = output(
-   sub { pt_table_checksum::main(@args,
-         qw(--explain -d mysql --tables-regex user)) },
-);
-like(
-   $output,
-   qr/^mysql\s+user\s+/,
-   "--tables-regex"
+# ############################################################################
+# The schema object filters don't need to be tested extensively here
+# because they should be tested extensively in SchemaIterator.t.
+# ############################################################################
+
+sub test_filter {
+   my ($filters, $tbls) = @_;
+
+   my $output = output(
+      sub { pt_table_checksum::main(@args, '--explain', @$filters) },
+   );
+   my @got_tbls = $output =~ m/^-- (\S+)$/gm;
+   is_deeply(
+      \@got_tbls,
+      $tbls,
+      join(' ', @$filters),
+   ) or print STDERR Dumper(\@got_tbls);
+}
+
+# sakila db has serval views where are (should be) automatically filtered out.
+test_filter(
+   [qw(--databases sakila)],
+   [qw(
+      sakila.actor
+      sakila.address
+      sakila.category
+      sakila.city
+      sakila.country
+      sakila.customer
+      sakila.film
+      sakila.film_actor
+      sakila.film_category
+      sakila.film_text
+      sakila.inventory
+      sakila.language
+      sakila.payment
+      sakila.rental
+      sakila.staff
+      sakila.store
+   )],
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args,
-         qw(--explain -d mysql --ignore-tables-regex user)) },
-);
-unlike(
-   $output,
-   qr/user/,
-   "--ignore-tables-regex"
+test_filter(
+   [qw(--tables actor)],
+   ['sakila.actor'],
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args,
-         qw(--explain -d mysql --ignore-databases-regex mysql)) },
+test_filter(
+   [qw(--tables sakila.actor)],
+   ['sakila.actor'],
 );
-is(
-   $output,
-   "",
-   "--ignore-databases-regex"
+
+test_filter(
+   ['--tables', 'actor,film'],
+   ['sakila.actor', 'sakila.film'],
+);
+
+test_filter(
+   ['--tables', 'sakila.actor,mysql.user'],
+   ['mysql.user', 'sakila.actor'],
+);
+
+test_filter(
+   [qw(-d sakila --engines MyISAM)],
+   ['sakila.film_text'],
+);
+
+test_filter(
+   [qw(-d sakila --engines myisam)],
+   ['sakila.film_text'],
 );
 
 # #############################################################################

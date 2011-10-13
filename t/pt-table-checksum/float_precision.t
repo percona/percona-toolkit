@@ -23,24 +23,61 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";
 
-$sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-checksum/samples/before.sql');
+$sb->load_file('master', "t/pt-table-checksum/samples/float_precision.sql");
 
-# Ensure float-precision is effective
-$output = `$cmd --function sha1 --algorithm BIT_XOR -d test -t fl_test --explain 127.0.0.1`;
-unlike($output, qr/ROUND\(`a`/, 'Column is not rounded');
-like($output, qr/test/, 'Column is not rounded and I got output');
-$output = `$cmd --function sha1 --float-precision 3 --algorithm BIT_XOR -d test -t fl_test --explain 127.0.0.1`;
-like($output, qr/ROUND\(`a`, 3/, 'Column a is rounded');
-like($output, qr/ROUND\(`b`, 3/, 'Column b is rounded');
-like($output, qr/ISNULL\(`b`\)/, 'Column b is not rounded inside ISNULL');
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t float_precision.t --explain)) },
+);
+
+like(
+   $output,
+   qr/^-- float_precision.t/m,
+   "Got output"
+);
+
+unlike(
+   $output,
+   qr/ROUND\(`a`/,
+   "No --float-precision, no rounding"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t float_precision.t --explain),
+      qw(--float-precision 3)) },
+);
+
+like(
+   $output,
+   qr/^-- float_precision.t/m,
+   "Got output"
+);
+
+like(
+   $output,
+   qr/ROUND\(`a`, 3/,
+   'Column a is rounded'
+);
+
+like(
+   $output,
+   qr/ROUND\(`b`, 3/,
+   'Column b is rounded'
+);
+
+like(
+   $output,
+   qr/ISNULL\(`b`\)/,
+   'Column b is not rounded inside ISNULL'
+);
 
 # #############################################################################
 # Done.

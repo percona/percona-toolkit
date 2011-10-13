@@ -28,78 +28,99 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 5;
+   plan tests => 4;
 }
+
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
 
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";
+my $row;
 
 $sb->wipe_clean($master_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
+#$sb->create_dbs($master_dbh, [qw(test)]);
 
-# #############################################################################
-# Issue 77: mk-table-checksum should be able to create the --replicate table
-# #############################################################################
+# Most other tests implicitly test that --create-replicate-table is on
+# by default because they use that functionality.  So here we need to
+# test that we can turn it off, that it doesn't blow up if the repl table
+# already exists, etc.
 
-is_deeply(
-   $master_dbh->selectall_arrayref('show tables from test'),
-   [],
-   "Checksum table does not exist on master"
+eval {
+   pt_table_checksum::main(@args, '--no-create-replicate-table');
+};
+like(
+   $EVAL_ERROR,
+   qr/--replicate database percona does not exist/,
+   "--no-create-replicate-table dies if db doesn't exist"
 );
 
-is_deeply(
-   $slave_dbh->selectall_arrayref('show tables from test'),
-   [],
-   "Checksum table does not exist on slave"
+$master_dbh->do('create database percona');
+$master_dbh->do('use percona');
+eval {
+   pt_table_checksum::main(@args, '--no-create-replicate-table');
+};
+like(
+   $EVAL_ERROR,
+   qr/--replicate table `percona`.`checksums` does not exist/,
+   "--no-create-replicate-table dies if table doesn't exist"
 );
 
-# First check that, like a Klingon, it dies with honor.
-$output = `$cmd --replicate test.checksum 2>&1`;
+my $create_repl_table =
+"CREATE TABLE `checksums` (
+  db             char(64)     NOT NULL,
+  tbl            char(64)     NOT NULL,
+  chunk          int          NOT NULL,
+  chunk_time     float            NULL,
+  chunk_index    varchar(200)     NULL,
+  lower_boundary text         NOT NULL,
+  upper_boundary text         NOT NULL,
+  this_crc       char(40)     NOT NULL,
+  this_cnt       int          NOT NULL,
+  master_crc     char(40)         NULL,
+  master_cnt     int              NULL,
+  ts             timestamp    NOT NULL,
+  PRIMARY KEY (db, tbl, chunk)
+) ENGINE=InnoDB;";
+
+$master_dbh->do($create_repl_table);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, '--no-create-replicate-table',
+      qw(-t sakila.country)) },
+);
 like(
    $output,
-   qr/replicate table .+ does not exist/,
-   'Dies with honor when replication table does not exist'
-);
-
-output(
-   sub { pt_table_checksum::main('-F', $cnf,
-      qw(--create-replicate-table --replicate test.checksum 127.1)) },
-   stderr => 0,
-);
-
-# In 5.0 "on" in "on update" is lowercase, in 5.1 it's uppercase.
-my $create_tbl = lc("CREATE TABLE `checksum` (
-  `db` char(64) NOT NULL,
-  `tbl` char(64) NOT NULL,
-  `chunk` int(11) NOT NULL,
-  `boundaries` char(100) NOT NULL,
-  `this_crc` char(40) NOT NULL,
-  `this_cnt` int(11) NOT NULL,
-  `master_crc` char(40) default NULL,
-  `master_cnt` int(11) default NULL,
-  `ts` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-  PRIMARY KEY  (`db`,`tbl`,`chunk`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1");
-
-# In 5.0 there's 2 spaces, in 5.1 there 1.
-if ( $vp->version_ge($master_dbh, '5.1.0') ) {
-   $create_tbl =~ s/primary key  /primary key /;
-}
-
-is(
-   lc($master_dbh->selectrow_hashref('show create table test.checksum')->{'create table'}),
-   $create_tbl,
-   'Creates the replicate table'
+   qr/^\S+\s+0\s+0\s+109\s+1\s+0\s+\S+\s+sakila.country$/m,
+   "Uses pre-created replicate table"
 );
 
 # ############################################################################
 # Issue 1318: mk-tabke-checksum --create-replicate-table doesn't replicate
 # ############################################################################
-is(
-   lc($slave_dbh->selectrow_hashref('show create table test.checksum')->{'create table'}),
-   $create_tbl,
-   'Creates the replicate table replicates (issue 1318)'
+
+$sb->wipe_clean($master_dbh);
+
+# Wait until the slave no longer has the percona db.
+PerconaTest::wait_until(
+   sub {
+      eval { $slave_dbh->do("use percona") };
+      return 1 if $EVAL_ERROR;
+      return 0;
+   },
+);
+
+pt_table_checksum::main(@args, qw(-t sakila.country --quiet));
+
+# Wait until the repl table replicates, or timeout.
+PerconaTest::wait_for_table($slave_dbh, 'percona.checksums');
+
+$row = $slave_dbh->selectrow_arrayref("show tables from percona");
+is_deeply(
+   $row,
+   ['checksums'],
+   'Auto-created replicate table replicates (issue 1318)'
 );
 
 # #############################################################################
