@@ -9,32 +9,90 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 2;
+use Test::More;
 
 use PerconaTest;
+use Sandbox;
 require "$trunk/bin/pt-table-checksum";
 
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave_dbh  = $sb->get_dbh_for('slave1');
+
+if ( !$master_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox master';
+}
+elsif ( !$slave_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave1';
+}
+else {
+   plan tests => 4;
+}
+
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+my @args     = (qw(--lock-wait-timeout 3 --explain --tables sakila.country)); 
+my $cnf      = "/tmp/12345/my.sandbox.cnf";
+my $pid_file = "/tmp/mk-table-checksum-test.pid";
 my $output;
 
-# Test DSN value inheritance
-$output = `$trunk/bin/pt-table-checksum h=127.1 h=127.2,P=12346 --port 12345 --explain-hosts`;
+# ############################################################################
+# DSN should inherit connection options (--port, etc.)
+# ############################################################################
+
+$output = output(
+   sub { pt_table_checksum::main(@args, 'h=127.1',
+      qw(--port 12345 --user msandbox --password msandbox)) },
+);
 like(
    $output,
-   qr/^Server 127.1:\s+P=12345,h=127.1\s+Server 127.2:\s+P=12346,h=127.2/,
-   'DSNs inherit values from --port, etc. (issue 248)'
+   qr/-- sakila\.country/,
+   'DSN inherits values from --port, etc. (issue 248)'
+);
+
+# Same test but this time intentionally use the wrong port so the connection
+# fails so we know that the previous test didn't work because your system
+# has a .my.cnf file or something.
+eval {
+   pt_table_checksum::main(@args, 'h=127.1',
+      qw(--port 4 --user msandbox --password msandbox));
+};
+like(
+   $EVAL_ERROR,
+   qr/port=4.+failed/,
+   'DSN truly inherits values from --port, etc. (issue 248)'
+);
+
+# #############################################################################
+# Issue 947: mk-table-checksum crashes if h DSN part is not given
+# #############################################################################
+
+$output = output(
+   sub { pt_table_checksum::main(@args, "F=$cnf") },
+);
+like(
+   $output,
+   qr/-- sakila\.country/,
+   "Doesn't crash if no h DSN part (issue 947)"
 );
 
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/mk-script.pid`;
-$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test -t issue_122,issue_94 --pid /tmp/mk-script.pid 2>&1`;
+diag(`rm -rf $pid_file >/dev/null 2>&1`);
+diag(`touch $pid_file`);
+
+eval {
+   pt_table_checksum::main(@args, $cnf, '--pid', $pid_file);
+};
 like(
-   $output,
-   qr{PID file /tmp/mk-script.pid already exists},
+   $EVAL_ERROR,
+   qr/PID file $pid_file already exists/,
    'Dies if PID file already exists (issue 391)'
 );
-`rm -rf /tmp/mk-script.pid`;
+
+diag(`rm -rf $pid_file >/dev/null 2>&1`);
 
 # #############################################################################
 # Done.

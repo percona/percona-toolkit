@@ -1417,18 +1417,19 @@ sub new {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
-   die "I need a dsn or dsn_string argument"
-      unless $args{dsn} || $args{dsn_string};
    my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
 
    my $dsn = $args{dsn};
    if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
       $dsn = $dp->parse(
-         $args{dsn_string}, $args{prev_dsn}, $dp->parse_options($o));
+         $args{dsn_string}, $args{prev_dsn}, $dsn_defaults);
    }
 
    my $self = {
-      dsn_string   => $args{dsn_string},
       dsn          => $dsn,
       dbh          => $args{dbh},
       set          => $args{set},
@@ -7073,6 +7074,12 @@ group: Help
 
 Show help and exit.
 
+=item --host
+
+short form: -h; type: string; default: localhost; group: Connection
+
+Host to connect to.
+
 =item --ignore-columns
 
 type: Hash; group: Filter
@@ -7466,21 +7473,15 @@ dsn: charset; copy: yes
 
 Default character set.
 
-=item * D
-
-dsn: database; copy: yes
-
-Default database.
-
 =item * F
 
-dsn: mysql_read_default_file; copy: yes
+dsn: mysql_read_default_file; copy: no
 
 Only read default options from the given file
 
 =item * h
 
-dsn: host; copy: yes
+dsn: host; copy: no
 
 Connect to host.
 
@@ -7498,15 +7499,9 @@ Port number to use for connection.
 
 =item * S
 
-dsn: mysql_socket; copy: yes
+dsn: mysql_socket; copy: no
 
 Socket file to use for connection.
-
-=item * t
-
-dsn: table; copy: no
-
-Table for DSN L<"--recursion-method">.
 
 =item * u
 

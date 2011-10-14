@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 14;
+use Test::More tests => 16;
 
 use Sandbox;
 use OptionParser;
@@ -36,6 +36,7 @@ $dp->prop('set-vars', $o->get('set-vars'));
 
 sub make_cxn {
    my (%args) = @_;
+   $o->get_opts();
    return new Cxn(
       OptionParser => $o,
       DSNParser    => $dp,
@@ -196,6 +197,50 @@ is_deeply(
    },
    "cxn->dsn()"
 );
+
+# ############################################################################
+# Default cxn, should be equivalent to 'h=localhost'.
+# ############################################################################
+my $default_cxn = make_cxn();
+is_deeply(
+   $default_cxn->dsn(),
+   {
+      h => 'localhost',
+      P => undef,
+      u => undef,
+      p => undef,
+      A => undef,
+      F => undef,
+      S => undef,
+      D => undef,
+      t => undef,
+      n => 'h=localhost',
+   },
+   "Defaults to h=localhost"
+);
+
+# But now test if it will inherit just a few standard connection options.
+@ARGV = qw(--port 12345);
+$default_cxn = make_cxn();
+is_deeply(
+   $default_cxn->dsn(),
+   {
+      h => 'localhost',
+      P => '12345',
+      u => undef,
+      p => undef,
+      A => undef,
+      F => undef,
+      S => undef,
+      D => undef,
+      t => undef,
+      n => 'h=localhost,P=12345',
+   },
+   "Default cxn inherits default connection options"
+);
+
+@ARGV = ();
+$o->get_opts();
 
 # #############################################################################
 # Done.
