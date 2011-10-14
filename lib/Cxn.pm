@@ -57,18 +57,29 @@ sub new {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
-   die "I need a dsn or dsn_string argument"
-      unless $args{dsn} || $args{dsn_string};
    my ($dp, $o) = @args{@required_args};
+
+   # Any tool that connects to MySQL should have a standard set of
+   # connection options like --host, --port, --user, etc.  These
+   # are default values; they're used in the DSN if the DSN doesn't
+   # explicate the corresponding part (h=--host, P=--port, etc.).
+   my $dsn_defaults = $dp->parse_options($o);
 
    my $dsn = $args{dsn};
    if ( !$dsn ) {
+      # If there's no DSN and no DSN string, then the user probably ran
+      # the tool without specifying a DSN or any default connection options.
+      # They're probably relying on DBI/DBD::mysql to do the right thing
+      # by connecting to localhost.  On many systems, connecting just to
+      # localhost causes DBI to use a built-in socket, i.e. it doesn't
+      # always equate to 'h=127.0.0.1,P=3306'.
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
       $dsn = $dp->parse(
-         $args{dsn_string}, $args{prev_dsn}, $dp->parse_options($o));
+         $args{dsn_string}, $args{prev_dsn}, $dsn_defaults);
    }
 
    my $self = {
-      dsn_string   => $args{dsn_string},
       dsn          => $dsn,
       dbh          => $args{dbh},
       set          => $args{set},
