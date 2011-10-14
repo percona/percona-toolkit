@@ -224,11 +224,11 @@ sub wait_until {
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
-      return if $code->();
+      return 1 if $code->();
       sleep $t;
       $slept += $t;
    }
-   return;
+   return 0;
 }
 
 # Wait t seconds for code to return.
@@ -556,6 +556,41 @@ sub test_bash_tool {
    `$trunk/util/test-bash-tool $tool > $outfile`;
    print `cat $outfile`;
    return;
+}
+
+my %checksum_result_col = (
+   ts      => 0,
+   errors  => 1,
+   diffs   => 2,
+   rows    => 3,
+   chunks  => 4,
+   skipped => 5,
+   time    => 6,
+   table   => 7,
+);
+sub count_checksum_results {
+   my ($output, $column, $table) = @_;
+
+   my (@res) = map {
+      my $line = $_;
+      my (@cols) = $line =~ m/(\S+)/g;
+      \@cols;
+   }
+   grep {
+      my $line = $_;
+      if ( !$table ) {
+         $line;
+      }
+      else {
+         $line =~ m/$table$/m ? $line : '';
+      }
+   }
+   grep { m/^\d+\-\d+T/ } split /\n/, $output;
+   my $colno = $checksum_result_col{lc $column};
+   die "Invalid checksum result column: $column" unless defined $colno;
+   my $total = 0;
+   map { $total += $_->[$colno] } @res;
+   return $total;
 }
 
 1;

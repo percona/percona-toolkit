@@ -42,21 +42,9 @@ $sb->load_file('master', 't/pt-table-checksum/samples/issue_94.sql');
 PerconaTest::wait_for_table($slave_dbh, 'test.issue_94', 'a=11');
 $slave_dbh->do("update test.issue_94 set c=''");
 
-sub get_diffs {
-   my ($output) = @_;
-   my (@diffs) = $output =~ m/
-      ^\S+\s+  # TS
-      \d+\s+   # ERRORS
-      (\d+)    # DIFFS
-   /gmx;
-   my $total_diffs = 0;
-   map { $total_diffs += $_ } @diffs;
-   return $total_diffs;
-}
-
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d test -t issue_94)) },
-   trf => \&get_diffs,
+   trf => sub { return PerconaTest::count_checksum_results(@_, 'DIFFS') },
 );
 is(
    $output,
@@ -67,7 +55,7 @@ is(
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d test -t issue_94),
       qw(--ignore-columns c)) },
-   trf => \&get_diffs,
+   trf => sub { return PerconaTest::count_checksum_results(@_, 'DIFFS') },
 );
 is(
    $output,

@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -36,6 +36,37 @@ my @args     = (qw(--lock-wait-timeout 3 --explain --tables sakila.country));
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
 my $pid_file = "/tmp/mk-table-checksum-test.pid";
 my $output;
+my $exit_status;
+
+# ############################################################################
+# Tool should connect to localhost without any options.
+# ############################################################################
+
+# This may not work because the sandbox servers aren't on localhost,
+# but if your box has MySQL running on localhost then maybe it will,
+# so we'll account for both of these possibilities.
+
+eval {
+   $exit_status = pt_table_checksum::main(@args);
+};
+if ( $EVAL_ERROR ) {
+   # It's ok that this fails.  It means that your box, like mine, doesn't
+   # have MySQL on localhost:3306:/tmp/mysql.socket/etc.
+   like(
+      $EVAL_ERROR,
+      qr/connect\(';host=localhost;/,
+      'Default DSN is h=localhost'
+   );
+}
+else {
+   # Apparently, your box is running MySQL on default ports.  That
+   # means the tool ran, so it should run without errors.
+   is(
+      $exit_status,
+      0,
+      'Default DSN is h=localhost'
+   );
+}
 
 # ############################################################################
 # DSN should inherit connection options (--port, etc.)
