@@ -5541,22 +5541,6 @@ sub main {
       }
 
       # #####################################################################
-      # Check that the replication table exists, or possibly create it.
-      # #####################################################################
-      eval {
-         check_repl_table(
-            dbh          => $master_dbh,
-            repl_table   => $repl_table,
-            OptionParser => $o,
-            TableParser  => $tp,
-            Quoter       => $q,
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         die ts($EVAL_ERROR);
-      }
-
-      # #####################################################################
       # Check for replication filters.
       # #####################################################################
       if ( $o->get('check-replication-filters') ) {
@@ -5586,6 +5570,22 @@ sub main {
                   . "to learn how to solve this problem.";
             die ts($msg);
          }
+      }
+
+      # #####################################################################
+      # Check that the replication table exists, or possibly create it.
+      # #####################################################################
+      eval {
+         check_repl_table(
+            dbh          => $master_dbh,
+            repl_table   => $repl_table,
+            OptionParser => $o,
+            TableParser  => $tp,
+            Quoter       => $q,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         die ts($EVAL_ERROR);
       }
 
       # #####################################################################
@@ -5729,8 +5729,8 @@ sub main {
                MKDEBUG && _d('Resuming from', $last_chunk->{chunk},
                   'at', $last_chunk->{ts});
                if ( !$o->get('quiet') ) {
-                  print ts("Resuming from $tbl->{db}.$tbl->{tbl} at chunk "
-                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n");
+                  print "Resuming from $tbl->{db}.$tbl->{tbl} chunk "
+                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
                }
             }
 
@@ -5883,7 +5883,7 @@ sub main {
          # and master_crc.
          $update_sth->execute(
             # UPDATE repl_table SET
-            sprintf('%.3f', $tbl->{nibble_time}), # chunk_time
+            sprintf('%.6f', $tbl->{nibble_time}), # chunk_time
             $crc,                                 # master_crc
             $cnt,                                 # master_cnt
             # WHERE
@@ -6225,8 +6225,8 @@ sub exec_nibble {
             $tbl->{tbl},            # tbl
             $chunk,                 # chunk (number)
             $chunk_index,           # chunk_index
-            $lb_quoted,             # lower_boundary
-            $ub_quoted,             # upper_boundary
+            $lb_quoted || undef,    # lower_boundary
+            $ub_quoted || undef,    # upper_boundary
             # this_cnt, this_crc WHERE
             @{$boundary->{lower}},  # upper boundary values
             @{$boundary->{upper}},  # lower boundary values
@@ -6627,6 +6627,7 @@ sub last_chunk {
         . "WHERE db='$last_chunk->{db}' AND tbl='$last_chunk->{tbl}'";
    MKDEBUG && _d($sql);
    my ($max_chunk) = $dbh->selectrow_array($sql);
+   MKDEBUG && _d('Max chunk:', $max_chunk);
    if ( ($last_chunk->{chunk} || 0) ne ($max_chunk || 0) ) {
       warn ts("Not resuming from max chunk ("
          . ($last_chunk->{chunk} || 0)
@@ -6640,17 +6641,34 @@ sub last_chunk {
 
 sub next_lower_boundary {
    my (%args) = @_;
-   my @required_args = qw(dbh tbl last_chunk NibbleIterator Quoter);
+   my @required_args = qw(Cxn tbl last_chunk NibbleIterator Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $tbl, $last_chunk, $nibble_iter, $q) = @args{@required_args};
+   my ($cxn, $tbl, $last_chunk, $nibble_iter, $q) = @args{@required_args};
 
-   if ( $nibble_iter->nibble_index() ne ($last_chunk->{chunk_index} || '') ) {
+   # If the last chunk (which should be the max chunk) is 1 and there
+   # was no chunk index, then the table was checksummed in a single chunk.
+   if (  $last_chunk->{chunk} == 1
+         && !$last_chunk->{chunk_index}
+         && !$nibble_iter->nibble_index() ) {
+      return;
+   }
+
+   my $chunk_index = $nibble_iter->nibble_index() || '';
+   if (    ($last_chunk->{chunk_index}   || '')
+        ne ($nibble_iter->nibble_index() || '') ) {
       warn ts("Cannot resume from table $tbl->{db}.$tbl->{tbl} chunk "
-         . "$last_chunk->{chunk} because the chunk index are different: "
-         . "$last_chunk->{chunk_index} was used originally but "
-         . $nibble_iter->nibble_index() . " is used now.\n");
+         . "$last_chunk->{chunk} because the chunk indexes are different: "
+         . ($last_chunk->{chunk_index} ? $last_chunk->{chunk_index} 
+                                       : "no index")
+         . " was used originally but "
+         . ($nibble_iter->nibble_index() ? $nibble_iter->nibble_index()
+                                         : "no index")
+         . " is used now.  If the table has not changed significantly, "
+         . "this may be caused by running the tool with different command "
+         . "line options.  This table will be skipped and checksumming "
+         . "will resume with the next table.\n");
       $tbl->{checksum_results}->{errors}++;
       return;
    }
@@ -6664,10 +6682,10 @@ sub next_lower_boundary {
                   . ($sql->{where} ? " AND ($sql->{where})" : '')
       . " ORDER BY $sql->{order_by}"
       . " LIMIT 1"
-      . " /*resume next lower boundary*/";
+      . " /*resume next chunk boundary*/";
    MKDEBUG && _d($next_lb_sql);
-   my $sth = $dbh->prepare($next_lb_sql);
-   
+   my $sth = $cxn->dbh()->prepare($next_lb_sql);
+
    my @ub = split ',', $last_chunk->{upper_boundary};
    MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
    $sth->execute(@ub);
@@ -7269,14 +7287,15 @@ L<"--create-replicate-table"> (MAGIC_create_replicate):
      chunk          int          NOT NULL,
      chunk_time     float            NULL,
      chunk_index    varchar(200)     NULL,
-     lower_boundary text         NOT NULL,
-     upper_boundary text         NOT NULL,
+     lower_boundary text             NULL,
+     upper_boundary text             NULL,
      this_crc       char(40)     NOT NULL,
      this_cnt       int          NOT NULL,
      master_crc     char(40)         NULL,
      master_cnt     int              NULL,
      ts             timestamp    NOT NULL,
-     PRIMARY KEY (db, tbl, chunk)
+     PRIMARY KEY (db, tbl, chunk),
+     INDEX (ts)
   ) ENGINE=InnoDB;
 
 Be sure to choose an appropriate storage engine for the checksum table.  If you
