@@ -23,7 +23,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 6;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -58,6 +58,57 @@ is(
    1,
    "Only one warning for MySQL error 1265"
 );
+
+# ############################################################################
+# Lock wait timeout
+# ############################################################################
+$master_dbh->do('use sakila');
+$master_dbh->do('begin');
+$master_dbh->do('select * from city for update');
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t sakila.city)) },
+   stderr => 1,
+   trf    => sub { return PerconaTest::normalize_checksum_results(@_) },
+);
+
+like(
+   $output,
+   qr/Lock wait timeout exceeded/,
+   "Catches lock wait timeout"
+);
+
+like(
+   $output,
+   qr/^0 0 0 1 1 sakila.city/m,
+   "Skips chunk that times out"
+);
+
+# Lock wait timeout for sandbox servers is 3s, so sleep 4 then commit
+# to release the lock.  That should allow the checksum query to finish.
+my ($id) = $master_dbh->selectrow_array('select connection_id()');
+system("sleep 4 ; /tmp/12345/use -e 'KILL $id' >/dev/null");
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t sakila.city)) },
+   stderr => 1,
+   trf    => sub { return PerconaTest::normalize_checksum_results(@_) },
+);
+
+unlike(
+   $output,
+   qr/Lock wait timeout exceeded/,
+   "Lock wait timeout retried"
+);
+
+like(
+   $output,
+   qr/^0 0 600 1 0 sakila.city/m,
+   "Checksum retried after lock wait timeout"
+);
+
+# Reconnect to master since we just killed ourself.
+$master_dbh = $sb->get_dbh_for('master');
 
 # #############################################################################
 # Done.

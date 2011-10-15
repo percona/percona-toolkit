@@ -5822,7 +5822,6 @@ sub main {
             if ( ($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
                MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                   "$tbl->{db}.$tbl->{tbl} not using chunk index, skipping");
-               $tbl->{nibble_time} = 0;
                return 0;  # next boundary
             }
 
@@ -5835,7 +5834,6 @@ sub main {
                     && $oversize_chunk ) {
                   MKDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                      "$tbl->{db}.$tbl->{tbl} is too large, skipping");
-                  $tbl->{nibble_time} = 0;
                   return 0;  # next boundary
                }
             }
@@ -5867,11 +5865,17 @@ sub main {
          my $chunk = $nibble_iter->nibble_number();
 
          # Nibble time will be zero if the chunk was skipped.
-         if ( $tbl->{nibble_time} == 0 ) {
+         if ( !defined $tbl->{nibble_time} ) {
             MKDEBUG && _d('Skipping chunk', $chunk);
             $tbl->{checksum_results}->{skipped}++;
             return;
          }
+
+         # Max chunk number that worked.  This may be less than the total
+         # number of chunks if, for example, chunk 16 of 16 times out, but
+         # chunk 15 worked.  The max chunk is used for checking for diffs
+         # on the slaves, in the done callback.
+         $tbl->{max_chunk} = $chunk;
 
          # Fetch the checksum that we just executed from the replicate table.
          $fetch_sth->execute(@{$tbl}{qw(db tbl)}, $chunk);
@@ -5951,14 +5955,14 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
-         my $max_chunk   = $nibble_iter->nibble_number();
+         my $max_chunk   = $tbl->{max_chunk};
 
          # Don't need to do anything here if we're just --explain'ing.
          return if $o->get('explain');
 
          # Wait for all slaves to run all checksum chunks,
          # then check for differences.
-         if ( $o->get('replicate-check') && scalar @$slaves ) {
+         if ( $max_chunk && $o->get('replicate-check') && scalar @$slaves ) {
             MKDEBUG && _d('Checking slave diffs');
 
             my $check_pr;
@@ -6318,8 +6322,7 @@ sub exec_nibble {
             if ( $o->get('quiet') < 2 ) {
                warn "$error\n";
             }
-            $tbl->{checksum_results}->{errors}++;
-            return 0;  # zero nibble time, skip this nibble
+            return;  # skip this nibble
          }
 
          # This die will be caught by the eval inside the TABLE loop.
