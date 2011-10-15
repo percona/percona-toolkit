@@ -60,7 +60,7 @@ sub new {
 
    my ($row_est, $mysql_index) = _get_row_estimate(%args);
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est < $chunk_size * $o->get('chunk-size-limit')
+                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
                   : 0;
    MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 

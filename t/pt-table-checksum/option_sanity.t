@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 use PerconaTest;
 require "$trunk/bin/pt-table-checksum";
@@ -135,6 +135,16 @@ like(
    $output,
    qr/--replicate table must be database-qualified/,
    "--replicate table must be database-qualified"
+);
+
+# ############################################################################
+# --chunk-size-limit >= 1 or 0
+# ############################################################################
+$output = `$trunk/bin/pt-table-checksum --chunk-size-limit 0.999`;
+like(
+   $output,
+   qr/chunk-size-limit must be >= 1 or 0 to disable/,
+   "--chunk-size-limit must be >= 1 or 0"
 );
 
 # #############################################################################
