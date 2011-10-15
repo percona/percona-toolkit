@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 29;
+   plan tests => 30;
 }
 
 my $q   = new Quoter();
@@ -601,6 +601,28 @@ cmp_ok(
    15,
    "row_estimate()"
 );
+
+
+# ############################################################################
+# Empty table.
+# ############################################################################
+$ni = make_nibble_iter(
+   db         => 'mysql',
+   tbl        => 'host',
+   argv       => [qw(--tables mysql.host --chunk-size-limit 0)],
+);
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, @$row;
+}
+
+is_deeply(
+   \@rows,
+   [ ],
+   "--chunk-size-limit 0 on empty table"
+);
+
 
 # #############################################################################
 # Done.
