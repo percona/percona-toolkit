@@ -593,6 +593,24 @@ sub count_checksum_results {
    return $total;
 }
 
+sub normalize_checksum_results {
+   my ($output) = @_;
+   my $tmp_file = "/tmp/test-checksum-results-output";
+   open my $fh, ">", $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
+   printf $fh $output;
+   close $fh;
+   my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$8} /^[A-Z]/ {print \$0}'`;
+   `rm $tmp_file >/dev/null`;
+   return $normal_output;
+}
+
+sub get_master_binlog_pos {
+   my ($dbh) = @_;
+   my $sql = "SHOW MASTER STATUS";
+   my $ms  = $dbh->selectrow_hashref($sql);
+   return $ms->{position};
+}
+
 1;
 }
 # ###########################################################################
