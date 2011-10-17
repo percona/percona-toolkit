@@ -64,8 +64,8 @@ sub new {
    # are default values; they're used in the DSN if the DSN doesn't
    # explicate the corresponding part (h=--host, P=--port, etc.).
    my $dsn_defaults = $dp->parse_options($o);
-
-   my $dsn = $args{dsn};
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
    if ( !$dsn ) {
       # If there's no DSN and no DSN string, then the user probably ran
       # the tool without specifying a DSN or any default connection options.
@@ -76,7 +76,18 @@ sub new {
       $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
 
       $dsn = $dp->parse(
-         $args{dsn_string}, $args{prev_dsn}, $dsn_defaults);
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      # OptionParser doesn't make DSN type options inherit values from
+      # a command line DSN because it doesn't know which ARGV from the
+      # command line are DSNs or other things.  So if the caller wants
+      # DSNs to inherit values from a prev DSN (i.e. one from the
+      # command line), then they must pass it as the prev_dsn and we
+      # copy values from it into this new DSN, resulting in a new DSN
+      # with values from both sources.
+      $dsn = $dp->copy($prev_dsn, $dsn);
+      $dsn->{n} = $dp->as_string($dsn, [qw(h P S F)]);
    }
 
    my $self = {
