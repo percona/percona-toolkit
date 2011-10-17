@@ -1420,13 +1420,17 @@ sub new {
    my ($dp, $o) = @args{@required_args};
 
    my $dsn_defaults = $dp->parse_options($o);
-
-   my $dsn = $args{dsn};
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
    if ( !$dsn ) {
       $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
 
       $dsn = $dp->parse(
-         $args{dsn_string}, $args{prev_dsn}, $dsn_defaults);
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+      $dsn->{n} = $dp->as_string($dsn, [qw(h P S F)]);
    }
 
    my $self = {
@@ -5495,16 +5499,18 @@ sub main {
          OptionParser => $o,
          DSNParser    => $dp,
          Quoter       => $q,
-         make_cxn     => $make_cxn,
+         make_cxn     => sub {
+            return $make_cxn->(@_, prev_dsn => $master_cxn->dsn());
+         },
       );
       MKDEBUG && _d(scalar @$slaves, 'slaves found');
 
       if ( $o->get('check-slave-lag') ) {
          MKDEBUG && _d('Will use --check-slave-lag to check for slave lag');
-         # OptionParser can't auto-copy DSN vals from a cmd line DSN
-         # to an opt DSN, so we copy them manually.
-         my $dsn = $dp->copy($master_dsn, $o->get('check-slave-lag'));
-         my $cxn = $make_cxn->(dsn => $dsn);
+         my $cxn = $make_cxn->(
+            dsn_string => $o->get('check-slave-lag'),
+            prev_dsn   => $master_cxn->dsn(),
+         );
          $slave_lag_cxns = [ $cxn ];
       }
       else {
@@ -6164,7 +6170,7 @@ sub main {
 sub ts {
    my ($msg) = @_;
    my ($s, $m, $h, $d, $M) = localtime;
-   my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $d, $M+1, $h, $m, $s);
+   my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
    return $msg ? "$ts $msg" : $ts;
 }
 
@@ -6908,7 +6914,7 @@ disable the checks.  See also L<"--replicate-database">.
 
 =item --check-slave-lag
 
-type: DSN; group: Throttle
+type: string; group: Throttle
 
 Pause checksumming until the specified slave's lag is less than L<"--max-lag">.
 
@@ -7495,6 +7501,12 @@ dsn: charset; copy: yes
 
 Default character set.
 
+=item * D
+
+copy: no
+
+DSN table database.
+
 =item * F
 
 dsn: mysql_read_default_file; copy: no
@@ -7524,6 +7536,12 @@ Port number to use for connection.
 dsn: mysql_socket; copy: no
 
 Socket file to use for connection.
+
+=item * t
+
+copy: no
+
+DSN table table.
 
 =item * u
 

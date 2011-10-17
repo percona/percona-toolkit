@@ -66,7 +66,7 @@ is(
 );
 
 $exit_status = pt_table_checksum::main(@args, qw(-t sakila.city --quiet),
-   qw(--no-replicate-check), '--check-slave-lag', 'h=127.1,P=12347');
+   qw(--no-replicate-check), '--check-slave-lag', 'P=12347');
 
 is(
    $exit_status,
