@@ -70,14 +70,13 @@ sub new {
       die "There is no good index and the table is oversized.";
    }
 
-   my $where = $o->get('where');
+   my $tbl_struct = $tbl->{tbl_struct};
+   my $ignore_col = $o->get('ignore-columns') || {};
+   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
+   my $where      = $o->get('where');
    my $self;
    if ( $one_nibble ) {
-      my $tbl_struct = $tbl->{tbl_struct};
-      my $ignore_col = $o->get('ignore-columns') || {};
-      my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
-      my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
-
       # If the chunk size is >= number of rows in table, then we don't
       # need to chunk; we can just select all rows, in order, at once.
       my $nibble_sql
@@ -114,6 +113,7 @@ sub new {
          %args,
          tbl_struct => $tbl->{tbl_struct},
          index      => $index,
+         cols       => \@cols,
          asc_only   => 1,
       );
       MKDEBUG && _d('Ascend params:', Dumper($asc));
@@ -214,16 +214,22 @@ sub new {
       };
    }
 
-   $self->{row_est}   = $row_est;
-   $self->{nibbleno}  = 0;
-   $self->{have_rows} = 0;
-   $self->{rowno}     = 0;
+   $self->{row_est}    = $row_est;
+   $self->{nibbleno}   = 0;
+   $self->{have_rows}  = 0;
+   $self->{rowno}      = 0;
+   $self->{oktonibble} = 1;
 
    return bless $self, $class;
 }
 
 sub next {
    my ($self) = @_;
+
+   if ( !$self->{oktonibble} ) {
+      MKDEBUG && _d('Not ok to nibble');
+      return;
+   }
 
    my %callback_args = (
       Cxn            => $self->{Cxn},
@@ -237,9 +243,9 @@ sub next {
       $self->_prepare_sths();
       $self->_get_bounds();
       if ( my $callback = $self->{callbacks}->{init} ) {
-         my $oktonibble = $callback->(%callback_args);
-         MKDEBUG && _d('init callback returned', $oktonibble);
-         if ( !$oktonibble ) {
+         $self->{oktonibble} = $callback->(%callback_args);
+         MKDEBUG && _d('init callback returned', $self->{oktonibble});
+         if ( !$self->{oktonibble} ) {
             $self->{no_more_boundaries} = 1;
             return;
          }
@@ -352,7 +358,7 @@ sub one_nibble {
 
 sub chunk_size {
    my ($self) = @_;
-   return $self->{limit};
+   return $self->{limit} + 1;
 }
 
 sub set_chunk_size {
