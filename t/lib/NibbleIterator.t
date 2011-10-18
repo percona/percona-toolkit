@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 30;
+   plan tests => 42;
 }
 
 my $q   = new Quoter();
@@ -108,6 +108,17 @@ my $ni = make_nibble_iter(
    argv     => [qw(--databases test --chunk-size 5)],
 );
 
+ok(
+   !$ni->one_nibble(),
+   "one_nibble() false"
+);
+
+is(
+   $ni->nibble_number(),
+   0,
+   "nibble_number() 0"
+);
+
 my @rows = ();
 for (1..5) {
    push @rows, $ni->next();
@@ -118,6 +129,12 @@ is_deeply(
    'a-z nibble 1'
 ) or print Dumper(\@rows);
 
+is(
+   $ni->nibble_number(),
+   1,
+   "nibble_number() 1"
+);
+
 @rows = ();
 for (1..5) {
    push @rows, $ni->next();
@@ -127,6 +144,12 @@ is_deeply(
    [['f'],['g'],['h'],['i'],['j']],
    'a-z nibble 2'
 ) or print Dumper(\@rows);
+
+is(
+   $ni->nibble_number(),
+   2,
+   "nibble_number() 2"
+);
 
 @rows = ();
 for (1..5) {
@@ -158,6 +181,11 @@ is_deeply(
    'a-z nibble 5'
 ) or print Dumper(\@rows);
 
+ok(
+   $ni->more_boundaries(),
+   "more_boundaries() true"
+);
+
 # There's only 1 row left but extra calls shouldn't return anything or crash.
 @rows = ();
 for (1..5) {
@@ -168,6 +196,17 @@ is_deeply(
    [['z']],
    'a-z nibble 6'
 ) or print Dumper(\@rows);
+
+ok(
+   !$ni->more_boundaries(),
+   "more_boundaries() false"
+);
+
+is(
+   $ni->chunk_size(),
+   5,
+   "chunk_size()"
+);
 
 # ############################################################################
 # a-y w/ chunk-size 5, even nibbles
@@ -217,6 +256,11 @@ $ni = make_nibble_iter(
    db       => 'test',
    tbl      => 't',
    argv     => [qw(--databases test --chunk-size 100)],
+);
+
+ok(
+   $ni->one_nibble(),
+   "one_nibble() true"
 );
 
 @rows = ();
@@ -284,153 +328,206 @@ done
    "callbacks"
 );
 
+# Test that init callback can stop nibbling.
+$ni = make_nibble_iter(
+   db        => 'test',
+   tbl       => 't',
+   argv      => [qw(--databases test --chunk-size 2)],
+   callbacks => {
+      init          => sub { print "init\n"; return 0; },
+      after_nibble  => sub { print "after nibble\n"; },
+      done          => sub { print "done\n"; },
+   }
+);
+
+$dbh->do('delete from test.t limit 20');  # 6 rows left
+
+$output = output(
+   sub {
+      for (1..8) { $ni->next() }
+   },
+);
+
+is(
+   $output,
+"init
+",
+   "init callbacks can stop nibbling"
+);
+
 # ############################################################################
 # Nibble a larger table by numeric pk id
 # ############################################################################
-SKIP: {
-   skip "Sakila database is not loaded", 8
-      unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'payment',
+   argv     => [qw(--databases sakila --tables payment --chunk-size 100)],
+);
 
-   $ni = make_nibble_iter(
-      db       => 'sakila',
-      tbl      => 'payment',
-      argv     => [qw(--databases sakila --tables payment --chunk-size 100)],
-   );
+my $n_nibbles = 0;
+$n_nibbles++ while $ni->next();
+is(
+   $n_nibbles,
+   16049,
+   "Nibble sakila.payment (16049 rows)"
+);
 
-   my $n_nibbles = 0;
-   $n_nibbles++ while $ni->next();
-   is(
-      $n_nibbles,
-      16049,
-      "Nibble sakila.payment (16049 rows)"
-   );
+my $tbl = {
+   db         => 'sakila',
+   tbl        => 'country',
+   tbl_struct => $tp->parse(
+      $tp->get_create_table($dbh, 'sakila', 'country')),
+};
+my $chunk_checksum = $rc->make_chunk_checksum(
+   dbh => $dbh,
+   tbl => $tbl,
+);
+$ni = make_nibble_iter(
+   db     => 'sakila',
+   tbl    => 'country',
+   argv   => [qw(--databases sakila --tables country --chunk-size 25)],
+   select => $chunk_checksum,
+);
 
-   my $tbl = {
-      db         => 'sakila',
-      tbl        => 'country',
-      tbl_struct => $tp->parse(
-         $tp->get_create_table($dbh, 'sakila', 'country')),
-   };
-   my $chunk_checksum = $rc->make_chunk_checksum(
-      dbh => $dbh,
-      tbl => $tbl,
-   );
-   $ni = make_nibble_iter(
-      db     => 'sakila',
-      tbl    => 'country',
-      argv   => [qw(--databases sakila --tables country --chunk-size 25)],
-      select => $chunk_checksum,
-   );
+my $row = $ni->next();
+is_deeply(
+   $row,
+   [25, 'da79784d'],
+   "SELECT chunk checksum 1 FROM sakila.country"
+) or print STDERR Dumper($row); 
 
-   my $row = $ni->next();
-   is_deeply(
-      $row,
-      [25, 'da79784d'],
-      "SELECT chunk checksum 1 FROM sakila.country"
-   ) or print STDERR Dumper($row); 
-   
-   $row = $ni->next();
-   is_deeply(
-      $row,
-      [25, 'e860c4f9'],
-      "SELECT chunk checksum 2 FROM sakila.country"
-   ) or print STDERR Dumper($row); 
-   
-   $row = $ni->next();
-   is_deeply(
-      $row,
-      [25, 'eb651f58'],
-      "SELECT chunk checksum 3 FROM sakila.country"
-   ) or print STDERR Dumper($row); 
-  
-   $row = $ni->next();
-   is_deeply(
-      $row,
-      [25, '2d87d588'],
-      "SELECT chunk checksum 4 FROM sakila.country"
-   ) or print STDERR Dumper($row); 
-   
-   $row = $ni->next();
-   is_deeply(
-      $row,
-      [9, 'beb4a180'],
-      "SELECT chunk checksum 5 FROM sakila.country"
-   ) or print STDERR Dumper($row); 
+$row = $ni->next();
+is_deeply(
+   $row,
+   [25, 'e860c4f9'],
+   "SELECT chunk checksum 2 FROM sakila.country"
+) or print STDERR Dumper($row); 
+
+$row = $ni->next();
+is_deeply(
+   $row,
+   [25, 'eb651f58'],
+   "SELECT chunk checksum 3 FROM sakila.country"
+) or print STDERR Dumper($row); 
+
+$row = $ni->next();
+is_deeply(
+   $row,
+   [25, '2d87d588'],
+   "SELECT chunk checksum 4 FROM sakila.country"
+) or print STDERR Dumper($row); 
+
+$row = $ni->next();
+is_deeply(
+   $row,
+   [9, 'beb4a180'],
+   "SELECT chunk checksum 5 FROM sakila.country"
+) or print STDERR Dumper($row); 
 
 
-   # #########################################################################
-   # exec_nibble callback and explain_sth
-   # #########################################################################
-   my @expl;
-   $ni = make_nibble_iter(
-      db     => 'sakila',
-      tbl    => 'country',
-      argv   => [qw(--databases sakila --tables country --chunk-size 60)],
-      select => $chunk_checksum,
-      callbacks => {
-         exec_nibble  => sub {
-            my (%args) = @_;
-            my $nibble_iter = $args{NibbleIterator};
-            my $sth         = $nibble_iter->statements();
-            my $boundary    = $nibble_iter->boundaries();
-            $sth->{explain_nibble}->execute(
-               @{$boundary->{lower}}, @{$boundary->{upper}});
-            push @expl, $sth->{explain_nibble}->fetchrow_hashref();
-            return 0;
-         },
+# #########################################################################
+# exec_nibble callback and explain_sth
+# #########################################################################
+my @expl;
+$ni = make_nibble_iter(
+   db     => 'sakila',
+   tbl    => 'country',
+   argv   => [qw(--databases sakila --tables country --chunk-size 60)],
+   select => $chunk_checksum,
+   callbacks => {
+      exec_nibble  => sub {
+         my (%args) = @_;
+         my $nibble_iter = $args{NibbleIterator};
+         my $sth         = $nibble_iter->statements();
+         my $boundary    = $nibble_iter->boundaries();
+         $sth->{explain_nibble}->execute(
+            @{$boundary->{lower}}, @{$boundary->{upper}});
+         push @expl, $sth->{explain_nibble}->fetchrow_hashref();
+         return 0;
       },
-      one_nibble => 0,
-   );
-   $ni->next();
-   $ni->next();
-   is_deeply(
-      \@expl,
-      [
-         {
-            id            => '1',
-            key           => 'PRIMARY',
-            key_len       => '2',
-            possible_keys => 'PRIMARY',
-            ref           => undef,
-            rows          => '54',
-            select_type   => 'SIMPLE',
-            table         => 'country',
-            type          => 'range',
-            extra         => 'Using where',
-         },
-         {
-            id             => '1',
-            key            => 'PRIMARY',
-            key_len        => '2',
-            possible_keys  => 'PRIMARY',
-            ref            => undef,
-            rows           => '49',
-            select_type    => 'SIMPLE',
-            table          => 'country',
-            type           => 'range',
-            extra          => 'Using where',
-         },
-      ],
-   'exec_nibble callbackup and explain_sth'
-   ) or print STDERR Dumper(\@expl);
+   },
+   one_nibble => 0,
+);
+$ni->next();
+$ni->next();
+is_deeply(
+   \@expl,
+   [
+      {
+         id            => '1',
+         key           => 'PRIMARY',
+         key_len       => '2',
+         possible_keys => 'PRIMARY',
+         ref           => undef,
+         rows          => '54',
+         select_type   => 'SIMPLE',
+         table         => 'country',
+         type          => 'range',
+         extra         => 'Using where',
+      },
+      {
+         id             => '1',
+         key            => 'PRIMARY',
+         key_len        => '2',
+         possible_keys  => 'PRIMARY',
+         ref            => undef,
+         rows           => '49',
+         select_type    => 'SIMPLE',
+         table          => 'country',
+         type           => 'range',
+         extra          => 'Using where',
+      },
+   ],
+'exec_nibble callbackup and explain_sth'
+) or print STDERR Dumper(\@expl);
 
-   # #########################################################################
-   # film_actor, multi-column pk
-   # #########################################################################
-   $ni = make_nibble_iter(
-      db       => 'sakila',
-      tbl      => 'film_actor',
-      argv     => [qw(--tables sakila.film_actor --chunk-size 1000)],
-   );
+# #########################################################################
+# film_actor, multi-column pk
+# #########################################################################
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'film_actor',
+   argv     => [qw(--tables sakila.film_actor --chunk-size 1000)],
+);
 
-   $n_nibbles = 0;
-   $n_nibbles++ while $ni->next();
-   is(
-      $n_nibbles,
-      5462,
-      "Nibble sakila.film_actor (multi-column pk)"
-   );
-}
+$n_nibbles = 0;
+$n_nibbles++ while $ni->next();
+is(
+   $n_nibbles,
+   5462,
+   "Nibble sakila.film_actor (multi-column pk)"
+);
+
+is_deeply(
+   $ni->sql(),
+   {
+      boundaries => {
+         '<' => '((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` < ?))',
+         '<=' => '((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?))',
+         '>' => '((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` > ?))',
+         '>=' => '((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?))'
+      },
+      columns  => [qw(actor_id actor_id film_id)],
+      from     => '`sakila`.`film_actor` FORCE INDEX(`PRIMARY`)',
+      where    => undef,
+      order_by => '`actor_id`, `film_id`',
+   },
+   "sql()"
+);
+
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 10),
+                '--ignore-columns', 'phone,last_update'],
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) ORDER BY `address_id` /*checksum chunk*/",
+   "--ignore-columns"
+);
 
 # ############################################################################
 # Reset chunk size on-the-fly. 
@@ -623,9 +720,18 @@ is_deeply(
    "--chunk-size-limit 0 on empty table"
 );
 
-
 # #############################################################################
 # Done.
 # #############################################################################
+{
+   local *STDERR;
+   open STDERR, '>', \$output;
+   $ni->_d('Complete test coverage');
+}
+like(
+   $output,
+   qr/Complete test coverage/,
+   '_d() works'
+);
 $sb->wipe_clean($dbh);
 exit;
