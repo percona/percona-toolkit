@@ -122,10 +122,6 @@ sub parse {
       }
    }
 
-   if ( !$final_props{n} ) {  # name
-      $final_props{n} = $self->as_string(\%final_props, [qw(h P S F)]);
-   }
-
    return \%final_props;
 }
 
@@ -1411,6 +1407,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(DSNParser OptionParser);
@@ -1430,18 +1428,19 @@ sub new {
    }
    elsif ( $prev_dsn ) {
       $dsn = $dp->copy($prev_dsn, $dsn);
-      $dsn->{n} = $dp->as_string($dsn, [qw(h P S F)]);
    }
 
    my $self = {
       dsn          => $dsn,
       dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
       set          => $args{set},
+      dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
    };
 
-   MKDEBUG && _d('New connection to', $dsn->{n});
    return bless $self, $class;
 }
 
@@ -1457,10 +1456,9 @@ sub connect {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-
       $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
-      MKDEBUG && _d('Connected dbh', $dbh, $dsn->{n});
    }
+   MKDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
    return $self->set_dbh($dbh);
 }
@@ -1468,15 +1466,29 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   return $dbh if $self->{dbh} && $self->{dbh} == $dbh;
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      MKDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   MKDEBUG && _d($dbh, 'Setting dbh');
 
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+   
+   my $sql = 'SELECT @@hostname, @@server_id';
+   MKDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   MKDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
 
    if ( my $set = $self->{set}) {
       $set->($dbh);
    }
 
-   $self->{dbh} = $dbh;
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
    return $dbh;
 }
 
@@ -1490,10 +1502,16 @@ sub dsn {
    return $self->{dsn};
 }
 
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
 sub DESTROY {
    my ($self) = @_;
    if ( $self->{dbh} ) {
-      MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{dsn}->{n});
+      MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
    return;
@@ -5049,10 +5067,16 @@ sub start {
 }
 
 sub update {
-   my ( $self, $callback, $now ) = @_;
+   my ( $self, $callback, %args ) = @_;
    my $jobsize   = $self->{jobsize};
-   $now        ||= time();
+   my $now    ||= $args{now} || time;
+
    $self->{iterations}++; # How many updates have happened;
+
+   if ( !$self->{first_report} && $args{first_report} ) {
+      $args{first_report}->();
+      $self->{first_report} = 1;
+   }
 
    if ( $self->{report} eq 'time'
          && $self->{interval} > $now - $self->{last_reported}
@@ -5165,10 +5189,11 @@ sub wait {
 
    my $worst;  # most lagging slave
    my $pr_callback;
+   my $pr_first_report;
    if ( $pr ) {
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
-         my $dsn_name = $worst->{cxn}->dsn()->{n} || '?';
+         my $dsn_name = $worst->{cxn}->name();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
                . " seconds on $dsn_name.  Waiting.\n";
@@ -5179,6 +5204,14 @@ sub wait {
          return;
       };
       $pr->set_callback($pr_callback);
+
+      $pr_first_report = sub {
+         my $dsn_name = $worst->{cxn}->name();
+         if ( !defined $worst->{lag} ) {
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+         }
+         return;
+      };
    }
 
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
@@ -5186,7 +5219,7 @@ sub wait {
       MKDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
-         MKDEBUG && _d($lagged_slaves[$i]->{cxn}->dsn()->{n},
+         MKDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
@@ -5208,7 +5241,10 @@ sub wait {
             $worst->{lag}, 'on', Dumper($worst->{cxn}->dsn()));
 
          if ( $pr ) {
-            $pr->update(sub { return 0; });
+            $pr->update(
+               sub { return 0; },
+               first_report => $pr_first_report,
+            );
          }
 
          MKDEBUG && _d('Calling sleep callback');
@@ -5462,11 +5498,12 @@ sub main {
    # is applied to every cxn.
    # TODO: maybe this stuff only needs to be set on master cxn?
    my $make_cxn = sub {
+      my (%args) = @_;
       my $cxn = new Cxn(
-         @_,
+         %args,
          DSNParser    => $dp,
          OptionParser => $o,
-         set          => $set_on_connect,
+         set          => $args{set_vars} ? $set_on_connect : undef,
       );
       eval { $cxn->connect() };  # connect or die trying
       if ( $EVAL_ERROR ) {
@@ -5478,7 +5515,7 @@ sub main {
    # The dbh and dsn can be used before checksumming starts, but once
    # inside the main TABLE loop, only use the master cxn because its
    # dbh may be recreated.
-   my $master_cxn = $make_cxn->(dsn_string => shift @ARGV);
+   my $master_cxn = $make_cxn->(set_vars => 1, dsn_string => shift @ARGV);
    my $master_dbh = $master_cxn->dbh();  # just for brevity
    my $master_dsn = $master_cxn->dsn();  # just for brevity
 
@@ -5544,7 +5581,7 @@ sub main {
                repl_table => $repl_table,
             );
             MKDEBUG && _d(scalar @$diffs, 'checksum diffs on',
-               $slave->dsn()->{n});
+               $slave->name());
             if ( @$diffs ) {
                $exit_status |= 1;
                if ( $o->get('quiet') < 2 ) { 
@@ -5572,7 +5609,7 @@ sub main {
             );
             if ( keys %$repl_filters ) {
                push @all_repl_filters,
-                  { name    => $slave->dsn()->{n},
+                  { name    => $slave->name(),
                     filters => $repl_filters,
                   };
             }
@@ -5637,13 +5674,13 @@ sub main {
          my ($cxn) = @_;
          my $dbh = $cxn->dbh();
          if ( !$dbh || !$dbh->ping() ) {
-            MKDEBUG && _d('Lost connection to slave', $cxn->dsn()->{n},
+            MKDEBUG && _d('Lost connection to slave', $cxn->name(),
                'while waiting for slave lag');
             eval { $dbh = $cxn->connect() };  # connect or die trying
             if ( $EVAL_ERROR ) {
                $oktorun = 0;  # Fatal error
                chomp $EVAL_ERROR;
-               die "Lost connection to replica " . $cxn->dsn()->{n}
+               die "Lost connection to replica " . $cxn->name()
                   . " while attempting to get its lag ($EVAL_ERROR)";
             }
          }
@@ -5934,11 +5971,16 @@ sub main {
             if ( $o->get('chunk-time') ) {
                $tbl->{chunk_size}
                   = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
+
                if ( $tbl->{chunk_size} < 1 ) {
                   # This shouldn't happen.  WeightedAvgRate::update() may return
                   # a value < 1, but minimum chunk size is 1.
-                  if ( $o->get('quiet') < 2 ) {
-                     warn ts("Checksums are executing very slowly.  "
+                  $tbl->{chunk_size} = 1;
+
+                  # This warning is printed once per table.
+                  if ( !$tbl->{warned_slow} && $o->get('quiet') < 2 ) {
+                     warn ts("Checksum queries for table "
+                        . "$tbl->{db}.$tbl->{tbl} are executing very slowly.  "
                         . "--chunk-size has been automatically reduced to 1.  "
                         . "Check that the server is not being overloaded, "
                         . "or increase --chunk-time.  The last chunk, number "
@@ -5946,10 +5988,12 @@ sub main {
                         . "selected $cnt rows and took "
                         . sprintf('%.3f', $tbl->{nibble_time})
                         . " seconds to execute.\n");
+                     $tbl->{warned_slow} = 1;
                   }
-                  $tbl->{chunk_size} = 1;
                }
-               $args{NibbleIterator}->set_chunk_size($tbl->{chunk_size});
+
+               # Update chunk-size based on rows/s checksum rate.
+               $nibble_iter->set_chunk_size($tbl->{chunk_size});
             }
 
             # Every table should have a Progress obj; update it.
@@ -6010,7 +6054,7 @@ sub main {
                for my $i ( 0..$n_slaves ) {
                   my $slave = $slaves->[$i];
                   my ($chunk) = $slave->dbh()->selectrow_array($sql);
-                  MKDEBUG && _d($slave->dsn()->{n}, 'max chunk:', $chunk);
+                  MKDEBUG && _d($slave->name(), 'max chunk:', $chunk);
                   $chunks[$i] = $chunk || 0;
                }
                @chunks = sort { $a <=> $b } @chunks;
@@ -6034,7 +6078,7 @@ sub main {
                   where      => "db='$tbl->{db}' AND tbl='$tbl->{tbl}'",
                );
                MKDEBUG && _d(scalar @$diffs, 'checksum diffs on',
-                  $slave->dsn()->{n});
+                  $slave->name());
                if ( @$diffs ) {
                   $tbl->{checksum_results}->{diffs} = scalar @$diffs;
                }
@@ -6087,10 +6131,12 @@ sub main {
          # then total rate will be zero, so use --chunk-size.  Or, if
          # --chunk-time=0, then only use --chunk-size for every table.
          # Else, the initial chunk size is based on the total rates of
-         # rows/s from all previous tables.
+         # rows/s from all previous tables.  If --chunk-time is really
+         # small, like 0.001, then Perl int() will probably round the
+         # chunk size to zero, which is invalid, so we default to 1.
          my $chunk_time = $o->get('chunk-time');
          my $chunk_size = $chunk_time && $total_rate
-                        ? int($total_rate * $chunk_time)
+                        ? int($total_rate * $chunk_time) || 1
                         : $o->get('chunk-size');
          $tbl->{chunk_size} = $chunk_size;
 
@@ -6400,7 +6446,7 @@ sub print_checksum_diffs {
    }
    my ($cxn, $diffs) = @args{@required_args};
 
-   print "Differences on ", $cxn->dsn()->{n}, "\n";
+   print "Differences on ", $cxn->name(), "\n";
    print join(' ', map { uc $_ } @headers), "\n";
    foreach my $diff ( @$diffs ) {
       print join(' ', map { defined $_ ? $_ : '' } @{$diff}{@headers}), "\n";
@@ -7189,7 +7235,7 @@ should be printed, in percentage, seconds, or number of iterations.
 
 =item --quiet
 
-cumulative: yes; default: 0
+short form: -q; cumulative: yes; default: 0
 
 Print only the most important information (disables L<"--progress">).
 

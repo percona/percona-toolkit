@@ -79,12 +79,13 @@ sub wait {
 
    my $worst;  # most lagging slave
    my $pr_callback;
+   my $pr_first_report;
    if ( $pr ) {
       # If you use the default Progress report callback, you'll need to
       # to add Transformers.pm to this tool.
       $pr_callback = sub {
          my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
-         my $dsn_name = $worst->{cxn}->dsn()->{n} || '?';
+         my $dsn_name = $worst->{cxn}->name();
          if ( defined $worst->{lag} ) {
             print STDERR "Replica lag is " . ($worst->{lag} || '?')
                . " seconds on $dsn_name.  Waiting.\n";
@@ -95,6 +96,17 @@ sub wait {
          return;
       };
       $pr->set_callback($pr_callback);
+
+      # If a replic is stopped, don't wait 30s (or whatever interval)
+      # to report this.  Instead, report it once, immediately, then
+      # keep reporting it every interval.
+      $pr_first_report = sub {
+         my $dsn_name = $worst->{cxn}->name();
+         if ( !defined $worst->{lag} ) {
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+         }
+         return;
+      };
    }
 
    # First check all slaves.
@@ -103,7 +115,7 @@ sub wait {
       MKDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
-         MKDEBUG && _d($lagged_slaves[$i]->{cxn}->dsn()->{n},
+         MKDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
@@ -131,7 +143,10 @@ sub wait {
             # it will take all slaves to catch up.  The progress reports
             # are just to inform the user every 30s which slave is still
             # lagging this most.
-            $pr->update(sub { return 0; });
+            $pr->update(
+               sub { return 0; },
+               first_report => $pr_first_report,
+            );
          }
 
          MKDEBUG && _d('Calling sleep callback');

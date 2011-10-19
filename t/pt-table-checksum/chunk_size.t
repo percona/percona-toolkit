@@ -23,7 +23,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -82,6 +82,23 @@ is_deeply(
       [501, 600],
    ],
    "--chunk-time=0 disables auto-adjusting --chunk-size"
+);
+
+
+# ############################################################################
+# Sub-second chunk-time.
+# ############################################################################
+
+$output = output(
+   sub { pt_table_checksum::main(@args,
+      qw(--quiet --chunk-time .001 -d mysql)) },
+   stderr => 1,
+);
+
+unlike(
+   $output,
+   qr/Cannot checksum table/,
+   "Very small --chunk-time doesn't cause zero --chunk-size"
 );
 
 # #############################################################################

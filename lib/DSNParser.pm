@@ -170,10 +170,6 @@ sub parse {
       }
    }
 
-   if ( !$final_props{n} ) {  # name
-      $final_props{n} = $self->as_string(\%final_props, [qw(h P S F)]);
-   }
-
    return \%final_props;
 }
 
