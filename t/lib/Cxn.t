@@ -97,6 +97,12 @@ ok(
    "New Cxn, dbh not connected yet"
 );
 
+is(
+   $cxn->name(),
+   'h=127.1,P=12345',
+   'name() uses DSN if not connected'
+);
+
 $cxn->connect();
 ok(
    $cxn->dbh()->ping(),
@@ -193,11 +199,17 @@ is_deeply(
       S => undef,
       D => undef,
       t => undef,
-      n => 'h=127.1,P=12345',
    },
    "cxn->dsn()"
 );
 
+my ($hostname) = $master_dbh->selectrow_array('select @@hostname');
+is(
+   $cxn->name(),
+   $hostname,
+   'name() uses @@hostname'
+);
+exit;
 # ############################################################################
 # Default cxn, should be equivalent to 'h=localhost'.
 # ############################################################################
@@ -214,7 +226,6 @@ is_deeply(
       S => undef,
       D => undef,
       t => undef,
-      n => 'h=localhost',
    },
    "Defaults to h=localhost"
 );
@@ -234,7 +245,6 @@ is_deeply(
       S => undef,
       D => undef,
       t => undef,
-      n => 'h=localhost,P=12345',
    },
    "Default cxn inherits default connection options"
 );

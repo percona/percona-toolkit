@@ -12,6 +12,8 @@ use English qw(-no_match_vars);
 use Test::More tests => 7;
 
 use ReplicaLagWaiter;
+use OptionParser;
+use DSNParser;
 use Cxn;
 use PerconaTest;
 
@@ -38,8 +40,14 @@ sub sleep {
    sleep $t;
 }
 
-my $r1 = new Cxn(dsn=>{n=>'slave1'}, dbh=>1, DSNParser=>1, OptionParser=>1);
-my $r2 = new Cxn(dsn=>{n=>'slave2'}, dbh=>2, DSNParser=>1, OptionParser=>1);
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $o  = new OptionParser(description => 'Cxn');
+$o->get_specs("$trunk/bin/pt-table-checksum");
+$o->get_opts();
+$dp->prop('set-vars', $o->get('set-vars'));
+
+my $r1 = new Cxn(dsn=>{n=>'slave1'}, dbh=>1, DSNParser=>$dp, OptionParser=>$o);
+my $r2 = new Cxn(dsn=>{n=>'slave2'}, dbh=>2, DSNParser=>$dp, OptionParser=>$o);
 
 my $rll = new ReplicaLagWaiter(
    oktorun => \&oktorun,

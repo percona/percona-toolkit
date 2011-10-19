@@ -467,11 +467,16 @@ sub no_diff {
    die "I need a cmd argument" unless $cmd;
    die "I need an expected_output argument" unless $expected_output;
 
+   die "$expected_output does not exist" unless -f "$trunk/$expected_output";
    $expected_output = "$trunk/$expected_output";
-   die "$expected_output does not exist" unless -f $expected_output;
 
    my $tmp_file      = '/tmp/percona-toolkit-test-output.txt';
    my $tmp_file_orig = '/tmp/percona-toolkit-test-output-original.txt';
+
+   if ( my $sed_args = $args{sed_out} ) {
+      `cat $expected_output | sed $sed_args > /tmp/pt-test-outfile-trf`;
+      $expected_output = "/tmp/pt-test-outfile-trf";
+   }
 
    # Determine cmd type and run it.
    if ( ref $cmd eq 'CODE' ) {
@@ -522,7 +527,7 @@ sub no_diff {
    }
 
    # Remove our tmp files.
-   `rm -f $tmp_file $tmp_file_orig`
+   `rm -f $tmp_file $tmp_file_orig /tmp/pt-test-outfile-trf >/dev/null 2>&1`
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
 
    return !$retval;

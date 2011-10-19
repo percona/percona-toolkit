@@ -37,6 +37,12 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
+# Hostnames make testing less accurate.  Tests need to see
+# that such-and-such happened on specific slave hosts, but
+# the sandbox servers are all on one host so all slaves have
+# the same hostname.
+use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+
 # Sub: new
 #
 # Required Arguments:
@@ -87,18 +93,19 @@ sub new {
       # copy values from it into this new DSN, resulting in a new DSN
       # with values from both sources.
       $dsn = $dp->copy($prev_dsn, $dsn);
-      $dsn->{n} = $dp->as_string($dsn, [qw(h P S F)]);
    }
 
    my $self = {
       dsn          => $dsn,
       dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
       set          => $args{set},
+      dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
    };
 
-   MKDEBUG && _d('New connection to', $dsn->{n});
    return bless $self, $class;
 }
 
@@ -115,10 +122,9 @@ sub connect {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-
       $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
-      MKDEBUG && _d('Connected dbh', $dbh, $dsn->{n});
    }
+   MKDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
    return $self->set_dbh($dbh);
 }
@@ -126,34 +132,69 @@ sub connect {
 sub set_dbh {
    my ($self, $dbh) = @_;
 
-   # Don't set stuff twice on the same dbh.
-   return $dbh if $self->{dbh} && $self->{dbh} == $dbh;
+   # If we already have a dbh, and that dbh is the same as this dbh,
+   # and the dbh has already been set, then do not re-set the same
+   # dbh.  dbh_set is required so that if this obj was created with
+   # a dbh, we set that dbh when connect() is called because whoever
+   # created the dbh probably didn't set what we set here.  For example,
+   # MasterSlave makes dbhs when finding slaves, but it doesn't set
+   # anything.
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      MKDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   MKDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
    $dbh->{FetchHashKeyName} = 'NAME_lc';
+   
+   # Update the cxn's name.  Until we connect, the DSN parts
+   # h and P are used.  Once connected, use @@hostname.
+   my $sql = 'SELECT @@hostname, @@server_id';
+   MKDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   MKDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
 
+   # Call the set callback to let the caller SET any MySQL variables.
    if ( my $set = $self->{set}) {
       $set->($dbh);
    }
 
-   $self->{dbh} = $dbh;
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
    return $dbh;
 }
 
+# Sub: dbh
+#   Return the cxn's dbh.
 sub dbh {
    my ($self) = @_;
    return $self->{dbh};
 }
 
+# Sub: dsn
+#   Return the cxn's dsn.
 sub dsn {
    my ($self) = @_;
    return $self->{dsn};
 }
 
+# Sub: name
+#   Return the cxn's name.
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
 sub DESTROY {
    my ($self) = @_;
    if ( $self->{dbh} ) {
-      MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{dsn}->{n});
+      MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
    return;

@@ -11,6 +11,12 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+# Hostnames make testing less accurate.  Tests need to see
+# that such-and-such happened on specific slave hosts, but
+# the sandbox servers are all on one host so all slaves have
+# the same hostname.
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
+
 use Data::Dumper;
 use PerconaTest;
 use Sandbox;
@@ -194,5 +200,5 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-#$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($master_dbh);
 exit;
