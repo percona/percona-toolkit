@@ -5342,8 +5342,6 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   # Because of --arg-table, $final_o is the OptionParser obj used to get
-   # most options (see my $final_o below).
    my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
@@ -5385,7 +5383,7 @@ sub main {
    $o->usage_or_errors();
 
    # ########################################################################
-   # If --pid, check it first since we'll die if it already exits.
+   # If --pid, check it first since we'll die if it already exists.
    # ########################################################################
    my $daemon;
    if ( $o->get('pid') ) {
@@ -5408,8 +5406,15 @@ sub main {
       MKDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
-      # Set transaction isolation level.
-      # http://code.google.com/p/maatkit/issues/detail?id=720
+      # Set transaction isolation level. We set binlog_format to STATEMENT,
+      # but if the transaction isolation level is set to READ COMMITTED and the
+      # --replicate table is in InnoDB format, the tool fails with the following
+      # message:
+      #
+      # Binary logging not possible. Message: Transaction level 'READ-COMMITTED'
+      # in InnoDB is not safe for binlog mode 'STATEMENT'
+      #
+      # See also http://code.google.com/p/maatkit/issues/detail?id=720
       $sql = 'SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ';
       eval {
          MKDEBUG && _d($dbh, $sql);
@@ -5419,13 +5424,16 @@ sub main {
          die "Failed to $sql: $EVAL_ERROR\n"
             . "If the --replicate table is InnoDB and the default server "
             . "transaction isolation level is not REPEATABLE-READ then "
-            . "checksumming may fail with errors like \"Binary logging not "
+            . "checksumming may fail with errors such as \"Binary logging not "
             . "possible. Message: Transaction level 'READ-COMMITTED' in "
             . "InnoDB is not safe for binlog mode 'STATEMENT'\".  In that "
             . "case you will need to manually set the transaction isolation "
             . "level to REPEATABLE-READ.\n";
       }
 
+      # We set innodb_lock_wait_timeout=1 so that if this tool happens to cause
+      # some locking, it will be more likely to be the victim than other
+      # connections to the server, and thus disrupt the server less.
       $sql = 'SHOW SESSION VARIABLES LIKE "innodb_lock_wait_timeout"';
       MKDEBUG && _d($dbh, $sql);
       my (undef, $lock_wait_timeout) = $dbh->selectrow_array($sql);
@@ -5437,12 +5445,12 @@ sub main {
             $dbh->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die "Failed to $sql: $EVAL_ERROR\n"
+            warn "Failed to $sql: $EVAL_ERROR\n"
                . "The current innodb_lock_wait_timeout value "
                . "$lock_wait_timeout is higher than the --lock-wait-timeout "
                . "value " . $o->get('lock-wait-timeout') . " and the variable "
                . "cannot be changed.  innodb_lock_wait_timeout is only dynamic "
-               . "when using the InnoDB plugin.  To prevent this error, either "
+               . "when using the InnoDB plugin.  To prevent this warning, either "
                . "specify --lock-wait-time=$lock_wait_timeout, or manually "
                . "set innodb_lock_wait_timeout to a value less than or equal "
                . "to " . $o->get('lock-wait-timeout') . " and restart MySQL.\n";
@@ -6744,29 +6752,20 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-table-checksum - Perform an online replication consistency check.
+pt-table-checksum - Verify that MySQL master and replicas' data is identical.
 
 =head1 SYNOPSIS
 
 Usage: pt-table-checksum [OPTION...] [DSN]
 
-pt-table-checksum performs an online replication consistency check by
-replicating checksum queries.  By default, all tables on all replicas
-are checked.  The C<DSN>, if specified, must be the master host.  The
-tool exists non-zero if any differences are found, or if any warnings
-or error occur.
+pt-table-checksum performs an online replication consistency check by executing
+checksum queries on the master.  The checksum queries replicate and re-execute
+on replicas, where they will produce different results if the replicas have
+different data from the master. The C<DSN>, if specified, must be the master
+host.  The tool exits non-zero if any differences are found, or if any warnings
+or error occur. To execute the tool:
 
-First create a C<percona> database on the master:
-
-   CREATE DATABASE percona;
-
-Then run the tool on the master to check that all data on all replicas
-is consistent:
-
-   pt-table-checksum --create-replicate-table
-
-The L<"--create-replicate-table"> option can be dropped once the
-L<"--replicate"> table has been created.
+   pt-table-checksum
 
 =head1 RISKS
 
@@ -6797,78 +6796,58 @@ are generated by a query on the server, and there is very little network
 traffic as a result.
 
 Checksums typically take about twice as long as COUNT(*) on very large InnoDB
-tables in my tests.  For smaller tables, COUNT(*) is a good bit faster than
-the checksums.
-
-TODO
-
-=head1 HOW FAST IS IT?
-
-Speed and efficiency are important, because the typical use case is checksumming
-large amounts of data.
-
-C<pt-table-checksum> is designed to do very little work itself, and generates
-very little network traffic aside from inspecting table structures with C<SHOW
-CREATE TABLE>.  The results of checksum queries are typically 40-character or
-shorter strings.
-
-The MySQL server does the bulk of the work, in the form of the checksum queries.
-The following benchmarks show the checksum query times for various checksum
-algorithms.  The first two results are simply running C<COUNT(col8)> and
-C<CHECKSUM TABLE> on the table.  C<CHECKSUM TABLE> is just C<CRC32> under the
-hood, but it's implemented inside the storage engine layer instead of at the
-MySQL layer.
-
- ALGORITHM       HASH FUNCTION  EXTRA           TIME
- ==============  =============  ==============  =====
- COUNT(col8)                                    2.3
- CHECKSUM TABLE                                 5.3
- BIT_XOR         FNV_64                         12.7
- ACCUM           FNV_64                         42.4
- BIT_XOR         MD5            --optimize-xor  80.0
- ACCUM           MD5                            87.4
- BIT_XOR         SHA1           --optimize-xor  90.1
- ACCUM           SHA1                           101.3
- BIT_XOR         MD5                            172.0
- BIT_XOR         SHA1                           197.3
-
-The tests are entirely CPU-bound.  The sample data is an InnoDB table with the
-following structure:
-
- CREATE TABLE test (
-   col1 int NOT NULL,
-   col2 date NOT NULL,
-   col3 int NOT NULL,
-   col4 int NOT NULL,
-   col5 int,
-   col6 decimal(3,1),
-   col7 smallint unsigned NOT NULL,
-   col8 timestamp NOT NULL,
-   PRIMARY KEY  (col2, col1),
-   KEY (col7),
-   KEY (col1)
- ) ENGINE=InnoDB
-
-The table has 4303585 rows, 365969408 bytes of data and 173457408 bytes of
-indexes.  The server is a Dell PowerEdge 1800 with dual 32-bit Xeon 2.8GHz
-processors and 2GB of RAM.  The tests are fully CPU-bound, and the server is
-otherwise idle.  The results are generally consistent to within a tenth of a
-second on repeated runs.
-
-C<CRC32> is the default checksum function to use, and should be enough for most
-cases.  If you need stronger guarantees that your data is identical, you should
-use one of the other functions.
+tables.  For smaller tables, COUNT(*) is a good bit faster than the checksums.
 
 =head1 OUTPUT
 
-TODO
+The tool prints tabular output to indicate the results as it goes, such as
+
+              TS ERRORS  DIFFS    ROWS  CHUNKS SKIPPED    TIME TABLE
+  10-13T16:41:32      0      0       0       1       0   0.475 mysql.columns_priv
+  10-13T16:41:33      0      0       2       1       0   0.389 mysql.db
+  10-13T16:41:33      0      0       0       1       0   0.318 mysql.event
+  10-13T16:41:33      0      0       0       1       0   0.197 mysql.func
+
+The columns are as follows:
+
+=over
+
+=item TS
+
+The timestamp at which the line was printed.
+
+=item ERRORS
+
+The number of errors encountered during checksumming the table.
+
+=item DIFFS
+
+The number of chunks in the table that are different on one or more replicas
+than they are on the master.
+
+=item CHUNKS
+
+The number of chunks into which the table was divided.
+
+=item SKIPPED
+
+The number of chunks that were skipped due to an error or warning, or because
+they were oversized.
+
+=item TIME
+
+The number of seconds elapsed to checksum the table.
+
+=item TABLE
+
+The database and table that was checksummed.
+
+=back
 
 =head1 EXIT STATUS
 
-A 0 (zero) exit status indicates complete success: no errors, no warnings,
-and no checksum differences (if L<"--[no]replicate-check"> is enabled).
-Else, a non-zero exit status indicates one or more error, warning, or
-checksum difference.
+A non-zero exit status indicates one or more error, warning, or checksum
+difference.
 
 =head1 QUERIES
 
@@ -6878,7 +6857,7 @@ the checksum queries.  They look similar to this:
 
   TODO
 
-Since pt-table-checksum's queries run for a long time and tend to be
+Because pt-table-checksum's queries run for a long time and tend to be
 textually very long, and thus won't fit on one screen of these monitoring
 tools, I've been careful to place a comment at the beginning of the query so
 you can see what it is and what it's doing.  The comment contains the name of
