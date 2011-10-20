@@ -114,6 +114,7 @@ sub set_callback {
 sub start {
    my ( $self, $start ) = @_;
    $self->{start} = $self->{last_reported} = $start || time();
+   $self->{first_report} = 0;
 }
 
 # Provide a progress update.  Pass in a callback subroutine which this code can

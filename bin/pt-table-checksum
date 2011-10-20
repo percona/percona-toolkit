@@ -5064,6 +5064,7 @@ sub set_callback {
 sub start {
    my ( $self, $start ) = @_;
    $self->{start} = $self->{last_reported} = $start || time();
+   $self->{first_report} = 0;
 }
 
 sub update {
@@ -5268,6 +5269,146 @@ sub _d {
 }
 # ###########################################################################
 # End ReplicaLagWaiter package
+# ###########################################################################
+
+# ###########################################################################
+# MySQLStatusWaiter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MySQLStatusWaiter.pm
+#   t/lib/MySQLStatusWaiter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package MySQLStatusWaiter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(spec get_status sleep oktorun);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $max_val_for = _parse_spec(%args);
+
+   my $self = {
+      get_status  => $args{get_status},
+      sleep       => $args{sleep},
+      oktorun     => $args{oktorun},
+      max_val_for => $max_val_for,
+   };
+
+   return bless $self, $class;
+}
+
+sub _parse_spec {
+   my ( %args ) = @_;
+   my @required_args = qw(spec get_status);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($spec, $get_status) = @args{@required_args};
+
+   if ( !@$spec ) {
+      MKDEBUG && _d('No spec, disabling status var waits');
+      return;
+   }
+
+   my %max_val_for;
+   foreach my $var_val ( @$spec ) {
+      my ($var, $val) = split /=/, $var_val;
+      die "Invalid spec: $var_val" unless $var;
+      if ( !$val ) {
+         my $init_val = $get_status->($var);
+         MKDEBUG && _d('Initial', $var, 'value:', $init_val);
+         $val = int(($init_val * .20) + $init_val);
+      }
+      MKDEBUG && _d('Wait if', $var, '>=', $val);
+      $max_val_for{$var} = $val;
+   }
+
+   return \%max_val_for; 
+}
+
+sub max_values {
+   my ($self) = @_;
+   return $self->{max_val_for};
+}
+
+sub wait {
+   my ( $self, %args ) = @_;
+
+   return unless $self->{max_val_for};
+
+   my $pr = $args{Progress}; # optional
+
+   my $oktorun    = $self->{oktorun};
+   my $get_status = $self->{get_status};
+   my $sleep      = $self->{sleep};
+   
+   my %vals_too_high = %{$self->{max_val_for}};
+   my $pr_callback;
+   if ( $pr ) {
+      $pr_callback = sub {
+         print STDERR "Pausing because "
+            . join(', ',
+                 map {
+                    "$_="
+                    . (defined $vals_too_high{$_} ? $vals_too_high{$_}
+                                                  : 'unknown')
+                 } sort keys %vals_too_high
+              );
+         return;
+      };
+      $pr->set_callback($pr_callback);
+   }
+
+   while ( $oktorun->() ) {
+      MKDEBUG && _d('Checking status variables');
+      foreach my $var ( sort keys %vals_too_high ) {
+         my $val = $get_status->($var);
+         MKDEBUG && _d($var, '=', $val);
+         if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
+            $vals_too_high{$var} = $val;
+         }
+         else {
+            delete $vals_too_high{$var};
+         }
+      }
+
+      last unless scalar keys %vals_too_high;
+
+      MKDEBUG && _d(scalar keys %vals_too_high, 'values are too high:',
+         %vals_too_high);
+      if ( $pr ) {
+         $pr->update(sub { return 0; });
+      }
+      MKDEBUG && _d('Calling sleep callback');
+      $sleep->();
+      %vals_too_high = %{$self->{max_val_for}}; # recheck all vars
+   }
+
+   MKDEBUG && _d('All var vals are low enough');
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End MySQLStatusWaiter package
 # ###########################################################################
 
 # ###########################################################################
@@ -5533,7 +5674,11 @@ sub main {
 
    my $slaves;         # all slaves (that we can find)
    my $slave_lag_cxns; # slaves whose lag we'll check
+   
    my $replica_lag;    # ReplicaLagWaiter object
+   my $replica_lag_pr; # Progress for ReplicaLagWaiter
+   my $sys_load;       # MySQLStatusWaiter object
+   my $sys_load_pr;    # Progress for MySQLStatusWaiter object
 
    my $repl_table = $q->quote($q->split_unquote($o->get('replicate')));
    my $fetch_sth;  # fetch chunk from repl table
@@ -5694,6 +5839,41 @@ sub main {
          get_lag  => $get_lag,
          sleep    => $sleep,
       );
+
+      my $get_status;
+      {
+         my $sql = "SHOW GLOBAL STATUS LIKE ?";
+         my $sth = $master_cxn->dbh()->prepare($sql);
+
+         $get_status = sub {
+            my ($var) = @_;
+            MKDEBUG && _d($sth->{Statement}, $var);
+            $sth->execute($var);
+            my (undef, $val) = $sth->fetchrow_array();
+            return $val;
+         };
+      }
+
+      $sys_load = new MySQLStatusWaiter(
+         spec       => $o->get('max-load'),
+         get_status => $get_status,
+         oktorun    => sub { return $oktorun },
+         sleep      => $sleep,
+      );
+      
+      if ( $o->get('progress') ) {
+         $replica_lag_pr = new Progress(
+            jobsize => scalar @$slaves,
+            spec    => $o->get('progress'),
+            name    => "Waiting for replicas to catch up",  # not used
+         );
+
+         $sys_load_pr = new Progress(
+            jobsize => scalar @{$o->get('max-load')},
+            spec    => $o->get('progress'),
+            name    => "Waiting for --max-load", # not used
+         );
+      }
 
       # #####################################################################
       # Prepare statement handles to update the repl table on the master.
@@ -6003,15 +6183,12 @@ sub main {
          }
 
          # Wait forever for slaves to catch up.
-         my $lag_pr;
-         if ( $o->get('progress') ) {
-            $lag_pr = new Progress(
-               jobsize => scalar @$slaves,
-               spec    => $o->get('progress'),
-               name    => "Waiting for replicas to catch up",
-            );
-         }
-         $replica_lag->wait(Progress => $lag_pr);
+         $replica_lag_pr->start() if $replica_lag_pr;
+         $replica_lag->wait(Progress => $replica_lag_pr);
+
+         # Wait forever for system load to abate.
+         $sys_load_pr->start() if $sys_load_pr;
+         $sys_load->wait(Progress => $sys_load_pr);
 
          return;
       },
@@ -7186,7 +7363,7 @@ Set innodb_lock_wait_timeout to this value.
 
 type: time; default: 1s; group: Throttle
 
-Suspend checksumming if the slave given by L<"--check-slave-lag"> lags.
+Pause checksumming if the slave given by L<"--check-slave-lag"> lags.
 
 This option causes pt-table-checksum to look at slave lag after each checksum.
 If the any slave's lag is greater than the option's value, or if the slave
@@ -7197,6 +7374,12 @@ until all slaves are caught up, then continues checksumming.
 This option is useful to let you checksum data as fast as the slaves can handle
 it, assuming the slave you directed pt-table-checksum to monitor is
 representative of all the slaves that may be replicating from this server.
+
+=item --max-load
+
+type: Array; default: Threads_connected,Threads_running; group: Throttle
+
+Pause checksumming if these status variables are too high.
 
 =item --password
 
