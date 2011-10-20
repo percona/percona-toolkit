@@ -37,7 +37,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 9;
+   plan tests => 13;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -196,6 +196,52 @@ ok(
       "$sample/no-recheck.txt",
    ),
    "--no-recheck (just --replicate-check)"
+);
+
+# ############################################################################
+# Detect infinite loop.
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/oversize-chunks.sql");
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t osc.t --chunk-size 10)) },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/infinite loop detected/,
+   "Detects infinite loop"
+);
+
+# ############################################################################
+# Oversize chunk.
+# ############################################################################
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args,
+         qw(-t osc.t2 --chunk-size 8 --explain --explain)) },
+      "$sample/oversize-chunks.txt",
+   ),
+   "Upper boundary same as next lower boundary"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args,
+      qw(-t osc.t2 --chunk-time 0 --chunk-size 8 --chunk-size-limit 1)) },
+   stderr => 1,
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   2,
+   "Skipped oversize chunks"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Oversize chunks are not errors"
 );
 
 # #############################################################################
