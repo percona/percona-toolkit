@@ -1,6 +1,12 @@
-DATABASE TABLE CHUNK HOST  ENGINE      COUNT         CHECKSUM TIME WAIT STAT  LAG
-osc      t         0 127.1 MyISAM          0             NULL    0    0 NULL NULL
-osc      t         1 127.1 MyISAM   OVERSIZE             NULL NULL NULL NULL NULL
-osc      t         2 127.1 MyISAM          0             NULL    0    0 NULL NULL
-osc      t         3 127.1 MyISAM          3         16533cd7    0    0 NULL NULL
-osc      t         4 127.1 MyISAM          0             NULL    0    0 NULL NULL
+--
+-- osc.t2
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `c`, CONCAT(ISNULL(`c`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `osc`.`t2` FORCE INDEX(`c`) WHERE (((? IS NULL OR `c` >= ?))) AND (((? IS NULL OR `c` <= ?))) ORDER BY `c` /*checksum chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `c`, `c` FROM `osc`.`t2` FORCE INDEX(`c`) WHERE (((? IS NULL OR `c` >= ?))) ORDER BY `c` LIMIT ?, 2 /*next chunk boundary*/
+
+1 a,a b,b
+2 b,b d,d
+3 d,d g,g
+
