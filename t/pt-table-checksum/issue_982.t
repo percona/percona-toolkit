@@ -32,8 +32,9 @@ else {
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3)); 
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
 my $row;
 my $output;
 
