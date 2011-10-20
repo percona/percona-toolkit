@@ -32,7 +32,9 @@ else {
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
-my @args     = (qw(--lock-wait-timeout 3 --explain --tables sakila.country)); 
+# And --max-load "" prevents waiting for status variables.
+my @args     = (qw(--lock-wait-timeout 3 --explain --tables sakila.country),
+                '--max-load', ''); 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
 my $pid_file = "/tmp/mk-table-checksum-test.pid";
 my $output;
