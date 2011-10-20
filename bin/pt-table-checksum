@@ -5975,9 +5975,28 @@ sub main {
             $last_chunk = undef;
          }
          elsif ( $o->get('empty-replicate-table') ) {
+            use_repl_db(
+               dbh          => $master_cxn->dbh(),
+               repl_table   => $repl_table,
+               OptionParser => $o,
+               Quoter       => $q,
+            );
             MKDEBUG && _d($delete_sth->{Statement});
             $delete_sth->execute($tbl->{db}, $tbl->{tbl});
          }
+
+         # USE the correct db while checksumming this table.  The "correct"
+         # db is a complicated subject; see sub for comments.
+         use_repl_db(
+            dbh          => $master_cxn->dbh(),
+            tbl          => $tbl, # XXX working on this table
+            repl_table   => $repl_table,
+            OptionParser => $o,
+            Quoter       => $q,
+         );
+         # #########################################################
+         # XXX DO NOT CHANGE THE DB UNTIL THIS TABLE IS FINISHED XXX
+         # #########################################################
 
          return $oktonibble; # continue nibbling table?
       },
@@ -6293,16 +6312,6 @@ sub main {
          # Results, stats, and info related to checksuming this table can
          # be saved here.  print_checksum_results() uses this info.
          $tbl->{checksum_results} = {};
-
-         # USE the correct db while checksumming this table.  The "correct"
-         # db is a complicated subject; see sub for comments.
-         use_repl_db(
-            dbh          => $master_cxn->dbh(),
-            tbl          => $tbl,
-            repl_table   => $repl_table,
-            OptionParser => $o,
-            Quoter       => $q,
-         );
 
          # Set table's initial chunk size.  If this is the first table,
          # then total rate will be zero, so use --chunk-size.  Or, if
@@ -6737,9 +6746,6 @@ sub check_repl_table {
 #
 # Returns:
 #   Nothing or dies on error
-{
-my $current_db;
-
 sub use_repl_db {
    my ( %args ) = @_;
    my @required_args = qw(dbh repl_table OptionParser Quoter);
@@ -6747,6 +6753,7 @@ sub use_repl_db {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $repl_table, $o, $q) = @args{@required_args};
+   MKDEBUG && _d('use_repl_db');
 
    my ($db, $tbl) = $q->split_unquote($repl_table);
    if ( my $tbl = $args{tbl} ) {
@@ -6765,29 +6772,25 @@ sub use_repl_db {
       $db = $o->get('replicate-database') if $o->get('replicate-database');
    }
 
-   if ( !$current_db || $current_db ne $db ) {
-      eval {
-         my $sql = "USE " . $q->quote($db);
-         MKDEBUG && _d($sql);
-         $dbh->do($sql);
-      };
-      if ( $EVAL_ERROR ) {
-         # Report which option db really came from.
-         my $opt = $o->get('replicate-database') ? "--replicate-database"
-                 :                                 "--replicate database";
-         if ( $EVAL_ERROR =~ m/unknown database/i ) {
-            die "$opt $db does not exist.  You need to create the "
-               . "database or specify a database for $opt that exists.\n";
-         }
-         else {
-            die "Error using $opt $db: $EVAL_ERROR\n";
-         }
+   eval {
+      my $sql = "USE " . $q->quote($db);
+      MKDEBUG && _d($sql);
+      $dbh->do($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      # Report which option db really came from.
+      my $opt = $o->get('replicate-database') ? "--replicate-database"
+              :                                 "--replicate database";
+      if ( $EVAL_ERROR =~ m/unknown database/i ) {
+         die "$opt $db does not exist.  You need to create the "
+            . "database or specify a database for $opt that exists.\n";
       }
-      $current_db = $db;
+      else {
+         die "Error using $opt $db: $EVAL_ERROR\n";
+      }
    }
 
    return;
-}
 }
 
 sub create_repl_table {
