@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 8;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -105,6 +105,25 @@ test_filter(
 test_filter(
    [qw(-d sakila --engines myisam)],
    ['sakila.film_text'],
+);
+
+test_filter(
+   [qw(--databases sakila --ignore-tables),
+      'sakila.actor,sakila.address,category,city,payment'
+   ],
+   [qw(
+      sakila.country
+      sakila.customer
+      sakila.film
+      sakila.film_actor
+      sakila.film_category
+      sakila.film_text
+      sakila.inventory
+      sakila.language
+      sakila.rental
+      sakila.staff
+      sakila.store
+   )],
 );
 
 # #############################################################################
