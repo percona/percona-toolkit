@@ -23,14 +23,15 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
-# TODO Need to update this test file. I don't have MySQL dev on my box
-# to compile the udf.
-
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
+my $sample     = "t/pt-table-checksum/samples/";
+my $row;
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-table-checksum -F $cnf -d test -t checksum_test 127.0.0.1";
 
-$sb->create_dbs($master_dbh, [qw(test)]);
 
 eval { $master_dbh->do('DROP FUNCTION test.fnv_64'); };
 eval { $master_dbh->do("CREATE FUNCTION fnv_64 RETURNS INTEGER SONAME 'fnv_udf.so';"); };
@@ -39,23 +40,70 @@ if ( $EVAL_ERROR ) {
    plan skip_all => "No FNV_64 UDF lib"
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
-$output = `/tmp/12345/use -N -e 'select fnv_64(1)' 2>&1`;
-is($output + 0, -6320923009900088257, 'FNV_64(1)');
+$sb->create_dbs($master_dbh, [qw(test)]);
 
-$output = `/tmp/12345/use -N -e 'select fnv_64("hello, world")' 2>&1`;
-is($output + 0, 6062351191941526764, 'FNV_64(hello, world)');
+# ############################################################################
+# First test the the FNV function works in MySQL and gives the correct results.
+# ############################################################################
 
-$output = `$cmd --function FNV_64 --checksum --algorithm ACCUM 2>&1`;
-like($output, qr/DD2CD41DB91F2EAE/, 'FNV_64 ACCUM' );
+($row) = $master_dbh->selectrow_array("select fnv_64(1)");
+is(
+   $row,
+   "-6320923009900088257",
+   "FNV_64(1)"
+);
 
-$output = `$cmd --function CRC32 --checksum --algorithm BIT_XOR 2>&1`;
-like($output, qr/83dcefb7/, 'CRC32 BIT_XOR' );
+($row) = $master_dbh->selectrow_array("select fnv_64('hello, world')");
+is(
+   $row,
+   "6062351191941526764",
+   "FNV_64('hello, world')"
+);
 
-$output = `$cmd --function FNV_64 --checksum --algorithm BIT_XOR 2>&1`;
-like($output, qr/a84792031e4ff43f/, 'FNV_64 BIT_XOR' );
+# ############################################################################
+# Check that FNV_64() is actually used in the checksum queries.
+# ############################################################################
+
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(--function FNV_64),
+         qw(--explain --chunk-size 100 --chunk-time 0),
+         '-d', 'sakila', '-t', 'city,film_actor') },
+      "$sample/fnv64-sakila-city.txt",
+   ),
+   "--function FNV_64"
+);
+
+# ############################################################################
+# Check that actually using FNV_64() doesn't cause problems.
+# ############################################################################
+
+$output = output(      
+   sub { pt_table_checksum::main(@args, qw(--function FNV_64),
+      qw(--chunk-size 100 --chunk-time 0),
+      '-d', 'sakila', '-t', 'city,film_actor') },
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "No errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "No diffs"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "No skipped"
+);
 
 # #############################################################################
 # Done.
