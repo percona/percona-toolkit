@@ -7177,7 +7177,9 @@ disable the checks.  See also L<"--replicate-database">.
 
 type: string; group: Throttle
 
-Pause checksumming until the specified slave's lag is less than L<"--max-lag">.
+Pause checksumming until this replica's lag is less than L<"--max-lag">.
+The value is a DSN that inherits missing L<"DSN OPTIONS"> from the
+master host and the connection options (L<"--port">, L<"--user">, etc.).
 
 =item --chunk-index
 
@@ -7198,7 +7200,7 @@ type: size; default: 1000
 Number of rows to select for each checksum query.  Allowable suffixes are
 k, M, G.
 
-The chunk size is automatically adjusted to satisify L<"--chunk-time"> when
+The chunk size is automatically adjusted to satisfy L<"--chunk-time"> when
 that option is not zero (and it's not by default).
 
 In general, the chunk size limits how many rows the tool selects for
@@ -7292,7 +7294,7 @@ Delete previous checksums for each table before checksumming the table.
 This option does not truncate the entire L<"--replicate"> table, it
 only deletes rows (checksums) for each table right before checksumming
 the table.  Therefore, if checksumming stops prematurely, the L<"--replicate">
-table will still contain rows for tables that were not checksumed before
+table will still contain rows for tables that were not checksummed before
 the tool was stopped.
 
 L<"--resume"> disables this option because if previous checksums are
@@ -7302,13 +7304,14 @@ deleted then there is nothing to resume.
 
 short form: -e; type: hash; group: Filter
 
-Do only this comma-separated list of storage engines.
+Only checksum tables which use these storage engines.
 
 =item --explain
 
 cumulative: yes; default: 0; group: Output
 
-Show, but do not execute, checksum queries (disables L<"--[no]empty-replicate-table">).
+Show, but do not execute, checksum queries (disables L<"--[no]empty-replicate-table">).  If specified twice, the tables are chunked and the upper and lower
+boundary values for each chunk are printed.
 
 =item --float-precision
 
@@ -7329,10 +7332,10 @@ type: string
 
 Hash function for checksums (FNV1A_64, MURMUR_HASH, SHA1, MD5, CRC32, etc).
 
-The default is to use
-C<CRC32>, but C<MD5> and C<SHA1> also work, and you can use your own function,
-such as a compiled UDF, if you wish.  Whatever function you specify is run in
-SQL, not in Perl, so it must be available to MySQL.
+The default is to use C<CRC32>, but C<MD5> and C<SHA1> also work, and you
+can use your own function, such as a compiled UDF, if you wish.  Whatever
+function you specify is run in SQL, not in Perl, so it must be available
+to MySQL.
 
 The C<FNV1A_64> UDF mentioned in the benchmarks is much faster than C<MD5>.  The
 C++ source code is distributed with Maatkit.  It is very simple to compile and
@@ -7398,23 +7401,34 @@ Ignore tables whose names match the Perl regex.
 
 type: int; default: 1
 
-Set innodb_lock_wait_timeout to this value.
+Set C<innodb_lock_wait_timeout> to this value on the master host.  Setting
+C<innodb_lock_wait_timeout> dynamically requires the InnoDB plugin.  If
+the tool cannot set the variable dynamically, it will print a warning
+which lists the current C<innodb_lock_wait_timeout> value.  If you
+do not want to restart MySQL to change C<innodb_lock_wait_timeout>, you
+can specify the current C<innodb_lock_wait_timeout> value listed by the
+warning.
 
 =item --max-lag
 
 type: time; default: 1s; group: Throttle
 
-Pause checksumming if the slave given by L<"--check-slave-lag"> lags.
+Pause checksumming until all replicas' lag is less than this value.
 
-This option causes pt-table-checksum to look at slave lag after each checksum.
-If the any slave's lag is greater than the option's value, or if the slave
-isn't running (so its lag is NULL), pt-table-checksum sleeps for
-L<"--check-interval"> seconds and then looks at the lag again.  It repeats
-until all slaves are caught up, then continues checksumming.
+After each checksum query (each chunk), pt-table-checksum looks at the
+lag (C<Seconds_Behind_Master>) of all replicas discovered automatically
+or, if specified, just L<"--check-slave-lag"> and waits until all replicas'
+lag is less than this value.  If any replica is lagging too much,
+pt-table-checksum will sleep for L<"--check-interval"> seconds, then
+check all replicas again.
 
-This option is useful to let you checksum data as fast as the slaves can handle
-it, assuming the slave you directed pt-table-checksum to monitor is
-representative of all the slaves that may be replicating from this server.
+The tool waits forever for replicas to stop lagging.  If any replica is
+stopped, the tool waits forever until the replica is started.  Checksumming
+continues once all replicas are running and not lagging too much.
+
+L<"--progress"> reports are printed while waiting.  If a replica is stopped,
+a progress report is printed immediately, then again at every progress report
+interval.
 
 =item --max-load
 
@@ -7474,7 +7488,15 @@ checksum differences.
 
 default: yes
 
-Re-checksum chunks that L<"--[no]replicate-check"> found to be different.
+Check replicas for differences while checksumming tables.
+
+This is a legacy option which no longer has the same meaning.  It is only
+used in relation to L<"--[no]replicate-check">.  If C<--no-recheck> is
+specified, pt-table-checksum only checks replicas for differences and exits.
+Else, the tool checks for differences while checksumming tables.
+
+In other words, if you do not want to checksum tables, and you only want
+to check replicas for differences, specify C<--no-recheck>.
 
 =item --recurse
 
@@ -7558,7 +7580,6 @@ on the replicas and break replication with "different error on master and
 slave."  This is not a problem with pt-table-checksum; it's a problem with
 MySQL replication, and you can read more about it in the MySQL manual.
 
-
 If the slaves have any C<--replicate-do-X> or C<--replicate-ignore-X> options,
 you should be careful not to checksum any databases or tables that exist on the
 master and not the slaves.  Changes to such tables may not normally be executed
@@ -7569,7 +7590,8 @@ slave, and if the table or database you're checksumming does not exist, the
 queries will cause replication to fail.  For more information on replication
 rules, see L<http://dev.mysql.com/doc/en/replication-rules.html>.
 
-The replicate table is never checksummed itself.
+The replicate table is never checksummed (the tool automatically adds this
+table to L<"--ignore-tables">).
 
 =item --[no]replicate-check
 
@@ -7582,7 +7604,7 @@ by L<"--recurse">, and executing a simple C<SELECT> statement to compare
 the replica's checksum results to the master's checksum results.  Any
 differences are reported in the C<DIFFS> column of the L<"OUTPUT">.
 
-See also L<"FINDING REPLICAS">.
+See also L<"FINDING REPLICAS"> and L<"--[no]recheck">.
 
 =item --replicate-database
 
@@ -7603,8 +7625,9 @@ pt-table-checksum selects with USE, and never changes afterwards.  See also
 =item --resume
 
 Resume checksumming (disables L<"--[no]empty-replicate-table">).
-If the tool is stopped prematurely, checksumming can
-be resumed from the last successful checksum by specifying this option.
+If the tool is stopped before it finishes checksumming all tables,
+checksumming can resume from the last chunk of the last table finished
+by specifying this option.
 
 This option disables L<"--[no]empty-replicate-table"> because if previous
 checksums are deleted then there is nothing to resume.
@@ -7614,6 +7637,11 @@ checksums are deleted then there is nothing to resume.
 type: int; default: 2
 
 Number of checksum query retries for non-fatal failures and warnings.
+
+If a checksum query fails for any non-fatal reason (lock wait timeout,
+query killed, etc.), pt-table-checksum will retry the query this many times.
+Each failed checksum query increases the C<SKIPPED> value in the table's
+L<"OUTPUT">.
 
 =item --separator
 
@@ -7640,7 +7668,7 @@ Socket file to use for connection.
 
 short form: -t; type: hash; group: Filter
 
-Do only this comma-separated list of tables.
+Checksum only this comma-separated list of tables.
 
 Table names may be qualified with the database name.
 
@@ -7648,14 +7676,11 @@ Table names may be qualified with the database name.
 
 type: string; group: Filter
 
-Only checksum tables whose names match this Perl regex.
+Checksum only tables whose names match this Perl regex.
 
 =item --trim
 
-Trim C<VARCHAR> columns (helps when comparing 4.1 to >= 5.0).
-
-This option adds a C<TRIM()> to C<VARCHAR> columns in C<BIT_XOR> and C<ACCUM>
-modes.
+Add C<TRIM()> to C<VARCHAR> columns (helps when comparing 4.1 to >= 5.0).
 
 This is useful when you don't care about the trailing space differences between
 MySQL versions which vary in their handling of trailing spaces. MySQL 5.0 and 
@@ -7680,9 +7705,9 @@ type: string
 
 Do only rows matching this C<WHERE> clause.
 
-You can use this option to limit the checksum to only part of the table.  This
-is particularly useful if you have append-only tables and don't want to
-constantly re-check all rows; you could run a daily job to just check
+You can use this option to limit the checksum to only part of the table.
+This is particularly useful if you have append-only tables and don't want
+to constantly re-check all rows; you could run a daily job to just check
 yesterday's rows, for instance.
 
 This option is much like the -w option to mysqldump.  Do not specify the WHERE
