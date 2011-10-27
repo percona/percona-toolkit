@@ -1,11 +1,53 @@
-# Print usage (--help).
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# Begin parse_options lib
+# ###########################################################################
+
+# Library: parse_options
+# parse_options parses Perl POD options from Bash tools and creates
+# global variables for each option.
+
+set -u
+
+# Global variables.  These must be global because declare inside a
+# sub will be scoped locally.
+declare -a ARGV   # non-option args (probably input files)
+declare EXT_ARGV  # everything after -- (args for an external command)
+
+# Sub: usage
+#   Print usage (--help) and list the program's options.
+#
+# Arguments:
+#   file - Program file with Perl POD which has usage and options.
+#
+# Required Global Variables:
+#   TIMDIR  - Temp directory.
+#   TOOL    - Tool's name.
+#
+# Optional Global Variables:
+#   OPT_ERR - Command line option error message.
 usage() {
    local file=$1
 
    local usage=$(grep '^Usage: ' $file)
    local opts=$(grep -A 2 '^=item --' $file | sed -e 's/^=item //' -e 's/^\([A-Z]\)/   \1/' -e 's/^--$//' > $TMPDIR/help)
 
-   if [ "${OPT_ERR}" ]; then
+   if [ "$OPT_ERR" ]; then
       echo "Error: ${OPT_ERR}" >&2
    fi
    echo $usage >&2
@@ -17,9 +59,19 @@ usage() {
    echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
 }
 
-# Parse command line options.
-declare -a ARGV   # non-option args (probably input files)
-declare EXT_ARGV  # everything after -- (args for an external command)
+# Sub: parse_options
+#   Parse Perl POD options from a program file.
+#
+# Arguments:
+#   file - Program file with Perl POD options.
+#
+# Required Global Variables:
+#   TIMDIR  - Temp directory.
+#
+# Declared Global Variables:
+#   This sub decalres a global var for each option by uppercasing the
+#   option, removing the option's leading --, changing all - to _, and
+#   prefixing with "OPT_".  E.g. --foo-bar becomes OPT_FOO_BAR.
 parse_options() {
    local file=$1
    shift
@@ -117,3 +169,7 @@ parse_options() {
       eval "$opt"="$val"
    done
 }
+
+# ###########################################################################
+# End parse_options lib
+# ###########################################################################
