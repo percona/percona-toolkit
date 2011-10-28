@@ -15,14 +15,15 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Begin log_warn_die lib
+# log_warn_die package
 # ###########################################################################
 
-# Library: log_warn_die
+# Package: log_warn_die
 # log_warn_die provides standard log(), warn(), and die() subs.
 
 set -u
 
+# Global variables.
 EXIT_STATUS=0
 
 log() {
@@ -41,5 +42,5 @@ die() {
 }
 
 # ###########################################################################
-# End log_warn_die lib
+# End log_warn_die package
 # ###########################################################################

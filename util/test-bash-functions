@@ -128,9 +128,9 @@ is() {
    result $?
 }
 
-ok() {
+cmd_ok() {
    local test_command=$1
-   $test_command
+   eval $test_command
    result $?
 }
 

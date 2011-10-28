@@ -15,17 +15,26 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Begin tmpdir lib
+# tmpdir package
 # ###########################################################################
 
-# Library: tmpdir
+# Package: tmpdir
 # tmpdir make a secure temporary directory using mktemp.
 
 set -u
 
+# Global variables.
 TMPDIR=""
 OPT_TMPDIR={OPT_TMPDIR:""}
 
+# Sub: set_TMPDIR
+#   Create a secure tmpdir and set TMPDIR.
+#
+# Optional Global Variables:
+#   OPT_TMPDIR - User-specified --tmpdir (default none).
+#
+# Set Global Variables:
+#   TMPDIR - Absolute path of secure temp directory.
 set_TMPDIR() {
    if [ -n "$OPT_TMPDIR" ]; then
       TMPDIR="$OPT_TMPDIR"
@@ -38,6 +47,14 @@ set_TMPDIR() {
    fi
 }
 
+# Sub: rm_TMPDIR
+#   Remove the tmpdir and unset TMPDIR.
+#
+# Optional Global Variables:
+#   TMPDIR - TMPDIR set by <set_TMPDIR()>.
+#
+# Set Global Variables:
+#   TMPDIR - Set to "".
 rm_TMPDIR() {
    if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
       rm -rf $TMPDIR
@@ -46,5 +63,5 @@ rm_TMPDIR() {
 }
 
 # ###########################################################################
-# End tmpdir lib
+# End tmpdir package
 # ###########################################################################
