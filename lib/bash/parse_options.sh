@@ -15,10 +15,10 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Begin parse_options lib
+# parse_options package
 # ###########################################################################
 
-# Library: parse_options
+# Package: parse_options
 # parse_options parses Perl POD options from Bash tools and creates
 # global variables for each option.
 
@@ -36,7 +36,7 @@ declare EXT_ARGV  # everything after -- (args for an external command)
 #   file - Program file with Perl POD which has usage and options.
 #
 # Required Global Variables:
-#   TIMDIR  - Temp directory.
+#   TIMDIR  - Temp directory set by <set_TMPDIR()>.
 #   TOOL    - Tool's name.
 #
 # Optional Global Variables:
@@ -66,9 +66,9 @@ usage() {
 #   file - Program file with Perl POD options.
 #
 # Required Global Variables:
-#   TIMDIR  - Temp directory.
+#   TIMDIR  - Temp directory set by <set_TMPDIR()>.
 #
-# Declared Global Variables:
+# Set Global Variables:
 #   This sub decalres a global var for each option by uppercasing the
 #   option, removing the option's leading --, changing all - to _, and
 #   prefixing with "OPT_".  E.g. --foo-bar becomes OPT_FOO_BAR.
@@ -121,7 +121,7 @@ parse_options() {
    while read spec; do
       opt=$(echo $spec | cut -d',' -f1 | sed 's/-/_/g' | tr [:lower:] [:upper:])
       default=$(echo $spec | cut -d',' -f4)
-      eval "$opt"="$default"
+      eval "OPT_${opt}"="$default"
    done < <(cat $TMPDIR/options)
 
    for opt; do
@@ -156,7 +156,7 @@ parse_options() {
       fi
       opt=$(echo $spec | cut -d',' -f1)
       required_arg=$(echo $spec | cut -d',' -f3)
-      val=1
+      val="yes"
       if [ -n "$required_arg" ]; then
          if [ $# -eq 0 ]; then
             die "--$opt requires a $required_arg argument"
@@ -166,10 +166,10 @@ parse_options() {
          fi
       fi
       opt=$(echo $opt | sed 's/-/_/g' | tr [:lower:] [:upper:])
-      eval "$opt"="$val"
+      eval "OPT_${opt}"="$val"
    done
 }
 
 # ###########################################################################
-# End parse_options lib
+# End parse_options package
 # ###########################################################################

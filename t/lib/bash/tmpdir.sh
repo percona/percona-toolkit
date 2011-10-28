@@ -10,13 +10,13 @@ is "$TMPDIR" ""
 
 TEST_NAME="set_TMPDIR makes secure tmpdir"
 set_TMPDIR
-ok "test -d $TMPDIR"
+cmd_ok "test -d $TMPDIR"
 
 tmpdir=$TMPDIR;
 
 TEST_NAME="rm_TMPDIR"
 rm_TMPDIR
-ok "test ! -d $tmpdir"
+cmd_ok "test ! -d $tmpdir"
 
 TEST_NAME="rm_TMPDIR resets TMPDIR"
 is "$TMPDIR" "" 
@@ -28,17 +28,17 @@ TEST_NAME="TMPDIR not defined"
 is "$TMPDIR" ""
 
 TEST_NAME="--tmpdir does not exist yet"
-ok "test ! -d $OPT_TMPDIR"
+cmd_ok "test ! -d $OPT_TMPDIR"
 
 set_TMPDIR
 TEST_NAME="set_TMPDIR uses --tmpdir"
 is "$TMPDIR" "/tmp/use--tmpdir"
 
 TEST_NAME="set_TMPDIR creates --tmpdir"
-ok "test -d $TMPDIR"
+cmd_ok "test -d $TMPDIR"
 
 tmpdir=$TMPDIR;
 
 TEST_NAME="rm_TMPDIR removes --tmpdir"
 rm_TMPDIR
-ok "test ! -d $tmpdir"
+cmd_ok "test ! -d $tmpdir"
