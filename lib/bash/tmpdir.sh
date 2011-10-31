@@ -25,7 +25,7 @@ set -u
 
 # Global variables.
 TMPDIR=""
-OPT_TMPDIR={OPT_TMPDIR:""}
+OPT_TMPDIR=${OPT_TMPDIR:""}
 
 # Sub: set_TMPDIR
 #   Create a secure tmpdir and set TMPDIR.
