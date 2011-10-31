@@ -28,6 +28,7 @@ set -u
 # sub will be scoped locally.
 declare -a ARGV   # non-option args (probably input files)
 declare EXT_ARGV  # everything after -- (args for an external command)
+OPT_ERR=${OPT_ERR:""}
 
 # Sub: usage
 #   Print usage (--help) and list the program's options.
