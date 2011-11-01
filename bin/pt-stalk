@@ -15,10 +15,10 @@ fi
 # Configuration settings.
 # ########################################################################
 # This is the max number of <whatever> we want to tolerate.
-THRESHOLD=${THRESHOLD:-100}
+THRESHOLD=${THRESHOLD:-30}
 
 # This is the thing to check for.
-VARIABLE=${VARIABLE:-Threads_connected}
+VARIABLE=${VARIABLE:-Threads_running}
 
 # How many times must the condition be met before the script will fire?
 CYCLES=${CYCLES:-1}
@@ -231,7 +231,7 @@ is too full.
 =back
 
 By default, the tool is configured to execute mysqladmin extended-status and
-extract the value of the Threads_connected variable; if this is greater than
+extract the value of the Threads_running variable; if this is greater than
 100, it runs the collection script. This is really just placeholder code,
 and almost certainly needs to be customized!
 
@@ -265,11 +265,11 @@ or in the F<pt-stalk.conf> config file (see L<"CONFIGURING">).
 
 =over
 
-=item THRESHOLD (default 100)
+=item THRESHOLD (default 30)
 
 This is the max number of <whatever> we want to tolerate.
 
-=item VARIABLE (default Threads_connected}
+=item VARIABLE (default Threads_running)
 
 This is the thing to check for.
 
