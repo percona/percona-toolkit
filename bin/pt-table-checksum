@@ -5321,7 +5321,7 @@ sub _parse_spec {
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
-      my ($var, $val) = split /=/, $var_val;
+      my ($var, $val) = split /[:=]/, $var_val;
       die "Invalid spec: $var_val" unless $var;
       if ( !$val ) {
          my $init_val = $get_status->($var);
@@ -7432,9 +7432,12 @@ interval.
 
 =item --max-load
 
-type: Array; default: Threads_connected,Threads_running; group: Throttle
+type: Array; default: Threads_running=25; group: Throttle
 
-Pause checksumming if these status variables are too high.
+Pause checksumming if these status variables are too high.  The option value
+is a comma-separated list of MySQL status variables.  An optional C<=MAX_VALUE>
+(or C<:MAX_VALUE>) can follow each variable, else the tool determines
+a variable's maximum value by increasing its current value by 20%.
 
 =item --password
 
