@@ -80,7 +80,7 @@ sub _parse_spec {
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
-      my ($var, $val) = split /=/, $var_val;
+      my ($var, $val) = split /[:=]/, $var_val;
       die "Invalid spec: $var_val" unless $var;
       if ( !$val ) {
          my $init_val = $get_status->($var);
