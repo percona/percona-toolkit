@@ -47,7 +47,7 @@ my $si       = new SchemaIterator (
 );
 
 # Init the schema (SchemaIterator calls Schema::add_schema_object()).
-1 while(defined $si->next_schema_object());
+1 while(defined $si->next());
 
 #ok(
 #   $sq->is_duplicate_column('c1')
