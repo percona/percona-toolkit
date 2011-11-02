@@ -77,6 +77,9 @@ MB_THRESHOLD=${MB_THRESHOLD:-100}
 # Remove samples after this many days.
 PURGE=${PURGE:-30}
 
+# Which trigger function to call to get the value of VARIABLE.
+TRIGGER_FUNCTION=${TRIGGER_FUNCTION:-"show_status"}
+
 # ########################################################################
 # End configuration
 # ########################################################################
@@ -87,6 +90,19 @@ PURGE=${PURGE:-30}
 die() {
    echo "${1}" >&2
    exit 1
+}
+
+# ########################################################################
+# Trigger functions
+# ########################################################################
+show_status() {
+   local var=$1
+   mysqladmin ${MYSQLOPTIONS} extended-status | grep ${VARIABLE} | awk '{print $4}'
+}
+
+show_variables() {
+   local var=$1
+   mysqladmin ${MYSQLOPTIONS} variables | grep ${VARIABLE} | awk '{print $4}'
 }
 
 # ########################################################################
@@ -119,11 +135,11 @@ main() {
    while true; do
       d=$(date +%F-%T | tr :- _);
 
-      # XXX This is where we decide whether to execute 'collect'.
-      # XXX Customize this if needed.  The idea is to generate a number and store
-      # XXX it into $detected, and if $detected > $THRESHOLD, then we'll execute
-      # XXX the collection process.
-      detected=$(mysqladmin ext ${MYSQLOPTIONS} | grep ${VARIABLE} | awk '{print $4}');
+      # This is where we decide whether to execute 'collect'.
+      # The idea is to generate a number and store into $detected,
+      # and if $detected > $THRESHOLD, then we'll execute pt-collect.
+      local detected=$($TRIGGER_FUNCTION $VARIABLE)
+
       if [ -z "${detected}" -a ${MAYBE_EMPTY} = "no" ]; then
          # Oops, couldn't connect, maybe max_connections problem?
          echo "$d The detected value is empty; something failed?  Exit status is $?"
@@ -136,8 +152,6 @@ main() {
          matched="no"
          cycles_true=0
       fi
-
-      # XXX Stop customizing here; everything above should be what you need.
 
       NOTE="$d check results: ${VARIABLE} = ${detected}, matched = ${matched}, cycles_true = ${cycles_true}"
       # Actually execute the collection script.
@@ -153,7 +167,6 @@ main() {
          echo ${NOTE}
          sleep ${INTERVAL}
       fi
-
 
       # Delete things more than $PURGE days old
       find "${DEST}" -type f -mtime +${PURGE} -exec rm -f '{}' \;
@@ -272,6 +285,11 @@ This is the max number of <whatever> we want to tolerate.
 =item VARIABLE (default Threads_running)
 
 This is the thing to check for.
+
+=item TRIGGER_FUNCTION (default show_status)
+
+Built-in function name to get the value of VARIABLE, either C<show_status>
+or C<show_variables>.
 
 =item CYCLES (default 1)
 
