@@ -85,24 +85,23 @@ sub copy {
             wait  => sub { sleep 1; },
             tries => 3,
             try   => sub {
-               my ( %args ) = @_;
-                  eval {
-                     $dbh->do($sql);
-                  };
-                  if ( $EVAL_ERROR ) {
-                     MKDEBUG && _d($EVAL_ERROR);
-                     if ( $EVAL_ERROR =~ m/Lock wait timeout exceeded/ ) {
-                        $error = $EVAL_ERROR;
-                        if ( $args{tryno} > 1 ) {
-                           $msg->("Lock wait timeout exceeded; retrying $sql");
-                        }
-                        return;
-                     }
-                     die $EVAL_ERROR;
-                  }
-                  return 1;
+               $dbh->do($sql);
+               return;
             },
-            on_failure => sub { die $error; },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               MKDEBUG && _d($error);
+               if ( $error =~ m/Lock wait timeout exceeded/ ) {
+                  $msg->("Lock wait timeout exceeded; retrying $sql");
+                  return 1; # call wait, call try
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
          );
       }
 
