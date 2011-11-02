@@ -515,11 +515,12 @@ sub lock_and_wait {
    # If there is any error beyond this point, we need to unlock/commit.
    eval {
       if ( my $timeout = $args{wait} ) {
-         my $wait  = $args{wait_retry_args}->{wait}  || 10;
+         my $ms    = $self->{MasterSlave};
          my $tries = $args{wait_retry_args}->{tries} || 3;
+         my $wait;
          $self->{Retry}->retry(
-            wait  => sub { sleep $wait; },
             tries => $tries,
+            wait  => sub { sleep $args{wait_retry_args}->{wait}  || 10 },
             try   => sub {
                my ( %args ) = @_;
                # Be careful using $args{...} in this callback!  %args in
@@ -532,12 +533,18 @@ sub lock_and_wait {
                # Always use the misc_dbh dbh to check the master's position
                # because the main dbh might be in use due to executing
                # $src_sth.
-               my $ms   = $self->{MasterSlave};
-               my $wait = $ms->wait_for_master(
+               $wait = $ms->wait_for_master(
                   master_status => $ms->get_master_status($src->{misc_dbh}),
                   slave_dbh     => $dst->{dbh},
                   timeout       => $timeout,
                );
+               if ( defined $wait->{result} && $wait->{result} != -1 ) {
+                  return;  # slave caught up
+               }
+               die; # call fail
+            },
+            fail => sub {
+               my (%args) = @_;
                if ( !defined $wait->{result} ) {
                   # Slave was stopped either before or during the wait.
                   # Wait a few seconds and try again in hopes that the
@@ -559,24 +566,16 @@ sub lock_and_wait {
                      $msg .= "  Sleeping $wait seconds then retrying "
                            . ($tries - $args{tryno}) . " more times.";
                   }
-                  warn $msg;
-                  return;
+                  warn "$msg\n";
+                  return 1; # call wait, call try
                }
                elsif ( $wait->{result} == -1 ) {
-                  # No more retries will be attempted if we die here since
-                  # retry_on_die is not set.  on_failure will be called.
-                  # Since we already waited as long as the user specified
-                  # with --wait, we don't need to retry and wait any longer.
-                  die "Slave did not catch up to its master after waiting "
-                     . "$timeout seconds with MASTER_POS_WAIT.  Try inceasing "
-                     . "the --wait time, or disable this feature by specifying "
-                     . "--wait 0.";
-               }
-               else {
-                  return $result;  # slave caught up
+                  # MASTER_POS_WAIT timed out, don't retry since we've
+                  # already waited as long as the user specified with --wait.
+                  return 0;  # call final_fail
                }
             },
-            on_failure => sub {
+            final_fail => sub {
                die "Slave did not catch up to its master after $tries attempts "
                   . "of waiting $timeout seconds with MASTER_POS_WAIT.  "
                   . "Check that the slave is running, increase the --wait "
