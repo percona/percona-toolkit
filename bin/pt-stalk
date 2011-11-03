@@ -78,7 +78,7 @@ MB_THRESHOLD=${MB_THRESHOLD:-100}
 PURGE=${PURGE:-30}
 
 # Which trigger function to call to get the value of VARIABLE.
-TRIGGER_FUNCTION=${TRIGGER_FUNCTION:-"show_status"}
+TRIGGER_FUNCTION=${TRIGGER_FUNCTION:-"status"}
 
 # ########################################################################
 # End configuration
@@ -92,17 +92,66 @@ die() {
    exit 1
 }
 
+grep_processlist() {
+   local file=$1
+   local col=$2
+   local pat=${3:-""}
+   local gt=${4:-0}
+   local quiet=${5:-0}
+
+   awk "
+      BEGIN {
+         FS=\"|\"
+         OFS=\" | \"
+         n_cols=0
+         found=0
+      }
+
+      /^\|/ {
+         if ( n_cols ) {
+            val=colno_for_name[\"$col\"]
+            if ((\"$pat\"  && match(\$val, \"$pat\")) || ($gt && \$val > $gt) ) {
+               found++
+               if (!$quiet) print \$0
+            }
+         }
+         else {
+            for (i = 1; i <= NF; i++) {
+               gsub(/^[ ]*/, \"\", \$i)
+               gsub(/[ ]*$/, \"\", \$i)
+               if ( \$i != \"\" ) {
+                  name_for_colno[i]=\$i
+                  colno_for_name[\$i]=i
+                  n_cols++
+               }
+            }
+         }
+      }
+
+      END {
+         if ( found )
+            exit 0
+         exit 1
+      }
+   " $file
+}
+
 # ########################################################################
 # Trigger functions
 # ########################################################################
-show_status() {
+trg_status() {
    local var=$1
    mysqladmin ${MYSQLOPTIONS} extended-status | grep ${VARIABLE} | awk '{print $4}'
 }
 
-show_variables() {
+trg_processlist() {
    local var=$1
-   mysqladmin ${MYSQLOPTIONS} variables | grep ${VARIABLE} | awk '{print $4}'
+   local tmpfile="/tmp/mysql-processlist.$$"
+   mysqladmin ${MYSQLOPTIONS} processlist      > $tmpfile-1
+   grep_processlist $tmpfile-1 $var $MATCH 0 0 > $tmpfile-2
+   wc -l $tmpfile-2 | awk '{print $1}'
+   rm -rf $tmpfile*
+   return
 }
 
 # ########################################################################
@@ -138,7 +187,7 @@ main() {
       # This is where we decide whether to execute 'collect'.
       # The idea is to generate a number and store into $detected,
       # and if $detected > $THRESHOLD, then we'll execute pt-collect.
-      local detected=$($TRIGGER_FUNCTION $VARIABLE)
+      local detected=$("trg_${TRIGGER_FUNCTION}" $VARIABLE)
 
       if [ -z "${detected}" -a ${MAYBE_EMPTY} = "no" ]; then
          # Oops, couldn't connect, maybe max_connections problem?
@@ -288,8 +337,8 @@ This is the thing to check for.
 
 =item TRIGGER_FUNCTION (default show_status)
 
-Built-in function name to get the value of VARIABLE, either C<show_status>
-or C<show_variables>.
+Built-in function name to get the value of VARIABLE, either C<status>
+or C<processlist>.
 
 =item CYCLES (default 1)
 
