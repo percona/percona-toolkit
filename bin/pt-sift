@@ -23,7 +23,7 @@ print_help() {
       *  View all the files in less
       d  Invoke 'diskstats' on the disk performance data
       i  View the first INNODB STATUS sample in 'less'
-      m  Invoke 'mext' to show the SHOW STATUS counters side by side
+      m  Invoke 'pt-mext' to show the SHOW STATUS counters side by side
       n  Summarize the 'netstat -antp' status data
                   --- NAVIGATION ---
       j  Select the next timestamp
@@ -373,10 +373,10 @@ main() {
 
          MEXT)
             echo "Displaying the first 4 samples of SHOW STATUS counters"
-            # Grab the first 4 samples by looking for blank lines.  I'll rewrite
-            # mext and this will be simpler in future. TODO: upgrade, if mext is
-            # fixed :)
-            awk '/---/{if(i++>12){exit}}{print}' "${BASEDIR}/${PREFIX}-mysqladmin" | mext -r -- cat - | less -S
+            # Grab the first 4 samples by looking for blank lines.
+            # I'll rewrite pt-mext and this will be simpler in future.
+            # TODO: upgrade, if pt-mext is fixed :)
+            awk '/---/{if(i++>12){exit}}{print}' "${BASEDIR}/${PREFIX}-mysqladmin" | pt-mext -r -- cat - | less -S
             echo "Press a key to continue or choose a different action"
             ;;
 
