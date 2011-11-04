@@ -99,6 +99,11 @@ log() {
    echo "${1}" >&2
 }
 
+# Make sure pt-collect is executable before starting.
+if [ ! -x $COLLECT ]; then
+   die "$COLLECT not found or not executable"
+fi
+
 # Make the collection location
 mkdir -p "${DEST}" || die "Can't make the destination directory"
 test -d "${DEST}"  || die "${DEST} isn't a directory"
