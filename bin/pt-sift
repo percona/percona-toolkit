@@ -376,7 +376,7 @@ main() {
             # Grab the first 4 samples by looking for blank lines.
             # I'll rewrite pt-mext and this will be simpler in future.
             # TODO: upgrade, if pt-mext is fixed :)
-            awk '/---/{if(i++>12){exit}}{print}' "${BASEDIR}/${PREFIX}-mysqladmin" | pt-mext -r -- cat - | less -S
+            awk '/---/{if(i++>12){exit}}{print}' "${BASEDIR}/${PREFIX}-mysqladmin" | $PR_mext -r -- cat - | less -S
             echo "Press a key to continue or choose a different action"
             ;;
 
