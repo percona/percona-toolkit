@@ -73,7 +73,6 @@ SKIP: {
          p => 'msandbox',
          t => undef,
          u => 'msandbox',
-         n => 'h=127.0.0.1,P=12346',
          server_id => 12346,
          master_id => 12345,
          source    => 'hosts',
@@ -179,7 +178,6 @@ is_deeply(
       D => undef,
       A => undef,
       t => undef,
-      n => 'h=127.0.0.1,P=2900',
    },
    'Got master DSN',
 );
@@ -563,7 +561,6 @@ is_deeply(
       p => 'msandbox',
       t => undef,
       u => 'msandbox',
-      n => 'h=127.1,P=12346',
    },
    'get_slaves() from DSN table'
 );
