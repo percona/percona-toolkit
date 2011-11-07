@@ -131,7 +131,8 @@ sub wait {
                     . (defined $vals_too_high{$_} ? $vals_too_high{$_}
                                                   : 'unknown')
                  } sort keys %vals_too_high
-              );
+              )
+            . ".\n";
          return;
       };
       $pr->set_callback($pr_callback);
