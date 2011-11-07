@@ -6246,7 +6246,7 @@ sub main {
             my $sleep_time = 0;
             my $n_slaves   = scalar @$slaves - 1;
             my @chunks     = (0);
-            while ( $chunks[0] < $max_chunk ) {
+            while ( $oktorun && ($chunks[0] < $max_chunk) ) {
                for my $i ( 0..$n_slaves ) {
                   my $slave = $slaves->[$i];
                   my ($chunk) = $slave->dbh()->selectrow_array($sql);
