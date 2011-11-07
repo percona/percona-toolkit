@@ -27,7 +27,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 12;
+   plan tests => 17;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -338,6 +338,120 @@ is(
 0 0 2 1 0 sakila.store
 ",
    "Resumed from end of sakila.payment"
+);
+
+# ############################################################################
+# Resume when master_crc wasn't updated.
+# ############################################################################
+load_data_infile("sakila-done-1k-chunks", "ts='2011-10-15 13:00:57'");
+$master_dbh->do("delete from percona.checksums where ts > '2011-10-15 13:00:50'");
+$master_dbh->do("update percona.checksums set master_crc=NULL, master_cnt=NULL, ts='2011-11-11 11:11:11' where db='sakila' and tbl='rental' and chunk=12");
+
+# Checksum table now ends with:
+#    *************************** 49. row ***************************
+#    db: sakila
+#    tbl: rental
+#    chunk: 11
+#    chunk_time: 0.006462
+#    chunk_index: PRIMARY
+#    lower_boundary: 10005
+#    upper_boundary: 11004
+#    this_crc: d2ad38b8
+#    this_cnt: 1000
+#    master_crc: d2ad38b8
+#    master_cnt: 1000
+#    ts: 2011-10-15 13:00:49
+#    *************************** 50. row ***************************
+#    db: sakila
+#    tbl: rental
+#    chunk: 12
+#    chunk_time: 0.00984
+#    chunk_index: PRIMARY
+#    lower_boundary: 11005
+#    upper_boundary: 12004
+#    this_crc: 3b07b7a1
+#    this_cnt: 1000
+#    master_crc: NULL
+#    master_cnt: NULL
+#    ts: 2011-11-07 10:45:20
+# This ^ last row is bad because master_crc and master_cnt are NULL,
+# which means the tool was killed before $update_sth was called.  So,
+# it should resume from chunk 11 of this table and overwrite chunk 12.
+
+my $chunk11 = $master_dbh->selectall_arrayref('select * from percona.checksums where db="sakila" and tbl="rental" and chunk=11');
+
+my $chunk12 = $master_dbh->selectall_arrayref('select master_crc from percona.checksums where db="sakila" and tbl="rental" and chunk=12');
+is(
+   $chunk12->[0]->[0],
+   undef,
+   "Chunk 12 master_crc is null"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d sakila --resume),
+      qw(--chunk-time 0)) },
+   trf => sub { return PerconaTest::normalize_checksum_results(@_) },
+);
+
+$row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
+is_deeply(
+   $row,
+   [
+      @$first_half,
+      [qw(sakila payment 8 1000 )],
+      [qw(sakila payment 9 1000 )],
+      [qw(sakila payment 10 1000 )],
+      [qw(sakila payment 11 1000 )],
+      [qw(sakila payment 12 1000 )],
+      [qw(sakila payment 13 1000 )],
+      [qw(sakila payment 14 1000 )],
+      [qw(sakila payment 15 1000 )],
+      [qw(sakila payment 16 1000 )],
+      [qw(sakila payment 17 49 )],
+      [qw(sakila rental 1 1000 )],
+      [qw(sakila rental 2 1000 )],
+      [qw(sakila rental 3 1000 )],
+      [qw(sakila rental 4 1000 )],
+      [qw(sakila rental 5 1000 )],
+      [qw(sakila rental 6 1000 )],
+      [qw(sakila rental 7 1000 )],
+      [qw(sakila rental 8 1000 )],
+      [qw(sakila rental 9 1000 )],
+      [qw(sakila rental 10 1000 )],
+      [qw(sakila rental 11 1000 )],
+      [qw(sakila rental 12 1000 )],
+      [qw(sakila rental 13 1000 )],
+      [qw(sakila rental 14 1000 )],
+      [qw(sakila rental 15 1000 )],
+      [qw(sakila rental 16 1000 )],
+      [qw(sakila rental 17 44 )],
+      [qw(sakila staff 1 2 )],
+      [qw(sakila store 1 2 )],
+   ],
+   "Resume finished sakila"
+);
+
+is(
+   $output,
+"Resuming from sakila.rental chunk 11, timestamp 2011-10-15 13:00:49
+ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
+0 0 5044 6 0 sakila.rental
+0 0 2 1 0 sakila.staff
+0 0 2 1 0 sakila.store
+",
+   "Resumed from last updated chunk"
+);
+
+is_deeply(
+   $master_dbh->selectall_arrayref('select * from percona.checksums where db="sakila" and tbl="rental" and chunk=11'),
+   $chunk11,
+   "Chunk 11 not updated"
+);
+
+$chunk12 = $master_dbh->selectall_arrayref('select master_crc, master_cnt from percona.checksums where db="sakila" and tbl="rental" and chunk=12');
+ok(
+   defined $chunk12->[0]->[0],
+   "Chunk 12 master_crc updated"
 );
 
 # #############################################################################

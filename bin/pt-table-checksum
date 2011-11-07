@@ -6858,7 +6858,7 @@ sub last_chunk {
    }
    my ($dbh, $repl_table, $q) = @args{@required_args};
 
-   my $sql = "SELECT MAX(ts) FROM $repl_table";
+   my $sql = "SELECT MAX(ts) FROM $repl_table WHERE master_crc IS NOT NULL";
    MKDEBUG && _d($sql);
    my ($max_ts) = $dbh->selectrow_array($sql);
    if ( !$max_ts ) {
@@ -6867,16 +6867,22 @@ sub last_chunk {
    }
 
    $sql = "SELECT * FROM $repl_table "
-        . "WHERE ts='$max_ts' "
+        . "WHERE ts<=? "
         . "ORDER BY db DESC, tbl DESC, chunk DESC LIMIT 1";
    MKDEBUG && _d($sql);
-   my $last_chunk = $dbh->selectrow_hashref($sql);
+   my $sth = $dbh->prepare($sql);
+   $sth->execute($max_ts);
+   my $last_chunk = $sth->fetchrow_hashref();
+   $sth->finish();
    MKDEBUG && _d('Last chunk:', Dumper($last_chunk));
 
    $sql = "SELECT MAX(chunk) FROM $repl_table "
-        . "WHERE db='$last_chunk->{db}' AND tbl='$last_chunk->{tbl}'";
+        . "WHERE db=? AND tbl=? AND master_crc IS NOT NULL";
    MKDEBUG && _d($sql);
-   my ($max_chunk) = $dbh->selectrow_array($sql);
+   $sth = $dbh->prepare($sql);
+   $sth->execute($last_chunk->{db}, $last_chunk->{tbl});
+   my ($max_chunk) = $sth->fetchrow_array();
+   $sth->finish();
    MKDEBUG && _d('Max chunk:', $max_chunk);
    if ( ($last_chunk->{chunk} || 0) ne ($max_chunk || 0) ) {
       warn ts("Not resuming from max chunk ("
@@ -7695,9 +7701,9 @@ pt-table-checksum selects with USE, and never changes afterwards.  See also
 
 =item --resume
 
-Resume checksumming from the last completed chunk.  If the tool is stopped
-before it finishes checksumming all tables, checksumming can resume from the
-last chunk of the last table finished by specifying this option.
+Resume checksumming from the last completed chunk (disables L<"--[no]empty-replicate-table).  If the tool is stopped before it finishes checksumming all
+tables, checksumming can resume from the last chunk of the last table
+finished by specifying this option.
 
 =item --retries
 
