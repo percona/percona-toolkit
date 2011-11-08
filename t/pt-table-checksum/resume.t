@@ -27,7 +27,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 17;
+   plan tests => 21;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -197,6 +197,37 @@ my $first_half = [
    [qw(sakila payment 6 1000 )],
    [qw(sakila payment 7 1000 )],
 ];
+my $second_half = [
+   [qw(sakila payment 8 1000 )],
+   [qw(sakila payment 9 1000 )],
+   [qw(sakila payment 10 1000 )],
+   [qw(sakila payment 11 1000 )],
+   [qw(sakila payment 12 1000 )],
+   [qw(sakila payment 13 1000 )],
+   [qw(sakila payment 14 1000 )],
+   [qw(sakila payment 15 1000 )],
+   [qw(sakila payment 16 1000 )],
+   [qw(sakila payment 17 49 )],
+   [qw(sakila rental 1 1000 )],
+   [qw(sakila rental 2 1000 )],
+   [qw(sakila rental 3 1000 )],
+   [qw(sakila rental 4 1000 )],
+   [qw(sakila rental 5 1000 )],
+   [qw(sakila rental 6 1000 )],
+   [qw(sakila rental 7 1000 )],
+   [qw(sakila rental 8 1000 )],
+   [qw(sakila rental 9 1000 )],
+   [qw(sakila rental 10 1000 )],
+   [qw(sakila rental 11 1000 )],
+   [qw(sakila rental 12 1000 )],
+   [qw(sakila rental 13 1000 )],
+   [qw(sakila rental 14 1000 )],
+   [qw(sakila rental 15 1000 )],
+   [qw(sakila rental 16 1000 )],
+   [qw(sakila rental 17 44 )],
+   [qw(sakila staff 1 2 )],
+   [qw(sakila store 1 2 )],
+];
 
 $row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
 is_deeply(
@@ -216,35 +247,7 @@ is_deeply(
    $row,
    [
       @$first_half,
-      [qw(sakila payment 8 1000 )],
-      [qw(sakila payment 9 1000 )],
-      [qw(sakila payment 10 1000 )],
-      [qw(sakila payment 11 1000 )],
-      [qw(sakila payment 12 1000 )],
-      [qw(sakila payment 13 1000 )],
-      [qw(sakila payment 14 1000 )],
-      [qw(sakila payment 15 1000 )],
-      [qw(sakila payment 16 1000 )],
-      [qw(sakila payment 17 49 )],
-      [qw(sakila rental 1 1000 )],
-      [qw(sakila rental 2 1000 )],
-      [qw(sakila rental 3 1000 )],
-      [qw(sakila rental 4 1000 )],
-      [qw(sakila rental 5 1000 )],
-      [qw(sakila rental 6 1000 )],
-      [qw(sakila rental 7 1000 )],
-      [qw(sakila rental 8 1000 )],
-      [qw(sakila rental 9 1000 )],
-      [qw(sakila rental 10 1000 )],
-      [qw(sakila rental 11 1000 )],
-      [qw(sakila rental 12 1000 )],
-      [qw(sakila rental 13 1000 )],
-      [qw(sakila rental 14 1000 )],
-      [qw(sakila rental 15 1000 )],
-      [qw(sakila rental 16 1000 )],
-      [qw(sakila rental 17 44 )],
-      [qw(sakila staff 1 2 )],
-      [qw(sakila store 1 2 )],
+      @$second_half,
    ],
    "Resume finished sakila"
 );
@@ -297,35 +300,7 @@ is_deeply(
    $row,
    [
       @$first_half,
-      [qw(sakila payment 8 1000 )],
-      [qw(sakila payment 9 1000 )],
-      [qw(sakila payment 10 1000 )],
-      [qw(sakila payment 11 1000 )],
-      [qw(sakila payment 12 1000 )],
-      [qw(sakila payment 13 1000 )],
-      [qw(sakila payment 14 1000 )],
-      [qw(sakila payment 15 1000 )],
-      [qw(sakila payment 16 1000 )],
-      [qw(sakila payment 17 49 )],
-      [qw(sakila rental 1 1000 )],
-      [qw(sakila rental 2 1000 )],
-      [qw(sakila rental 3 1000 )],
-      [qw(sakila rental 4 1000 )],
-      [qw(sakila rental 5 1000 )],
-      [qw(sakila rental 6 1000 )],
-      [qw(sakila rental 7 1000 )],
-      [qw(sakila rental 8 1000 )],
-      [qw(sakila rental 9 1000 )],
-      [qw(sakila rental 10 1000 )],
-      [qw(sakila rental 11 1000 )],
-      [qw(sakila rental 12 1000 )],
-      [qw(sakila rental 13 1000 )],
-      [qw(sakila rental 14 1000 )],
-      [qw(sakila rental 15 1000 )],
-      [qw(sakila rental 16 1000 )],
-      [qw(sakila rental 17 44 )],
-      [qw(sakila staff 1 2 )],
-      [qw(sakila store 1 2 )],
+      @$second_half,
    ],
    "Resume finished sakila"
 );
@@ -398,35 +373,7 @@ is_deeply(
    $row,
    [
       @$first_half,
-      [qw(sakila payment 8 1000 )],
-      [qw(sakila payment 9 1000 )],
-      [qw(sakila payment 10 1000 )],
-      [qw(sakila payment 11 1000 )],
-      [qw(sakila payment 12 1000 )],
-      [qw(sakila payment 13 1000 )],
-      [qw(sakila payment 14 1000 )],
-      [qw(sakila payment 15 1000 )],
-      [qw(sakila payment 16 1000 )],
-      [qw(sakila payment 17 49 )],
-      [qw(sakila rental 1 1000 )],
-      [qw(sakila rental 2 1000 )],
-      [qw(sakila rental 3 1000 )],
-      [qw(sakila rental 4 1000 )],
-      [qw(sakila rental 5 1000 )],
-      [qw(sakila rental 6 1000 )],
-      [qw(sakila rental 7 1000 )],
-      [qw(sakila rental 8 1000 )],
-      [qw(sakila rental 9 1000 )],
-      [qw(sakila rental 10 1000 )],
-      [qw(sakila rental 11 1000 )],
-      [qw(sakila rental 12 1000 )],
-      [qw(sakila rental 13 1000 )],
-      [qw(sakila rental 14 1000 )],
-      [qw(sakila rental 15 1000 )],
-      [qw(sakila rental 16 1000 )],
-      [qw(sakila rental 17 44 )],
-      [qw(sakila staff 1 2 )],
-      [qw(sakila store 1 2 )],
+      @$second_half,
    ],
    "Resume finished sakila"
 );
@@ -452,6 +399,74 @@ $chunk12 = $master_dbh->selectall_arrayref('select master_crc, master_cnt from p
 ok(
    defined $chunk12->[0]->[0],
    "Chunk 12 master_crc updated"
+);
+
+# ############################################################################
+# Resume with --ignore-table.
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:18'");
+
+$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:09'");
+my $before = $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl");
+is_deeply(
+   $before,
+   [
+      [qw( test t1  1 ), '2011-11-08 00:00:01'],
+      [qw( test t1  2 ), '2011-11-08 00:00:02'],
+      [qw( test t1  3 ), '2011-11-08 00:00:03'],
+      [qw( test t1  4 ), '2011-11-08 00:00:04'],
+      [qw( test t1  5 ), '2011-11-08 00:00:05'],
+      [qw( test t1  6 ), '2011-11-08 00:00:06'],
+      [qw( test t2  1 ), '2011-11-08 00:00:07'],
+      [qw( test t2  2 ), '2011-11-08 00:00:08'],
+      [qw( test t2  3 ), '2011-11-08 00:00:09'],
+   ],
+   "Checksum results through tbl2 chunk 3"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test --resume),
+      qw(--ignore-tables test.t2 --chunk-size 5 --chunk-time 0)) },
+   trf => sub { return PerconaTest::normalize_checksum_results(@_) },
+);
+
+is(
+   $output,
+"ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
+0 0 26 6 0 test.t3
+",
+   "Resumed from t3"
+);
+
+$row = $master_dbh->selectall_arrayref('select db, tbl, chunk from percona.checksums order by db, tbl');
+is_deeply(
+   $row,
+   [
+      [qw( test t1  1 )], 
+      [qw( test t1  2 )],
+      [qw( test t1  3 )],
+      [qw( test t1  4 )],
+      [qw( test t1  5 )],
+      [qw( test t1  6 )],
+      [qw( test t2  1 )],
+      [qw( test t2  2 )],
+      [qw( test t2  3 )],
+      # t2 not resumed
+      [qw( test t3  1 )],
+      [qw( test t3  2 )],
+      [qw( test t3  3 )],
+      [qw( test t3  4 )],
+      [qw( test t3  5 )],
+      [qw( test t3  6 )],
+   ],
+   "--resume and --ignore-table"
+);
+
+is_deeply(
+   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl"),
+   $before,
+   "t1 and t2 checksums not updated"
 );
 
 # #############################################################################
