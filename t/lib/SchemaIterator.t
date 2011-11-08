@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More tests => 31;
 
 use SchemaIterator;
 use FileIterator;
@@ -416,17 +416,20 @@ is(
 # ############################################################################
 # Resume
 # ############################################################################
-SKIP: {
-   skip 'Sandbox master does not have the sakila database', 1
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+test_so(
+   filters   => [qw(-d sakila)],
+   result    => "$out/resume-from-sakila-payment.txt",
+   resume    => 'sakila.payment',
+   test_name => "Resume"
+);
 
-   test_so(
-      filters   => [qw(-d sakila)],
-      result    => "$out/resume-from-sakila-payment.txt",
-      resume    => 'sakila.payment',
-      test_name => "Resume"
-   );
-};
+# Ignore the table being resumed from; resume from next table.
+test_so(
+   filters   => [qw(-d sakila --ignore-tables sakila.payment)],
+   result    => "$out/resume-from-ignored-sakila-payment.txt",
+   resume    => 'sakila.payment',
+   test_name => "Resume from ignored table"
+);
 
 # #############################################################################
 # Done.

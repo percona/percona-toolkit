@@ -80,8 +80,10 @@ sub new {
 
    my %resume;
    if ( my $table = $args{resume} ) {
-      MKDEBUG && _d('Will resume from', $table);
+      MKDEBUG && _d('Will resume from or after', $table);
       my ($db, $tbl) = $args{Quoter}->split_unquote($table);
+      die "Resume table must be database-qualified: $table"
+         unless $db && $tbl;
       $resume{db}  = $db;
       $resume{tbl} = $tbl;
    }
@@ -201,6 +203,16 @@ sub _make_filters {
 sub next {
    my ( $self ) = @_;
 
+   if ( !$self->{initialized} ) {
+      $self->{initialized} = 1;
+      if ( $self->{resume}->{tbl}
+           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+         MKDEBUG && _d('Will resume after',
+            join('.', @{$self->{resume}}{qw(db tbl)}));
+         $self->{resume}->{after} = 1;
+      }
+   }
+
    my $schema_obj;
    if ( $self->{file_itr} ) {
       $schema_obj= $self->_iterate_files();
@@ -275,8 +287,8 @@ sub _iterate_files {
          my ($tbl) = $chunk =~ m/$tbl_name/;
          $tbl      =~ s/^\s*`//;
          $tbl      =~ s/`\s*$//;
-         if ( $self->table_is_allowed($self->{db}, $tbl)
-              && $self->_resume_from_table($tbl) ) {
+         if ( $self->_resume_from_table($tbl)
+              && $self->table_is_allowed($self->{db}, $tbl) ) {
             my ($ddl) = $chunk =~ m/^(?:$open_comment)?(CREATE TABLE.+?;)$/ms;
             if ( !$ddl ) {
                warn "Failed to parse CREATE TABLE from\n" . $chunk;
@@ -338,8 +350,9 @@ sub _iterate_dbh {
       }
       grep {
          my ($tbl, $type) = @$_;
-         $self->table_is_allowed($self->{db}, $tbl)
-            && (!$type || ($type ne 'VIEW'));
+         (!$type || ($type ne 'VIEW'))
+         && $self->_resume_from_table($tbl)
+         && $self->table_is_allowed($self->{db}, $tbl);
       }
       @{$dbh->selectall_arrayref($sql)};
       MKDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
@@ -347,8 +360,6 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      next unless $self->_resume_from_table($tbl);
-
       # If there are engine filters, we have to get the table status.
       # Else, get it if the user wants to keep it since they'll expect
       # it to be available.
@@ -533,9 +544,15 @@ sub _resume_from_table {
    return 1 unless $self->{resume}->{tbl};
 
    if ( $tbl eq $self->{resume}->{tbl} ) {
-      MKDEBUG && _d('At resume table', $tbl);
-      delete $self->{resume}->{tbl};
-      return 1;
+      if ( !$self->{resume}->{after} ) {
+         MKDEBUG && _d('Resuming from table', $tbl);
+         delete $self->{resume}->{tbl};
+         return 1;
+      }
+      else {
+         MKDEBUG && _d('Resuming after table', $tbl);
+         delete $self->{resume}->{tbl};
+      }
    }
 
    return 0;
