@@ -1018,12 +1018,28 @@ sub prepared {
 
       # Report each PREPARE/EXECUTE pair once.
       if ( !$seen_prepared{$prep_stmt}++ ) {
-         $exec     = $ea->results->{classes}->{$exec_stmt};
-         $exec_r   = $exec->{Query_time}->{sum};
-         $exec_cnt = $exec->{Query_time}->{cnt};
-         $prep     = $ea->results->{classes}->{$prep_stmt};
-         $prep_r   = $prep->{Query_time}->{sum};
-         $prep_cnt = scalar keys %{$prep->{Statement_id}->{unq}},
+         if ( exists $ea->results->{classes}->{$exec_stmt} ) {
+            $exec     = $ea->results->{classes}->{$exec_stmt};
+            $exec_r   = $exec->{Query_time}->{sum};
+            $exec_cnt = $exec->{Query_time}->{cnt};
+         }
+         else {
+            MKDEBUG && _d('Statement prepared but not executed:', $item);
+            $exec_r   = 0;
+            $exec_cnt = 0;
+         }
+
+         if ( exists $ea->results->{classes}->{$prep_stmt} ) {
+            $prep     = $ea->results->{classes}->{$prep_stmt};
+            $prep_r   = $prep->{Query_time}->{sum};
+            $prep_cnt = scalar keys %{$prep->{Statement_id}->{unq}},
+         }
+         else {
+            MKDEBUG && _d('Statement executed but not prepared:', $item);
+            $prep_r   = 0;
+            $prep_cnt = 0;
+         }
+
          push @prepared, {
             prep_r   => $prep_r, 
             prep_cnt => $prep_cnt,
