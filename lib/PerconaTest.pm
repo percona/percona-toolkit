@@ -163,6 +163,7 @@ sub output {
    close *output_fh;
    if ( $EVAL_ERROR ) {
       die $EVAL_ERROR if $die;
+      warn $EVAL_ERROR unless $args{stderr};
       return $EVAL_ERROR;
    }
 
