@@ -8,10 +8,10 @@
 # Count         50       1
 # Exec time     99    30ms    30ms    30ms    30ms    30ms       0    30ms
 # Query size    51      37      37      37      37      37       0      37
-# Statement id  50       2       2       2       2       2       0       2
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # cmd          Query
+# Statement id 2
 # Query_time distribution
 #   1us
 #  10us
@@ -39,10 +39,10 @@ SELECT i FROM d.t WHERE i="3"\G
 # Count         50       1
 # Exec time      0   286us   286us   286us   286us   286us       0   286us
 # Query size    48      35      35      35      35      35       0      35
-# Statement id  50       2       2       2       2       2       0       2
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # cmd          Query
+# Statement id 2
 # Query_time distribution
 #   1us
 #  10us
@@ -64,4 +64,4 @@ SELECT i FROM d.t WHERE i=?\G
 # Prepared statements
 # Rank Query ID           PREP PREP Response EXEC EXEC Response Item
 # ==== ================== ==== ============= ==== ============= ==========
-#    1 0x3F79759E7FA2F117    0  0.0003  0.9%    1  0.0303 99.1% SELECT d.t
+#    1 0x3F79759E7FA2F117    1  0.0003  0.9%    1  0.0303 99.1% SELECT d.t

@@ -1,0 +1,5 @@
+
+# Prepared statements
+# Rank Query ID           PREP PREP Response EXEC EXEC Response Item
+# ==== ================== ==== ============= ==== ============= ==========
+#    1 0xAA8E9FA785927259    1 0.0003 100.0%    0  0.0000  0.0% SELECT d.t
