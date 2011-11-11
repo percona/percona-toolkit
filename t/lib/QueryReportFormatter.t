@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 43;
+use Test::More tests => 44;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1010,8 +1010,11 @@ $events = [
    },
 ];
 $ea = new EventAggregator(
-   groupby => 'fingerprint',
-   worst   => 'Query_time',
+   groupby  => 'fingerprint',
+   worst    => 'Query_time',
+   type_for => {
+      Statement_id => 'string',
+   },
 );
 foreach my $event ( @$events ) {
    $ea->aggregate($event);
@@ -1497,6 +1500,60 @@ ok(
       cmd_output => 1,
    ),
    'Sparkchart in event header'
+);
+
+# ############################################################################
+# Bug 887688: Prepared statements crash pt-query-digest
+# ############################################################################
+
+# PREP without EXEC
+$events = [
+   {
+      Query_time    => '0.000286',
+      Warning_count => 0,
+      arg           => 'PREPARE SELECT i FROM d.t WHERE i=?',
+      fingerprint   => 'prepare select i from d.t where i=?',
+      bytes         => 35,
+      cmd           => 'Query',
+      db            => undef,
+      pos_in_log    => 0,
+      ts            => '091208 09:23:49.637394',
+      Statement_id  => 1,
+   },
+];
+$ea = new EventAggregator(
+   groupby  => 'fingerprint',
+   worst    => 'Query_time',
+   type_for => {
+      Statement_id => 'string',
+   },
+);
+foreach my $event ( @$events ) {
+   $ea->aggregate($event);
+}
+$ea->calculate_statistical_metrics();
+$report = new ReportFormatter(
+   line_width   => 82,
+   extend_right => 1,
+);
+$qrf->set_report_formatter(report=>'prepared', formatter=>$report);
+ok(
+   no_diff(
+      sub {
+         $qrf->print_reports(
+            reports => ['prepared'],
+            ea      => $ea,
+            worst   => [
+               ['prepare select i from d.t where i=?', 'top', 1],
+            ],
+            orderby    => 'Query_time',
+            groupby    => 'fingerprint',
+            variations => [qw(arg)],
+         );
+      },
+      "t/lib/samples/QueryReportFormatter/report030.txt",
+   ),
+   "PREP without EXEC (bug 887688)"
 );
 
 # #############################################################################
