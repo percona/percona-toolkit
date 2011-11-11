@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 1;
+use Test::More tests => 2;
 
 use PerconaTest;
 shift @INC;  # our unshift (above)
@@ -18,7 +18,8 @@ shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-tcp-model";
 
 my @args   = qw();
-my $in     = "$trunk/t/lib/samples/simple-tcpdump/";
+my $in1    = "$trunk/t/lib/samples/simple-tcpdump/";
+my $in2    = "$trunk/t/pt-tcp-model/samples/in/";
 my $out    = "t/pt-tcp-model/samples/out/";
 my $output = '';
 
@@ -27,10 +28,19 @@ my $output = '';
 # ############################################################################
 ok(
    no_diff(
-      sub { pt_tcp_model::main(@args, "$in/simpletcp001.txt") },
+      sub { pt_tcp_model::main(@args, "$in1/simpletcp001.txt") },
       "$out/simpletcp001.txt",
    ),
    'Analysis for simpletcp001.txt'
+);
+
+ok(
+   no_diff(
+      sub { pt_tcp_model::main(@args, "$in2/sorted001.txt",
+         qw(--type requests --run-time 1)) },
+      "$out/sorted001.txt",
+   ),
+   'Analysis for sorted001.txt (issue 1341)'
 );
 
 # #############################################################################
