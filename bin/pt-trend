@@ -1797,10 +1797,9 @@ sub _d {
 package pt_trend;
 
 use English qw(-no_match_vars);
-
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+Transformers->import(qw(any_unix_timestamp));
 
-if ( !caller ) { exit main(@ARGV); } # Run the program.
 sub main {
    @ARGV = @_;  # set global ARGV for this package
 
@@ -1810,7 +1809,7 @@ sub main {
    my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
-   $o->set('progress', undef) if $o->get('q');
+   $o->set('progress', undef) if $o->get('quiet');
    if ( !$o->got('help') ) {
       if ( $o->get('progress') ) {
          eval { Progress->validate_spec($o->get('progress')) };
@@ -1887,7 +1886,10 @@ sub main {
    return 0;
 }
 
-Transformers->import(qw(any_unix_timestamp));
+# ############################################################################
+# Subroutines
+# ############################################################################
+
 sub print_report {
    my ( $stats ) = @_;
    my $ts = any_unix_timestamp($stats->{ts});
@@ -1902,6 +1904,11 @@ sub _d {
         @_;
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
+
+# ############################################################################
+# Run the program.
+# ############################################################################
+if ( !caller ) { exit main(@ARGV); }
 
 1; # Because this is a module as well as a script.
 
@@ -1983,6 +1990,12 @@ Print progress reports to STDERR.  The value is a comma-separated list with two
 parts.  The first part can be percentage, time, or iterations; the second part
 specifies how often an update should be printed, in percentage, seconds, or
 number of iterations.
+
+=item --quiet
+
+short form: -q
+
+Disables L<"--progress">.
 
 =item --version
 
