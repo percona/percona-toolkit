@@ -3730,6 +3730,7 @@ sub statements {
 sub boundaries {
    my ($self) = @_;
    return {
+      first_lower => $self->{first_lower},
       lower       => $self->{lower},
       upper       => $self->{upper},
       next_lower  => $self->{next_lower},
@@ -3915,7 +3916,8 @@ sub _get_bounds {
 
    my $dbh = $self->{Cxn}->dbh();
 
-   $self->{next_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   $self->{next_lower}  = $self->{first_lower};
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
 
    $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
@@ -4015,6 +4017,7 @@ sub DESTROY {
    my ( $self ) = @_;
    foreach my $key ( keys %$self ) {
       if ( $key =~ m/_sth$/ ) {
+         MKDEBUG && _d('Finish', $key);
          $self->{$key}->finish();
       }
    }
@@ -4033,6 +4036,185 @@ sub _d {
 }
 # ###########################################################################
 # End NibbleIterator package
+# ###########################################################################
+
+# ###########################################################################
+# OobNibbleIterator package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/OobNibbleIterator.pm
+#   t/lib/OobNibbleIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package OobNibbleIterator;
+use base 'NibbleIterator';
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw();
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   my $self = $class->SUPER::new(%args);
+
+   my $q     = $self->{Quoter};
+   my $o     = $self->{OptionParser};
+   my $where = $o->get('where');
+
+   if ( !$self->one_nibble() ) {
+      my $head_sql
+         = ($args{past_dms} || "SELECT ")
+         . ($args{past_select}
+            || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
+         . " FROM "  . $self->{sql}->{from};
+
+      my $tail_sql
+         = ($where ? " AND ($where)" : '')
+         . " ORDER BY " . $self->{sql}->{order_by};
+
+      my $past_lower_sql
+         = $head_sql
+         . " WHERE " . $self->{sql}->{boundaries}->{'<'}
+         . $tail_sql
+         . " /*past lower chunk*/";
+      MKDEBUG && _d('Past lower statement:', $past_lower_sql);
+
+      my $explain_past_lower_sql
+         = "EXPLAIN SELECT "
+         . ($args{past_select}
+            || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
+         . " FROM "  . $self->{sql}->{from}
+         . " WHERE " . $self->{sql}->{boundaries}->{'<'}
+         . $tail_sql
+         . " /*explain past lower chunk*/";
+      MKDEBUG && _d('Past lower statement:', $explain_past_lower_sql);
+
+      my $past_upper_sql
+         = $head_sql
+         . " WHERE " . $self->{sql}->{boundaries}->{'>'}
+         . $tail_sql
+         . " /*past upper chunk*/";
+      MKDEBUG && _d('Past upper statement:', $past_upper_sql);
+      
+      my $explain_past_upper_sql
+         = "EXPLAIN SELECT "
+         . ($args{past_select}
+            || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
+         . " FROM "  . $self->{sql}->{from}
+         . " WHERE " . $self->{sql}->{boundaries}->{'>'}
+         . $tail_sql
+         . " /*explain past upper chunk*/";
+      MKDEBUG && _d('Past upper statement:', $explain_past_upper_sql);
+
+      $self->{past_lower_sql}         = $past_lower_sql;
+      $self->{past_upper_sql}         = $past_upper_sql;
+      $self->{explain_past_lower_sql} = $explain_past_lower_sql;
+      $self->{explain_past_upper_sql} = $explain_past_upper_sql;
+      $self->{past_nibbles}           = [qw(lower upper)]; # what we nibble
+   }
+
+   return bless $self, $class;
+}
+
+sub more_boundaries {
+   my ($self) = @_;
+   return $self->SUPER::more_boundaries() if $self->{one_nibble};
+   return scalar @{$self->{past_nibbles}} ? 1 : 0;
+}
+
+sub statements {
+   my ($self) = @_;
+
+   my $sths = $self->SUPER::statements();
+
+   $sths->{past_lower_boundary} = $self->{past_lower_sth};
+   $sths->{past_upper_boundary} = $self->{past_upper_sth};
+
+   return $sths;
+}
+
+sub _prepare_sths {
+   my ($self) = @_;
+   MKDEBUG && _d('Preparing boundless statement handles');
+
+   if ( !$self->{one_nibble} ) {
+      my $dbh = $self->{Cxn}->dbh();
+      $self->{past_lower_sth}         = $dbh->prepare($self->{past_lower_sql});
+      $self->{past_upper_sth}         = $dbh->prepare($self->{past_upper_sql});
+      $self->{explain_past_lower_sth} = $dbh->prepare($self->{explain_past_lower_sql});
+      $self->{explain_past_upper_sth} = $dbh->prepare($self->{explain_past_upper_sql});
+   }
+
+   return $self->SUPER::_prepare_sths();
+}
+
+sub _next_boundaries {
+   my ($self) = @_;
+
+   return $self->SUPER::_next_boundaries() unless $self->{no_more_boundaries};
+
+   if ( my $past = shift @{$self->{past_nibbles}} ) {
+      if ( $past eq 'lower' ) {
+         MKDEBUG && _d('Nibbling values below lower boundary');
+         $self->{nibble_sth}         = $self->{past_lower_sth};
+         $self->{explain_nibble_sth} = $self->{explain_past_lower_sth};
+         $self->{lower}              = [];
+         $self->{upper}              = $self->boundaries()->{first_lower};
+         $self->{next_lower}         = undef;
+      }
+      elsif ( $past eq 'upper' ) {
+         MKDEBUG && _d('Nibbling values above upper boundary');
+         $self->{nibble_sth}         = $self->{past_upper_sth};
+         $self->{explain_nibble_sth} = $self->{explain_past_upper_sth};
+         $self->{lower}              = $self->boundaries()->{last_upper};
+         $self->{upper}              = [];
+         $self->{next_lower}         = undef;
+      }
+      else {
+         die "Invalid past nibble: $past";
+      }
+      return 1; # continue nibbling
+   }
+
+   MKDEBUG && _d('Done nibbling past boundaries');
+   return; # stop nibbling
+}
+
+sub DESTROY {
+   my ( $self ) = @_;
+   foreach my $key ( keys %$self ) {
+      if ( $key =~ m/_sth$/ ) {
+         MKDEBUG && _d('Finish', $key);
+         $self->{$key}->finish();
+      }
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End OobNibbleIterator package
 # ###########################################################################
 
 # ###########################################################################
@@ -5910,10 +6092,11 @@ sub main {
    # Checksum args and the DMS part of the checksum query for each table.
    # ########################################################################
    my %crc_args     = $rc->get_crc_args(dbh => $master_dbh);
-   my $checksum_dms = "REPLACE INTO $repl_table "
-                   . "(db, tbl, chunk, chunk_index,"
-                   . " lower_boundary, upper_boundary, this_cnt, this_crc) "
-                   . "SELECT ?, ?, ?, ?, ?, ?,";
+   my $checksum_dml = "REPLACE INTO $repl_table "
+                    . "(db, tbl, chunk, chunk_index,"
+                    . " lower_boundary, upper_boundary, this_cnt, this_crc) "
+                    . "SELECT ?, ?, ?, ?, ?, ?,";
+   my $past_cols    = " COUNT(*), '0'";
 
    # ########################################################################
    # Get last chunk for --resume.
@@ -6362,13 +6545,15 @@ sub main {
          );
          my $nibble_iter;
          eval {
-            $nibble_iter = new NibbleIterator(
+            $nibble_iter = new OobNibbleIterator(
                Cxn          => $master_cxn,
                tbl          => $tbl,
                chunk_size   => $tbl->{chunk_size},
                chunk_index  => $o->get('chunk-index'),
-               dms          => $checksum_dms,
+               dms          => $checksum_dml,
                select       => $checksum_cols,
+               past_dms     => $checksum_dml,
+               past_select  => $past_cols,
                callbacks    => $callbacks,
                OptionParser => $o,
                Quoter       => $q,
