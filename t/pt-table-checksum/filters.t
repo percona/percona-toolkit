@@ -14,6 +14,8 @@ use Test::More;
 use Data::Dumper;
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $vp  = new VersionParser();

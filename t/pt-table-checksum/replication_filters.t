@@ -19,7 +19,10 @@ $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');

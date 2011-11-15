@@ -12,6 +12,8 @@ use English qw(-no_match_vars);
 use Test::More tests => 17;
 
 use PerconaTest;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $output;

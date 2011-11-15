@@ -13,6 +13,8 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -81,10 +83,11 @@ is_deeply(
       [301, 400],
       [401, 500],
       [501, 600],
+      [undef,   1], # lower oob
+      [600, undef], # upper oob
    ],
    "--chunk-time=0 disables auto-adjusting --chunk-size"
 );
-
 
 # ############################################################################
 # Sub-second chunk-time.

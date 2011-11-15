@@ -13,6 +13,8 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -44,9 +46,9 @@ $output = output(
    stderr => 1,
 );
 
-like(
-   $output,
-   qr/^\S+\s+0\s+0\s+11\s+2\s+/m,
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   11,
    "Checksums table despite invalid datetime"
 );
 

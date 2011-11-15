@@ -108,15 +108,15 @@ ok(
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   78,
-   '78 checksums on master'
+   86,
+   '86 checksums on master'
 );
 
 $row = $slave_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   78,
-   '78 checksums on slave'
+   86,
+   '86 checksums on slave'
 );
 
 # ############################################################################
@@ -177,12 +177,13 @@ is_deeply(
       [qw(issue_21  1)],
       [qw(issue_21  2)],
       [qw(issue_21  3)],
+      [qw(issue_21  4)], # lower oob
+      [qw(issue_21  5)], # upper oob
       # fake row for chunk 999 is gone
       [qw(other_tbl 1)], # this row is still here
    ],
    "--emptry-replicate-table on by default"
 ) or print STDERR Dumper($row);
-
 
 # ############################################################################
 # --[no]recheck

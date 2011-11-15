@@ -1,2 +1,2 @@
 ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 142 8 0 test.ascii
+0 0 142 10 0 test.ascii
