@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 42;
+   plan tests => 44;
 }
 
 my $q   = new Quoter();
@@ -92,6 +92,7 @@ sub make_nibble_iter {
       callbacks   => $args{callbacks},
       select      => $args{select},
       one_nibble  => $args{one_nibble},
+      resume      => $args{resume},
       %common_modules,
    );
 
@@ -718,6 +719,47 @@ is_deeply(
    \@rows,
    [ ],
    "--chunk-size-limit 0 on empty table"
+);
+
+# ############################################################################
+# Resume.
+# ############################################################################
+$ni = make_nibble_iter(
+   sql_file => "a-z.sql",
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 5)],
+   resume   => { upper_boundary => 'j' },
+);
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, @$row;
+}
+
+is_deeply(
+   \@rows,
+   [ ('k'..'z') ],
+   "Resume from middle"
+);
+
+$ni = make_nibble_iter(
+   sql_file => "a-z.sql",
+   db       => 'test',
+   tbl      => 't',
+   argv     => [qw(--databases test --chunk-size 5)],
+   resume   => { upper_boundary => 'z' },
+);
+
+@rows = ();
+while (my $row = $ni->next()) {
+   push @rows, @$row;
+}
+
+is_deeply(
+   \@rows,
+   [ ],
+   "Resume from end"
 );
 
 # #############################################################################

@@ -64,6 +64,14 @@ sub new {
                   : 0;
    MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
+   if ( my $nibble = $args{resume} ) {
+      if (    !defined $nibble->{lower_boundary}
+           && !defined $nibble->{upper_boundary} ) {
+         MKDEBUG && _d('Resuming from one nibble table');
+         $one_nibble = 1;
+      }
+   }
+
    # Get an index to nibble by.  We'll order rows by the index's columns.
    my $index = _find_best_index(%args, mysql_index => $mysql_index);
    if ( !$index && !$one_nibble ) {
@@ -103,6 +111,7 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
+         no_more_boundaries => $args{resume} ? 1 : 0,
       };
    }
    else {
@@ -125,11 +134,15 @@ sub new {
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
       # These statements are only executed once, so they don't use sths.
+      my $first_lb_where = $where ? "($where)" : '';
+      if ( $args{resume} ) {
+         $first_lb_where .= ($where ? " AND " : '') . $asc->{boundaries}->{'>'};
+      }
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
-         . ($where ? " WHERE $where" : '')
+         . ($first_lb_where ? " WHERE $first_lb_where" : '')
          . " ORDER BY $order_by"
          . " LIMIT 1"
          . " /*first lower boundary*/";
@@ -204,6 +217,7 @@ sub new {
          nibble_sql         => $nibble_sql,
          explain_ub_sql     => "EXPLAIN $ub_sql",
          explain_nibble_sql => $explain_nibble_sql,
+         resume             => $args{resume},
          sql                => {
             columns    => $asc->{scols},
             from       => $from,
@@ -520,7 +534,17 @@ sub _get_bounds {
 
    my $dbh = $self->{Cxn}->dbh();
 
-   $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   if ( my $nibble = $self->{resume} ) {
+      my $sth = $dbh->prepare($self->{first_lb_sql});
+      my @ub  = split ',', $nibble->{upper_boundary};
+      MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
+      $sth->execute(@ub);
+      $self->{first_lower} = $sth->fetchrow_arrayref();
+      $sth->finish();
+   }
+   else {
+      $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   }
    $self->{next_lower}  = $self->{first_lower};
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
 
@@ -542,6 +566,13 @@ sub _next_boundaries {
       $self->{lower} = $self->{upper} = [];
       $self->{no_more_boundaries} = 1;  # for next call
       return 1; # continue nibbling
+   }
+
+   if ( !$self->{next_lower} ) {
+      # This happens if we resume from the end of the table.
+      MKDEBUG && _d('At end of table');
+      $self->{no_more_boundaries} = 1;  # for next call
+      return; # stop nibbling
    }
 
    # Detect infinite loops.  If the lower boundary we just nibbled from
