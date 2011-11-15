@@ -13,6 +13,8 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -60,6 +62,8 @@ is_deeply(
       [ '1',        '300'                  ],
       [ '1000',     '2220293'              ],
       [ '65553510', '18446744073709551615' ],
+      [ undef,      '1'                    ], # lower oob
+      [ '18446744073709551615',      undef ], # upper oob
    ],
    "Uses very large int as chunk boundary"
 );
@@ -67,5 +71,5 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-#$sb->wipe_clean($master_dbh);
+$sb->wipe_clean($master_dbh);
 exit;
