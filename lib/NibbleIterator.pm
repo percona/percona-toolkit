@@ -331,6 +331,7 @@ sub statements {
 sub boundaries {
    my ($self) = @_;
    return {
+      first_lower => $self->{first_lower},
       lower       => $self->{lower},
       upper       => $self->{upper},
       next_lower  => $self->{next_lower},
@@ -519,7 +520,8 @@ sub _get_bounds {
 
    my $dbh = $self->{Cxn}->dbh();
 
-   $self->{next_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   $self->{next_lower}  = $self->{first_lower};
    MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
 
    $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
@@ -630,6 +632,7 @@ sub DESTROY {
    my ( $self ) = @_;
    foreach my $key ( keys %$self ) {
       if ( $key =~ m/_sth$/ ) {
+         MKDEBUG && _d('Finish', $key);
          $self->{$key}->finish();
       }
    }
