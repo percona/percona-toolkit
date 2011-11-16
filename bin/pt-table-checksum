@@ -3552,19 +3552,29 @@ sub new {
       my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
-      my $first_lb_where = $where ? "($where)" : '';
-      if ( $args{resume} ) {
-         $first_lb_where .= ($where ? " AND " : '') . $asc->{boundaries}->{'>'};
-      }
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
-         . ($first_lb_where ? " WHERE $first_lb_where" : '')
+         . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
          . " LIMIT 1"
          . " /*first lower boundary*/";
       MKDEBUG && _d('First lower boundary statement:', $first_lb_sql);
+
+      my $resume_lb_sql;
+      if ( $args{resume} ) {
+         $resume_lb_sql
+            = "SELECT /*!40001 SQL_NO_CACHE */ "
+            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . " FROM $from"
+            . " WHERE " . $asc->{boundaries}->{'>'}
+            . ($where ? " AND ($where)" : '')
+            . " ORDER BY $order_by"
+            . " LIMIT 1"
+            . " /*resume lower boundary*/";
+         MKDEBUG && _d('Resume lower boundary statement:', $resume_lb_sql);
+      }
 
       my $last_ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
@@ -3626,6 +3636,7 @@ sub new {
          explain_ub_sql     => "EXPLAIN $ub_sql",
          explain_nibble_sql => $explain_nibble_sql,
          resume             => $args{resume},
+         resume_lb_sql      => $resume_lb_sql,
          sql                => {
             columns    => $asc->{scols},
             from       => $from,
@@ -3930,19 +3941,27 @@ sub _get_bounds {
 
    my $dbh = $self->{Cxn}->dbh();
 
+   $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   MKDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+
    if ( my $nibble = $self->{resume} ) {
-      my $sth = $dbh->prepare($self->{first_lb_sql});
-      my @ub  = split ',', $nibble->{upper_boundary};
-      MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
-      $sth->execute(@ub);
-      $self->{first_lower} = $sth->fetchrow_arrayref();
-      $sth->finish();
+      if ( defined $nibble->{upper_boundary} ) {
+         my $sth = $dbh->prepare($self->{resume_lb_sql});
+         my @ub  = split ',', $nibble->{upper_boundary};
+         MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
+         $sth->execute(@ub);
+         $self->{next_lower} = $sth->fetchrow_arrayref();
+         $sth->finish();
+      }
+      else {
+         MKDEBUG && _d('No more boundaries to resume');
+         $self->{no_more_boundaries} = 1;
+      }
    }
    else {
-      $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+      $self->{next_lower}  = $self->{first_lower};   
    }
-   $self->{next_lower}  = $self->{first_lower};
-   MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
+   MKDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
 
    $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
    MKDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
@@ -4152,7 +4171,18 @@ sub new {
       $self->{past_upper_sql}         = $past_upper_sql;
       $self->{explain_past_lower_sql} = $explain_past_lower_sql;
       $self->{explain_past_upper_sql} = $explain_past_upper_sql;
-      $self->{past_nibbles}           = [qw(lower upper)]; # what we nibble
+
+      my @past_nibbles = qw(lower upper);
+      if ( my $nibble = $args{resume} ) {
+         if ( !defined $nibble->{lower_boundary} ) {
+            $self->{past_nibbles} = [qw(upper)];
+         }
+         elsif ( !defined $nibble->{upper_boundary} ) {
+            $self->{past_nibbles} = [];
+         }
+      }
+      MKDEBUG && _d('Nibble past', @past_nibbles);
+      $self->{past_nibbles} = \@past_nibbles,
    }
 
    return bless $self, $class;
@@ -4177,7 +4207,7 @@ sub statements {
 
 sub _prepare_sths {
    my ($self) = @_;
-   MKDEBUG && _d('Preparing boundless statement handles');
+   MKDEBUG && _d('Preparing out-of-bound statement handles');
 
    if ( !$self->{one_nibble} ) {
       my $dbh = $self->{Cxn}->dbh();
@@ -6288,8 +6318,8 @@ sub main {
          # --explain level 2: print chunk,lower boundary values,upper
          # boundary values.
          if ( $o->get('explain') > 1 ) {
-            my $lb_quoted = join(',', @{$boundary->{lower}});
-            my $ub_quoted = join(',', @{$boundary->{upper}});
+            my $lb_quoted = join(',', @{$boundary->{lower} || []});
+            my $ub_quoted = join(',', @{$boundary->{upper} || []});
             my $chunk     = $nibble_iter->nibble_number();
             printf "%d %s %s\n",
                $chunk,

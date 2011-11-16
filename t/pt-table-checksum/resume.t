@@ -29,7 +29,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 21;
+   plan tests => 33;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -132,7 +132,6 @@ is_deeply(
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
-   trf => sub { return PerconaTest::normalize_checksum_results(@_) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
@@ -142,25 +141,29 @@ is_deeply(
    "Resume finished sakila"
 );
 
-# XXX This may not be a stable test if your machine isn't fast enough
-# to do these remaining tables as single chunks.
-is(
-   $output,
-"ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 109 1 0 sakila.country
-0 0 599 1 0 sakila.customer
-0 0 1000 1 0 sakila.film
-0 0 5462 1 0 sakila.film_actor
-0 0 1000 1 0 sakila.film_category
-0 0 1000 1 0 sakila.film_text
-0 0 4581 1 0 sakila.inventory
-0 0 6 1 0 sakila.language
-0 0 16049 1 0 sakila.payment
-0 0 16044 1 0 sakila.rental
-0 0 2 1 0 sakila.staff
-0 0 2 1 0 sakila.store
-",
+my (undef, $first_tbl) = split /\n/, $output;
+like(
+   $first_tbl,
+   qr/sakila.country$/,
    "Resumed from next table"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Resumed 0 errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   0,
+   "Resumed 0 diffs"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   45_854,
+   "Resumed 45,854 rows"
 );
 
 # ############################################################################
@@ -183,6 +186,8 @@ my $first_half = [
    [qw(sakila film_actor 4 1000 )],
    [qw(sakila film_actor 5 1000 )],
    [qw(sakila film_actor 6 462 )],
+   [qw(sakila film_actor 7 0   )], # lower oob
+   [qw(sakila film_actor 8 0   )], # upper oob
    [qw(sakila film_category 1 1000 )],
    [qw(sakila film_text 1 1000 )],
    [qw(sakila inventory 1 1000 )],
@@ -190,6 +195,8 @@ my $first_half = [
    [qw(sakila inventory 3 1000 )],
    [qw(sakila inventory 4 1000 )],
    [qw(sakila inventory 5 581 )],
+   [qw(sakila inventory 6 0   )], # lower oob
+   [qw(sakila inventory 7 0   )], # upper oob
    [qw(sakila language 1 6 )],
    [qw(sakila payment 1 1000 )],
    [qw(sakila payment 2 1000 )],
@@ -209,7 +216,9 @@ my $second_half = [
    [qw(sakila payment 14 1000 )],
    [qw(sakila payment 15 1000 )],
    [qw(sakila payment 16 1000 )],
-   [qw(sakila payment 17 49 )],
+   [qw(sakila payment 17 49   )],
+   [qw(sakila payment 18 0    )], # lower oob
+   [qw(sakila payment 19 0  )],   # upper oob
    [qw(sakila rental 1 1000 )],
    [qw(sakila rental 2 1000 )],
    [qw(sakila rental 3 1000 )],
@@ -227,6 +236,8 @@ my $second_half = [
    [qw(sakila rental 15 1000 )],
    [qw(sakila rental 16 1000 )],
    [qw(sakila rental 17 44 )],
+   [qw(sakila rental 18 0  )], # lower oob
+   [qw(sakila rental 19 0  )], # upper oob
    [qw(sakila staff 1 2 )],
    [qw(sakila store 1 2 )],
 ];
@@ -241,7 +252,6 @@ is_deeply(
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume),
       qw(--chunk-time 0)) },
-   trf => sub { return PerconaTest::normalize_checksum_results(@_) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
@@ -254,16 +264,41 @@ is_deeply(
    "Resume finished sakila"
 );
 
-is(
+(undef, undef, $first_tbl) = split /\n/, $output;
+like(
+   $first_tbl,
+   qr/sakila.payment$/,
+   "Resumed from sakila.payment"
+);
+
+like(
    $output,
-"Resuming from sakila.payment chunk 7, timestamp 2011-10-15 13:00:28
-ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 9049 10 0 sakila.payment
-0 0 16044 17 0 sakila.rental
-0 0 2 1 0 sakila.staff
-0 0 2 1 0 sakila.store
-",
-   "Resumed from sakila.payment chunk 7"
+   qr/^Resuming from sakila.payment chunk 7, timestamp 2011-10-15 13:00:28\n/,
+    "Resumed from sakila.payment chunk 7"  
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Resumed 0 errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   0,
+   "Resumed 0 diffs"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   0,
+   "Resumed 0 skipped"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   25_097,
+   "Resumed 25,097 rows"
 );
 
 # ############################################################################
@@ -287,6 +322,8 @@ is_deeply(
       [qw(sakila payment 15 1000 )],
       [qw(sakila payment 16 1000 )],
       [qw(sakila payment 17 49 )],
+      [qw(sakila payment 18 0  )], # lower oob
+      [qw(sakila payment 19 0  )], # upper oob
    ],
    "Checksum results through sakila.payment"
 );
@@ -294,7 +331,6 @@ is_deeply(
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d sakila --resume),
       qw(--chunk-time 0)) },
-   trf => sub { return PerconaTest::normalize_checksum_results(@_) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl, chunk, master_cnt from percona.checksums order by db, tbl');
@@ -307,14 +343,35 @@ is_deeply(
    "Resume finished sakila"
 );
 
+(undef, $first_tbl) = split /\n/, $output;
+like(
+   $first_tbl,
+   qr/sakila.rental$/,
+   "Resumed from sakila.rental"
+);
+
 is(
-   $output,
-"ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 16044 17 0 sakila.rental
-0 0 2 1 0 sakila.staff
-0 0 2 1 0 sakila.store
-",
-   "Resumed from end of sakila.payment"
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Resumed 0 errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   0,
+   "Resumed 0 diffs"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   0,
+   "Resumed 0 skipped"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   16_048,
+   "Resumed 16,048 rows"
 );
 
 # ############################################################################
@@ -384,7 +441,7 @@ is(
    $output,
 "Resuming from sakila.rental chunk 11, timestamp 2011-10-15 13:00:49
 ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 5044 6 0 sakila.rental
+0 0 5044 8 0 sakila.rental
 0 0 2 1 0 sakila.staff
 0 0 2 1 0 sakila.store
 ",
@@ -407,9 +464,9 @@ ok(
 # Resume with --ignore-table.
 # ############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
-load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:18'");
+load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:24'");
 
-$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:09'");
+$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:11'");
 my $before = $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl");
 is_deeply(
    $before,
@@ -420,9 +477,11 @@ is_deeply(
       [qw( test t1  4 ), '2011-11-08 00:00:04'],
       [qw( test t1  5 ), '2011-11-08 00:00:05'],
       [qw( test t1  6 ), '2011-11-08 00:00:06'],
-      [qw( test t2  1 ), '2011-11-08 00:00:07'],
-      [qw( test t2  2 ), '2011-11-08 00:00:08'],
-      [qw( test t2  3 ), '2011-11-08 00:00:09'],
+      [qw( test t1  7 ), '2011-11-08 00:00:07'], # lower oob
+      [qw( test t1  8 ), '2011-11-08 00:00:08'], # upper oob
+      [qw( test t2  1 ), '2011-11-08 00:00:09'],
+      [qw( test t2  2 ), '2011-11-08 00:00:10'],
+      [qw( test t2  3 ), '2011-11-08 00:00:11'],
    ],
    "Checksum results through tbl2 chunk 3"
 );
@@ -436,7 +495,7 @@ $output = output(
 is(
    $output,
 "ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
-0 0 26 6 0 test.t3
+0 0 26 8 0 test.t3
 ",
    "Resumed from t3"
 );
@@ -451,6 +510,8 @@ is_deeply(
       [qw( test t1  4 )],
       [qw( test t1  5 )],
       [qw( test t1  6 )],
+      [qw( test t1  7 )],
+      [qw( test t1  8 )],
       [qw( test t2  1 )],
       [qw( test t2  2 )],
       [qw( test t2  3 )],
@@ -461,6 +522,8 @@ is_deeply(
       [qw( test t3  4 )],
       [qw( test t3  5 )],
       [qw( test t3  6 )],
+      [qw( test t3  7 )],
+      [qw( test t3  8 )],
    ],
    "--resume and --ignore-table"
 );
