@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 17;
+use Test::More tests => 18;
 
 use PerconaTest;
 shift @INC;  # our unshift (above)
@@ -117,6 +117,13 @@ like(
    $output,
    qr/^  --progress\s+\(No value\)$/m,
    "--quiet disables --progress"
+);
+
+$output = `$trunk/bin/pt-table-checksum --help --chunk-size 500`;
+like(
+   $output,
+   qr/^  --chunk-time\s+0$/m,
+   "--chunk-size sets --chunk-time=0"
 );
 
 # ############################################################################
