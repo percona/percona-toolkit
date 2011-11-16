@@ -133,21 +133,37 @@ sub new {
       my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
-      # These statements are only executed once, so they don't use sths.
-      my $first_lb_where = $where ? "($where)" : '';
-      if ( $args{resume} ) {
-         $first_lb_where .= ($where ? " AND " : '') . $asc->{boundaries}->{'>'};
-      }
+      # The real first row in the table.  Usually we start nibbling from
+      # this row.  Called once in _get_bounds().
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
          . " FROM $from"
-         . ($first_lb_where ? " WHERE $first_lb_where" : '')
+         . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
          . " LIMIT 1"
          . " /*first lower boundary*/";
       MKDEBUG && _d('First lower boundary statement:', $first_lb_sql);
 
+      # If we're resuming, this fetches the effective first row, which
+      # should differ from the real first row.  Called once in _get_bounds().
+      my $resume_lb_sql;
+      if ( $args{resume} ) {
+         $resume_lb_sql
+            = "SELECT /*!40001 SQL_NO_CACHE */ "
+            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . " FROM $from"
+            . " WHERE " . $asc->{boundaries}->{'>'}
+            . ($where ? " AND ($where)" : '')
+            . " ORDER BY $order_by"
+            . " LIMIT 1"
+            . " /*resume lower boundary*/";
+         MKDEBUG && _d('Resume lower boundary statement:', $resume_lb_sql);
+      }
+
+      # The nibbles are inclusive, so we need to fetch the real last row
+      # in the table.  Saved as boundary last_upper and used as boundary
+      # upper in some cases.  Called once in _get_bounds().
       my $last_ub_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
@@ -218,6 +234,7 @@ sub new {
          explain_ub_sql     => "EXPLAIN $ub_sql",
          explain_nibble_sql => $explain_nibble_sql,
          resume             => $args{resume},
+         resume_lb_sql      => $resume_lb_sql,
          sql                => {
             columns    => $asc->{scols},
             from       => $from,
@@ -534,20 +551,33 @@ sub _get_bounds {
 
    my $dbh = $self->{Cxn}->dbh();
 
+   # Get the real first lower boundary.
+   $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+   MKDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
+
+   # The next boundary is the first lower boundary.  If resuming,
+   # this should be something > the real first lower boundary.
    if ( my $nibble = $self->{resume} ) {
-      my $sth = $dbh->prepare($self->{first_lb_sql});
-      my @ub  = split ',', $nibble->{upper_boundary};
-      MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
-      $sth->execute(@ub);
-      $self->{first_lower} = $sth->fetchrow_arrayref();
-      $sth->finish();
+      if ( defined $nibble->{upper_boundary} ) {
+         my $sth = $dbh->prepare($self->{resume_lb_sql});
+         my @ub  = split ',', $nibble->{upper_boundary};
+         MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
+         $sth->execute(@ub);
+         $self->{next_lower} = $sth->fetchrow_arrayref();
+         $sth->finish();
+      }
+      else {
+         MKDEBUG && _d('No more boundaries to resume');
+         $self->{no_more_boundaries} = 1;
+      }
    }
    else {
-      $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
+      $self->{next_lower}  = $self->{first_lower};   
    }
-   $self->{next_lower}  = $self->{first_lower};
-   MKDEBUG && _d('First lower boundary:', Dumper($self->{next_lower}));
+   MKDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
 
+   # Get the real last upper boundary, i.e. the last row of the table
+   # at this moment.  If rows are inserted after, we won't see them.
    $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
    MKDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
 

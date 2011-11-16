@@ -104,7 +104,21 @@ sub new {
       $self->{past_upper_sql}         = $past_upper_sql;
       $self->{explain_past_lower_sql} = $explain_past_lower_sql;
       $self->{explain_past_upper_sql} = $explain_past_upper_sql;
-      $self->{past_nibbles}           = [qw(lower upper)]; # what we nibble
+
+      my @past_nibbles = qw(lower upper);
+      if ( my $nibble = $args{resume} ) {
+         if ( !defined $nibble->{lower_boundary} ) {
+            # Have past lower nibble, do only past upper nibble.
+            $self->{past_nibbles} = [qw(upper)];
+         }
+         elsif ( !defined $nibble->{upper_boundary} ) {
+            # Have past upper nibble, so the past lower nibble
+            # should have alredy been done.  Nothing for us to do.
+            $self->{past_nibbles} = [];
+         }
+      }
+      MKDEBUG && _d('Nibble past', @past_nibbles);
+      $self->{past_nibbles} = \@past_nibbles,
    }
 
    return bless $self, $class;
@@ -131,7 +145,7 @@ sub statements {
 
 sub _prepare_sths {
    my ($self) = @_;
-   MKDEBUG && _d('Preparing boundless statement handles');
+   MKDEBUG && _d('Preparing out-of-bound statement handles');
 
    # Prepare our statements for nibbles past the lower and upper boundaries.
    if ( !$self->{one_nibble} ) {
