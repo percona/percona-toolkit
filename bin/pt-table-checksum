@@ -5793,6 +5793,8 @@ sub main {
    );
    $o->set('ignore-tables', \%ignore_tables);
 
+   $o->set('chunk-time', 0) if $o->got('chunk-size');
+
    if ( !$o->get('help') ) {
       if ( @ARGV > 1 ) {
          $o->save_error("More than one host specified; only one allowed");
@@ -7536,6 +7538,9 @@ MySQL with trying to checksum too much data.
 If a table does not have any unique indexes, the chunk size may be inaccurate,
 in which case L<"--chunk-size-limit"> can help prevent overloading MySQL.
 
+If this option is specified on the command line, then the given
+chunk size is always used and L<"--chunk-time"> is set to zero.
+
 =item --chunk-size-limit
 
 type: float; default: 2.0; group: Safety
@@ -7946,7 +7951,7 @@ pt-table-checksum selects with USE, and never changes afterwards.  See also
 
 =item --resume
 
-Resume checksumming from the last completed chunk (disables L<"--[no]empty-replicate-table).  If the tool is stopped before it finishes checksumming all
+Resume checksumming from the last completed chunk (disables L<"--[no]empty-replicate-table">).  If the tool is stopped before it finishes checksumming all
 tables, checksumming can resume from the last chunk of the last table
 finished by specifying this option.
 

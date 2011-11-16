@@ -43,34 +43,34 @@ my $output;
 # the first chunk should equal the chunk size, and the 2nd chunk should
 # larger, unless it takes your machine > 0.5s to select 100 rows.
 
-pt_table_checksum::main(@args, qw(--quiet --chunk-size 100 -t sakila.city));
+pt_table_checksum::main(@args, qw(--quiet -t sakila.rental));
 
-$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city' and chunk=1");
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='rental' and chunk=1");
 is_deeply(
    $row,
-   [1, 100],  # 100 rows for --chunk-size=100
+   [1, 1001],
    "First chunk is default size"
 );
 
-$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city' and chunk=2");
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='rental' and chunk=2");
 is(
    $row->[0],
-   101,
+   1002,
    "2nd chunk lower boundary"
 );
 
 cmp_ok(
    $row->[1] - $row->[0],
    '>',
-   100,
+   1000,
    "2nd chunk is larger"
 );
 
 # ############################################################################
-# Test --chunk-time here because it's linked to --chunk-size.
+# Explicit --chunk-size should override auto-sizing.
 # ############################################################################
 
-pt_table_checksum::main(@args, qw(--quiet --chunk-time 0 --chunk-size 100 -t sakila.city));
+pt_table_checksum::main(@args, qw(--quiet --chunk-size 100 -t sakila.city));
 
 # There's 600 rows in sakila.city so there should be 6 chunks.
 $row = $master_dbh->selectall_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='sakila' and tbl='city'");
@@ -86,7 +86,7 @@ is_deeply(
       [undef,   1], # lower oob
       [600, undef], # upper oob
    ],
-   "--chunk-time=0 disables auto-adjusting --chunk-size"
+   "Explicit --chunk-size disables auto chunk sizing"
 );
 
 # ############################################################################
