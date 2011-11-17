@@ -39,6 +39,13 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Sub: new
+#
+# Required Arguments:
+#   See <NibbleIterator::new()>
+#
+# Returns:
+#   OobNibbleIterator object
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw();
@@ -57,7 +64,7 @@ sub new {
    if ( !$self->one_nibble() ) {
       # Make statements for the lower and upper ranges.
       my $head_sql
-         = ($args{past_dms} || "SELECT ")
+         = ($args{past_dml} || "SELECT ")
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from};
@@ -105,21 +112,24 @@ sub new {
       $self->{explain_past_lower_sql} = $explain_past_lower_sql;
       $self->{explain_past_upper_sql} = $explain_past_upper_sql;
 
-      my @past_nibbles = qw(lower upper);
+      $self->{past_nibbles} = [qw(lower upper)];
       if ( my $nibble = $args{resume} ) {
-         if ( !defined $nibble->{lower_boundary} ) {
-            # Have past lower nibble, do only past upper nibble.
-            $self->{past_nibbles} = [qw(upper)];
-         }
-         elsif ( !defined $nibble->{upper_boundary} ) {
-            # Have past upper nibble, so the past lower nibble
-            # should have alredy been done.  Nothing for us to do.
-            $self->{past_nibbles} = [];
+         if (    !defined $nibble->{lower_boundary}
+              || !defined $nibble->{upper_boundary} ) {
+            # One or the other boundary isn't defined, so the last chunk
+            # we're resuming from is one our oob chunks.  The parent doesn't
+            # have any more bounded boundaries, and if the lower boundary
+            # isn't defined then it's the lower oob chunk, so only do the
+            # upper oob chunk, or if the upper boundary isn't defined, then
+            # we're resuming from the upper oob chunk so we're already done.
+            $self->{past_nibbles} = !defined $nibble->{lower_boundary}
+                                  ? ['upper']
+                                  : [];
          }
       }
-      MKDEBUG && _d('Nibble past', @past_nibbles);
-      $self->{past_nibbles} = \@past_nibbles,
-   }
+      MKDEBUG && _d('Nibble past', @{$self->{past_nibbles}});
+
+   } # not one nibble
 
    return bless $self, $class;
 }
