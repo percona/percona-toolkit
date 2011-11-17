@@ -41,7 +41,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 13;
+   plan tests => 20;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -246,6 +246,66 @@ is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "Oversize chunks are not errors"
+);
+
+# ############################################################################
+# Check slave table row est. if doing doing 1=1 on master table.
+# ############################################################################
+$master_dbh->do('truncate table percona.checksums');
+$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+PerconaTest::wait_for_table($slave_dbh, 'test.t3', "id=26");
+
+$master_dbh->do('set sql_log_bin=0');
+$master_dbh->do('truncate table test.t1');
+$master_dbh->do('set sql_log_bin=1');
+
+$output = output(
+   sub {
+      $exit_status = pt_table_checksum::main(@args, qw(-d test --chunk-size 2)) 
+   },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/Skipping table test.t1/,
+   "Warns about skipping large slave table"
+);
+
+is_deeply(
+   $master_dbh->selectall_arrayref("select distinct tbl from percona.checksums where db='test'"),
+   [ ['t2'], ['t3'] ],
+   "Does not checksum large slave table on master"
+);
+
+is_deeply(
+   $slave_dbh->selectall_arrayref("select distinct tbl from percona.checksums where db='test'"),
+   [ ['t2'], ['t3'] ],
+   "Does not checksum large slave table on slave"
+);
+
+is(
+   $exit_status,
+   1,
+   "Non-zero exit status"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   0,
+   "0 skipped"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "0 errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   52,
+   "52 rows checksummed"
 );
 
 # #############################################################################

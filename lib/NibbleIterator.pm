@@ -48,7 +48,6 @@ $Data::Dumper::Quotekeys = 0;
 #   select      - Arrayref of table columns to select
 #   chunk_index - Index to use for nibbling
 #   one_nibble  - Allow one-chunk tables (default yes)
-#   where       - WHERE clause
 #   resume      - Hashref with lower_boundary and upper_boundary values
 #                 to resume nibble from
 #

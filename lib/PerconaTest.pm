@@ -590,7 +590,7 @@ sub count_checksum_results {
          $line =~ m/$table$/m ? $line : '';
       }
    }
-   grep { m/^\d+\-\d+T/ } split /\n/, $output;
+   grep { m/^\d+\-\d+T\d\d:\d\d:\d\d\s+\d+/ } split /\n/, $output;
    my $colno = $checksum_result_col{lc $column};
    die "Invalid checksum result column: $column" unless defined $colno;
    my $total = 0;
