@@ -35,18 +35,22 @@ $Data::Dumper::Quotekeys = 0;
 # Sub: new
 #
 # Required Arguments:
-#   cxn          - <Cxn> object
+#   Cxn          - <Cxn> object
 #   tbl          - Standard tbl ref
 #   chunk_size   - Number of rows to nibble per chunk
 #   OptionParser - <OptionParser> object
+#   Quoter       - <Quoter> object
 #   TableNibbler - <TableNibbler> object
 #   TableParser  - <TableParser> object
-#   Quoter       - <Quoter> object
 #
 # Optional Arguments:
+#   dml         - Data manipulation statment to precede the SELECT statement
+#   select      - Arrayref of table columns to select
 #   chunk_index - Index to use for nibbling
 #   one_nibble  - Allow one-chunk tables (default yes)
 #   where       - WHERE clause
+#   resume      - Hashref with lower_boundary and upper_boundary values
+#                 to resume nibble from
 #
 # Returns:
 #  NibbleIterator object 
@@ -64,12 +68,11 @@ sub new {
                   : 0;
    MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
-   if ( my $nibble = $args{resume} ) {
-      if (    !defined $nibble->{lower_boundary}
-           && !defined $nibble->{upper_boundary} ) {
-         MKDEBUG && _d('Resuming from one nibble table');
-         $one_nibble = 1;
-      }
+   if ( $args{resume}
+        && !defined $args{resume}->{lower_boundary}
+        && !defined $args{resume}->{upper_boundary} ) {
+      MKDEBUG && _d('Resuming from one nibble table');
+      $one_nibble = 1;
    }
 
    # Get an index to nibble by.  We'll order rows by the index's columns.
@@ -88,7 +91,7 @@ sub new {
       # If the chunk size is >= number of rows in table, then we don't
       # need to chunk; we can just select all rows, in order, at once.
       my $nibble_sql
-         = ($args{dms} ? "$args{dms} " : "SELECT ")
+         = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
@@ -111,7 +114,6 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
-         no_more_boundaries => $args{resume} ? 1 : 0,
       };
    }
    else {
@@ -197,7 +199,7 @@ sub new {
       # This statement does the actual nibbling work; its rows are returned
       # to the caller via next().
       my $nibble_sql
-         = ($args{dms} ? "$args{dms} " : "SELECT ")
+         = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
@@ -233,7 +235,6 @@ sub new {
          nibble_sql         => $nibble_sql,
          explain_ub_sql     => "EXPLAIN $ub_sql",
          explain_nibble_sql => $explain_nibble_sql,
-         resume             => $args{resume},
          resume_lb_sql      => $resume_lb_sql,
          sql                => {
             columns    => $asc->{scols},
@@ -547,7 +548,13 @@ sub _prepare_sths {
 
 sub _get_bounds { 
    my ($self) = @_;
-   return if $self->{one_nibble};
+
+   if ( $self->{one_nibble} ) {
+      if ( $self->{resume} ) {
+         $self->{no_more_boundaries} = 1;
+      }
+      return;
+   }
 
    my $dbh = $self->{Cxn}->dbh();
 
@@ -556,9 +563,11 @@ sub _get_bounds {
    MKDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
 
    # The next boundary is the first lower boundary.  If resuming,
-   # this should be something > the real first lower boundary.
+   # this should be something > the real first lower boundary and
+   # bounded (else it's not one of our chunks).
    if ( my $nibble = $self->{resume} ) {
-      if ( defined $nibble->{upper_boundary} ) {
+      if (    defined $nibble->{lower_boundary}
+           && defined $nibble->{upper_boundary} ) {
          my $sth = $dbh->prepare($self->{resume_lb_sql});
          my @ub  = split ',', $nibble->{upper_boundary};
          MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
@@ -566,15 +575,18 @@ sub _get_bounds {
          $self->{next_lower} = $sth->fetchrow_arrayref();
          $sth->finish();
       }
-      else {
-         MKDEBUG && _d('No more boundaries to resume');
-         $self->{no_more_boundaries} = 1;
-      }
    }
    else {
       $self->{next_lower}  = $self->{first_lower};   
    }
    MKDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+
+   if ( !$self->{next_lower} ) {
+      # This happens if we resume from the end of the table, or if the
+      # last chunk for resuming isn't bounded.
+      MKDEBUG && _d('At end of table, or no more boundaries to resume');
+      $self->{no_more_boundaries} = 1;
+   }
 
    # Get the real last upper boundary, i.e. the last row of the table
    # at this moment.  If rows are inserted after, we won't see them.
@@ -596,13 +608,6 @@ sub _next_boundaries {
       $self->{lower} = $self->{upper} = [];
       $self->{no_more_boundaries} = 1;  # for next call
       return 1; # continue nibbling
-   }
-
-   if ( !$self->{next_lower} ) {
-      # This happens if we resume from the end of the table.
-      MKDEBUG && _d('At end of table');
-      $self->{no_more_boundaries} = 1;  # for next call
-      return; # stop nibbling
    }
 
    # Detect infinite loops.  If the lower boundary we just nibbled from

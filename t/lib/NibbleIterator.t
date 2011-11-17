@@ -729,7 +729,7 @@ $ni = make_nibble_iter(
    db       => 'test',
    tbl      => 't',
    argv     => [qw(--databases test --chunk-size 5)],
-   resume   => { upper_boundary => 'j' },
+   resume   => { lower_boundary => 'a', upper_boundary => 'e' },
 );
 
 @rows = ();
@@ -739,7 +739,7 @@ while (my $row = $ni->next()) {
 
 is_deeply(
    \@rows,
-   [ ('k'..'z') ],
+   [ ('f'..'z') ],
    "Resume from middle"
 );
 
@@ -748,7 +748,7 @@ $ni = make_nibble_iter(
    db       => 'test',
    tbl      => 't',
    argv     => [qw(--databases test --chunk-size 5)],
-   resume   => { upper_boundary => 'z' },
+   resume   => { lower_boundary => 'z', upper_boundary => 'z' },
 );
 
 @rows = ();
