@@ -3490,12 +3490,11 @@ sub new {
                   : 0;
    MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
-   if ( my $nibble = $args{resume} ) {
-      if (    !defined $nibble->{lower_boundary}
-           && !defined $nibble->{upper_boundary} ) {
-         MKDEBUG && _d('Resuming from one nibble table');
-         $one_nibble = 1;
-      }
+   if ( $args{resume}
+        && !defined $args{resume}->{lower_boundary}
+        && !defined $args{resume}->{upper_boundary} ) {
+      MKDEBUG && _d('Resuming from one nibble table');
+      $one_nibble = 1;
    }
 
    my $index = _find_best_index(%args, mysql_index => $mysql_index);
@@ -3511,7 +3510,7 @@ sub new {
    my $self;
    if ( $one_nibble ) {
       my $nibble_sql
-         = ($args{dms} ? "$args{dms} " : "SELECT ")
+         = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
@@ -3534,7 +3533,6 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
-         no_more_boundaries => $args{resume} ? 1 : 0,
       };
    }
    else {
@@ -3599,7 +3597,7 @@ sub new {
       MKDEBUG && _d('Upper boundary statement:', $ub_sql);
 
       my $nibble_sql
-         = ($args{dms} ? "$args{dms} " : "SELECT ")
+         = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @{$asc->{cols}}))
          . " FROM $from"
@@ -3635,7 +3633,6 @@ sub new {
          nibble_sql         => $nibble_sql,
          explain_ub_sql     => "EXPLAIN $ub_sql",
          explain_nibble_sql => $explain_nibble_sql,
-         resume             => $args{resume},
          resume_lb_sql      => $resume_lb_sql,
          sql                => {
             columns    => $asc->{scols},
@@ -3937,7 +3934,13 @@ sub _prepare_sths {
 
 sub _get_bounds { 
    my ($self) = @_;
-   return if $self->{one_nibble};
+
+   if ( $self->{one_nibble} ) {
+      if ( $self->{resume} ) {
+         $self->{no_more_boundaries} = 1;
+      }
+      return;
+   }
 
    my $dbh = $self->{Cxn}->dbh();
 
@@ -3945,7 +3948,8 @@ sub _get_bounds {
    MKDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
 
    if ( my $nibble = $self->{resume} ) {
-      if ( defined $nibble->{upper_boundary} ) {
+      if (    defined $nibble->{lower_boundary}
+           && defined $nibble->{upper_boundary} ) {
          my $sth = $dbh->prepare($self->{resume_lb_sql});
          my @ub  = split ',', $nibble->{upper_boundary};
          MKDEBUG && _d($sth->{Statement}, 'params:', @ub);
@@ -3953,15 +3957,16 @@ sub _get_bounds {
          $self->{next_lower} = $sth->fetchrow_arrayref();
          $sth->finish();
       }
-      else {
-         MKDEBUG && _d('No more boundaries to resume');
-         $self->{no_more_boundaries} = 1;
-      }
    }
    else {
       $self->{next_lower}  = $self->{first_lower};   
    }
    MKDEBUG && _d('Next lower boundary:', Dumper($self->{next_lower}));  
+
+   if ( !$self->{next_lower} ) {
+      MKDEBUG && _d('At end of table, or no more boundaries to resume');
+      $self->{no_more_boundaries} = 1;
+   }
 
    $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
    MKDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
@@ -3981,12 +3986,6 @@ sub _next_boundaries {
       $self->{lower} = $self->{upper} = [];
       $self->{no_more_boundaries} = 1;  # for next call
       return 1; # continue nibbling
-   }
-
-   if ( !$self->{next_lower} ) {
-      MKDEBUG && _d('At end of table');
-      $self->{no_more_boundaries} = 1;  # for next call
-      return; # stop nibbling
    }
 
    if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
@@ -4124,7 +4123,7 @@ sub new {
 
    if ( !$self->one_nibble() ) {
       my $head_sql
-         = ($args{past_dms} || "SELECT ")
+         = ($args{past_dml} || "SELECT ")
          . ($args{past_select}
             || join(', ', map { $q->quote($_) } @{$self->{sql}->{columns}}))
          . " FROM "  . $self->{sql}->{from};
@@ -4172,18 +4171,18 @@ sub new {
       $self->{explain_past_lower_sql} = $explain_past_lower_sql;
       $self->{explain_past_upper_sql} = $explain_past_upper_sql;
 
-      my @past_nibbles = qw(lower upper);
+      $self->{past_nibbles} = [qw(lower upper)];
       if ( my $nibble = $args{resume} ) {
-         if ( !defined $nibble->{lower_boundary} ) {
-            $self->{past_nibbles} = [qw(upper)];
-         }
-         elsif ( !defined $nibble->{upper_boundary} ) {
-            $self->{past_nibbles} = [];
+         if (    !defined $nibble->{lower_boundary}
+              || !defined $nibble->{upper_boundary} ) {
+            $self->{past_nibbles} = !defined $nibble->{lower_boundary}
+                                  ? ['upper']
+                                  : [];
          }
       }
-      MKDEBUG && _d('Nibble past', @past_nibbles);
-      $self->{past_nibbles} = \@past_nibbles,
-   }
+      MKDEBUG && _d('Nibble past', @{$self->{past_nibbles}});
+
+   } # not one nibble
 
    return bless $self, $class;
 }
@@ -6208,6 +6207,26 @@ sub main {
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
          my $oktonibble  = 1;
+         
+         if ( $last_chunk ) { # resuming
+            if ( have_more_chunks(%args, last_chunk => $last_chunk) ) {
+               $nibble_iter->set_nibble_number($last_chunk->{chunk});
+               MKDEBUG && _d('Have more chunks; resuming from',
+                  $last_chunk->{chunk}, 'at', $last_chunk->{ts});
+               if ( !$o->get('quiet') ) {
+                  print "Resuming from $tbl->{db}.$tbl->{tbl} chunk "
+                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
+               }
+            }      
+            else {
+               # Problem resuming or no next lower boundary.
+               MKDEBUG && _d('No more chunks; resuming from next table');
+               $oktonibble = 0; # don't nibble table; next table
+            }
+
+            # Just need to call us once to kick-start the resume process.
+            $last_chunk = undef;
+         }
 
          if ( $o->get('explain') ) {
             # --explain level 1: print the checksum and next boundary
@@ -6227,47 +6246,31 @@ sub main {
                $oktonibble = 0; # don't nibble table; next table
             }
          }
-         elsif ( $last_chunk ) { # resuming
-            if ( have_more_chunks(%args, last_chunk => $last_chunk) ) {
-               $nibble_iter->set_nibble_number($last_chunk->{chunk});
-               MKDEBUG && _d('Have more chunks; resuming from',
-                  $last_chunk->{chunk}, 'at', $last_chunk->{ts});
-               if ( !$o->get('quiet') ) {
-                  print "Resuming from $tbl->{db}.$tbl->{tbl} chunk "
-                     . "$last_chunk->{chunk}, timestamp $last_chunk->{ts}\n";
-               }
-            }      
-            else {
-               # Problem resuming or no next lower boundary.
-               $oktonibble = 0; # don't nibble table; next table
+         else {
+            if ( $o->get('empty-replicate-table') ) {
+               use_repl_db(
+                  dbh          => $master_cxn->dbh(),
+                  repl_table   => $repl_table,
+                  OptionParser => $o,
+                  Quoter       => $q,
+               );
+               MKDEBUG && _d($delete_sth->{Statement});
+               $delete_sth->execute($tbl->{db}, $tbl->{tbl});
             }
 
-            # Just need to call us once to kick-start the resume process.
-            $last_chunk = undef;
-         }
-         elsif ( $o->get('empty-replicate-table') ) {
+            # USE the correct db while checksumming this table.  The "correct"
+            # db is a complicated subject; see sub for comments.
             use_repl_db(
                dbh          => $master_cxn->dbh(),
+               tbl          => $tbl, # XXX working on this table
                repl_table   => $repl_table,
                OptionParser => $o,
                Quoter       => $q,
             );
-            MKDEBUG && _d($delete_sth->{Statement});
-            $delete_sth->execute($tbl->{db}, $tbl->{tbl});
+            # #########################################################
+            # XXX DO NOT CHANGE THE DB UNTIL THIS TABLE IS FINISHED XXX
+            # #########################################################
          }
-
-         # USE the correct db while checksumming this table.  The "correct"
-         # db is a complicated subject; see sub for comments.
-         use_repl_db(
-            dbh          => $master_cxn->dbh(),
-            tbl          => $tbl, # XXX working on this table
-            repl_table   => $repl_table,
-            OptionParser => $o,
-            Quoter       => $q,
-         );
-         # #########################################################
-         # XXX DO NOT CHANGE THE DB UNTIL THIS TABLE IS FINISHED XXX
-         # #########################################################
 
          return $oktonibble; # continue nibbling table?
       },
@@ -6603,9 +6606,9 @@ sub main {
                tbl          => $tbl,
                chunk_size   => $tbl->{chunk_size},
                chunk_index  => $o->get('chunk-index'),
-               dms          => $checksum_dml,
+               dml          => $checksum_dml,
                select       => $checksum_cols,
-               past_dms     => $checksum_dml,
+               past_dml     => $checksum_dml,
                past_select  => $past_cols,
                callbacks    => $callbacks,
                resume       => $last_chunk,
@@ -7121,6 +7124,7 @@ sub last_chunk {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $repl_table, $q) = @args{@required_args};
+   MKDEBUG && _d('Getting last chunk for --resume');
 
    my $sql = "SELECT MAX(ts) FROM $repl_table WHERE master_crc IS NOT NULL";
    MKDEBUG && _d($sql);
@@ -7166,11 +7170,12 @@ sub have_more_chunks {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $last_chunk, $nibble_iter) = @args{@required_args};
+   MKDEBUG && _d('Checking for more chunks beyond last chunk');
 
    # If there's no next lower boundary, then this is the last
    # chunk of the table.
-   if ( !$nibble_iter->boundaries()->{next_lower} ) {
-      MKDEBUG && _d('No more rows in table; resuming from next table');
+   if ( !$nibble_iter->more_boundaries() ) {
+      MKDEBUG && _d('No more boundaries');
       return 0;
    }
 
