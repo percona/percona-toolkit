@@ -29,7 +29,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 33;
+   plan tests => 45;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -483,7 +483,7 @@ is_deeply(
       [qw( test t2  2 ), '2011-11-08 00:00:10'],
       [qw( test t2  3 ), '2011-11-08 00:00:11'],
    ],
-   "Checksum results through tbl2 chunk 3"
+   "Checksum results through t2 chunk 3"
 );
 
 $output = output(
@@ -532,6 +532,123 @@ is_deeply(
    $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums where tbl='t1' or tbl='t2' order by db, tbl"),
    $before,
    "t1 and t2 checksums not updated"
+);
+
+# ############################################################################
+# Resume from table that finished bounded chunks but not the 2 oob chunks.
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:24'");
+
+# This will truncate the checksum results after t1 chunk 6 where chunk 7
+# is the lower oob and chunk 8 is the upper oob.
+$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:06'");
+
+is_deeply(
+   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
+   [
+      [qw(test t1 1), '2011-11-08 00:00:01'],
+      [qw(test t1 2), '2011-11-08 00:00:02'],
+      [qw(test t1 3), '2011-11-08 00:00:03'],
+      [qw(test t1 4), '2011-11-08 00:00:04'],
+      [qw(test t1 5), '2011-11-08 00:00:05'],
+      [qw(test t1 6), '2011-11-08 00:00:06'],
+   ],
+   "Checksum results through bounded t1 chunks"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test --resume),
+      qw(--chunk-size 5)) },
+);
+
+(undef, undef, $first_tbl) = split /\n/, $output;
+like(
+   $first_tbl,
+   qr/test.t1$/,
+   "Resumed from test.t1"
+);
+
+like(
+   $output,
+   qr/Resuming from test.t1 chunk 6, timestamp 2011-11-08 00:00:06/,
+   "Resumed from test.t1 chunk 6"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Resumed 0 errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   52,
+   "Resumed 52 rows"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'chunks'),
+   18,
+   "Resumed 18 chunks"
+);
+
+# ############################################################################
+# Resume from table that finished bounded chunks and the lower oob chunk
+# but not the upper oob chunk.
+# ############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+load_data_infile("3tbl-resume", "ts='2011-11-08 00:00:24'");
+$master_dbh->do("delete from percona.checksums where ts > '2011-11-08 00:00:07'");
+
+is_deeply(
+   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
+   [
+      [qw(test t1 1), '2011-11-08 00:00:01'],
+      [qw(test t1 2), '2011-11-08 00:00:02'],
+      [qw(test t1 3), '2011-11-08 00:00:03'],
+      [qw(test t1 4), '2011-11-08 00:00:04'],
+      [qw(test t1 5), '2011-11-08 00:00:05'],
+      [qw(test t1 6), '2011-11-08 00:00:06'],
+      [qw(test t1 7), '2011-11-08 00:00:07'], # lower oob
+   ],
+   "Checksum results through t1 lower oob chunk"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test --resume),
+      qw(--chunk-size 5)) },
+);
+
+(undef, undef, $first_tbl) = split /\n/, $output;
+like(
+   $first_tbl,
+   qr/test.t1$/,
+   "Resumed from test.t1"
+);
+
+like(
+   $output,
+   qr/Resuming from test.t1 chunk 7, timestamp 2011-11-08 00:00:07/,
+   "Resumed from test.t1 chunk 7"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Resumed 0 errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   52,
+   "Resumed 52 rows"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'chunks'),
+   17,
+   "Resumed 17 chunks"
 );
 
 # #############################################################################
