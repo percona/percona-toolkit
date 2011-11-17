@@ -61,8 +61,9 @@ sub new {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
-
-   my ($row_est, $mysql_index) = _get_row_estimate(%args);
+   
+   my $where = $o->get('where');
+   my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
                   : 0;
@@ -85,7 +86,6 @@ sub new {
    my $ignore_col = $o->get('ignore-columns') || {};
    my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
-   my $where      = $o->get('where');
    my $self;
    if ( $one_nibble ) {
       # If the chunk size is >= number of rows in table, then we don't
@@ -509,15 +509,15 @@ sub _get_index_cardinality {
    return $cardinality;
 }
 
-sub _get_row_estimate {
+sub get_row_estimate {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl OptionParser TableParser Quoter);
    my ($cxn, $tbl, $o, $tp, $q) = @args{@required_args};
 
-   if ( my $where = $o->get('where') ) {
+   if ( $args{where} ) {
       MKDEBUG && _d('WHERE clause, using explain plan for row estimate');
       my $table = $q->quote(@{$tbl}{qw(db tbl)});
-      my $sql   = "EXPLAIN SELECT COUNT(*) FROM $table WHERE $where";
+      my $sql   = "EXPLAIN SELECT * FROM $table WHERE $args{where}";
       MKDEBUG && _d($sql);
       my $expl = $cxn->dbh()->selectrow_hashref($sql);
       MKDEBUG && _d(Dumper($expl));
