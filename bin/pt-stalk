@@ -4,6 +4,47 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+set -u
+
+TMPDIR=""
+OPT_TMPDIR=${OPT_TMPDIR:""}
+
+mk_tmpdir() {
+   if [ -n "$OPT_TMPDIR" ]; then
+      TMPDIR="$OPT_TMPDIR"
+      if [ ! -d "$TMPDIR" ]; then
+         mkdir $TMPDIR || die "Cannot make $TMPDIR"
+      fi
+   else
+      local tool=`basename $0`
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf $TMPDIR
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
+set +u
+
 # ########################################################################
 # Check for the existence of a config file and source it if it exists 
 # ########################################################################
@@ -155,7 +196,7 @@ trg_status() {
 
 trg_processlist() {
    local var=$1
-   local tmpfile="/tmp/mysql-processlist.$$"
+   local tmpfile="$TMPDIR/processlist"
    mysqladmin ${MYSQLOPTIONS} processlist      > $tmpfile-1
    grep_processlist $tmpfile-1 $var $MATCH 0 0 > $tmpfile-2
    wc -l $tmpfile-2 | awk '{print $1}'
@@ -180,7 +221,6 @@ log() {
 
 # The main code that runs by default.  Arguments are the command-line options.
 main() {
-
    # Make the collection location
    mkdir -p "${DEST}" || die "Can't make the destination directory"
    test -d "${DEST}"  || die "${DEST} isn't a directory"
@@ -190,6 +230,9 @@ main() {
    if [ "$(id -u)" != "0" ]; then
       echo 'Not running with root privileges!';
    fi
+
+   # Make a secure tmpdir.  Any output should be saved only in $TMPDIR/.
+   mk_tmpdir
 
    # We increment this variable every time that the check is true,
    # and set it to 0 if it's false.
@@ -239,6 +282,10 @@ main() {
          -depth -mtime +${PURGE} -exec rm -f '{}' \;
 
    done
+
+   # Remove the secure tmpdir.  This is not actually called because
+   # this tool runs forever.
+   rm_tmpdir
 }
 
 # Execute the program if it was not included from another file.
