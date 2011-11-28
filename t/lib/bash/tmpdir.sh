@@ -8,17 +8,17 @@ source "$LIB_DIR/tmpdir.sh"
 TEST_NAME="TMPDIR not defined"
 is "$TMPDIR" ""
 
-TEST_NAME="set_TMPDIR makes secure tmpdir"
-set_TMPDIR
+TEST_NAME="mk_tmpdir makes secure tmpdir"
+mk_tmpdir
 cmd_ok "test -d $TMPDIR"
 
 tmpdir=$TMPDIR;
 
-TEST_NAME="rm_TMPDIR"
-rm_TMPDIR
+TEST_NAME="rm_tmpdir"
+rm_tmpdir
 cmd_ok "test ! -d $tmpdir"
 
-TEST_NAME="rm_TMPDIR resets TMPDIR"
+TEST_NAME="rm_tmpdir resets TMPDIR"
 is "$TMPDIR" "" 
 
 # --tmpdir
@@ -30,15 +30,15 @@ is "$TMPDIR" ""
 TEST_NAME="--tmpdir does not exist yet"
 cmd_ok "test ! -d $OPT_TMPDIR"
 
-set_TMPDIR
-TEST_NAME="set_TMPDIR uses --tmpdir"
+mk_tmpdir
+TEST_NAME="mk_tmpdir uses --tmpdir"
 is "$TMPDIR" "/tmp/use--tmpdir"
 
-TEST_NAME="set_TMPDIR creates --tmpdir"
+TEST_NAME="mk_tmpdir creates --tmpdir"
 cmd_ok "test -d $TMPDIR"
 
 tmpdir=$TMPDIR;
 
-TEST_NAME="rm_TMPDIR removes --tmpdir"
-rm_TMPDIR
+TEST_NAME="rm_tmpdir removes --tmpdir"
+rm_tmpdir
 cmd_ok "test ! -d $tmpdir"
