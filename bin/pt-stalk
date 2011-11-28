@@ -136,6 +136,15 @@ grep_processlist() {
    " $file
 }
 
+set_trg_func() {
+   if [ -f "$TRIGGER_FUNCTION" ]; then
+      source $TRIGGER_FUNCTION
+      TRIGGER_FUNCTION="trg_plugin"
+   else
+      TRIGGER_FUNCTION="trg_$TRIGGER_FUNCTION"
+   fi
+}
+
 # ########################################################################
 # Trigger functions
 # ########################################################################
@@ -151,6 +160,11 @@ trg_processlist() {
    grep_processlist $tmpfile-1 $var $MATCH 0 0 > $tmpfile-2
    wc -l $tmpfile-2 | awk '{print $1}'
    rm -rf $tmpfile*
+   return
+}
+
+trg_magic() {
+   echo "TODO"
    return
 }
 
@@ -181,13 +195,15 @@ main() {
    # and set it to 0 if it's false.
    cycles_true=0;
 
+   set_trg_func
+
    while true; do
       d=$(date +%F-%T | tr :- _);
 
       # This is where we decide whether to execute 'collect'.
       # The idea is to generate a number and store into $detected,
       # and if $detected > $THRESHOLD, then we'll execute pt-collect.
-      local detected=$("trg_${TRIGGER_FUNCTION}" $VARIABLE)
+      local detected=$("${TRIGGER_FUNCTION}" $VARIABLE)
 
       if [ -z "${detected}" -a ${MAYBE_EMPTY} = "no" ]; then
          # Oops, couldn't connect, maybe max_connections problem?
@@ -294,7 +310,7 @@ is too full.
 
 By default, the tool is configured to execute mysqladmin extended-status and
 extract the value of the Threads_running variable; if this is greater than
-100, it runs the collection script. This is really just placeholder code,
+30, it runs the collection script.  This is really just placeholder code,
 and almost certainly needs to be customized!
 
 If the tool does execute the collection script, it will wait for a while
@@ -335,10 +351,51 @@ This is the max number of <whatever> we want to tolerate.
 
 This is the thing to check for.
 
-=item TRIGGER_FUNCTION (default show_status)
+=item TRIGGER_FUNCTION (default status)
 
-Built-in function name to get the value of VARIABLE, either C<status>
-or C<processlist>.
+Built-in function name or plugin file name which returns the value of C<VARIABLE>.  Possible values are:
+
+=over
+
+=item * status
+
+Grep the value of C<VARIABLE> from C<mysqladmin extended-status>.
+
+=item * processlist
+
+Count the number of processes in C<mysqladmin processlist> whose
+C<VARIABLE> column matches C<MATCH>.  For example:
+
+   TRIGGER_FUNCTION="processlist" \
+   VARIABLE="State"               \
+   MATCH="statistics"             \
+   THRESHOLD="10"
+
+The above triggers when more than 10 processes are in the "statistics" state.
+C<MATCH> must be specified for this trigger function.
+
+=item * magic
+
+TODO
+
+=item * plugin file name
+
+A plugin file allows you to specify a custom trigger function.  The plugin
+file must contain a function called C<trg_plugin>.  For example:
+
+   trg_plugin() {
+      # Do some stuff.
+      echo "$value"
+   }
+
+The last output if the function (its "return value") must be a number.
+This number is compared to C<THRESHOLD>.  All L<"ENVIRONMENT"> variables
+are available to the function.
+
+Do not alter the tool's existing global variables.  Prefix any plugin-specific
+global variables with "PLUGIN_".
+
+=back
 
 =item CYCLES (default 1)
 
@@ -457,7 +514,7 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz, Justin Swanhart, and Fernando Ipar
+Baron Schwartz, Justin Swanhart, Fernando Ipar, and Daniel Nichter
 
 =head1 ABOUT PERCONA TOOLKIT
 
@@ -489,7 +546,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-stalk 1.0.1
+pt-stalk 2.0.0
 
 =cut
 
