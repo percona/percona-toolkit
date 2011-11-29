@@ -5,6 +5,173 @@
 # notices and disclaimers.
 
 # ###########################################################################
+# log_warn_die package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/log_warn_die.sh
+#   t/lib/bash/log_warn_die.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+set -u
+
+EXIT_STATUS=0
+
+log() {
+   TS=$(date +%F-%T | tr :- _);
+   echo "$TS $1"
+}
+
+warn() {
+   log "$1" >&2
+   EXIT_STATUS=$((EXIT_STATUS | 1))
+}
+
+die() {
+   warn "$1"
+   exit 1
+}
+
+# ###########################################################################
+# End log_warn_die package
+# ###########################################################################
+
+# ###########################################################################
+# parse_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/parse_options.sh
+#   t/lib/bash/parse_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+set -u
+
+declare -a ARGV   # non-option args (probably input files)
+declare EXT_ARGV  # everything after -- (args for an external command)
+OPT_ERR=${OPT_ERR:""}
+
+usage() {
+   local file=$1
+
+   local usage=$(grep '^Usage: ' $file)
+   local opts=$(grep -A 2 '^=item --' $file | sed -e 's/^=item //' -e 's/^\([A-Z]\)/   \1/' -e 's/^--$//' > $TMPDIR/help)
+
+   if [ "$OPT_ERR" ]; then
+      echo "Error: ${OPT_ERR}" >&2
+   fi
+   echo $usage >&2
+   echo >&2
+   echo "Options:" >&2
+   echo >&2
+   cat $TMPDIR/help >&2
+   echo >&2
+   echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
+}
+
+parse_options() {
+   local file=$1
+   shift
+
+   local opt=""
+   local val=""
+   local default=""
+   local version=""
+   local i=0
+
+   awk '
+      /^=head1 OPTIONS/ {
+         getline
+         while ($0 !~ /^=head1/) {
+            if ($0 ~ /^=item --.*/) {
+               long_opt=substr($2, 3, length($2) - 2)
+               short_opt=""
+               required_arg=""
+
+               if ($3) {
+                  if ($3 ~ /-[a-z]/)
+                     short_opt=substr($3, 3, length($3) - 3)
+                  else
+                     required_arg=$3
+               }
+
+               if ($4 ~ /[A-Z]/)
+                  required_arg=$4
+
+               getline # blank line
+               getline # short description line
+
+               if ($0 ~ /default: /) {
+                  i=index($0, "default: ")
+                  default=substr($0, i + 9, length($0) - (i + 9))
+               }
+               else
+                  default=""
+
+               print long_opt "," short_opt "," required_arg "," default
+            }
+            getline
+         }
+         exit
+      }' $file > $TMPDIR/options
+
+   while read spec; do
+      opt=$(echo $spec | cut -d',' -f1 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+      default=$(echo $spec | cut -d',' -f4)
+      eval "OPT_${opt}"="$default"
+   done < <(cat $TMPDIR/options)
+
+   for opt; do
+      if [ $# -eq 0 ]; then
+         break
+      fi
+      opt=$1
+      if [ "$opt" = "--" ]; then
+         shift
+         EXT_ARGV="$@"
+         break
+      fi
+      if [ "$opt" = "--version" ]; then
+         version=$(grep '^pt-[^ ]\+ [0-9]' $0)
+         echo "$version"
+         exit 0
+      fi
+      if [ "$opt" = "--help" ]; then
+         usage $file
+         exit 0
+      fi
+      shift
+      if [ $(expr "$opt" : "-") -eq 0 ]; then
+         ARGV[i]="$opt"
+         i=$((i+1))
+         continue
+      fi
+      opt=$(echo $opt | sed 's/^-*//')
+      spec=$(grep -E "^$opt,|,$opt," "$TMPDIR/options")
+      if [ -z "$spec"  ]; then
+         die "Unknown option: $opt"
+      fi
+      opt=$(echo $spec | cut -d',' -f1)
+      required_arg=$(echo $spec | cut -d',' -f3)
+      val="yes"
+      if [ -n "$required_arg" ]; then
+         if [ $# -eq 0 ]; then
+            die "--$opt requires a $required_arg argument"
+         else
+            val="$1"
+            shift
+         fi
+      fi
+      opt=$(echo $opt | sed 's/-/_/g' | tr [:lower:] [:upper:])
+      eval "OPT_${opt}"="$val"
+   done
+}
+
+# ###########################################################################
+# End parse_options package
+# ###########################################################################
+
+# ###########################################################################
 # tmpdir package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -43,95 +210,10 @@ rm_tmpdir() {
 # End tmpdir package
 # ###########################################################################
 
+# ###########################################################################
+# Subroutines
+# ###########################################################################
 set +u
-
-# ########################################################################
-# Check for the existence of a config file and source it if it exists 
-# ########################################################################
-if [ -f "${0}.conf" ]; then
-   . "${0}.conf"
-fi
-
-# ########################################################################
-# Configuration settings.
-# ########################################################################
-# This is the max number of <whatever> we want to tolerate.
-THRESHOLD=${THRESHOLD:-30}
-
-# This is the thing to check for.
-VARIABLE=${VARIABLE:-Threads_running}
-
-# How many times must the condition be met before the script will fire?
-CYCLES=${CYCLES:-1}
-
-# Collect GDB stacktraces?
-GDB=${GDB:-no}
-
-# Collect oprofile data?
-OPROFILE=${OPROFILE:-yes}
-
-# Collect strace data?
-STRACE=${STRACE:-no}
-
-# Collect tcpdump data?
-TCPDUMP=${TCPDUMP:-yes}
-
-# Send mail to this list of addresses when the script triggers.
-# EMAIL=
-
-# Any options to pass to mysql/mysqladmin, such as -u, -p, etc
-# MYSQLOPTIONS=""
-
-# This is the interval between checks.
-INTERVAL=${INTERVAL:-30}
-
-# If the command you're running to detect the condition is allowed to return
-# nothing (e.g. a grep line that might not even exist if there's no problem),
-# then set this to "yes".
-MAYBE_EMPTY=${MAYBE_EMPTY:-no}
-
-# This is the location of the 'collect' script.
-if [ -z "${COLLECT}" ]; then
-   COLLECT="${HOME}/bin/pt-collect";
-fi
-
-# This is where to store the collected data.
-if [ -z "${DEST}" ]; then
-   DEST="${HOME}/collected/"
-fi
-
-# How long to collect statistics data for?  Make sure that this isn't longer
-# than SLEEP.
-DURATION=${DURATION:-30}
-
-# How long to sleep after collecting?
-if [ -z "${SLEEP}" ]; then
-   SLEEP=$(($DURATION * 10))
-fi
-
-# Bail out if the disk is more than this %full.
-PCT_THRESHOLD=${PCT_THRESHOLD:-95}
-
-# Bail out if the disk has less than this many MB free.
-MB_THRESHOLD=${MB_THRESHOLD:-100}
-
-# Remove samples after this many days.
-PURGE=${PURGE:-30}
-
-# Which trigger function to call to get the value of VARIABLE.
-TRIGGER_FUNCTION=${TRIGGER_FUNCTION:-"status"}
-
-# ########################################################################
-# End configuration
-# ########################################################################
-
-# ########################################################################
-# Echo to STDERR and exit false.
-# ########################################################################
-die() {
-   echo "${1}" >&2
-   exit 1
-}
 
 grep_processlist() {
    local file=$1
@@ -178,27 +260,24 @@ grep_processlist() {
 }
 
 set_trg_func() {
-   if [ -f "$TRIGGER_FUNCTION" ]; then
-      source $TRIGGER_FUNCTION
+   if [ -f "$OPT_TRIGGER_FUNCTION" ]; then
+      source $OPT_TRIGGER_FUNCTION
       TRIGGER_FUNCTION="trg_plugin"
    else
-      TRIGGER_FUNCTION="trg_$TRIGGER_FUNCTION"
+      TRIGGER_FUNCTION="trg_$OPT_TRIGGER_FUNCTION"
    fi
 }
 
-# ########################################################################
-# Trigger functions
-# ########################################################################
 trg_status() {
    local var=$1
-   mysqladmin ${MYSQLOPTIONS} extended-status | grep ${VARIABLE} | awk '{print $4}'
+   mysqladmin "$EXT_ARGV" extended-status | grep "$OPT_VARIABLE" | awk '{print $4}'
 }
 
 trg_processlist() {
    local var=$1
    local tmpfile="$TMPDIR/processlist"
-   mysqladmin ${MYSQLOPTIONS} processlist      > $tmpfile-1
-   grep_processlist $tmpfile-1 $var $MATCH 0 0 > $tmpfile-2
+   mysqladmin "$EXT_ARGV" processlist              > $tmpfile-1
+   grep_processlist $tmpfile-1 $var $OPT_MATCH 0 0 > $tmpfile-2
    wc -l $tmpfile-2 | awk '{print $1}'
    rm -rf $tmpfile*
    return
@@ -209,51 +288,45 @@ trg_magic() {
    return
 }
 
-# ########################################################################
-# Echo to STDERR and possibly email.
-# ########################################################################
-log() {
-   if [ "${EMAIL}" ]; then
-      echo "${1} on $(hostname)" | mail -s "${2} on $(hostname)" ${EMAIL}
-   fi
-   echo "${1}" >&2
-}
+# ###########################################################################
+# Main program loop, called below if tool is ran from the command line.
+# ###########################################################################
 
-# The main code that runs by default.  Arguments are the command-line options.
 main() {
+   mk_tmpdir
+   parse_options $0 "$@"
+
    # Make the collection location
-   mkdir -p "${DEST}" || die "Can't make the destination directory"
-   test -d "${DEST}"  || die "${DEST} isn't a directory"
-   test -w "${DEST}"  || die "${DEST} isn't writable"
+   # mkdir -p "$OPT_DEST" || die "Can't make the destination directory"
+   # test -d "$OPT_DEST"  || die "$OPT_DEST isn't a directory"
+   # test -w "$OPT_DEST"  || die "$OPT_DEST isn't writable"
 
    # Test if we have root; warn if not, but it isn't critical.
    if [ "$(id -u)" != "0" ]; then
       echo 'Not running with root privileges!';
    fi
 
-   # Make a secure tmpdir.  Any output should be saved only in $TMPDIR/.
-   mk_tmpdir
-
    # We increment this variable every time that the check is true,
    # and set it to 0 if it's false.
-   cycles_true=0;
+   local cycles_true=0
+   local matched="no"
 
    set_trg_func
 
    while true; do
-      d=$(date +%F-%T | tr :- _);
 
       # This is where we decide whether to execute 'collect'.
       # The idea is to generate a number and store into $detected,
-      # and if $detected > $THRESHOLD, then we'll execute pt-collect.
-      local detected=$("${TRIGGER_FUNCTION}" $VARIABLE)
+      # and if $detected > $OPT_THRESHOLD, then we'll execute pt-collect.
+      local value=$($TRIGGER_FUNCTION $OPT_VARIABLE)
+      local trg_exit_status=$?
 
-      if [ -z "${detected}" -a ${MAYBE_EMPTY} = "no" ]; then
-         # Oops, couldn't connect, maybe max_connections problem?
-         echo "$d The detected value is empty; something failed?  Exit status is $?"
-         matched="yes"
-         cycles_true=$(($cycles_true + 1))
-      elif [ "${detected:-0}" -gt ${THRESHOLD} ]; then
+      if [ -z "$value" ]; then
+         # No value.  Maybe we failed to connect to MySQL?
+         warn "Detected value is empty; something failed?  Trigger exit status: $trg_exit_status"
+         matched="no"
+         cycles_true=0
+      elif [ $value -gt $OPT_THRESHOLD ]; then
          matched="yes"
          cycles_true=$(($cycles_true + 1))
       else
@@ -261,25 +334,36 @@ main() {
          cycles_true=0
       fi
 
-      NOTE="$d check results: ${VARIABLE} = ${detected}, matched = ${matched}, cycles_true = ${cycles_true}"
-      # Actually execute the collection script.
-      if [ "${matched:-no}" = "yes" -a ${cycles_true} -ge ${CYCLES} ]; then 
+      log "Check results: $OPT_VARIABLE=$value, matched=$matched, cycles_true=$cycles_true"
 
-         log "${NOTE}" "${COLLECT} triggered"
-         PREFIX="$(date +%F-%T | tr :- _)"
-         echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
-         ${COLLECT} -d "${DEST}" -i "${DURATION}" -g "${GDB}" -o "${OPROFILE}" -p "${PREFIX}" -s "${STRACE}" -t "${TCPDUMP}" -f "${PCT_THRESHOLD}" -m "${MB_THRESHOLD}" -- ${MYSQLOPTIONS}
-         echo "$d sleeping ${SLEEP} seconds to avoid DOS attack"
-         sleep ${SLEEP}
+      if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
+         log "$OPT_COLLECT triggered"
+
+         # PREFIX="$(date +%F-%T | tr :- _)"
+         # echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
+
+         # Run pt-collect.
+         $OPT_COLLECT               \
+            -i "$OPT_RUN_TIME"      \
+            -g "$OPT_GDB"           \
+            -o "$OPT_OPROFILE"      \
+            -p "$OPT_PREFIX"        \
+            -s "$OPT_STRACE"        \
+            -t "$OPT_TCPDUMP"       \
+            -f "$OPT_PCT_THRESHOLD" \
+            -m "$OPT_MB_THRESHOLD"  \
+            -- "$EXT_ARGV"
+
+         log "Sleeping $OPT_SLEEP seconds to avoid DOS attack"
+         sleep $OPT_SLEEP
       else
-         echo ${NOTE}
-         sleep ${INTERVAL}
+         sleep $OPT_INTERVAL
       fi
 
       # Delete things more than $PURGE days old
-      find "${DEST}" -type f -mtime +${PURGE} -exec rm -f '{}' \;
-      find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
-         -depth -mtime +${PURGE} -exec rm -f '{}' \;
+      #find "$OPT_DEST" -type f -mtime +$OPT_PURGE -exec rm -f '{}' \;
+      #find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
+      #   -depth -mtime +$OPT_PURGE -exec rm -f '{}' \;
 
    done
 
@@ -294,6 +378,8 @@ if [ "$(basename "$0")" = "pt-stalk" ] || [ "$(basename "$0")" = "bash" -a "$_" 
    main "$@"
 fi
 
+exit $EXIT_STATUS
+
 # ############################################################################
 # Documentation
 # ############################################################################
@@ -306,7 +392,7 @@ pt-stalk - Wait for a condition to occur then begin collecting data.
 
 =head1 SYNOPSIS
 
-Usage: pt-stalk
+Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
 
 pt-stalk watches for a condition to become true, and when it does, executes
 a script.  By default it executes L<pt-collect>, but that can be customized.
@@ -357,7 +443,7 @@ is too full.
 
 By default, the tool is configured to execute mysqladmin extended-status and
 extract the value of the Threads_running variable; if this is greater than
-30, it runs the collection script.  This is really just placeholder code,
+25, it runs the collection script.  This is really just placeholder code,
 and almost certainly needs to be customized!
 
 If the tool does execute the collection script, it will wait for a while
@@ -368,39 +454,83 @@ The name 'stalk' is because 'watch' is already taken, and 'stalk' is fun.
 
 =head1 CONFIGURING
 
-If the file F<pt-stalk.conf> exists in the current working directory, then
-L<"ENVIRONMENT"> variables are imported from it.  For example, the config
-file has the format:
-
-   INTERVAL=10
-   GDB=yes
-
-See L<"ENVIRONMENT">.
+TODO
 
 =head1 OPTIONS
 
-This tool does not have any command-line options, but see
-L<"ENVIRONMENT"> and L<"CONFIGURING">.
-
-=head1 ENVIRONMENT
-
-The following environment variables configure how, what, and when the tool
-runs.  They are all optional and can be specified either on the command line
-or in the F<pt-stalk.conf> config file (see L<"CONFIGURING">).
-
 =over
 
-=item THRESHOLD (default 30)
+=item --collect DIRECTORY
 
-This is the max number of <whatever> we want to tolerate.
+Location of the C<collect> tool. (default: ${HOME}/bin/pt-collect)
 
-=item VARIABLE (default Threads_running)
+=item --cycles N
 
-This is the thing to check for.
+Number of times condition must be met before triggering collection. (default: 5)
 
-=item TRIGGER_FUNCTION (default status)
+=item --dest DIRECTORY 
 
-Built-in function name or plugin file name which returns the value of C<VARIABLE>.  Possible values are:
+Where to store collected data.
+
+=item --disk-byte-limit MEGABYTES
+
+Exit if the disk has less than this many MB free. (default: 100)
+
+=item --disk-pct-limit PERCENT
+
+Exit if the disk is less than this %full. (default: 5)
+
+=item --email ADDRESS
+
+Send mail to this list of addresses when the script triggers.
+
+=item --gdb
+
+Collect GDB stacktraces.
+
+=item --help
+
+Print help and exit.
+
+=item --interval SECONDS
+
+Interval between checks. (default: 1)
+
+=item --match PATTERN
+
+Match pattern for C<processles> L<"--trigger-function">.
+
+=item --oprofile
+
+Collect oprofile data. (default: yes)
+
+=item --purge DAYS
+
+Remove samples after this many days. (default: 30)
+
+=item --run-time SECONDS
+
+How long to collect statistics data for? (default: 30)
+
+Make sure that this isn't longer than SLEEP.
+
+=item --strace
+
+Collect strace data.
+
+=item --sleep SECONDS
+
+How long to sleep after collecting? (default: 300)
+
+=item --tcpdump
+
+Collect tcpdump data? (default: yes)
+
+=item --trigger-function
+
+Built-in function name or plugin file name which returns the value of C<VARIABLE>.  (default: status)
+
+Possible values are:
 
 =over
 
@@ -444,74 +574,23 @@ global variables with "PLUGIN_".
 
 =back
 
-=item CYCLES (default 1)
+=item --threshold N
 
-How many times must the condition be met before the script will fire?
+Max number of C<N> to tolerate. (default: 25)
 
-=item GDB (default no)
+=item --variable NAME
 
-Collect GDB stacktraces?
+This is the thing to check for. (default: Threads_running)
 
-=item OPROFILE (default yes)
+=item --version
 
-Collect oprofile data?
-
-=item STRACE (default no)
-
-Collect strace data?
-
-=item TCPDUMP (default yes)
-
-Collect tcpdump data?
-
-=item EMAIL
-
-Send mail to this list of addresses when the script triggers.
-
-=item MYSQLOPTIONS
-
-Any options to pass to mysql/mysqladmin, such as -u, -p, etc
-
-=item INTERVAL (default 30)
-
-This is the interval between checks.
-
-=item MAYBE_EMPTY (default no)
-
-If the command you're running to detect the condition is allowed to return
-nothing (e.g. a grep line that might not even exist if there's no problem),
-then set this to "yes".
-
-=item COLLECT (default ${HOME}/bin/pt-collect)
-
-This is the location of the 'collect' script.
-
-=item DEST (default ${HOME}/collected/)
-
-This is where to store the collected data.
-
-=item DURATION (default 30)
-
-How long to collect statistics data for?  Make sure that this isn't longer
-than SLEEP.
-
-=item SLEEP (default DURATION * 10)
-
-How long to sleep after collecting?
-
-=item PCT_THRESHOLD (default 95)
-
-Bail out if the disk is more than this %full.
-
-=item MB_THRESHOLD (default 100)
-
-Bail out if the disk has less than this many MB free.
-
-=item PURGE (default 30)
-
-Remove samples after this many days.
+Print tool's version and exit.
 
 =back
+
+=head1 ENVIRONMENT
+
+No env vars used.
 
 =head1 SYSTEM REQUIREMENTS
 
