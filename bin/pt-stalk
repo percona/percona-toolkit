@@ -211,6 +211,12 @@ rm_tmpdir() {
 # ###########################################################################
 
 # ###########################################################################
+# Global variables
+# ###########################################################################
+OKTORUN=1
+ITER=0
+
+# ###########################################################################
 # Subroutines
 # ###########################################################################
 set +u
@@ -260,11 +266,11 @@ grep_processlist() {
 }
 
 set_trg_func() {
-   if [ -f "$OPT_TRIGGER_FUNCTION" ]; then
-      source $OPT_TRIGGER_FUNCTION
+   if [ -f "$OPT_FUNCTION" ]; then
+      source $OPT_FUNCTION
       TRIGGER_FUNCTION="trg_plugin"
    else
-      TRIGGER_FUNCTION="trg_$OPT_TRIGGER_FUNCTION"
+      TRIGGER_FUNCTION="trg_$OPT_FUNCTION"
    fi
 }
 
@@ -288,6 +294,18 @@ trg_magic() {
    return
 }
 
+oktorun() {
+   if [ $OKTORUN -ne 0 ]; then
+      return 1  # stop running
+   fi
+
+   if [ -n "$OPT_ITERATIONS" -a "$ITER" -gt "$OPT_ITERATIONS" ]; then
+      return 1  # stop running
+   fi
+
+   return 0  # continue running
+}
+
 # ###########################################################################
 # Main program loop, called below if tool is ran from the command line.
 # ###########################################################################
@@ -303,7 +321,7 @@ main() {
 
    # Test if we have root; warn if not, but it isn't critical.
    if [ "$(id -u)" != "0" ]; then
-      echo 'Not running with root privileges!';
+      log 'Not running with root privileges!';
    fi
 
    # We increment this variable every time that the check is true,
@@ -311,9 +329,10 @@ main() {
    local cycles_true=0
    local matched="no"
 
+   # Set TRIGGER_FUNCTION based on --function.
    set_trg_func
 
-   while true; do
+   while oktorun; do
 
       # This is where we decide whether to execute 'collect'.
       # The idea is to generate a number and store into $detected,
@@ -338,20 +357,20 @@ main() {
 
       if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
          log "$OPT_COLLECT triggered"
+         ITER=$((ITER + 1))
 
          # PREFIX="$(date +%F-%T | tr :- _)"
          # echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
 
          # Run pt-collect.
-         $OPT_COLLECT               \
-            -i "$OPT_RUN_TIME"      \
-            -g "$OPT_GDB"           \
-            -o "$OPT_OPROFILE"      \
-            -p "$OPT_PREFIX"        \
-            -s "$OPT_STRACE"        \
-            -t "$OPT_TCPDUMP"       \
-            -f "$OPT_PCT_THRESHOLD" \
-            -m "$OPT_MB_THRESHOLD"  \
+         $OPT_EXECUTE_COMMAND          \
+            -i "$OPT_RUN_TIME"         \
+            -g "$OPT_COLLECT_GDB"      \
+            -o "$OPT_COLLECT_OPROFILE" \
+            -s "$OPT_COLLECT_STRACE"   \
+            -t "$OPT_COLLECT_TCPDUMP"  \
+            -f "$OPT_DISK_PCT_LIMIT"   \
+            -m "$OPT_DISK_BYTE_LIMIT"  \
             -- "$EXT_ARGV"
 
          log "Sleeping $OPT_SLEEP seconds to avoid DOS attack"
@@ -460,13 +479,29 @@ TODO
 
 =over
 
-=item --collect DIRECTORY
+=item --collect-gdb BOOLEAN
 
-Location of the C<collect> tool. (default: ${HOME}/bin/pt-collect)
+Collect GDB stacktraces. (default: no)
+
+=item --collect-oprofile BOOLEAN
+
+Collect oprofile data. (default: no)
+
+=item --collect-strace BOOLEAN
+
+Collect strace data. (default: no)
+
+=item --collect-tcpdump
+
+Collect tcpdump data? (default: no)
 
 =item --cycles N
 
 Number of times condition must be met before triggering collection. (default: 5)
+
+=item --daemonize
+
+Daemonize the tool.
 
 =item --dest DIRECTORY 
 
@@ -480,53 +515,11 @@ Exit if the disk has less than this many MB free. (default: 100)
 
 Exit if the disk is less than this %full. (default: 5)
 
-=item --email ADDRESS
+=item --execute-command COMMAND
 
-Send mail to this list of addresses when the script triggers.
+Location of the C<pt-collect> tool. (default: pt-collect)
 
-=item --gdb
-
-Collect GDB stacktraces.
-
-=item --help
-
-Print help and exit.
-
-=item --interval SECONDS
-
-Interval between checks. (default: 1)
-
-=item --match PATTERN
-
-Match pattern for C<processles> L<"--trigger-function">.
-
-=item --oprofile
-
-Collect oprofile data. (default: yes)
-
-=item --purge DAYS
-
-Remove samples after this many days. (default: 30)
-
-=item --run-time SECONDS
-
-How long to collect statistics data for? (default: 30)
-
-Make sure that this isn't longer than SLEEP.
-
-=item --strace
-
-Collect strace data.
-
-=item --sleep SECONDS
-
-How long to sleep after collecting? (default: 300)
-
-=item --tcpdump
-
-Collect tcpdump data? (default: yes)
-
-=item --trigger-function
+=item --function FUNCTION
 
 Built-in function name or plugin file name which returns the value of C<VARIABLE>.  (default: status)
 
@@ -573,6 +566,49 @@ Do not alter the tool's existing global variables.  Prefix any plugin-specific
 global variables with "PLUGIN_".
 
 =back
+
+=item --help
+
+Print help and exit.
+
+=item --interval SECONDS
+
+Interval between checks. (default: 1)
+
+=item --iterations N
+
+Exit after triggering C<pt-collect> this many times.  By default, the tool
+will collect as many times as it's triggered.
+
+=item --log FILE
+
+Print all output to this file when daemonized. (default: /var/log/pt-stalk.log)
+
+=item --match PATTERN
+
+Match pattern for C<processles> L<"--function">.
+
+=item --notify-by-email EMAILS
+
+Send mail to this list of addresses when C<pt-collect> triggers.
+
+=item --pid FILE
+
+Create a PID file when daemonized. (default: /var/run/pt-stalk.pid)
+
+=item --retention-time DAYS
+
+Remove samples after this many days. (default: 30)
+
+=item --run-time SECONDS
+
+How long to collect statistics data for? (default: 30)
+
+Make sure that this isn't longer than SLEEP.
+
+=item --sleep SECONDS
+
+How long to sleep after collecting? (default: 300)
 
 =item --threshold N
 
