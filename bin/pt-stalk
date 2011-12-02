@@ -295,15 +295,53 @@ trg_magic() {
 }
 
 oktorun() {
-   if [ $OKTORUN -ne 0 ]; then
+   if [ $OKTORUN -eq 0 ]; then
       return 1  # stop running
    fi
 
-   if [ -n "$OPT_ITERATIONS" -a "$ITER" -gt "$OPT_ITERATIONS" ]; then
+   if [ -n "$OPT_ITERATIONS" ] && [ $ITER -ge $OPT_ITERATIONS ]; then
       return 1  # stop running
    fi
 
    return 0  # continue running
+}
+
+sleep_ok() {
+   local seconds=$1
+   local msg=$2
+   if oktorun; then
+      if [ -n "$msg" ]; then
+         log $msg
+      fi
+      sleep $seconds
+   fi
+}
+
+purge_samples() {
+   # Delete things more than $PURGE days old
+   #find "$OPT_DEST" -type f -mtime +$OPT_PURGE -exec rm -f '{}' \;
+   #find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
+   #   -depth -mtime +$OPT_PURGE -exec rm -f '{}' \;
+   :
+}
+
+collect() {
+   log "$OPT_COLLECT triggered"
+   ITER=$((ITER + 1))
+
+   # PREFIX="$(date +%F-%T | tr :- _)"
+   # echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
+
+   # Run pt-collect.
+   $OPT_EXECUTE_COMMAND          \
+      -i "$OPT_RUN_TIME"         \
+      -g "$OPT_COLLECT_GDB"      \
+      -o "$OPT_COLLECT_OPROFILE" \
+      -s "$OPT_COLLECT_STRACE"   \
+      -t "$OPT_COLLECT_TCPDUMP"  \
+      -f "$OPT_DISK_PCT_LIMIT"   \
+      -m "$OPT_DISK_BYTE_LIMIT"  \
+      -- "$EXT_ARGV"
 }
 
 # ###########################################################################
@@ -356,34 +394,13 @@ main() {
       log "Check results: $OPT_VARIABLE=$value, matched=$matched, cycles_true=$cycles_true"
 
       if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
-         log "$OPT_COLLECT triggered"
-         ITER=$((ITER + 1))
-
-         # PREFIX="$(date +%F-%T | tr :- _)"
-         # echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
-
-         # Run pt-collect.
-         $OPT_EXECUTE_COMMAND          \
-            -i "$OPT_RUN_TIME"         \
-            -g "$OPT_COLLECT_GDB"      \
-            -o "$OPT_COLLECT_OPROFILE" \
-            -s "$OPT_COLLECT_STRACE"   \
-            -t "$OPT_COLLECT_TCPDUMP"  \
-            -f "$OPT_DISK_PCT_LIMIT"   \
-            -m "$OPT_DISK_BYTE_LIMIT"  \
-            -- "$EXT_ARGV"
-
-         log "Sleeping $OPT_SLEEP seconds to avoid DOS attack"
-         sleep $OPT_SLEEP
+         collect
+         sleep_ok $OPT_SLEEP "Sleeping $OPT_SLEEP seconds to avoid DOS attack"
       else
-         sleep $OPT_INTERVAL
+         sleep_ok $OPT_INTERVAL
       fi
 
-      # Delete things more than $PURGE days old
-      #find "$OPT_DEST" -type f -mtime +$OPT_PURGE -exec rm -f '{}' \;
-      #find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
-      #   -depth -mtime +$OPT_PURGE -exec rm -f '{}' \;
-
+      purge_samples
    done
 
    # Remove the secure tmpdir.  This is not actually called because
@@ -479,49 +496,69 @@ TODO
 
 =over
 
-=item --collect-gdb BOOLEAN
+=item --collect
 
-Collect GDB stacktraces. (default: no)
+default: yes; negatable: yes
 
-=item --collect-oprofile BOOLEAN
+Collect system information.
 
-Collect oprofile data. (default: no)
+=item --collect-gdb
 
-=item --collect-strace BOOLEAN
+Collect GDB stacktraces.
 
-Collect strace data. (default: no)
+=item --collect-oprofile
+
+Collect oprofile data.
+
+=item --collect-strace
+
+Collect strace data.
 
 =item --collect-tcpdump
 
-Collect tcpdump data? (default: no)
+Collect tcpdump data.
 
-=item --cycles N
+=item --cycles
 
-Number of times condition must be met before triggering collection. (default: 5)
+type: int; default: 5
+
+Number of times condition must be met before triggering collection.
 
 =item --daemonize
 
+default: yes; negatable: yes
+
 Daemonize the tool.
 
-=item --dest DIRECTORY 
+=item --dest
+
+type: string
 
 Where to store collected data.
 
-=item --disk-byte-limit MEGABYTES
+=item --disk-byte-limit
 
-Exit if the disk has less than this many MB free. (default: 100)
+type: int; default: 100
 
-=item --disk-pct-limit PERCENT
+Exit if the disk has less than this many MB free.
 
-Exit if the disk is less than this %full. (default: 5)
+=item --disk-pct-limit
 
-=item --execute-command COMMAND
+type: int; default: 5
 
-Location of the C<pt-collect> tool. (default: pt-collect)
+Exit if the disk is less than this %full.
 
-=item --function FUNCTION
+=item --execute-command
 
-Built-in function name or plugin file name which returns the value of C<VARIABLE>.  (default: status)
+type: string; default: pt-collect
+
+Location of the C<pt-collect> tool.
+
+=item --function
+
+type: string; default: status
+
+Built-in function name or plugin file name which returns the value of C<VARIABLE>.
 
 Possible values are:
 
@@ -575,48 +612,68 @@ Print help and exit.
 
 Interval between checks. (default: 1)
 
-=item --iterations N
+=item --iterations
+
+type: int
 
 Exit after triggering C<pt-collect> this many times.  By default, the tool
 will collect as many times as it's triggered.
 
-=item --log FILE
+=item --log
 
-Print all output to this file when daemonized. (default: /var/log/pt-stalk.log)
+type: string; default: /var/log/pt-stalk.log
 
-=item --match PATTERN
+Print all output to this file when daemonized.
+
+=item --match
+
+type: string
 
 Match pattern for C<processles> L<"--function">.
 
-=item --notify-by-email EMAILS
+=item --notify-by-email
+
+type: string
 
 Send mail to this list of addresses when C<pt-collect> triggers.
 
 =item --pid FILE
 
-Create a PID file when daemonized. (default: /var/run/pt-stalk.pid)
+type: string; default: /var/run/pt-stalk.pid
 
-=item --retention-time DAYS
+Create a PID file when daemonized.
 
-Remove samples after this many days. (default: 30)
+=item --retention-time
 
-=item --run-time SECONDS
+type: int; default: 30
 
-How long to collect statistics data for? (default: 30)
+Remove samples after this many days.
+
+=item --run-time
+
+type: int; default: 30
+
+How long to collect statistics data for?
 
 Make sure that this isn't longer than SLEEP.
 
-=item --sleep SECONDS
+=item --sleep
 
-How long to sleep after collecting? (default: 300)
+type: int; default: 300
+
+How long to sleep after collecting?
 
 =item --threshold N
 
-Max number of C<N> to tolerate. (default: 25)
+type: int; default: 25
+
+Max number of C<N> to tolerate.
 
 =item --variable NAME
 
-This is the thing to check for. (default: Threads_running)
+type: string; default: Threads_running
+
+This is the thing to check for.
 
 =item --version
 
