@@ -90,79 +90,41 @@ See L<"ENVIRONMENT">.
 
 =over
 
-=item --threshold N
+=item --string-opt
 
-Max number of C<N> to tolerate. (default: 100)
+type: string
 
-=item --variable NAME
+String option without a default.
 
-This is the thing to check for. (default: Threads_connected)
+=item --string-opt2
 
-=item --cycles N
+type: string; default: foo
 
-How many times must the condition be met before the script will fire? (default: 1)
+String option with a default.
 
-=item --gdb
+=item --typeless-option
 
-Collect GDB stacktraces? (default: no)
+Just an option.
 
-=item --oprofile
+=item --noption
 
-Collect oprofile data? (default: yes)
+default: yes; negatable: yes
 
-=item --strace
+=item --int-opt
 
-Collect strace data? (default: no)
+type: int
 
-=item --tcpdump
+Int option without a default
 
-Collect tcpdump data? (default: yes)
+=item --int-opt2
 
-=item --email ADDRESS
+type: int; default: 42
 
-Send mail to this list of addresses when the script triggers.
-
-=item --interval SECONDS
-
-This is the interval between checks. (default: 30)
-
-=item --maybe-empty
-
-Result of checks may be empty. (default: no)
-If the command you're running to detect the condition is allowed to return
-nothing (e.g. a grep line that might not even exist if there's no problem),
-then set this to "yes".
-
-=item --collect DIRECTORY
-
-Location of the C<collect> tool. (default: ${HOME}/bin/pt-collect)
-
-=item --dest DIRECTORY 
-
-Where to store collected data. (default: ${HOME}/collected/)
-
-=item --duration SECONDS
-
-How long to collect statistics data for? (default: 30)
-Make sure that this isn't longer than SLEEP.
-
-=item --sleep SECONDS
-
-How long to sleep after collecting? (default: 300)
-
-=item --pct-threshold PCT 
-
-Bail out if the disk is more than this %full. (default: 95)
-
-=item --mb-threshold MEGABYTES
-
-Bail out if the disk has less than this many MB free. (default: 100)
-
-=item --purge DAYS
-
-Remove samples after this many days. (default: 30)
+Int option with a default.
 
 =item --version
+
+short form: -v
 
 Print tool's version and exit.
 
