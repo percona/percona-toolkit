@@ -97,10 +97,12 @@ parse_options() {
                if ($0 ~ /^[a-z]/ ) {
                   # spec line like "type: int; default: 100"
                   print "long:" long_opt "; " $0 | trf
+                  close(trf)
                }
                else {
                   # no specs, should be description of option
                   print "long:" long_opt > spec_file
+                  close(spec_file)
                }
             }
             getline
