@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=37
+TESTS=24
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 
@@ -11,54 +11,59 @@ source "$LIB_DIR/parse_options.sh"
 # Parse options from POD using all default values.
 # ############################################################################
 
+TMPDIR="$TEST_TMPDIR"
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" "" 2>$TMPFILE
 
 TEST_NAME="No warnings or errors"
 is "`cat $TMPFILE`" ""
 
 TEST_NAME="Default opts"
-is "$OPT_THRESHOLD" "100"
-is "$OPT_VARIABLE" "Threads_connected"
-is "$OPT_CYCLES" "1"
-is "$OPT_GDB" "no"
-is "$OPT_OPROFILE" "yes"
-is "$OPT_STRACE" "no"
-is "$OPT_TCPDUMP" "yes"
-is "$OPT_EMAIL" ""
-is "$OPT_INTERVAL" "30"
-is "$OPT_MAYBE_EMPTY" "no"
-is "$OPT_COLLECT" "${HOME}/bin/pt-collect"
-is "$OPT_DEST" "${HOME}/collected/"
-is "$OPT_DURATION" "30"
-is "$OPT_SLEEP" "300"
-is "$OPT_PCT_THRESHOLD" "95"
-is "$OPT_MB_THRESHOLD" "100"
-is "$OPT_PURGE" "30"
+is "$OPT_STRING_OPT" ""
+is "$OPT_STRING_OPT2" "foo"
+is "$OPT_TYPELESS_OPTION" ""
+is "$OPT_NOPTION" "yes"
+is "$OPT_INT_OPT" ""
+is "$OPT_INT_OPT2" "42"
+is "$OPT_VERSION" ""
 
 # ############################################################################
 # Specify some opts, but use default values for the rest.
 # ############################################################################
 
-parse_options "$T_LIB_DIR/samples/bash/po001.sh" --threshold 50 --gdb yes --email user@example.com
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --int-opt 50 --typeless-option --string-opt bar
 
 TEST_NAME="User-specified opts with defaults"
-is "$OPT_THRESHOLD" "50" # specified
-is "$OPT_VARIABLE" "Threads_connected"
-is "$OPT_CYCLES" "1"
-is "$OPT_GDB" "yes" # specified
-is "$OPT_OPROFILE" "yes"
-is "$OPT_STRACE" "no"
-is "$OPT_TCPDUMP" "yes"
-is "$OPT_EMAIL" "user@example.com" # specified
-is "$OPT_INTERVAL" "30"
-is "$OPT_MAYBE_EMPTY" "no"
-is "$OPT_COLLECT" "${HOME}/bin/pt-collect"
-is "$OPT_DEST" "${HOME}/collected/"
-is "$OPT_DURATION" "30"
-is "$OPT_SLEEP" "300"
-is "$OPT_PCT_THRESHOLD" "95"
-is "$OPT_MB_THRESHOLD" "100"
-is "$OPT_PURGE" "30"
+is "$OPT_STRING_OPT" "bar" # specified
+is "$OPT_STRING_OPT2" "foo"
+is "$OPT_TYPELESS_OPTION" "yes" # specified
+is "$OPT_NOPTION" "yes"
+is "$OPT_INT_OPT" "50" # specified
+is "$OPT_INT_OPT2" "42"
+is "$OPT_VERSION" ""
+
+# ############################################################################
+# Negate an option like --no-option.
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --no-noption
+
+TEST_NAME="Negated option"
+is "$OPT_STRING_OPT" ""
+is "$OPT_STRING_OPT2" "foo"
+is "$OPT_TYPELESS_OPTION" ""
+is "$OPT_NOPTION" "no" # negated
+is "$OPT_INT_OPT" ""
+is "$OPT_INT_OPT2" "42"
+is "$OPT_VERSION" ""
+
+# ############################################################################
+# Short form.
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" -v
+
+TEST_NAME="Short form"
+is "$OPT_VERSION" "yes"
 
 # ############################################################################
 # An unknown option should produce an error.
