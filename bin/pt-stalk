@@ -47,7 +47,7 @@ die() {
 
 declare -a ARGV   # non-option args (probably input files)
 declare EXT_ARGV  # everything after -- (args for an external command)
-OPT_ERR=${OPT_ERR:""}
+OPT_ERR=${OPT_ERR:-""}
 
 usage() {
    local file=$1
@@ -245,10 +245,246 @@ rm_tmpdir() {
 # ###########################################################################
 
 # ###########################################################################
+# alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+_seq() {
+   local i=$1
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
+
+# ###########################################################################
+# safeguards package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/safeguards.sh
+#   t/lib/bash/safeguards.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+disk_space() {
+   local filesystem=${1:-"$PWD"}
+   df -m -P $filesystem
+}
+
+check_disk_space() {
+   local file=$1
+   local mb=${2:-"0"}
+   local pct=${3:-"0"}
+
+   local avail=$(cat $file | awk '/^\//{print $4}');
+   local full=$(cat $file  | awk '/^\//{print $5}' | sed -e 's/%//g');
+   if [ "${avail}" -le "$mb" -o "$full" -le "$pct" ]; then
+      echo "Not enough free space (${full}% full, ${avail}MB free)"
+      echo "Wanted less than ${pct}% full and more than ${mb}MB"
+      return 1
+   fi
+   return 0
+}
+
+# ###########################################################################
+# End safeguards package
+# ###########################################################################
+
+# ###########################################################################
+# collect package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/collect.sh
+#   t/lib/bash/collect.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+CMD_GDB=${CMD_GDB:-"gdb"}
+CMD_IOSTAT=${CMD_IOSTAT:-"iostat"}
+CMD_MPSTAT=${CMD_MPSTAT:-"mpstat"}
+CMD_MYSQL=${CMD_MSSQL:-"mysql"}
+CMD_MYSQLADMIN=${CMD_MYSQL_ADMIN:-"mysqladmin"}
+CMD_OPCONTROL=${CMD_OPCONTROL:-"opcontrol"}
+CMD_OPREPORT=${CMD_OPREPORT:-"opreport"}
+CMD_PMAP=${CMD_PMAP:-"pmap"}
+CMD_STRACE=${CMD_STRACE:-"strace"}
+CMD_TCPDUMP=${CMD_TCPDUMP:-"tcpdump"}
+CMD_VMSTAT=${CMD_VMSTAT:-"vmstat"}
+
+collect() {
+   local d=$1  # directory to save results in
+   local p=$2  # prefix for each result file
+
+   local mysqld_pid=$(pidof -s mysqld);
+   if [ -z "$mysqld_pid" ]; then
+      mysqld_pid=$(pgrep -o -x mysqld);
+   fi
+   if [ -z "$mysqld_pid" ]; then
+      mysqld_pid=$(ps -eaf | grep 'mysql[d]' | grep -v mysqld_safe | awk '{print $2}' | head -n1);
+   fi
+
+   if [ -x "$CMD_PMAP" -a "$mysqld_pid" ]; then
+      if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
+         $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
+      else
+         $CMD_PMAP $mysqld_pid > "$d/$p-pmap"
+      fi
+   fi
+
+   if [ "$OPT_COLLECT_GDB" = "yes" -a "$mysqld_pid" ]; then
+      $CMD_GDB                     \
+         -ex "set pagination 0"    \
+         -ex "thread apply all bt" \
+         --batch -p $mysqld_pid    \
+         >> "$d/$p-stacktrace"
+   else
+      echo "GDB (--collect-gdb) was not enabled" >> "$d/$p-stacktrace"
+   fi
+
+   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" 2>&1 &
+   sleep .2
+
+   local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
+
+   local mysql_error_log="$(awk '/log_error/{print $2}' "$d/$p-variables")"
+   if [ -z "$mysql_error_log" -a "$mysqld_pid" ]; then
+      mysql_error_log="$(ls -l /proc/$mysqld_pid/fd | awk '/ 2 ->/{print $NF}')"
+   fi
+
+   local tail_error_log_pid=""
+   if [ "$mysql_error_log" ]; then
+      echo "The MySQL error log seems to be ${mysql_error_log}"
+      tail -f "$mysql_error_log" >"$d/$p-log_error" 2>&1 &
+      tail_error_log_pid=$!
+      $CMD_MYSQLADMIN "$EXT_ARGV" debug
+   else
+      echo "Could not find the MySQL error log"
+   fi
+
+   local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
+   local proclist="SHOW FULL PROCESSLIST\G"
+   if [ "${mysql_version}" '>' "5.1" ]; then
+      local mutex="SHOW ENGINE INNODB MUTEX"
+   else
+      local mutex="SHOW MUTEX STATUS"
+   fi
+   $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus1" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$proclist"        >> "$d/$p-processlist1"  2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables1"   2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status1" 2>&1 &
+
+   local tcpdump_pid=""
+   if [ "$OPT_COLLECT_TCPDUMP" = "yes" ]; then
+      local port=$(awk '/^port/{print $2}' "$d/$p-variables")
+      if [ "$port" ]; then
+         $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
+         tcpdump_pid=$!
+      fi
+   fi
+
+   local have_oprofile="no"
+   if [ "$OPT_COLLECT_OPROFILE" = "yes" ]; then
+      if $CMD_OPCONTROL --init; then
+         $CMD_OPCONTROL --start --no-vmlinux
+         have_oprofile="yes"
+      fi
+   elif [ "$OPT_COLLECT_STRACE" = "yes" ]; then
+      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
+      local strace_pid=$!
+   fi
+
+   ps -eaf                                      >> "$d/$p-ps"             2>&1 &
+   sysctl -a                                    >> "$d/$p-sysctl"         2>&1 &
+   top -bn1                                     >> "$d/$p-top"            2>&1 &
+   $CMD_VMSTAT 1 $OPT_INTERVAL                  >> "$d/$p-vmstat"         2>&1 &
+   $CMD_VMSTAT $OPT_INTERVAL 2                  >> "$d/$p-vmstat-overall" 2>&1 &
+   $CMD_IOSTAT -dx  1 $OPT_INTERVAL             >> "$d/$p-iostat"         2>&1 &
+   $CMD_IOSTAT -dx  $OPT_INTERVAL 2             >> "$d/$p-iostat-overall" 2>&1 &
+   $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL           >> "$d/$p-mpstat"         2>&1 &
+   $CMD_MPSTAT -P ALL $OPT_INTERVAL 1           >> "$d/$p-mpstat-overall" 2>&1 &
+   lsof -nP -p $mysqld_pid -bw                  >> "$d/$p-lsof"           2>&1 &
+   $CMD_MYSQLADMIN "$EXT_ARGV" ext -i1 -c$OPT_INTERVAL >> "$d/$p-mysqladmin"     2>&1 &
+   local mysqladmin_pid=$!
+
+   echo "Loop start: $(date +'TS %s.%N %F %T')"
+   for a in $(_seq $OPT_RUN_TIME); do
+      disk_space $d > $d/$p-disk-space
+      check_disk_space          \
+         $d/$p-disk-space       \
+         "$OPT_DISK_BYTE_LIMIT" \
+         "$OPT_DISK_PCT_LIMIT"  \
+         || break
+
+      sleep $(date +%s.%N | awk '{print 1 - ($1 % 1)}')
+      local ts="$(date +"TS %s.%N %F %T")"
+
+      (cat /proc/diskstats  2>&1; echo $ts) >> "$d/$p-diskstats"   &
+      (cat /proc/stat       2>&1; echo $ts) >> "$d/$p-procstat"    &
+      (cat /proc/vmstat     2>&1; echo $ts) >> "$d/$p-procvmstat"  &
+      (cat /proc/meminfo    2>&1; echo $ts) >> "$d/$p-meminfo"     &
+      (cat /proc/slabinfo   2>&1; echo $ts) >> "$d/$p-slabinfo"    &
+      (cat /proc/interrupts 2>&1; echo $ts) >> "$d/$p-interrupts"  &
+      (df -h                2>&1; echo $ts) >> "$d/$p-df"          &
+      (netstat -antp        2>&1; echo $ts) >> "$d/$p-netstat"     &
+      (netstat -s           2>&1; echo $ts) >> "$d/$p-netstat_s"   &
+   done
+   echo "Loop end: $(date +'TS %s.%N %F %T')"
+
+   if [ "$have_oprofile" = "yes" ]; then
+      $CMD_OPCONTROL --stop
+      $CMD_OPCONTROL --dump
+      kill $(pidof oprofiled);  # TODO: what if system doesn't have pidof?
+      $CMD_OPCONTROL --save=pt_collect_$p
+
+      local mysqld_path=$(which mysqld);
+      if [ "$mysqld_path" -a -f "$mysqld_path" ]; then
+         $CMD_OPREPORT            \
+            --demangle=smart      \
+            --symbols             \
+            --merge tgid          \
+            session:pt_collect_$p \
+            "$mysqld_path"        \
+            > "$d/$p-opreport"
+      else
+         echo "oprofile data saved to pt_collect_$p; you should be able"      \
+              "to get a report by running something like 'opreport"           \
+              "--demangle=smart --symbols --merge tgid session:pt_collect_$p" \
+              "/path/to/mysqld'"                                              \
+            > "$d/$p-opreport"
+      fi
+   elif [ "$OPT_COLLECT_STRACE" = "yes" ]; then
+      kill -s 2 $strace_pid
+      sleep 1
+      kill -s 15 $strace_pid
+      kill -s 18 $mysqld_pid
+   fi
+
+   $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus2" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$proclist"        >> "$d/$p-processlist2"  2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables2"   2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status2" 2>&1 &
+
+   kill $mysqladmin_pid
+   [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
+   [ "$tcpdump_pid" ] && kill $tcpdump_pid
+
+   hostname > "$d/$p-hostname"
+}
+
+# ###########################################################################
+# End collect package
+# ###########################################################################
+
+# ###########################################################################
 # Global variables
 # ###########################################################################
 OKTORUN=1
-ITER=0
+ITER=1
 
 # ###########################################################################
 # Subroutines
@@ -341,21 +577,22 @@ oktorun() {
 
 sleep_ok() {
    local seconds=$1
-   local msg=${2:""}
+   local msg=${2:-""}
    if oktorun; then
       if [ -n "$msg" ]; then
-         log $msg
+         log "$msg"
       fi
       sleep $seconds
    fi
 }
 
 purge_samples() {
-   # Delete things more than $PURGE days old
-   #find "$OPT_DEST" -type f -mtime +$OPT_PURGE -exec rm -f '{}' \;
-   #find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
-   #   -depth -mtime +$OPT_PURGE -exec rm -f '{}' \;
-   :
+   # Delete collect files which more than --retention-time days old.
+   find "$OPT_DEST" -type f -mtime +$OPT_RETENTION_TIME -exec rm -f '{}' \;
+   if [ -d "/var/lib/oprofile/samples" ]; then
+      find "/var/lib/oprofile/samples" -type d -name 'pt_collect_*' \
+         -depth -mtime +$OPT_RETENTION_TIME -exec rm -f '{}' \;
+   fi
 }
 
 sigtrap() {
@@ -366,25 +603,6 @@ sigtrap() {
       warn "Caught signal again, forcing exit"
       exit $EXIT_STATUS
    fi
-}
-
-collect() {
-   log "$OPT_COLLECT triggered"
-   ITER=$((ITER + 1))
-
-   # PREFIX="$(date +%F-%T | tr :- _)"
-   # echo "${NOTE}" > "${DEST}/${PREFIX}-trigger"
-
-   # Run pt-collect.
-   $OPT_EXECUTE_COMMAND          \
-      -i "$OPT_RUN_TIME"         \
-      -g "$OPT_COLLECT_GDB"      \
-      -o "$OPT_COLLECT_OPROFILE" \
-      -s "$OPT_COLLECT_STRACE"   \
-      -t "$OPT_COLLECT_TCPDUMP"  \
-      -f "$OPT_DISK_PCT_LIMIT"   \
-      -m "$OPT_DISK_BYTE_LIMIT"  \
-      -- "$EXT_ARGV"
 }
 
 stalk() {
@@ -413,11 +631,29 @@ stalk() {
          cycles_true=0
       fi
 
-      log "Check results: $OPT_VARIABLE=$value, matched=$matched, cycles_true=$cycles_true"
+      local msg="Check results: $OPT_VARIABLE=$value, matched=$matched, cycles_true=$cycles_true"
+      log "$msg"
 
       if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
-         collect
-         sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds to avoid DOS attack"
+         local prefix=${OPT_PREFIX:-"$(date +%F-%T | tr :- _)"}
+
+         log "Collect triggered"
+         log "$msg" >> "$OPT_DEST/$prefix-trigger"
+
+         if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
+            echo "$msg on $(hostname)" \
+            | mail -s "Collect triggered on $(hostname)" "$OPT_NOTIFY_BY_EMAIL"
+         fi
+
+         # Fork collect subroutine which should run for --run-time seconds.
+         (
+            flock 200
+            collect $OPT_DEST $prefix
+         ) 200>/tmp/percona-toolkit-collect-lockfile \
+           >> "$OPT_DEST/$prefix-output" 2>&1 &
+
+         ITER=$((ITER + 1))
+         sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
       else
          sleep_ok "$OPT_INTERVAL"
       fi
@@ -441,10 +677,10 @@ main() {
    # Make a secure tmpdir.
    mk_tmpdir
 
-   # Make the collection location
-   # mkdir -p "$OPT_DEST" || die "Can't make the destination directory"
-   # test -d "$OPT_DEST"  || die "$OPT_DEST isn't a directory"
-   # test -w "$OPT_DEST"  || die "$OPT_DEST isn't writable"
+   # Make the collection dir exists.
+   mkdir -p "$OPT_DEST" || die "Can't make the destination directory"
+   test -d "$OPT_DEST"  || die "$OPT_DEST isn't a directory"
+   test -w "$OPT_DEST"  || die "$OPT_DEST isn't writable"
 
    # Test if we have root; warn if not, but it isn't critical.
    if [ "$(id -u)" != "0" ]; then
@@ -603,7 +839,7 @@ Daemonize the tool.
 
 =item --dest
 
-type: string
+type: string; default: ${HOME}/collected
 
 Where to store collected data.
 
@@ -710,11 +946,20 @@ type: string
 
 Send mail to this list of addresses when C<pt-collect> triggers.
 
-=item --pid FILE
+=item --pid
 
 type: string; default: /var/run/pt-stalk.pid
 
 Create a PID file when daemonized.
+
+=item --prefix 
+
+type: string
+
+Collect file prefix.
+
+If not specified, the current local time is used like C<2011_12_06_14_02_02>,
+which is December 6, 2011 at 14:02:02.
 
 =item --retention-time
 
@@ -736,13 +981,13 @@ type: int; default: 300
 
 How long to sleep after collecting?
 
-=item --threshold N
+=item --threshold
 
 type: int; default: 25
 
 Max number of C<N> to tolerate.
 
-=item --variable NAME
+=item --variable
 
 type: string; default: Threads_running
 
