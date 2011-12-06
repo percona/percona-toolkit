@@ -5,40 +5,31 @@ TESTS=9
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/tmpdir.sh"
 
-TEST_NAME="TMPDIR not defined"
-is "$TMPDIR" ""
+is "$TMPDIR" "" "TMPDIR not defined"
 
-TEST_NAME="mk_tmpdir makes secure tmpdir"
 mk_tmpdir
-cmd_ok "test -d $TMPDIR"
+cmd_ok "test -d $TMPDIR" "mk_tmpdir makes secure tmpdir"
 
 tmpdir=$TMPDIR;
 
-TEST_NAME="rm_tmpdir"
 rm_tmpdir
-cmd_ok "test ! -d $tmpdir"
+cmd_ok "test ! -d $tmpdir" "rm_tmpdir"
 
-TEST_NAME="rm_tmpdir resets TMPDIR"
-is "$TMPDIR" "" 
+is "$TMPDIR" "" "rm_tmpdir resets TMPDIR"
 
 # --tmpdir
 OPT_TMPDIR="/tmp/use--tmpdir"
 
-TEST_NAME="TMPDIR not defined"
-is "$TMPDIR" ""
+is "$TMPDIR" "" "TMPDIR not defined"
 
-TEST_NAME="--tmpdir does not exist yet"
-cmd_ok "test ! -d $OPT_TMPDIR"
+cmd_ok "test ! -d $OPT_TMPDIR" "--tmpdir does not exist yet"
 
 mk_tmpdir
-TEST_NAME="mk_tmpdir uses --tmpdir"
-is "$TMPDIR" "/tmp/use--tmpdir"
+is "$TMPDIR" "/tmp/use--tmpdir" "mk_tmpdir uses --tmpdir"
 
-TEST_NAME="mk_tmpdir creates --tmpdir"
-cmd_ok "test -d $TMPDIR"
+cmd_ok "test -d $TMPDIR" "mk_tmpdir creates --tmpdir"
 
 tmpdir=$TMPDIR;
 
-TEST_NAME="rm_tmpdir removes --tmpdir"
 rm_tmpdir
-cmd_ok "test ! -d $tmpdir"
+cmd_ok "test ! -d $tmpdir" "rm_tmpdir removes --tmpdir"
