@@ -160,7 +160,7 @@ collect() {
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
    echo "Loop start: $(date +'TS %s.%N %F %T')"
-   for a in $(_seq $OPT_INTERVAL); do
+   for a in $(_seq $OPT_RUN_TIME); do
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
       disk_space $d > $d/$p-disk-space
