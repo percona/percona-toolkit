@@ -15,6 +15,9 @@ set -u
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
 EXIT_STATUS=0
 
 log() {
@@ -44,6 +47,9 @@ die() {
 #   t/lib/bash/parse_options.sh
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
 
 declare -a ARGV   # non-option args (probably input files)
 declare EXT_ARGV  # everything after -- (args for an external command)
@@ -216,6 +222,9 @@ parse_options() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
 TMPDIR=""
 OPT_TMPDIR=${OPT_TMPDIR:""}
 
@@ -253,6 +262,9 @@ rm_tmpdir() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
 _seq() {
    local i=$1
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
@@ -270,6 +282,9 @@ _seq() {
 #   t/lib/bash/safeguards.sh
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
 
 disk_space() {
    local filesystem=${1:-"$PWD"}
@@ -291,8 +306,52 @@ check_disk_space() {
    return 0
 }
 
+
 # ###########################################################################
 # End safeguards package
+# ###########################################################################
+
+# ###########################################################################
+# daemon package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/daemon.sh
+#   t/lib/bash/daemon.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+make_pid_file() {
+   local file=$1
+   local pid=$2
+
+
+   if [ -f "$file" ]; then
+      local old_pid=$(cat $file)
+      if [ -z "$old_pid" ]; then
+         die "PID file $file already exists but it is empty"
+      else
+         kill -0 $old_pid 2>/dev/null
+         if [ $? -eq 0 ]; then
+            die "PID file $file already exists and its PID ($old_pid) is running"
+         else
+            echo "Overwriting PID file $file because its PID ($old_pid)" \
+                 "is not running"
+         fi
+      fi
+   fi
+
+   echo "$pid" > $file
+}
+
+remove_pid_file() {
+   local file=$1
+   if [ -f "$file" ]; then
+      rm $file
+   fi
+}
+
+# ###########################################################################
+# End daemon package
 # ###########################################################################
 
 # ###########################################################################
@@ -303,6 +362,9 @@ check_disk_space() {
 #   t/lib/bash/collect.sh
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+
+
+set -u
 
 CMD_GDB=${CMD_GDB:-"gdb"}
 CMD_IOSTAT=${CMD_IOSTAT:-"iostat"}
@@ -693,8 +755,9 @@ main() {
    # Stalk while oktorun.
    stalk
 
-   # Remove the secure tmpdir.
+   # Clean up.
    rm_tmpdir
+   remove_pid_file "$OPT_PID"
 
    log "$0 exit status $EXIT_STATUS"
    exit $EXIT_STATUS
@@ -712,8 +775,17 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    rm_tmpdir
 
    if [ "$OPT_DAEMONIZE" = "yes" ]; then
+      # The PID file will at first have our (parent) PID.
+      # This is fine for ensuring that only one of us is
+      # running, but it's not fine if the user wants to use
+      # the PID in the PID file to check or kill the child
+      # process.  So we'll need to update the PID file with
+      # the child's PID.
+      make_pid_file $OPT_PID $$
+
       main "$@" </dev/null 1>>$OPT_LOG 2>&1 &
 
+      # Update PID file with the child's PID.
       # The child PID is $BASHPID but that special var is only
       # in Bash 4+, so we can't rely on it.  Consequently, we
       # use $! to get the PID of the child we just forked.
