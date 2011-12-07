@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-TESTS=8
+TESTS=7
 
 TMPDIR="$TEST_TMPDIR"
-ON_EXIT=":"
 local file="$TMPDIR/pid-file"
 
 source "$LIB_DIR/log_warn_die.sh"
@@ -31,15 +30,9 @@ cmd_ok \
    "test ! -f $file" \
    "PID file removed"
 
-is \
-   "$ON_EXIT" \
-   ":; remove_pid_file $file" \
-   "Sets ON_EXIT to remove PID file"
-
 # ###########################################################################
 # PID file already exists and proc is running.
 # ###########################################################################
-ON_EXIT=""
 echo $$ > $file
 
 (

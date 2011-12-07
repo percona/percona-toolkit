@@ -29,9 +29,6 @@ set -u
 # Arguments:
 #   file - File to write PID to.
 #   pid  - PID to write into file.
-#
-# Required Global Variables:
-#   ON_EXIT - String to append "remove_pid_file file".
 make_pid_file() {
    local file=$1
    local pid=$2
@@ -60,7 +57,6 @@ make_pid_file() {
 
    # PID file doesn't exist, or it does but its pid is stale.
    echo "$pid" > $file
-   ON_EXIT="$ON_EXIT; remove_pid_file $file"
 }
 
 remove_pid_file() {
