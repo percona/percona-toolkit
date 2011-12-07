@@ -82,33 +82,39 @@ parse_options() {
    # from the option's POD line like "type: string; default: foo".
    mkdir $TMPDIR/po/ 2>/dev/null
    rm -rf $TMPDIR/po/*
-   awk -v "po_dir"="$TMPDIR/po" '
-      /^=head1 OPTIONS/ {
-         getline
-         while ($0 !~ /^=head1/) {
-            if ($0 ~ /^=item --.*/) {
-               long_opt  = substr($2, 3, length($2) - 2)
-               spec_file = po_dir "/" long_opt
-               trf       = "sed -e \"s/[ ]//g\" | tr \";\" \"\n\" > " spec_file
+   (
+      # awk is stupid on some systems (e.g. Ubuntu 10) such that
+      # /^[a-z]/ incorrectly matches "Foo".  This fixes that.
+      export LC_ALL="C"
 
-               getline # blank line
-               getline # specs or description
-
-               if ($0 ~ /^[a-z]/ ) {
-                  # spec line like "type: int; default: 100"
-                  print "long:" long_opt "; " $0 | trf
-                  close(trf)
-               }
-               else {
-                  # no specs, should be description of option
-                  print "long:" long_opt > spec_file
-                  close(spec_file)
-               }
-            }
+      awk -v "po_dir"="$TMPDIR/po" '
+         /^=head1 OPTIONS/ {
             getline
-         }
-         exit
-      }' $file
+            while ($0 !~ /^=head1/) {
+               if ($0 ~ /^=item --.*/) {
+                  long_opt  = substr($2, 3, length($2) - 2)
+                  spec_file = po_dir "/" long_opt
+                  trf       = "sed -e \"s/[ ]//g\" | tr \";\" \"\n\" > " spec_file
+
+                  getline # blank line
+                  getline # specs or description
+
+                  if ($0 ~ /^[a-z]/ ) {
+                     # spec line like "type: int; default: 100"
+                     print "long:" long_opt "; " $0 | trf
+                     close(trf)
+                  }
+                  else {
+                     # no specs, should be description of option
+                     print "long:" long_opt > spec_file
+                     close(spec_file)
+                  }
+               }
+               getline
+            }
+            exit
+         }' $file
+   )
 
    # Evaluate the program options into existence as global variables
    # transformed like --my-op == $OPT_MY_OP.  If an option has a default
