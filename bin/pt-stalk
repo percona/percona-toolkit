@@ -74,31 +74,35 @@ parse_options() {
 
    mkdir $TMPDIR/po/ 2>/dev/null
    rm -rf $TMPDIR/po/*
-   awk -v "po_dir"="$TMPDIR/po" '
-      /^=head1 OPTIONS/ {
-         getline
-         while ($0 !~ /^=head1/) {
-            if ($0 ~ /^=item --.*/) {
-               long_opt  = substr($2, 3, length($2) - 2)
-               spec_file = po_dir "/" long_opt
-               trf       = "sed -e \"s/[ ]//g\" | tr \";\" \"\n\" > " spec_file
+   (
+      export LC_ALL="C"
 
-               getline # blank line
-               getline # specs or description
-
-               if ($0 ~ /^[a-z]/ ) {
-                  print "long:" long_opt "; " $0 | trf
-                  close(trf)
-               }
-               else {
-                  print "long:" long_opt > spec_file
-                  close(spec_file)
-               }
-            }
+      awk -v "po_dir"="$TMPDIR/po" '
+         /^=head1 OPTIONS/ {
             getline
-         }
-         exit
-      }' $file
+            while ($0 !~ /^=head1/) {
+               if ($0 ~ /^=item --.*/) {
+                  long_opt  = substr($2, 3, length($2) - 2)
+                  spec_file = po_dir "/" long_opt
+                  trf       = "sed -e \"s/[ ]//g\" | tr \";\" \"\n\" > " spec_file
+
+                  getline # blank line
+                  getline # specs or description
+
+                  if ($0 ~ /^[a-z]/ ) {
+                     print "long:" long_opt "; " $0 | trf
+                     close(trf)
+                  }
+                  else {
+                     print "long:" long_opt > spec_file
+                     close(spec_file)
+                  }
+               }
+               getline
+            }
+            exit
+         }' $file
+   )
 
    for opt_spec in $(ls $TMPDIR/po/); do
       local opt=""
