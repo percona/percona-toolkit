@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=19
+TESTS=18
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
@@ -82,12 +82,8 @@ cmd_ok \
    "opentables2"
 
 cmd_ok \
-   "grep -q '1. row' $p-processlist1" \
-   "processlist1"
-
-cmd_ok \
-   "grep -q '1. row' $p-processlist2" \
-   "processlist2"
+   "grep -q '1. row' $p-processlist" \
+   "processlist"
 
 cmd_ok \
    "grep -q 'mysqld' $p-ps" \
