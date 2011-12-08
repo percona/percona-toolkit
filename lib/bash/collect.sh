@@ -108,9 +108,9 @@ collect() {
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus1" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables1"   2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status1" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$innostat" >> "$d/$p-innodbstatus1" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"    >> "$d/$p-mutex-status1" 2>&1 &
+   open_tables                           >> "$d/$p-opentables1"   2>&1 &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -224,9 +224,9 @@ collect() {
       kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus2" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables2"   2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status2" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$innostat" >> "$d/$p-innodbstatus2" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"    >> "$d/$p-mutex-status2" 2>&1 &
+   open_tables                           >> "$d/$p-opentables2"   2>&1 &
 
    # Kill backgrounded tasks.
    kill $mysqladmin_pid
@@ -235,6 +235,15 @@ collect() {
 
    # Finally, record what system we collected this data from.
    hostname > "$d/$p-hostname"
+}
+
+open_tables() {
+   local open_tables=$($CMD_MYSQLADMIN "$EXT_ARGV" ext | grep "Open_tables" | awk '{print $4}')
+   if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
+      $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' 2>&1 &
+   else
+      echo "Too many open tables: $open_tables"
+   fi
 }
 
 # ###########################################################################
