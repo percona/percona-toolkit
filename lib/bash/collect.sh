@@ -160,7 +160,7 @@ collect() {
    local mysqladmin_pid=$!
 
    local have_lock_waits_table=0
-   $MYSQL_CMD "$EXT_ARGV" -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+   $CMD_MYSQL "$EXT_ARGV" -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
       | grep -qi "INNODB_LOCK_WAITS"
    if [ $? -eq 0 ]; then
       have_lock_waits_table=1
