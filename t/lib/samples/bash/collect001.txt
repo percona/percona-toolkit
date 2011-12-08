@@ -20,8 +20,7 @@
 2011_12_05-opentables1
 2011_12_05-opentables2
 2011_12_05-output
-2011_12_05-processlist1
-2011_12_05-processlist2
+2011_12_05-processlist
 2011_12_05-procstat
 2011_12_05-procvmstat
 2011_12_05-ps

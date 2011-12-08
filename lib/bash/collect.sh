@@ -103,16 +103,14 @@ collect() {
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
-   local proclist="SHOW FULL PROCESSLIST\G"
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus1" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$proclist"        >> "$d/$p-processlist1"  2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables1"   2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status1" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$innostat" >> "$d/$p-innodbstatus1" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"    >> "$d/$p-mutex-status1" 2>&1 &
+   open_tables                           >> "$d/$p-opentables1"   2>&1 &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -139,28 +137,39 @@ collect() {
    fi
 
    # Grab a few general things first.  Background all of these so we can start
-   # them all up as quickly as possible.  We use mysqladmin -c even though it is
-   # buggy and won't stop on its own in 5.1 and newer, because there is a chance
-   # that we will get and keep a connection to the database; in troubled times
-   # the database tends to exceed max_connections, so reconnecting in the loop
-   # tends not to work very well.
-   ps -eaf                                      >> "$d/$p-ps"             2>&1 &
-   sysctl -a                                    >> "$d/$p-sysctl"         2>&1 &
-   top -bn1                                     >> "$d/$p-top"            2>&1 &
-   $CMD_VMSTAT 1 $OPT_INTERVAL                  >> "$d/$p-vmstat"         2>&1 &
-   $CMD_VMSTAT $OPT_INTERVAL 2                  >> "$d/$p-vmstat-overall" 2>&1 &
-   $CMD_IOSTAT -dx  1 $OPT_INTERVAL             >> "$d/$p-iostat"         2>&1 &
-   $CMD_IOSTAT -dx  $OPT_INTERVAL 2             >> "$d/$p-iostat-overall" 2>&1 &
-   $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL           >> "$d/$p-mpstat"         2>&1 &
-   $CMD_MPSTAT -P ALL $OPT_INTERVAL 1           >> "$d/$p-mpstat-overall" 2>&1 &
-   lsof -nP -p $mysqld_pid -bw                  >> "$d/$p-lsof"           2>&1 &
-   $CMD_MYSQLADMIN "$EXT_ARGV" ext -i1 -c$OPT_INTERVAL >> "$d/$p-mysqladmin"     2>&1 &
+   # them all up as quickly as possible.  
+   ps -eaf                            >> "$d/$p-ps"             2>&1 &
+   sysctl -a                          >> "$d/$p-sysctl"         2>&1 &
+   top -bn1                           >> "$d/$p-top"            2>&1 &
+   $CMD_VMSTAT 1 $OPT_INTERVAL        >> "$d/$p-vmstat"         2>&1 &
+   $CMD_VMSTAT $OPT_INTERVAL 2        >> "$d/$p-vmstat-overall" 2>&1 &
+   $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         2>&1 &
+   $CMD_IOSTAT -dx  $OPT_INTERVAL 2   >> "$d/$p-iostat-overall" 2>&1 &
+   $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         2>&1 &
+   $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" 2>&1 &
+   lsof -nP -p $mysqld_pid -bw        >> "$d/$p-lsof"           2>&1 &
+
+   # Collect multiple snapshots of the status variables.  We use
+   # mysqladmin -c even though it is buggy and won't stop on its
+   # own in 5.1 and newer, because there is a chance that we will
+   # get and keep a connection to the database; in troubled times
+   # the database tends to exceed max_connections, so reconnecting
+   # in the loop tends not to work very well.
+   $CMD_MYSQLADMIN "$EXT_ARGV" ext -i1 -c$OPT_RUN_TIME \
+      >> "$d/$p-mysqladmin" 2>&1 &
    local mysqladmin_pid=$!
+
+   local have_lock_waits_table=0
+   $MYSQL_CMD "$EXT_ARGV" -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+      | grep -qi "INNODB_LOCK_WAITS"
+   if [ $? -eq 0 ]; then
+      have_lock_waits_table=1
+   fi
 
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
    echo "Loop start: $(date +'TS %s.%N %F %T')"
-   for a in $(_seq $OPT_RUN_TIME); do
+   for loopno in $(_seq $OPT_RUN_TIME); do
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
       disk_space $d > $d/$p-disk-space
@@ -184,6 +193,13 @@ collect() {
       (df -h                2>&1; echo $ts) >> "$d/$p-df"          &
       (netstat -antp        2>&1; echo $ts) >> "$d/$p-netstat"     &
       (netstat -s           2>&1; echo $ts) >> "$d/$p-netstat_s"   &
+
+      ($CMD_MYSQL "$EXT_ARGV" -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
+         >> "$d/$p-processlist"
+
+      if [ $have_lock_waits_table -eq 1 ]; then
+         (lock_waits 2>&1; echo $ts) >>"$d/$p-lock-waits"
+      fi
    done
    echo "Loop end: $(date +'TS %s.%N %F %T')"
 
@@ -219,10 +235,9 @@ collect() {
       kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus2" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$proclist"        >> "$d/$p-processlist2"  2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables2"   2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status2" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$innostat" >> "$d/$p-innodbstatus2" 2>&1 &
+   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"    >> "$d/$p-mutex-status2" 2>&1 &
+   open_tables                           >> "$d/$p-opentables2"   2>&1 &
 
    # Kill backgrounded tasks.
    kill $mysqladmin_pid
@@ -232,6 +247,48 @@ collect() {
    # Finally, record what system we collected this data from.
    hostname > "$d/$p-hostname"
 }
+
+open_tables() {
+   local open_tables=$($CMD_MYSQLADMIN "$EXT_ARGV" ext | grep "Open_tables" | awk '{print $4}')
+   if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
+      $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' 2>&1 &
+   else
+      echo "Too many open tables: $open_tables"
+   fi
+}
+
+lock_waits() {
+   local sql1="SELECT
+      CONCAT('thread ', b.trx_mysql_thread_id, ' from ', p.host) AS who_blocks,
+      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+      MAX(TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP)) AS max_wait_time,
+      COUNT(*) AS num_waiters
+   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+   GROUP BY who_blocks ORDER BY num_waiters DESC\G"
+   $CMD_MYSQL "$EXT_ARGV" -e "$sql1"
+
+   local sql2="SELECT
+      r.trx_id AS waiting_trx_id,
+      r.trx_mysql_thread_id AS waiting_thread,
+      TIMESTAMPDIFF(SECOND, r.trx_wait_started, CURRENT_TIMESTAMP) AS wait_time,
+      r.trx_query AS waiting_query,
+      l.lock_table AS waiting_table_lock,
+      b.trx_id AS blocking_trx_id, b.trx_mysql_thread_id AS blocking_thread,
+      SUBSTRING(p.host, 1, INSTR(p.host, ':') - 1) AS blocking_host,
+      SUBSTRING(p.host, INSTR(p.host, ':') +1) AS blocking_port,
+      IF(p.command = \"Sleep\", p.time, 0) AS idle_in_trx,
+      b.trx_query AS blocking_query
+   FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS AS w
+   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS b ON b.trx_id = w.blocking_trx_id
+   INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
+   INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
+   LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
+   ORDER BY wait_time DESC\G"
+   $CMD_MYSQL "$EXT_ARGV" -e "$sql2"
+} 
 
 # ###########################################################################
 # End collect package
