@@ -103,14 +103,12 @@ collect() {
    # Get a sample of these right away, so we can get these without interaction
    # with the other commands we're about to run.
    local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
-   local proclist="SHOW FULL PROCESSLIST\G"
    if [ "${mysql_version}" '>' "5.1" ]; then
       local mutex="SHOW ENGINE INNODB MUTEX"
    else
       local mutex="SHOW MUTEX STATUS"
    fi
    $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus1" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$proclist"        >> "$d/$p-processlist1"  2>&1 &
    $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables1"   2>&1 &
    $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status1" 2>&1 &
 
@@ -139,28 +137,32 @@ collect() {
    fi
 
    # Grab a few general things first.  Background all of these so we can start
-   # them all up as quickly as possible.  We use mysqladmin -c even though it is
-   # buggy and won't stop on its own in 5.1 and newer, because there is a chance
-   # that we will get and keep a connection to the database; in troubled times
-   # the database tends to exceed max_connections, so reconnecting in the loop
-   # tends not to work very well.
-   ps -eaf                                      >> "$d/$p-ps"             2>&1 &
-   sysctl -a                                    >> "$d/$p-sysctl"         2>&1 &
-   top -bn1                                     >> "$d/$p-top"            2>&1 &
-   $CMD_VMSTAT 1 $OPT_INTERVAL                  >> "$d/$p-vmstat"         2>&1 &
-   $CMD_VMSTAT $OPT_INTERVAL 2                  >> "$d/$p-vmstat-overall" 2>&1 &
-   $CMD_IOSTAT -dx  1 $OPT_INTERVAL             >> "$d/$p-iostat"         2>&1 &
-   $CMD_IOSTAT -dx  $OPT_INTERVAL 2             >> "$d/$p-iostat-overall" 2>&1 &
-   $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL           >> "$d/$p-mpstat"         2>&1 &
-   $CMD_MPSTAT -P ALL $OPT_INTERVAL 1           >> "$d/$p-mpstat-overall" 2>&1 &
-   lsof -nP -p $mysqld_pid -bw                  >> "$d/$p-lsof"           2>&1 &
-   $CMD_MYSQLADMIN "$EXT_ARGV" ext -i1 -c$OPT_INTERVAL >> "$d/$p-mysqladmin"     2>&1 &
+   # them all up as quickly as possible.  
+   ps -eaf                            >> "$d/$p-ps"             2>&1 &
+   sysctl -a                          >> "$d/$p-sysctl"         2>&1 &
+   top -bn1                           >> "$d/$p-top"            2>&1 &
+   $CMD_VMSTAT 1 $OPT_INTERVAL        >> "$d/$p-vmstat"         2>&1 &
+   $CMD_VMSTAT $OPT_INTERVAL 2        >> "$d/$p-vmstat-overall" 2>&1 &
+   $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         2>&1 &
+   $CMD_IOSTAT -dx  $OPT_INTERVAL 2   >> "$d/$p-iostat-overall" 2>&1 &
+   $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         2>&1 &
+   $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" 2>&1 &
+   lsof -nP -p $mysqld_pid -bw        >> "$d/$p-lsof"           2>&1 &
+
+   # Collect multiple snapshots of the status variables.  We use
+   # mysqladmin -c even though it is buggy and won't stop on its
+   # own in 5.1 and newer, because there is a chance that we will
+   # get and keep a connection to the database; in troubled times
+   # the database tends to exceed max_connections, so reconnecting
+   # in the loop tends not to work very well.
+   $CMD_MYSQLADMIN "$EXT_ARGV" ext -i1 -c$OPT_RUN_TIME \
+      >> "$d/$p-mysqladmin" 2>&1 &
    local mysqladmin_pid=$!
 
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
    echo "Loop start: $(date +'TS %s.%N %F %T')"
-   for a in $(_seq $OPT_RUN_TIME); do
+   for loopno in $(_seq $OPT_RUN_TIME); do
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
       disk_space $d > $d/$p-disk-space
@@ -184,6 +186,9 @@ collect() {
       (df -h                2>&1; echo $ts) >> "$d/$p-df"          &
       (netstat -antp        2>&1; echo $ts) >> "$d/$p-netstat"     &
       (netstat -s           2>&1; echo $ts) >> "$d/$p-netstat_s"   &
+
+      ($CMD_MYSQL "$EXT_ARGV" -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
+         >> "$d/$p-processlist"
    done
    echo "Loop end: $(date +'TS %s.%N %F %T')"
 
@@ -220,7 +225,6 @@ collect() {
    fi
 
    $CMD_MYSQL "$EXT_ARGV" -e "$innostat"        >> "$d/$p-innodbstatus2" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$proclist"        >> "$d/$p-processlist2"  2>&1 &
    $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' >> "$d/$p-opentables2"   2>&1 &
    $CMD_MYSQL "$EXT_ARGV" -e "$mutex"           >> "$d/$p-mutex-status2" 2>&1 &
 
