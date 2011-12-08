@@ -74,7 +74,7 @@ collect() {
    # Get MySQL's variables if possible.  Then sleep long enough that we probably
    # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
    # foreground, because it could hang.)
-   $CMD_MYSQL "$EXT_ARGV" -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" 2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" 2>&1 &
    sleep .2
 
    # Get the major.minor version number.  Version 3.23 doesn't matter for our
@@ -95,7 +95,7 @@ collect() {
       tail_error_log_pid=$!
       # Send a mysqladmin debug to the server so we can potentially learn about
       # locking etc.
-      $CMD_MYSQLADMIN "$EXT_ARGV" debug
+      $CMD_MYSQLADMIN $EXT_ARGV debug
    else
       echo "Could not find the MySQL error log"
    fi
@@ -108,9 +108,9 @@ collect() {
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL "$EXT_ARGV" -e "$innostat" >> "$d/$p-innodbstatus1" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"    >> "$d/$p-mutex-status1" 2>&1 &
-   open_tables                           >> "$d/$p-opentables1"   2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" 2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" 2>&1 &
+   open_tables                         >> "$d/$p-opentables1"   2>&1 &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -155,12 +155,11 @@ collect() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN "$EXT_ARGV" ext -i1 -c$OPT_RUN_TIME \
-      >> "$d/$p-mysqladmin" 2>&1 &
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" 2>&1 &
    local mysqladmin_pid=$!
 
    local have_lock_waits_table=0
-   $CMD_MYSQL "$EXT_ARGV" -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
+   $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
       | grep -qi "INNODB_LOCK_WAITS"
    if [ $? -eq 0 ]; then
       have_lock_waits_table=1
@@ -194,7 +193,7 @@ collect() {
       (netstat -antp        2>&1; echo $ts) >> "$d/$p-netstat"     &
       (netstat -s           2>&1; echo $ts) >> "$d/$p-netstat_s"   &
 
-      ($CMD_MYSQL "$EXT_ARGV" -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
+      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
          >> "$d/$p-processlist"
 
       if [ $have_lock_waits_table -eq 1 ]; then
@@ -235,9 +234,9 @@ collect() {
       kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL "$EXT_ARGV" -e "$innostat" >> "$d/$p-innodbstatus2" 2>&1 &
-   $CMD_MYSQL "$EXT_ARGV" -e "$mutex"    >> "$d/$p-mutex-status2" 2>&1 &
-   open_tables                           >> "$d/$p-opentables2"   2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" 2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" 2>&1 &
+   open_tables                         >> "$d/$p-opentables2"   2>&1 &
 
    # Kill backgrounded tasks.
    kill $mysqladmin_pid
@@ -249,9 +248,9 @@ collect() {
 }
 
 open_tables() {
-   local open_tables=$($CMD_MYSQLADMIN "$EXT_ARGV" ext | grep "Open_tables" | awk '{print $4}')
+   local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
-      $CMD_MYSQL "$EXT_ARGV" -e 'SHOW OPEN TABLES' 2>&1 &
+      $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' 2>&1 &
    else
       echo "Too many open tables: $open_tables"
    fi
@@ -268,7 +267,7 @@ lock_waits() {
    INNER JOIN INFORMATION_SCHEMA.INNODB_TRX AS r ON r.trx_id = w.requesting_trx_id
    LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
    GROUP BY who_blocks ORDER BY num_waiters DESC\G"
-   $CMD_MYSQL "$EXT_ARGV" -e "$sql1"
+   $CMD_MYSQL $EXT_ARGV -e "$sql1"
 
    local sql2="SELECT
       r.trx_id AS waiting_trx_id,
@@ -287,7 +286,7 @@ lock_waits() {
    INNER JOIN INFORMATION_SCHEMA.INNODB_LOCKS AS l ON w.requested_lock_id = l.lock_id
    LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST AS p ON p.id = b.trx_mysql_thread_id
    ORDER BY wait_time DESC\G"
-   $CMD_MYSQL "$EXT_ARGV" -e "$sql2"
+   $CMD_MYSQL $EXT_ARGV -e "$sql2"
 } 
 
 # ###########################################################################
