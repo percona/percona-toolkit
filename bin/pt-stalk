@@ -669,13 +669,13 @@ set_trg_func() {
 
 trg_status() {
    local var=$1
-   mysqladmin "$EXT_ARGV" extended-status | grep "$OPT_VARIABLE" | awk '{print $4}'
+   mysqladmin $EXT_ARGV extended-status | grep "$OPT_VARIABLE" | awk '{print $4}'
 }
 
 trg_processlist() {
    local var=$1
    local tmpfile="$TMPDIR/processlist"
-   mysqladmin "$EXT_ARGV" processlist              > $tmpfile-1
+   mysqladmin $EXT_ARGV processlist                > $tmpfile-1
    grep_processlist $tmpfile-1 $var $OPT_MATCH 0 0 > $tmpfile-2
    wc -l $tmpfile-2 | awk '{print $1}'
    rm -rf $tmpfile*
@@ -830,11 +830,24 @@ main() {
 if    [ "$(basename "$0")" = "pt-stalk" ] \
    || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
 
+   # Check that mysql and mysqladmin are in PATH.  If not, we're
+   # already dead in the water, so don't bother with cmd line opts,
+   # just error and exit.
+   [ -n "$(mysql --help)" ] \
+      || die "Cannot execute mysql.  Check that it is in PATH."
+   [ -n "$(mysqladmin --help)" ] \
+      || die "Cannot execute mysqladmin.  Check that it is in PATH."
+
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
    mk_tmpdir
    parse_options $0 "$@"
    rm_tmpdir
+
+   # Now that we have the cmd line opts, check that we can actually
+   # connect to MySQL.
+   [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
+      || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
    if [ "$OPT_DAEMONIZE" = "yes" ]; then
       # The PID file will at first have our (parent) PID.
