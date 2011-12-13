@@ -33,8 +33,14 @@ use base qw( Diskstats );
 sub new {
    my ($class, %args) = @_;
    my $self = $class->SUPER::new(%args);
-   $self->{iterations} = 0;
+   $self->{_iterations} = 0;
+   $self->{_print_header} = 1;
    return $self;
+}
+
+sub group_by {
+   my $self = shift;
+   $self->group_by_disk(@_);
 }
 
 # Prints out one line for each disk, summing over the interval from first to
@@ -43,34 +49,73 @@ sub group_by_disk {
    my ($self, %args)         = @_;
    my ($header_cb, $rest_cb) = $args{ qw( header_cb rest_cb ) };
 
-   $self->clear_state;
+   if (!$self->interactive()) {
+      $self->clear_state();
+   }
 
-   $self->parse_from(
-      ts_callback => sub {
+   my $original_offset = $args{filehandle} ? tell($args{filehandle}) : undef;
+
+   my $lines_read = $self->parse_from(
+      sample_callback => sub {
+         my ($self, $ts) = @_;
+
          if ( $self->has_stats ) {
-            $self->{iterations}++
+            $self->{_iterations}++;
+            if ($self->interactive() && $self->{_iterations} >= 2) {
+               my $elapsed =
+                     ( $self->current_ts() || 0 ) -
+                     ( $self->first_ts() || 0 );
+               if ( $ts > 0 && $elapsed >= $self->{interval} ) {
+                  $self->print_deltas(
+                     header_cb => sub {
+                        my ($self, @args) = @_;
+
+                        if ( $self->{_print_header} ) {
+                           my $meth = $args{header_cb} || "print_header";
+                           $self->$meth(@args);
+                        }
+                        $self->{_print_header} = undef;
+                     },
+                     rest_cb   => $args{rest_cb},
+                  );
+
+                  $self->{_iterations} = -1;
+                  return "Stop interactive reading";
+               }
+            }
          }
       },
       map({ ($_ => $args{$_}) } qw(filehandle filename data)),
    );
 
-   if ( $self->{iterations} < 2 ) {
+   if ($self->interactive) {
+      if ($self->{_iterations} == -1 && defined($original_offset) && eof($args{filehandle})) {
+         $self->clear_state;
+         seek $args{filehandle}, $original_offset, 0;
+      }
+      return $lines_read;
+   }
+
+   if ( $self->{_iterations} < 2 ) {
       return;
    }
+
    $self->print_deltas( map( { ( $_ => $args{$_} ) } qw( header_cb rest_cb ) ) );
 
    $self->clear_state;
+
+   return $lines_read;
 }
 
 sub clear_state {
-   my ($self, @args) = @_;
-   $self->{iterations} = 0;
+   my ($self, @args)   = @_;
+   $self->{_iterations} = 0;
    $self->SUPER::clear_state(@args);
 }
 
 sub compute_line_ts {
    my ($self, %args) = @_;
-   return "{" . ($self->{iterations} - 1) . "}";
+   return "{" . ($self->{_iterations} - 1) . "}";
 }
 
 sub delta_against {
@@ -78,9 +123,14 @@ sub delta_against {
    return $self->first_stats_for($dev);
 }
 
+sub delta_against_ts {
+   my ($self) = @_;
+   return $self->first_ts();
+}
+
 sub compute_in_progress {
    my ($self, $in_progress, $tot_in_progress) = @_;
-   return $tot_in_progress / ($self->{iterations} - 1);
+   return $tot_in_progress / ($self->{_iterations} - 1);
 }
 
 1;

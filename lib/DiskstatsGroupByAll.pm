@@ -30,25 +30,44 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use base qw( Diskstats );
 
-sub group_by_all {
-   my ($self, %args) = @_;
-   $self->clear_state();
-   $self->parse_from(
-      ts_callback => sub {
-            $self->print_deltas(
-               map { ( $_ => $args{$_} ) } qw( header_cb rest_cb ),
-            );
-         },
-      map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
-   );
-   $self->clear_state();
+sub group_by {
+   my $self = shift;
+   $self->group_by_all(@_);
 }
 
-sub compute_line_ts {
+sub group_by_all {
    my ($self, %args) = @_;
-   return $args{first_ts} > 0
-            ? sprintf("%5.1f", $args{current_ts} - $args{first_ts})
-            : sprintf("%5.1f", 0);
+
+   $self->clear_state();
+
+   if (!$self->interactive) {
+      $self->parse_from(
+         sample_callback => sub {
+               $self->print_deltas(
+                  map { ( $_ => $args{$_} ) } qw( header_cb rest_cb ),
+               );
+            },
+         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
+      );
+
+      $self->clear_state();
+   }
+   else {
+      my $orig = tell $args{filehandle};
+      $self->parse_from(
+         sample_callback => sub {
+               $self->print_deltas(
+                  header_cb => sub { CORE::state $x = 0; my $self = shift; $self->print_header(@_) unless $x++;  },
+               );
+                  #map { ( $_ => $args{$_} ) } qw( header_cb rest_cb ),
+            },
+         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
+      );
+      if (!$self->previous_ts) {
+         seek $args{filehandle}, $orig, 0;
+      }
+      $self->clear_state();
+   }
 }
 
 sub delta_against {
@@ -56,9 +75,9 @@ sub delta_against {
    return $self->previous_stats_for($dev);
 }
 
-sub compute_in_progress {
-   my ($self, $in_progress, $tot_in_progress) = @_;
-   return $in_progress;
+sub delta_against_ts {
+   my ($self) = @_;
+   return $self->previous_ts();
 }
 
 1;

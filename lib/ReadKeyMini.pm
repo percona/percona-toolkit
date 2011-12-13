@@ -111,6 +111,25 @@ my %modes = (
 
 }
 
+sub readkey {
+    my $key = '';
+    cbreak();
+    sysread(STDIN, $key, 1);
+    my $timeout = 0.1;
+    if ( $key eq "\033" ) { # Ugly and broken hack, but good enough for the two minutes it took to write.
+        {
+            my $x = '';
+            STDIN->blocking(0);
+            sysread(STDIN, $x, 2);
+            STDIN->blocking(1);
+            $key .= $x;
+            redo if $key =~ /\[[0-2](?:[0-9];)?$/
+        }
+    }
+    cooked();
+    return $key;
+}
+
 # As per perlfaq8:
 
 sub _GetTerminalSize {
