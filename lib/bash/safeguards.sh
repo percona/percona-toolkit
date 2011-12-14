@@ -25,26 +25,49 @@ set -u
 
 disk_space() {
    local filesystem=${1:-"$PWD"}
-   # Filesystem    512-blocks       Used  Available  Capacity  Mounted on
-   # /dev/disk0s2   236306352  190223184   45571168       81%  /
-   df -m -P $filesystem
+   # Filesystem   1M-blocks  Used Available Capacity  Mounted on
+   # /dev/disk0s2    115383 92637     22496    81%    /
+   df -m $filesystem
 }
 
+# Sub: check_disk_space
+#   Check if there is or will be enough disk space.
+#
+# Arguments:
+#   file   - File with output from <disk_space()>.
+#   mb     - Minimum MB free.
+#   pc     - Minimum percent free.
+#   margin - Add this many MB to the real MB used.
+#
+# Returns:
+#   0 if there is/will be enough disk space, else 1.
 check_disk_space() {
    local file=$1
    local mb=${2:-"0"}
-   local pct=${3:-"0"}
+   local pc=${3:-"0"}
+   local margin=${4:-"0"}
 
-   local avail=$(cat $file | awk '/^\//{print $4}');
-   local full=$(cat $file  | awk '/^\//{print $5}' | sed -e 's/%//g');
-   if [ "${avail}" -le "$mb" -o "$full" -le "$pct" ]; then
-      echo "Not enough free space (${full}% full, ${avail}MB free)"
-      echo "Wanted less than ${pct}% full and more than ${mb}MB"
+   local mb_used=$(cat $file | awk '/^\//{print $3}');
+   local mb_free=$(cat $file | awk '/^\//{print $4}');
+   local pc_used=$(cat $file | awk '/^\//{print $5}' | sed -e 's/%//g');
+
+   if [ "$margin" -gt "0" ]; then
+      local mb_total=$(($mb_used + $mb_free))
+
+      mb_used=$(($mb_used + $margin))
+      mb_free=$(($mb_free - $margin))
+      pc_used=$(awk "BEGIN { printf(\"%d\", $mb_used/$mb_total * 100) }")
+   fi
+
+   local pc_free=$((100 - $pc_used))
+
+   if [ "$mb_free" -le "$mb" -o "$pc_free" -le "$pc" ]; then
+      warn "Not enough free disk space: ${pc_free}% free, ${mb_free} MB free; wanted more than ${pc}% free or ${mb} MB free"
       return 1
    fi
+
    return 0
 }
-
 
 # ###########################################################################
 # End safeguards package
