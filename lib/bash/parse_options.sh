@@ -59,12 +59,12 @@ usage_or_errors() {
    if [ "$OPT_VERSION" = "yes" ]; then
       local version=$(grep '^pt-[^ ]\+ [0-9]' $file)
       echo "$version"
-      return 0
+      return 1
    fi
 
    if [ "$OPT_HELP" = "yes" ]; then
       usage "$file"
-      return 0
+      return 1
    fi
 
    local n_errs=${#OPT_ERRS[*]}
