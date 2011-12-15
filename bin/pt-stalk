@@ -646,6 +646,7 @@ lock_waits() {
 # ###########################################################################
 # Global variables
 # ###########################################################################
+EXIT_REASON=""
 TOOL=`basename $0`
 OKTORUN=1
 ITER=1
@@ -709,7 +710,7 @@ set_trg_func() {
 
 trg_status() {
    local var=$1
-   mysqladmin $EXT_ARGV extended-status | grep "$OPT_VARIABLE" | awk '{print $4}'
+   mysqladmin $EXT_ARGV extended-status | grep "$OPT_VARIABLE " | awk '{print $4}'
 }
 
 trg_processlist() {
@@ -729,10 +730,12 @@ trg_magic() {
 
 oktorun() {
    if [ $OKTORUN -eq 0 ]; then
+      EXIT_REASON="OKTORUN is false, exiting"
       return 1  # stop running
    fi
 
-   if [ -n "$OPT_ITERATIONS" ] && [ $ITER -ge $OPT_ITERATIONS ]; then
+   if [ -n "$OPT_ITERATIONS" ] && [ $ITER -gt $OPT_ITERATIONS ]; then
+      EXIT_REASON="No more iterations, exiting"      
       return 1  # stop running
    fi
 
@@ -808,15 +811,14 @@ stalk() {
          # is also checked every interval while collecting.
          local margin="20"  # default 20M margin, unless:
          if [ -n "$last_prefix" ]; then
-            margin=$(du -mc $d/$last_prefix-* | tail -n 1 | awk '{print $1'})
+            margin=$(du -mc $OPT_DEST/$last_prefix-* | tail -n 1 | awk '{print $1'})
          fi 
-         disk_space $d > $d/$p-disk-space  # Get real disk space.
-         check_disk_space          \       # Then check it plus...
-            $d/$p-disk-space       \
-            "$OPT_DISK_BYTE_LIMIT" \        
-            "$OPT_DISK_PCT_LIMIT"  \
-            "$margin"              \       # ... the margin.
-
+         disk_space $OPT_DEST > $OPT_DEST/$prefix-disk-space 
+         check_disk_space                \
+            $OPT_DEST/$prefix-disk-space \
+            "$OPT_DISK_BYTE_LIMIT"       \
+            "$OPT_DISK_PCT_LIMIT"        \
+            "$margin"  # real used MB + margin MB
          if [ $? -eq 0 ]; then
             # There should be enough disk space, so collect.
             log "$msg" >> "$OPT_DEST/$prefix-trigger"
@@ -893,6 +895,7 @@ main() {
    rm_tmpdir
    remove_pid_file "$OPT_PID"
 
+   log "$EXIT_REASON"
    log "$0 exit status $EXIT_STATUS"
    exit $EXIT_STATUS
 }
