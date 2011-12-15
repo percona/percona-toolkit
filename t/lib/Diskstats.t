@@ -22,6 +22,8 @@ BEGIN {
    use_ok "DiskstatsGroupBySample";
 }
 
+{
+
 my $obj = new_ok("Diskstats");
 
 can_ok( $obj, qw(
@@ -31,6 +33,28 @@ can_ok( $obj, qw(
                   has_stats design_print_formats parse_diskstats_line
                   parse_from print_deltas
                ) );
+
+# Test the constructor
+for my $attr (
+      [ filename           => '/corp/diskstats'      ],
+      [ column_regex       => qr/!!!/                ],
+      [ device_regex       => qr/!!!/                ],
+      [ block_size         => 215                    ],
+      [ out_fh             => \*STDERR               ],
+      [ filter_zeroed_rows => 1                      ],
+      [ sample_time        => 1                      ],
+      [ interactive        => 1                      ],
+   ) {
+   my $attribute   = $attr->[0];
+   my $value       = $attr->[1];
+   my $test_obj    = Diskstats->new( @$attr );
+
+   is(
+      $test_obj->$attribute(),
+      $value,
+      "Passing an explicit [$attribute] to the constructor works",
+   );
+}
 
 my $line = "104    0 cciss/c0d0 2139885 162788 37361471 8034486 17999682 83425310 811400340 12711047 0 6869437 20744582";
 
@@ -90,22 +114,41 @@ is($header, join(" ", q{%5s %-6s}, map { $_->[0] } @columns_in_order),
 
 ($header, $rest, $cols) = $obj->design_print_formats(max_device_length => 10);
 my $all_columns_format = join(" ", q{%5s %-10s}, map { $_->[0] } @columns_in_order);
-is($header, $all_columns_format, "design_print_formats: max_device_length works");
+is(
+   $header,
+   $all_columns_format,
+   "design_print_formats: max_device_length works"
+);
 
 $obj->column_regex(qr/(?!)/); # Will never match
 ($header, $rest, $cols) = $obj->design_print_formats(max_device_length => 10);
-is($header, q{%5s %-10s }, "design_print_formats respects column_regex");
+is(
+   $header,
+   q{%5s %-10s },
+   "design_print_formats respects column_regex"
+);
 
 $obj->column_regex(qr//);
-($header, $rest, $cols) = $obj->design_print_formats(max_device_length => 10, columns => []);
-is($header, q{%5s %-10s }, "...unless we pass an explicit column array");
+($header, $rest, $cols) = $obj->design_print_formats(
+                                    max_device_length => 10,
+                                    columns           => []
+                                 );
+is(
+   $header,
+   q{%5s %-10s },
+   "...unless we pass an explicit column array"
+);
 
 $obj->column_regex(qr/./);
 ($header, $rest, $cols) = $obj->design_print_formats(
                                  max_device_length => 10,
                                  columns           => [qw( busy )]
                            );
-is($header, q{%5s %-10s busy}, "");
+is(
+   $header,
+   q{%5s %-10s busy},
+   ""
+);
 
 ($header, $rest, $cols) = $obj->design_print_formats(
                                  max_device_length => 10,
@@ -136,21 +179,95 @@ close($fh);
 is($obj->out_fh(), \*STDOUT, "and if we close the set filehandle, it reverts to STDOUT");
 
 
-is_deeply([$obj->sorted_devs()], [], "sorted_devs starts empty");
+is_deeply(
+   [ $obj->sorted_devs() ],
+   [],
+   "sorted_devs starts empty"
+);
 
 $obj->add_sorted_devs("sda");
-is_deeply([$obj->sorted_devs()], [qw(sda)], "We can add devices just fine,");
+is_deeply(
+   [ $obj->sorted_devs() ],
+   [ qw( sda ) ],
+   "We can add devices just fine,"
+);
 
 $obj->add_sorted_devs("sda");
-is_deeply([$obj->sorted_devs()], [qw(sda)], "...And duplicates get detected and discarded");
+is_deeply(
+   [ $obj->sorted_devs() ],
+   [ qw( sda ) ],
+   "...And duplicates get detected and discarded"
+);
 
 $obj->clear_sorted_devs();
-is_deeply([$obj->sorted_devs()], [], "clear_sorted_devs does as advertized,");
+is_deeply(
+   [ $obj->sorted_devs() ],
+   [],
+   "clear_sorted_devs does as advertized,"
+);
 $obj->add_sorted_devs("sda");
-is_deeply([$obj->sorted_devs()], [qw(sda)], "...And clears the internal duplicate-checking list");
+is_deeply(
+   [ $obj->sorted_devs() ],
+   [ qw( sda ) ],
+   "...And clears the internal duplicate-checking list"
+);
 
+$obj->filter_zeroed_rows(1);
+my $print_output = output(
+   sub {
+      $obj->print_rest(
+            "SHOULDN'T PRINT THIS",
+            [ qw( a b c ) ],
+            { a => 0, b => 0, c => 0, d => 10 }
+         );
+   }
+);
+$obj->filter_zeroed_rows(0);
 
+is(
+   $print_output,
+   "",
+   "->filter_zeroed_rows works"
+);
 
+for my $method ( qw( delta_against delta_against_ts group_by ) ) {
+   throws_ok(
+      sub { Diskstats->$method() },
+      qr/\QYou must override $method() in a subclass\E/,
+      "->$method has to be overriden"
+   );
+}
+
+is(
+   Diskstats->compute_line_ts( first_ts => 0 ),
+   sprintf( "%5.1f", 0 ),
+   "compute_line_ts has a sane default",
+);
+
+$obj->{_print_header} = 0;
+
+is(
+   output( sub { $obj->print_header } ),
+   "",
+   "INTERNAL: _print_header works"
+);
+
+$obj->current_ts(0);
+$obj->previous_ts(0);
+
+throws_ok(
+   sub { $obj->_calc_deltas() },
+   qr/Time elapsed is/,
+   "->_calc_deltas fails if the time elapsed is 0"
+);
+
+throws_ok(
+   sub { $obj->parse_from_data( "ASMFHNASJNFASKLFLKHNSKD" ); },
+   qr/isn't in the diskstats format/,
+   "->parse_from and friends fail on malformed data"
+);
+
+}
 # Common tests for all three subclasses
 for my $test (
       {

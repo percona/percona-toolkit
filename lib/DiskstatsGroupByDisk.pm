@@ -65,7 +65,7 @@ sub group_by_disk {
                my $elapsed =
                      ( $self->current_ts() || 0 ) -
                      ( $self->first_ts() || 0 );
-               if ( $ts > 0 && $elapsed >= $self->{interval} ) {
+               if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
                   $self->print_deltas(
                      header_cb => sub {
                         my ($self, @args) = @_;
@@ -109,8 +109,10 @@ sub group_by_disk {
 
 sub clear_state {
    my ($self, @args)   = @_;
+   my $orig_print_h = $self->{_print_header};
    $self->{_iterations} = 0;
    $self->SUPER::clear_state(@args);
+   $self->{_print_header} = $orig_print_h;
 }
 
 sub compute_line_ts {
