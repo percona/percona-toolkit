@@ -741,15 +741,14 @@ sigtrap() {
 }
 
 stalk() {
-   # We increment this variable every time that the check is true,
-   # and set it to 0 if it's false.
-   local cycles_true=0
-   local matched="no"
+   local cycles_true=0   # increment each time check is true, else set to 0
+   local matched="no"    # set to "yes" when check is true
+   local last_prefix=""  # prefix of last collection
 
    while oktorun; do
-      # This is where we decide whether to execute 'collect'.
-      # The idea is to generate a number and store into $detected,
-      # and if $detected > $OPT_THRESHOLD, then we'll execute pt-collect.
+      # Run the trigger which returns the value of whatever is being
+      # checked.  When the value is > --threshold for at least --cycle
+      # consecutive times, start collecting.
       local value=$($TRIGGER_FUNCTION $OPT_VARIABLE)
       local trg_exit_status=$?
 
@@ -770,29 +769,62 @@ stalk() {
       log "$msg"
 
       if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
+         # ##################################################################
+         # Start collecting, maybe.
+         # ##################################################################
          local prefix=${OPT_PREFIX:-"$(date +%F-%T | tr :- _)"}
-
          log "Collect triggered"
-         log "$msg" >> "$OPT_DEST/$prefix-trigger"
 
-         if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
-            echo "$msg on $(hostname)" \
-            | mail -s "Collect triggered on $(hostname)" "$OPT_NOTIFY_BY_EMAIL"
+         # Check if we'll have enough disk space to collect.  Disk space
+         # is also checked every interval while collecting.
+         local margin="20"  # default 20M margin, unless:
+         if [ -n "$last_prefix" ]; then
+            margin=$(du -mc $d/$last_prefix-* | tail -n 1 | awk '{print $1'})
+         fi 
+         disk_space $d > $d/$p-disk-space  # Get real disk space.
+         check_disk_space          \       # Then check it plus...
+            $d/$p-disk-space       \
+            "$OPT_DISK_BYTE_LIMIT" \        
+            "$OPT_DISK_PCT_LIMIT"  \
+            "$margin"              \       # ... the margin.
+
+         if [ $? -eq 0 ]; then
+            # There should be enough disk space, so collect.
+            log "$msg" >> "$OPT_DEST/$prefix-trigger"
+            last_prefix="$prefix"
+
+            # Send email to whomever that collect has been triggered.
+            if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
+               echo "$msg on $(hostname)" \
+               | mail -s "Collect triggered on $(hostname)" \
+                 "$OPT_NOTIFY_BY_EMAIL"
+            fi
+
+            # Fork and background the collect subroutine which will
+            # run for --run-time seconds.  We (the parent) sleep
+            # while its collecting (hopefully --sleep is longer than
+            # --run-time).
+            (
+               flock 200
+               collect $OPT_DEST $prefix
+            ) 200>/tmp/percona-toolkit-collect-lockfile \
+              >> "$OPT_DEST/$prefix-output" 2>&1 &
+         else 
+            # There will not be enough disk space, so do not collect.
+            warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
          fi
 
-         # Fork collect subroutine which should run for --run-time seconds.
-         (
-            flock 200
-            collect $OPT_DEST $prefix
-         ) 200>/tmp/percona-toolkit-collect-lockfile \
-           >> "$OPT_DEST/$prefix-output" 2>&1 &
-
+         # ##################################################################
+         # Done collecting.
+         # ##################################################################
          ITER=$((ITER + 1))
          sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
       else
+         # Trigger/check/value is ok, sleep until next check.
          sleep_ok "$OPT_INTERVAL"
       fi
 
+      # Purge old collect file between checks.
       purge_samples
    done
 }
