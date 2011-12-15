@@ -26,9 +26,11 @@ set -u
 
 # Global variables.  These must be global because declare inside a
 # sub will be scoped locally.
-declare -a ARGV   # non-option args (probably input files)
-declare EXT_ARGV  # everything after -- (args for an external command)
-OPT_ERR=${OPT_ERR:-""}
+declare -a ARGV      # non-option args (probably input files)
+declare EXT_ARGV     # everything after -- (args for an external command)
+declare -a OPT_ERRS  # errors while parsing options, for usage_or_errors()
+OPT_VERSION="no"
+OPT_HELP="no"
 
 # Sub: usage
 #   Print usage (--help) and list the program's options.
@@ -46,13 +48,41 @@ usage() {
    local file=$1
 
    local usage=$(grep '^Usage: ' $file)
-
-   if [ "$OPT_ERR" ]; then
-      echo "Error: ${OPT_ERR}" >&2
-   fi
    echo $usage >&2
    echo >&2
    echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
+}
+
+usage_or_errors() {
+   local file=$1
+
+   if [ "$OPT_VERSION" = "yes" ]; then
+      local version=$(grep '^pt-[^ ]\+ [0-9]' $file)
+      echo "$version"
+      return 1
+   fi
+
+   if [ "$OPT_HELP" = "yes" ]; then
+      usage "$file"
+      return 1
+   fi
+
+   local n_errs=${#OPT_ERRS[*]}
+   if [ $n_errs -gt 0 ]; then
+      local i=0
+      echo "Errors parsing command line options:" >&2
+      echo >&2
+      while [ $i -lt $n_errs ]; do
+         echo "  * ${OPT_ERRS[$i]}" >&2
+         i=$(($i + 1))
+      done
+      echo >&2
+      usage $file
+      return 1
+   fi
+
+   # No --help, --version, or errors.
+   return 0
 }
 
 # Sub: parse_options
@@ -143,17 +173,20 @@ parse_options() {
                fi
                ;;
             *)
-               die "Invalid attribute in $TMPDIR/po/$opt_spec: $line"
+               echo "Invalid attribute in $TMPDIR/po/$opt_spec: $line" >&2
+               exit 1
          esac 
       done < $TMPDIR/po/$opt_spec
 
       if [ -z "$opt" ]; then
-         die "No long attribute in option spec $TMPDIR/po/$opt_spec"
+         echo "No long attribute in option spec $TMPDIR/po/$opt_spec" >&2
+         exit 1
       fi
 
       if [ $neg -eq 1 ]; then
          if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
-            die "Option $opt_spec is negatable but not default: yes"
+            echo "Option $opt_spec is negatable but not default: yes" >&2
+            exit 1
          fi
       fi
 
@@ -171,6 +204,7 @@ parse_options() {
    # specified on the command line, then we re-eval $OPT_FOO=500 to update
    # $OPT_FOO.
    local i=0  # ARGV index
+   local j=0  # OPT_ERRS index
    for opt; do
       if [ $# -eq 0 ]; then
          break  # no more opts
@@ -180,15 +214,6 @@ parse_options() {
          shift
          EXT_ARGV="$@"
          break
-      fi
-      if [ "$opt" = "--version" ]; then
-         version=$(grep '^pt-[^ ]\+ [0-9]' $0)
-         echo "$version"
-         exit 0
-      fi
-      if [ "$opt" = "--help" ]; then
-         usage $file
-         exit 0
       fi
       shift 
       if [ $(expr "$opt" : "-") -eq 0 ]; then
@@ -217,7 +242,9 @@ parse_options() {
       else
          spec=$(grep "^shortform:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
          if [ -z "$spec"  ]; then
-            die "Unknown option: $opt"
+            OPT_ERRS[j]="Unknown option: $real_opt"
+            j=$((j+1))
+            continue
          fi
       fi
 
@@ -228,7 +255,9 @@ parse_options() {
       required_arg=$(cat $spec | grep '^type:' | cut -d':' -f2)
       if [ -n "$required_arg" ]; then
          if [ $# -eq 0 ]; then
-            die "$real_opt requires a $required_arg argument"
+            OPT_ERRS[j]="$real_opt requires a $required_arg argument"
+            j=$((j+1))
+            continue
          else
             val="$1"
             shift
