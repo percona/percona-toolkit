@@ -19,12 +19,13 @@
 # ###########################################################################
 {
 # Package: Diskstats
-#
+# This package implements most of the logic in the old shell pt-diskstats;
+# it parses data from /proc/diskstats, calculcates deltas, and prints those.
 
 package Diskstats;
 
-use warnings;
 use strict;
+use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
@@ -41,9 +42,9 @@ BEGIN {
       Storable->import(qw(dclone));
    }
    else {
-      # An extrenely poor man's dclone.
       require Scalar::Util;
 
+      # An extrenely poor man's dclone.
       # Nevermind the prototype. dclone has it, so it's here only it for
       # the sake of completeness.
       *dclone = sub ($) {
@@ -65,22 +66,30 @@ sub new {
    my ( $class, %args ) = @_;
 
    my $self = {
+      # Defaults
       filename           => '/proc/diskstats',
       column_regex       => qr/cnc|rt|mb|busy|prg/,
       device_regex       => qr/(?=)/,
       block_size         => 512,
       out_fh             => \*STDOUT,
       filter_zeroed_rows => 0,
-      samples_to_gather  => 0,
-      interval           => 0,
+      sample_time        => 0,
       interactive        => 0,
-      %args,
+
       _stats_for         => {},
       _sorted_devs       => [],
       _ts                => {},
-      _save_curr_as_prev => 1,    # Internal for now
       _first             => 1,
+
+      # Internal for now, but might need APIfying.
+      _save_curr_as_prev => 1,
+      _print_header      => 1,
    };
+
+   # If they passed us an attribute explicitly, we use those.
+   for my $attribute ( grep { !/^_/ && defined $args{$_} } keys %$self ) {
+      $self->{$attribute} = $args{$attribute};
+   }
 
    return bless $self, $class;
 }
@@ -110,14 +119,25 @@ sub first_ts {
 
 sub filter_zeroed_rows {
    my ($self, $new_val) = @_;
-   if ( $new_val ) {
+   if ( defined($new_val) ) {
       $self->{filter_zeroed_rows} = $new_val;
    }
    return $self->{filter_zeroed_rows};
 }
 
+sub sample_time {
+   my ($self, $new_val) = @_;
+   if (defined($new_val)) {
+      $self->{sample_time} = $new_val;
+   }
+   return $self->{sample_time};
+}
+
 sub interactive {
-   my ($self) = @_;
+   my ($self, $new_val) = @_;
+   if (defined($new_val)) {
+      $self->{interactive} = $new_val;
+   }
    return $self->{interactive};
 }
 
@@ -151,7 +171,7 @@ sub device_regex {
 
 sub filename {
    my ( $self, $new_filename ) = @_;
-   if ($new_filename) {
+   if ( defined $new_filename ) {
       return $self->{filename} = $new_filename;
    }
    return $self->{filename} || '/proc/diskstats';
@@ -183,6 +203,7 @@ sub add_sorted_devs {
 sub clear_state {
    my ($self) = @_;
    $self->{_first} = 1;
+   $self->{_print_header} = 1;
    $self->clear_current_stats();
    $self->clear_previous_stats();
    $self->clear_first_stats();
@@ -257,6 +278,36 @@ sub has_stats {
 
    return $self->stats_for
      && scalar grep 1, @{ $self->stats_for }{ $self->sorted_devs };
+}
+
+sub _save_current_as_previous {
+   my ( $self, $curr_hashref ) = @_;
+
+   if ( $self->{_save_curr_as_prev} ) {
+      $self->{_previous_stats_for} = $curr_hashref;
+      for my $dev (keys %$curr_hashref) {
+         $self->{_previous_stats_for}->{$dev}->{sum_ios_in_progress} +=
+            $curr_hashref->{$dev}->{ios_in_progress};
+      }
+      $self->previous_ts($self->current_ts());
+   }
+
+   return;
+}
+
+sub _save_current_as_first {
+   my ($self, $curr_hashref) = @_;
+
+   if ( $self->{_first} ) {
+      $self->{_first_stats_for} = $curr_hashref;
+      $self->first_ts($self->current_ts());
+      $self->{_first} = undef;
+   }
+}
+
+sub _save_stats {
+   my ( $self, $hashref ) = @_;
+   $self->{_stats_for} = $hashref;
 }
 
 sub trim {
@@ -409,36 +460,6 @@ sub parse_diskstats_line {
    }
 }
 
-sub _save_current_as_previous {
-   my ( $self, $curr_hashref ) = @_;
-
-   if ( $self->{_save_curr_as_prev} ) {
-      $self->{_previous_stats_for} = $curr_hashref;
-      for my $dev (keys %$curr_hashref) {
-         $self->{_previous_stats_for}->{$dev}->{sum_ios_in_progress} +=
-            $curr_hashref->{$dev}->{ios_in_progress};
-      }
-      $self->previous_ts($self->current_ts());
-   }
-
-   return;
-}
-
-sub _save_current_as_first {
-   my ($self, $curr_hashref) = @_;
-
-   if ( $self->{_first} ) {
-      $self->{_first_stats_for} = $curr_hashref;
-      $self->first_ts($self->current_ts());
-      $self->{_first} = undef;
-   }
-}
-
-sub _save_stats {
-   my ( $self, $hashref ) = @_;
-   $self->{_stats_for} = $hashref;
-}
-
 # Method: parse_from()
 #   Parses data from one of the sources.
 #
@@ -475,6 +496,7 @@ sub parse_from_filename {
 
    return $lines_read;
 }
+
 # Method: parse_from_filehandle()
 #   Parses data received from using readline() on the filehandle. This is
 #   particularly useful, as you could pass in a filehandle to a pipe, or
@@ -509,10 +531,8 @@ sub parse_from_data {
 
 sub _load {
    my ( $self, $fh, $sample_callback ) = @_;
-   my $lines_read = 0;
    my $block_size = $self->block_size;
-
-   my $new_cur = {};
+   my $new_cur    = {};
 
    while ( my $line = <$fh> ) {
       if ( my ( $dev, $dev_stats ) = $self->parse_diskstats_line($line, $block_size) ) {
@@ -527,13 +547,9 @@ sub _load {
             $self->_save_current_as_first( dclone($self->stats_for) );
             $new_cur = {};
          }
-         # XXX TODO Ugly hack for interactive mode
-         my $ret = 0;
          if ($sample_callback) {
-            $ret = $self->$sample_callback($ts);
+            $self->$sample_callback($ts);
          }
-         $lines_read = $NR;
-         last if $ret;
       }
       else {
          chomp($line);
@@ -545,7 +561,8 @@ sub _load {
       #$self->_save_stats($new_cur);
       $self->_save_current_as_first( dclone($self->stats_for) );
    }
-   return $lines_read;
+   # Seems like this could be useful.
+   return $INPUT_LINE_NUMBER;
 }
 
 sub _calc_read_stats {
@@ -698,15 +715,17 @@ sub _calc_deltas {
 
 sub print_header {
    my ($self, $header, @args) = @_;
-   printf { $self->out_fh } $header . "\n", @args;
+   if ( $self->{_print_header} ) {
+      printf { $self->out_fh } $header . "\n", @args;
+   }
 }
 
 sub print_rest {
    my ($self, $format, $cols, $stat) = @_;
-   if ( $self->filter_zeroed_rows ) {
-      return unless grep $_, @{$stat}{ @$cols };
+   if ( $self->filter_zeroed_rows() ) {
+      return unless grep { sprintf("%7.1f", $_) != 0 } @{$stat}{ grep { $self->col_ok($_) } @$cols };
    }
-   printf { $self->out_fh } $format . "\n",
+   printf { $self->out_fh() } $format . "\n",
            @{$stat}{ qw( line_ts dev ), @$cols };
 }
 

@@ -50,15 +50,18 @@ sub group_by_sample {
    my ( $self,      %args )    = @_;
    my ( $header_cb, $rest_cb ) = $args{qw( header_cb rest_cb )};
 
-   $self->clear_state;
+   if (!$self->interactive) {
+      $self->clear_state;
+   }
 
    $self->parse_from(
-      sample_callback =>
-        sub { my ( $self, $ts ) = @_; $self->_sample_callback( $ts, %args ) },
+      sample_callback => $self->can("_sample_callback"),
       map( { ( $_ => $args{$_} ) } qw(filehandle filename data) ),
    );
 
-   $self->clear_state;
+   if (!$self->interactive) {
+      $self->clear_state;
+   }
 }
 
 sub _sample_callback {
@@ -73,31 +76,23 @@ sub _sample_callback {
      ( $self->current_ts() || 0 ) -
      ( $self->previous_ts() || 0 );
 
-   if ( $ts > 0 && $elapsed >= $self->{interval} ) {
+   if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
 
       $self->print_deltas(
          max_device_length => 6,
          header_cb         => sub {
             my ( $self, $header, @args ) = @_;
+
             if ( $self->{_print_header} ) {
-               $self->{_print_header} = 0;
-               if ( my $cb = $args{header_cb} ) {
-                  $self->$cb( $header, @args );
-               }
-               else {
-                  printf { $self->out_fh } $header . "\n", @args;
-               }
+               my $method = $args{header_cb} || "print_header";
+               $self->$method( $header, @args );
+               $self->{_print_header} = undef;
             }
          },
          rest_cb => sub {
             my ( $self, $format, $cols, $stat ) = @_;
-            if ( my $callback = $args{rest_cb} ) {
-               $self->$callback( $format, $cols, $stat );
-            }
-            else {
-               printf { $self->out_fh } $format . "\n",
-                 @{$stat}{ qw( line_ts dev ), @$cols };
-            }
+            my $method = $args{rest_cb} || "print_rest";
+            $self->$method( $format, $cols, $stat );
             $printed_a_line = 1;
          }
       );
@@ -129,7 +124,10 @@ sub clear_state {
 
 sub compute_devs_in_group {
    my ($self) = @_;
-   return scalar grep 1, @{ $self->stats_for }{ $self->sorted_devs };
+   return scalar grep {
+            # Got stats for that device, and we want to print it
+            $self->stats_for($_) && $self->dev_ok($_)
+         } $self->sorted_devs;
 }
 
 sub compute_dev {
@@ -159,7 +157,7 @@ sub _calc_stats_for_deltas {
    my $in_progress = $delta_for->{ios_in_progress}; #$curr->{"ios_in_progress"};
    my $tot_in_progress = 0;    #$against->{"sum_ios_in_progress"} || 0;
 
-   my $devs_in_group = $self->compute_devs_in_group;
+   my $devs_in_group = $self->compute_devs_in_group() || 1;
 
    my %stats = (
       $self->_calc_read_stats( $delta_for, $elapsed, $devs_in_group ),

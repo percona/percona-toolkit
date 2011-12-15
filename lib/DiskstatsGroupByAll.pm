@@ -38,7 +38,9 @@ sub group_by {
 sub group_by_all {
    my ($self, %args) = @_;
 
-   $self->clear_state();
+   if ( !$args{clear_state} ) {
+      $self->clear_state();
+   }
 
    if (!$self->interactive) {
       $self->parse_from(
@@ -49,24 +51,42 @@ sub group_by_all {
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
       );
-
-      $self->clear_state();
    }
    else {
       my $orig = tell $args{filehandle};
       $self->parse_from(
          sample_callback => sub {
                $self->print_deltas(
-                  header_cb => sub { CORE::state $x = 0; my $self = shift; $self->print_header(@_) unless $x++;  },
+                  header_cb => sub {
+                     my $self = shift;
+                     if ( $self->{_print_header} ) {
+                        my $meth = $args{header_cb} || "print_header";
+                        $self->$meth(@_);
+                     }
+                     $self->{_print_header} = undef;
+                  },
+                  rest_cb => $args{rest_cb},
                );
-                  #map { ( $_ => $args{$_} ) } qw( header_cb rest_cb ),
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
       );
       if (!$self->previous_ts) {
          seek $args{filehandle}, $orig, 0;
       }
-      $self->clear_state();
+      return;
+   }
+   $self->clear_state();
+}
+
+sub clear_state {
+   my $self = shift;
+   if (!$self->interactive()) {
+      $self->SUPER::clear_state(@_);
+   }
+   else {
+      my $orig_print_header = $self->{_print_header};
+      $self->SUPER::clear_state(@_);
+      $self->{_print_header} = $orig_print_header;
    }
 }
 
