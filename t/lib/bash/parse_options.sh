@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=25
+TESTS=26
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 
@@ -11,6 +11,7 @@ source "$LIB_DIR/parse_options.sh"
 # Parse options from POD using all default values.
 # ############################################################################
 
+TOOL="pt-stalk"
 TMPDIR="$TEST_TMPDIR"
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" "" 2>$TMPFILE
 
@@ -64,12 +65,13 @@ is "$OPT_VERSION" "yes" "Short form"
 # ############################################################################
 
 # Have to call this in a subshell because the error will cause an exit.
-(
-   parse_options "$T_LIB_DIR/samples/bash/po001.sh" --foo >$TMPFILE 2>&1
-)
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --foo >$TMPFILE 2>&1
+is "`cat $TMPFILE`" "" "No warnings or errors yet"
+
+usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
 local err=$?
 is "$err" "1" "Non-zero exit on unknown option"
-cmd_ok "grep -q 'Unknown option: foo' $TMPFILE" "Error on unknown option"
+cmd_ok "grep -q 'Unknown option: --foo' $TMPFILE" "Error on unknown option"
 
 # ############################################################################
 # Done
