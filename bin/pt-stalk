@@ -1078,12 +1078,6 @@ type: int; default: 5
 
 Exit if the disk is less than this %full.
 
-=item --execute-command
-
-type: string; default: pt-collect
-
-Location of the C<pt-collect> tool.
-
 =item --function
 
 type: string; default: status
