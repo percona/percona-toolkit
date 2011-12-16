@@ -68,7 +68,7 @@ sub new {
    my $self = {
       # Defaults
       filename           => '/proc/diskstats',
-      column_regex       => qr/cnc|rt|mb|busy|prg/,
+      column_regex       => qr/cnc|rt|busy|prg|time|io_s/,
       device_regex       => qr/(?=)/,
       block_size         => 512,
       out_fh             => \*STDOUT,
@@ -334,17 +334,22 @@ my @columns_in_order = (
    [ "   rd_s" => "%7.1f",   "reads_sec", ],
    [ "rd_avkb" => "%7.1f",   "avg_read_sz", ],
    [ "rd_mb_s" => "%7.1f",   "mbytes_read_sec", ],
+   [ "rd_io_s" => "%7.1f",   "ios_read_sec", ],
    [ "rd_mrg"  => "%5.0f%%", "read_merge_pct", ],
    [ "rd_cnc"  => "%6.1f",   "read_conc", ],
    [ "  rd_rt" => "%7.1f",   "read_rtime", ],
    [ "   wr_s" => "%7.1f",   "writes_sec", ],
    [ "wr_avkb" => "%7.1f",   "avg_write_sz", ],
    [ "wr_mb_s" => "%7.1f",   "mbytes_written_sec", ],
+   [ "wr_io_s" => "%7.1f",   "ios_written_sec", ],
    [ "wr_mrg"  => "%5.0f%%", "write_merge_pct", ],
    [ "wr_cnc"  => "%6.1f",   "write_conc", ],
    [ "  wr_rt" => "%7.1f",   "write_rtime", ],
    [ "busy"    => "%3.0f%%", "busy", ],
    [ "in_prg"  => "%6d",     "in_progress", ],
+   [ "   io_s" => "%7.1f",   "s_spent_doing_io", ],
+   [ " qtime"   => "%6.1f",   "qtime", ],
+   [ " stime"   => "%5.1f",   "stime", ],
 );
 
 {
@@ -426,8 +431,8 @@ sub parse_diskstats_line {
         $dev_stats{written_sectors} * $block_size;
       $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
       $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
-      $dev_stats{ttreq} += $dev_stats{reads} + $dev_stats{writes};
-      $dev_stats{ttbyt} += $dev_stats{read_bytes} + $dev_stats{written_bytes};
+      $dev_stats{ios_requested} += $dev_stats{reads} + $dev_stats{writes};
+      $dev_stats{ios_in_bytes}  += $dev_stats{read_bytes} + $dev_stats{written_bytes};
 
       return ( $dev, \%dev_stats );
    }
@@ -572,6 +577,7 @@ sub _calc_read_stats {
       reads_sec       => $delta_for->{reads} / $elapsed,
       read_requests   => $delta_for->{reads_merged} + $delta_for->{reads},
       mbytes_read_sec => $delta_for->{read_kbs} / $elapsed / 1024,
+      ios_read_sec    => $delta_for->{ms_spent_reading} * 1000,
       read_conc       => $delta_for->{ms_spent_reading} /
                            $elapsed / 1000 / $devs_in_group,
    );
@@ -601,8 +607,8 @@ sub _calc_write_stats {
    my %write_stats = (
       writes_sec     => $delta_for->{writes} / $elapsed,
       write_requests => $delta_for->{writes_merged} + $delta_for->{writes},
-
       mbytes_written_sec  => $delta_for->{written_kbs} / $elapsed / 1024,
+      ios_written_sec    => $delta_for->{ms_spent_writing} / 1000,
       write_conc         => $delta_for->{ms_spent_writing} /
         $elapsed / 1000 /
         $devs_in_group,
@@ -642,11 +648,13 @@ sub _calc_misc_stats {
       $delta_for->{ms_spent_doing_io} /
       ( 1000 * $elapsed * $devs_in_group );
 
-   my $number_of_ios   = $stats->{write_requests} + $stats->{read_requests};
+   my $number_of_ios   = $stats->{ios_requested};
    my $total_ms_spent_on_io = $delta_for->{ms_spent_reading} + $delta_for->{ms_spent_writing};
 
    $extra_stats{qtime} = $number_of_ios ? $total_ms_spent_on_io / $number_of_ios : 0;
    $extra_stats{stime} = $number_of_ios ? $delta_for->{ms_spent_doing_io} / $number_of_ios : 0;
+
+   $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
 
    $extra_stats{line_ts} = $self->compute_line_ts(
       first_ts   => $self->first_ts(),

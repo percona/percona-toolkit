@@ -1,0 +1,895 @@
+#!/usr/bin/env bash
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+usage() {
+   if [ "${OPT_ERR}" ]; then
+      echo "${OPT_ERR}" >&2
+   fi
+   echo "Usage: pt-diskstats [OPTIONS] [FILES]" >&2
+   echo "For more information, 'man pt-diskstats' or 'perldoc $0'" >&2
+   exit 1
+}
+
+# Show current help and settings
+print_help() {
+   cat <<-HELP
+   You can control this program by key presses:
+   ------------------- Key ------------------- ---- Current Setting ----
+   A, D, S) Set the group-by mode              ${OPT_g:-(none)}
+   c) Enter an awk regex to match column names ${OPT_c:-(none)}
+   d) Enter an awk regex to match disk names   ${OPT_d:-(none)}
+   i) Set the sample size in seconds           ${OPT_i:-(none)}
+   s) Set the redisplay interval in seconds    ${OPT_s:-(none)}
+   p) Pause the program
+   q) Quit the program
+   ------------------- Press any key to continue -----------------------
+	HELP
+}
+
+# ########################################################################
+# A bunch of snippets of awk code, to be reused in the functions below.
+# ########################################################################
+awk_parse_line="
+      # The entries in each stat line are as follows:
+      #   1	major
+      #   2	minor
+      #   3	device name
+      dev = \$3;
+      #   4	reads
+      reads = \$4;
+      #   5	reads merged
+      reads_merged = \$5;
+      #   6	read sectors
+      read_sectors = \$6;
+      #   7	ms spent reading
+      ms_spent_reading = \$7;
+      #   8	writes
+      writes = \$8;
+      #   9	writes merged
+      writes_merged = \$9;
+      #  10	written sectors
+      written_sectors = \$10;
+      #  11	ms spent writing
+      ms_spent_writing = \$11;
+      #  12	IOs in progress
+      ios_in_progress = \$12;
+      #  13	ms spent doing io
+      ms_spent_doing_io = \$13;
+      #  14	ms spent, weighted by ios_in_progress
+      ms_weighted = \$14;
+"
+
+# NOTE: this one is necessary in order to get the device listing.  NOTE: the
+# 'devs' variable is initialized to 0, but it is pre-incremented, so a) it will
+# reflect the accurate number of devices found (after filtering); b) iteration
+# must be from 1 to devs, not from 0 to devs-1.
+awk_save_sample_to_first="
+      # Keep track of the natural order of the devices, so we can print them out
+      # nicely later; and also keep the first-ever line of output.  This only
+      # executes the first time through.
+      devices[dev]++;
+      if ( devices[dev] == 1 ) {
+         devsort[++devs] = dev;
+         first[dev \"_reads\"]             = reads;
+         first[dev \"_reads_merged\"]      = reads_merged;
+         first[dev \"_read_sectors\"]      = read_sectors;
+         first[dev \"_ms_spent_reading\"]  = ms_spent_reading;
+         first[dev \"_writes\"]            = writes;
+         first[dev \"_writes_merged\"]     = writes_merged;
+         first[dev \"_written_sectors\"]   = written_sectors;
+         first[dev \"_ms_spent_writing\"]  = ms_spent_writing;
+         first[dev \"_ios_in_progress\"]   = ios_in_progress;
+         first[dev \"_ms_spent_doing_io\"] = ms_spent_doing_io;
+         first[dev \"_ms_weighted\"]       = ms_weighted;
+      }
+"
+
+awk_set_iterations_and_timestamp="
+      iterations++;
+      curr_ts = \$2;
+      if ( iterations == 1 ) {
+         first[\"ts\"] = curr_ts;
+      }
+"
+
+awk_save_sample_to_curr="
+      curr[dev \"_reads\"]             = reads;
+      curr[dev \"_reads_merged\"]      = reads_merged;
+      curr[dev \"_read_sectors\"]      = read_sectors;
+      curr[dev \"_ms_spent_reading\"]  = ms_spent_reading;
+      curr[dev \"_writes\"]            = writes;
+      curr[dev \"_writes_merged\"]     = writes_merged;
+      curr[dev \"_written_sectors\"]   = written_sectors;
+      curr[dev \"_ms_spent_writing\"]  = ms_spent_writing;
+      curr[dev \"_ios_in_progress\"]   = ios_in_progress;
+      curr[dev \"_ms_spent_doing_io\"] = ms_spent_doing_io;
+      curr[dev \"_ms_weighted\"]       = ms_weighted;
+"
+
+awk_save_curr_as_prev="
+      curr[\"ts\"] = curr_ts;
+      for (i in curr) {
+         prev[i] = curr[i];
+      }
+      for ( i = 1; i <= devs; i++ ) {
+         dev = devsort[i];
+         prev[dev \"_sum_ios_in_progress\"] += curr[dev \"_ios_in_progress\"];
+      }
+      ts = curr_ts;
+"
+
+awk_find_max_device_name_length="
+      mdev = 6;
+      for ( i = 1; i <= devs; i++ ) {
+         dlen = length(devsort[i]);
+         if ( dlen > mdev ) {
+            mdev = dlen;
+         }
+      }
+"
+
+awk_get_overall_increments="
+         # Get incremental numbers.
+         reads             = curr[dev \"_reads\"]             - first[dev \"_reads\"];
+         reads_merged      = curr[dev \"_reads_merged\"]      - first[dev \"_reads_merged\"];
+         read_sectors      = curr[dev \"_read_sectors\"]      - first[dev \"_read_sectors\"];
+         ms_spent_reading  = curr[dev \"_ms_spent_reading\"]  - first[dev \"_ms_spent_reading\"];
+         writes            = curr[dev \"_writes\"]            - first[dev \"_writes\"];
+         writes_merged     = curr[dev \"_writes_merged\"]     - first[dev \"_writes_merged\"];
+         written_sectors   = curr[dev \"_written_sectors\"]   - first[dev \"_written_sectors\"];
+         ms_spent_writing  = curr[dev \"_ms_spent_writing\"]  - first[dev \"_ms_spent_writing\"];
+         ms_spent_doing_io = curr[dev \"_ms_spent_doing_io\"] - first[dev \"_ms_spent_doing_io\"];
+         ms_weighted       = curr[dev \"_ms_weighted\"]       - first[dev \"_ms_weighted\"];
+         in_progress       = curr[dev \"_ios_in_progress\"];
+         tot_in_progress   = prev[dev \"_sum_ios_in_progress\"];
+"
+
+awk_compute_incremental_stats="
+         # Get incremental numbers.
+         reads             = curr[dev \"_reads\"]             - prev[dev \"_reads\"];
+         reads_merged      = curr[dev \"_reads_merged\"]      - prev[dev \"_reads_merged\"];
+         read_sectors      = curr[dev \"_read_sectors\"]      - prev[dev \"_read_sectors\"];
+         ms_spent_reading  = curr[dev \"_ms_spent_reading\"]  - prev[dev \"_ms_spent_reading\"];
+         writes            = curr[dev \"_writes\"]            - prev[dev \"_writes\"];
+         writes_merged     = curr[dev \"_writes_merged\"]     - prev[dev \"_writes_merged\"];
+         written_sectors   = curr[dev \"_written_sectors\"]   - prev[dev \"_written_sectors\"];
+         ms_spent_writing  = curr[dev \"_ms_spent_writing\"]  - prev[dev \"_ms_spent_writing\"];
+         ms_spent_doing_io = curr[dev \"_ms_spent_doing_io\"] - prev[dev \"_ms_spent_doing_io\"];
+         ms_weighted       = curr[dev \"_ms_weighted\"]       - prev[dev \"_ms_weighted\"];
+         in_progress       = curr[dev \"_ios_in_progress\"];
+         tot_in_progress   = curr[dev \"_sum_ios_in_progress\"];
+"
+
+awk_reset_accumulators="
+         t_reads             = 0;
+         t_reads_merged      = 0;
+         t_read_sectors      = 0;
+         t_ms_spent_reading  = 0;
+         t_writes            = 0;
+         t_writes_merged     = 0;
+         t_written_sectors   = 0;
+         t_ms_spent_writing  = 0;
+         t_ms_spent_doing_io = 0;
+         t_ms_weighted       = 0;
+         t_in_progress       = 0;
+"
+
+awk_copy_variables_to_accumulators="
+         t_reads             = reads;
+         t_reads_merged      = reads_merged;
+         t_read_sectors      = read_sectors;
+         t_ms_spent_reading  = ms_spent_reading;
+         t_writes            = writes;
+         t_writes_merged     = writes_merged;
+         t_written_sectors   = written_sectors;
+         t_ms_spent_writing  = ms_spent_writing;
+         t_ms_spent_doing_io = ms_spent_doing_io;
+         t_ms_weighted       = ms_weighted;
+"
+
+awk_compute_read_write_stats="
+         # Compute the per-second stats for reads, writes, and overall.
+         reads_sec        = t_reads / elapsed;
+         read_requests    = t_reads_merged + t_reads;
+         mbytes_read_sec  = (t_read_sectors * 512 / 1024) / elapsed / 1024;
+         read_conc        = t_ms_spent_reading / elapsed / 1000 / devs_in_group;
+         if ( t_reads > 0 ) {
+            read_rtime    = t_ms_spent_reading / t_reads;
+            avg_read_sz   = (t_read_sectors * 512 / 1024) / t_reads;
+         }
+         else {
+            read_rtime    = 0;
+            avg_read_sz   = 0;
+         }
+         if ( read_requests > 0 ) {
+            read_merge_pct = 100 * t_reads_merged / read_requests;
+         }
+         else {
+            read_merge_pct = 0;
+         }
+         writes_sec          = t_writes / elapsed;
+         write_requests      = t_writes_merged + t_writes;
+         mbytes_written_sec  = (t_written_sectors * 512 / 1024) / elapsed / 1024;
+         write_conc          = t_ms_spent_writing / elapsed / 1000 / devs_in_group;
+         if ( t_writes > 0 ) {
+            write_rtime      = t_ms_spent_writing / t_writes;
+            avg_write_sz     =  (t_written_sectors * 512 / 1024) / t_writes;
+         }
+         else {
+            write_rtime      = 0;
+            avg_write_sz     = 0;
+         }
+         if ( write_requests > 0 ) {
+            write_merge_pct = 100 * t_writes_merged / write_requests;
+         }
+         else {
+            write_merge_pct = 0;
+         }
+         # Compute the numbers for reads and writes together, the things for
+         # which we do not have separate statistics.
+         # Busy is what iostat calls %util.  This is the percent of
+         # wall-clock time during which the device has I/O happening.
+         busy = 100 * t_ms_spent_doing_io / (1000 * elapsed * devs_in_group);
+         if ( first[\"ts\"] > 0 ) {
+            line_ts = sprintf(\"%5.1f\", curr_ts - first[\"ts\"]);
+         }
+         else {
+            line_ts = sprintf(\"%5.1f\", 0);
+         }
+"
+
+# Returns true if the column should be displayed.
+col_ok() {
+   result=$(echo $1 | awk "/${OPT_c:-.}/{print 0}")
+   return ${result:-1}
+}
+
+# Based on which columns match $OPT_c, designs a header and line printf format,
+# and a printf statement to print the lines.
+design_print_formats() {
+   # For each device, print out the following: The timestamp offset and
+   # device name.  Must embed the mdev Awk variable here, because the device
+   # name is variable-length.
+   fmt="\"%5s %-\" mdev \"s";
+   hdr="${fmt}";
+   vars="";
+   # The per-second reads, read size (kB), per-second MB read, read merged pct, read
+   # concurrency, and average response time for each read.
+   if col_ok rd_s    ; then fmt="${fmt} %7.1f";   hdr="${hdr}    rd_s";  vars="${vars}, reads_sec"; fi
+   if col_ok rd_avkb ; then fmt="${fmt} %7.1f";   hdr="${hdr} rd_avkb";  vars="${vars}, avg_read_sz"; fi
+   if col_ok rd_mb_s ; then fmt="${fmt} %7.1f";   hdr="${hdr} rd_mb_s";  vars="${vars}, mbytes_read_sec"; fi
+   if col_ok rd_mrg  ; then fmt="${fmt} %5.0f%%"; hdr="${hdr} rd_mrg";   vars="${vars}, read_merge_pct"; fi
+   if col_ok rd_cnc  ; then fmt="${fmt} %6.1f";   hdr="${hdr} rd_cnc";   vars="${vars}, read_conc"; fi
+   if col_ok rd_rt   ; then fmt="${fmt} %7.1f";   hdr="${hdr}   rd_rt";  vars="${vars}, read_rtime"; fi
+   # The same for writes.
+   if col_ok wr_s    ; then fmt="${fmt} %7.1f";   hdr="${hdr}    wr_s";  vars="${vars}, writes_sec"; fi
+   if col_ok wr_avkb ; then fmt="${fmt} %7.1f";   hdr="${hdr} wr_avkb";  vars="${vars}, avg_write_sz"; fi
+   if col_ok wr_mb_s ; then fmt="${fmt} %7.1f";   hdr="${hdr} wr_mb_s";  vars="${vars}, mbytes_written_sec"; fi
+   if col_ok wr_mrg  ; then fmt="${fmt} %5.0f%%"; hdr="${hdr} wr_mrg";   vars="${vars}, write_merge_pct"; fi
+   if col_ok wr_cnc  ; then fmt="${fmt} %6.1f";   hdr="${hdr} wr_cnc";   vars="${vars}, write_conc"; fi
+   if col_ok wr_rt   ; then fmt="${fmt} %7.1f";   hdr="${hdr}   wr_rt";  vars="${vars}, write_rtime"; fi
+   # Then busy%, in-progress, and line-ending.
+   if col_ok busy    ; then fmt="${fmt} %3.0f%%"; hdr="${hdr} busy";     vars="${vars}, busy"; fi
+   if col_ok in_prg  ; then fmt="${fmt} %6d";     hdr="${hdr} in_prg";   vars="${vars}, t_in_progress"; fi
+   fmt="${fmt}\n\"";
+   hdr="${hdr}\n\"";
+   awk_print_header="printf(${hdr}, \"#ts\", \"device\");";
+   awk_print_line="printf(${fmt}, line_ts, dev${vars});";
+}
+
+# Prints out one line for each disk, summing over the interval from first to
+# last sample.
+group_by_disk () {
+   [ -z "${awk_print_line}" ] && design_print_formats
+   awk "
+   BEGIN {
+      devs    = 0;
+      devname = \"${OPT_d}\";
+   }
+   \$1 !~ /TS/ && \$3 ~ devname {
+      ${awk_parse_line}
+      ${awk_save_sample_to_first}
+      ${awk_save_sample_to_curr}
+   }
+   \$1 ~ /TS/ && NR > 1 {
+      ${awk_set_iterations_and_timestamp}
+   }
+   END {
+      if ( iterations < 2 ) {
+         exit;
+      }
+      ${awk_find_max_device_name_length}
+      ${awk_print_header}
+      elapsed = curr_ts - first[\"ts\"];
+      for ( i = 1; i <= devs; i++ ) {
+         dev               = devsort[i];
+         ${awk_get_overall_increments}
+         ${awk_copy_variables_to_accumulators}
+         # The in-progress operations needs to be averaged.
+         t_in_progress     = (tot_in_progress / (iterations - 1));
+         devs_in_group     = 1;
+         ${awk_compute_read_write_stats}
+         line_ts=\"{\" (iterations - 1) \"}\";
+         ${awk_print_line}
+      }
+   } " "$@"
+}
+
+# Prints out one line for each sample, summing up all disks together.
+group_by_sample() {
+   [ -z "${awk_print_line}" ] && design_print_formats
+   awk "
+   BEGIN {
+      devs    = 0;
+      devname = \"${OPT_d}\";
+   }
+   \$1 !~ /TS/ && \$3 ~ devname {
+      ${awk_parse_line}
+      ${awk_save_sample_to_first}
+      ${awk_save_sample_to_curr}
+   }
+   \$1 ~ /TS/ && NR > 1 {
+      ${awk_set_iterations_and_timestamp}
+      printed_a_line = 0;
+      if ( iterations == 1 ) {
+         # The second time we see a timestamp we are ready to print a header.
+         mdev    = 6;
+         if ( devs == 1 ) {
+            ${awk_find_max_device_name_length}
+         }
+         ${awk_print_header}
+      }
+      elapsed = curr_ts - ts;
+      if ( ts > 0 && elapsed > ${OPT_i:-0} ) {
+         # Reset the t_ variables to zero.
+         ${awk_reset_accumulators}
+         for ( i = 1; i <= devs; i++ ) {
+            dev               = devsort[i];
+            # Save the incrementals into named variables.
+            ${awk_compute_incremental_stats}
+            # Add the increments to the accumulators.
+            t_reads             += reads;
+            t_reads_merged      += reads_merged;
+            t_read_sectors      += read_sectors;
+            t_ms_spent_reading  += ms_spent_reading;
+            t_writes            += writes;
+            t_writes_merged     += writes_merged;
+            t_written_sectors   += written_sectors;
+            t_ms_spent_writing  += ms_spent_writing;
+            t_ms_spent_doing_io += ms_spent_doing_io;
+            t_ms_weighted       += ms_weighted;
+            t_in_progress       += in_progress;
+         }
+         devs_in_group = devs;
+         ${awk_compute_read_write_stats}
+         if ( devs > 1 ) {
+            dev     = \"{\" devs \"}\";
+         }
+         else {
+            dev     = devsort[1];
+         }
+         ${awk_print_line}
+         printed_a_line = 1;
+      }
+      if ( iterations == 1 || printed_a_line == 1 ) {
+         # We don't save curr as prev on every sample we see, because if the
+         # interval of printing is more than one sample, we want prev to be
+         # the first sample in the interval, not the previous sample seen.
+         ${awk_save_curr_as_prev}
+      }
+   } " "$@"
+}
+
+# Prints out one line for each sample, for each disk that matches the pattern.
+# TODO: omits the first sample.
+group_by_all () {
+   [ -z "${awk_print_line}" ] && design_print_formats
+   cat > /tmp/percona-toolkit.awk <<EOF
+   BEGIN {
+      devs    = 0;
+      devname = "${OPT_d}";
+   }
+   \$1 !~ /TS/ && \$3 ~ devname {
+      ${awk_parse_line}
+      ${awk_save_sample_to_first}
+      ${awk_save_sample_to_curr}
+   }
+   \$1 ~ /TS/ && NR > 1 {
+      ${awk_set_iterations_and_timestamp}
+      ${awk_find_max_device_name_length}
+      if ( iterations > 1 ) {
+         if ( devs > 1 || iterations == 2 ) {
+            ${awk_print_header}
+         }
+         ${awk_reset_accumulators}
+         elapsed = curr_ts - prev["ts"];
+         for ( i = 1; i <= devs; i++ ) {
+            dev               = devsort[i];
+            ${awk_compute_incremental_stats}
+            ${awk_copy_variables_to_accumulators}
+            t_in_progress     = curr[dev "_ios_in_progress"];
+            devs_in_group     = 1;
+            ${awk_compute_read_write_stats}
+            ${awk_print_line}
+         }
+      }
+      ${awk_save_curr_as_prev}
+   }
+EOF
+   awk -f /tmp/percona-toolkit.awk "$@"
+}
+
+
+# The main code that runs by default.  Arguments are the command-line options.
+main() {
+
+   # Get command-line options.
+   for o; do
+      case "${o}" in
+         --)
+            shift; break;
+            ;;
+         --help)
+            usage;
+            ;;
+         -c)
+            shift; OPT_c="${1}"; shift;
+            ;;
+         -d)
+            shift; OPT_d="${1}"; shift;
+            ;;
+         -g)
+            shift; OPT_g="${1}"; shift;
+            case "${OPT_g}" in
+               disk)
+                  ;;
+               sample)
+                  ;;
+               all)
+                  ;;
+               *)
+                  OPT_ERR="Bad option value";
+                  usage
+                  ;;
+            esac
+            ;;
+         -i)
+            shift; OPT_i="${1}"; shift;
+            ;;
+         -k)
+            shift; OPT_k="${1}"; shift;
+            ;;
+         -n)
+            shift; OPT_n="${1}"; shift;
+            ;;
+         -s)
+            shift; OPT_s="${1}"; shift;
+            ;;
+         -*)
+            OPT_ERR="Unknown option ${o}."
+            usage
+            ;;
+      esac
+   done
+   OPT_i="${OPT_i:-}"; export OPT_i;
+   OPT_k="${OPT_k:-/tmp/diskstats-samples}"; export OPT_k;
+   OPT_n="${OPT_n:-}"; export OPT_n;
+   OPT_c="${OPT_c:-cnc|rt|mb|busy|prg}"; export OPT_c;
+   OPT_d="${OPT_d:-}"; export OPT_d;
+   OPT_s="${OPT_s:-1}"; export OPT_s;
+   OPT_g="${OPT_g:-disk}"; export OPT_g;
+
+   # We need to "do the right thing."  The user might invoke any of several
+   # ways; we get samples every now and then unless there is data on STDIN or a
+   # file to read.
+   if [ $# -gt 0 -o -p 1 ]; then
+      READ_FILE=1
+   fi
+
+   # If we are interactive and there's no file, we gather stats to play with.
+   if [ -z "${READ_FILE}" ]; then
+      PARENT=$$
+      loops=1
+      while true; do
+         cat /proc/diskstats >> "${OPT_k}"
+         date +"TS %s.%N %F %T" >> "${OPT_k}"
+         if ! ps -p ${PARENT} >/dev/null 2>&1 ; then
+            # The parent process doesn't exist anymore -- quit.
+            finished="yes"
+         elif [ "${OPT_n}" ]; then
+            if [ "${loops}" -gt "${OPT_n}" ] ; then
+               finished="yes"
+            fi
+         fi
+         if [ "${finished}" ]; then
+            if [ "${OPT_k}" = "/tmp/diskstats-samples" ]; then
+               rm -f /tmp/diskstats-samples
+            fi
+            break;
+         fi
+         sleep ${OPT_s}
+         loops=$(($loops + 1))
+      done &
+
+      # Sleep until the loop has gathered 2 samples.
+      while [ "$(grep -c TS "${OPT_k}")" -lt "2" ]; do
+         sleep .5
+      done
+   fi
+
+   if [ -z "${READ_FILE}" ]; then
+      group_by_${OPT_g} "${OPT_k}"
+   else
+      group_by_${OPT_g} "$@"
+   fi
+
+   # Don't be "interactive" unless the user actually has control.
+   if [ ! -t 0 -o ! -t 1 ]; then
+      exit;
+   fi
+
+   # We use this in iterative-loop mode
+   if [ -z "${READ_FILE}" ]; then
+      TAIL_LINES=$(cat /proc/diskstats | wc -l)
+   fi
+
+   while [ -z "${OPT_n}" -o "${i:-0}" -le "${OPT_n:-0}" ]; do
+      i=$(( ${i:-1} + 1 ))
+
+      # Re-decide the timeout every loop
+      if [ -z "${READ_FILE}" ]; then
+         TIMEOUT="-t ${OPT_s}"
+      fi
+      cmd="" # Must reset, some bash won't clear it after a read times out.
+      read $TIMEOUT -n 1 -s cmd junk
+      case "${cmd}" in
+         A)
+            OPT_g="all"
+            FIRST_LOOP="1"
+            ;;
+         d)
+            read -p "Enter a disk/device pattern: " OPT_d
+            FIRST_LOOP="1"
+            ;;
+         D)
+            OPT_g="disk"
+            FIRST_LOOP="1"
+            ;;
+         c)
+            read -p "Enter a column pattern: " OPT_c
+            FIRST_LOOP="1"
+            awk_print_line="" # Make it re-compute the column headers
+            ;;
+         i)
+            read -p "Enter a sample size: " OPT_i
+            FIRST_LOOP="1"
+            ;;
+         p)
+            read -n 1 -p "Paused - press any key to continue"
+            ;;
+         q)
+            break
+            ;;
+         s)
+            read -p "Enter a redisplay interval: " OPT_s
+            FIRST_LOOP="1"
+            ;;
+         S)
+            OPT_g="sample"
+            FIRST_LOOP="1"
+            ;;
+         '?')
+            print_help; read -n1 -s
+            ;;
+      esac
+
+      if [ -z "${READ_FILE}" ]; then
+         if [ -z "${FIRST_LOOP}" ]; then
+            # We only print out what's new since last printout
+            N=$(($TAIL_LINES * 2 + 2)) # Extra is for TS lines
+            tail -n $N "${OPT_k}" 2>/dev/null | group_by_${OPT_g} | tail -n +2
+         else
+            group_by_${OPT_g} "${OPT_k}"
+         fi
+         FIRST_LOOP=""
+      else
+         group_by_${OPT_g} "$@"
+      fi
+
+   done
+
+   if [ "${OPT_k}" = "/tmp/diskstats-samples" ]; then
+      rm -f "/tmp/diskstats-samples"
+   fi
+   rm -f /tmp/percona-toolkit.awk
+}
+
+# Execute the program if it was not included from another file.  This makes it
+# possible to include without executing, and thus test.
+if [ "$(basename "$0")" = "pt-diskstats" ] || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+    main "$@"
+fi
+
+# ############################################################################
+# Documentation
+# ############################################################################
+:<<'DOCUMENTATION'
+=pod
+
+=head1 NAME
+
+pt-diskstats - Aggregate and summarize F</proc/diskstats>.
+
+=head1 SYNOPSIS
+
+Usage: pt-diskstats [OPTIONS] [FILES]
+
+pt-diskstats reads F</proc/diskstats> periodically, or files with the
+contents of F</proc/diskstats>, aggregates the data, and prints it nicely.
+
+=head1 RISKS
+
+The following section is included to inform users about the potential risks,
+whether known or unknown, of using this tool.  The two main categories of risks
+are those created by the nature of the tool (e.g. read-only tools vs. read-write
+tools) and those created by bugs.
+
+pt-diskstats is a read-only tool.  It should be very low-risk.
+
+At the time of this release, we know of no bugs that could cause serious harm
+to users.
+
+The authoritative source for updated information is always the online issue
+tracking system.  Issues that affect this tool will be marked as such.  You can
+see a list of such issues at the following URL:
+L<http://www.percona.com/bugs/pt-diskstats>.
+
+See also L<"BUGS"> for more information on filing bugs and getting help.
+
+=head1 DESCRIPTION
+
+pt-diskstats tool is similar to iostat, but has some advantages. It separates
+reads and writes, for example, and computes some things that iostat does in
+either incorrect or confusing ways.  It is also menu-driven and interactive
+with several different ways to aggregate the data, and integrates well with
+the L<pt-collect> tool. These properties make it very convenient for quickly
+drilling down into I/O performance at the desired level of granularity.
+
+This program works in two main modes. One way is to process a file with saved
+disk statistics, which you specify on the command line.  The other way is to
+start a background process gathering samples at intervals and saving them into
+a file, and process this file in the foreground.  In both cases, the tool is
+interactively controlled by keystrokes, so you can redisplay and slice the
+data flexibly and easily.  If the tool is not attached to a terminal, it
+doesn't run interactively; it just processes and prints its output, then exits.
+Otherwise it loops until you exit with the 'q' key.
+
+If you press the '?' key, you will bring up the interactive help menu that
+shows which keys control the program.
+
+Files should have this format:
+
+   <contents of /proc/diskstats>
+   TS <timestamp>
+   <contents of /proc/diskstats>
+   ... et cetera
+   TS <timestamp>  <-- must end with a TS line.
+
+See L<http://aspersa.googlecode.com/svn/html/diskstats.html> for a detailed
+example of using the tool.
+
+=head1 OUTPUT
+
+The columns are as follows:
+
+=over
+
+=item #ts
+
+The number of seconds of samples in the line.  If there is only one, then
+the timestamp itself is shown, without the {curly braces}.
+
+=item device
+
+The device name.  If there is more than one device, then instead the number
+of devices aggregated into the line is shown, in {curly braces}.
+
+=item rd_mb_s
+
+The number of megabytes read per second, average, during the sampled interval.
+
+=item rd_cnc
+
+The average concurrency of the read operations, as computed by Little's Law
+(a.k.a. queueing theory).
+
+=item rd_rt
+
+The average response time of the read operations, in milliseconds.
+
+=item wr_mb_s
+
+Megabytes written per second, average.
+
+=item wr_cnc
+
+Write concurrency, similar to read concurrency.
+
+=item wr_rt
+
+Write response time, similar to read response time.
+
+=item busy
+
+The fraction of time that the device had at least one request in progress;
+this is what iostat calls %util (which is a misleading name).
+
+=item in_prg
+
+The number of requests that were in progress.  Unlike the read and write
+concurrencies, which are averages that are generated from reliable numbers,
+this number is an instantaneous sample, and you can see that it might
+represent a spike of requests, rather than the true long-term average.
+
+=back
+
+In addition to the above columns, there are a few columns that are hidden by
+default. If you press the 'c' key, and then press Enter, you will blank out
+the regular expression pattern that selects columns to display, and you will
+then see the extra columns:
+
+=over
+
+=item rd_s
+
+The number of reads per second.
+
+=item rd_avkb
+
+The average size of the reads, in kilobytes.
+
+=item rd_mrg
+
+The percentage of read requests that were merged together in the disk
+scheduler before reaching the device.
+
+=item wr_s, wr_avgkb, and wr_mrg
+
+These are analogous to their C<rd_*> cousins.
+
+=back
+
+=head1 OPTIONS
+
+Options must precede files on the command line.
+
+=over
+
+=item -c COLS
+
+Awk regex of which columns to include (default cnc|rt|mb|busy|prg).
+
+=item -d DEVICES
+
+Awk regex of which devices to include.
+
+=item -g GROUPBY
+
+Group-by mode (default disk); specify one of the following:
+
+   disk   - Each line of output shows one disk device.
+   sample - Each line of output shows one sample of statistics.
+   all    - Each line of output shows one sample and one disk device.
+
+=item -i INTERVAL
+
+In -g sample mode, include INTERVAL seconds per sample.
+
+=item -k KEEPFILE
+
+File to save diskstats samples in (default /tmp/diskstats-samples).
+If a non-default filename is used, it will be saved for later analysis.
+
+=item -n SAMPLES
+
+When in interactive mode, stop after N samples.
+
+=item -s INTERVAL
+
+Sample /proc/diskstats every N seconds (default 1).
+
+=back
+
+=head1 ENVIRONMENT
+
+This tool does not use any environment variables.
+
+=head1 SYSTEM REQUIREMENTS
+
+This tool requires Bash v3 or newer and the F</proc> filesystem unless
+reading from files.
+
+=head1 BUGS
+
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-diskstats>.
+
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Baron Schwartz
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools developed by Percona for MySQL support and consulting.  Percona Toolkit
+was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
+projects were created by Baron Schwartz and developed primarily by him and
+Daniel Nichter, both of whom are employed by Percona.  Visit
+L<http://www.percona.com/software/> for more software developed by Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+Feedback and improvements are welcome.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 VERSION
+
+pt-diskstats 1.0.1
+
+=cut
+
+DOCUMENTATION

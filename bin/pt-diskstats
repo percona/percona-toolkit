@@ -1,622 +1,3211 @@
-#!/usr/bin/env bash
+#!/usr/bin/env perl
 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
-usage() {
-   if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}" >&2
-   fi
-   echo "Usage: pt-diskstats [OPTIONS] [FILES]" >&2
-   echo "For more information, 'man pt-diskstats' or 'perldoc $0'" >&2
-   exit 1
+use strict;
+use warnings FATAL => 'all';
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+# %INC magic to allow us to require/use these even within the big file.
+BEGIN {
+   $INC{$_} = __FILE__ for map {
+         (my $t = $_ . ".pm") =~ s!::!/!g; $t
+      } qw( OptionParser ReadKeyMini Diskstats DiskstatsGroupByAll DiskstatsGroupByDisk DiskstatsGroupBySample DiskstatsMenu pt_diskstats );
 }
 
-# Show current help and settings
-print_help() {
-   cat <<-HELP
-   You can control this program by key presses:
-   ------------------- Key ------------------- ---- Current Setting ----
-   A, D, S) Set the group-by mode              ${OPT_g:-(none)}
-   c) Enter an awk regex to match column names ${OPT_c:-(none)}
-   d) Enter an awk regex to match disk names   ${OPT_d:-(none)}
-   i) Set the sample size in seconds           ${OPT_i:-(none)}
-   s) Set the redisplay interval in seconds    ${OPT_s:-(none)}
-   p) Pause the program
-   q) Quit the program
-   ------------------- Press any key to continue -----------------------
-	HELP
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# OptionParser package
+# ###########################################################################
+{
+# Package: OptionParser
+# OptionParser parses command line options from a tool's POD.  By default
+# it parses a description and usage from the POD's SYNOPSIS section and
+# command line options from the OPTIONS section.
+#
+# The SYNOPSIS section should look like,
+# (start code)
+#   =head1 SYNOPSIS
+#
+#   Usage: mk-archiver [OPTION...] --source DSN --where WHERE
+#
+#   mk-archiver nibbles records from a MySQL table.  The --source and --dest
+#   arguments use DSN syntax; if COPY is yes, --dest defaults to the key's value
+#   from --source.
+#
+#   Examples:
+#   ...
+# (end code)
+# The key, required parts are the "Usage:" line and the following description
+# paragraph.
+#
+# The OPTIONS section shoud look like,
+# (start code)
+#   =head1 OPTIONS
+#
+#   Optional rules, one per line.
+#
+#   =over
+#
+#   =item --analyze
+#
+#   type: string
+#
+#   Run ANALYZE TABLE afterwards on L<"--source"> and/or L<"--dest">.
+#   ect.
+# (end code)
+# The option's full name is given as the "=item".  The next, optional para
+# is the option's attributes.  And the next, required para is the option's
+# description (the first period-terminated sentence).
+package OptionParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use List::Util qw(max);
+use Getopt::Long;
+
+my $POD_link_re = '[LC]<"?([^">]+)"?>';
+
+# Sub: new
+#
+# Parameters:
+#   %args - Arguments
+#
+# Optional Arguments:
+#   file             - Filename to parse POD stuff from.  Several subs take
+#                      a $file param mostly for testing purposes.  This arg
+#                      provides a "global" default for even easier testing.
+#   description      - Tool's description (overrides description from SYNOPSIS).
+#   usage            - Tool's usage line (overrides Usage from SYNOPSIS).
+#   head1            - head1 heading under which options are listed
+#   skip_rules       - Don't read paras before options as rules
+#   item             - Regex pattern to match options after =item
+#   attributes       - Hashref of allowed option attributes
+#   parse_attributes - Coderef for parsing option attributes
+#
+# Returns:
+#   OptionParser object
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw();
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   my ($program_name) = $PROGRAM_NAME =~ m/([.A-Za-z-]+)$/;
+   $program_name ||= $PROGRAM_NAME;
+   my $home = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+
+   # Default attributes.
+   my %attributes = (
+      'type'       => 1,
+      'short form' => 1,
+      'group'      => 1,
+      'default'    => 1,
+      'cumulative' => 1,
+      'negatable'  => 1,
+   );
+
+   my $self = {
+      head1             => 'OPTIONS',        # These args are used internally
+      skip_rules        => 0,                # to instantiate another Option-
+      item              => '--(.*)',         # Parser obj that parses the
+      attributes        => \%attributes,     # DSN OPTIONS section.  Tools
+      parse_attributes  => \&_parse_attribs, # don't tinker with these args.
+
+      # override the above optional args' default
+      %args,
+
+      # private, not configurable args
+      strict            => 1,  # disabled by a special rule
+      program_name      => $program_name,
+      opts              => {},
+      got_opts          => 0,
+      short_opts        => {},
+      defaults          => {},
+      groups            => {},
+      allowed_groups    => {},
+      errors            => [],
+      rules             => [],  # desc of rules for --help
+      mutex             => [],  # rule: opts are mutually exclusive
+      atleast1          => [],  # rule: at least one opt is required
+      disables          => {},  # rule: opt disables other opts 
+      defaults_to       => {},  # rule: opt defaults to value of other opt
+      DSNParser         => undef,
+      default_files     => [
+         "/etc/percona-toolkit/percona-toolkit.conf",
+         "/etc/percona-toolkit/$program_name.conf",
+         "$home/.percona-toolkit.conf",
+         "$home/.$program_name.conf",
+      ],
+      types             => {
+         string => 's', # standard Getopt type
+         int    => 'i', # standard Getopt type
+         float  => 'f', # standard Getopt type
+         Hash   => 'H', # hash, formed from a comma-separated list
+         hash   => 'h', # hash as above, but only if a value is given
+         Array  => 'A', # array, similar to Hash
+         array  => 'a', # array, similar to hash
+         DSN    => 'd', # DSN
+         size   => 'z', # size with kMG suffix (powers of 2^10)
+         time   => 'm', # time, with an optional suffix of s/h/m/d
+      },
+   };
+
+   return bless $self, $class;
 }
 
-# ########################################################################
-# A bunch of snippets of awk code, to be reused in the functions below.
-# ########################################################################
-awk_parse_line="
-      # The entries in each stat line are as follows:
-      #   1	major
-      #   2	minor
-      #   3	device name
-      dev = \$3;
-      #   4	reads
-      reads = \$4;
-      #   5	reads merged
-      reads_merged = \$5;
-      #   6	read sectors
-      read_sectors = \$6;
-      #   7	ms spent reading
-      ms_spent_reading = \$7;
-      #   8	writes
-      writes = \$8;
-      #   9	writes merged
-      writes_merged = \$9;
-      #  10	written sectors
-      written_sectors = \$10;
-      #  11	ms spent writing
-      ms_spent_writing = \$11;
-      #  12	IOs in progress
-      ios_in_progress = \$12;
-      #  13	ms spent doing io
-      ms_spent_doing_io = \$13;
-      #  14	ms spent, weighted by ios_in_progress
-      ms_weighted = \$14;
-"
+# Sub: get_specs
+#   Read and parse options from the OPTIONS section of the POD.  This sub
+#   should be called first, then <get_opts()>.  <_pod_to_specs()>
+#   and <_parse_specs()> do most of the work.  If the POD has a
+#   DSN OPTIONS section then a <DSNParser> object is created which
+#   can be accessed with <DSNParser()>.
+#
+# Parameters:
+#   $file - File name to read, __FILE__ if none given
+sub get_specs {
+   my ( $self, $file ) = @_;
+   $file ||= $self->{file} || __FILE__;
+   my @specs = $self->_pod_to_specs($file);
+   $self->_parse_specs(@specs);
 
-# NOTE: this one is necessary in order to get the device listing.  NOTE: the
-# 'devs' variable is initialized to 0, but it is pre-incremented, so a) it will
-# reflect the accurate number of devices found (after filtering); b) iteration
-# must be from 1 to devs, not from 0 to devs-1.
-awk_save_sample_to_first="
-      # Keep track of the natural order of the devices, so we can print them out
-      # nicely later; and also keep the first-ever line of output.  This only
-      # executes the first time through.
-      devices[dev]++;
-      if ( devices[dev] == 1 ) {
-         devsort[++devs] = dev;
-         first[dev \"_reads\"]             = reads;
-         first[dev \"_reads_merged\"]      = reads_merged;
-         first[dev \"_read_sectors\"]      = read_sectors;
-         first[dev \"_ms_spent_reading\"]  = ms_spent_reading;
-         first[dev \"_writes\"]            = writes;
-         first[dev \"_writes_merged\"]     = writes_merged;
-         first[dev \"_written_sectors\"]   = written_sectors;
-         first[dev \"_ms_spent_writing\"]  = ms_spent_writing;
-         first[dev \"_ios_in_progress\"]   = ios_in_progress;
-         first[dev \"_ms_spent_doing_io\"] = ms_spent_doing_io;
-         first[dev \"_ms_weighted\"]       = ms_weighted;
-      }
-"
+   # Check file for DSN OPTIONS section.  If present, parse
+   # it and create a DSNParser obj.
+   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
+   my $contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   if ( $contents =~ m/^=head1 DSN OPTIONS/m ) {
+      MKDEBUG && _d('Parsing DSN OPTIONS');
+      my $dsn_attribs = {
+         dsn  => 1,
+         copy => 1,
+      };
+      my $parse_dsn_attribs = sub {
+         my ( $self, $option, $attribs ) = @_;
+         map {
+            my $val = $attribs->{$_};
+            if ( $val ) {
+               $val    = $val eq 'yes' ? 1
+                       : $val eq 'no'  ? 0
+                       :                 $val;
+               $attribs->{$_} = $val;
+            }
+         } keys %$attribs;
+         return {
+            key => $option,
+            %$attribs,
+         };
+      };
+      my $dsn_o = new OptionParser(
+         description       => 'DSN OPTIONS',
+         head1             => 'DSN OPTIONS',
+         dsn               => 0,         # XXX don't infinitely recurse!
+         item              => '\* (.)',  # key opts are a single character
+         skip_rules        => 1,         # no rules before opts
+         attributes        => $dsn_attribs,
+         parse_attributes  => $parse_dsn_attribs,
+      );
+      my @dsn_opts = map {
+         my $opts = {
+            key  => $_->{spec}->{key},
+            dsn  => $_->{spec}->{dsn},
+            copy => $_->{spec}->{copy},
+            desc => $_->{desc},
+         };
+         $opts;
+      } $dsn_o->_pod_to_specs($file);
+      $self->{DSNParser} = DSNParser->new(opts => \@dsn_opts);
+   }
 
-awk_set_iterations_and_timestamp="
-      iterations++;
-      curr_ts = \$2;
-      if ( iterations == 1 ) {
-         first[\"ts\"] = curr_ts;
-      }
-"
+   if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
+      $self->{version} = $1;
+      MKDEBUG && _d($self->{version});
+   }
 
-awk_save_sample_to_curr="
-      curr[dev \"_reads\"]             = reads;
-      curr[dev \"_reads_merged\"]      = reads_merged;
-      curr[dev \"_read_sectors\"]      = read_sectors;
-      curr[dev \"_ms_spent_reading\"]  = ms_spent_reading;
-      curr[dev \"_writes\"]            = writes;
-      curr[dev \"_writes_merged\"]     = writes_merged;
-      curr[dev \"_written_sectors\"]   = written_sectors;
-      curr[dev \"_ms_spent_writing\"]  = ms_spent_writing;
-      curr[dev \"_ios_in_progress\"]   = ios_in_progress;
-      curr[dev \"_ms_spent_doing_io\"] = ms_spent_doing_io;
-      curr[dev \"_ms_weighted\"]       = ms_weighted;
-"
-
-awk_save_curr_as_prev="
-      curr[\"ts\"] = curr_ts;
-      for (i in curr) {
-         prev[i] = curr[i];
-      }
-      for ( i = 1; i <= devs; i++ ) {
-         dev = devsort[i];
-         prev[dev \"_sum_ios_in_progress\"] += curr[dev \"_ios_in_progress\"];
-      }
-      ts = curr_ts;
-"
-
-awk_find_max_device_name_length="
-      mdev = 6;
-      for ( i = 1; i <= devs; i++ ) {
-         dlen = length(devsort[i]);
-         if ( dlen > mdev ) {
-            mdev = dlen;
-         }
-      }
-"
-
-awk_get_overall_increments="
-         # Get incremental numbers.
-         reads             = curr[dev \"_reads\"]             - first[dev \"_reads\"];
-         reads_merged      = curr[dev \"_reads_merged\"]      - first[dev \"_reads_merged\"];
-         read_sectors      = curr[dev \"_read_sectors\"]      - first[dev \"_read_sectors\"];
-         ms_spent_reading  = curr[dev \"_ms_spent_reading\"]  - first[dev \"_ms_spent_reading\"];
-         writes            = curr[dev \"_writes\"]            - first[dev \"_writes\"];
-         writes_merged     = curr[dev \"_writes_merged\"]     - first[dev \"_writes_merged\"];
-         written_sectors   = curr[dev \"_written_sectors\"]   - first[dev \"_written_sectors\"];
-         ms_spent_writing  = curr[dev \"_ms_spent_writing\"]  - first[dev \"_ms_spent_writing\"];
-         ms_spent_doing_io = curr[dev \"_ms_spent_doing_io\"] - first[dev \"_ms_spent_doing_io\"];
-         ms_weighted       = curr[dev \"_ms_weighted\"]       - first[dev \"_ms_weighted\"];
-         in_progress       = curr[dev \"_ios_in_progress\"];
-         tot_in_progress   = prev[dev \"_sum_ios_in_progress\"];
-"
-
-awk_compute_incremental_stats="
-         # Get incremental numbers.
-         reads             = curr[dev \"_reads\"]             - prev[dev \"_reads\"];
-         reads_merged      = curr[dev \"_reads_merged\"]      - prev[dev \"_reads_merged\"];
-         read_sectors      = curr[dev \"_read_sectors\"]      - prev[dev \"_read_sectors\"];
-         ms_spent_reading  = curr[dev \"_ms_spent_reading\"]  - prev[dev \"_ms_spent_reading\"];
-         writes            = curr[dev \"_writes\"]            - prev[dev \"_writes\"];
-         writes_merged     = curr[dev \"_writes_merged\"]     - prev[dev \"_writes_merged\"];
-         written_sectors   = curr[dev \"_written_sectors\"]   - prev[dev \"_written_sectors\"];
-         ms_spent_writing  = curr[dev \"_ms_spent_writing\"]  - prev[dev \"_ms_spent_writing\"];
-         ms_spent_doing_io = curr[dev \"_ms_spent_doing_io\"] - prev[dev \"_ms_spent_doing_io\"];
-         ms_weighted       = curr[dev \"_ms_weighted\"]       - prev[dev \"_ms_weighted\"];
-         in_progress       = curr[dev \"_ios_in_progress\"];
-         tot_in_progress   = curr[dev \"_sum_ios_in_progress\"];
-"
-
-awk_reset_accumulators="
-         t_reads             = 0;
-         t_reads_merged      = 0;
-         t_read_sectors      = 0;
-         t_ms_spent_reading  = 0;
-         t_writes            = 0;
-         t_writes_merged     = 0;
-         t_written_sectors   = 0;
-         t_ms_spent_writing  = 0;
-         t_ms_spent_doing_io = 0;
-         t_ms_weighted       = 0;
-         t_in_progress       = 0;
-"
-
-awk_copy_variables_to_accumulators="
-         t_reads             = reads;
-         t_reads_merged      = reads_merged;
-         t_read_sectors      = read_sectors;
-         t_ms_spent_reading  = ms_spent_reading;
-         t_writes            = writes;
-         t_writes_merged     = writes_merged;
-         t_written_sectors   = written_sectors;
-         t_ms_spent_writing  = ms_spent_writing;
-         t_ms_spent_doing_io = ms_spent_doing_io;
-         t_ms_weighted       = ms_weighted;
-"
-
-awk_compute_read_write_stats="
-         # Compute the per-second stats for reads, writes, and overall.
-         reads_sec        = t_reads / elapsed;
-         read_requests    = t_reads_merged + t_reads;
-         mbytes_read_sec  = t_read_sectors / elapsed / 2048;
-         read_conc        = t_ms_spent_reading / elapsed / 1000 / devs_in_group;
-         if ( t_reads > 0 ) {
-            read_rtime    = t_ms_spent_reading / t_reads;
-            avg_read_sz   = t_read_sectors / t_reads;
-         }
-         else {
-            read_rtime    = 0;
-            avg_read_sz   = 0;
-         }
-         if ( read_requests > 0 ) {
-            read_merge_pct = 100 * t_reads_merged / read_requests;
-         }
-         else {
-            read_merge_pct = 0;
-         }
-         writes_sec          = t_writes / elapsed;
-         write_requests      = t_writes_merged + t_writes;
-         mbytes_written_sec  = t_written_sectors / elapsed / 2048;
-         write_conc          = t_ms_spent_writing / elapsed / 1000 / devs_in_group;
-         if ( t_writes > 0 ) {
-            write_rtime      = t_ms_spent_writing / t_writes;
-            avg_write_sz     = t_written_sectors / t_writes;
-         }
-         else {
-            write_rtime      = 0;
-            avg_write_sz     = 0;
-         }
-         if ( write_requests > 0 ) {
-            write_merge_pct = 100 * t_writes_merged / write_requests;
-         }
-         else {
-            write_merge_pct = 0;
-         }
-         # Compute the numbers for reads and writes together, the things for
-         # which we do not have separate statistics.
-         # Busy is what iostat calls %util.  This is the percent of
-         # wall-clock time during which the device has I/O happening.
-         busy = 100 * t_ms_spent_doing_io / (1000 * elapsed * devs_in_group);
-         if ( first[\"ts\"] > 0 ) {
-            line_ts = sprintf(\"%5.1f\", curr_ts - first[\"ts\"]);
-         }
-         else {
-            line_ts = sprintf(\"%5.1f\", 0);
-         }
-"
-
-# Returns true if the column should be displayed.
-col_ok() {
-   result=$(echo $1 | awk "/${OPT_c:-.}/{print 0}")
-   return ${result:-1}
+   return;
 }
 
-# Based on which columns match $OPT_c, designs a header and line printf format,
-# and a printf statement to print the lines.
-design_print_formats() {
+# Sub: DSNParser
+#   Return the <DSNParser> object automatically created for DSN type opts.
+#
+# Returns:
+#   <DSNParser> object
+sub DSNParser {
+   my ( $self ) = @_;
+   return $self->{DSNParser};
+};
+
+# Sub: get_defaults_files
+#   Return the program's defaults files.
+#
+# Returns:
+#   Array of defaults files
+sub get_defaults_files {
+   my ( $self ) = @_;
+   return @{$self->{default_files}};
+}
+
+# Sub: _pod_to_specs()
+#   Parse basic specs for each option.  Each opt spec is a
+#   hashref like:
+#   (start code)
+#   {
+#      spec  => GetOpt::Long specification,
+#      desc  => short description for --help
+#      group => option group (default: 'default')
+#   }
+#   (end code)
+#   This is step 1 of 2 of parsing the POD opts.  The second is
+#   C<_parse_specs()>.
+#
+# Parameters:
+#   $file - File name to read, __FILE__ if none given
+#
+# Returns:
+#   Array of opt spec hashrefs to pass to <_parse_specs()>.
+sub _pod_to_specs {
+   my ( $self, $file ) = @_;
+   $file ||= $self->{file} || __FILE__;
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+
+   my @specs = ();
+   my @rules = ();
+   my $para;
+
+   # Read a paragraph at a time from the file.  Skip everything until options
+   # are reached...
+   local $INPUT_RECORD_SEPARATOR = '';
+   while ( $para = <$fh> ) {
+      next unless $para =~ m/^=head1 $self->{head1}/;
+      last;
+   }
+
+   # ... then read any option rules...
+   while ( $para = <$fh> ) {
+      last if $para =~ m/^=over/;
+      next if $self->{skip_rules};
+      chomp $para;
+      $para =~ s/\s+/ /g;
+      $para =~ s/$POD_link_re/$1/go;
+      MKDEBUG && _d('Option rule:', $para);
+      push @rules, $para;
+   }
+
+   die "POD has no $self->{head1} section" unless $para;
+
+   # ... then start reading options.
+   do {
+      if ( my ($option) = $para =~ m/^=item $self->{item}/ ) {
+         chomp $para;
+         MKDEBUG && _d($para);
+         my %attribs;
+
+         $para = <$fh>; # read next paragraph, possibly attributes
+
+         if ( $para =~ m/: / ) { # attributes
+            $para =~ s/\s+\Z//g;
+            %attribs = map {
+                  my ( $attrib, $val) = split(/: /, $_);
+                  die "Unrecognized attribute for --$option: $attrib"
+                     unless $self->{attributes}->{$attrib};
+                  ($attrib, $val);
+               } split(/; /, $para);
+            if ( $attribs{'short form'} ) {
+               $attribs{'short form'} =~ s/-//;
+            }
+            $para = <$fh>; # read next paragraph, probably short help desc
+         }
+         else {
+            MKDEBUG && _d('Option has no attributes');
+         }
+
+         # Remove extra spaces and POD formatting (L<"">).
+         $para =~ s/\s+\Z//g;
+         $para =~ s/\s+/ /g;
+         $para =~ s/$POD_link_re/$1/go;
+
+         # Take the first period-terminated sentence as the option's short help
+         # description.
+         $para =~ s/\.(?:\n.*| [A-Z].*|\Z)//s;
+         MKDEBUG && _d('Short help:', $para);
+
+         die "No description after option spec $option" if $para =~ m/^=item/;
+
+         # Change [no]foo to foo and set negatable attrib. See issue 140.
+         if ( my ($base_option) =  $option =~ m/^\[no\](.*)/ ) {
+            $option = $base_option;
+            $attribs{'negatable'} = 1;
+         }
+
+         push @specs, {
+            spec  => $self->{parse_attributes}->($self, $option, \%attribs), 
+            desc  => $para
+               . (defined $attribs{default} ? " (default $attribs{default})" : ''),
+            group => ($attribs{'group'} ? $attribs{'group'} : 'default'),
+         };
+      }
+      while ( $para = <$fh> ) {
+         last unless $para;
+         if ( $para =~ m/^=head1/ ) {
+            $para = undef; # Can't 'last' out of a do {} block.
+            last;
+         }
+         last if $para =~ m/^=item /;
+      }
+   } while ( $para );
+
+   die "No valid specs in $self->{head1}" unless @specs;
+
+   close $fh;
+   return @specs, @rules;
+}
+
+# Sub: _parse_specs
+#   Parse option specs and rules.  The opt specs and rules are returned
+#   by <_pod_to_specs()>.  The following attributes are added to each opt spec:
+#   (start code)
+#   short         => the option's short key (-A for --charset)
+#   is_cumulative => true if the option is cumulative
+#   is_negatable  => true if the option is negatable
+#   is_required   => true if the option is required
+#   type          => the option's type, one of $self->{types}
+#   got           => true if the option was given explicitly on the cmd line
+#   value         => the option's value
+#   (end code)
+#
+# Parameters:
+#   @specs - Opt specs and rules from <_pod_to_specs()>
+sub _parse_specs {
+   my ( $self, @specs ) = @_;
+   my %disables; # special rule that requires deferred checking
+
+   foreach my $opt ( @specs ) {
+      if ( ref $opt ) { # It's an option spec, not a rule.
+         MKDEBUG && _d('Parsing opt spec:',
+            map { ($_, '=>', $opt->{$_}) } keys %$opt);
+
+         my ( $long, $short ) = $opt->{spec} =~ m/^([\w-]+)(?:\|([^!+=]*))?/;
+         if ( !$long ) {
+            # This shouldn't happen.
+            die "Cannot parse long option from spec $opt->{spec}";
+         }
+         $opt->{long} = $long;
+
+         die "Duplicate long option --$long" if exists $self->{opts}->{$long};
+         $self->{opts}->{$long} = $opt;
+
+         if ( length $long == 1 ) {
+            MKDEBUG && _d('Long opt', $long, 'looks like short opt');
+            $self->{short_opts}->{$long} = $long;
+         }
+
+         if ( $short ) {
+            die "Duplicate short option -$short"
+               if exists $self->{short_opts}->{$short};
+            $self->{short_opts}->{$short} = $long;
+            $opt->{short} = $short;
+         }
+         else {
+            $opt->{short} = undef;
+         }
+
+         $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
+         $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
+
+         $opt->{group} ||= 'default';
+         $self->{groups}->{ $opt->{group} }->{$long} = 1;
+
+         $opt->{value} = undef;
+         $opt->{got}   = 0;
+
+         my ( $type ) = $opt->{spec} =~ m/=(.)/;
+         $opt->{type} = $type;
+         MKDEBUG && _d($long, 'type:', $type);
+
+         # This check is no longer needed because we'll create a DSNParser
+         # object for ourself if DSN OPTIONS exists in the POD.
+         # if ( $type && $type eq 'd' && !$self->{dp} ) {
+         #   die "$opt->{long} is type DSN (d) but no dp argument "
+         #      . "was given when this OptionParser object was created";
+         # }
+
+         # Option has a non-Getopt type: HhAadzm.  Use Getopt type 's'.
+         $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
+
+         # Option has a default value if its desc says 'default' or 'default X'.
+         # These defaults from the POD may be overridden by later calls
+         # to set_defaults().
+         if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
+            $self->{defaults}->{$long} = defined $def ? $def : 1;
+            MKDEBUG && _d($long, 'default:', $def);
+         }
+
+         # Handle special behavior for --config.
+         if ( $long eq 'config' ) {
+            $self->{defaults}->{$long} = join(',', $self->get_defaults_files());
+         }
+
+         # Option disable another option if its desc says 'disable'.
+         if ( (my ($dis) = $opt->{desc} =~ m/(disables .*)/) ) {
+            # Defer checking till later because of possible forward references.
+            $disables{$long} = $dis;
+            MKDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
+         }
+
+         # Save the option.
+         $self->{opts}->{$long} = $opt;
+      }
+      else { # It's an option rule, not a spec.
+         MKDEBUG && _d('Parsing rule:', $opt); 
+         push @{$self->{rules}}, $opt;
+         my @participants = $self->_get_participants($opt);
+         my $rule_ok = 0;
+
+         if ( $opt =~ m/mutually exclusive|one and only one/ ) {
+            $rule_ok = 1;
+            push @{$self->{mutex}}, \@participants;
+            MKDEBUG && _d(@participants, 'are mutually exclusive');
+         }
+         if ( $opt =~ m/at least one|one and only one/ ) {
+            $rule_ok = 1;
+            push @{$self->{atleast1}}, \@participants;
+            MKDEBUG && _d(@participants, 'require at least one');
+         }
+         if ( $opt =~ m/default to/ ) {
+            $rule_ok = 1;
+            # Example: "DSN values in L<"--dest"> default to values
+            # from L<"--source">."
+            $self->{defaults_to}->{$participants[0]} = $participants[1];
+            MKDEBUG && _d($participants[0], 'defaults to', $participants[1]);
+         }
+         if ( $opt =~ m/restricted to option groups/ ) {
+            $rule_ok = 1;
+            my ($groups) = $opt =~ m/groups ([\w\s\,]+)/;
+            my @groups = split(',', $groups);
+            %{$self->{allowed_groups}->{$participants[0]}} = map {
+               s/\s+//;
+               $_ => 1;
+            } @groups;
+         }
+         if( $opt =~ m/accepts additional command-line arguments/ ) {
+            # The full rule text should be: "This tool accepts additional
+            # command-line arguments.  Refer to the synopsis and usage
+            # information for details."
+            $rule_ok = 1;
+            $self->{strict} = 0;
+            MKDEBUG && _d("Strict mode disabled by rule");
+         }
+
+         die "Unrecognized option rule: $opt" unless $rule_ok;
+      }
+   }
+
+   # Check forward references in 'disables' rules.
+   foreach my $long ( keys %disables ) {
+      # _get_participants() will check that each opt exists.
+      my @participants = $self->_get_participants($disables{$long});
+      $self->{disables}->{$long} = \@participants;
+      MKDEBUG && _d('Option', $long, 'disables', @participants);
+   }
+
+   return; 
+}
+
+# Sub: _get_participants
+#   Extract option names from a string.  This is used to
+#   find the "participants" of option rules (i.e. the options to
+#   which a rule applies).
+#
+# Parameters:
+#   $str - String containing option names like "Options L<"--[no]foo"> and
+#          --bar are mutually exclusive."
+#
+# Returns:
+#   Array of option names
+sub _get_participants {
+   my ( $self, $str ) = @_;
+   my @participants;
+   foreach my $long ( $str =~ m/--(?:\[no\])?([\w-]+)/g ) {
+      die "Option --$long does not exist while processing rule $str"
+         unless exists $self->{opts}->{$long};
+      push @participants, $long;
+   }
+   MKDEBUG && _d('Participants for', $str, ':', @participants);
+   return @participants;
+}
+
+# Sub: opts
+#
+# Returns:
+#   A copy of the internal opts hash
+sub opts {
+   my ( $self ) = @_;
+   my %opts = %{$self->{opts}};
+   return %opts;
+}
+
+# Sub: short_opts
+#
+# Returns:
+#   A copy of the internal short_opts hash
+sub short_opts {
+   my ( $self ) = @_;
+   my %short_opts = %{$self->{short_opts}};
+   return %short_opts;
+}
+
+# Sub: set_defaults
+#   Set default values for options.
+sub set_defaults {
+   my ( $self, %defaults ) = @_;
+   $self->{defaults} = {};
+   foreach my $long ( keys %defaults ) {
+      die "Cannot set default for nonexistent option $long"
+         unless exists $self->{opts}->{$long};
+      $self->{defaults}->{$long} = $defaults{$long};
+      MKDEBUG && _d('Default val for', $long, ':', $defaults{$long});
+   }
+   return;
+}
+
+sub get_defaults {
+   my ( $self ) = @_;
+   return $self->{defaults};
+}
+
+sub get_groups {
+   my ( $self ) = @_;
+   return $self->{groups};
+}
+
+# Sub: _set_option
+#   Getopt::Long calls this sub for each opt it finds on the
+#   cmd line. We have to do this in order to know which opts
+#   were "got" on the cmd line.
+sub _set_option {
+   my ( $self, $opt, $val ) = @_;
+   my $long = exists $self->{opts}->{$opt}       ? $opt
+            : exists $self->{short_opts}->{$opt} ? $self->{short_opts}->{$opt}
+            : die "Getopt::Long gave a nonexistent option: $opt";
+
+   # Reassign $opt.
+   $opt = $self->{opts}->{$long};
+   if ( $opt->{is_cumulative} ) {
+      $opt->{value}++;
+   }
+   else {
+      $opt->{value} = $val;
+   }
+   $opt->{got} = 1;
+   MKDEBUG && _d('Got option', $long, '=', $val);
+}
+
+# Sub: get_opts
+#   Get command line options and enforce option rules.
+#   Option values are saved internally in $self->{opts} and accessed
+#   later by <get()>, <got()>, and <set()>.  Call <get_specs()>
+#   before calling this sub.
+sub get_opts {
+   my ( $self ) = @_; 
+
+   # Reset opts. 
+   foreach my $long ( keys %{$self->{opts}} ) {
+      $self->{opts}->{$long}->{got} = 0;
+      $self->{opts}->{$long}->{value}
+         = exists $self->{defaults}->{$long}       ? $self->{defaults}->{$long}
+         : $self->{opts}->{$long}->{is_cumulative} ? 0
+         : undef;
+   }
+   $self->{got_opts} = 0;
+
+   # Reset errors.
+   $self->{errors} = [];
+
+   # --config is special-case; parse them manually and remove them from @ARGV
+   if ( @ARGV && $ARGV[0] eq "--config" ) {
+      shift @ARGV;
+      $self->_set_option('config', shift @ARGV);
+   }
+   if ( $self->has('config') ) {
+      my @extra_args;
+      foreach my $filename ( split(',', $self->get('config')) ) {
+         # Try to open the file.  If it was set explicitly, it's an error if it
+         # can't be opened, but the built-in defaults are to be ignored if they
+         # can't be opened.
+         eval {
+            push @extra_args, $self->_read_config_file($filename);
+         };
+         if ( $EVAL_ERROR ) {
+            if ( $self->got('config') ) {
+               die $EVAL_ERROR;
+            }
+            elsif ( MKDEBUG ) {
+               _d($EVAL_ERROR);
+            }
+         }
+      }
+      unshift @ARGV, @extra_args;
+   }
+
+   Getopt::Long::Configure('no_ignore_case', 'bundling');
+   GetOptions(
+      # Make Getopt::Long specs for each option with custom handler subs.
+      map    { $_->{spec} => sub { $self->_set_option(@_); } }
+      grep   { $_->{long} ne 'config' } # --config is handled specially above.
+      values %{$self->{opts}}
+   ) or $self->save_error('Error parsing options');
+
+   if ( exists $self->{opts}->{version} && $self->{opts}->{version}->{got} ) {
+      if ( $self->{version} ) {
+         print $self->{version}, "\n";
+      }
+      else {
+         print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
+      }
+      exit 0;
+   }
+
+   if ( @ARGV && $self->{strict} ) {
+      $self->save_error("Unrecognized command-line options @ARGV");
+   }
+
+   # Check mutex options.
+   foreach my $mutex ( @{$self->{mutex}} ) {
+      my @set = grep { $self->{opts}->{$_}->{got} } @$mutex;
+      if ( @set > 1 ) {
+         my $err = join(', ', map { "--$self->{opts}->{$_}->{long}" }
+                      @{$mutex}[ 0 .. scalar(@$mutex) - 2] )
+                 . ' and --'.$self->{opts}->{$mutex->[-1]}->{long}
+                 . ' are mutually exclusive.';
+         $self->save_error($err);
+      }
+   }
+
+   foreach my $required ( @{$self->{atleast1}} ) {
+      my @set = grep { $self->{opts}->{$_}->{got} } @$required;
+      if ( @set == 0 ) {
+         my $err = join(', ', map { "--$self->{opts}->{$_}->{long}" }
+                      @{$required}[ 0 .. scalar(@$required) - 2] )
+                 .' or --'.$self->{opts}->{$required->[-1]}->{long};
+         $self->save_error("Specify at least one of $err");
+      }
+   }
+
+   $self->_check_opts( keys %{$self->{opts}} );
+   $self->{got_opts} = 1;
+   return;
+}
+
+# Sub: _check_opts
+#   Check options against rules and group restrictions.
+#
+# Parameters:
+#   @long - Array of option names
+sub _check_opts {
+   my ( $self, @long ) = @_;
+   my $long_last = scalar @long;
+   while ( @long ) {
+      foreach my $i ( 0..$#long ) {
+         my $long = $long[$i];
+         next unless $long;
+         my $opt  = $self->{opts}->{$long};
+         if ( $opt->{got} ) {
+            # Rule: opt disables other opts.
+            if ( exists $self->{disables}->{$long} ) {
+               my @disable_opts = @{$self->{disables}->{$long}};
+               map { $self->{opts}->{$_}->{value} = undef; } @disable_opts;
+               MKDEBUG && _d('Unset options', @disable_opts,
+                  'because', $long,'disables them');
+            }
+
+            # Group restrictions.
+            if ( exists $self->{allowed_groups}->{$long} ) {
+               # This option is only allowed with other options from
+               # certain groups.  Check that no options from restricted
+               # groups were gotten.
+
+               my @restricted_groups = grep {
+                  !exists $self->{allowed_groups}->{$long}->{$_}
+               } keys %{$self->{groups}};
+
+               my @restricted_opts;
+               foreach my $restricted_group ( @restricted_groups ) {
+                  RESTRICTED_OPT:
+                  foreach my $restricted_opt (
+                     keys %{$self->{groups}->{$restricted_group}} )
+                  {
+                     next RESTRICTED_OPT if $restricted_opt eq $long;
+                     push @restricted_opts, $restricted_opt
+                        if $self->{opts}->{$restricted_opt}->{got};
+                  }
+               }
+
+               if ( @restricted_opts ) {
+                  my $err;
+                  if ( @restricted_opts == 1 ) {
+                     $err = "--$restricted_opts[0]";
+                  }
+                  else {
+                     $err = join(', ',
+                               map { "--$self->{opts}->{$_}->{long}" }
+                               grep { $_ } 
+                               @restricted_opts[0..scalar(@restricted_opts) - 2]
+                            )
+                          . ' or --'.$self->{opts}->{$restricted_opts[-1]}->{long};
+                  }
+                  $self->save_error("--$long is not allowed with $err");
+               }
+            }
+
+         }
+         elsif ( $opt->{is_required} ) { 
+            $self->save_error("Required option --$long must be specified");
+         }
+
+         $self->_validate_type($opt);
+         if ( $opt->{parsed} ) {
+            delete $long[$i];
+         }
+         else {
+            MKDEBUG && _d('Temporarily failed to parse', $long);
+         }
+      }
+
+      die "Failed to parse options, possibly due to circular dependencies"
+         if @long == $long_last;
+      $long_last = @long;
+   }
+
+   return;
+}
+
+# Sub: _validate_type
+#   Validate special option types like sizes and DSNs.
+#
+# Parameters:
+#   $opt - Long option name to validate
+sub _validate_type {
+   my ( $self, $opt ) = @_;
+   return unless $opt;
+
+   if ( !$opt->{type} ) {
+      # Magic opts like --help and --version.
+      $opt->{parsed} = 1;
+      return;
+   }
+
+   my $val = $opt->{value};
+
+   if ( $val && $opt->{type} eq 'm' ) {  # type time
+      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
+      my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
+      # The suffix defaults to 's' unless otherwise specified.
+      if ( !$suffix ) {
+         my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
+         $suffix = $s || 's';
+         MKDEBUG && _d('No suffix given; using', $suffix, 'for',
+            $opt->{long}, '(value:', $val, ')');
+      }
+      if ( $suffix =~ m/[smhd]/ ) {
+         $val = $suffix eq 's' ? $num            # Seconds
+              : $suffix eq 'm' ? $num * 60       # Minutes
+              : $suffix eq 'h' ? $num * 3600     # Hours
+              :                  $num * 86400;   # Days
+         $opt->{value} = ($prefix || '') . $val;
+         MKDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
+      }
+      else {
+         $self->save_error("Invalid time suffix for --$opt->{long}");
+      }
+   }
+   elsif ( $val && $opt->{type} eq 'd' ) {  # type DSN
+      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
+      # DSN vals for this opt may come from 3 places, in order of precedence:
+      # the opt itself, the defaults to/copies from opt (prev), or
+      # --host, --port, etc. (defaults).
+      my $prev = {};
+      my $from_key = $self->{defaults_to}->{ $opt->{long} };
+      if ( $from_key ) {
+         MKDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
+         if ( $self->{opts}->{$from_key}->{parsed} ) {
+            $prev = $self->{opts}->{$from_key}->{value};
+         }
+         else {
+            MKDEBUG && _d('Cannot parse', $opt->{long}, 'until',
+               $from_key, 'parsed');
+            return;
+         }
+      }
+      my $defaults = $self->{DSNParser}->parse_options($self);
+      $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
+   }
+   elsif ( $val && $opt->{type} eq 'z' ) {  # type size
+      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
+      $self->_parse_size($opt, $val);
+   }
+   elsif ( $opt->{type} eq 'H' || (defined $val && $opt->{type} eq 'h') ) {
+      $opt->{value} = { map { $_ => 1 } split(/(?<!\\),\s*/, ($val || '')) };
+   }
+   elsif ( $opt->{type} eq 'A' || (defined $val && $opt->{type} eq 'a') ) {
+      $opt->{value} = [ split(/(?<!\\),\s*/, ($val || '')) ];
+   }
+   else {
+      MKDEBUG && _d('Nothing to validate for option',
+         $opt->{long}, 'type', $opt->{type}, 'value', $val);
+   }
+
+   $opt->{parsed} = 1;
+   return;
+}
+
+# Sub: get
+#   Get an option's value. The option can be either a
+#   short or long name (e.g. -A or --charset).
+#
+# Parameters:
+#   $opt - Option name, long (--charset) or short (-A)
+#
+# Returns:
+#   The option's value
+sub get {
+   my ( $self, $opt ) = @_;
+   my $long = (length $opt == 1 ? $self->{short_opts}->{$opt} : $opt);
+   die "Option $opt does not exist"
+      unless $long && exists $self->{opts}->{$long};
+   return $self->{opts}->{$long}->{value};
+}
+
+# Sub: got
+#   Test if an option was explicitly given on the command line.
+#
+# Parameters:
+#   $opt - Option name, long (--charset) or short (-A)
+#
+# Returns:
+#   Bool
+sub got {
+   my ( $self, $opt ) = @_;
+   my $long = (length $opt == 1 ? $self->{short_opts}->{$opt} : $opt);
+   die "Option $opt does not exist"
+      unless $long && exists $self->{opts}->{$long};
+   return $self->{opts}->{$long}->{got};
+}
+
+# Sub: has
+#   Test if an option exists (i.e. is specified in the tool's POD).
+#
+# Parameters:
+#   $opt - Option name, long (--charset) or short (-A)
+#
+# Returns:
+#   Bool
+sub has {
+   my ( $self, $opt ) = @_;
+   my $long = (length $opt == 1 ? $self->{short_opts}->{$opt} : $opt);
+   return defined $long ? exists $self->{opts}->{$long} : 0;
+}
+
+# Sub: set
+#   Set an option's value.  No type checking is done so be careful to
+#   not set, for example, an integer option with a DSN.
+#
+# Parameters:
+#   $opt - Option name, long (--charset) or short (-A)
+#   $val - Option's new value
+sub set {
+   my ( $self, $opt, $val ) = @_;
+   my $long = (length $opt == 1 ? $self->{short_opts}->{$opt} : $opt);
+   die "Option $opt does not exist"
+      unless $long && exists $self->{opts}->{$long};
+   $self->{opts}->{$long}->{value} = $val;
+   return;
+}
+
+# Sub: save_error
+#    Save an error message to be reported later by <usage_or_errors()>.
+#
+# Parameters:
+#   $error - Error message
+sub save_error {
+   my ( $self, $error ) = @_;
+   push @{$self->{errors}}, $error;
+   return;
+}
+
+# Sub: errors
+#   Used for testing.
+sub errors {
+   my ( $self ) = @_;
+   return $self->{errors};
+}
+
+sub usage {
+   my ( $self ) = @_;
+   warn "No usage string is set" unless $self->{usage}; # XXX
+   return "Usage: " . ($self->{usage} || '') . "\n";
+}
+
+sub descr {
+   my ( $self ) = @_;
+   warn "No description string is set" unless $self->{description}; # XXX
+   my $descr  = ($self->{description} || $self->{program_name} || '')
+              . "  For more details, please use the --help option, "
+              . "or try 'perldoc $PROGRAM_NAME' "
+              . "for complete documentation.";
+   # DONT_BREAK_LINES is set in OptionParser.t so the output can
+   # be tested reliably.
+   $descr = join("\n", $descr =~ m/(.{0,80})(?:\s+|$)/g)
+      unless $ENV{DONT_BREAK_LINES};
+   $descr =~ s/ +$//mg;
+   return $descr;
+}
+
+sub usage_or_errors {
+   my ( $self, $file, $return ) = @_;
+   $file ||= $self->{file} || __FILE__;
+
+   # First make sure we have a description and usage, else print_usage()
+   # and print_errors() will die.
+   if ( !$self->{description} || !$self->{usage} ) {
+      MKDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
+      my %synop = $self->_parse_synopsis($file);
+      $self->{description} ||= $synop{description};
+      $self->{usage}       ||= $synop{usage};
+      MKDEBUG && _d("Description:", $self->{description},
+         "\nUsage:", $self->{usage});
+   }
+
+   if ( $self->{opts}->{help}->{got} ) {
+      print $self->print_usage() or die "Cannot print usage: $OS_ERROR";
+      exit 0 unless $return;
+   }
+   elsif ( scalar @{$self->{errors}} ) {
+      print $self->print_errors() or die "Cannot print errors: $OS_ERROR";
+      exit 0 unless $return;
+   }
+
+   return;
+}
+
+# Explains what errors were found while processing command-line arguments and
+# gives a brief overview so you can get more information.
+sub print_errors {
+   my ( $self ) = @_;
+   my $usage = $self->usage() . "\n";
+   if ( (my @errors = @{$self->{errors}}) ) {
+      $usage .= join("\n  * ", 'Errors in command-line arguments:', @errors)
+              . "\n";
+   }
+   return $usage . "\n" . $self->descr();
+}
+
+# Prints out command-line help.  The format is like this:
+# --foo=s  -F   Description of --foo
+# --bars   -B   Description of --bar
+# --longopt     Description of --longopt
+# Note that the short options are aligned along the right edge of their longest
+# long option, but long options that don't have a short option are allowed to
+# protrude past that.
+sub print_usage {
+   my ( $self ) = @_;
+   die "Run get_opts() before print_usage()" unless $self->{got_opts};
+   my @opts = values %{$self->{opts}};
+
+   # Find how wide the widest long option is.
+   my $maxl = max(
+      map {
+         length($_->{long})               # option long name
+         + ($_->{is_negatable} ? 4 : 0)   # "[no]" if opt is negatable
+         + ($_->{type} ? 2 : 0)           # "=x" where x is the opt type
+      }
+      @opts);
+
+   # Find how wide the widest option with a short option is.
+   my $maxs = max(0,
+      map {
+         length($_)
+         + ($self->{opts}->{$_}->{is_negatable} ? 4 : 0)
+         + ($self->{opts}->{$_}->{type} ? 2 : 0)
+      }
+      values %{$self->{short_opts}});
+
+   # Find how wide the 'left column' (long + short opts) is, and therefore how
+   # much space to give options and how much to give descriptions.
+   my $lcol = max($maxl, ($maxs + 3));
+   my $rcol = 80 - $lcol - 6;
+   my $rpad = ' ' x ( 80 - $rcol );
+
+   # Adjust the width of the options that have long and short both.
+   $maxs = max($lcol - 3, $maxs);
+
+   # Format and return the options.
+   my $usage = $self->descr() . "\n" . $self->usage();
+
+   # Sort groups alphabetically but make 'default' first.
+   my @groups = reverse sort grep { $_ ne 'default'; } keys %{$self->{groups}};
+   push @groups, 'default';
+
+   foreach my $group ( reverse @groups ) {
+      $usage .= "\n".($group eq 'default' ? 'Options' : $group).":\n\n";
+      foreach my $opt (
+         sort { $a->{long} cmp $b->{long} }
+         grep { $_->{group} eq $group }
+         @opts )
+      {
+         my $long  = $opt->{is_negatable} ? "[no]$opt->{long}" : $opt->{long};
+         my $short = $opt->{short};
+         my $desc  = $opt->{desc};
+
+         # Append option type to long option name.
+         # http://code.google.com/p/maatkit/issues/detail?id=1177
+         $long .= $opt->{type} ? "=$opt->{type}" : "";
+
+         # Expand suffix help for time options.
+         if ( $opt->{type} && $opt->{type} eq 'm' ) {
+            my ($s) = $desc =~ m/\(suffix (.)\)/;
+            $s    ||= 's';
+            $desc =~ s/\s+\(suffix .\)//;
+            $desc .= ".  Optional suffix s=seconds, m=minutes, h=hours, "
+                   . "d=days; if no suffix, $s is used.";
+         }
+         # Wrap long descriptions
+         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol})(?:\s+|$)/g);
+         $desc =~ s/ +$//mg;
+         if ( $short ) {
+            $usage .= sprintf("  --%-${maxs}s -%s  %s\n", $long, $short, $desc);
+         }
+         else {
+            $usage .= sprintf("  --%-${lcol}s  %s\n", $long, $desc);
+         }
+      }
+   }
+
+   $usage .= "\nOption types: s=string, i=integer, f=float, h/H/a/A=comma-separated list, d=DSN, z=size, m=time\n";
+
+   if ( (my @rules = @{$self->{rules}}) ) {
+      $usage .= "\nRules:\n\n";
+      $usage .= join("\n", map { "  $_" } @rules) . "\n";
+   }
+   if ( $self->{DSNParser} ) {
+      $usage .= "\n" . $self->{DSNParser}->usage();
+   }
+   $usage .= "\nOptions and values after processing arguments:\n\n";
+   foreach my $opt ( sort { $a->{long} cmp $b->{long} } @opts ) {
+      my $val   = $opt->{value};
+      my $type  = $opt->{type} || '';
+      my $bool  = $opt->{spec} =~ m/^[\w-]+(?:\|[\w-])?!?$/;
+      $val      = $bool              ? ( $val ? 'TRUE' : 'FALSE' )
+                : !defined $val      ? '(No value)'
+                : $type eq 'd'       ? $self->{DSNParser}->as_string($val)
+                : $type =~ m/H|h/    ? join(',', sort keys %$val)
+                : $type =~ m/A|a/    ? join(',', @$val)
+                :                    $val;
+      $usage .= sprintf("  --%-${lcol}s  %s\n", $opt->{long}, $val);
+   }
+   return $usage;
+}
+
+# Tries to prompt and read the answer without echoing the answer to the
+# terminal.  This isn't really related to this package, but it's too handy not
+# to put here.  OK, it's related, it gets config information from the user.
+sub prompt_noecho {
+   shift @_ if ref $_[0] eq __PACKAGE__;
+   my ( $prompt ) = @_;
+   local $OUTPUT_AUTOFLUSH = 1;
+   print $prompt
+      or die "Cannot print: $OS_ERROR";
+   my $response;
+   eval {
+      require Term::ReadKey;
+      Term::ReadKey::ReadMode('noecho');
+      chomp($response = <STDIN>);
+      Term::ReadKey::ReadMode('normal');
+      print "\n"
+         or die "Cannot print: $OS_ERROR";
+   };
+   if ( $EVAL_ERROR ) {
+      die "Cannot read response; is Term::ReadKey installed? $EVAL_ERROR";
+   }
+   return $response;
+}
+
+# Reads a configuration file and returns it as a list.  Inspired by
+# Config::Tiny.
+sub _read_config_file {
+   my ( $self, $filename ) = @_;
+   open my $fh, "<", $filename or die "Cannot open $filename: $OS_ERROR\n";
+   my @args;
+   my $prefix = '--';
+   my $parse  = 1;
+
+   LINE:
+   while ( my $line = <$fh> ) {
+      chomp $line;
+      # Skip comments and empty lines
+      next LINE if $line =~ m/^\s*(?:\#|\;|$)/;
+      # Remove inline comments
+      $line =~ s/\s+#.*$//g;
+      # Remove whitespace
+      $line =~ s/^\s+|\s+$//g;
+      # Watch for the beginning of the literal values (not to be interpreted as
+      # options)
+      if ( $line eq '--' ) {
+         $prefix = '';
+         $parse  = 0;
+         next LINE;
+      }
+      if ( $parse
+         && (my($opt, $arg) = $line =~ m/^\s*([^=\s]+?)(?:\s*=\s*(.*?)\s*)?$/)
+      ) {
+         push @args, grep { defined $_ } ("$prefix$opt", $arg);
+      }
+      elsif ( $line =~ m/./ ) {
+         push @args, $line;
+      }
+      else {
+         die "Syntax error in file $filename at line $INPUT_LINE_NUMBER";
+      }
+   }
+   close $fh;
+   return @args;
+}
+
+# Sub: read_para_after
+#   Read the POD paragraph after a magical regex.  This is used,
+#   for exmaple, to get default CREATE TABLE from the POD.  We write something
+#   like:
+#   (start code)
+#   This is the default MAGIC_foo_table:
+#
+#     CREATE TABLE `foo` (i INT)
+#   
+#   Blah blah...
+#   (end code)
+#   Then to get that CREATE TABLE, you pass "MAGIC_foo_table" as the
+#   magical regex.
+#
+# Parameters:
+#   $file  - File to read
+#   $regex - Regex to find something magical before the desired POD paragraph
+#
+# Returns:
+#   POD paragraph after magical regex
+sub read_para_after {
+   my ( $self, $file, $regex ) = @_;
+   open my $fh, "<", $file or die "Can't open $file: $OS_ERROR";
+   local $INPUT_RECORD_SEPARATOR = '';
+   my $para;
+   while ( $para = <$fh> ) {
+      next unless $para =~ m/^=pod$/m;
+      last;
+   }
+   while ( $para = <$fh> ) {
+      next unless $para =~ m/$regex/;
+      last;
+   }
+   $para = <$fh>;
+   chomp($para);
+   close $fh or die "Can't close $file: $OS_ERROR";
+   return $para;
+}
+
+# Returns a lightweight clone of ourself.  Currently, only the basic
+# opts are copied.  This is used for stuff like "final opts" in
+# mk-table-checksum.
+sub clone {
+   my ( $self ) = @_;
+
+   # Deep-copy contents of hashrefs; do not just copy the refs. 
+   my %clone = map {
+      my $hashref  = $self->{$_};
+      my $val_copy = {};
+      foreach my $key ( keys %$hashref ) {
+         my $ref = ref $hashref->{$key};
+         $val_copy->{$key} = !$ref           ? $hashref->{$key}
+                           : $ref eq 'HASH'  ? { %{$hashref->{$key}} }
+                           : $ref eq 'ARRAY' ? [ @{$hashref->{$key}} ]
+                           : $hashref->{$key};
+      }
+      $_ => $val_copy;
+   } qw(opts short_opts defaults);
+
+   # Re-assign scalar values.
+   foreach my $scalar ( qw(got_opts) ) {
+      $clone{$scalar} = $self->{$scalar};
+   }
+
+   return bless \%clone;     
+}
+
+sub _parse_size {
+   my ( $self, $opt, $val ) = @_;
+
+   # Special case used by mk-find to do things like --datasize null.
+   if ( lc($val || '') eq 'null' ) {
+      MKDEBUG && _d('NULL size for', $opt->{long});
+      $opt->{value} = 'null';
+      return;
+   }
+
+   my %factor_for = (k => 1_024, M => 1_048_576, G => 1_073_741_824);
+   my ($pre, $num, $factor) = $val =~ m/^([+-])?(\d+)([kMG])?$/;
+   if ( defined $num ) {
+      if ( $factor ) {
+         $num *= $factor_for{$factor};
+         MKDEBUG && _d('Setting option', $opt->{y},
+            'to num', $num, '* factor', $factor);
+      }
+      $opt->{value} = ($pre || '') . $num;
+   }
+   else {
+      $self->save_error("Invalid size for --$opt->{long}");
+   }
+   return;
+}
+
+# Parse the option's attributes and return a GetOpt type.
+# E.g. "foo type:int" == "foo=i"; "[no]bar" == "bar!", etc.
+sub _parse_attribs {
+   my ( $self, $option, $attribs ) = @_;
+   my $types = $self->{types};
+   return $option
+      . ($attribs->{'short form'} ? '|' . $attribs->{'short form'}   : '' )
+      . ($attribs->{'negatable'}  ? '!'                              : '' )
+      . ($attribs->{'cumulative'} ? '+'                              : '' )
+      . ($attribs->{'type'}       ? '=' . $types->{$attribs->{type}} : '' );
+}
+
+sub _parse_synopsis {
+   my ( $self, $file ) = @_;
+   $file ||= $self->{file} || __FILE__;
+   MKDEBUG && _d("Parsing SYNOPSIS in", $file);
+
+   # Slurp the file.
+   local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
+   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
+   my $para;
+   1 while defined($para = <$fh>) && $para !~ m/^=head1 SYNOPSIS/;
+   die "$file does not contain a SYNOPSIS section" unless $para;
+   my @synop;
+   for ( 1..2 ) {  # 1 for the usage, 2 for the description
+      my $para = <$fh>;
+      push @synop, $para;
+   }
+   close $fh;
+   MKDEBUG && _d("Raw SYNOPSIS text:", @synop);
+   my ($usage, $desc) = @synop;
+   die "The SYNOPSIS section in $file is not formatted properly"
+      unless $usage && $desc;
+
+   # Strip "Usage:" from the usage string.
+   $usage =~ s/^\s*Usage:\s+(.+)/$1/;
+   chomp $usage;
+
+   # Make the description one long string without newlines.
+   $desc =~ s/\n/ /g;
+   $desc =~ s/\s{2,}/ /g;
+   $desc =~ s/\. ([A-Z][a-z])/.  $1/g;
+   $desc =~ s/\s+$//;
+
+   return (
+      description => $desc,
+      usage       => $usage,
+   );
+};
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+# This is debug code I want to run for all tools, and this is a module I
+# certainly include in all tools, but otherwise there's no real reason to put
+# it here.
+if ( MKDEBUG ) {
+   print '# ', $^X, ' ', $], "\n";
+   if ( my $uname = `uname -a` ) {
+      $uname =~ s/\s+/ /g;
+      print "# $uname\n";
+   }
+   print '# Arguments: ',
+      join(' ', map { my $a = "_[$_]_"; $a =~ s/\n/\n# /g; $a; } @ARGV), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End OptionParser package
+# ###########################################################################
+
+# This program is copyright 2010-2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# ReadKeyMini
+# ###########################################################################
+BEGIN {
+
+package ReadKeyMini;
+# Here be magic. We lie to %INC and say that someone already pulled us from
+# the filesystem. Which might be true, if this is inside a .pm file, but
+# might not be, if we are part of the big file. The spurious BEGINs are mostly
+# unnecesary, but if we aren't inside a .pm and something uses us, import or
+# EXPORT_OK might not yet be defined. Though that probably won't help.
+# Costs us nothing though, so worth trying. Putting this on top of the file
+# would solve the issue.
+BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
+
+# Package: ReadKeyMini
+# ReadKeyMini is a wrapper around Term::ReadKey. If that's available,
+# we use ReadMode and GetTerminalSize from there. Otherwise, we use homebrewn
+# definitions.
+
+use warnings;
+use strict;
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Carp  qw( croak );
+use POSIX qw( :termios_h );
+
+use base  qw( Exporter );
+
+BEGIN {
+   our @EXPORT_OK = qw( ReadMode GetTerminalSize );
+   my $have_readkey = eval { require Term::ReadKey };
+
+   if ($have_readkey) {
+      Term::ReadKey->import(@EXPORT_OK);
+   }
+   else {
+      *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
+      *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
+   }
+}
+
+our $VERSION = '0.01';
+
+my %modes = (
+   original    => 0,
+   restore     => 0,
+   normal      => 1,
+   noecho      => 2,
+   cbreak      => 3,
+   raw         => 4,
+   'ultra-raw' => 5,
+);
+
+# This primarily comes from the Perl Cookbook, recipe 15.8
+
+{
+
+   my $fd_stdin = fileno(STDIN);
+   my $term     = POSIX::Termios->new();
+   $term->getattr($fd_stdin);
+   my $oterm = $term->getlflag();
+
+   my $echo   = ECHO | ECHOK | ICANON;
+   my $noecho = $oterm & ~$echo;
+
+   sub _ReadMode {
+      my $mode = $modes{ $_[0] };
+      if ( $mode == $modes{normal} ) {
+            cooked();
+      }
+      elsif ( $mode == $modes{cbreak} || $mode == $modes{noecho} ) {
+            cbreak( $mode == $modes{noecho} ? $noecho : $oterm );
+      }
+      else {
+            croak("ReadMore('$_[0]') not supported");
+      }
+   }
+
+   sub cbreak {
+      my ($lflag) = $_[0] || $noecho; 
+      $term->setlflag($lflag);
+      $term->setcc( VTIME, 1 );
+      $term->setattr( $fd_stdin, TCSANOW );
+   }
+
+   sub cooked {
+      $term->setlflag($oterm);
+      $term->setcc( VTIME, 0 );
+      $term->setattr( $fd_stdin, TCSANOW );
+   }
+
+   END { cooked() }
+
+}
+
+sub readkey {
+    my $key = '';
+    cbreak();
+    sysread(STDIN, $key, 1);
+    my $timeout = 0.1;
+    if ( $key eq "\033" ) { # Ugly and broken hack, but good enough for the two minutes it took to write.
+        {
+            my $x = '';
+            STDIN->blocking(0);
+            sysread(STDIN, $x, 2);
+            STDIN->blocking(1);
+            $key .= $x;
+            redo if $key =~ /\[[0-2](?:[0-9];)?$/
+        }
+    }
+    cooked();
+    return $key;
+}
+
+# As per perlfaq8:
+
+sub _GetTerminalSize {
+   if ( @_ ) {
+      croak "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
+   }
+   eval { require 'sys/ioctl.ph' };
+   if ( !defined &TIOCGWINSZ ) {
+      *TIOCGWINSZ = sub () {
+            # Very few systems actually have ioctl.ph, thus it comes to this.
+            # These seem to be good enough, for now. See:
+            # http://stackoverflow.com/a/4286840/536499
+              $^O eq 'linux'   ? 0x005413
+            : $^O eq 'solaris' ? 0x005468
+            :                    0x40087468;
+      };
+   }
+   open( TTY, "+<", "/dev/tty" ) or croak "No tty: $OS_ERROR";
+   my $winsize = '';
+   unless ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
+      croak sprintf "$0: ioctl TIOCGWINSZ (%08x: $OS_ERROR)\n", &TIOCGWINSZ;
+   }
+   my ( $row, $col, $xpixel, $ypixel ) = unpack( 'S4', $winsize );
+   return ( $col, $row, $xpixel, $ypixel );
+}
+
+}
+
+1;
+# ###########################################################################
+# End ReadKeyMini package
+# ###########################################################################
+
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# Diskstats package
+# ###########################################################################
+{
+# Package: Diskstats
+# This package implements most of the logic in the old shell pt-diskstats;
+# it parses data from /proc/diskstats, calculcates deltas, and prints those.
+
+package Diskstats;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use IO::Handle;
+use List::Util qw( max first );
+
+BEGIN {
+   # This BEGIN block checks if we can use Storable::dclone: If we can't,
+   # it clobbers this package's dclone glob (*{ __PACKAGE__ . "::dclone" })
+   # with an anonymous function that provides more or less what we need.
+   my $have_storable = eval { require Storable };
+
+   if ( $have_storable ) {
+      Storable->import(qw(dclone));
+   }
+   else {
+      require Scalar::Util;
+
+      # An extrenely poor man's dclone.
+      # Nevermind the prototype. dclone has it, so it's here only it for
+      # the sake of completeness.
+      *dclone = sub ($) {
+         my ($ref) = @_;
+         my $reftype = Scalar::Util::reftype($ref) || '';
+
+         if ( $reftype eq ref({}) ) {
+            # Only one level of depth. Not worth making it any deeper/recursive, I think.
+            return { map { $_ => {%{$ref->{$_}}} } keys %$ref };
+         }
+         else {
+            die "This basic dclone does not support [$reftype]";
+         }
+      };
+   }
+}
+
+sub new {
+   my ( $class, %args ) = @_;
+
+   my $self = {
+      # Defaults
+      filename           => '/proc/diskstats',
+      column_regex       => qr/cnc|rt|busy|prg|time|io_s/,
+      device_regex       => qr/(?=)/,
+      block_size         => 512,
+      out_fh             => \*STDOUT,
+      filter_zeroed_rows => 0,
+      sample_time        => 0,
+      interactive        => 0,
+
+      _stats_for         => {},
+      _sorted_devs       => [],
+      _ts                => {},
+      _first             => 1,
+
+      # Internal for now, but might need APIfying.
+      _save_curr_as_prev => 1,
+      _print_header      => 1,
+   };
+
+   # If they passed us an attribute explicitly, we use those.
+   for my $attribute ( grep { !/^_/ && defined $args{$_} } keys %$self ) {
+      $self->{$attribute} = $args{$attribute};
+   }
+
+   return bless $self, $class;
+}
+
+sub _ts_common {
+   my ($self, $key, $val) = @_;
+   if ($val) {
+      $self->{_ts}->{$key} = $val;
+   }
+   return $self->{_ts}->{$key};
+}
+
+sub current_ts {
+   my ($self, $val) = @_;
+   return $self->_ts_common("current", $val);
+}
+
+sub previous_ts {
+   my ($self, $val) = @_;
+   return $self->_ts_common("previous", $val);
+}
+
+sub first_ts {
+   my ($self, $val) = @_;
+   return $self->_ts_common("first", $val);
+}
+
+sub filter_zeroed_rows {
+   my ($self, $new_val) = @_;
+   if ( defined($new_val) ) {
+      $self->{filter_zeroed_rows} = $new_val;
+   }
+   return $self->{filter_zeroed_rows};
+}
+
+sub sample_time {
+   my ($self, $new_val) = @_;
+   if (defined($new_val)) {
+      $self->{sample_time} = $new_val;
+   }
+   return $self->{sample_time};
+}
+
+sub interactive {
+   my ($self, $new_val) = @_;
+   if (defined($new_val)) {
+      $self->{interactive} = $new_val;
+   }
+   return $self->{interactive};
+}
+
+sub out_fh {
+   my ( $self, $new_fh ) = @_;
+
+   if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
+      $self->{out_fh} = $new_fh;
+   }
+   if ( !$self->{out_fh} || !$self->{out_fh}->opened ) {
+      $self->{out_fh} = \*STDOUT;
+   }
+   return $self->{out_fh};
+}
+
+sub column_regex {
+   my ( $self, $new_re ) = @_;
+   if ($new_re) {
+      return $self->{column_regex} = $new_re;
+   }
+   return $self->{column_regex};
+}
+
+sub device_regex {
+   my ( $self, $new_re ) = @_;
+   if ($new_re) {
+      return $self->{device_regex} = $new_re;
+   }
+   return $self->{device_regex};
+}
+
+sub filename {
+   my ( $self, $new_filename ) = @_;
+   if ( defined $new_filename ) {
+      return $self->{filename} = $new_filename;
+   }
+   return $self->{filename} || '/proc/diskstats';
+}
+
+sub block_size {
+   my $self = shift;
+   return $self->{block_size};
+}
+
+sub sorted_devs {
+   my ( $self, $new_dev ) = @_;
+   if ( $new_dev && ref($new_dev) eq ref( [] ) ) {
+      $self->{_sorted_devs} = $new_dev;
+   }
+   return @{ $self->{_sorted_devs} };
+}
+
+sub add_sorted_devs {
+   my ( $self, $new_dev ) = @_;
+   if ( !$self->{_seen_devs}->{$new_dev}++ ) {
+      push @{ $self->{_sorted_devs} }, $new_dev;
+   }
+}
+
+# clear_stuff methods. LIke the name says, they clear state stored inside
+# the object.
+
+sub clear_state {
+   my ($self) = @_;
+   $self->{_first} = 1;
+   $self->{_print_header} = 1;
+   $self->clear_current_stats();
+   $self->clear_previous_stats();
+   $self->clear_first_stats();
+   $self->clear_ts();
+   $self->clear_sorted_devs();
+}
+
+sub clear_ts {
+   my ($self) = @_;
+   $self->{_ts} = {};
+}
+
+sub clear_sorted_devs {
+   my $self = shift;
+   $self->{_seen_devs} = {};
+   $self->sorted_devs( [] );
+}
+
+sub _clear_stats_common {
+   my ( $self, $key, @args ) = @_;
+   if (@args) {
+      for my $dev (@args) {
+         $self->{$key}->{$dev} = {};
+      }
+   }
+   else {
+      $self->{$key} = {};
+   }
+}
+
+sub clear_current_stats {
+   my ( $self, @args ) = @_;
+   $self->_clear_stats_common( "_stats_for", @args );
+}
+
+sub clear_previous_stats {
+   my ( $self, @args ) = @_;
+   $self->_clear_stats_common( "_previous_stats_for", @args );
+}
+
+sub clear_first_stats {
+   my ( $self, @args ) = @_;
+   $self->_clear_stats_common( "_first_stats_for", @args );
+}
+
+sub _stats_for_common {
+   my ( $self, $dev, $key ) = @_;
+   $self->{$key} ||= {};
+   if ($dev) {
+      return $self->{$key}->{$dev};
+   }
+   return $self->{$key};
+}
+
+sub stats_for {
+   my ( $self, $dev ) = @_;
+   $self->_stats_for_common( $dev, '_stats_for' );
+}
+
+sub previous_stats_for {
+   my ( $self, $dev ) = @_;
+   $self->_stats_for_common( $dev, '_previous_stats_for' );
+}
+
+sub first_stats_for {
+   my ( $self, $dev ) = @_;
+   $self->_stats_for_common( $dev, '_first_stats_for' );
+}
+
+sub has_stats {
+   my ($self) = @_;
+
+   return $self->stats_for
+     && scalar grep 1, @{ $self->stats_for }{ $self->sorted_devs };
+}
+
+sub _save_current_as_previous {
+   my ( $self, $curr_hashref ) = @_;
+
+   if ( $self->{_save_curr_as_prev} ) {
+      $self->{_previous_stats_for} = $curr_hashref;
+      for my $dev (keys %$curr_hashref) {
+         $self->{_previous_stats_for}->{$dev}->{sum_ios_in_progress} +=
+            $curr_hashref->{$dev}->{ios_in_progress};
+      }
+      $self->previous_ts($self->current_ts());
+   }
+
+   return;
+}
+
+sub _save_current_as_first {
+   my ($self, $curr_hashref) = @_;
+
+   if ( $self->{_first} ) {
+      $self->{_first_stats_for} = $curr_hashref;
+      $self->first_ts($self->current_ts());
+      $self->{_first} = undef;
+   }
+}
+
+sub _save_stats {
+   my ( $self, $hashref ) = @_;
+   $self->{_stats_for} = $hashref;
+}
+
+sub trim {
+   my ($c) = @_;
+   $c =~ s/^\s+//;
+   $c =~ s/\s+$//;
+   return $c;
+}
+
+sub col_ok {
+   my ( $self, $column ) = @_;
+   my $regex = $self->column_regex;
+   return $column =~ $regex || trim($column) =~ $regex;
+}
+
+sub dev_ok {
+   my ( $self, $device ) = @_;
+   my $regex = $self->device_regex;
+   return $device =~ $regex;
+}
+
+my @columns_in_order = (
+   # Column        # Format   # Key name
+   [ "   rd_s" => "%7.1f",   "reads_sec", ],
+   [ "rd_avkb" => "%7.1f",   "avg_read_sz", ],
+   [ "rd_mb_s" => "%7.1f",   "mbytes_read_sec", ],
+   [ "rd_io_s" => "%7.1f",   "ios_read_sec", ],
+   [ "rd_mrg"  => "%5.0f%%", "read_merge_pct", ],
+   [ "rd_cnc"  => "%6.1f",   "read_conc", ],
+   [ "  rd_rt" => "%7.1f",   "read_rtime", ],
+   [ "   wr_s" => "%7.1f",   "writes_sec", ],
+   [ "wr_avkb" => "%7.1f",   "avg_write_sz", ],
+   [ "wr_mb_s" => "%7.1f",   "mbytes_written_sec", ],
+   [ "wr_io_s" => "%7.1f",   "ios_written_sec", ],
+   [ "wr_mrg"  => "%5.0f%%", "write_merge_pct", ],
+   [ "wr_cnc"  => "%6.1f",   "write_conc", ],
+   [ "  wr_rt" => "%7.1f",   "write_rtime", ],
+   [ "busy"    => "%3.0f%%", "busy", ],
+   [ "in_prg"  => "%6d",     "in_progress", ],
+   [ "   io_s" => "%7.1f",   "s_spent_doing_io", ],
+   [ " qtime"   => "%6.1f",   "qtime", ],
+   [ " stime"   => "%5.1f",   "stime", ],
+);
+
+{
+
+   my %format_for = ( map { ( $_->[0] => $_->[1] ) } @columns_in_order, );
+
+   sub _format_for {
+      my ( $self, $col ) = @_;
+      return $format_for{$col};
+   }
+
+}
+
+{
+
+   my %column_to_key = ( map { ( $_->[0] => $_->[2] ) } @columns_in_order, );
+
+   sub _column_to_key {
+      my ( $self, $col ) = @_;
+      return $column_to_key{$col};
+   }
+
+}
+
+sub design_print_formats {
+   my ( $self,       %args )    = @_;
+   my ( $dev_length, $columns ) = @args{qw( max_device_length columns )};
+   $dev_length ||= max 6, map length, $self->sorted_devs;
+   my ( $header, $format );
+
    # For each device, print out the following: The timestamp offset and
-   # device name.  Must embed the mdev Awk variable here, because the device
-   # name is variable-length.
-   fmt="\"%5s %-\" mdev \"s";
-   hdr="${fmt}";
-   vars="";
-   # The per-second reads, read size (kB), per-second MB read, read merged pct, read
-   # concurrency, and average response time for each read.
-   if col_ok rd_s    ; then fmt="${fmt} %7.1f";   hdr="${hdr}    rd_s";  vars="${vars}, reads_sec"; fi
-   if col_ok rd_avkb ; then fmt="${fmt} %7.1f";   hdr="${hdr} rd_avkb";  vars="${vars}, avg_read_sz"; fi
-   if col_ok rd_mb_s ; then fmt="${fmt} %7.1f";   hdr="${hdr} rd_mb_s";  vars="${vars}, mbytes_read_sec"; fi
-   if col_ok rd_mrg  ; then fmt="${fmt} %5.0f%%"; hdr="${hdr} rd_mrg";   vars="${vars}, read_merge_pct"; fi
-   if col_ok rd_cnc  ; then fmt="${fmt} %6.1f";   hdr="${hdr} rd_cnc";   vars="${vars}, read_conc"; fi
-   if col_ok rd_rt   ; then fmt="${fmt} %7.1f";   hdr="${hdr}   rd_rt";  vars="${vars}, read_rtime"; fi
-   # The same for writes.
-   if col_ok wr_s    ; then fmt="${fmt} %7.1f";   hdr="${hdr}    wr_s";  vars="${vars}, writes_sec"; fi
-   if col_ok wr_avkb ; then fmt="${fmt} %7.1f";   hdr="${hdr} wr_avkb";  vars="${vars}, avg_write_sz"; fi
-   if col_ok wr_mb_s ; then fmt="${fmt} %7.1f";   hdr="${hdr} wr_mb_s";  vars="${vars}, mbytes_written_sec"; fi
-   if col_ok wr_mrg  ; then fmt="${fmt} %5.0f%%"; hdr="${hdr} wr_mrg";   vars="${vars}, write_merge_pct"; fi
-   if col_ok wr_cnc  ; then fmt="${fmt} %6.1f";   hdr="${hdr} wr_cnc";   vars="${vars}, write_conc"; fi
-   if col_ok wr_rt   ; then fmt="${fmt} %7.1f";   hdr="${hdr}   wr_rt";  vars="${vars}, write_rtime"; fi
-   # Then busy%, in-progress, and line-ending.
-   if col_ok busy    ; then fmt="${fmt} %3.0f%%"; hdr="${hdr} busy";     vars="${vars}, busy"; fi
-   if col_ok in_prg  ; then fmt="${fmt} %6d";     hdr="${hdr} in_prg";   vars="${vars}, t_in_progress"; fi
-   fmt="${fmt}\n\"";
-   hdr="${hdr}\n\"";
-   awk_print_header="printf(${hdr}, \"#ts\", \"device\");";
-   awk_print_line="printf(${fmt}, line_ts, dev${vars});";
+   # device name.
+   $header = $format = qq{%5s %-${dev_length}s };
+
+   if ( !$columns ) {
+      @$columns = grep { $self->col_ok($_) } map { $_->[0] } @columns_in_order;
+   }
+   elsif ( !ref($columns) || ref($columns) ne ref([]) ) {
+      die "The columns argument to design_print_formats should be an arrayref";
+   }
+
+   $header .= join " ", @$columns;
+   $format .= join " ", map $self->_format_for($_), @$columns;
+
+   return ( $header, $format, $columns );
+}
+
+sub parse_diskstats_line {
+   my ( $self, $line, $block_size ) = @_;
+   my @keys = qw(
+     reads  reads_merged  read_sectors      ms_spent_reading
+     writes writes_merged written_sectors   ms_spent_writing
+     ios_in_progress      ms_spent_doing_io ms_weighted
+   );
+   my ( $dev, %dev_stats );
+
+   if ( ( @dev_stats{qw( major minor )}, $dev, @dev_stats{@keys} ) =
+         $line =~ /^
+            # Disk format
+               \s*   (\d+)    # major
+               \s+   (\d+)    # minor
+               \s+   (.+?)    # Device name
+               \s+   (\d+)    # # of reads issued
+               \s+   (\d+)    # # of reads merged
+               \s+   (\d+)    # # of sectors read
+               \s+   (\d+)    # # of milliseconds spent reading
+               \s+   (\d+)    # # of writes completed
+               \s+   (\d+)    # # of writes merged
+               \s+   (\d+)    # # of sectors written
+               \s+   (\d+)    # # of milliseconds spent writing
+               \s+   (\d+)    # # of IOs currently in progress
+               \s+   (\d+)    # # of milliseconds spent doing IOs
+               \s+   (\d+)    # weighted # of milliseconds spent doing IOs
+               \s*$/x
+     )
+   {
+      $dev_stats{read_bytes} = $dev_stats{read_sectors} * $block_size;
+      $dev_stats{written_bytes} =
+        $dev_stats{written_sectors} * $block_size;
+      $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
+      $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
+      $dev_stats{ios_requested} += $dev_stats{reads} + $dev_stats{writes};
+      $dev_stats{ios_in_bytes}  += $dev_stats{read_bytes} + $dev_stats{written_bytes};
+
+      return ( $dev, \%dev_stats );
+   }
+   elsif ((@dev_stats{qw( major minor )}, $dev, @dev_stats{ qw( reads read_sectors writes written_sectors ) }) = $line =~ /^
+            # Partition format
+               \s*   (\d+)    # major
+               \s+   (\d+)    # minor
+               \s+   (.+?)    # Device name
+               \s+   (\d+)    # # of reads issued
+               \s+   (\d+)    # # of sectors read
+               \s+   (\d+)    # # of writes issued
+               \s+   (\d+)    # # of sectors written
+               \s*$/x) {
+      for my $key ( @keys ) {
+         $dev_stats{$key} ||= 0;
+      }
+      # Copypaste from above, abstract?
+      $dev_stats{read_bytes} = $dev_stats{read_sectors} * $block_size;
+      $dev_stats{written_bytes} =
+        $dev_stats{written_sectors} * $block_size;
+      $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
+      $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
+      $dev_stats{ttreq} += $dev_stats{reads} + $dev_stats{writes};
+      $dev_stats{ttbyt} += $dev_stats{read_bytes} + $dev_stats{written_bytes};
+
+      return ( $dev, \%dev_stats );
+   }
+   else {
+      return;
+   }
+}
+
+# Method: parse_from()
+#   Parses data from one of the sources.
+#
+# Parameters:
+#   %args - Arguments
+#
+# Optional Arguments:
+#   filehandle       - Reads data from a filehandle by calling readline() on it.
+#   data             - Reads data one line at a time.
+#   filename         - Opens a filehandle to the file and reads it one line at a time.
+#   sample_callback  - Called each time a sample is processed, passed the latest timestamp.
+#
+
+sub parse_from {
+   my ( $self, %args ) = @_;
+
+   my $lines_read = $args{filehandle}
+      ? $self->parse_from_filehandle( @args{qw( filehandle sample_callback )} ) :
+      $args{data}
+      ? $self->parse_from_data( @args{qw( data sample_callback )} )             :
+      $self->parse_from_filename( @args{qw( filename sample_callback )} );
+   return $lines_read;
+}
+
+sub parse_from_filename {
+   my ( $self, $filename, $sample_callback ) = @_;
+
+   $filename ||= $self->filename;
+
+   open my $fh, "<", $filename
+     or die "Couldn't open ", $filename, ": $OS_ERROR";
+   my $lines_read = $self->parse_from_filehandle( $fh, $sample_callback );
+   close($fh) or die "Couldn't close: $OS_ERROR";
+
+   return $lines_read;
+}
+
+# Method: parse_from_filehandle()
+#   Parses data received from using readline() on the filehandle. This is
+#   particularly useful, as you could pass in a filehandle to a pipe, or
+#   a tied filehandle, or a PerlIO::Scalar handle. Or your normal
+#   run of the mill filehandle.
+#
+# Parameters:
+#   $filehandle      - 
+#   sample_callback  - Called each time a sample is processed, passed the latest timestamp.
+#
+
+sub parse_from_filehandle {
+   my ( $self, $filehandle, $sample_callback ) = @_;
+   return $self->_load( $filehandle, $sample_callback );;
+}
+
+sub parse_from_data {
+   my ( $self, $data, $sample_callback ) = @_;
+
+   open my $fh, "<", \$data
+     or die "Couldn't open scalar as filehandle: $OS_ERROR";
+   my $lines_read = $self->parse_from_filehandle( $fh, $sample_callback );
+   close($fh);
+
+   return $lines_read;
+}
+
+# Method: parse_from()
+#   Reads from the filehandle, either saving the data as needed if dealing
+#   with a diskstats-formatted line, or if it finds a TS line and has a
+#   callback, defering to that.
+
+sub _load {
+   my ( $self, $fh, $sample_callback ) = @_;
+   my $block_size = $self->block_size;
+   my $new_cur    = {};
+
+   while ( my $line = <$fh> ) {
+      if ( my ( $dev, $dev_stats ) = $self->parse_diskstats_line($line, $block_size) ) {
+         $new_cur->{$dev} = $dev_stats;
+         $self->add_sorted_devs($dev);
+      }
+      elsif ( my ($ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
+         if ( %{$new_cur} ) {
+            $self->_save_current_as_previous( $self->stats_for() );
+            $self->_save_stats($new_cur);
+            $self->current_ts($ts);
+            $self->_save_current_as_first( dclone($self->stats_for) );
+            $new_cur = {};
+         }
+         if ($sample_callback) {
+            $self->$sample_callback($ts);
+         }
+      }
+      else {
+         chomp($line);
+         die "Line [$line] isn't in the diskstats format";
+      }
+   }
+
+   if ( %{$new_cur} ) {
+      #$self->_save_stats($new_cur);
+      $self->_save_current_as_first( dclone($self->stats_for) );
+   }
+   # Seems like this could be useful.
+   return $INPUT_LINE_NUMBER;
+}
+
+sub _calc_read_stats {
+   my ( $self, $delta_for, $elapsed, $devs_in_group ) = @_;
+
+   my %read_stats = (
+      reads_sec       => $delta_for->{reads} / $elapsed,
+      read_requests   => $delta_for->{reads_merged} + $delta_for->{reads},
+      mbytes_read_sec => $delta_for->{read_kbs} / $elapsed / 1024,
+      ios_read_sec    => $delta_for->{ms_spent_reading} * 1000,
+      read_conc       => $delta_for->{ms_spent_reading} /
+                           $elapsed / 1000 / $devs_in_group,
+   );
+
+   if ( $delta_for->{reads} > 0 ) {
+      $read_stats{read_rtime} =
+        $delta_for->{ms_spent_reading} / $delta_for->{reads};
+      $read_stats{avg_read_sz} =
+        $delta_for->{read_kbs} / $delta_for->{reads};
+   }
+   else {
+      $read_stats{read_rtime}  = 0;
+      $read_stats{avg_read_sz} = 0;
+   }
+
+   $read_stats{read_merge_pct} =
+     $read_stats{read_requests} > 0
+     ? 100 * $delta_for->{reads_merged} / $read_stats{read_requests}
+     : 0;
+
+   return %read_stats;
+}
+
+sub _calc_write_stats {
+   my ( $self, $delta_for, $elapsed, $devs_in_group ) = @_;
+
+   my %write_stats = (
+      writes_sec     => $delta_for->{writes} / $elapsed,
+      write_requests => $delta_for->{writes_merged} + $delta_for->{writes},
+      mbytes_written_sec  => $delta_for->{written_kbs} / $elapsed / 1024,
+      ios_written_sec    => $delta_for->{ms_spent_writing} / 1000,
+      write_conc         => $delta_for->{ms_spent_writing} /
+        $elapsed / 1000 /
+        $devs_in_group,
+   );
+
+   if ( $delta_for->{writes} > 0 ) {
+      $write_stats{write_rtime} =
+        $delta_for->{ms_spent_writing} / $delta_for->{writes};
+      $write_stats{avg_write_sz} =
+        $delta_for->{written_kbs} / $delta_for->{writes};
+   }
+   else {
+      $write_stats{write_rtime}  = 0;
+      $write_stats{avg_write_sz} = 0;
+   }
+
+   $write_stats{write_merge_pct} =
+     $write_stats{write_requests} > 0
+     ? 100 * $delta_for->{writes_merged} / $write_stats{write_requests}
+     : 0;
+
+   return %write_stats;
+}
+
+
+# Compute the numbers for reads and writes together, the things for
+# which we do not have separate statistics.
+# Busy is what iostat calls %util.  This is the percent of
+# wall-clock time during which the device has I/O happening.
+
+sub _calc_misc_stats {
+   my ( $self, $delta_for, $elapsed, $devs_in_group, $stats ) = @_;
+   my %extra_stats;
+
+   $extra_stats{busy} =
+      100 *
+      $delta_for->{ms_spent_doing_io} /
+      ( 1000 * $elapsed * $devs_in_group );
+
+   my $number_of_ios   = $stats->{ios_requested};
+   my $total_ms_spent_on_io = $delta_for->{ms_spent_reading} + $delta_for->{ms_spent_writing};
+
+   $extra_stats{qtime} = $number_of_ios ? $total_ms_spent_on_io / $number_of_ios : 0;
+   $extra_stats{stime} = $number_of_ios ? $delta_for->{ms_spent_doing_io} / $number_of_ios : 0;
+
+   $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
+
+   $extra_stats{line_ts} = $self->compute_line_ts(
+      first_ts   => $self->first_ts(),
+      current_ts => $self->current_ts(),
+   );
+
+   return %extra_stats;
+}
+
+sub _calc_delta_for {
+   my ( $self, $current, $against ) = @_;
+   return {
+      map { ( $_ => $current->{$_} - $against->{$_} ) }
+        qw(
+         reads reads_merged read_sectors ms_spent_reading
+         writes writes_merged written_sectors ms_spent_writing
+         read_kbs written_kbs
+         ms_spent_doing_io ms_weighted
+        )
+   };
+}
+
+sub _calc_stats_for_deltas {
+   my ( $self, $elapsed ) = @_;
+   my @end_stats;
+
+   for my $dev ( grep { $self->dev_ok($_) && $self->stats_for($_) } $self->sorted_devs ) {
+      my $curr    = $self->stats_for($dev);
+      my $against = $self->delta_against($dev);
+
+      my $delta_for = $self->_calc_delta_for( $curr, $against );
+
+      my $in_progress = $curr->{"ios_in_progress"};
+      my $tot_in_progress = $against->{"sum_ios_in_progress"} || 0;
+
+      my $devs_in_group = $self->compute_devs_in_group;
+
+      # Compute the per-second stats for reads, writes, and overall.
+      my %stats = (
+         $self->_calc_read_stats( $delta_for, $elapsed, $devs_in_group ),
+         $self->_calc_write_stats( $delta_for, $elapsed, $devs_in_group ),
+         in_progress =>
+           $self->compute_in_progress( $in_progress, $tot_in_progress ),
+      );
+
+      my %extras = $self->_calc_misc_stats( $delta_for, $elapsed, $devs_in_group, \%stats );
+      while ( my ($k, $v) = each %extras ) {
+         $stats{$k} = $v;
+      }
+
+      $stats{dev} = $dev;
+
+      push @end_stats, \%stats;
+   }
+   return @end_stats;
+}
+
+sub _calc_deltas {
+   my ( $self, $callback ) = @_;
+
+   my $elapsed = $self->current_ts() - $self->delta_against_ts();
+   die "Time elapsed is [$elapsed]" unless $elapsed;
+
+   return $self->_calc_stats_for_deltas($elapsed);
+}
+
+sub print_header {
+   my ($self, $header, @args) = @_;
+   if ( $self->{_print_header} ) {
+      printf { $self->out_fh } $header . "\n", @args;
+   }
+}
+
+sub print_rest {
+   my ($self, $format, $cols, $stat) = @_;
+   if ( $self->filter_zeroed_rows() ) {
+      return unless grep { sprintf("%7.1f", $_) != 0 } @{$stat}{ grep { $self->col_ok($_) } @$cols };
+   }
+   printf { $self->out_fh() } $format . "\n",
+           @{$stat}{ qw( line_ts dev ), @$cols };
+}
+
+sub print_deltas {
+   my ( $self, %args ) = @_;
+   my ( $header, $format, $cols ) = $self->design_print_formats(
+      max_device_length => $args{max_device_length},
+      columns           => $args{columns},
+   );
+
+   return unless $self->delta_against_ts();
+
+   @$cols = map { $self->_column_to_key($_) } @$cols;
+   my ( $header_cb, $rest_cb ) = @args{qw( header_cb rest_cb )};
+
+   if ( $header_cb ) {
+      $self->$header_cb( $header, "#ts", "device" );
+   }
+   else {
+      $self->print_header( $header, "#ts", "device" );
+   }
+
+   for my $stat ( $self->_calc_deltas() ) {
+      if ($rest_cb) {
+         $self->$rest_cb( $format, $cols, $stat );
+      }
+      else {
+         $self->print_rest( $format, $cols, $stat );
+      }
+   }
+}
+
+sub compute_line_ts {
+   my ( $self, %args ) = @_;
+   return $args{first_ts} > 0
+     ? sprintf( "%5.1f", $args{current_ts} - $args{first_ts} )
+     : sprintf( "%5.1f", 0 );
+}
+
+sub compute_in_progress {
+   my ( $self, $in_progress, $tot_in_progress ) = @_;
+   return $in_progress;
+}
+
+sub compute_devs_in_group {
+   return 1;
+}
+
+sub delta_against {
+   die 'You must override delta_against() in a subclass';
+}
+
+sub delta_against_ts {
+   die 'You must override delta_against_ts() in a subclass';
+}
+
+sub group_by {
+   die 'You must override group_by() in a subclass';
+}
+
+1;
+
+}
+# ###########################################################################
+# End Diskstats package
+# ###########################################################################
+
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# DiskstatsGroupByAll package
+# ###########################################################################
+{
+# Package: DiskstatsGroupByAll
+# 
+
+package DiskstatsGroupByAll;
+
+use warnings;
+use strict;
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use base qw( Diskstats );
+
+sub group_by {
+   my $self = shift;
+   $self->group_by_all(@_);
+}
+
+sub group_by_all {
+   my ($self, %args) = @_;
+
+   if ( !$args{clear_state} ) {
+      $self->clear_state();
+   }
+
+   if (!$self->interactive) {
+      $self->parse_from(
+         sample_callback => sub {
+               $self->print_deltas(
+                  map { ( $_ => $args{$_} ) } qw( header_cb rest_cb ),
+               );
+            },
+         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
+      );
+   }
+   else {
+      my $orig = tell $args{filehandle};
+      $self->parse_from(
+         sample_callback => sub {
+               $self->print_deltas(
+                  header_cb => sub {
+                     my $self = shift;
+                     if ( $self->{_print_header} ) {
+                        my $meth = $args{header_cb} || "print_header";
+                        $self->$meth(@_);
+                     }
+                     $self->{_print_header} = undef;
+                  },
+                  rest_cb => $args{rest_cb},
+               );
+            },
+         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
+      );
+      if (!$self->previous_ts) {
+         seek $args{filehandle}, $orig, 0;
+      }
+      return;
+   }
+   $self->clear_state();
+}
+
+sub clear_state {
+   my $self = shift;
+   if (!$self->interactive()) {
+      $self->SUPER::clear_state(@_);
+   }
+   else {
+      my $orig_print_header = $self->{_print_header};
+      $self->SUPER::clear_state(@_);
+      $self->{_print_header} = $orig_print_header;
+   }
+}
+
+sub delta_against {
+   my ($self, $dev) = @_;
+   return $self->previous_stats_for($dev);
+}
+
+sub delta_against_ts {
+   my ($self) = @_;
+   return $self->previous_ts();
+}
+
+1;
+}
+# ###########################################################################
+# End DiskstatsGroupByAll package
+# ###########################################################################
+
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# DiskstatsGroupByDisk package
+# ###########################################################################
+{
+# Package: DiskstatsGroupByDisk
+# 
+
+package DiskstatsGroupByDisk;
+
+use warnings;
+use strict;
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use base qw( Diskstats );
+
+sub new {
+   my ($class, %args) = @_;
+   my $self = $class->SUPER::new(%args);
+   $self->{_iterations} = 0;
+   $self->{_print_header} = 1;
+   return $self;
+}
+
+sub group_by {
+   my $self = shift;
+   $self->group_by_disk(@_);
 }
 
 # Prints out one line for each disk, summing over the interval from first to
 # last sample.
-group_by_disk () {
-   [ -z "${awk_print_line}" ] && design_print_formats
-   awk "
-   BEGIN {
-      devs    = 0;
-      devname = \"${OPT_d}\";
+sub group_by_disk {
+   my ($self, %args)         = @_;
+   my ($header_cb, $rest_cb) = $args{ qw( header_cb rest_cb ) };
+
+   if (!$self->interactive()) {
+      $self->clear_state();
    }
-   \$1 !~ /TS/ && \$3 ~ devname {
-      ${awk_parse_line}
-      ${awk_save_sample_to_first}
-      ${awk_save_sample_to_curr}
-   }
-   \$1 ~ /TS/ && NR > 1 {
-      ${awk_set_iterations_and_timestamp}
-   }
-   END {
-      if ( iterations < 2 ) {
-         exit;
+
+   my $original_offset = $args{filehandle} ? tell($args{filehandle}) : undef;
+
+   my $lines_read = $self->parse_from(
+      sample_callback => sub {
+         my ($self, $ts) = @_;
+
+         if ( $self->has_stats ) {
+            $self->{_iterations}++;
+            if ($self->interactive() && $self->{_iterations} >= 2) {
+               my $elapsed =
+                     ( $self->current_ts() || 0 ) -
+                     ( $self->first_ts() || 0 );
+               if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
+                  $self->print_deltas(
+                     header_cb => sub {
+                        my ($self, @args) = @_;
+
+                        if ( $self->{_print_header} ) {
+                           my $meth = $args{header_cb} || "print_header";
+                           $self->$meth(@args);
+                        }
+                        $self->{_print_header} = undef;
+                     },
+                     rest_cb   => $args{rest_cb},
+                  );
+
+                  $self->{_iterations} = -1;
+                  return "Stop interactive reading";
+               }
+            }
+         }
+      },
+      map({ ($_ => $args{$_}) } qw(filehandle filename data)),
+   );
+
+   if ($self->interactive) {
+      if ($self->{_iterations} == -1 && defined($original_offset) && eof($args{filehandle})) {
+         $self->clear_state;
+         seek $args{filehandle}, $original_offset, 0;
       }
-      ${awk_find_max_device_name_length}
-      ${awk_print_header}
-      elapsed = curr_ts - first[\"ts\"];
-      for ( i = 1; i <= devs; i++ ) {
-         dev               = devsort[i];
-         ${awk_get_overall_increments}
-         ${awk_copy_variables_to_accumulators}
-         # The in-progress operations needs to be averaged.
-         t_in_progress     = (tot_in_progress / (iterations - 1));
-         devs_in_group     = 1;
-         ${awk_compute_read_write_stats}
-         line_ts=\"{\" (iterations - 1) \"}\";
-         ${awk_print_line}
-      }
-   } " "$@"
+      return $lines_read;
+   }
+
+   if ( $self->{_iterations} < 2 ) {
+      return;
+   }
+
+   $self->print_deltas( map( { ( $_ => $args{$_} ) } qw( header_cb rest_cb ) ) );
+
+   $self->clear_state;
+
+   return $lines_read;
 }
 
-# Prints out one line for each sample, summing up all disks together.
-group_by_sample() {
-   [ -z "${awk_print_line}" ] && design_print_formats
-   awk "
-   BEGIN {
-      devs    = 0;
-      devname = \"${OPT_d}\";
-   }
-   \$1 !~ /TS/ && \$3 ~ devname {
-      ${awk_parse_line}
-      ${awk_save_sample_to_first}
-      ${awk_save_sample_to_curr}
-   }
-   \$1 ~ /TS/ && NR > 1 {
-      ${awk_set_iterations_and_timestamp}
-      printed_a_line = 0;
-      if ( iterations == 1 ) {
-         # The second time we see a timestamp we are ready to print a header.
-         mdev    = 6;
-         if ( devs == 1 ) {
-            ${awk_find_max_device_name_length}
-         }
-         ${awk_print_header}
-      }
-      elapsed = curr_ts - ts;
-      if ( ts > 0 && elapsed > ${OPT_i:-0} ) {
-         # Reset the t_ variables to zero.
-         ${awk_reset_accumulators}
-         for ( i = 1; i <= devs; i++ ) {
-            dev               = devsort[i];
-            # Save the incrementals into named variables.
-            ${awk_compute_incremental_stats}
-            # Add the increments to the accumulators.
-            t_reads             += reads;
-            t_reads_merged      += reads_merged;
-            t_read_sectors      += read_sectors;
-            t_ms_spent_reading  += ms_spent_reading;
-            t_writes            += writes;
-            t_writes_merged     += writes_merged;
-            t_written_sectors   += written_sectors;
-            t_ms_spent_writing  += ms_spent_writing;
-            t_ms_spent_doing_io += ms_spent_doing_io;
-            t_ms_weighted       += ms_weighted;
-            t_in_progress       += in_progress;
-         }
-         devs_in_group = devs;
-         ${awk_compute_read_write_stats}
-         if ( devs > 1 ) {
-            dev     = \"{\" devs \"}\";
-         }
-         else {
-            dev     = devsort[1];
-         }
-         ${awk_print_line}
-         printed_a_line = 1;
-      }
-      if ( iterations == 1 || printed_a_line == 1 ) {
-         # We don't save curr as prev on every sample we see, because if the
-         # interval of printing is more than one sample, we want prev to be
-         # the first sample in the interval, not the previous sample seen.
-         ${awk_save_curr_as_prev}
-      }
-   } " "$@"
+sub clear_state {
+   my ($self, @args)   = @_;
+   my $orig_print_h = $self->{_print_header};
+   $self->{_iterations} = 0;
+   $self->SUPER::clear_state(@args);
+   $self->{_print_header} = $orig_print_h;
 }
 
-# Prints out one line for each sample, for each disk that matches the pattern.
-# TODO: omits the first sample.
-group_by_all () {
-   [ -z "${awk_print_line}" ] && design_print_formats
-   cat > /tmp/percona-toolkit.awk <<EOF
-   BEGIN {
-      devs    = 0;
-      devname = "${OPT_d}";
+sub compute_line_ts {
+   my ($self, %args) = @_;
+   return "{" . ($self->{_iterations} - 1) . "}";
+}
+
+sub delta_against {
+   my ($self, $dev) = @_;
+   return $self->first_stats_for($dev);
+}
+
+sub delta_against_ts {
+   my ($self) = @_;
+   return $self->first_ts();
+}
+
+sub compute_in_progress {
+   my ($self, $in_progress, $tot_in_progress) = @_;
+   return $tot_in_progress / ($self->{_iterations} - 1);
+}
+
+1;
+}
+# ###########################################################################
+# End DiskstatsGroupByDisk package
+# ###########################################################################
+
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# DiskstatsGroupBySample package
+# ###########################################################################
+{
+# Package: DiskstatsGroupBySample
+#
+
+package DiskstatsGroupBySample;
+
+use warnings;
+use strict;
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use base qw( Diskstats );
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = $class->SUPER::new(%args);
+   $self->{_iterations}        = 0;
+   $self->{_save_curr_as_prev} = 0;
+   $self->{_print_header}      = 1;
+   return $self;
+}
+
+sub group_by {
+   my $self = shift;
+   $self->group_by_sample(@_);
+}
+
+# Prints out one line for each disk, summing over the interval from first to
+# last sample.
+sub group_by_sample {
+   my ( $self,      %args )    = @_;
+   my ( $header_cb, $rest_cb ) = $args{qw( header_cb rest_cb )};
+
+   if (!$self->interactive) {
+      $self->clear_state;
    }
-   \$1 !~ /TS/ && \$3 ~ devname {
-      ${awk_parse_line}
-      ${awk_save_sample_to_first}
-      ${awk_save_sample_to_curr}
+
+   $self->parse_from(
+      sample_callback => $self->can("_sample_callback"),
+      map( { ( $_ => $args{$_} ) } qw(filehandle filename data) ),
+   );
+
+   if (!$self->interactive) {
+      $self->clear_state;
    }
-   \$1 ~ /TS/ && NR > 1 {
-      ${awk_set_iterations_and_timestamp}
-      ${awk_find_max_device_name_length}
-      if ( iterations > 1 ) {
-         if ( devs > 1 || iterations == 2 ) {
-            ${awk_print_header}
+}
+
+sub _sample_callback {
+   my ( $self, $ts, %args ) = @_;
+   my $printed_a_line = 0;
+
+   if ( $self->has_stats ) {
+      $self->{_iterations}++;
+   }
+
+   my $elapsed =
+     ( $self->current_ts() || 0 ) -
+     ( $self->previous_ts() || 0 );
+
+   if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
+
+      $self->print_deltas(
+         max_device_length => 6,
+         header_cb         => sub {
+            my ( $self, $header, @args ) = @_;
+
+            if ( $self->{_print_header} ) {
+               my $method = $args{header_cb} || "print_header";
+               $self->$method( $header, @args );
+               $self->{_print_header} = undef;
+            }
+         },
+         rest_cb => sub {
+            my ( $self, $format, $cols, $stat ) = @_;
+            my $method = $args{rest_cb} || "print_rest";
+            $self->$method( $format, $cols, $stat );
+            $printed_a_line = 1;
          }
-         ${awk_reset_accumulators}
-         elapsed = curr_ts - prev["ts"];
-         for ( i = 1; i <= devs; i++ ) {
-            dev               = devsort[i];
-            ${awk_compute_incremental_stats}
-            ${awk_copy_variables_to_accumulators}
-            t_in_progress     = curr[dev "_ios_in_progress"];
-            devs_in_group     = 1;
-            ${awk_compute_read_write_stats}
-            ${awk_print_line}
+      );
+   }
+   if ( $self->{_iterations} == 1 || $printed_a_line == 1 ) {
+      $self->{_save_curr_as_prev} = 1;
+      $self->_save_current_as_previous( $self->stats_for() );
+      $self->{_save_curr_as_prev} = 0;
+   }
+}
+
+sub delta_against {
+   my ( $self, $dev ) = @_;
+   return $self->previous_stats_for($dev);
+}
+
+sub delta_against_ts {
+   my ( $self ) = @_;
+   return $self->previous_ts();
+}
+
+sub clear_state {
+   my ( $self, @args ) = @_;
+   $self->{_iterations}        = 0;
+   $self->{_save_curr_as_prev} = 0;
+   $self->{_print_header}      = 1;
+   $self->SUPER::clear_state(@args);
+}
+
+sub compute_devs_in_group {
+   my ($self) = @_;
+   return scalar grep {
+            # Got stats for that device, and we want to print it
+            $self->stats_for($_) && $self->dev_ok($_)
+         } $self->sorted_devs;
+}
+
+sub compute_dev {
+   my ( $self, $dev ) = @_;
+   return $self->compute_devs_in_group() > 1
+     ? "{" . $self->compute_devs_in_group() . "}"
+     : ( $self->sorted_devs )[0];
+}
+
+# Terrible breach of encapsulation, but it'll have to do for the moment.
+sub _calc_stats_for_deltas {
+   my ( $self, $elapsed ) = @_;
+
+   my $delta_for;
+
+   for my $dev ( grep { $self->dev_ok($_) } $self->sorted_devs ) {
+      my $curr    = $self->stats_for($dev);
+      my $against = $self->delta_against($dev);
+
+      my $delta = $self->_calc_delta_for( $curr, $against );
+      $delta->{ios_in_progress} = $curr->{ios_in_progress};
+      while ( my ( $k, $v ) = each %$delta ) {
+         $delta_for->{$k} += $v;
+      }
+   }
+
+   my $in_progress = $delta_for->{ios_in_progress}; #$curr->{"ios_in_progress"};
+   my $tot_in_progress = 0;    #$against->{"sum_ios_in_progress"} || 0;
+
+   my $devs_in_group = $self->compute_devs_in_group() || 1;
+
+   my %stats = (
+      $self->_calc_read_stats( $delta_for, $elapsed, $devs_in_group ),
+      $self->_calc_write_stats( $delta_for, $elapsed, $devs_in_group ),
+      in_progress =>
+        $self->compute_in_progress( $in_progress, $tot_in_progress ),
+   );
+
+   my %extras = $self->_calc_misc_stats( $delta_for, $elapsed, $devs_in_group, \%stats );
+   while ( my ($k, $v) = each %extras ) {
+      $stats{$k} = $v;
+   }
+
+   $stats{dev} = $self->compute_dev( \%stats );
+
+   return \%stats;
+}
+
+1;
+
+}
+# ###########################################################################
+# End DiskstatsGroupBySample package
+# ###########################################################################
+
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# DiskstatsMenu
+# ###########################################################################
+{
+package DiskstatsMenu;
+
+# DiskstatsMenu
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use re qw( regexp_pattern );
+
+use IO::Handle;
+use IO::Select;
+use Scalar::Util qw( looks_like_number blessed );
+
+use ReadKeyMini  qw( ReadMode );
+
+require DiskstatsGroupByAll;
+require DiskstatsGroupByDisk;
+require DiskstatsGroupBySample;
+
+our $VERSION = '0.01';
+
+my %actions = (
+   'A' => \&group_by,
+   'D' => \&group_by,
+   'S' => \&group_by,
+   'i' => \&hide_inactive_disks,
+   'd' => get_new_value_for( "redisplay_interval", "Enter a new redisplay interval in seconds: " ),
+   'z' => get_new_value_for( "sample_time", "Enter a new interval between samples in seconds: " ),
+   'c' => get_new_x_regex( "column_regex", "Enter a column pattern: " ),
+   '/' => get_new_x_regex( "device_regex", "Enter a disk/device pattern: " ),
+   'q' => sub { return 'last' },
+   'p' => \&pause,
+   '?' => \&help,
+);
+
+my %option_to_object = (
+      D  => "DiskstatsGroupByDisk",
+      A  => "DiskstatsGroupByAll",
+      S  => "DiskstatsGroupBySample",
+   );
+
+my %object_to_option = reverse %option_to_object;
+
+sub run_interactive {
+   my ($self, %args) = @_;
+
+   die "I need an [o] argument" unless $args{o} && blessed($args{o})
+                                       && (
+                                               $args{o}->isa("OptionParser")
+                                            || $args{o}->can("get")
+                                          );
+   my $o = $args{o};
+
+   my %opts = (
+      save_samples       => $o->get('save-samples') || undef,
+      samples_to_gather  => $o->get('iterations')   || undef,
+      sampling_interval  => $o->get('interval')     || 1,
+      display_interval   => 1,
+      sample_time        => $o->get('sample-time')  || 1,
+      column_regex       => $o->get('columns')      || undef,
+      device_regex       => $o->get('devices')      || undef,
+      interactive        => 1,
+      filter_zeroed_rows => 0,
+   );
+
+   for my $re_key ( grep { $opts{$_} } qw( column_regex device_regex ) ) {
+      $opts{$re_key} = qr/$opts{$re_key}/i;
+   }
+
+   my ($tmp_fh, $filename, $child_pid, $child_fh);
+
+   # Here's a big crux of the program. If we have a filename, we don't
+   # need to fork and create a child, just read from it.
+   if ( $args{filename} ) {
+      $filename = $args{filename};
+      open $tmp_fh, "<", $filename or die "Couldn't open [$filename]: $OS_ERROR";
+   }
+   else {
+      ($tmp_fh, $filename) = file_to_use( $opts{save_samples} );
+   
+      # fork(), but future-proofing it in case we ever need to speak to
+      # the child
+      $child_pid = open $child_fh, "|-";
+   
+      if (not defined $child_pid) {
+         die "Couldn't fork: $OS_ERROR";
+      }
+      
+      if ( !$child_pid ) {
+         # Child
+   
+         # Bit of helpful magic: Changes how the program's name is displayed,
+         # so it's easier to track in things like ps.
+         local $PROGRAM_NAME = "$PROGRAM_NAME (data-gathering daemon)";
+   
+         close($tmp_fh);
+   
+         open my $fh, ">>", $filename or die $!;
+   
+         gather_samples(
+               gather_while      => sub { getppid() },
+               samples_to_gather => $opts{samples_to_gather},
+               sampling_interval => $opts{sampling_interval},
+               filehandle        => $fh,
+         );
+   
+         close $fh or die $!;
+         unlink $filename unless $opts{save_samples};
+         exit(0);
+      }
+   }
+
+   local $SIG{CHLD} = 'IGNORE';
+
+   STDOUT->autoflush;
+   STDIN->blocking(0);
+
+   my $sel    = IO::Select->new(\*STDIN);
+   my $class  = $option_to_object{ substr uc($o->get('group-by') || 'Disk'), 0, 1 };
+   $opts{obj} = $class->new( %opts );
+
+   if ( $args{filename} ) {
+      group_by(
+         header_cb  => sub { shift->print_header(@_) },
+         select_obj => $sel,
+         options    => \%opts,
+         filehandle => $tmp_fh,
+         got        => substr(uc($o->get('group-by') || 'Disk'), 0, 1),
+      );
+   }
+
+   ReadKeyMini::cbreak();
+   MAIN_LOOP:
+   while (1) {
+      if ( $sel->can_read( $opts{display_interval} ) ) {
+         while ( my $got = <STDIN> ) {
+            if ($actions{$got}) {
+               my $ret = $actions{$got}->(
+                                 select_obj => $sel,
+                                 options    => \%opts,
+                                 got        => $got,
+                                 filehandle => $tmp_fh,
+                              ) || '';
+               last MAIN_LOOP if $ret eq 'last';
+            }
          }
       }
-      ${awk_save_curr_as_prev}
+      # As a possible source of confusion, note that this calls the group_by
+      # _method_ in DiskstatsGroupBySomething, not the group_by _function_
+      # defined below.
+      $opts{obj}->group_by( filehandle => $tmp_fh, clear_state => 0 ) || 0;
+
+      if ( eof $tmp_fh ) {
+         # If we are gathering samples (don't have a filename), and we have a sample
+         # limit (set by --iterations), the child process just calls it quits once
+         # it gathers enough samples. When that happens, we are also done.
+         if ( !$args{filename} && $opts{samples_to_gather} && kill 0, $child_pid ) {
+            last MAIN_LOOP;
+         }
+
+         # This one comes from IO::Handle. I clears the eof flag
+         # from a filehandle, so we can try reading from it again.
+         $tmp_fh->clearerr;
+      }
    }
-EOF
-   awk -f /tmp/percona-toolkit.awk "$@"
+   ReadKeyMini::cooked();
+
+   if ( !$args{filename} ) {
+      close( $child_fh ) or die "Child error: $?";
+      kill 9, $child_pid;
+   }
+   close($tmp_fh) or die "Couldn't close: $OS_ERROR";
+   return;
 }
 
+sub gather_samples {
+   my (%opts) = @_;
+   my $samples = 0;
 
-# The main code that runs by default.  Arguments are the command-line options.
-main() {
+   GATHER_DATA:
+   while ( $opts{gather_while}->() ) {
+      sleep($opts{sampling_interval});
+      open my $diskstats_fh, "<", "/proc/diskstats"
+            or die $!;
 
-   # Get command-line options.
-   for o; do
-      case "${o}" in
-         --)
-            shift; break;
-            ;;
-         --help)
-            usage;
-            ;;
-         -c)
-            shift; OPT_c="${1}"; shift;
-            ;;
-         -d)
-            shift; OPT_d="${1}"; shift;
-            ;;
-         -g)
-            shift; OPT_g="${1}"; shift;
-            case "${OPT_g}" in
-               disk)
-                  ;;
-               sample)
-                  ;;
-               all)
-                  ;;
-               *)
-                  OPT_ERR="Bad option value";
-                  usage
-                  ;;
-            esac
-            ;;
-         -i)
-            shift; OPT_i="${1}"; shift;
-            ;;
-         -k)
-            shift; OPT_k="${1}"; shift;
-            ;;
-         -n)
-            shift; OPT_n="${1}"; shift;
-            ;;
-         -s)
-            shift; OPT_s="${1}"; shift;
-            ;;
-         -*)
-            OPT_ERR="Unknown option ${o}."
-            usage
-            ;;
-      esac
-   done
-   OPT_i="${OPT_i:-}"; export OPT_i;
-   OPT_k="${OPT_k:-/tmp/diskstats-samples}"; export OPT_k;
-   OPT_n="${OPT_n:-}"; export OPT_n;
-   OPT_c="${OPT_c:-cnc|rt|mb|busy|prg}"; export OPT_c;
-   OPT_d="${OPT_d:-}"; export OPT_d;
-   OPT_s="${OPT_s:-1}"; export OPT_s;
-   OPT_g="${OPT_g:-disk}"; export OPT_g;
+      my @to_print = <$diskstats_fh>;
+      push @to_print, `date +'TS %s.%N %F %T'`;
 
-   # We need to "do the right thing."  The user might invoke any of several
-   # ways; we get samples every now and then unless there is data on STDIN or a
-   # file to read.
-   if [ $# -gt 0 -o -p 1 ]; then
-      READ_FILE=1
-   fi
+      # Lovely little method from IO::Handle: turns on autoflush,
+      # prints, and then restores the original autoflush state.
+      $opts{filehandle}->printflush(@to_print);
+      close $diskstats_fh or die $!;
 
-   # If we are interactive and there's no file, we gather stats to play with.
-   if [ -z "${READ_FILE}" ]; then
-      PARENT=$$
-      loops=1
-      while true; do
-         cat /proc/diskstats >> "${OPT_k}"
-         date +"TS %s.%N %F %T" >> "${OPT_k}"
-         if ! ps -p ${PARENT} >/dev/null 2>&1 ; then
-            # The parent process doesn't exist anymore -- quit.
-            finished="yes"
-         elif [ "${OPT_n}" ]; then
-            if [ "${loops}" -gt "${OPT_n}" ] ; then
-               finished="yes"
-            fi
-         fi
-         if [ "${finished}" ]; then
-            if [ "${OPT_k}" = "/tmp/diskstats-samples" ]; then
-               rm -f /tmp/diskstats-samples
-            fi
-            break;
-         fi
-         sleep ${OPT_s}
-         loops=$(($loops + 1))
-      done &
-
-      # Sleep until the loop has gathered 2 samples.
-      while [ "$(grep -c TS "${OPT_k}")" -lt "2" ]; do
-         sleep .5
-      done
-   fi
-
-   if [ -z "${READ_FILE}" ]; then
-      group_by_${OPT_g} "${OPT_k}"
-   else
-      group_by_${OPT_g} "$@"
-   fi
-
-   # Don't be "interactive" unless the user actually has control.
-   if [ ! -t 0 -o ! -t 1 ]; then
-      exit;
-   fi
-
-   # We use this in iterative-loop mode
-   if [ -z "${READ_FILE}" ]; then
-      TAIL_LINES=$(cat /proc/diskstats | wc -l)
-   fi
-
-   while [ -z "${OPT_n}" -o "${i:-0}" -le "${OPT_n:-0}" ]; do
-      i=$(( ${i:-1} + 1 ))
-
-      # Re-decide the timeout every loop
-      if [ -z "${READ_FILE}" ]; then
-         TIMEOUT="-t ${OPT_s}"
-      fi
-      cmd="" # Must reset, some bash won't clear it after a read times out.
-      read $TIMEOUT -n 1 -s cmd junk
-      case "${cmd}" in
-         A)
-            OPT_g="all"
-            FIRST_LOOP="1"
-            ;;
-         d)
-            read -p "Enter a disk/device pattern: " OPT_d
-            FIRST_LOOP="1"
-            ;;
-         D)
-            OPT_g="disk"
-            FIRST_LOOP="1"
-            ;;
-         c)
-            read -p "Enter a column pattern: " OPT_c
-            FIRST_LOOP="1"
-            awk_print_line="" # Make it re-compute the column headers
-            ;;
-         i)
-            read -p "Enter a sample size: " OPT_i
-            FIRST_LOOP="1"
-            ;;
-         p)
-            read -n 1 -p "Paused - press any key to continue"
-            ;;
-         q)
-            break
-            ;;
-         s)
-            read -p "Enter a redisplay interval: " OPT_s
-            FIRST_LOOP="1"
-            ;;
-         S)
-            OPT_g="sample"
-            FIRST_LOOP="1"
-            ;;
-         '?')
-            print_help; read -n1 -s
-            ;;
-      esac
-
-      if [ -z "${READ_FILE}" ]; then
-         if [ -z "${FIRST_LOOP}" ]; then
-            # We only print out what's new since last printout
-            N=$(($TAIL_LINES * 2 + 2)) # Extra is for TS lines
-            tail -n $N "${OPT_k}" 2>/dev/null | group_by_${OPT_g} | tail -n +2
-         else
-            group_by_${OPT_g} "${OPT_k}"
-         fi
-         FIRST_LOOP=""
-      else
-         group_by_${OPT_g} "$@"
-      fi
-
-   done
-
-   if [ "${OPT_k}" = "/tmp/diskstats-samples" ]; then
-      rm -f "/tmp/diskstats-samples"
-   fi
-   rm -f /tmp/percona-toolkit.awk
+      $samples++;
+      if ( defined($opts{samples_to_gather}) && $samples >= $opts{samples_to_gather} ) {
+         last GATHER_DATA;
+      }
+   }
+   return;
 }
 
-# Execute the program if it was not included from another file.  This makes it
-# possible to include without executing, and thus test.
-if [ "$(basename "$0")" = "pt-diskstats" ] || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
-    main "$@"
-fi
+sub group_by {
+   my (%args) = @_;
 
-# ############################################################################
-# Documentation
-# ############################################################################
-:<<'DOCUMENTATION'
+   my $got = $args{got};
+
+   if ( ref( $args{options}->{obj} ) ne $option_to_object{$got} ) {
+      # Particularly important! Otherwise we would depend on the
+      # object's ->new being smart about discarding unrecognized
+      # values.
+      delete $args{options}->{obj};
+      # This would fail on a stricter constructor, so it probably
+      # needs fixing.
+      $args{options}->{obj} = $option_to_object{$got}->new( %{$args{options}});
+   }
+   seek $args{filehandle}, 0, 0;
+
+   # Just aliasing this for a bit.
+   for my $obj ( $args{options}->{obj} ) {
+      if ( $option_to_object{$got} eq "DiskstatsGroupBySample" ) {
+         $obj->interactive(1);
+      }
+      else {
+         $obj->interactive(0);
+      }
+      $obj->group_by(
+               filehandle => $args{filehandle},
+               # Only print the header once, as if in interactive.
+               header_cb => $args{header_cb} || sub {
+                     my $print_header;
+                     return sub {
+                        unless ($print_header++) {
+                           shift->print_header(@_)
+                        }
+                     };
+                  }->(),
+               );
+      $obj->interactive(1);
+      $obj->{_print_header} = 0;
+   }
+}
+
+sub help {
+   my (%args) = @_;
+   my $obj         = $args{options}->{obj};
+   my $mode        = $object_to_option{ref($obj)};
+   my ($column_re) = regexp_pattern( $obj->column_regex() );
+   my ($device_re) = regexp_pattern( $obj->device_regex() );
+   my $interval    = $obj->sample_time() || '(none)';
+   my $disp_int    = $args{options}->{display_interval} || '(none)';
+   my $inact_disk  = $obj->filter_zeroed_rows() || '';
+
+   for my $re ( $column_re, $device_re ) {
+      $re ||= '(none)';
+      $re =~ s/^\Q(?=)\E$//;
+   }
+
+   print <<"HELP";
+   You can control this program by key presses:
+   ------------------- Key ------------------- ---- Current Setting ----
+   A, D, S) Set the group-by mode              $mode
+   c) Enter a Perl regex to match column names $column_re
+   /) Enter a Perl regex to match disk names   $device_re
+   z) Set the sample size in seconds           $interval
+   i) Hide/show inactive disks                 $inact_disk
+   d) Set the redisplay interval in seconds    $disp_int
+   p) Pause the program
+   q) Quit the program
+   ------------------- Press any key to continue -----------------------
+HELP
+   pause(@_);
+}
+
+sub file_to_use {
+   my ( $filename ) = @_;
+   #$filename ||= `mktemp -d /tmp/pt-diskstats.$PID.XXXXXXXX`;
+   if ( $filename ) {
+      open my $fh, "<", $filename
+         or die "Couldn't open $filename: $OS_ERROR";
+      return $fh, $filename;
+   }
+   else {
+      local $EVAL_ERROR;
+      if ( !eval { require File::Temp } ) {
+         die "Can't call mktemp nor load File::Temp. Please install either of those or pass in an explicit filename.";
+      }
+      my $dir = File::Temp::tempdir( CLEANUP => 1 );
+      return File::Temp::tempfile(
+                     "pt-diskstats.$PID.XXXXXXXX",
+                     DIR      => $dir,
+                     UNLINK   => 1,
+                     OPEN     => 1,
+                  );
+   }
+}
+
+sub get_input {
+   my ($message) = @_;
+
+   STDIN->blocking(1);
+   ReadKeyMini::cooked();
+
+   print $message;
+   chomp(my $new_opt = <STDIN>);
+
+   ReadKeyMini::cbreak();
+   STDIN->blocking(0);
+   return $new_opt;
+}
+
+sub hide_inactive_disks {
+   my (%args)       = @_;
+   my $new_val      = !!get_input("Filter inactive rows? (Leave blank for 'No') ");
+
+   $args{options}->{filter_zeroed_rows} = $new_val;
+   $args{options}->{obj}->filter_zeroed_rows($new_val);
+   return;
+}
+
+sub get_new_value_for {
+   my ($looking_for, $message) = @_;
+   return sub {
+      my (%args)       = @_;
+      my $new_interval = get_input($message);
+   
+      $new_interval ||= 0;
+   
+      if ( looks_like_number($new_interval) ) {
+         if ( $args{options}->{obj}->can($looking_for) ) {
+            $args{options}->{obj}->$looking_for($new_interval);
+         }
+         return $args{options}->{$looking_for} = $new_interval;
+      }
+      else {
+         die("invalid timeout specification");
+      }
+   };
+}
+
+sub get_new_x_regex {
+   my ($looking_for, $message) = @_;
+   return sub {
+      my (%args)   = @_;
+      my $new_regex = get_input($message);
+   
+      local $EVAL_ERROR;
+      if ( $new_regex && (my $re = eval { qr/$new_regex/i }) ) {
+         $args{options}->{$looking_for} = $re;
+      }
+      elsif ( !$EVAL_ERROR && !$new_regex ) {
+         # This might seem weird, but an empty pattern is
+         # somewhat magical, and basically just asking for trouble.
+         # Instead we give them what awk would, a pattern that always
+         # matches.
+         $args{options}->{$looking_for} = qr/(?=)/;
+      }
+      else {
+         die("invalid regex specification: $EVAL_ERROR");
+      }
+      $args{options}->{obj}->$looking_for( $args{options}->{$looking_for} );
+   };
+}
+
+sub pause {
+   my (%args) = @_;
+   STDIN->blocking(1);
+   $args{select_obj}->can_read();
+   STDIN->blocking(0);
+   scalar <STDIN>;
+   return;
+}
+
+1;
+#XXX TODO
+#__PACKAGE__->run_interactive(@ARGV, o => bless {}, "OptionParser") unless caller;
+
+}
+# ###########################################################################
+# End DiskstatsMenu package
+# ###########################################################################
+{
+package pt_diskstats;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use DiskstatsMenu;
+use OptionParser;
+
+local $SIG{__DIE__} = sub {
+   require Carp;
+   Carp::confess(@_) unless $^S; # This is $EXCEPTIONS_BEING_CAUGHT
+} if MKDEBUG;
+
+sub main {
+   shift;
+   local @ARGV = @_;  # set global ARGV for this package
+
+   # ########################################################################
+   # Get configuration information.
+   # ########################################################################
+   my $o = OptionParser->new( file => __FILE__ );
+   $o->get_specs();
+   $o->get_opts();
+
+   # Interactive mode. Delegate to Diskstats::Menu
+   return DiskstatsMenu->run_interactive( o => $o, filename => $ARGV[0] );
+}
+
+# Somewhat important if STDOUT is tied to a terminal.
+END { close STDOUT or die "Couldn't close stdout: $OS_ERROR" }
+
+__PACKAGE__->main(@ARGV) unless caller;
+
+1;
+}
 =pod
 
 =head1 NAME
@@ -625,7 +3214,7 @@ pt-diskstats - Aggregate and summarize F</proc/diskstats>.
 
 =head1 SYNOPSIS
 
-Usage: pt-diskstats [OPTIONS] [FILES]
+Usage: pt-diskstats [OPTION...] [FILES]
 
 pt-diskstats reads F</proc/diskstats> periodically, or files with the
 contents of F</proc/diskstats>, aggregates the data, and prints it nicely.
@@ -669,6 +3258,8 @@ Otherwise it loops until you exit with the 'q' key.
 
 If you press the '?' key, you will bring up the interactive help menu that
 shows which keys control the program.
+
+XXX TODO:
 
 Files should have this format:
 
@@ -764,19 +3355,33 @@ These are analogous to their C<rd_*> cousins.
 
 =head1 OPTIONS
 
-Options must precede files on the command line.
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
 
 =over
 
-=item -c COLS
+=item --config
 
-Awk regex of which columns to include (default cnc|rt|mb|busy|prg).
+type: Array
 
-=item -d DEVICES
+Read this comma-separated list of config files; if specified, this must be the
+first option on the command line.
 
-Awk regex of which devices to include.
+=item --columns
 
-=item -g GROUPBY
+type: string; default: cnc|rt|busy|prg|time|io_s
+
+Perl regex of which columns to include.
+
+=item --devices
+
+type: string
+
+Perl regex of which devices to include.
+
+=item --group-by
+
+type: string; default: disk
 
 Group-by mode (default disk); specify one of the following:
 
@@ -784,22 +3389,37 @@ Group-by mode (default disk); specify one of the following:
    sample - Each line of output shows one sample of statistics.
    all    - Each line of output shows one sample and one disk device.
 
-=item -i INTERVAL
+=item --sample-time
 
-In -g sample mode, include INTERVAL seconds per sample.
+type: int; default: 1
 
-=item -k KEEPFILE
+In --group-by sample mode, include INTERVAL seconds of samples per group.
 
-File to save diskstats samples in (default /tmp/diskstats-samples).
-If a non-default filename is used, it will be saved for later analysis.
+=item --save-samples
 
-=item -n SAMPLES
+type: string
+
+File to save diskstats samples in; these can be used for later analysis.
+
+=item --iterations
+
+type: int
 
 When in interactive mode, stop after N samples.
 
-=item -s INTERVAL
+=item --interval
 
-Sample /proc/diskstats every N seconds (default 1).
+type: int; default: 1
+
+Sample /proc/diskstats every N seconds.
+
+=item --help
+
+Show help and exit.
+
+=item --version
+
+Show version and exit.
 
 =back
 
@@ -809,7 +3429,7 @@ This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires Bash v3 or newer and the F</proc> filesystem unless
+This tool requires Perl v5.8.0 or newer and the F</proc> filesystem, unless
 reading from files.
 
 =head1 BUGS
@@ -888,8 +3508,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-diskstats 1.0.1
+pt-diskstats 2.0.0_WIP
 
 =cut
 
-DOCUMENTATION
