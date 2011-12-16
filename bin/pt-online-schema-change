@@ -4720,7 +4720,7 @@ Change the table's engine to InnoDB:
   pt-online-schema-change   \
     h=127.1,t=db.tbl        \
     --alter "ENGINE=InnoDB" \
-    --drop-tmp-table
+    --drop-old-table
 
 Rebuild but do not alter the table, and keep the temporary table:
 
@@ -4732,7 +4732,7 @@ Add column to parent table, update child table foreign key constraints:
     h=127.1,D=db,t=parent          \
     --alter "ADD COLUMN (foo INT)" \
     --child-tables child1,child2   \
-    --update-foreign-keys-method drop_tmp_table
+    --update-foreign-keys-method drop_old_table
 
 =head1 RISKS
 
