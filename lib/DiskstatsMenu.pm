@@ -47,7 +47,7 @@ my %actions = (
    'S' => \&group_by,
    'i' => \&hide_inactive_disks,
    'd' => get_new_value_for( "redisplay_interval", "Enter a new redisplay interval in seconds: " ),
-   'z' => get_new_value_for( "interval", "Enter a new interval between samples in seconds: " ),
+   'z' => get_new_value_for( "sample_time", "Enter a new interval between samples in seconds: " ),
    'c' => get_new_x_regex( "column_regex", "Enter a column pattern: " ),
    '/' => get_new_x_regex( "device_regex", "Enter a disk/device pattern: " ),
    'q' => sub { return 'last' },
@@ -84,6 +84,10 @@ sub run_interactive {
       interactive        => 1,
       filter_zeroed_rows => 0,
    );
+
+   for my $re_key ( grep { $opts{$_} } qw( column_regex device_regex ) ) {
+      $opts{$re_key} = qr/$opts{$re_key}/i;
+   }
 
    my ($tmp_fh, $filename, $child_pid, $child_fh);
 
@@ -139,6 +143,7 @@ sub run_interactive {
 
    if ( $args{filename} ) {
       group_by(
+         header_cb  => sub { shift->print_header(@_) },
          select_obj => $sel,
          options    => \%opts,
          filehandle => $tmp_fh,
@@ -243,7 +248,7 @@ sub group_by {
       $obj->group_by(
                filehandle => $args{filehandle},
                # Only print the header once, as if in interactive.
-               header_cb => sub {
+               header_cb => $args{header_cb} || sub {
                      my $print_header;
                      return sub {
                         unless ($print_header++) {
@@ -263,13 +268,13 @@ sub help {
    my $mode        = $object_to_option{ref($obj)};
    my ($column_re) = regexp_pattern( $obj->column_regex() );
    my ($device_re) = regexp_pattern( $obj->device_regex() );
-   my $interval    = $obj->interval() || '(none)';
+   my $interval    = $obj->sample_time() || '(none)';
    my $disp_int    = $args{options}->{display_interval} || '(none)';
    my $inact_disk  = $obj->filter_zeroed_rows() || '';
 
    for my $re ( $column_re, $device_re ) {
-      $re =~ s/^\Q(?=)\E$//;
       $re ||= '(none)';
+      $re =~ s/^\Q(?=)\E$//;
    }
 
    print <<"HELP";
@@ -327,7 +332,7 @@ sub get_input {
 
 sub hide_inactive_disks {
    my (%args)       = @_;
-   my $new_val = get_input("Filter inactive rows? (Leave blank for 'No') ");
+   my $new_val      = !!get_input("Filter inactive rows? (Leave blank for 'No') ");
 
    $args{options}->{filter_zeroed_rows} = $new_val;
    $args{options}->{obj}->filter_zeroed_rows($new_val);

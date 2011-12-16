@@ -199,7 +199,7 @@ first option on the command line.
 
 =item --columns
 
-type: string; default: cnc|rt|mb|busy|prg
+type: string; default: cnc|rt|busy|prg|time|io_s
 
 Perl regex of which columns to include.
 
@@ -338,6 +338,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-diskstats 1.0.1
+pt-diskstats 2.0.0_WIP
 
 =cut
