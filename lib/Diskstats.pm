@@ -577,7 +577,7 @@ sub _calc_read_stats {
       reads_sec       => $delta_for->{reads} / $elapsed,
       read_requests   => $delta_for->{reads_merged} + $delta_for->{reads},
       mbytes_read_sec => $delta_for->{read_kbs} / $elapsed / 1024,
-      ios_read_sec    => $delta_for->{ms_spent_reading} * 1000,
+      ios_read_sec    => $delta_for->{ms_spent_reading} / 1000,
       read_conc       => $delta_for->{ms_spent_reading} /
                            $elapsed / 1000 / $devs_in_group,
    );
