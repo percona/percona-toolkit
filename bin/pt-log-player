@@ -3231,7 +3231,7 @@ becomes:
 
 If your code doesn't compile, the tool will die with an error.  Even if your
 code compiles, it may crash to tool during runtime if, for example, it tries
-a pattern match an undefined value.  No safeguards of any kind of provided so
+a pattern match an undefined value.  No safeguards of any kind are provided so
 code carefully!
 
 =item --help
