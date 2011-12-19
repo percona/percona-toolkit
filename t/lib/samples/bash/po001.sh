@@ -110,11 +110,13 @@ Just an option.
 
 default: yes; negatable: yes
 
+Negatable option.
+
 =item --int-opt
 
 type: int
 
-Int option without a default
+Int option without a default.
 
 =item --int-opt2
 
@@ -127,6 +129,10 @@ Int option with a default.
 short form: -v
 
 Print tool's version and exit.
+
+=item --help
+
+Print help and exit.
 
 =back
 
