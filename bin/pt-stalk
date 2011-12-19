@@ -928,8 +928,12 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    # see if --daemonize was specified.
    mk_tmpdir
    parse_options $0 "$@"
+   usage_or_errors $0
+   po_status=$?
    rm_tmpdir
-   usage_or_errors $0 || exit $?
+   if [ $po_status -ne 0 ]; then
+      exit $po_status
+   fi
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
