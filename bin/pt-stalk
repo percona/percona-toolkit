@@ -957,6 +957,7 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
       # use $! to get the PID of the child we just forked.
       echo "$!" > $OPT_PID
    else
+      make_pid_file $OPT_PID $$
       main "$@"
    fi
 fi
