@@ -25,22 +25,23 @@ set -u
 
 # Global variables.
 TMPDIR=""
-OPT_TMPDIR=${OPT_TMPDIR:""}
 
 # Sub: mk_tmpdir
 #   Create a secure tmpdir and set TMPDIR.
 #
-# Optional Global Variables:
-#   OPT_TMPDIR - User-specified --tmpdir (default none).
+# Optional Arguments:
+#   dir - User-specified tmpdir (default none).
 #
 # Set Global Variables:
 #   TMPDIR - Absolute path of secure temp directory.
 mk_tmpdir() {
-   if [ -n "$OPT_TMPDIR" ]; then
-      TMPDIR="$OPT_TMPDIR"
-      if [ ! -d "$TMPDIR" ]; then
-         mkdir $TMPDIR || die "Cannot make $TMPDIR"
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
       fi
+      TMPDIR="$dir"
    else
       local tool=`basename $0`
       local pid="$$"
