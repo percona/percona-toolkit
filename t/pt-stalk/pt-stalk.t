@@ -62,7 +62,7 @@ diag(`rm $pid_file 2>/dev/null`);
 diag(`rm $log_file 2>/dev/null`);
 diag(`rm -rf $dest 2>/dev/null`);
 
-$retval = system("$trunk/bin/pt-stalk --pid $pid_file --log $log_file --dest $dest -- --defaults-file=$cnf");
+$retval = system("$trunk/bin/pt-stalk --daemonize --pid $pid_file --log $log_file --dest $dest -- --defaults-file=$cnf");
 
 is(
    $retval >> 8,
@@ -136,7 +136,7 @@ diag(`rm $dest/*   2>/dev/null`);
 my (undef, $uptime) = $dbh->selectrow_array("SHOW STATUS LIKE 'Uptime'");
 my $threshold = $uptime + 2;
 
-$retval = system("$trunk/bin/pt-stalk --no-daemonize --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 2 --run-time 2 -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 2 --run-time 2 -- --defaults-file=$cnf >$log_file 2>&1");
 
 sleep 3;
 
@@ -154,7 +154,7 @@ is(
    "Collect ran for --run-time"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk pt-stalk --no-daemonize --iterations 1 --dest $dest'`;
+$output = `ps x | grep -v grep | grep 'pt-stalk pt-stalk --iterations 1 --dest $dest'`;
 is(
    $output,
    "",
