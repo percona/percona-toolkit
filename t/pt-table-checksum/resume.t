@@ -29,7 +29,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 45;
+   plan tests => 47;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -649,6 +649,47 @@ is(
    PerconaTest::count_checksum_results($output, 'chunks'),
    17,
    "Resumed 17 chunks"
+);
+
+# ###########################################################################
+# Resume from earlier table when latter tables are complete.
+# ###########################################################################
+
+# See https://bugs.launchpad.net/percona-toolkit/+bug/898318
+
+$sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
+load_data_infile("3tbl-resume-bar", "ts='2011-11-08 00:01:08'");
+
+is_deeply(
+   $master_dbh->selectall_arrayref("select db, tbl, chunk, ts from percona.checksums order by db, tbl"),
+   [
+      [qw(test	t1	1), '2011-11-08 00:02:01'],
+      [qw(test	t1	2), '2011-11-08 00:02:02'],
+      [qw(test	t1	3), '2011-11-08 00:02:03'],
+      # t1 not finish but
+
+      [qw(test	t2	1), '2011-11-08 00:01:01'],
+      [qw(test	t2	2), '2011-11-08 00:01:02'],
+      [qw(test	t2	3), '2011-11-08 00:01:03'],
+      [qw(test	t2	4), '2011-11-08 00:01:04'],
+      [qw(test	t2	5), '2011-11-08 00:01:05'],
+      [qw(test	t2	6), '2011-11-08 00:01:06'],
+      [qw(test	t2	7), '2011-11-08 00:01:07'],
+      [qw(test	t2	8), '2011-11-08 00:01:08'],
+      # t2 is finished
+   ],
+   "Checksum results partial t1, full t2"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test --resume --tables t1),
+      qw(--chunk-size 5)) },
+);
+
+like(
+   $output,
+   qr/Resuming from test.t1 chunk 3, timestamp 2011-11-08 00:02:03/,
+   "Resume from t1 when t2 is done"
 );
 
 # #############################################################################
