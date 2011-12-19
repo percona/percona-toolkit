@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 44;
+   plan tests => 45;
 }
 
 my $q   = new Quoter();
@@ -93,6 +93,7 @@ sub make_nibble_iter {
       select      => $args{select},
       one_nibble  => $args{one_nibble},
       resume      => $args{resume},
+      order_by    => $args{order_by},
       %common_modules,
    );
 
@@ -526,8 +527,26 @@ $ni = make_nibble_iter(
 $ni->next();
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) ORDER BY `address_id` /*checksum chunk*/",
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*checksum chunk*/",
    "--ignore-columns"
+);
+
+# #########################################################################
+# Put ORDER BY in nibble SQL.
+# #########################################################################
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'film_actor',
+   order_by => 1,
+   argv     => [qw(--tables sakila.film_actor --chunk-size 1000)],
+);
+
+$ni->next();
+
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*checksum chunk*/",
+   "Add ORDER BY to nibble SQL"
 );
 
 # ############################################################################
