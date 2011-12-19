@@ -3604,7 +3604,7 @@ sub new {
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
-         . " ORDER BY $order_by"
+         . ($args{order_by} ? " ORDER BY $order_by" : "")
          . " /*checksum chunk*/";
       MKDEBUG && _d('Nibble statement:', $nibble_sql);
 
@@ -3616,7 +3616,7 @@ sub new {
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
-         . " ORDER BY $order_by"
+         . ($args{order_by} ? " ORDER BY $order_by" : "")
          . " /*explain checksum chunk*/";
       MKDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
