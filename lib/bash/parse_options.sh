@@ -26,9 +26,9 @@ set -u
 
 # Global variables.  These must be global because declare inside a
 # sub will be scoped locally.
-declare -a ARGV      # non-option args (probably input files)
-declare EXT_ARGV     # everything after -- (args for an external command)
-declare -a OPT_ERRS  # errors while parsing options, for usage_or_errors()
+declare -a ARGV     # non-option args (probably input files)
+EXT_ARGV=""         # everything after -- (args for an external command)
+declare -a OPT_ERRS # errors while parsing options, for usage_or_errors()
 OPT_VERSION="no"
 OPT_HELP="no"
 
