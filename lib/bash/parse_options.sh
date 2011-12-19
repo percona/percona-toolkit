@@ -137,7 +137,7 @@ parse_options() {
                   $para = <>;
                   chomp;
                }
-               my ($desc) = $para =~ m/^([^.]+)/;
+               my ($desc) = $para =~ m/^([^?.]+)/;
                printf $opt_fh "desc:$desc.\n";
                close $opt_fh;
             }
