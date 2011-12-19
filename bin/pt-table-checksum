@@ -7168,38 +7168,19 @@ sub last_chunk {
    my ($dbh, $repl_table, $q) = @args{@required_args};
    MKDEBUG && _d('Getting last chunk for --resume');
 
-   my $sql = "SELECT MAX(ts) FROM $repl_table WHERE master_crc IS NOT NULL";
-   MKDEBUG && _d($sql);
-   my ($max_ts) = $dbh->selectrow_array($sql);
-   if ( !$max_ts ) {
-      MKDEBUG && _d('Replicate table is empty; will not resume');
-      return;
-   }
-
-   $sql = "SELECT * FROM $repl_table "
-        . "WHERE ts<=? "
-        . "ORDER BY db DESC, tbl DESC, chunk DESC LIMIT 1";
+   my $sql = "SELECT * FROM $repl_table "
+           . "WHERE master_cnt IS NOT NULL "
+           . "ORDER BY ts DESC, db DESC, tbl DESC LIMIT 1";
    MKDEBUG && _d($sql);
    my $sth = $dbh->prepare($sql);
-   $sth->execute($max_ts);
+   $sth->execute();
    my $last_chunk = $sth->fetchrow_hashref();
    $sth->finish();
    MKDEBUG && _d('Last chunk:', Dumper($last_chunk));
 
-   $sql = "SELECT MAX(chunk) FROM $repl_table "
-        . "WHERE db=? AND tbl=? AND master_crc IS NOT NULL";
-   MKDEBUG && _d($sql);
-   $sth = $dbh->prepare($sql);
-   $sth->execute($last_chunk->{db}, $last_chunk->{tbl});
-   my ($max_chunk) = $sth->fetchrow_array();
-   $sth->finish();
-   MKDEBUG && _d('Max chunk:', $max_chunk);
-   if ( ($last_chunk->{chunk} || 0) ne ($max_chunk || 0) ) {
-      warn ts("Not resuming from max chunk ("
-         . ($last_chunk->{chunk} || 0)
-         . " != "
-         . ($max_chunk || 0)
-         . "); resuming may not work correctly.\n");
+   if ( !$last_chunk || !$last_chunk->{ts} ) {
+      MKDEBUG && _d('Replicate table is empty; will not resume');
+      return;
    }
 
    return $last_chunk;
