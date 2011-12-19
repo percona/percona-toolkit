@@ -51,11 +51,11 @@ die() {
 
 set -u
 
-declare -a ARGV     # non-option args (probably input files)
-EXT_ARGV=""         # everything after -- (args for an external command)
-declare -a OPT_ERRS # errors while parsing options, for usage_or_errors()
-OPT_VERSION="no"
-OPT_HELP="no"
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION="no"  # If --version was specified
+OPT_HELP="no"     # If --help was specified
 
 usage() {
    local file=$1
@@ -77,18 +77,19 @@ usage_or_errors() {
 
    if [ "$OPT_HELP" = "yes" ]; then
       usage "$file"
+      echo >&2
+      echo "Command line options:" >&2
+      echo >&2
+      for opt in $(ls $TMPDIR/po/); do
+         local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
+         echo "--$opt" >&2
+         echo "  $desc" >&2
+         echo >&2
+      done
       return 1
    fi
 
-   local n_errs=${#OPT_ERRS[*]}
-   if [ $n_errs -gt 0 ]; then
-      local i=0
-      echo "Errors parsing command line options:" >&2
-      echo >&2
-      while [ $i -lt $n_errs ]; do
-         echo "  * ${OPT_ERRS[$i]}" >&2
-         i=$(($i + 1))
-      done
+   if [ $OPT_ERRS -gt 0 ]; then
       echo >&2
       usage $file
       return 1
@@ -104,33 +105,36 @@ parse_options() {
    mkdir $TMPDIR/po/ 2>/dev/null
    rm -rf $TMPDIR/po/*
    (
-      export LC_ALL="C"
-
-      awk -v "po_dir"="$TMPDIR/po" '
-         /^=head1 OPTIONS/ {
-            getline
-            while ($0 !~ /^=head1/) {
-               if ($0 ~ /^=item --.*/) {
-                  long_opt  = substr($2, 3, length($2) - 2)
-                  spec_file = po_dir "/" long_opt
-                  trf       = "sed -e \"s/[ ]//g\" | tr \";\" \"\n\" > " spec_file
-
-                  getline # blank line
-                  getline # specs or description
-
-                  if ($0 ~ /^[a-z]/ ) {
-                     print "long:" long_opt "; " $0 | trf
-                     close(trf)
-                  }
-                  else {
-                     print "long:" long_opt > spec_file
-                     close(spec_file)
-                  }
+      export PO_DIR="$TMPDIR/po"
+      cat $file | perl -ne '
+         BEGIN { $/ = ""; }
+         next unless $_ =~ m/^=head1 OPTIONS/;
+         while ( defined(my $para = <>) ) {
+            last if $para =~ m/^=head1/;
+            chomp;
+            if ( $para =~ m/^=item --(\S+)/ ) {
+               my $opt  = $1;
+               my $file = "$ENV{PO_DIR}/$opt";
+               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+               printf $opt_fh "long:$opt\n";
+               $para = <>;
+               chomp;
+               if ( $para =~ m/^[a-z ]+:/ ) {
+                  map {
+                     chomp;
+                     my ($attrib, $val) = split(/: /, $_);
+                     printf $opt_fh "$attrib:$val\n";
+                  } split(/; /, $para);
+                  $para = <>;
+                  chomp;
                }
-               getline
+               my ($desc) = $para =~ m/^([^.]+)/;
+               printf $opt_fh "desc:$desc.\n";
+               close $opt_fh;
             }
-            exit
-         }' $file
+         }
+         last;
+      '
    )
 
    for opt_spec in $(ls $TMPDIR/po/); do
@@ -147,9 +151,11 @@ parse_options() {
             default)
                default_val="$val"
                ;;
-            shortform)
+            "short form")
                ;;
             type)
+               ;;
+            desc)
                ;;
             negatable)
                if [ "$val" = "yes" ]; then
@@ -177,8 +183,6 @@ parse_options() {
       eval "OPT_${opt}"="$default_val"
    done
 
-   local i=0  # ARGV index
-   local j=0  # OPT_ERRS index
    for opt; do
       if [ $# -eq 0 ]; then
          break  # no more opts
@@ -191,8 +195,11 @@ parse_options() {
       fi
       shift 
       if [ $(expr "$opt" : "-") -eq 0 ]; then
-         ARGV[i]="$opt"
-         i=$((i+1))
+         if [ -z "$ARGV" ]; then
+            ARGV="$opt"
+         else
+            ARGV="$ARGV $opt"
+         fi
          continue
       fi
 
@@ -209,10 +216,10 @@ parse_options() {
       if [ -f "$TMPDIR/po/$opt" ]; then
          spec="$TMPDIR/po/$opt"
       else
-         spec=$(grep "^shortform:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
+         spec=$(grep "^short form:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
          if [ -z "$spec"  ]; then
-            OPT_ERRS[j]="Unknown option: $real_opt"
-            j=$((j+1))
+            OPT_ERRS=$(($OPT_ERRS + 1))
+            echo "Unknown option: $real_opt" >&2
             continue
          fi
       fi
@@ -220,8 +227,8 @@ parse_options() {
       required_arg=$(cat $spec | grep '^type:' | cut -d':' -f2)
       if [ -n "$required_arg" ]; then
          if [ $# -eq 0 ]; then
-            OPT_ERRS[j]="$real_opt requires a $required_arg argument"
-            j=$((j+1))
+            OPT_ERRS=$(($OPT_ERRS + 1))
+            echo "$real_opt requires a $required_arg argument" >&2
             continue
          else
             val="$1"

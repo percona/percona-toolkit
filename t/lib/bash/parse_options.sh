@@ -66,12 +66,21 @@ is "$OPT_VERSION" "yes" "Short form"
 
 # Have to call this in a subshell because the error will cause an exit.
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" --foo >$TMPFILE 2>&1
-is "`cat $TMPFILE`" "" "No warnings or errors yet"
+cmd_ok "grep -q 'Unknown option: --foo' $TMPFILE" "Error on unknown option"
 
 usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
 local err=$?
 is "$err" "1" "Non-zero exit on unknown option"
-cmd_ok "grep -q 'Unknown option: --foo' $TMPFILE" "Error on unknown option"
+
+# ###########################################################################
+# --help
+# ###########################################################################
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --help
+usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
+no_diff \
+   "$TMPFILE" \
+   "$T_LIB_DIR/samples/bash/help001.txt" \
+   "--help"
 
 # ############################################################################
 # Done
