@@ -62,11 +62,11 @@ cmd_ok \
    "lsof"
 
 cmd_ok \
-   "grep -q 'buf/buf0buf.c' $p-mutex-status1" \
+   "grep -q 'buf0buf.c' $p-mutex-status1" \
    "mutex-status1"
 
 cmd_ok \
-   "grep -q 'buf/buf0buf.c' $p-mutex-status2" \
+   "grep -q 'buf0buf.c' $p-mutex-status2" \
    "mutex-status2"
 
 cmd_ok \
@@ -90,7 +90,7 @@ cmd_ok \
    "ps"
 
 cmd_ok \
-   "grep -qP '^warning_count\t\d' $p-variables" \
+   "grep -qP '^wait_timeout\t\d' $p-variables" \
    "variables"
 
 local iters=$(cat $p-df | grep -c '^TS ')
