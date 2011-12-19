@@ -50,6 +50,7 @@ $Data::Dumper::Quotekeys = 0;
 #   one_nibble  - Allow one-chunk tables (default yes)
 #   resume      - Hashref with lower_boundary and upper_boundary values
 #                 to resume nibble from
+#   order_by    - Add ORDER BY to nibble SQL (default no)
 #
 # Returns:
 #  NibbleIterator object 
@@ -205,7 +206,7 @@ sub new {
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
-         . " ORDER BY $order_by"
+         . ($args{order_by} ? " ORDER BY $order_by" : "")
          . " /*checksum chunk*/";
       MKDEBUG && _d('Nibble statement:', $nibble_sql);
 
@@ -217,7 +218,7 @@ sub new {
          . " WHERE " . $asc->{boundaries}->{'>='}  # lower boundary
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
-         . " ORDER BY $order_by"
+         . ($args{order_by} ? " ORDER BY $order_by" : "")
          . " /*explain checksum chunk*/";
       MKDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
