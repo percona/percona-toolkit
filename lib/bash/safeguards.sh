@@ -25,19 +25,21 @@ set -u
 
 disk_space() {
    local filesystem=${1:-"$PWD"}
-   # Filesystem   1M-blocks  Used Available Capacity  Mounted on
-   # /dev/disk0s2    115383 92637     22496    81%    /
-   df -m $filesystem
+   # Filesystem   1024-blocks     Used Available Capacity  Mounted on
+   # /dev/disk0s2   118153176 94409664  23487512    81%    /
+   df -P -k $filesystem
 }
 
 # Sub: check_disk_space
-#   Check if there is or will be enough disk space.
+#   Check if there is or will be enough disk space.  Input is a file
+#   with output from <disk_space()>, i.e. `df -P -k`.  The df output
+#   must use 1k blocks, but the mb arg from the user is in MB.
 #
 # Arguments:
-#   file   - File with output from <disk_space()>.
-#   mb     - Minimum MB free.
-#   pc     - Minimum percent free.
-#   margin - Add this many MB to the real MB used.
+#   file      - File with output from <disk_space()>.
+#   mb        - Minimum MB free.
+#   pc        - Minimum percent free.
+#   mb_margin - Add this many MB to the real MB used.
 #
 # Returns:
 #   0 if there is/will be enough disk space, else 1.
@@ -45,24 +47,28 @@ check_disk_space() {
    local file=$1
    local mb=${2:-"0"}
    local pc=${3:-"0"}
-   local margin=${4:-"0"}
+   local mb_margin=${4:-"0"}
 
-   local mb_used=$(cat $file | awk '/^\//{print $3}');
-   local mb_free=$(cat $file | awk '/^\//{print $4}');
+   # Convert MB to KB because the df output should be in 1k blocks.
+   local kb=$(($mb * 1024))
+   local kb_margin=$(($mb_margin * 1024))
+
+   local kb_used=$(cat $file | awk '/^\//{print $3}');
+   local kb_free=$(cat $file | awk '/^\//{print $4}');
    local pc_used=$(cat $file | awk '/^\//{print $5}' | sed -e 's/%//g');
 
-   if [ "$margin" -gt "0" ]; then
-      local mb_total=$(($mb_used + $mb_free))
+   if [ "$kb_margin" -gt "0" ]; then
+      local kb_total=$(($kb_used + $kb_free))
 
-      mb_used=$(($mb_used + $margin))
-      mb_free=$(($mb_free - $margin))
-      pc_used=$(awk "BEGIN { printf(\"%d\", $mb_used/$mb_total * 100) }")
+      kb_used=$(($kb_used + $kb_margin))
+      kb_free=$(($kb_free - $kb_margin))
+      pc_used=$(awk "BEGIN { printf(\"%d\", $kb_used/$kb_total * 100) }")
    fi
 
    local pc_free=$((100 - $pc_used))
 
-   if [ "$mb_free" -le "$mb" -o "$pc_free" -le "$pc" ]; then
-      warn "Not enough free disk space: ${pc_free}% free, ${mb_free} MB free; wanted more than ${pc}% free or ${mb} MB free"
+   if [ "$kb_free" -le "$kb" -o "$pc_free" -le "$pc" ]; then
+      warn "Not enough free disk space: ${pc_free}% free, ${kb_free} KB free; wanted more than ${pc}% free or ${kb} KB free"
       return 1
    fi
 
