@@ -26,11 +26,11 @@ set -u
 
 # Global variables.  These must be global because declare inside a
 # sub will be scoped locally.
-declare -a ARGV     # non-option args (probably input files)
-EXT_ARGV=""         # everything after -- (args for an external command)
-declare -a OPT_ERRS # errors while parsing options, for usage_or_errors()
-OPT_VERSION="no"
-OPT_HELP="no"
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION="no"  # If --version was specified
+OPT_HELP="no"     # If --help was specified
 
 # Sub: usage
 #   Print usage (--help) and list the program's options.
@@ -64,18 +64,19 @@ usage_or_errors() {
 
    if [ "$OPT_HELP" = "yes" ]; then
       usage "$file"
+      echo >&2
+      echo "Command line options:" >&2
+      echo >&2
+      for opt in $(ls $TMPDIR/po/); do
+         local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
+         echo "--$opt" >&2
+         echo "  $desc" >&2
+         echo >&2
+      done
       return 1
    fi
 
-   local n_errs=${#OPT_ERRS[*]}
-   if [ $n_errs -gt 0 ]; then
-      local i=0
-      echo "Errors parsing command line options:" >&2
-      echo >&2
-      while [ $i -lt $n_errs ]; do
-         echo "  * ${OPT_ERRS[$i]}" >&2
-         i=$(($i + 1))
-      done
+   if [ $OPT_ERRS -gt 0 ]; then
       echo >&2
       usage $file
       return 1
@@ -113,37 +114,36 @@ parse_options() {
    mkdir $TMPDIR/po/ 2>/dev/null
    rm -rf $TMPDIR/po/*
    (
-      # awk is stupid on some systems (e.g. Ubuntu 10) such that
-      # /^[a-z]/ incorrectly matches "Foo".  This fixes that.
-      export LC_ALL="C"
-
-      awk -v "po_dir"="$TMPDIR/po" '
-         /^=head1 OPTIONS/ {
-            getline
-            while ($0 !~ /^=head1/) {
-               if ($0 ~ /^=item --.*/) {
-                  long_opt  = substr($2, 3, length($2) - 2)
-                  spec_file = po_dir "/" long_opt
-                  trf       = "sed -e \"s/[ ]//g\" | tr \";\" \"\n\" > " spec_file
-
-                  getline # blank line
-                  getline # specs or description
-
-                  if ($0 ~ /^[a-z]/ ) {
-                     # spec line like "type: int; default: 100"
-                     print "long:" long_opt "; " $0 | trf
-                     close(trf)
-                  }
-                  else {
-                     # no specs, should be description of option
-                     print "long:" long_opt > spec_file
-                     close(spec_file)
-                  }
+      export PO_DIR="$TMPDIR/po"
+      cat $file | perl -ne '
+         BEGIN { $/ = ""; }
+         next unless $_ =~ m/^=head1 OPTIONS/;
+         while ( defined(my $para = <>) ) {
+            last if $para =~ m/^=head1/;
+            chomp;
+            if ( $para =~ m/^=item --(\S+)/ ) {
+               my $opt  = $1;
+               my $file = "$ENV{PO_DIR}/$opt";
+               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+               printf $opt_fh "long:$opt\n";
+               $para = <>;
+               chomp;
+               if ( $para =~ m/^[a-z ]+:/ ) {
+                  map {
+                     chomp;
+                     my ($attrib, $val) = split(/: /, $_);
+                     printf $opt_fh "$attrib:$val\n";
+                  } split(/; /, $para);
+                  $para = <>;
+                  chomp;
                }
-               getline
+               my ($desc) = $para =~ m/^([^.]+)/;
+               printf $opt_fh "desc:$desc.\n";
+               close $opt_fh;
             }
-            exit
-         }' $file
+         }
+         last;
+      '
    )
 
    # Evaluate the program options into existence as global variables
@@ -163,9 +163,11 @@ parse_options() {
             default)
                default_val="$val"
                ;;
-            shortform)
+            "short form")
                ;;
             type)
+               ;;
+            desc)
                ;;
             negatable)
                if [ "$val" = "yes" ]; then
@@ -203,8 +205,6 @@ parse_options() {
    # a default value 100, then $OPT_FOO=100 already, but if --foo=500 is
    # specified on the command line, then we re-eval $OPT_FOO=500 to update
    # $OPT_FOO.
-   local i=0  # ARGV index
-   local j=0  # OPT_ERRS index
    for opt; do
       if [ $# -eq 0 ]; then
          break  # no more opts
@@ -219,8 +219,11 @@ parse_options() {
       if [ $(expr "$opt" : "-") -eq 0 ]; then
          # Option does not begin with a hyphen (-), so treat it as
          # a filename, directory, etc.
-         ARGV[i]="$opt"
-         i=$((i+1))
+         if [ -z "$ARGV" ]; then
+            ARGV="$opt"
+         else
+            ARGV="$ARGV $opt"
+         fi
          continue
       fi
 
@@ -240,10 +243,10 @@ parse_options() {
       if [ -f "$TMPDIR/po/$opt" ]; then
          spec="$TMPDIR/po/$opt"
       else
-         spec=$(grep "^shortform:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
+         spec=$(grep "^short form:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
          if [ -z "$spec"  ]; then
-            OPT_ERRS[j]="Unknown option: $real_opt"
-            j=$((j+1))
+            OPT_ERRS=$(($OPT_ERRS + 1))
+            echo "Unknown option: $real_opt" >&2
             continue
          fi
       fi
@@ -255,8 +258,8 @@ parse_options() {
       required_arg=$(cat $spec | grep '^type:' | cut -d':' -f2)
       if [ -n "$required_arg" ]; then
          if [ $# -eq 0 ]; then
-            OPT_ERRS[j]="$real_opt requires a $required_arg argument"
-            j=$((j+1))
+            OPT_ERRS=$(($OPT_ERRS + 1))
+            echo "$real_opt requires a $required_arg argument" >&2
             continue
          else
             val="$1"
