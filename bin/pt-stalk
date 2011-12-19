@@ -51,9 +51,9 @@ die() {
 
 set -u
 
-declare -a ARGV      # non-option args (probably input files)
-declare EXT_ARGV     # everything after -- (args for an external command)
-declare -a OPT_ERRS  # errors while parsing options, for usage_or_errors()
+declare -a ARGV     # non-option args (probably input files)
+EXT_ARGV=""         # everything after -- (args for an external command)
+declare -a OPT_ERRS # errors while parsing options, for usage_or_errors()
 OPT_VERSION="no"
 OPT_HELP="no"
 
@@ -258,14 +258,15 @@ parse_options() {
 set -u
 
 TMPDIR=""
-OPT_TMPDIR=${OPT_TMPDIR:""}
 
 mk_tmpdir() {
-   if [ -n "$OPT_TMPDIR" ]; then
-      TMPDIR="$OPT_TMPDIR"
-      if [ ! -d "$TMPDIR" ]; then
-         mkdir $TMPDIR || die "Cannot make $TMPDIR"
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
       fi
+      TMPDIR="$dir"
    else
       local tool=`basename $0`
       local pid="$$"

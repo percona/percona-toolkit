@@ -17,19 +17,25 @@ cmd_ok "test ! -d $tmpdir" "rm_tmpdir"
 
 is "$TMPDIR" "" "rm_tmpdir resets TMPDIR"
 
-# --tmpdir
-OPT_TMPDIR="/tmp/use--tmpdir"
+# ###########################################################################
+# User-specified tmpdir.
+# ###########################################################################
+
+local dir="/tmp/use--tmpdir"
 
 is "$TMPDIR" "" "TMPDIR not defined"
 
-cmd_ok "test ! -d $OPT_TMPDIR" "--tmpdir does not exist yet"
+cmd_ok "test ! -d $dir" "--tmpdir does not exist yet"
 
-mk_tmpdir
-is "$TMPDIR" "/tmp/use--tmpdir" "mk_tmpdir uses --tmpdir"
+mk_tmpdir $dir
+is "$TMPDIR" "$dir" "mk_tmpdir uses --tmpdir"
 
-cmd_ok "test -d $TMPDIR" "mk_tmpdir creates --tmpdir"
-
-tmpdir=$TMPDIR;
+cmd_ok "test -d $dir" "mk_tmpdir creates --tmpdir"
 
 rm_tmpdir
+
 cmd_ok "test ! -d $tmpdir" "rm_tmpdir removes --tmpdir"
+
+# ###########################################################################
+# Done
+# ###########################################################################
