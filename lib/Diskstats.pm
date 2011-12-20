@@ -94,6 +94,8 @@ sub new {
    return bless $self, $class;
 }
 
+# The next lot are accessors, plus some convenience functions.
+
 sub _ts_common {
    my ($self, $key, $val) = @_;
    if ($val) {
@@ -141,9 +143,15 @@ sub interactive {
    return $self->{interactive};
 }
 
+# What this method does is thee-fold:
+# It sets or returns the currently set filehandle, kind of like a poor man's
+# select(); but also, it checks whenever said filehandle is open. If it's not,
+# it defaults to STDOUT.
+
 sub out_fh {
    my ( $self, $new_fh ) = @_;
 
+                  # ->opened comes from IO::Handle.
    if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
       $self->{out_fh} = $new_fh;
    }
@@ -197,7 +205,7 @@ sub add_sorted_devs {
    }
 }
 
-# clear_stuff methods. LIke the name says, they clear state stored inside
+# clear_stuff methods. Like the name says, they clear state stored inside
 # the object.
 
 sub clear_state {
@@ -374,6 +382,19 @@ my @columns_in_order = (
 
 }
 
+# Method: design_print_formats()
+#   What says on the label. Returns three things: the format for the header and the
+#   data, and an arrayref of the columns used to make it.
+#
+# Parameters:
+#   %args - Arguments
+#
+# Optional Arguments:
+#   columns             - An arrayref with column names. If absent, uses ->col_ok to
+#                         decide which columns to use.
+#   max_device_length   - How much space to leave for device names. Defaults at 6.
+#
+
 sub design_print_formats {
    my ( $self,       %args )    = @_;
    my ( $dev_length, $columns ) = @args{qw( max_device_length columns )};
@@ -509,7 +530,7 @@ sub parse_from_filename {
 #   run of the mill filehandle.
 #
 # Parameters:
-#   $filehandle      - 
+#   filehandle       - 
 #   sample_callback  - Called each time a sample is processed, passed the latest timestamp.
 #
 
@@ -529,7 +550,7 @@ sub parse_from_data {
    return $lines_read;
 }
 
-# Method: parse_from()
+# Method: INTERNAL: _load()
 #   Reads from the filehandle, either saving the data as needed if dealing
 #   with a diskstats-formatted line, or if it finds a TS line and has a
 #   callback, defering to that.
@@ -537,6 +558,7 @@ sub parse_from_data {
 sub _load {
    my ( $self, $fh, $sample_callback ) = @_;
    my $block_size = $self->block_size;
+   my $current_ts = 0;
    my $new_cur    = {};
 
    while ( my $line = <$fh> ) {
@@ -544,17 +566,18 @@ sub _load {
          $new_cur->{$dev} = $dev_stats;
          $self->add_sorted_devs($dev);
       }
-      elsif ( my ($ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
-         if ( %{$new_cur} ) {
+      elsif ( my ($new_ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
+         if ( $current_ts && %{$new_cur} ) {
             $self->_save_current_as_previous( $self->stats_for() );
             $self->_save_stats($new_cur);
-            $self->current_ts($ts);
+            $self->current_ts($current_ts);
             $self->_save_current_as_first( dclone($self->stats_for) );
             $new_cur = {};
          }
          if ($sample_callback) {
-            $self->$sample_callback($ts);
+            $self->$sample_callback($current_ts);
          }
+         $current_ts = $new_ts;
       }
       else {
          chomp($line);
@@ -562,9 +585,17 @@ sub _load {
       }
    }
 
-   if ( %{$new_cur} ) {
-      #$self->_save_stats($new_cur);
-      $self->_save_current_as_first( dclone($self->stats_for) );
+   if ( eof $fh && $current_ts ) {
+      if ( %{$new_cur} ) {
+         $self->_save_current_as_previous( $self->stats_for() );
+         $self->_save_stats($new_cur);
+         $self->current_ts($current_ts);
+         $self->_save_current_as_first( dclone($self->stats_for) );
+         $new_cur = {};
+      }
+      if ($sample_callback) {
+         $self->$sample_callback($current_ts);
+      }
    }
    # Seems like this could be useful.
    return $INPUT_LINE_NUMBER;
@@ -713,7 +744,7 @@ sub _calc_stats_for_deltas {
 }
 
 sub _calc_deltas {
-   my ( $self, $callback ) = @_;
+   my ( $self ) = @_;
 
    my $elapsed = $self->current_ts() - $self->delta_against_ts();
    die "Time elapsed is [$elapsed]" unless $elapsed;

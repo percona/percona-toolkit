@@ -46,6 +46,7 @@ for my $ext ( qw( all disk sample ) ) {
          pt_diskstats->main(
                   "--group-by" => $ext,
                   "--columns"  => "cnc|rt|mb|busy|prg",
+                  "--zero-rows",
                   $file
                );
       } );

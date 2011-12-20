@@ -252,15 +252,6 @@ is(
    "INTERNAL: _print_header works"
 );
 
-$obj->current_ts(0);
-$obj->previous_ts(0);
-
-throws_ok(
-   sub { $obj->_calc_deltas() },
-   qr/Time elapsed is/,
-   "->_calc_deltas fails if the time elapsed is 0"
-);
-
 throws_ok(
    sub { $obj->parse_from_data( "ASMFHNASJNFASKLFLKHNSKD" ); },
    qr/isn't in the diskstats format/,
@@ -289,6 +280,8 @@ for my $test (
    my $method = $test->{method};
    my $prefix = $test->{results_file_prefix};
 
+   $obj->column_regex(qr/ ^ (?!.*io_s$|\s*[qs]time$) /x);
+
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
       my $file_with_trunk = File::Spec->catfile( $trunk, $file );
@@ -297,49 +290,37 @@ for my $test (
       
       my $got = output(
          sub {
-            my $orig_re = $obj->column_regex();
-            $obj->column_regex(qr/./);
             $obj->$method(
                filename => $file_with_trunk,
             );
-            $obj->column_regex($orig_re);
          });
       
       is($got, $expected, "$method: $filename via filename");
    
       $got = output(
          sub {
-            my $orig_re = $obj->column_regex();
-            $obj->column_regex(qr/./);
             open my $fh, "<", $file_with_trunk or die $!;
             $obj->$method(
                filehandle => $fh,
             );
-            $obj->column_regex($orig_re);
          });
    
       is($got, $expected, "$method: $filename via filehandle");
    
       $got = output(
          sub {
-            my $orig_re = $obj->column_regex();
-            $obj->column_regex(qr/./);
             $obj->$method(
                data => load_file( $file ),
             );
-            $obj->column_regex($orig_re);
          });
    
       is($got, $expected, "$method: $filename via data");
    
       $got = output(
          sub {
-            my $orig_re = $obj->column_regex();
-            $obj->column_regex(qr/./);
             $obj->$method(
                data => "TS 1298130002.073935000\n" . load_file( $file ),
             );
-            $obj->column_regex($orig_re);
          });
    
       is($got, $expected, "$method: $filename with an extra TS at the top");
@@ -347,29 +328,32 @@ for my $test (
       $obj->filename( $file_with_trunk );
       $got = output(
          sub {
-            my $orig_re = $obj->column_regex();
-            $obj->column_regex(qr/./);
             $obj->$method();
-            $obj->column_regex($orig_re);
          });
    
       is($got, $expected, "$method: $filename via obj->filename()");
+   }
 
-      my $data = <<'EOF';
+   my $data = <<'EOF';
 TS 1297205887.156653000
    1    0 ram0 0 0 0 0 0 0 0 0 0 0 0
 TS 1297205888.161613000
 EOF
 
-      $got = output(
-      sub{
-         my $orig_re = $obj->column_regex();
-         $obj->column_regex(qr/./);
-         $obj->$method(data => $data);
-         $obj->column_regex($orig_re);
-      });
-      
-      ok(!$got, "$method: 1 line of data between two TS lines results in no output");
+   my $got = output(
+   sub{
+      $obj->$method(data => $data);
+   });
+   
+   ok(!$got, "$method: 1 line of data between two TS lines results in no output");
 
-   }
+   $obj->current_ts(0);
+   $obj->previous_ts(0);
+   $obj->first_ts(0);
+
+   throws_ok(
+      sub { $obj->_calc_deltas() },
+      qr/Time elapsed is/,
+      "$test->{class}, ->_calc_deltas fails if the time elapsed is 0"
+   );
 }

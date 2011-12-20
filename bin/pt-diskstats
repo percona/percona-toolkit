@@ -1,8 +1,48 @@
-#!/usr/bin/env perl
-
+#!/usr/local/bin/perl 
+#!/usr/bin/env   perl 
+#!/bin/sh
+ 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
+
+# The following wrapper was borrowed from Tom Christiansen's Unicode::Tussle.
+
+################################################################
+#
+#   This is an sh wrapper to run the script under
+#   whichever perl occurs first in your path.  See
+#   CHOICEs 1 and 2 below for alternate strategies.
+#   The -x will throw off your line numbers otherwise.
+#
+######################################################################
+#
+#   The next line is legal in both shell and perl,
+#   but perl sees the if 0 so doesn't execute it.
+#
+ 
+eval 'exec perl -x $0 ${1+"$@"}'
+      if 0;
+ 
+### CHOICE 1:
+######################################################################
+### MAKE FOLLOWING #! line THE TOP LINE, REPLACING /usr/local/bin  ###
+###   with wherever you have a late enough version of Perl is      ###
+###   installed.  Will run under 5.8, but the newer the better.    ###
+######################################################################
+#!/usr/local/bin/perl 
+# ^^^^^^^^^^^^^^  <=== CHANGE ME                                   ###
+######################################################################
+ 
+### CHOICE 2:
+######################################################################
+### ALTERNATELY, the following #! line does the same thing as      ###
+###   the tricksy sh eval exec line:  it finds whichever Perl is   ###
+###   first in your path.  However, it works only on BSD systems   ###
+###   (including MacOS), but breaks under Solaris and Linux.       ###
+######################################################################
+#!/usr/bin/env perl
+######################################################################
 
 use strict;
 use warnings FATAL => 'all';
@@ -1623,6 +1663,8 @@ sub new {
    return bless $self, $class;
 }
 
+# The next lot are accessors, plus some convenience functions.
+
 sub _ts_common {
    my ($self, $key, $val) = @_;
    if ($val) {
@@ -1670,9 +1712,15 @@ sub interactive {
    return $self->{interactive};
 }
 
+# What this method does is thee-fold:
+# It sets or returns the currently set filehandle, kind of like a poor man's
+# select(); but also, it checks whenever said filehandle is open. If it's not,
+# it defaults to STDOUT.
+
 sub out_fh {
    my ( $self, $new_fh ) = @_;
 
+                  # ->opened comes from IO::Handle.
    if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
       $self->{out_fh} = $new_fh;
    }
@@ -1726,7 +1774,7 @@ sub add_sorted_devs {
    }
 }
 
-# clear_stuff methods. LIke the name says, they clear state stored inside
+# clear_stuff methods. Like the name says, they clear state stored inside
 # the object.
 
 sub clear_state {
@@ -1903,6 +1951,19 @@ my @columns_in_order = (
 
 }
 
+# Method: design_print_formats()
+#   What says on the label. Returns three things: the format for the header and the
+#   data, and an arrayref of the columns used to make it.
+#
+# Parameters:
+#   %args - Arguments
+#
+# Optional Arguments:
+#   columns             - An arrayref with column names. If absent, uses ->col_ok to
+#                         decide which columns to use.
+#   max_device_length   - How much space to leave for device names. Defaults at 6.
+#
+
 sub design_print_formats {
    my ( $self,       %args )    = @_;
    my ( $dev_length, $columns ) = @args{qw( max_device_length columns )};
@@ -2038,7 +2099,7 @@ sub parse_from_filename {
 #   run of the mill filehandle.
 #
 # Parameters:
-#   $filehandle      - 
+#   filehandle       - 
 #   sample_callback  - Called each time a sample is processed, passed the latest timestamp.
 #
 
@@ -2058,7 +2119,7 @@ sub parse_from_data {
    return $lines_read;
 }
 
-# Method: parse_from()
+# Method: INTERNAL: _load()
 #   Reads from the filehandle, either saving the data as needed if dealing
 #   with a diskstats-formatted line, or if it finds a TS line and has a
 #   callback, defering to that.
@@ -2066,6 +2127,7 @@ sub parse_from_data {
 sub _load {
    my ( $self, $fh, $sample_callback ) = @_;
    my $block_size = $self->block_size;
+   my $current_ts = 0;
    my $new_cur    = {};
 
    while ( my $line = <$fh> ) {
@@ -2073,17 +2135,18 @@ sub _load {
          $new_cur->{$dev} = $dev_stats;
          $self->add_sorted_devs($dev);
       }
-      elsif ( my ($ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
-         if ( %{$new_cur} ) {
+      elsif ( my ($new_ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
+         if ( $current_ts && %{$new_cur} ) {
             $self->_save_current_as_previous( $self->stats_for() );
             $self->_save_stats($new_cur);
-            $self->current_ts($ts);
+            $self->current_ts($current_ts);
             $self->_save_current_as_first( dclone($self->stats_for) );
             $new_cur = {};
          }
          if ($sample_callback) {
-            $self->$sample_callback($ts);
+            $self->$sample_callback($current_ts);
          }
+         $current_ts = $new_ts;
       }
       else {
          chomp($line);
@@ -2091,9 +2154,17 @@ sub _load {
       }
    }
 
-   if ( %{$new_cur} ) {
-      #$self->_save_stats($new_cur);
-      $self->_save_current_as_first( dclone($self->stats_for) );
+   if ( eof $fh && $current_ts ) {
+      if ( %{$new_cur} ) {
+         $self->_save_current_as_previous( $self->stats_for() );
+         $self->_save_stats($new_cur);
+         $self->current_ts($current_ts);
+         $self->_save_current_as_first( dclone($self->stats_for) );
+         $new_cur = {};
+      }
+      if ($sample_callback) {
+         $self->$sample_callback($current_ts);
+      }
    }
    # Seems like this could be useful.
    return $INPUT_LINE_NUMBER;
@@ -2106,7 +2177,7 @@ sub _calc_read_stats {
       reads_sec       => $delta_for->{reads} / $elapsed,
       read_requests   => $delta_for->{reads_merged} + $delta_for->{reads},
       mbytes_read_sec => $delta_for->{read_kbs} / $elapsed / 1024,
-      ios_read_sec    => $delta_for->{ms_spent_reading} * 1000,
+      ios_read_sec    => $delta_for->{ms_spent_reading} / 1000,
       read_conc       => $delta_for->{ms_spent_reading} /
                            $elapsed / 1000 / $devs_in_group,
    );
@@ -2242,7 +2313,7 @@ sub _calc_stats_for_deltas {
 }
 
 sub _calc_deltas {
-   my ( $self, $callback ) = @_;
+   my ( $self ) = @_;
 
    my $elapsed = $self->current_ts() - $self->delta_against_ts();
    die "Time elapsed is [$elapsed]" unless $elapsed;
@@ -2795,8 +2866,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-use re qw( regexp_pattern );
-
 use IO::Handle;
 use IO::Select;
 use Scalar::Util qw( looks_like_number blessed );
@@ -2816,8 +2885,8 @@ my %actions = (
    'i' => \&hide_inactive_disks,
    'd' => get_new_value_for( "redisplay_interval", "Enter a new redisplay interval in seconds: " ),
    'z' => get_new_value_for( "sample_time", "Enter a new interval between samples in seconds: " ),
-   'c' => get_new_x_regex( "column_regex", "Enter a column pattern: " ),
-   '/' => get_new_x_regex( "device_regex", "Enter a disk/device pattern: " ),
+   'c' => get_new_regex_for( "column_regex", "Enter a column pattern: " ),
+   '/' => get_new_regex_for( "device_regex", "Enter a disk/device pattern: " ),
    'q' => sub { return 'last' },
    'p' => \&pause,
    '?' => \&help,
@@ -2845,12 +2914,12 @@ sub run_interactive {
       save_samples       => $o->get('save-samples') || undef,
       samples_to_gather  => $o->get('iterations')   || undef,
       sampling_interval  => $o->get('interval')     || 1,
-      display_interval   => 1,
+      redisplay_interval   => 1,
       sample_time        => $o->get('sample-time')  || 1,
       column_regex       => $o->get('columns')      || undef,
       device_regex       => $o->get('devices')      || undef,
       interactive        => 1,
-      filter_zeroed_rows => 0,
+      filter_zeroed_rows => !$o->get('zero-rows'),
    );
 
    for my $re_key ( grep { $opts{$_} } qw( column_regex device_regex ) ) {
@@ -2867,7 +2936,7 @@ sub run_interactive {
    }
    else {
       ($tmp_fh, $filename) = file_to_use( $opts{save_samples} );
-   
+
       # fork(), but future-proofing it in case we ever need to speak to
       # the child
       $child_pid = open $child_fh, "|-";
@@ -2901,12 +2970,13 @@ sub run_interactive {
    }
 
    local $SIG{CHLD} = 'IGNORE';
+   local $SIG{PIPE} = 'IGNORE';
 
    STDOUT->autoflush;
    STDIN->blocking(0);
 
    my $sel    = IO::Select->new(\*STDIN);
-   my $class  = $option_to_object{ substr uc($o->get('group-by') || 'Disk'), 0, 1 };
+   my $class  = $option_to_object{ substr ucfirst($o->get('group-by') || 'Disk'), 0, 1 };
    $opts{obj} = $class->new( %opts );
 
    if ( $args{filename} ) {
@@ -2915,24 +2985,22 @@ sub run_interactive {
          select_obj => $sel,
          options    => \%opts,
          filehandle => $tmp_fh,
-         got        => substr(uc($o->get('group-by') || 'Disk'), 0, 1),
+         got        => substr(ucfirst($o->get('group-by') || 'Disk'), 0, 1),
       );
    }
 
    ReadKeyMini::cbreak();
    MAIN_LOOP:
    while (1) {
-      if ( $sel->can_read( $opts{display_interval} ) ) {
-         while ( my $got = <STDIN> ) {
-            if ($actions{$got}) {
-               my $ret = $actions{$got}->(
-                                 select_obj => $sel,
-                                 options    => \%opts,
-                                 got        => $got,
-                                 filehandle => $tmp_fh,
-                              ) || '';
-               last MAIN_LOOP if $ret eq 'last';
-            }
+      if ( my $got = read_command_timeout($sel, $opts{redisplay_interval} ) ) {
+         if ($actions{$got}) {
+            my $ret = $actions{$got}->(
+                              select_obj => $sel,
+                              options    => \%opts,
+                              got        => $got,
+                              filehandle => $tmp_fh,
+                           ) || '';
+            last MAIN_LOOP if $ret eq 'last';
          }
       }
       # As a possible source of confusion, note that this calls the group_by
@@ -2956,25 +3024,39 @@ sub run_interactive {
    ReadKeyMini::cooked();
 
    if ( !$args{filename} ) {
-      close( $child_fh ) or die "Child error: $?";
-      kill 9, $child_pid;
+      $child_fh->printflush("End\n");
+      waitpid $child_pid, 0;
    }
+
    close($tmp_fh) or die "Couldn't close: $OS_ERROR";
    return;
 }
 
+sub read_command_timeout {
+   my ($sel, $timeout) = @_;
+   if ( $sel->can_read( $timeout ) ) {
+      return scalar <STDIN>;
+   }
+   return;
+}
+
 sub gather_samples {
-   my (%opts) = @_;
+   my (%opts)  = @_;
    my $samples = 0;
+
+   STDIN->blocking(0);
+   my $sel     = IO::Select->new(\*STDIN);
 
    GATHER_DATA:
    while ( $opts{gather_while}->() ) {
-      sleep($opts{sampling_interval});
+      if ( read_command_timeout( $sel, $opts{sampling_interval} ) ) {
+         last GATHER_DATA;
+      }
       open my $diskstats_fh, "<", "/proc/diskstats"
             or die $!;
 
-      my @to_print = <$diskstats_fh>;
-      push @to_print, `date +'TS %s.%N %F %T'`;
+      my @to_print = `date +'TS %s.%N %F %T'`;
+      push @to_print, <$diskstats_fh>;
 
       # Lovely little method from IO::Handle: turns on autoflush,
       # prints, and then restores the original autoflush state.
@@ -3007,7 +3089,7 @@ sub group_by {
 
    # Just aliasing this for a bit.
    for my $obj ( $args{options}->{obj} ) {
-      if ( $option_to_object{$got} eq "DiskstatsGroupBySample" ) {
+      if ( $obj->isa("DiskstatsGroupBySample") ) {
          $obj->interactive(1);
       }
       else {
@@ -3030,19 +3112,38 @@ sub group_by {
    }
 }
 
+# regexp_pattern is used for pretty-printing regexen, since they can stringify to
+# different things depending on the version of Perl. Unfortunately, 5.8
+# lacks this, so in that version, we put in a facsimile.
+BEGIN {
+   local $EVAL_ERROR;
+
+   eval { require re; re::regexp_pattern(qr//) };
+   if ( $EVAL_ERROR ) {
+      *regexp_pattern = sub {
+            my ($re) = @_;
+            (my $string_re = $re) =~ s/\A\(\?[^:]*?:(.*)\)\z/$1/sm;
+            return $string_re;
+         };
+   }
+   else {
+      re->import("regexp_pattern");
+   }
+}
+
 sub help {
-   my (%args) = @_;
+   my (%args)      = @_;
    my $obj         = $args{options}->{obj};
    my $mode        = $object_to_option{ref($obj)};
    my ($column_re) = regexp_pattern( $obj->column_regex() );
    my ($device_re) = regexp_pattern( $obj->device_regex() );
    my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{options}->{display_interval} || '(none)';
-   my $inact_disk  = $obj->filter_zeroed_rows() || '';
+   my $disp_int    = $args{options}->{redisplay_interval} || '(none)';
+   my $inact_disk  = $obj->filter_zeroed_rows() ? 'yes' : 'no';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
-      $re =~ s/^\Q(?=)\E$//;
+      $re =~ s/^\Q(?=)\E$/(none)/;
    }
 
    print <<"HELP";
@@ -3052,7 +3153,7 @@ sub help {
    c) Enter a Perl regex to match column names $column_re
    /) Enter a Perl regex to match disk names   $device_re
    z) Set the sample size in seconds           $interval
-   i) Hide/show inactive disks                 $inact_disk
+   i) Hide inactive disks                      $inact_disk
    d) Set the redisplay interval in seconds    $disp_int
    p) Pause the program
    q) Quit the program
@@ -3063,7 +3164,11 @@ HELP
 
 sub file_to_use {
    my ( $filename ) = @_;
-   #$filename ||= `mktemp -d /tmp/pt-diskstats.$PID.XXXXXXXX`;
+
+   if ( !$filename ) {
+      chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
+   }
+
    if ( $filename ) {
       open my $fh, "<", $filename
          or die "Couldn't open $filename: $OS_ERROR";
@@ -3072,7 +3177,7 @@ sub file_to_use {
    else {
       local $EVAL_ERROR;
       if ( !eval { require File::Temp } ) {
-         die "Can't call mktemp nor load File::Temp. Please install either of those or pass in an explicit filename.";
+         die "Can't call mktemp nor load File::Temp. Install either of those, or pass in an explicit filename through --save-samples.";
       }
       my $dir = File::Temp::tempdir( CLEANUP => 1 );
       return File::Temp::tempfile(
@@ -3127,7 +3232,7 @@ sub get_new_value_for {
    };
 }
 
-sub get_new_x_regex {
+sub get_new_regex_for {
    my ($looking_for, $message) = @_;
    return sub {
       my (%args)   = @_;
@@ -3161,9 +3266,6 @@ sub pause {
 }
 
 1;
-#XXX TODO
-#__PACKAGE__->run_interactive(@ARGV, o => bless {}, "OptionParser") unless caller;
-
 }
 # ###########################################################################
 # End DiskstatsMenu package
@@ -3179,6 +3281,8 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 use DiskstatsMenu;
 use OptionParser;
 
+# This gives us a nice little backtrace should an exception happen while
+# debugging is enabled.
 local $SIG{__DIE__} = sub {
    require Carp;
    Carp::confess(@_) unless $^S; # This is $EXCEPTIONS_BEING_CAUGHT
@@ -3259,15 +3363,19 @@ Otherwise it loops until you exit with the 'q' key.
 If you press the '?' key, you will bring up the interactive help menu that
 shows which keys control the program.
 
-XXX TODO:
-
 Files should have this format:
 
+   TS <timestamp>  <-- must start with a TS line.
    <contents of /proc/diskstats>
    TS <timestamp>
    <contents of /proc/diskstats>
    ... et cetera
-   TS <timestamp>  <-- must end with a TS line.
+
+Note that previously the format was backwards -- It would put the timestamp
+at the bottom of each sample, not the top. This was doubly troublesome:
+It was inconsistent with how the rest of the Toolkit deals with timestamps,
+and allowed malformed data to sit in the bottom of the file and give incorrect
+results.
 
 See L<http://aspersa.googlecode.com/svn/html/diskstats.html> for a detailed
 example of using the tool.
@@ -3288,9 +3396,9 @@ the timestamp itself is shown, without the {curly braces}.
 The device name.  If there is more than one device, then instead the number
 of devices aggregated into the line is shown, in {curly braces}.
 
-=item rd_mb_s
+=item rd_io_s
 
-The number of megabytes read per second, average, during the sampled interval.
+The number of IO reads per second, average, during the sampled interval.
 
 =item rd_cnc
 
@@ -3303,7 +3411,7 @@ The average response time of the read operations, in milliseconds.
 
 =item wr_mb_s
 
-Megabytes written per second, average.
+IO writes per second, average.
 
 =item wr_cnc
 
@@ -3347,7 +3455,11 @@ The average size of the reads, in kilobytes.
 The percentage of read requests that were merged together in the disk
 scheduler before reaching the device.
 
-=item wr_s, wr_avgkb, and wr_mrg
+=item rd_mb_s
+
+The number of megabytes read per second, average, during the sampled interval.
+
+=item wr_s, wr_avgkb, and wr_mrg, wr_mb_s
 
 These are analogous to their C<rd_*> cousins.
 
@@ -3412,6 +3524,10 @@ When in interactive mode, stop after N samples.
 type: int; default: 1
 
 Sample /proc/diskstats every N seconds.
+
+=item --zero-rows
+
+Show rows with all zero values.
 
 =item --help
 
@@ -3512,3 +3628,4 @@ pt-diskstats 2.0.0_WIP
 
 =cut
 
+__END__
