@@ -27,8 +27,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-use re qw( regexp_pattern );
-
 use IO::Handle;
 use IO::Select;
 use Scalar::Util qw( looks_like_number blessed );
@@ -48,8 +46,8 @@ my %actions = (
    'i' => \&hide_inactive_disks,
    'd' => get_new_value_for( "redisplay_interval", "Enter a new redisplay interval in seconds: " ),
    'z' => get_new_value_for( "sample_time", "Enter a new interval between samples in seconds: " ),
-   'c' => get_new_x_regex( "column_regex", "Enter a column pattern: " ),
-   '/' => get_new_x_regex( "device_regex", "Enter a disk/device pattern: " ),
+   'c' => get_new_regex_for( "column_regex", "Enter a column pattern: " ),
+   '/' => get_new_regex_for( "device_regex", "Enter a disk/device pattern: " ),
    'q' => sub { return 'last' },
    'p' => \&pause,
    '?' => \&help,
@@ -77,12 +75,12 @@ sub run_interactive {
       save_samples       => $o->get('save-samples') || undef,
       samples_to_gather  => $o->get('iterations')   || undef,
       sampling_interval  => $o->get('interval')     || 1,
-      display_interval   => 1,
+      redisplay_interval   => 1,
       sample_time        => $o->get('sample-time')  || 1,
       column_regex       => $o->get('columns')      || undef,
       device_regex       => $o->get('devices')      || undef,
       interactive        => 1,
-      filter_zeroed_rows => 0,
+      filter_zeroed_rows => !$o->get('zero-rows'),
    );
 
    for my $re_key ( grep { $opts{$_} } qw( column_regex device_regex ) ) {
@@ -99,7 +97,7 @@ sub run_interactive {
    }
    else {
       ($tmp_fh, $filename) = file_to_use( $opts{save_samples} );
-   
+
       # fork(), but future-proofing it in case we ever need to speak to
       # the child
       $child_pid = open $child_fh, "|-";
@@ -133,12 +131,13 @@ sub run_interactive {
    }
 
    local $SIG{CHLD} = 'IGNORE';
+   local $SIG{PIPE} = 'IGNORE';
 
    STDOUT->autoflush;
    STDIN->blocking(0);
 
    my $sel    = IO::Select->new(\*STDIN);
-   my $class  = $option_to_object{ substr uc($o->get('group-by') || 'Disk'), 0, 1 };
+   my $class  = $option_to_object{ substr ucfirst($o->get('group-by') || 'Disk'), 0, 1 };
    $opts{obj} = $class->new( %opts );
 
    if ( $args{filename} ) {
@@ -147,24 +146,22 @@ sub run_interactive {
          select_obj => $sel,
          options    => \%opts,
          filehandle => $tmp_fh,
-         got        => substr(uc($o->get('group-by') || 'Disk'), 0, 1),
+         got        => substr(ucfirst($o->get('group-by') || 'Disk'), 0, 1),
       );
    }
 
    ReadKeyMini::cbreak();
    MAIN_LOOP:
    while (1) {
-      if ( $sel->can_read( $opts{display_interval} ) ) {
-         while ( my $got = <STDIN> ) {
-            if ($actions{$got}) {
-               my $ret = $actions{$got}->(
-                                 select_obj => $sel,
-                                 options    => \%opts,
-                                 got        => $got,
-                                 filehandle => $tmp_fh,
-                              ) || '';
-               last MAIN_LOOP if $ret eq 'last';
-            }
+      if ( my $got = read_command_timeout($sel, $opts{redisplay_interval} ) ) {
+         if ($actions{$got}) {
+            my $ret = $actions{$got}->(
+                              select_obj => $sel,
+                              options    => \%opts,
+                              got        => $got,
+                              filehandle => $tmp_fh,
+                           ) || '';
+            last MAIN_LOOP if $ret eq 'last';
          }
       }
       # As a possible source of confusion, note that this calls the group_by
@@ -188,25 +185,39 @@ sub run_interactive {
    ReadKeyMini::cooked();
 
    if ( !$args{filename} ) {
-      close( $child_fh ) or die "Child error: $?";
-      kill 9, $child_pid;
+      $child_fh->printflush("End\n");
+      waitpid $child_pid, 0;
    }
+
    close($tmp_fh) or die "Couldn't close: $OS_ERROR";
    return;
 }
 
+sub read_command_timeout {
+   my ($sel, $timeout) = @_;
+   if ( $sel->can_read( $timeout ) ) {
+      return scalar <STDIN>;
+   }
+   return;
+}
+
 sub gather_samples {
-   my (%opts) = @_;
+   my (%opts)  = @_;
    my $samples = 0;
+
+   STDIN->blocking(0);
+   my $sel     = IO::Select->new(\*STDIN);
 
    GATHER_DATA:
    while ( $opts{gather_while}->() ) {
-      sleep($opts{sampling_interval});
+      if ( read_command_timeout( $sel, $opts{sampling_interval} ) ) {
+         last GATHER_DATA;
+      }
       open my $diskstats_fh, "<", "/proc/diskstats"
             or die $!;
 
-      my @to_print = <$diskstats_fh>;
-      push @to_print, `date +'TS %s.%N %F %T'`;
+      my @to_print = `date +'TS %s.%N %F %T'`;
+      push @to_print, <$diskstats_fh>;
 
       # Lovely little method from IO::Handle: turns on autoflush,
       # prints, and then restores the original autoflush state.
@@ -239,7 +250,7 @@ sub group_by {
 
    # Just aliasing this for a bit.
    for my $obj ( $args{options}->{obj} ) {
-      if ( $option_to_object{$got} eq "DiskstatsGroupBySample" ) {
+      if ( $obj->isa("DiskstatsGroupBySample") ) {
          $obj->interactive(1);
       }
       else {
@@ -262,19 +273,38 @@ sub group_by {
    }
 }
 
+# regexp_pattern is used for pretty-printing regexen, since they can stringify to
+# different things depending on the version of Perl. Unfortunately, 5.8
+# lacks this, so in that version, we put in a facsimile.
+BEGIN {
+   local $EVAL_ERROR;
+
+   eval { require re; re::regexp_pattern(qr//) };
+   if ( $EVAL_ERROR ) {
+      *regexp_pattern = sub {
+            my ($re) = @_;
+            (my $string_re = $re) =~ s/\A\(\?[^:]*?:(.*)\)\z/$1/sm;
+            return $string_re;
+         };
+   }
+   else {
+      re->import("regexp_pattern");
+   }
+}
+
 sub help {
-   my (%args) = @_;
+   my (%args)      = @_;
    my $obj         = $args{options}->{obj};
    my $mode        = $object_to_option{ref($obj)};
    my ($column_re) = regexp_pattern( $obj->column_regex() );
    my ($device_re) = regexp_pattern( $obj->device_regex() );
    my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{options}->{display_interval} || '(none)';
-   my $inact_disk  = $obj->filter_zeroed_rows() || '';
+   my $disp_int    = $args{options}->{redisplay_interval} || '(none)';
+   my $inact_disk  = $obj->filter_zeroed_rows() ? 'yes' : 'no';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
-      $re =~ s/^\Q(?=)\E$//;
+      $re =~ s/^\Q(?=)\E$/(none)/;
    }
 
    print <<"HELP";
@@ -284,7 +314,7 @@ sub help {
    c) Enter a Perl regex to match column names $column_re
    /) Enter a Perl regex to match disk names   $device_re
    z) Set the sample size in seconds           $interval
-   i) Hide/show inactive disks                 $inact_disk
+   i) Hide inactive disks                      $inact_disk
    d) Set the redisplay interval in seconds    $disp_int
    p) Pause the program
    q) Quit the program
@@ -295,7 +325,11 @@ HELP
 
 sub file_to_use {
    my ( $filename ) = @_;
-   #$filename ||= `mktemp -d /tmp/pt-diskstats.$PID.XXXXXXXX`;
+
+   if ( !$filename ) {
+      chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
+   }
+
    if ( $filename ) {
       open my $fh, "<", $filename
          or die "Couldn't open $filename: $OS_ERROR";
@@ -304,7 +338,7 @@ sub file_to_use {
    else {
       local $EVAL_ERROR;
       if ( !eval { require File::Temp } ) {
-         die "Can't call mktemp nor load File::Temp. Please install either of those or pass in an explicit filename.";
+         die "Can't call mktemp nor load File::Temp. Install either of those, or pass in an explicit filename through --save-samples.";
       }
       my $dir = File::Temp::tempdir( CLEANUP => 1 );
       return File::Temp::tempfile(
@@ -359,7 +393,7 @@ sub get_new_value_for {
    };
 }
 
-sub get_new_x_regex {
+sub get_new_regex_for {
    my ($looking_for, $message) = @_;
    return sub {
       my (%args)   = @_;
@@ -393,9 +427,6 @@ sub pause {
 }
 
 1;
-#XXX TODO
-#__PACKAGE__->run_interactive(@ARGV, o => bless {}, "OptionParser") unless caller;
-
 }
 # ###########################################################################
 # End DiskstatsMenu package

@@ -9,6 +9,8 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 use DiskstatsMenu;
 use OptionParser;
 
+# This gives us a nice little backtrace should an exception happen while
+# debugging is enabled.
 local $SIG{__DIE__} = sub {
    require Carp;
    Carp::confess(@_) unless $^S; # This is $EXCEPTIONS_BEING_CAUGHT
@@ -89,15 +91,19 @@ Otherwise it loops until you exit with the 'q' key.
 If you press the '?' key, you will bring up the interactive help menu that
 shows which keys control the program.
 
-XXX TODO:
-
 Files should have this format:
 
+   TS <timestamp>  <-- must start with a TS line.
    <contents of /proc/diskstats>
    TS <timestamp>
    <contents of /proc/diskstats>
    ... et cetera
-   TS <timestamp>  <-- must end with a TS line.
+
+Note that previously the format was backwards -- It would put the timestamp
+at the bottom of each sample, not the top. This was doubly troublesome:
+It was inconsistent with how the rest of the Toolkit deals with timestamps,
+and allowed malformed data to sit in the bottom of the file and give incorrect
+results.
 
 See L<http://aspersa.googlecode.com/svn/html/diskstats.html> for a detailed
 example of using the tool.
@@ -118,9 +124,9 @@ the timestamp itself is shown, without the {curly braces}.
 The device name.  If there is more than one device, then instead the number
 of devices aggregated into the line is shown, in {curly braces}.
 
-=item rd_mb_s
+=item rd_io_s
 
-The number of megabytes read per second, average, during the sampled interval.
+The number of IO reads per second, average, during the sampled interval.
 
 =item rd_cnc
 
@@ -133,7 +139,7 @@ The average response time of the read operations, in milliseconds.
 
 =item wr_mb_s
 
-Megabytes written per second, average.
+IO writes per second, average.
 
 =item wr_cnc
 
@@ -177,7 +183,11 @@ The average size of the reads, in kilobytes.
 The percentage of read requests that were merged together in the disk
 scheduler before reaching the device.
 
-=item wr_s, wr_avgkb, and wr_mrg
+=item rd_mb_s
+
+The number of megabytes read per second, average, during the sampled interval.
+
+=item wr_s, wr_avgkb, and wr_mrg, wr_mb_s
 
 These are analogous to their C<rd_*> cousins.
 
@@ -242,6 +252,10 @@ When in interactive mode, stop after N samples.
 type: int; default: 1
 
 Sample /proc/diskstats every N seconds.
+
+=item --zero-rows
+
+Show rows with all zero values.
 
 =item --help
 
