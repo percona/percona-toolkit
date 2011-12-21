@@ -84,6 +84,11 @@ sub new {
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
+   my ($index_cols, $order_by);
+   if ( $index ) {
+      $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
+      $order_by   = join(', ', map {$q->quote($_)} @{$index_cols});
+   }
 
    my $tbl_struct = $tbl->{tbl_struct};
    my $ignore_col = $o->get('ignore-columns') || {};
@@ -93,20 +98,20 @@ sub new {
    if ( $one_nibble ) {
       # If the chunk size is >= number of rows in table, then we don't
       # need to chunk; we can just select all rows, in order, at once.
+      my $cols = ($args{select} ? $args{select}
+               : join(', ', map { $q->quote($_) } @cols));
+      my $from = $q->quote(@{$tbl}{qw(db tbl)});
+
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
-         . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . $cols
+         . " FROM $from "
          . ($where ? " AND ($where)" : '')
          . " /*checksum table*/";
       MKDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT "
-         . ($args{select} ? $args{select}
-                          : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         = "EXPLAIN SELECT $cols FROM $from"
          . ($where ? " AND ($where)" : '')
          . " /*explain checksum table*/";
       MKDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
@@ -117,11 +122,15 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
+         sql                => {
+            columns    => $cols,
+            from       => $from,
+            where      => $where,
+            order_by   => $order_by,
+         },
       };
    }
    else {
-      my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
-
       # Figure out how to nibble the table with the index.
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
@@ -135,8 +144,7 @@ sub new {
       # Make SQL statements, prepared on first call to next().  FROM and
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.
-      my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
+      my $from = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
 
       # The real first row in the table.  Usually we start nibbling from
       # this row.  Called once in _get_bounds().
@@ -230,7 +238,6 @@ sub new {
 
       $self = {
          %args,
-         index              => $index,
          limit              => $limit,
          first_lb_sql       => $first_lb_sql,
          last_ub_sql        => $last_ub_sql,
@@ -249,6 +256,7 @@ sub new {
       };
    }
 
+   $self->{index}              = $index;
    $self->{row_est}            = $row_est;
    $self->{nibbleno}           = 0;
    $self->{have_rows}          = 0;
