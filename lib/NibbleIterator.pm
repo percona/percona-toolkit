@@ -64,8 +64,11 @@ sub new {
    
    my $where = $o->get('where');
    my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
+   my $chunk_size_limit = $o->has('chunk-size-limit')
+                        ? $o->get('chunk-size-limit')
+                        : 1;
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
+                  ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
    MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
@@ -246,11 +249,12 @@ sub new {
       };
    }
 
-   $self->{row_est}    = $row_est;
-   $self->{nibbleno}   = 0;
-   $self->{have_rows}  = 0;
-   $self->{rowno}      = 0;
-   $self->{oktonibble} = 1;
+   $self->{row_est}            = $row_est;
+   $self->{nibbleno}           = 0;
+   $self->{have_rows}          = 0;
+   $self->{rowno}              = 0;
+   $self->{oktonibble}         = 1;
+   $self->{no_more_boundaries} = 0;
 
    return bless $self, $class;
 }
@@ -307,12 +311,14 @@ sub next {
       if ( $self->{have_rows} ) {
          # Return rows in nibble.  sth->{Active} is always true with
          # DBD::mysql v3, so we track the status manually.
-         my $row = $self->{nibble_sth}->fetchrow_arrayref();
+         my $row = $self->{fetch_hashref}
+                 ? $self->{nibble_sth}->fetchrow_hashref()
+                 : $self->{nibble_sth}->fetchrow_arrayref();
          if ( $row ) {
             $self->{rowno}++;
             MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno});
             # fetchrow_arraryref re-uses an internal arrayref, so we must copy.
-            return [ @$row ];
+            return $self->{fetch_hashref} ? $row : [ @$row ];
          }
       }
 
@@ -411,6 +417,12 @@ sub sql {
 sub more_boundaries {
    my ($self) = @_;
    return !$self->{no_more_boundaries};
+}
+
+sub no_more_rows {
+   my ($self) = @_;
+   $self->{have_rows} = 0;
+   return;
 }
 
 sub row_estimate {

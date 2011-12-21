@@ -93,7 +93,7 @@ sub make_row_checksum {
    }
 
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
-      my $sep = $o->get('separator') || '#';
+      my $sep = ($o->has('separator') && $o->get('separator')) || '#';
       $sep    =~ s/'//g;
       $sep  ||= '#';
 
