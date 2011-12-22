@@ -77,6 +77,8 @@ sub sync_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($src, $dst, $row_syncer, $changer) = @args{@required_args};
+
+   my $diffs        = $args{diffs};
    my $changing_src = $args{changing_src};
 
    my $o            = $self->{OptionParser};
@@ -97,6 +99,7 @@ sub sync_table {
              . " dst_host:" . $dst->{Cxn}->name()
              . " dst_tbl:" . join('.', @{$dst->{tbl}}{qw(db tbl)})
              . " changing_src:" . ($changing_src ? "yes" : "no")
+             . " diffs:" . ($diffs ? scalar @$diffs : "0")
              . " " . join(" ", map { "$_:" . ($o->get($_) ? "yes" : "no") }
                         qw(lock transaction replicate bidirectional))
              . " pid:$PID "
@@ -107,37 +110,44 @@ sub sync_table {
 
    # Make NibbleIterator for checksumming chunks of rows to see if
    # there are any diffs.
-   my %crc_args   = $row_checksum->get_crc_args(dbh => $src->{Cxn}->dbh());
-   my $chunk_cols = $row_checksum->make_chunk_checksum(
-      dbh => $src->{Cxn}->dbh(),
-      tbl => $src->{tbl},
-      %crc_args
-   );
+   my %crc_args = $row_checksum->get_crc_args(dbh => $src->{Cxn}->dbh());
+   my $chunk_cols;
+   if ( $diffs ) {
+      $chunk_cols = "0 AS cnt, '' AS crc";
+   }
+   else {
+      
+      $chunk_cols = $row_checksum->make_chunk_checksum(
+         dbh => $src->{Cxn}->dbh(),
+         tbl => $src->{tbl},
+         %crc_args
+      );
+   }
 
-   if ( !defined $src->{sql_lock} || !defined $dst->{dst_lock} ) {
+   if ( !defined $src->{select_lock} || !defined $dst->{select_lock} ) {
       if ( $o->get('transaction') ) {
          if ( $o->get('bidirectional') ) {
             # Making changes on src and dst.
-            $src->{sql_lock} = 'FOR UPDATE';
-            $dst->{sql_lock} = 'FOR UPDATE';
+            $src->{select_lock} = 'FOR UPDATE';
+            $dst->{select_lock} = 'FOR UPDATE';
          }
          elsif ( $changing_src ) {
             # Making changes on master (src) which replicate to slave (dst).
-            $src->{sql_lock} = 'FOR UPDATE';
-            $dst->{sql_lock} = 'LOCK IN SHARE MODE';
+            $src->{select_lock} = 'FOR UPDATE';
+            $dst->{select_lock} = 'LOCK IN SHARE MODE';
          }
          else {
             # Making changes on slave (dst).
-            $src->{sql_lock} = 'LOCK IN SHARE MODE';
-            $dst->{sql_lock} = 'FOR UPDATE';
+            $src->{select_lock} = 'LOCK IN SHARE MODE';
+            $dst->{select_lock} = 'FOR UPDATE';
          }
       }
       else {
-         $src->{sql_lock} = '';
-         $dst->{sql_lock} = '';
+         $src->{select_lock} = '';
+         $dst->{select_lock} = '';
       }
-      MKDEBUG && _d('src sql lock:', $src->{sql_lock});
-      MKDEBUG && _d('dst sql lock:', $dst->{sql_lock});
+      MKDEBUG && _d('SELECT lock:', $src->{select_lock});
+      MKDEBUG && _d('SELECT lock:', $dst->{select_lock});
    }
 
    my $user_where = $o->get('where');
@@ -187,11 +197,25 @@ sub sync_table {
                   changing_src => $changing_src,
                );
             }
-
+ 
             return $oktonibble;
+         },
+         next_boundaries => sub {
+            my (%args) = @_;
+            my  $tbl = $args{tbl};
+            if ( my $diff = $tbl->{diff} ) { 
+               my $nibble_iter = $args{NibbleIterator};
+               my $boundary    = $nibble_iter->boundaries();
+               $nibble_iter->set_boundary(
+                  'upper', [ split ',', $diff->{upper_boundary} ]);
+               $nibble_iter->set_boundary(
+                  'lower', [ split ',', $diff->{lower_boundary} ]);
+            }
+            return 1;
          },
          exec_nibble => sub {
             my (%args) = @_;
+            my $tbl         = $args{tbl};
             my $nibble_iter = $args{NibbleIterator};
             my $sths        = $nibble_iter->statements();
             my $boundary    = $nibble_iter->boundaries();
@@ -225,7 +249,7 @@ sub sync_table {
             # The nibble iter will return the row.
             MKDEBUG && _d('nibble', $args{Cxn}->name());
             $sths->{nibble}->execute(@{$boundary->{lower}}, @{$boundary->{upper}});
-            return $sths->{nibble}->rows();
+            return 1;
          },
       };
 
@@ -233,8 +257,12 @@ sub sync_table {
          Cxn           => $host->{Cxn},
          tbl           => $host->{tbl},
          chunk_size    => $o->get('chunk-size'),
-         chunk_index   => $o->get('chunk-index'),
+         chunk_index   => $diffs ? $diffs->[0]->{chunk_index}
+                          :        $o->get('chunk-index'),
+         manual_nibble => $diffs ? 1 : 0,
+         empty_results => 1,
          select        => $chunk_cols,
+         select_lock   => $host->{select_lock},
          callbacks     => $callbacks,
          fetch_hashref => 1,
          one_nibble    => $args{one_nibble},
@@ -304,13 +332,26 @@ sub sync_table {
    while (   $src_nibble_iter->more_boundaries()
           || $dst_nibble_iter->more_boundaries() ) {
 
+      if ( $diffs ) {
+         my $diff = shift @$diffs;
+         if ( !$diff ) {
+            MKDEBUG && _d('No more checksum diffs');
+            last;
+         }
+         MKDEBUG && _d('Syncing checksum diff', Dumper($diff));
+         $src->{tbl}->{diff} = $diff;
+         $dst->{tbl}->{diff} = $diff;
+      }
+
       my $src_chunk = $src_nibble_iter->next();
       my $dst_chunk = $dst_nibble_iter->next();
+      MKDEBUG && _d('Got chunk');
 
-      if (   ($src_chunk->{cnt} || 0)  != ($dst_chunk->{cnt} || 0)
+      if ( $diffs
+          || ($src_chunk->{cnt} || 0)  != ($dst_chunk->{cnt} || 0)
           || ($src_chunk->{crc} || '') ne ($dst_chunk->{crc} || '') ) {
          MKDEBUG && _d("Chunks differ");
-         my $boundary  = $src_nibble_iter->boundaries();
+         my $boundary = $src_nibble_iter->boundaries();
          foreach my $host ($src, $dst) {
             MKDEBUG && _d($host->{Cxn}->name(), $host->{rows_sth}->{Statement},
                'params:', @{$boundary->{lower}}, @{$boundary->{upper}});

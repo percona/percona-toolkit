@@ -2672,7 +2672,6 @@ sub new {
    
    my $where = $o->get('where');
    my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
-   MKDEBUG && _d($row_est, 'estimated rows, MySQL chose index', $mysql_index);
    my $chunk_size_limit = $o->has('chunk-size-limit')
                         ? $o->get('chunk-size-limit')
                         : 1;
@@ -2901,8 +2900,15 @@ sub next {
                  : $self->{nibble_sth}->fetchrow_arrayref();
          if ( $row ) {
             $self->{rowno}++;
-            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno});
+            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno},
+               'from', $self->{Cxn}->name());
             return $self->{fetch_hashref} ? $row : [ @$row ];
+         }
+         else {
+            MKDEBUG && _d('No row in nibble');
+            if ( $self->{empty_results} ) {
+               return $self->{fetch_hashref} ? {} : [];
+            }
          }
       }
 
@@ -3005,7 +3011,10 @@ sub more_boundaries {
 
 sub no_more_rows {
    my ($self) = @_;
+   $self->{nibble_sth}->finish() if $self->{nibble_sth};
    $self->{have_rows} = 0;
+   $self->{rowno}     = 0;
+   MKDEBUG && _d('No more rows');
    return;
 }
 
@@ -3195,7 +3204,8 @@ sub _next_boundaries {
       return 1; # continue nibbling
    }
 
-   if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
+   if ( !$self->{manual_nibble}
+        && $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       MKDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
@@ -3226,6 +3236,8 @@ sub _next_boundaries {
          return; # stop nibbling
       }
    }
+
+   return 1 if $self->{manual_nibble};
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
@@ -3655,6 +3667,8 @@ sub sync_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($src, $dst, $row_syncer, $changer) = @args{@required_args};
+
+   my $diffs        = $args{diffs};
    my $changing_src = $args{changing_src};
 
    my $o            = $self->{OptionParser};
@@ -3674,6 +3688,7 @@ sub sync_table {
              . " dst_host:" . $dst->{Cxn}->name()
              . " dst_tbl:" . join('.', @{$dst->{tbl}}{qw(db tbl)})
              . " changing_src:" . ($changing_src ? "yes" : "no")
+             . " diffs:" . ($diffs ? scalar @$diffs : "0")
              . " " . join(" ", map { "$_:" . ($o->get($_) ? "yes" : "no") }
                         qw(lock transaction replicate bidirectional))
              . " pid:$PID "
@@ -3682,34 +3697,41 @@ sub sync_table {
       MKDEBUG && _d("Binlog trace message:", $trace);
    }
 
-   my %crc_args   = $row_checksum->get_crc_args(dbh => $src->{Cxn}->dbh());
-   my $chunk_cols = $row_checksum->make_chunk_checksum(
-      dbh => $src->{Cxn}->dbh(),
-      tbl => $src->{tbl},
-      %crc_args
-   );
+   my %crc_args = $row_checksum->get_crc_args(dbh => $src->{Cxn}->dbh());
+   my $chunk_cols;
+   if ( $diffs ) {
+      $chunk_cols = "0 AS cnt, '' AS crc";
+   }
+   else {
+      
+      $chunk_cols = $row_checksum->make_chunk_checksum(
+         dbh => $src->{Cxn}->dbh(),
+         tbl => $src->{tbl},
+         %crc_args
+      );
+   }
 
-   if ( !defined $src->{sql_lock} || !defined $dst->{dst_lock} ) {
+   if ( !defined $src->{select_lock} || !defined $dst->{select_lock} ) {
       if ( $o->get('transaction') ) {
          if ( $o->get('bidirectional') ) {
-            $src->{sql_lock} = 'FOR UPDATE';
-            $dst->{sql_lock} = 'FOR UPDATE';
+            $src->{select_lock} = 'FOR UPDATE';
+            $dst->{select_lock} = 'FOR UPDATE';
          }
          elsif ( $changing_src ) {
-            $src->{sql_lock} = 'FOR UPDATE';
-            $dst->{sql_lock} = 'LOCK IN SHARE MODE';
+            $src->{select_lock} = 'FOR UPDATE';
+            $dst->{select_lock} = 'LOCK IN SHARE MODE';
          }
          else {
-            $src->{sql_lock} = 'LOCK IN SHARE MODE';
-            $dst->{sql_lock} = 'FOR UPDATE';
+            $src->{select_lock} = 'LOCK IN SHARE MODE';
+            $dst->{select_lock} = 'FOR UPDATE';
          }
       }
       else {
-         $src->{sql_lock} = '';
-         $dst->{sql_lock} = '';
+         $src->{select_lock} = '';
+         $dst->{select_lock} = '';
       }
-      MKDEBUG && _d('src sql lock:', $src->{sql_lock});
-      MKDEBUG && _d('dst sql lock:', $dst->{sql_lock});
+      MKDEBUG && _d('SELECT lock:', $src->{select_lock});
+      MKDEBUG && _d('SELECT lock:', $dst->{select_lock});
    }
 
    my $user_where = $o->get('where');
@@ -3756,11 +3778,25 @@ sub sync_table {
                   changing_src => $changing_src,
                );
             }
-
+ 
             return $oktonibble;
+         },
+         next_boundaries => sub {
+            my (%args) = @_;
+            my  $tbl = $args{tbl};
+            if ( my $diff = $tbl->{diff} ) { 
+               my $nibble_iter = $args{NibbleIterator};
+               my $boundary    = $nibble_iter->boundaries();
+               $nibble_iter->set_boundary(
+                  'upper', [ split ',', $diff->{upper_boundary} ]);
+               $nibble_iter->set_boundary(
+                  'lower', [ split ',', $diff->{lower_boundary} ]);
+            }
+            return 1;
          },
          exec_nibble => sub {
             my (%args) = @_;
+            my $tbl         = $args{tbl};
             my $nibble_iter = $args{NibbleIterator};
             my $sths        = $nibble_iter->statements();
             my $boundary    = $nibble_iter->boundaries();
@@ -3789,7 +3825,7 @@ sub sync_table {
 
             MKDEBUG && _d('nibble', $args{Cxn}->name());
             $sths->{nibble}->execute(@{$boundary->{lower}}, @{$boundary->{upper}});
-            return $sths->{nibble}->rows();
+            return 1;
          },
       };
 
@@ -3797,8 +3833,12 @@ sub sync_table {
          Cxn           => $host->{Cxn},
          tbl           => $host->{tbl},
          chunk_size    => $o->get('chunk-size'),
-         chunk_index   => $o->get('chunk-index'),
+         chunk_index   => $diffs ? $diffs->[0]->{chunk_index}
+                          :        $o->get('chunk-index'),
+         manual_nibble => $diffs ? 1 : 0,
+         empty_results => 1,
          select        => $chunk_cols,
+         select_lock   => $host->{select_lock},
          callbacks     => $callbacks,
          fetch_hashref => 1,
          one_nibble    => $args{one_nibble},
@@ -3865,13 +3905,26 @@ sub sync_table {
    while (   $src_nibble_iter->more_boundaries()
           || $dst_nibble_iter->more_boundaries() ) {
 
+      if ( $diffs ) {
+         my $diff = shift @$diffs;
+         if ( !$diff ) {
+            MKDEBUG && _d('No more checksum diffs');
+            last;
+         }
+         MKDEBUG && _d('Syncing checksum diff', Dumper($diff));
+         $src->{tbl}->{diff} = $diff;
+         $dst->{tbl}->{diff} = $diff;
+      }
+
       my $src_chunk = $src_nibble_iter->next();
       my $dst_chunk = $dst_nibble_iter->next();
+      MKDEBUG && _d('Got chunk');
 
-      if (   ($src_chunk->{cnt} || 0)  != ($dst_chunk->{cnt} || 0)
+      if ( $diffs
+          || ($src_chunk->{cnt} || 0)  != ($dst_chunk->{cnt} || 0)
           || ($src_chunk->{crc} || '') ne ($dst_chunk->{crc} || '') ) {
          MKDEBUG && _d("Chunks differ");
-         my $boundary  = $src_nibble_iter->boundaries();
+         my $boundary = $src_nibble_iter->boundaries();
          foreach my $host ($src, $dst) {
             MKDEBUG && _d($host->{Cxn}->name(), $host->{rows_sth}->{Statement},
                'params:', @{$boundary->{lower}}, @{$boundary->{upper}});
@@ -6787,6 +6840,9 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 $OUTPUT_AUTOFLUSH = 1;
 
+my $q  = new Quoter();
+my $vp = new VersionParser();
+
 sub main {
    @ARGV          = @_;  # set global ARGV for this package
    my $exit_status = 0; # 1: internal error, 2: tables differed, 3: both
@@ -6892,8 +6948,6 @@ sub main {
    # ########################################################################
    # Connect to hosts.
    # ########################################################################
-   my $q  = new Quoter();
-   my $vp = new VersionParser();
    my $ms = new MasterSlave(VersionParser => $vp);
 
    my $set_on_connect = sub {
@@ -7079,15 +7133,13 @@ sub main {
 #   Exit status
 sub lock_and_rename {
    my ( %args ) = @_;
-   my @required_args = qw(cxns OptionParser DSNParser Quoter
-                          VersionParser);
+   my @required_args = qw(cxns OptionParser DSNParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $cxns = $args{cxns};
    my $o    = $args{OptionParser};
    my $dp   = $args{DSNParser};
-   my $q    = $args{Quoter};
 
    MKDEBUG && _d('Locking and syncing ONE TABLE with rename');
    my $src = {
@@ -7264,16 +7316,14 @@ sub sync_one_table {
 #   <filter_diffs()>
 sub sync_via_replication {
    my ( %args ) = @_;
-   my @required_args = qw(cxns OptionParser DSNParser Quoter
-                          VersionParser RowChecksum MasterSlave TableSyncer
-                          make_cxn);
+   my @required_args = qw(cxns OptionParser DSNParser
+                          RowChecksum MasterSlave TableSyncer make_cxn);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $cxns         = $args{cxns};
    my $o            = $args{OptionParser};
    my $dp           = $args{DSNParser};
-   my $q            = $args{Quoter};
    my $checksum     = $args{RowChecksum};
    my $ms           = $args{MasterSlave};
    my $table_syncer = $args{TableSyncer};
@@ -7307,15 +7357,19 @@ sub sync_via_replication {
       my %skip_table;
       map { $skip_table{$_->{db}}->{$_->{tbl}}++ }
          $checksum->find_replication_differences(
-            $src->{Cxn}->dbh(), $o->get('replicate'));
+            dbh        => $src->{Cxn}->dbh(),
+            repl_table => $o->get('replicate'),
+         );
 
       # Now check the slave for differences and sync them if necessary.
-      my @diffs =  filter_diffs(
+      my $diffs =  filter_diffs(
          \%skip_table,
          $databases,
          $tables,
          $checksum->find_replication_differences(
-            $dst->{Cxn}->dbh(), $o->get('replicate'))
+            dbh        => $dst->{Cxn}->dbh(),
+            repl_table => $o->get('replicate'),
+         ),
       );
 
       if ( $o->get('verbose') ) {
@@ -7325,7 +7379,9 @@ sub sync_via_replication {
             . "\n";
       }
 
-      if ( @diffs ) {
+      if ( @$diffs ) {
+         my $diffs_for_table = group_diffs_by_table($diffs);
+
          $table_syncer->lock_and_wait(
             lock_level => 3,
             host       => $src,
@@ -7337,16 +7393,20 @@ sub sync_via_replication {
             src        => $src,
          );
 
-         foreach my $diff ( @diffs ) {
-            print Dumper($diff);
-            $src->{tbl} = $diff->{tbl};
-            $dst->{tbl} = $diff->{tbl};
+         foreach my $diffs ( @$diffs_for_table ) {
+            my @db_tbl = $q->split_unquote($diffs->[0]->{table});
+            my $tbl    = {
+               db  => $db_tbl[0],
+               tbl => $db_tbl[1],
+            };
+            $src->{tbl} = $tbl;
+            $dst->{tbl} = $tbl;
 
             $exit_status |= sync_a_table(
                %args,
-               src        => $src,
-               dst        => $dst,
-               boundaries => $diff->{boundaries},
+               src   => $src,
+               dst   => $dst,
+               diffs => $diffs,
             );
          }
 
@@ -7371,20 +7431,23 @@ sub sync_via_replication {
             recurse    => 1,
             callback   => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
-               my @diffs = $checksum
-                  ->find_replication_differences($dbh, $o->get('replicate'));
+               my $diffs = $checksum->find_replication_differences(
+                     dbh        => $dbh,
+                     repl_table => $o->get('replicate'),
+               );
+
                if ( !$level ) {
                   # This is the master; don't sync any tables that are wrong
                   # here, for obvious reasons.
-                  map { $skip_table{$_->{db}}->{$_->{tbl}}++ } @diffs;
+                  map { $skip_table{$_->{db}}->{$_->{tbl}}++ } @$diffs;
                }
                else {
                   # This is a slave.
-                  @diffs = filter_diffs(
+                  $diffs = filter_diffs(
                      \%skip_table,
                      $databases,
                      $tables,
-                     @diffs
+                     $diffs
                   );
 
                   if ( $o->get('verbose') ) {
@@ -7396,7 +7459,9 @@ sub sync_via_replication {
                            : '') . "\n";
                   }
 
-                  if ( @diffs ) {
+                  if ( @$diffs ) {
+                     my $diffs_for_table = group_diffs_by_table($diffs);
+
                      my $dst = {
                         Cxn  => $make_cxn->(dsn => $dsn, dbh => $dbh),
                         tbl  => undef,  # set later
@@ -7413,16 +7478,20 @@ sub sync_via_replication {
                         src        => $src,
                      );
 
-                     foreach my $diff ( @diffs ) {
-                        print Dumper($diff);
-                        $src->{tbl} = $diff->{tbl};
-                        $dst->{tbl} = $diff->{tbl};
+                     foreach my $diffs ( @$diffs_for_table ) {
+                        my @db_tbl = $q->split_unquote($diffs->[0]->{table});
+                        my $tbl    = {
+                           db  => $db_tbl[0],
+                           tbl => $db_tbl[1],
+                        };
+                        $src->{tbl} = $tbl;
+                        $dst->{tbl} = $tbl;
 
                         $exit_status |= sync_a_table(
                            %args,
-                           src        => $src,
-                           dst        => $dst,
-                           boundaries => $diff->{boundaries},
+                           src   => $src,
+                           dst   => $dst,
+                           diffs => $diffs,
                         );
                      }
 
@@ -7466,15 +7535,14 @@ sub sync_via_replication {
 #   Exit status
 sub sync_all {
    my ( %args ) = @_;
-   my @required_args = qw(cxns OptionParser DSNParser Quoter
-                          TableSyncer VersionParser TableParser MySQLDump);
+   my @required_args = qw(cxns OptionParser DSNParser
+                          TableSyncer TableParser MySQLDump);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my @cxns         = @{$args{cxns}};
    my $o            = $args{OptionParser};
    my $dp           = $args{DSNParser};
-   my $q            = $args{Quoter};
    my $tp           = $args{TableParser};
    my $table_syncer = $args{TableSyncer};
 
@@ -7653,9 +7721,9 @@ sub sync_a_table {
          %args,
          src           => $src,
          dst           => $dst,
+         diff          => $args{diff},
          ChangeHandler => $ch,
          RowSyncer     => $row_syncer,
-         boundaries    => $args{boundaries},
          changing_src  => $o->get('replicate')
                        || $o->get('sync-to-master')
                        || $o->get('bidirectional')
@@ -7938,17 +8006,36 @@ sub ok_to_sync {
 #   $skip_table - Hashref of databases and tables to skip
 #   $databases  - Hashref of databases to skip
 #   $tables     - Hashref of tables to skip
-#   @diffs      - Array of hashrefs, one for each different slave table
+#   $diffs      - Arrayref of hashrefs, one for each different slave table
 #
 # Returns:
 #   Array of different slave tables that pass the filters
 sub filter_diffs {
-   my ( $skip_table, $databases, $tables, @diffs ) = @_;
-   return grep {
-      !$skip_table->{$_->{db}}->{$_->{tbl}}
-      && (!$databases || $databases->{$_->{db}})
-      && (!$tables || ($tables->{$_->{tbl}} || $tables->{"$_->{db}.$_->{tbl}"}))
-   } @diffs;
+   my ( $skip_table, $databases, $tables, $diffs ) = @_;
+   my @filtered_diffs = grep {
+      my ($db, $tbl) = $q->split_unquote($_->{table});
+      !$skip_table->{$db}->{$tbl}
+      && (!$databases ||  $databases->{$db})
+      && (!$tables    || ($tables->{$tbl} || $tables->{$_->{table}}))
+   } @$diffs;
+   return \@filtered_diffs;
+}
+
+sub group_diffs_by_table {
+   my ($diffs) = @_;
+   my @grouped_diffs;
+   my @table_diffs;
+   my $last_table = '';
+   foreach my $diff ( @$diffs ) {
+      if ( $diff->{table} ne $last_table && @table_diffs ) {
+         push @grouped_diffs, [ @table_diffs ] if @table_diffs; 
+         @table_diffs = ();
+      }
+      push @table_diffs, $diff;
+      $last_table = $diff->{table};
+   }
+   push @grouped_diffs, [ @table_diffs ] if @table_diffs;
+   return \@grouped_diffs;
 }
 
 # Sub: print_sql

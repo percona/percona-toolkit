@@ -36,6 +36,11 @@ use PerconaTest;
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh      = $sb->get_dbh_for('master');
@@ -49,7 +54,7 @@ elsif ( !$dst_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 33;
+   plan tests => 37;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -183,6 +188,7 @@ sub sync_table {
       trace         => 0,
       changing_src  => $args{changing_src},
       one_nibble    => $args{one_nibble},
+      diffs         => $args{diffs},
    );
    return \%actions;
 }
@@ -792,6 +798,146 @@ $output = '';
    );
 }
 diag(`$trunk/sandbox/test-env reset`);
+
+# #############################################################################
+# Sync diffs from pt-table-checksum --replicate table.
+# #############################################################################
+
+$sb->load_file('master', "t/pt-table-sync/samples/simple-tbls.sql");
+PerconaTest::wait_for_table($dst_cxn->dbh(), "test.mt1", "id=10");
+$dst_cxn->dbh()->do("delete from test.it1 where id>5 order by id limit 5");
+$dst_cxn->dbh()->do("delete from test.mt1 where id in (1, 9)");
+
+is_deeply(
+   $dst_cxn->dbh()->selectall_arrayref("select id from test.it1 order by id"),
+   [ [1],[2],[3],[4],[5] ],
+   "Replicate it1 missing rows"
+);
+
+is_deeply(
+   $dst_cxn->dbh()->selectall_arrayref("select id from test.mt1 order by id"),
+   [ [2],[3],[4],[5],[6],[7],[8],[10] ],
+   "Replicate mt1 missing rows"
+);
+
+my $diffs = [
+  [
+      {
+         chunk => '2',
+         chunk_index => 'PRIMARY',
+         cnt_diff => '-1',
+         crc_diff => '1',
+         lower_boundary => '4',
+         master_cnt => '3',
+         master_crc => '528a75c4',
+         table => 'test.it1',
+         this_cnt => '2',
+         this_crc => 'f46ae868',
+         upper_boundary => '6'
+      },
+      {
+         chunk => '3',
+         chunk_index => 'PRIMARY',
+         cnt_diff => '-3',
+         crc_diff => '1',
+         lower_boundary => '7',
+         master_cnt => '3',
+         master_crc => '1ddd6c71',
+         table => 'test.it1',
+         this_cnt => '0',
+         this_crc => '0',
+         upper_boundary => '9'
+      },
+      {
+         chunk => '4',
+         chunk_index => 'PRIMARY',
+         cnt_diff => '-1',
+         crc_diff => '1',
+         lower_boundary => '10',
+         master_cnt => '1',
+         master_crc => '7739449',
+         table => 'test.it1',
+         this_cnt => '0',
+         this_crc => '0',
+         upper_boundary => '10'
+      }
+   ],
+   [
+      {
+         chunk => '1',
+         chunk_index => 'PRIMARY',
+         cnt_diff => '-1',
+         crc_diff => '1',
+         lower_boundary => '1',
+         master_cnt => '3',
+         master_crc => 'a2170a20',
+         table => 'test.mt1',
+         this_cnt => '2',
+         this_crc => '2e6ab8d1',
+         upper_boundary => '3'
+      },
+      {
+         chunk => '3',
+         chunk_index => 'PRIMARY',
+         cnt_diff => '-1',
+         crc_diff => '1',
+         lower_boundary => '7',
+         master_cnt => '3',
+         master_crc => '1ddd6c71',
+         table => 'test.mt1',
+         this_cnt => '2',
+         this_crc => '4a57d814',
+         upper_boundary => '9'
+      }
+   ]
+];
+
+my $correct_rows = [
+   [qw(  1   1   1  one   )],
+   [qw(  2   2   2  two   )],
+   [qw(  3   3   3  three )],
+   [qw(  4   4   4  four  )],
+   [qw(  5   5   5  file  )],
+   [qw(  6   6   6  six   )],
+   [qw(  7   7   7  seven )],
+   [qw(  8   8   8  eight )],
+   [qw(  9   9   9  nine  )],
+   [qw( 10  10  10  ten   )],
+]; 
+
+sync_table(
+   src          => "test.it1",
+   dst          => "test.it1",
+   diffs        => $diffs->[0],
+   changing_src => 1,
+   one_nibble   => 0,
+   argv         => [qw(--replicate percona.checksums)],
+);
+
+my $res = $dst_cxn->dbh()->selectall_arrayref("select * from test.it1 order by id");
+is_deeply(
+   $res,
+   $correct_rows,
+   "Sync replicate it1 rows"
+) or print STDERR Dumper($res);
+
+
+sync_table(
+   src          => "test.mt1",
+   dst          => "test.mt1",
+   diffs        => $diffs->[1],
+   changing_src => 1,
+   one_nibble   => 0,
+   argv         => [qw(--replicate percona.checksums)],
+);
+
+
+$res = $dst_cxn->dbh()->selectall_arrayref("select * from test.it1 order by id");
+is_deeply(
+   $res,
+   $correct_rows,
+   "Sync replicate mt1 rows"
+) or print STDERR Dumper($res);
 
 # #############################################################################
 # Done.

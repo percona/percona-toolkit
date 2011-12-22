@@ -324,9 +324,16 @@ sub next {
                  : $self->{nibble_sth}->fetchrow_arrayref();
          if ( $row ) {
             $self->{rowno}++;
-            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno});
+            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno},
+               'from', $self->{Cxn}->name());
             # fetchrow_arraryref re-uses an internal arrayref, so we must copy.
             return $self->{fetch_hashref} ? $row : [ @$row ];
+         }
+         else {
+            MKDEBUG && _d('No row in nibble');
+            if ( $self->{empty_results} ) {
+               return $self->{fetch_hashref} ? {} : [];
+            }
          }
       }
 
@@ -429,7 +436,10 @@ sub more_boundaries {
 
 sub no_more_rows {
    my ($self) = @_;
+   $self->{nibble_sth}->finish() if $self->{nibble_sth};
    $self->{have_rows} = 0;
+   $self->{rowno}     = 0;
+   MKDEBUG && _d('No more rows');
    return;
 }
 
@@ -636,7 +646,8 @@ sub _next_boundaries {
    # which will cause us to nibble further ahead and maybe get a new lower
    # boundary that isn't identical, but we can't detect this, and in any
    # case, if there's one infinite loop there will probably be others.
-   if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
+   if ( !$self->{manual_nibble}
+        && $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       MKDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
@@ -667,6 +678,8 @@ sub _next_boundaries {
          return; # stop nibbling
       }
    }
+
+   return 1 if $self->{manual_nibble};
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
