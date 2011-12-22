@@ -39,7 +39,6 @@ use strict;
 use English qw(-no_match_vars);
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-use Carp  qw( croak );
 use POSIX qw( :termios_h );
 
 use base  qw( Exporter );
@@ -52,12 +51,14 @@ BEGIN {
       Term::ReadKey->import(@EXPORT_OK);
    }
    else {
+      # If we don't have Term::ReadKey, fake it. We clobber our own glob,
+      # ReadKeyMini::Function, and the Term::ReadKey glob, so callers can
+      # both import it if requested, or even use the fully-qualified name
+      # without issues.
       *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
       *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
    }
 }
-
-our $VERSION = '0.01';
 
 my %modes = (
    original    => 0,
@@ -76,21 +77,20 @@ my %modes = (
    my $fd_stdin = fileno(STDIN);
    my $term     = POSIX::Termios->new();
    $term->getattr($fd_stdin);
-   my $oterm = $term->getlflag();
-
-   my $echo   = ECHO | ECHOK | ICANON;
-   my $noecho = $oterm & ~$echo;
+   my $oterm    = $term->getlflag();
+   my $echo     = ECHO | ECHOK | ICANON;
+   my $noecho   = $oterm & ~$echo;
 
    sub _ReadMode {
       my $mode = $modes{ $_[0] };
       if ( $mode == $modes{normal} ) {
-            cooked();
+         cooked();
       }
       elsif ( $mode == $modes{cbreak} || $mode == $modes{noecho} ) {
-            cbreak( $mode == $modes{noecho} ? $noecho : $oterm );
+         cbreak( $mode == $modes{noecho} ? $noecho : $oterm );
       }
       else {
-            croak("ReadMore('$_[0]') not supported");
+         die("ReadMore('$_[0]') not supported");
       }
    }
 
@@ -112,29 +112,31 @@ my %modes = (
 }
 
 sub readkey {
-    my $key = '';
-    cbreak();
-    sysread(STDIN, $key, 1);
-    my $timeout = 0.1;
-    if ( $key eq "\033" ) { # Ugly and broken hack, but good enough for the two minutes it took to write.
-        {
-            my $x = '';
-            STDIN->blocking(0);
-            sysread(STDIN, $x, 2);
-            STDIN->blocking(1);
-            $key .= $x;
-            redo if $key =~ /\[[0-2](?:[0-9];)?$/
-        }
-    }
-    cooked();
-    return $key;
+   my $key = '';
+   cbreak();
+   sysread(STDIN, $key, 1);
+   my $timeout = 0.1;
+   if ( $key eq "\033" ) { # Ugly and broken hack, but good enough for the two minutes it took to write.
+   # Namely, Ctrl escapes, the F keys, and other stuff you can send from the keyboard
+   # take more than one "character" to represent, and wrong be wrong to break into pieces.
+      {
+         my $x = '';
+         STDIN->blocking(0);
+         sysread(STDIN, $x, 2);
+         STDIN->blocking(1);
+         $key .= $x;
+         redo if $key =~ /\[[0-2](?:[0-9];)?$/
+      }
+   }
+   cooked();
+   return $key;
 }
 
 # As per perlfaq8:
 
 sub _GetTerminalSize {
    if ( @_ ) {
-      croak "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
+      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
    }
    eval { require 'sys/ioctl.ph' };
    if ( !defined &TIOCGWINSZ ) {
@@ -147,10 +149,10 @@ sub _GetTerminalSize {
             :                    0x40087468;
       };
    }
-   open( TTY, "+<", "/dev/tty" ) or croak "No tty: $OS_ERROR";
+   open( TTY, "+<", "/dev/tty" ) or die "No tty: $OS_ERROR";
    my $winsize = '';
    unless ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
-      croak sprintf "$0: ioctl TIOCGWINSZ (%08x: $OS_ERROR)\n", &TIOCGWINSZ;
+      die sprintf "$0: ioctl TIOCGWINSZ (%08x: $OS_ERROR)\n", &TIOCGWINSZ;
    }
    my ( $row, $col, $xpixel, $ypixel ) = unpack( 'S4', $winsize );
    return ( $col, $row, $xpixel, $ypixel );

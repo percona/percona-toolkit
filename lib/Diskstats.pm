@@ -32,38 +32,14 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 use IO::Handle;
 use List::Util qw( max first );
 
-BEGIN {
-   # This BEGIN block checks if we can use Storable::dclone: If we can't,
-   # it clobbers this package's dclone glob (*{ __PACKAGE__ . "::dclone" })
-   # with an anonymous function that provides more or less what we need.
-   my $have_storable = eval { require Storable };
-
-   if ( $have_storable ) {
-      Storable->import(qw(dclone));
-   }
-   else {
-      require Scalar::Util;
-
-      # An extrenely poor man's dclone.
-      # Nevermind the prototype. dclone has it, so it's here only it for
-      # the sake of completeness.
-      *dclone = sub ($) {
-         my ($ref) = @_;
-         my $reftype = Scalar::Util::reftype($ref) || '';
-
-         if ( $reftype eq ref({}) ) {
-            # Only one level of depth. Not worth making it any deeper/recursive, I think.
-            return { map { $_ => {%{$ref->{$_}}} } keys %$ref };
-         }
-         else {
-            die "This basic dclone does not support [$reftype]";
-         }
-      };
-   }
-}
-
 sub new {
    my ( $class, %args ) = @_;
+
+   my @required_args = qw(OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($o) = @args{@required_args};
 
    my $self = {
       # Defaults
@@ -72,12 +48,12 @@ sub new {
       device_regex       => qr/(?=)/,
       block_size         => 512,
       out_fh             => \*STDOUT,
-      filter_zeroed_rows => 0,
-      sample_time        => 0,
+      filter_zeroed_rows => $o->get('zero-rows') ? undef : 1,
+      sample_time        => $o->get('sample-time') || 0,
       interactive        => 0,
 
       _stats_for         => {},
-      _sorted_devs       => [],
+      _ordered_devs      => [],
       _ts                => {},
       _first             => 1,
 
@@ -85,6 +61,24 @@ sub new {
       _save_curr_as_prev => 1,
       _print_header      => 1,
    };
+
+   if ( $o->get('memory-for-speed') ) {
+      eval {
+         require Memoize; Memoize::memoize('_parse_diskstats_line')
+      };
+      if ($EVAL_ERROR) {
+         warn "Can't trade memory for speed: $EVAL_ERROR. Continuing as usual.";
+      }
+   }
+
+   my %pod_to_attribute = (
+      columns => 'column_regex',
+      devices => 'device_regex'
+   );
+   for my $key ( grep { defined $o->get($_) } keys %pod_to_attribute ) {
+      my $re = $o->get($key) || '(?=)';
+      $self->{ $pod_to_attribute{$key} } = qr/$re/i;
+   }
 
    # If they passed us an attribute explicitly, we use those.
    for my $attribute ( grep { !/^_/ && defined $args{$_} } keys %$self ) {
@@ -104,14 +98,14 @@ sub _ts_common {
    return $self->{_ts}->{$key};
 }
 
-sub current_ts {
+sub curr_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("current", $val);
+   return $self->_ts_common("curr", $val);
 }
 
-sub previous_ts {
+sub prev_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("previous", $val);
+   return $self->_ts_common("prev", $val);
 }
 
 sub first_ts {
@@ -179,10 +173,10 @@ sub device_regex {
 
 sub filename {
    my ( $self, $new_filename ) = @_;
-   if ( defined $new_filename ) {
+   if ( $new_filename ) {
       return $self->{filename} = $new_filename;
    }
-   return $self->{filename} || '/proc/diskstats';
+   return $self->{filename};
 }
 
 sub block_size {
@@ -190,19 +184,24 @@ sub block_size {
    return $self->{block_size};
 }
 
-sub sorted_devs {
-   my ( $self, $new_dev ) = @_;
-   if ( $new_dev && ref($new_dev) eq ref( [] ) ) {
-      $self->{_sorted_devs} = $new_dev;
+# Returns a list of devices seen. You may pass an arrayref argument to
+# replace the internal list, but consider using clear_ordered_devs and
+# add_ordered_dev instead.
+
+sub ordered_devs {
+   my ( $self, $replacement_list ) = @_;
+   if ( $replacement_list ) {
+      $self->{_ordered_devs} = $replacement_list;
    }
-   return @{ $self->{_sorted_devs} };
+   return @{ $self->{_ordered_devs} };
 }
 
-sub add_sorted_devs {
+sub add_ordered_dev {
    my ( $self, $new_dev ) = @_;
    if ( !$self->{_seen_devs}->{$new_dev}++ ) {
-      push @{ $self->{_sorted_devs} }, $new_dev;
+      push @{ $self->{_ordered_devs} }, $new_dev;
    }
+   return;
 }
 
 # clear_stuff methods. Like the name says, they clear state stored inside
@@ -212,11 +211,11 @@ sub clear_state {
    my ($self) = @_;
    $self->{_first} = 1;
    $self->{_print_header} = 1;
-   $self->clear_current_stats();
-   $self->clear_previous_stats();
+   $self->clear_curr_stats();
+   $self->clear_prev_stats();
    $self->clear_first_stats();
    $self->clear_ts();
-   $self->clear_sorted_devs();
+   $self->clear_ordered_devs();
 }
 
 sub clear_ts {
@@ -224,10 +223,10 @@ sub clear_ts {
    $self->{_ts} = {};
 }
 
-sub clear_sorted_devs {
+sub clear_ordered_devs {
    my $self = shift;
    $self->{_seen_devs} = {};
-   $self->sorted_devs( [] );
+   $self->ordered_devs( [] );
 }
 
 sub _clear_stats_common {
@@ -242,14 +241,14 @@ sub _clear_stats_common {
    }
 }
 
-sub clear_current_stats {
+sub clear_curr_stats {
    my ( $self, @args ) = @_;
    $self->_clear_stats_common( "_stats_for", @args );
 }
 
-sub clear_previous_stats {
+sub clear_prev_stats {
    my ( $self, @args ) = @_;
-   $self->_clear_stats_common( "_previous_stats_for", @args );
+   $self->_clear_stats_common( "_prev_stats_for", @args );
 }
 
 sub clear_first_stats {
@@ -271,9 +270,9 @@ sub stats_for {
    $self->_stats_for_common( $dev, '_stats_for' );
 }
 
-sub previous_stats_for {
+sub prev_stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_previous_stats_for' );
+   $self->_stats_for_common( $dev, '_prev_stats_for' );
 }
 
 sub first_stats_for {
@@ -283,39 +282,47 @@ sub first_stats_for {
 
 sub has_stats {
    my ($self) = @_;
+   my $stats  = $self->stats_for;
 
-   return $self->stats_for
-     && scalar grep 1, @{ $self->stats_for }{ $self->sorted_devs };
-}
-
-sub _save_current_as_previous {
-   my ( $self, $curr_hashref ) = @_;
-
-   if ( $self->{_save_curr_as_prev} ) {
-      $self->{_previous_stats_for} = $curr_hashref;
-      for my $dev (keys %$curr_hashref) {
-         $self->{_previous_stats_for}->{$dev}->{sum_ios_in_progress} +=
-            $curr_hashref->{$dev}->{ios_in_progress};
-      }
-      $self->previous_ts($self->current_ts());
+   for my $key ( keys %$stats ) {
+      return 1 if $stats->{$key} && %{ $stats->{$key} }
    }
 
    return;
 }
 
-sub _save_current_as_first {
-   my ($self, $curr_hashref) = @_;
+sub _save_curr_as_prev {
+   my ( $self, $curr ) = @_;
+
+   if ( $self->{_save_curr_as_prev} ) {
+      $self->{_prev_stats_for} = $curr;
+      for my $dev (keys %$curr) {
+         $self->{_prev_stats_for}->{$dev}->{sum_ios_in_progress} +=
+            $curr->{$dev}->{ios_in_progress};
+      }
+      $self->prev_ts($self->curr_ts());
+   }
+
+   return;
+}
+
+sub _save_curr_as_first {
+   my ($self, $curr) = @_;
 
    if ( $self->{_first} ) {
-      $self->{_first_stats_for} = $curr_hashref;
-      $self->first_ts($self->current_ts());
+      $self->{_first_stats_for} = {
+         # 1-level deep copy of the original structure. Should
+         # be enough.
+         map { $_ => {%{$curr->{$_}}} } keys %$curr
+      };
+      $self->first_ts($self->curr_ts());
       $self->{_first} = undef;
    }
 }
 
 sub _save_stats {
-   my ( $self, $hashref ) = @_;
-   $self->{_stats_for} = $hashref;
+   my ( $self, $stats ) = @_;
+   return $self->{_stats_for} = $stats;
 }
 
 sub trim {
@@ -327,13 +334,13 @@ sub trim {
 
 sub col_ok {
    my ( $self, $column ) = @_;
-   my $regex = $self->column_regex;
-   return $column =~ $regex || trim($column) =~ $regex;
+   my $regex = $self->column_regex();
+   return ($column =~ $regex) || (trim($column) =~ $regex);
 }
 
 sub dev_ok {
    my ( $self, $device ) = @_;
-   my $regex = $self->device_regex;
+   my $regex = $self->device_regex();
    return $device =~ $regex;
 }
 
@@ -383,22 +390,23 @@ my @columns_in_order = (
 }
 
 # Method: design_print_formats()
-#   What says on the label. Returns three things: the format for the header and the
-#   data, and an arrayref of the columns used to make it.
+#   What says on the label. Returns three things: the format for the header
+#   and the data, and an arrayref of the columns used to make it.
 #
 # Parameters:
 #   %args - Arguments
 #
 # Optional Arguments:
-#   columns             - An arrayref with column names. If absent, uses ->col_ok to
-#                         decide which columns to use.
-#   max_device_length   - How much space to leave for device names. Defaults at 6.
+#   columns             - An arrayref with column names. If absent,
+#                         uses ->col_ok to decide which columns to use.
+#   max_device_length   - How much space to leave for device names.
+#                         Defaults to 6.
 #
 
 sub design_print_formats {
    my ( $self,       %args )    = @_;
    my ( $dev_length, $columns ) = @args{qw( max_device_length columns )};
-   $dev_length ||= max 6, map length, $self->sorted_devs;
+   $dev_length ||= max 6, map length, $self->ordered_devs;
    my ( $header, $format );
 
    # For each device, print out the following: The timestamp offset and
@@ -418,46 +426,69 @@ sub design_print_formats {
    return ( $header, $format, $columns );
 }
 
-sub parse_diskstats_line {
-   my ( $self, $line, $block_size ) = @_;
-   my @keys = qw(
-     reads  reads_merged  read_sectors      ms_spent_reading
-     writes writes_merged written_sectors   ms_spent_writing
-     ios_in_progress      ms_spent_doing_io ms_weighted
-   );
-   my ( $dev, %dev_stats );
+{
+# This is hot code. In any given run it could end up being called
+# thousands of times, so beware: Here could be dragons.
+my @diskstats_fields = qw(
+   reads  reads_merged  read_sectors      ms_spent_reading
+   writes writes_merged written_sectors   ms_spent_writing
+   ios_in_progress      ms_spent_doing_io ms_weighted
+);
+# This allows parse_diskstats_line() to be overriden, but also to be
+# memoized without a normalization function.
 
-   if ( ( @dev_stats{qw( major minor )}, $dev, @dev_stats{@keys} ) =
-         $line =~ /^
-            # Disk format
-               \s*   (\d+)    # major
-               \s+   (\d+)    # minor
-               \s+   (.+?)    # Device name
-               \s+   (\d+)    # # of reads issued
-               \s+   (\d+)    # # of reads merged
-               \s+   (\d+)    # # of sectors read
-               \s+   (\d+)    # # of milliseconds spent reading
-               \s+   (\d+)    # # of writes completed
-               \s+   (\d+)    # # of writes merged
-               \s+   (\d+)    # # of sectors written
-               \s+   (\d+)    # # of milliseconds spent writing
-               \s+   (\d+)    # # of IOs currently in progress
-               \s+   (\d+)    # # of milliseconds spent doing IOs
-               \s+   (\d+)    # weighted # of milliseconds spent doing IOs
-               \s*$/x
-     )
+# Magic goto, removes this function from the return stack. Haven't
+# benchmarked it, but ostensibly faster.
+sub parse_diskstats_line  { shift; goto &_parse_diskstats_line }
+sub _parse_diskstats_line {
+   my ( $line, $block_size ) = @_;
+   my $dev;
+   keys my %dev_stats = 30; # Pre-expand the amount of buckets for this hash.
+
+#   The following split replaces this:
+#         $line =~ /^
+#            # Disk format
+#               \s*   (\d+)    # major
+#               \s+   (\d+)    # minor
+#               \s+   (.+?)    # Device name
+#               \s+   (\d+)    # # of reads issued
+#               \s+   (\d+)    # # of reads merged
+#               \s+   (\d+)    # # of sectors read
+#               \s+   (\d+)    # # of milliseconds spent reading
+#               \s+   (\d+)    # # of writes completed
+#               \s+   (\d+)    # # of writes merged
+#               \s+   (\d+)    # # of sectors written
+#               \s+   (\d+)    # # of milliseconds spent writing
+#               \s+   (\d+)    # # of IOs currently in progress
+#               \s+   (\d+)    # # of milliseconds spent doing IOs
+#               \s+   (\d+)    # weighted # of milliseconds spent doing IOs
+#               \s*$/x
+#
+#   Since we assume that device names can't have spaces.
+
+   # Assigns the first two elements of the list created by split() into
+   # %dev_stats as the major and minor, the third element into $dev,
+   # and the remaining elements back into %dev_stats.
+   if ( 14 == (( @dev_stats{qw( major minor )}, $dev, @dev_stats{@diskstats_fields} ) =
+         split " ", $line, 14 ) )
    {
-      $dev_stats{read_bytes} = $dev_stats{read_sectors} * $block_size;
-      $dev_stats{written_bytes} =
-        $dev_stats{written_sectors} * $block_size;
-      $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
-      $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
-      $dev_stats{ios_requested} += $dev_stats{reads} + $dev_stats{writes};
-      $dev_stats{ios_in_bytes}  += $dev_stats{read_bytes} + $dev_stats{written_bytes};
+      $dev_stats{read_kbs}    =
+         ( $dev_stats{read_bytes} = $dev_stats{read_sectors}
+                                  * $block_size ) / 1024;
+      $dev_stats{written_kbs} =
+         ( $dev_stats{written_bytes} = $dev_stats{written_sectors}
+                                     * $block_size ) / 1024;
+      $dev_stats{ios_requested} = $dev_stats{reads}
+                                + $dev_stats{writes};
+
+      $dev_stats{ios_in_bytes}  = $dev_stats{read_bytes}
+                                + $dev_stats{written_bytes};
 
       return ( $dev, \%dev_stats );
    }
-   elsif ((@dev_stats{qw( major minor )}, $dev, @dev_stats{ qw( reads read_sectors writes written_sectors ) }) = $line =~ /^
+   elsif ((@dev_stats{qw( major minor )}, $dev,
+           @dev_stats{ qw( reads read_sectors writes written_sectors ) }) =
+           $line =~ /^
             # Partition format
                \s*   (\d+)    # major
                \s+   (\d+)    # minor
@@ -466,24 +497,28 @@ sub parse_diskstats_line {
                \s+   (\d+)    # # of sectors read
                \s+   (\d+)    # # of writes issued
                \s+   (\d+)    # # of sectors written
-               \s*$/x) {
-      for my $key ( @keys ) {
+               \s*$/x)
+   {
+      for my $key ( @diskstats_fields ) {
          $dev_stats{$key} ||= 0;
       }
-      # Copypaste from above, abstract?
+      # Copypaste from above, should probably abstract, but it would make
+      # the common case slower.
       $dev_stats{read_bytes} = $dev_stats{read_sectors} * $block_size;
       $dev_stats{written_bytes} =
         $dev_stats{written_sectors} * $block_size;
       $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
       $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
-      $dev_stats{ttreq} += $dev_stats{reads} + $dev_stats{writes};
-      $dev_stats{ttbyt} += $dev_stats{read_bytes} + $dev_stats{written_bytes};
+      $dev_stats{ios_requested} = $dev_stats{reads} + $dev_stats{writes};
+      $dev_stats{ios_in_bytes}  = $dev_stats{read_bytes}
+                                + $dev_stats{written_bytes};
 
       return ( $dev, \%dev_stats );
    }
    else {
       return;
    }
+}
 }
 
 # Method: parse_from()
@@ -493,32 +528,36 @@ sub parse_diskstats_line {
 #   %args - Arguments
 #
 # Optional Arguments:
-#   filehandle       - Reads data from a filehandle by calling readline() on it.
+#   filehandle       - Reads data from a filehandle by calling readline()
+#                      on it.
 #   data             - Reads data one line at a time.
-#   filename         - Opens a filehandle to the file and reads it one line at a time.
-#   sample_callback  - Called each time a sample is processed, passed the latest timestamp.
+#   filename         - Opens a filehandle to the file and reads it one
+#                      line at a time.
+#   sample_callback  - Called each time a sample is processed, passed
+#                      the latest timestamp.
 #
 
 sub parse_from {
-   my ( $self, %args ) = @_;
+    my ( $self, %args ) = @_;
 
-   my $lines_read = $args{filehandle}
-      ? $self->parse_from_filehandle( @args{qw( filehandle sample_callback )} ) :
-      $args{data}
-      ? $self->parse_from_data( @args{qw( data sample_callback )} )             :
-      $self->parse_from_filename( @args{qw( filename sample_callback )} );
-   return $lines_read;
+    my $lines_read = $args{filehandle}
+      ? $self->parse_from_filehandle( @args{qw( filehandle sample_callback )} )
+      : $args{data}
+      ? $self->parse_from_data( @args{qw( data sample_callback )} )
+      : $self->parse_from_filename( @args{qw( filename sample_callback )} );
+    return $lines_read;
 }
+
 
 sub parse_from_filename {
    my ( $self, $filename, $sample_callback ) = @_;
 
-   $filename ||= $self->filename;
+   $filename ||= $self->filename();
 
    open my $fh, "<", $filename
-     or die "Couldn't open ", $filename, ": $OS_ERROR";
+     or die "Cannot parse $filename: $OS_ERROR";
    my $lines_read = $self->parse_from_filehandle( $fh, $sample_callback );
-   close($fh) or die "Couldn't close: $OS_ERROR";
+   close $fh or die "Cannot close: $OS_ERROR";
 
    return $lines_read;
 }
@@ -531,47 +570,58 @@ sub parse_from_filename {
 #
 # Parameters:
 #   filehandle       - 
-#   sample_callback  - Called each time a sample is processed, passed the latest timestamp.
+#   sample_callback  - Called each time a sample is processed, passed
+#                      the latest timestamp.
 #
 
 sub parse_from_filehandle {
    my ( $self, $filehandle, $sample_callback ) = @_;
-   return $self->_load( $filehandle, $sample_callback );;
+   return $self->_load( $filehandle, $sample_callback );
 }
 
+# Method: parse_from_data()
+#   Similar to parse_from_filehandle, but uses a reference to a scalar
+#   as a filehandle
+#
+# Parameters:
+#   data             - A normal Perl scalar, or a ref to a scalar.
+#   sample_callback  - Same as parse_from_filehandle.
+#
 sub parse_from_data {
    my ( $self, $data, $sample_callback ) = @_;
 
-   open my $fh, "<", \$data
-     or die "Couldn't open scalar as filehandle: $OS_ERROR";
+   open( my $fh, "<", ref($data) ? $data : \$data )
+     or die "Couldn't parse data: $OS_ERROR";
    my $lines_read = $self->parse_from_filehandle( $fh, $sample_callback );
-   close($fh);
+   close $fh or die "";
 
    return $lines_read;
 }
 
-# Method: INTERNAL: _load()
+# Method: _load()
+#   !!!!INTERNAL!!!!!
 #   Reads from the filehandle, either saving the data as needed if dealing
 #   with a diskstats-formatted line, or if it finds a TS line and has a
 #   callback, defering to that.
 
 sub _load {
    my ( $self, $fh, $sample_callback ) = @_;
-   my $block_size = $self->block_size;
+   my $block_size = $self->block_size();
    my $current_ts = 0;
    my $new_cur    = {};
 
    while ( my $line = <$fh> ) {
-      if ( my ( $dev, $dev_stats ) = $self->parse_diskstats_line($line, $block_size) ) {
+      if ( my ( $dev, $dev_stats ) = $self->parse_diskstats_line($line, $block_size) )
+      {
          $new_cur->{$dev} = $dev_stats;
-         $self->add_sorted_devs($dev);
+         $self->add_ordered_dev($dev);
       }
       elsif ( my ($new_ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
-         if ( $current_ts && %{$new_cur} ) {
-            $self->_save_current_as_previous( $self->stats_for() );
+         if ( $current_ts && %$new_cur ) {
+            $self->_save_curr_as_prev( $self->stats_for() );
             $self->_save_stats($new_cur);
-            $self->current_ts($current_ts);
-            $self->_save_current_as_first( dclone($self->stats_for) );
+            $self->curr_ts($current_ts);
+            $self->_save_curr_as_first( $new_cur );
             $new_cur = {};
          }
          if ($sample_callback) {
@@ -581,16 +631,16 @@ sub _load {
       }
       else {
          chomp($line);
-         die "Line [$line] isn't in the diskstats format";
+         warn "Line $INPUT_LINE_NUMBER: [$line] isn't in the diskstats format";
       }
    }
 
-   if ( eof $fh && $current_ts ) {
+   if ( $current_ts ) {
       if ( %{$new_cur} ) {
-         $self->_save_current_as_previous( $self->stats_for() );
+         $self->_save_curr_as_prev( $self->stats_for() );
          $self->_save_stats($new_cur);
-         $self->current_ts($current_ts);
-         $self->_save_current_as_first( dclone($self->stats_for) );
+         $self->curr_ts($current_ts);
+         $self->_save_curr_as_first( $new_cur );
          $new_cur = {};
       }
       if ($sample_callback) {
@@ -602,7 +652,13 @@ sub _load {
 }
 
 sub _calc_read_stats {
-   my ( $self, $delta_for, $elapsed, $devs_in_group ) = @_;
+   my ( $self, %args ) = @_;
+
+   my @required_args = qw( delta_for elapsed devs_in_group );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($delta_for, $elapsed, $devs_in_group) = @args{ @required_args };
 
    my %read_stats = (
       reads_sec       => $delta_for->{reads} / $elapsed,
@@ -633,7 +689,13 @@ sub _calc_read_stats {
 }
 
 sub _calc_write_stats {
-   my ( $self, $delta_for, $elapsed, $devs_in_group ) = @_;
+   my ( $self, %args ) = @_;
+
+   my @required_args = qw( delta_for elapsed devs_in_group );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($delta_for, $elapsed, $devs_in_group) = @args{ @required_args };
 
    my %write_stats = (
       writes_sec     => $delta_for->{writes} / $elapsed,
@@ -667,74 +729,104 @@ sub _calc_write_stats {
 
 # Compute the numbers for reads and writes together, the things for
 # which we do not have separate statistics.
-# Busy is what iostat calls %util.  This is the percent of
-# wall-clock time during which the device has I/O happening.
 
 sub _calc_misc_stats {
-   my ( $self, $delta_for, $elapsed, $devs_in_group, $stats ) = @_;
+   my ( $self, %args ) = @_;
+
+   my @required_args = qw( delta_for elapsed devs_in_group stats );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($delta_for, $elapsed, $devs_in_group, $stats) = @args{ @required_args };
    my %extra_stats;
 
+   # Busy is what iostat calls %util.  This is the percent of
+   # wall-clock time during which the device has I/O happening.
    $extra_stats{busy} =
       100 *
       $delta_for->{ms_spent_doing_io} /
       ( 1000 * $elapsed * $devs_in_group );
 
-   my $number_of_ios   = $stats->{ios_requested};
-   my $total_ms_spent_on_io = $delta_for->{ms_spent_reading} + $delta_for->{ms_spent_writing};
+   my $number_of_ios        = $stats->{ios_requested};
+   my $total_ms_spent_on_io = $delta_for->{ms_spent_reading}
+                            + $delta_for->{ms_spent_writing};
 
-   $extra_stats{qtime} = $number_of_ios ? $total_ms_spent_on_io / $number_of_ios : 0;
-   $extra_stats{stime} = $number_of_ios ? $delta_for->{ms_spent_doing_io} / $number_of_ios : 0;
+   if ( $number_of_ios ) {
+      $extra_stats{qtime} = $total_ms_spent_on_io / $number_of_ios;
+      $extra_stats{stime} = $delta_for->{ms_spent_doing_io} / $number_of_ios;
+   }
+   else {
+      $extra_stats{qtime} = 0;
+      $extra_stats{stime} = 0;
+   }
 
    $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
 
    $extra_stats{line_ts} = $self->compute_line_ts(
       first_ts   => $self->first_ts(),
-      current_ts => $self->current_ts(),
+      curr_ts    => $self->curr_ts(),
    );
 
    return %extra_stats;
 }
 
 sub _calc_delta_for {
-   my ( $self, $current, $against ) = @_;
-   return {
-      map { ( $_ => $current->{$_} - $against->{$_} ) }
+   my ( $self, $curr, $against ) = @_;
+   my %deltas = (
+      map { ( $_ => ($curr->{$_} || 0) - ($against->{$_} || 0) ) }
         qw(
          reads reads_merged read_sectors ms_spent_reading
          writes writes_merged written_sectors ms_spent_writing
          read_kbs written_kbs
          ms_spent_doing_io ms_weighted
         )
-   };
+   );
+   return \%deltas;
 }
 
 sub _calc_stats_for_deltas {
    my ( $self, $elapsed ) = @_;
    my @end_stats;
+   my @devices = $self->ordered_devs();
 
-   for my $dev ( grep { $self->dev_ok($_) && $self->stats_for($_) } $self->sorted_devs ) {
-      my $curr    = $self->stats_for($dev);
-      my $against = $self->delta_against($dev);
+   my $devs_in_group = $self->compute_devs_in_group();
 
-      my $delta_for = $self->_calc_delta_for( $curr, $against );
+   # Read "For each device that passes the regex, and we have stats for"
+   foreach my $dev (
+         grep { $self->dev_ok($_) && $self->stats_for($_) }
+         @devices )
+   {
+      my $curr      = $self->stats_for($dev);
+      my $against   = $self->delta_against($dev);
 
-      my $in_progress = $curr->{"ios_in_progress"};
+      my $delta_for       = $self->_calc_delta_for( $curr, $against );
+      my $in_progress     = $curr->{"ios_in_progress"};
       my $tot_in_progress = $against->{"sum_ios_in_progress"} || 0;
-
-      my $devs_in_group = $self->compute_devs_in_group;
 
       # Compute the per-second stats for reads, writes, and overall.
       my %stats = (
-         $self->_calc_read_stats( $delta_for, $elapsed, $devs_in_group ),
-         $self->_calc_write_stats( $delta_for, $elapsed, $devs_in_group ),
+         $self->_calc_read_stats(
+            delta_for     => $delta_for,
+            elapsed       => $elapsed,
+            devs_in_group => $devs_in_group,
+         ),
+         $self->_calc_write_stats(
+            delta_for     => $delta_for,
+            elapsed       => $elapsed,
+            devs_in_group => $devs_in_group,
+         ),
          in_progress =>
            $self->compute_in_progress( $in_progress, $tot_in_progress ),
       );
 
-      my %extras = $self->_calc_misc_stats( $delta_for, $elapsed, $devs_in_group, \%stats );
-      while ( my ($k, $v) = each %extras ) {
-         $stats{$k} = $v;
-      }
+      my %extras = $self->_calc_misc_stats(
+         delta_for     => $delta_for,
+         elapsed       => $elapsed,
+         devs_in_group => $devs_in_group,
+         stats         => \%stats,
+      );
+
+      @stats{ keys %extras } = values %extras;
 
       $stats{dev} = $dev;
 
@@ -746,7 +838,7 @@ sub _calc_stats_for_deltas {
 sub _calc_deltas {
    my ( $self ) = @_;
 
-   my $elapsed = $self->current_ts() - $self->delta_against_ts();
+   my $elapsed = $self->curr_ts() - $self->delta_against_ts();
    die "Time elapsed is [$elapsed]" unless $elapsed;
 
    return $self->_calc_stats_for_deltas($elapsed);
@@ -755,14 +847,23 @@ sub _calc_deltas {
 sub print_header {
    my ($self, $header, @args) = @_;
    if ( $self->{_print_header} ) {
-      printf { $self->out_fh } $header . "\n", @args;
+      printf { $self->out_fh() } $header . "\n", @args;
    }
 }
 
 sub print_rest {
    my ($self, $format, $cols, $stat) = @_;
    if ( $self->filter_zeroed_rows() ) {
-      return unless grep { sprintf("%7.1f", $_) != 0 } @{$stat}{ grep { $self->col_ok($_) } @$cols };
+      # Conundrum: What is "zero"?
+      # Is 0.000001 zero? How about 0.1?
+      # Here the answer is "it looks like zero after formatting";
+      # unfortunately, we lack the formats at this point. We could
+      # fetch them again, but that's a pain, so instead we use
+      # %7.1f, which is what most of them are anyway, and should
+      # work for nearly all cases.
+      return unless grep {
+            sprintf("%7.1f", $_) != 0
+         } @{$stat}{ @$cols };
    }
    printf { $self->out_fh() } $format . "\n",
            @{$stat}{ qw( line_ts dev ), @$cols };
@@ -778,18 +879,18 @@ sub print_deltas {
    return unless $self->delta_against_ts();
 
    @$cols = map { $self->_column_to_key($_) } @$cols;
-   my ( $header_cb, $rest_cb ) = @args{qw( header_cb rest_cb )};
+   my ( $header_callback, $rest_callback ) = @args{qw( header_callback rest_callback )};
 
-   if ( $header_cb ) {
-      $self->$header_cb( $header, "#ts", "device" );
+   if ( $header_callback ) {
+      $self->$header_callback( $header, "#ts", "device" );
    }
    else {
       $self->print_header( $header, "#ts", "device" );
    }
 
    for my $stat ( $self->_calc_deltas() ) {
-      if ($rest_cb) {
-         $self->$rest_cb( $format, $cols, $stat );
+      if ($rest_callback) {
+         $self->$rest_callback( $format, $cols, $stat );
       }
       else {
          $self->print_rest( $format, $cols, $stat );
@@ -799,9 +900,9 @@ sub print_deltas {
 
 sub compute_line_ts {
    my ( $self, %args ) = @_;
-   return $args{first_ts} > 0
-     ? sprintf( "%5.1f", $args{current_ts} - $args{first_ts} )
-     : sprintf( "%5.1f", 0 );
+   return sprintf( "%5.1f", $args{first_ts} > 0
+                            ? $args{curr_ts} - $args{first_ts}
+                            : 0 );
 }
 
 sub compute_in_progress {

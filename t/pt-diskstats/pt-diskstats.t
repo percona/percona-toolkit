@@ -43,7 +43,7 @@ for my $ext ( qw( all disk sample ) ) {
          tie local *STDIN, "Test";
          my $file = File::Spec->catfile( $trunk, "t", "pt-diskstats",
                                              "samples", $filename );
-         pt_diskstats->main(
+         pt_diskstats::main(
                   "--group-by" => $ext,
                   "--columns"  => "cnc|rt|mb|busy|prg",
                   "--zero-rows",

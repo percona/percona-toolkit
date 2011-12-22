@@ -22,14 +22,18 @@ BEGIN {
    use_ok "DiskstatsGroupBySample";
 }
 
+sub FakeParser::get {};
+
 {
 
-my $obj = new_ok("Diskstats");
+my $o = bless {}, "FakeParser";
+
+my $obj = new_ok(Diskstats => [OptionParser => $o]);
 
 can_ok( $obj, qw(
                   out_fh column_regex device_regex filename
-                  block_size sorted_devs clear_state clear_sorted_devs
-                  stats_for previous_stats_for first_stats_for
+                  block_size ordered_devs clear_state clear_ordered_devs
+                  stats_for prev_stats_for first_stats_for
                   has_stats design_print_formats parse_diskstats_line
                   parse_from print_deltas
                ) );
@@ -47,7 +51,7 @@ for my $attr (
    ) {
    my $attribute   = $attr->[0];
    my $value       = $attr->[1];
-   my $test_obj    = Diskstats->new( @$attr );
+   my $test_obj    = Diskstats->new( @$attr, OptionParser => $o );
 
    is(
       $test_obj->$attribute(),
@@ -80,8 +84,8 @@ my %expected_results = (
       'ms_spent_doing_io'  => 6869437,
       'ms_weighted'        => 20744582,
 
-      'ttbyt'              => 434566047232,
-      'ttreq'              => 20139567,
+      'ios_requested'      => 20139567,
+      'ios_in_bytes'       => 434566047232,
 );
 
 # Copypasted from Diskstats.pm. If the one in there changes so should this.
@@ -107,7 +111,8 @@ my ($dev, $res) = $obj->parse_diskstats_line($line, $obj->block_size);
 
 is_deeply( $res, \%expected_results, "parse_diskstats_line works" );
 
-$obj->column_regex(qr/./);
+                  # qr/ \A (?!.*io_s$|\s*[qs]time$) /x
+$obj->column_regex(qr/cnc|rt|busy|prg|[mk]b|[dr]_s|mrg/);
 my ($header, $rest, $cols) = $obj->design_print_formats();
 is($header, join(" ", q{%5s %-6s}, map { $_->[0] } @columns_in_order),
          "design_print_formats: sanity check for defaults");
@@ -128,7 +133,7 @@ is(
    "design_print_formats respects column_regex"
 );
 
-$obj->column_regex(qr//);
+$obj->column_regex(qr/./);
 ($header, $rest, $cols) = $obj->design_print_formats(
                                     max_device_length => 10,
                                     columns           => []
@@ -160,7 +165,7 @@ throws_ok( sub { $obj->design_print_formats( columns => {} ) },
         qr/The columns argument to design_print_formats should be an arrayref/,
         "design_print_formats dies when passed an invalid columns argument");
 
-for my $meth ( qw( current_ts previous_ts first_ts ) ) {
+for my $meth ( qw( curr_ts prev_ts first_ts ) ) {
    ok(!$obj->$meth(), "Diskstats->$meth is initially false");
 
    $obj->$meth(10);
@@ -180,34 +185,34 @@ is($obj->out_fh(), \*STDOUT, "and if we close the set filehandle, it reverts to 
 
 
 is_deeply(
-   [ $obj->sorted_devs() ],
+   [ $obj->ordered_devs() ],
    [],
-   "sorted_devs starts empty"
+   "ordered_devs starts empty"
 );
 
-$obj->add_sorted_devs("sda");
+$obj->add_ordered_dev("sda");
 is_deeply(
-   [ $obj->sorted_devs() ],
+   [ $obj->ordered_devs() ],
    [ qw( sda ) ],
    "We can add devices just fine,"
 );
 
-$obj->add_sorted_devs("sda");
+$obj->add_ordered_dev("sda");
 is_deeply(
-   [ $obj->sorted_devs() ],
+   [ $obj->ordered_devs() ],
    [ qw( sda ) ],
    "...And duplicates get detected and discarded"
 );
 
-$obj->clear_sorted_devs();
+$obj->clear_ordered_devs();
 is_deeply(
-   [ $obj->sorted_devs() ],
+   [ $obj->ordered_devs() ],
    [],
-   "clear_sorted_devs does as advertized,"
+   "clear_ordered_devs does as advertized,"
 );
-$obj->add_sorted_devs("sda");
+$obj->add_ordered_dev("sda");
 is_deeply(
-   [ $obj->sorted_devs() ],
+   [ $obj->ordered_devs() ],
    [ qw( sda ) ],
    "...And clears the internal duplicate-checking list"
 );
@@ -252,14 +257,20 @@ is(
    "INTERNAL: _print_header works"
 );
 
-throws_ok(
+my $output = output(
    sub { $obj->parse_from_data( "ASMFHNASJNFASKLFLKHNSKD" ); },
+   stderr => 1,
+);
+
+like(
+   $output,
    qr/isn't in the diskstats format/,
    "->parse_from and friends fail on malformed data"
 );
 
 }
 # Common tests for all three subclasses
+my $o = bless {}, "FakeParser";
 for my $test (
       {
          class               => "DiskstatsGroupByAll",
@@ -276,11 +287,11 @@ for my $test (
          method              => "group_by_sample",
          results_file_prefix => "sample",
       }) {
-   my $obj    = $test->{class}->new();
+   my $obj    = $test->{class}->new(OptionParser => $o, filter_zeroed_rows => 0);
    my $method = $test->{method};
    my $prefix = $test->{results_file_prefix};
 
-   $obj->column_regex(qr/ ^ (?!.*io_s$|\s*[qs]time$) /x);
+   $obj->column_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
@@ -347,8 +358,8 @@ EOF
    
    ok(!$got, "$method: 1 line of data between two TS lines results in no output");
 
-   $obj->current_ts(0);
-   $obj->previous_ts(0);
+   $obj->curr_ts(0);
+   $obj->prev_ts(0);
    $obj->first_ts(0);
 
    throws_ok(

@@ -1,4 +1,12 @@
 {
+# ###########################################################################
+# This is a combination of modules and programs in one -- a runnable module.
+# http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
+# Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
+#
+# Check at the end of this package for the call to main() which actually runs
+# the program.
+# ###########################################################################
 package pt_diskstats;
 
 use strict;
@@ -17,27 +25,36 @@ local $SIG{__DIE__} = sub {
 } if MKDEBUG;
 
 sub main {
-   shift;
    local @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = OptionParser->new( file => __FILE__ );
+   my $o = new OptionParser file => __FILE__;
    $o->get_specs();
    $o->get_opts();
 
-   # Interactive mode. Delegate to Diskstats::Menu
-   return DiskstatsMenu->run_interactive( o => $o, filename => $ARGV[0] );
+   my $diskstats = new DiskstatsMenu;
+
+   # Interactive mode. Delegate to DiskstatsMenu::run_interactive
+   return $diskstats->run_interactive( OptionParser => $o, filename => $ARGV[0] );
 }
 
 # Somewhat important if STDOUT is tied to a terminal.
 END { close STDOUT or die "Couldn't close stdout: $OS_ERROR" }
 
-__PACKAGE__->main(@ARGV) unless caller;
+# ############################################################################
+# Run the program.
+# ############################################################################
+if ( !caller ) { exit main(@ARGV); }
 
 1;
 }
+
+# #############################################################################
+# Documentation.
+# #############################################################################
+
 =pod
 
 =head1 NAME
@@ -247,6 +264,12 @@ type: int
 
 When in interactive mode, stop after N samples.
 
+=item --redisplay-interval
+
+type: int; default: 1
+
+When in interactive mode, wait N seconds before printing to the screen.
+
 =item --interval
 
 type: int; default: 1
@@ -256,6 +279,10 @@ Sample /proc/diskstats every N seconds.
 =item --zero-rows
 
 Show rows with all zero values.
+
+=item --memory-for-speed
+
+XXX TODO INTERNAL yadda
 
 =item --help
 
@@ -320,7 +347,7 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz
+Baron Schwartz, Brian Fraser, and Daniel Nichter
 
 =head1 ABOUT PERCONA TOOLKIT
 

@@ -33,25 +33,23 @@ use base qw( Diskstats );
 sub new {
    my ($class, %args) = @_;
    my $self = $class->SUPER::new(%args);
-   $self->{_iterations} = 0;
+   $self->{_iterations}   = 0;
    $self->{_print_header} = 1;
    return $self;
 }
 
 sub group_by {
-   my $self = shift;
-   $self->group_by_disk(@_);
+   my ($self, @args) = @_;
+   $self->group_by_disk(@args);
 }
 
 # Prints out one line for each disk, summing over the interval from first to
 # last sample.
 sub group_by_disk {
-   my ($self, %args)         = @_;
-   my ($header_cb, $rest_cb) = $args{ qw( header_cb rest_cb ) };
+   my ($self, %args) = @_;
+   my ($header_callback, $rest_callback) = $args{ qw( header_callback rest_callback ) };
 
-   if (!$self->interactive()) {
-      $self->clear_state();
-   }
+   $self->clear_state() unless $self->interactive();
 
    my $original_offset = $args{filehandle} ? tell($args{filehandle}) : undef;
 
@@ -59,37 +57,40 @@ sub group_by_disk {
       sample_callback => sub {
          my ($self, $ts) = @_;
 
-         if ( $self->has_stats ) {
+         if ( $self->has_stats() ) {
             $self->{_iterations}++;
             if ($self->interactive() && $self->{_iterations} >= 2) {
-               my $elapsed =
-                     ( $self->current_ts() || 0 ) -
-                     ( $self->first_ts() || 0 );
+               my $elapsed = ( $self->curr_ts()  || 0 )
+                           - ( $self->first_ts() || 0 );
                if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
                   $self->print_deltas(
-                     header_cb => sub {
+                     header_callback => sub {
                         my ($self, @args) = @_;
 
                         if ( $self->{_print_header} ) {
-                           my $meth = $args{header_cb} || "print_header";
-                           $self->$meth(@args);
+                           my $method = $args{header_callback}
+                                        || "print_header";
+                           $self->$method(@args);
                         }
                         $self->{_print_header} = undef;
                      },
-                     rest_cb   => $args{rest_cb},
+                     rest_callback   => $args{rest_callback},
                   );
 
                   $self->{_iterations} = -1;
-                  return "Stop interactive reading";
+                  return;
                }
             }
          }
       },
-      map({ ($_ => $args{$_}) } qw(filehandle filename data)),
+      filehandle => $args{filehandle},
+      filename   => $args{filename},
+      data       => $args{data},
    );
 
    if ($self->interactive) {
-      if ($self->{_iterations} == -1 && defined($original_offset) && eof($args{filehandle})) {
+      if ($self->{_iterations} == -1 && defined($original_offset)
+            && eof($args{filehandle})) {
          $self->clear_state;
          seek $args{filehandle}, $original_offset, 0;
       }
@@ -100,9 +101,12 @@ sub group_by_disk {
       return;
    }
 
-   $self->print_deltas( map( { ( $_ => $args{$_} ) } qw( header_cb rest_cb ) ) );
+   $self->print_deltas( 
+      header_callback => $args{header_callback},
+      rest_callback   => $args{rest_callback},
+   );
 
-   $self->clear_state;
+   $self->clear_state();
 
    return $lines_read;
 }
