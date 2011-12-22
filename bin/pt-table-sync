@@ -4167,18 +4167,16 @@ sub make_checksum_query {
 sub find_replication_differences {
    my ( $self, $dbh, $table ) = @_;
 
-   (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
-         COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
-         COALESCE(
-            this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
-            0
-         ) AS crc_diff,
-         this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
-      WHERE master_cnt <> this_cnt OR master_crc <> this_crc
-      OR ISNULL(master_crc) <> ISNULL(this_crc)
-   EOF
+   my $sql
+      = "SELECT db, tbl, CONCAT(db, '.', tbl) AS `table`, "
+      . "chunk, chunk_index, lower_boundary, upper_boundary, "
+      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE("
+      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      . "FROM $table "
+      . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
+      . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
 
    MKDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
@@ -7248,6 +7246,7 @@ package pt_table_sync;
 use English qw(-no_match_vars);
 use List::Util qw(sum max min);
 use POSIX qw(ceil);
+use Data::Dumper;
 
 Transformers->import(qw(time_to_secs any_unix_timestamp));
 
@@ -7256,6 +7255,7 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 $OUTPUT_AUTOFLUSH = 1;
 
 my %dsn_for;
+my $q = new Quoter();
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -7375,7 +7375,6 @@ sub main {
    # ########################################################################
    # Do the work.
    # ########################################################################
-   my $q         = new Quoter();
    my $tp        = new TableParser( Quoter => $q );
    my $vp        = new VersionParser();
    my $ms        = new MasterSlave(VersionParser => $vp);
@@ -7743,7 +7742,8 @@ sub sync_via_replication {
             $exit_status |= sync_a_table(
                src   => $src,
                dst   => $dst,
-               where => $diff->{boundaries},
+               where => 1,  # prevents --where from being used
+               diff  => $diff,
                %args,
             );
          }
@@ -7811,7 +7811,8 @@ sub sync_via_replication {
                         $exit_status |= sync_a_table(
                            src   => $src,
                            dst   => $dst,
-                           where => $diff->{boundaries},
+                           where => 1,  # prevents --where from being used
+                           diff  => $diff,
                            %args,
                         );
                      } 
@@ -8065,6 +8066,14 @@ sub sync_a_table {
 
       # This will either die if there's a problem or return the tbl struct.
       my $tbl_struct = ok_to_sync($src, $dst, %args);
+      
+      if ( my $diff = $args{diff} ) {
+         MKDEBUG && _d('Converting checksum diff to WHERE:', Dumper($diff));
+         $args{where} = diff_where(
+            %args,
+            tbl_struct => $tbl_struct,
+         );
+      }
 
       # If the table is InnoDB, prefer to sync it with transactions, unless
       # the user explicitly said not to.
@@ -8510,12 +8519,12 @@ sub ok_to_sync {
 sub filter_diffs {
    my ( $skip_table, $databases, $tables, @diffs ) = @_;
    return grep {
-      !$skip_table->{$_->{db}}->{$_->{tbl}}
-      && (!$databases || $databases->{$_->{db}})
-      && (!$tables || ($tables->{$_->{tbl}} || $tables->{"$_->{db}.$_->{tbl}"}))
+      my ($db, $tbl) = $q->split_unquote($_->{table});
+      !$skip_table->{$db}->{$tbl}
+      && (!$databases ||  $databases->{$db})
+      && (!$tables    || ($tables->{$tbl} || $tables->{$_->{table}}))
    } @diffs;
 }
-
 
 # Sub: disconnect
 #   Disconnect host dbhs created by <get_cxn()>.  To make sure all dbh
@@ -8802,6 +8811,58 @@ sub get_current_user {
    }
 
    return $user;
+}
+
+{
+my %asc_for_table;
+
+sub diff_where {
+   my (%args) = @_;
+   my @required_args = qw(diff tbl_struct TableNibbler);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($diff, $tbl_struct, $tn) = @args{@required_args};
+
+   my $key  = $diff->{chunk_index};
+   if ( !$key ) {
+      MKDEBUG && _d('One nibble checksum');
+      return;
+   }
+   my $cols = $tbl_struct->{keys}->{$key}->{cols};
+   my $asc  = $asc_for_table{$diff->{table}};
+   if ( !$asc ) {
+      die "Index $key does not exist in table" unless $cols && @$cols;
+
+      # NibbleIterator does this to make the boundary statements.
+      $asc = $args{TableNibbler}->generate_asc_stmt(
+         %args,
+         tbl_struct => $tbl_struct,
+         index      => $key,
+         cols       => $cols,
+         asc_only   => 1,
+      );
+
+      $asc_for_table{$diff->{table}} = $asc;
+      MKDEBUG && _d('Ascend params:', Dumper($asc));
+   }
+
+   my @lb = split ',', $diff->{lower_boundary};
+   my $lb_sql = $asc->{boundaries}->{'>='};
+   foreach my $val (@lb) {
+      my $quoted_val = $q->quote_val($val);
+      $lb_sql =~ s/\?/$val/;
+   }
+
+   my @ub = split ',', $diff->{upper_boundary};
+   my $ub_sql = $asc->{boundaries}->{'<='};
+   foreach my $val (@ub) {
+      my $quoted_val = $q->quote_val($val);
+      $ub_sql =~ s/\?/$val/;
+   }
+
+   return "$lb_sql AND $ub_sql";
+}
 }
 
 sub _d {
