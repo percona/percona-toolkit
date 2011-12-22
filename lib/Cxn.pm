@@ -54,7 +54,6 @@ use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE
 # Optional Arguments:
 #   dbh - Pre-created, uninitialized dbh
 #   set - Callback to set vars on dbh when dbh is first connected
-#   aux - Create a secondy (auxiliary) dbh, get with <aux_dbh()>.
 # 
 # Returns:
 #   Cxn object
@@ -102,8 +101,6 @@ sub new {
       dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
       hostname     => '',
       set          => $args{set},
-      aux          => $args{aux},
-      dbh_opts     => $args{dbh_opts} || {AutoCommit => 1},
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
@@ -125,31 +122,11 @@ sub connect {
          $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
          $self->{asked_for_pass} = 1;
       }
-      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), $self->{dbh_opts});
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
    }
    MKDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
-   if ( $self->{aux} && (!$self->{aux_dbh} || !$self->{aux_dbh}->ping()) ) {
-      my $aux_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => 1});
-      MKDEBUG && _d($aux_dbh, 'Connected aux dbh to', $self->{name});
-      $dbh->{FetchHashKeyName} = 'NAME_lc';
-      $self->{aux_dbh} = $aux_dbh;
-   }
-
    return $self->set_dbh($dbh);
-}
-
-sub disconnect {
-   my ($self) = @_;
-   if ( $self->{dbh} ) {
-      MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
-      $self->{dbh}->disconnect();
-   }
-   if ( $self->{aux_dbh} ) {
-      MKDEBUG && _d('Disconnecting aux dbh', $self->{aux_dbh});
-      $self->{aux_dbh}->disconnect();
-   }
-   return;
 }
 
 sub set_dbh {
@@ -171,7 +148,7 @@ sub set_dbh {
 
    # Set stuff for this dbh (i.e. initialize it).
    $dbh->{FetchHashKeyName} = 'NAME_lc';
-
+   
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
    my $sql = 'SELECT @@hostname, @@server_id';
@@ -199,11 +176,6 @@ sub dbh {
    return $self->{dbh};
 }
 
-sub aux_dbh {
-   my ($self) = @_;
-   return $self->{aux_dbh};
-}
-
 # Sub: dsn
 #   Return the cxn's dsn.
 sub dsn {
@@ -224,10 +196,6 @@ sub DESTROY {
    if ( $self->{dbh} ) {
       MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
-   }
-   if ( $self->{aux_dbh} ) {
-      MKDEBUG && _d('Disconnecting aux dbh', $self->{aux_dbh});
-      $self->{aux_dbh}->disconnect();
    }
    return;
 }
