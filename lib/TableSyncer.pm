@@ -370,15 +370,18 @@ sub sync_table {
          foreach my $host ($src, $dst) {
             $host->{rows_sth}->finish();
          }
+
+         if ( !$o->get('lock') && $o->get('transaction') ) {
+            foreach my $host ($src, $dst) {
+               $host->{Cxn}->dbh()->commit()
+                  unless $host->{Cxn}->dbh()->{AutoCommit};
+            }
+         }
       }
 
       # Get next chunks.
       $src_nibble_iter->no_more_rows();
       $dst_nibble_iter->no_more_rows();
-
-      my $changes_dbh = $changing_src ? $src->{Cxn}->dbh()
-                      :                 $dst->{Cxn}->dbh();
-      $changes_dbh->commit() unless $changes_dbh->{AutoCommit};
    }
 
    $changer->process_rows(0, $trace);

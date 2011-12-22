@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 17;
+   plan tests => 9;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -87,11 +87,12 @@ my $dbg = $ENV{MKDEBUG};
 
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
 $ENV{MKDEBUG} = 1;
-$output = run_cmd('test1', 'test2', '--algorithms Nibble --no-bin-log --chunk-size 1 --transaction --lock 1');
+$output = run_cmd('test1', 'test2', '--no-bin-log --chunk-size 1 --transaction --lock 1');
 delete $ENV{MKDEBUG};
+# TODO: rewrite this poor test
 like(
    $output,
-   qr/Executing statement on source/,
+   qr/START TRANSACTION/,
    'Nibble with transactions and locking'
 );
 is_deeply(
