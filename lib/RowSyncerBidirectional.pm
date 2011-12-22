@@ -137,6 +137,8 @@ sub same_row {
    my ($self,  %args) = @_;
    my ($lr, $rr, $syncer) = @args{qw(lr rr syncer)};
 
+   return unless $lr->{$self->{crc_col}} ne $rr->{$self->{crc_col}};
+
    my $ch       = $self->{ChangeHandler};
    my $action   = 'UPDATE';
    my $auth_row = $lr;

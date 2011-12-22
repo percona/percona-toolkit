@@ -3943,14 +3943,17 @@ sub sync_table {
          foreach my $host ($src, $dst) {
             $host->{rows_sth}->finish();
          }
+
+         if ( !$o->get('lock') && $o->get('transaction') ) {
+            foreach my $host ($src, $dst) {
+               $host->{Cxn}->dbh()->commit()
+                  unless $host->{Cxn}->dbh()->{AutoCommit};
+            }
+         }
       }
 
       $src_nibble_iter->no_more_rows();
       $dst_nibble_iter->no_more_rows();
-
-      my $changes_dbh = $changing_src ? $src->{Cxn}->dbh()
-                      :                 $dst->{Cxn}->dbh();
-      $changes_dbh->commit() unless $changes_dbh->{AutoCommit};
    }
 
    $changer->process_rows(0, $trace);
@@ -6711,6 +6714,8 @@ sub same_row {
    my ($self,  %args) = @_;
    my ($lr, $rr, $syncer) = @args{qw(lr rr syncer)};
 
+   return unless $lr->{$self->{crc_col}} ne $rr->{$self->{crc_col}};
+
    my $ch       = $self->{ChangeHandler};
    my $action   = 'UPDATE';
    my $auth_row = $lr;
@@ -7695,7 +7700,7 @@ sub sync_a_table {
          left_tbl   => $src->{tbl}->{tbl},
          right_db   => $dst->{tbl}->{db},
          right_tbl  => $dst->{tbl}->{tbl},
-         tbl_struct => $src->{tbl_struct},
+         tbl_struct => $tbl_struct,
          hex_blob   => $o->get('hex-blob'),
          queue      => $o->get('buffer-to-client') ? 1 : 0,
          replace    => $o->get('replace')
