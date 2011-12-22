@@ -19,13 +19,13 @@ my $output;
 
 
 # #############################################################################
-# Issue 111: Make mk-table-sync require --print or --execute or --dry-run
+# Issue 111: Make mk-table-sync require --print or --execute or --explain
 # #############################################################################
 
 # This test reuses the test.message table created above for issue 22.
 $output = `$trunk/bin/pt-table-sync h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=messages P=12346`;
-like($output, qr/Specify at least one of --print, --execute or --dry-run/,
-   'Requires --print, --execute or --dry-run');
+like($output, qr/Specify at least one of --print, --execute or --explain/,
+   'Requires --print, --execute or --explain');
 
 # #############################################################################
 # Don't let people try to restrict syncing with D=foo

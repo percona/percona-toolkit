@@ -82,46 +82,6 @@ is_deeply(
    'Synced OK with no alg'
 );
 
-$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$output = run('test1', 'test2', '--algorithms Stream --no-bin-log');
-is($output, "INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('1', 'en');
-INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('2', 'ca');", 'Basic Stream sync');
-is_deeply(
-   query_slave('select * from test.test2'),
-   [ {   a => 1, b => 'en' }, { a => 2, b => 'ca' } ],
-   'Synced OK with Stream'
-);
-
-$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$output = run('test1', 'test2', '--algorithms GroupBy --no-bin-log');
-is($output, "INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('1', 'en');
-INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('2', 'ca');", 'Basic GroupBy sync');
-is_deeply(
-   query_slave('select * from test.test2'),
-   [ {   a => 1, b => 'en' }, { a => 2, b => 'ca' } ],
-   'Synced OK with GroupBy'
-);
-
-$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$output = run('test1', 'test2', '--algorithms Chunk,GroupBy --no-bin-log');
-is($output, "INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('1', 'en');
-INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('2', 'ca');", 'Basic Chunk sync');
-is_deeply(
-   query_slave('select * from test.test2'),
-   [ {   a => 1, b => 'en' }, { a => 2, b => 'ca' } ],
-   'Synced OK with Chunk'
-);
-
-$sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$output = run('test1', 'test2', '--algorithms Nibble --no-bin-log');
-is($output, "INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('1', 'en');
-INSERT INTO `test`.`test2`(`a`, `b`) VALUES ('2', 'ca');", 'Basic Nibble sync');
-is_deeply(
-   query_slave('select * from test.test2'),
-   [ {   a => 1, b => 'en' }, { a => 2, b => 'ca' } ],
-   'Synced OK with Nibble'
-);
-
 # Save original MKDEBUG env because we modify it below.
 my $dbg = $ENV{MKDEBUG};
 
@@ -156,12 +116,12 @@ like(
 );
 like(
    $output,
-   qr/2 Chunk\s+\S+\s+\S+\s+2\s+test.test3/,
+   qr/2\s+\S+\s+\S+\s+2\s+test.test3/,
    'Right number of rows to update',
 );
 
 # Sync a table with Nibble and a chunksize in data size, not number of rows
-$output = run('test3', 'test4', '--algorithms Nibble --chunk-size 1k --print --verbose --function MD5');
+$output = run('test3', 'test4', '--chunk-size 1k --print --no-bin-log --verbose --function MD5');
 # If it lived, it's OK.
 ok($output, 'Synced with Nibble and data-size chunksize');
 
