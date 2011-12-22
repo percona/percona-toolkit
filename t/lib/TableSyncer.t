@@ -34,6 +34,7 @@ use Sandbox;
 use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -87,6 +88,7 @@ my $src_cxn = new Cxn(
    dsn_string   => "h=127.1,P=12345,u=msandbox,p=msandbox",
    dbh          => $src_dbh,
 );
+$src_cxn->{is_source} = 1;
 
 my $dst_cxn = new Cxn(
    DSNParser    => $dp,
@@ -153,7 +155,6 @@ sub sync_table {
    $src = {
       Cxn       => $src_cxn,
       misc_dbh  => $src_cxn->dbh(),
-      is_source => 1,
       tbl       => {
          db         => $src_db,
          tbl        => $src_tbl,
@@ -208,11 +209,16 @@ my $inserts = [
 # First, do a dry run sync, so nothing should happen.
 $dst_dbh->do('TRUNCATE TABLE test.test2');
 
-sync_table(
-   src  => "test.test1",
-   dst  => "test.test2",
-   argv => [qw(--dry-run)],
+my $output = output(
+   sub {
+      sync_table(
+         src  => "test.test1",
+         dst  => "test.test2",
+         argv => [qw(--explain)],
+      );
+   }
 );
+
 is_deeply(
    \%actions,
    {
@@ -469,32 +475,23 @@ diag(`/tmp/12345/use -u root -e "DROP USER 'bob'"`);
 # ###########################################################################
 # Re-using issue_96.t from above.  The tables are already in sync so there
 # should only be 1 sync cycle.
-SKIP: {
-   skip "TODO", 1;
-my @sqls;
-sync_table(
-   src      => "issue_96.t",
-   dst      => "issue_96.t2",
-   argv     => [qw(--chunk-size 1000)],
-   callback => sub { push @sqls, @_; },
+
+$output = output(
+   sub {
+      sync_table(
+         src  => "issue_96.t",
+         dst  => "issue_96.t2",
+         argv => [qw(--chunk-size 1000 --explain)],
+      );
+   }
 );
 
-my $queries = ($sandbox_version gt '4.0' ?
-   [
-      'SELECT /*issue_96.t:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, \'0\'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, \'0\'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS(\'#\', `package_id`, `location`, `from_city`, CONCAT(ISNULL(`package_id`), ISNULL(`location`), ISNULL(`from_city`)))), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, \'0\'))), 0) AS crc FROM `issue_96`.`t` FORCE INDEX (`package_id`) WHERE (1=1)',
-      'SELECT /*issue_96.t2:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONCAT(LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 1, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, \'0\'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc, 17, 16), 16, 10) AS UNSIGNED)), 10, 16), 16, \'0\'), LPAD(CONV(BIT_XOR(CAST(CONV(SUBSTRING(@crc := SHA1(CONCAT_WS(\'#\', `package_id`, `location`, `from_city`, CONCAT(ISNULL(`package_id`), ISNULL(`location`), ISNULL(`from_city`)))), 33, 8), 16, 10) AS UNSIGNED)), 10, 16), 8, \'0\'))), 0) AS crc FROM `issue_96`.`t2` FORCE INDEX (`package_id`) WHERE (1=1)',
-   ] :
-   [
-      "SELECT /*issue_96.t:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(RIGHT(MAX(\@crc := CONCAT(LPAD(\@cnt := \@cnt + 1, 16, '0'), SHA1(CONCAT(\@crc, SHA1(CONCAT_WS('#', `package_id`, `location`, `from_city`, CONCAT(ISNULL(`package_id`), ISNULL(`location`), ISNULL(`from_city`)))))))), 40), 0) AS crc FROM `issue_96`.`t` FORCE INDEX (`package_id`) WHERE (1=1)",
-      "SELECT /*issue_96.t2:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(RIGHT(MAX(\@crc := CONCAT(LPAD(\@cnt := \@cnt + 1, 16, '0'), SHA1(CONCAT(\@crc, SHA1(CONCAT_WS('#', `package_id`, `location`, `from_city`, CONCAT(ISNULL(`package_id`), ISNULL(`location`), ISNULL(`from_city`)))))))), 40), 0) AS crc FROM `issue_96`.`t2` FORCE INDEX (`package_id`) WHERE (1=1)",
-   ],
+# TODO: improve this test
+like(
+   $output,
+   qr/AS crc FROM `issue_96`.`t`/,
+   "--explain"
 );
-is_deeply(
-   \@sqls,
-   $queries,
-   'Callback gives src and dst sql'
-);
-};
 
 # #############################################################################
 # Issue 464: Make mk-table-sync do two-way sync
@@ -768,7 +765,7 @@ is_deeply(
 # Retry wait.
 # #############################################################################
 diag(`/tmp/12346/use -e "stop slave"`);
-my $output = '';
+$output = '';
 {
    local *STDERR;
    open STDERR, '>', \$output;
