@@ -48,8 +48,7 @@ $slave_dbh->do('UPDATE issue_375.t SET foo="z" WHERE id=10');
 $slave_dbh->do('UPDATE issue_375.t SET foo="zz" WHERE id=100');
 
 # Checksum and replicate.
-diag(`$trunk/bin/pt-table-checksum --create-replicate-table --replicate issue_375.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 -t t > /dev/null`);
-diag(`$trunk/bin/pt-table-checksum --replicate issue_375.checksum h=127.1,P=12345,u=msandbox,p=msandbox  --replicate-check 1 > /dev/null`);
+diag(`$trunk/bin/pt-table-checksum --create-replicate-table --replicate issue_375.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 -t t --lock-wait-time 3 > /dev/null`);
 
 # And now sync using the replicated checksum results/differences.
 $output = output(
