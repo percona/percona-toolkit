@@ -64,11 +64,8 @@ sub new {
    
    my $where = $o->get('where');
    my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
-   my $chunk_size_limit = $o->has('chunk-size-limit')
-                        ? $o->get('chunk-size-limit')
-                        : 1;
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $chunk_size_limit
+                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
                   : 0;
    MKDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
@@ -84,11 +81,6 @@ sub new {
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
-   my ($index_cols, $order_by);
-   if ( $index ) {
-      $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
-      $order_by   = join(', ', map {$q->quote($_)} @{$index_cols});
-   }
 
    my $tbl_struct = $tbl->{tbl_struct};
    my $ignore_col = $o->get('ignore-columns') || {};
@@ -98,20 +90,20 @@ sub new {
    if ( $one_nibble ) {
       # If the chunk size is >= number of rows in table, then we don't
       # need to chunk; we can just select all rows, in order, at once.
-      my $cols = ($args{select} ? $args{select}
-               : join(', ', map { $q->quote($_) } @cols));
-      my $from = $q->quote(@{$tbl}{qw(db tbl)});
-
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
-         . $cols
-         . " FROM $from "
+         . ($args{select} ? $args{select}
+                          : join(', ', map { $q->quote($_) } @cols))
+         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
          . ($where ? " AND ($where)" : '')
          . " /*checksum table*/";
       MKDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
-         = "EXPLAIN SELECT $cols FROM $from"
+         = "EXPLAIN SELECT "
+         . ($args{select} ? $args{select}
+                          : join(', ', map { $q->quote($_) } @cols))
+         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
          . ($where ? " AND ($where)" : '')
          . " /*explain checksum table*/";
       MKDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
@@ -122,15 +114,11 @@ sub new {
          limit              => 0,
          nibble_sql         => $nibble_sql,
          explain_nibble_sql => $explain_nibble_sql,
-         sql                => {
-            columns    => $cols,
-            from       => $from,
-            where      => $where,
-            order_by   => $order_by,
-         },
       };
    }
    else {
+      my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
+
       # Figure out how to nibble the table with the index.
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
@@ -144,7 +132,8 @@ sub new {
       # Make SQL statements, prepared on first call to next().  FROM and
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.
-      my $from = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+      my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
       # The real first row in the table.  Usually we start nibbling from
       # this row.  Called once in _get_bounds().
@@ -238,6 +227,7 @@ sub new {
 
       $self = {
          %args,
+         index              => $index,
          limit              => $limit,
          first_lb_sql       => $first_lb_sql,
          last_ub_sql        => $last_ub_sql,
@@ -256,13 +246,11 @@ sub new {
       };
    }
 
-   $self->{index}              = $index;
-   $self->{row_est}            = $row_est;
-   $self->{nibbleno}           = 0;
-   $self->{have_rows}          = 0;
-   $self->{rowno}              = 0;
-   $self->{oktonibble}         = 1;
-   $self->{no_more_boundaries} = 0;
+   $self->{row_est}    = $row_est;
+   $self->{nibbleno}   = 0;
+   $self->{have_rows}  = 0;
+   $self->{rowno}      = 0;
+   $self->{oktonibble} = 1;
 
    return bless $self, $class;
 }
@@ -319,21 +307,12 @@ sub next {
       if ( $self->{have_rows} ) {
          # Return rows in nibble.  sth->{Active} is always true with
          # DBD::mysql v3, so we track the status manually.
-         my $row = $self->{fetch_hashref}
-                 ? $self->{nibble_sth}->fetchrow_hashref()
-                 : $self->{nibble_sth}->fetchrow_arrayref();
+         my $row = $self->{nibble_sth}->fetchrow_arrayref();
          if ( $row ) {
             $self->{rowno}++;
-            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno},
-               'from', $self->{Cxn}->name());
+            MKDEBUG && _d('Row', $self->{rowno}, 'in nibble',$self->{nibbleno});
             # fetchrow_arraryref re-uses an internal arrayref, so we must copy.
-            return $self->{fetch_hashref} ? $row : [ @$row ];
-         }
-         else {
-            MKDEBUG && _d('No row in nibble');
-            if ( $self->{empty_results} ) {
-               return $self->{fetch_hashref} ? {} : [];
-            }
+            return [ @$row ];
          }
       }
 
@@ -432,15 +411,6 @@ sub sql {
 sub more_boundaries {
    my ($self) = @_;
    return !$self->{no_more_boundaries};
-}
-
-sub no_more_rows {
-   my ($self) = @_;
-   $self->{nibble_sth}->finish() if $self->{nibble_sth};
-   $self->{have_rows} = 0;
-   $self->{rowno}     = 0;
-   MKDEBUG && _d('No more rows');
-   return;
 }
 
 sub row_estimate {
@@ -646,8 +616,7 @@ sub _next_boundaries {
    # which will cause us to nibble further ahead and maybe get a new lower
    # boundary that isn't identical, but we can't detect this, and in any
    # case, if there's one infinite loop there will probably be others.
-   if ( !$self->{manual_nibble}
-        && $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
+   if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       MKDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
@@ -678,8 +647,6 @@ sub _next_boundaries {
          return; # stop nibbling
       }
    }
-
-   return 1 if $self->{manual_nibble};
 
    MKDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
