@@ -7168,7 +7168,7 @@ sub last_chunk {
    my ($dbh, $repl_table, $q) = @args{@required_args};
    MKDEBUG && _d('Getting last chunk for --resume');
 
-   my $sql = "SELECT * FROM $repl_table "
+   my $sql = "SELECT * FROM $repl_table FORCE INDEX (ts_db_tbl) "
            . "WHERE master_cnt IS NOT NULL "
            . "ORDER BY ts DESC, db DESC, tbl DESC LIMIT 1";
    MKDEBUG && _d($sql);
@@ -7924,7 +7924,7 @@ structure (MAGIC_create_replicate):
      master_cnt     int              NULL,
      ts             timestamp    NOT NULL,
      PRIMARY KEY (db, tbl, chunk),
-     INDEX (ts)
+     INDEX ts_db_tbl (ts, db, tbl)
   ) ENGINE=InnoDB;
 
 By default, L<"--[no]create-replicate-table"> is true, so the database and
