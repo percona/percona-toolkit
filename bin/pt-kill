@@ -3420,7 +3420,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-Transformers->import qw(ts);
+Transformers->import(qw(ts));
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
@@ -3435,15 +3435,15 @@ my $o;
 sub main {
    @ARGV = @_;  # set global ARGV for this package
 
-   my $ms = new MasterSlave();
-   my $pl = new Processlist(MasterSlave => $ms);
-   my $vp = new VersionParser();
-   my $qr = new QueryRewriter();
+   my $ms = MasterSlave->new();
+   my $pl = Processlist->new(MasterSlave => $ms);
+   my $vp = VersionParser->new();
+   my $qr = QueryRewriter->new();
 
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   $o = new OptionParser();
+   $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -3504,7 +3504,7 @@ sub main {
    my $get_proclist;
    if ( @ARGV ) {
       MKDEBUG && _d('Getting processlist from files:', @ARGV);
-      my $trp = new TextResultSetParser();
+      my $trp = TextResultSetParser->new();
       my $fh;
       $get_proclist = sub {
          if ( !$fh ) {
@@ -3555,13 +3555,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
