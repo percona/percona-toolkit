@@ -4965,7 +4965,7 @@ sub main {
    # ##########################################################################
    # Get configuration information.
    # ##########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
    my $dp = $o->DSNParser();
@@ -5047,18 +5047,18 @@ sub main {
    # ##########################################################################
    # Make common modules.
    # ##########################################################################
-   my $q      = new Quoter();
-   my $qp     = new QueryParser();
-   my $qr     = new QueryRewriter(QueryParser => $qp);
-   my $tp     = new TableParser(Quoter => $q);
-   my $vp     = new VersionParser();
-   my $parser = new SlowLogParser();
-   my $fi     = new FileIterator();
-   my $du     = new MySQLDump();
-   my $iu     = new IndexUsage(
+   my $q      = Quoter->new();
+   my $qp     = QueryParser->new();
+   my $qr     = QueryRewriter->new(QueryParser => $qp);
+   my $tp     = TableParser->new(Quoter => $q);
+   my $vp     = VersionParser->new();
+   my $parser = SlowLogParser->new();
+   my $fi     = FileIterator->new();
+   my $du     = MySQLDump->new();
+   my $iu     = IndexUsage->new(
       QueryRewriter => $qr,
    );
-   my $exa    = new ExplainAnalyzer(
+   my $exa    = ExplainAnalyzer->new(
       QueryRewriter => $qr,
       QueryParser   => $qp
    );
@@ -5139,8 +5139,8 @@ sub main {
    # ########################################################################
    my $version = $vp->parse($dbh->selectrow_array('SELECT VERSION()'));
 
-   my $schema     = new Schema();
-   my $schema_itr = new SchemaIterator(
+   my $schema     = Schema->new();
+   my $schema_itr = SchemaIterator->new(
       dbh          => $dbh,
       OptionParser => $o,
       Quoter       => $q,
@@ -5203,7 +5203,7 @@ sub main {
       # #####################################################################
       my $pr;
       if ( $o->get('progress') && $filename && -e $filename ) {
-         $pr = new Progress(
+         $pr = Progress->new(
             jobsize => -s $filename,
             spec    => $o->get('progress'),
             name    => $filename,
@@ -5530,7 +5530,7 @@ sub create_views {
    my ($dbh) = @args{@required_args};
    MKDEBUG && _d("Creating views");
 
-   my $pod_parser = new PodParser();
+   my $pod_parser = PodParser->new();
    $pod_parser->parse_from_file(__FILE__);
 
    my $magic = $pod_parser->get_magic('OPTIONS');
