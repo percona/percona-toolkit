@@ -354,7 +354,7 @@ sub _compare_rows {
    # it to the 3rd and subsequent events.
    my @event0_rows      = @{ $event0->{results_sth}->fetchall_arrayref({}) };
    $event0->{row_count} = scalar @event0_rows;
-   my $left = new MockSth(@event0_rows);
+   my $left = MockSth->new(@event0_rows);
    $left->{NAME} = [ @{$event0->{results_sth}->{NAME}} ];
 
    EVENT:
@@ -368,7 +368,7 @@ sub _compare_rows {
       # we gobble the remaining rows in that sth and print them to an outfile.
       # This short circuits RowDiff::compare_sets() which is what we want to do.
       my $no_diff      = 1;  # results are identical; this catches 0 row results
-      my $outfile      = new Outfile();
+      my $outfile      = Outfile->new();
       my ($left_outfile, $right_outfile, $n_rows);
       my $same_row     = sub {
             $event->{row_count}++;  # Keep track of this event's row_count.
@@ -399,8 +399,8 @@ sub _compare_rows {
          return;
       };
 
-      my $rd       = new RowDiff(dbh => $dbh);
-      my $mocksync = new MockSyncStream(
+      my $rd       = RowDiff->new(dbh => $dbh);
+      my $mocksync = MockSyncStream->new(
          query        => $event0->{arg},
          cols         => $res_struct->{cols},
          same_row     => $same_row,
@@ -634,7 +634,7 @@ sub diff_rows {
       };
    };
 
-   my $rd = new RowDiff(
+   my $rd = RowDiff->new(
       dbh          => $left_dbh,
       key_cmp      => $key_cmp,
       same_row     => $same_row,
@@ -643,7 +643,7 @@ sub diff_rows {
       done         => $done,
       trf          => $trf,
    );
-   my $ch = new ChangeHandler(
+   my $ch = ChangeHandler->new(
       left_db    => $db,
       left_tbl   => 'mk_upgrade_left',
       right_db   => $db,
@@ -863,7 +863,7 @@ sub _report_diff_checksums {
 
    return unless keys %{$self->{diffs}->{checksums}};
 
-   my $report = new ReportFormatter();
+   my $report = ReportFormatter->new();
    $report->set_title('Checksum differences');
    $report->set_columns(
       $args{query_id_col},
@@ -894,7 +894,7 @@ sub _report_diff_col_vals {
 
    return unless keys %{$self->{diffs}->{col_vals}};
 
-   my $report = new ReportFormatter();
+   my $report = ReportFormatter->new();
    $report->set_title('Column value differences');
    $report->set_columns(
       $args{query_id_col},
@@ -929,7 +929,7 @@ sub _report_diff_row_counts {
 
    return unless keys %{$self->{diffs}->{row_counts}};
 
-   my $report = new ReportFormatter();
+   my $report = ReportFormatter->new();
    $report->set_title('Row count differences');
    $report->set_columns(
       $args{query_id_col},
