@@ -2565,7 +2565,7 @@ sub main {
    # #########################################################################
    # Get configuration information.
    # #########################################################################
-   $o = new OptionParser();
+   $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -2607,7 +2607,7 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -2647,11 +2647,11 @@ sub main {
          push @callbacks, $sub;
       }
 
-      my $parser = $o->get('type') eq 'slowlog' ? new SlowLogParser()
-                 : $o->get('type') eq 'binlog'  ? new BinaryLogParser()
-                 : $o->get('type') eq 'genlog'  ? new GeneralLogParser()
+      my $parser = $o->get('type') eq 'slowlog' ? SlowLogParser->new()
+                 : $o->get('type') eq 'binlog'  ? BinaryLogParser->new()
+                 : $o->get('type') eq 'genlog'  ? GeneralLogParser->new()
                  : die("Unknown type " . $o->get('type'));
-      my $ls = new LogSplitter(
+      my $ls = LogSplitter->new(
          attribute      => $split,
          split_random   => $o->get('split-random'),
          base_dir       => $base_dir,
