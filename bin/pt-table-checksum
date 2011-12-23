@@ -6550,49 +6550,40 @@ sub main {
                );
             }
 
-            # Requiring "AND master_crc IS NOT NULL" avoids a race condition
-            # when the system is fast but replication is slow.  In such cases,
-            # we can select on the slave before the update for $update_sth
-            # replicates; this causes a false-positive diff.
-            my $sql = "SELECT MAX(chunk) FROM $repl_table "
-                    . "WHERE db='$tbl->{db}' AND tbl='$tbl->{tbl}' "
-                    . "AND master_crc IS NOT NULL";
-            MKDEBUG && _d($sql);
+            # Wait for the last checksum of this table to replicate
+            # to each slave.
+            wait_for_last_checksum(
+               tbl          => $tbl,
+               repl_table   => $repl_table,
+               slaves       => $slaves,
+               max_chunk    => $max_chunk,
+               check_pr     => $check_pr,
+               OptionParser => $o,
+            );
 
-            my $sleep_time = 0;
-            my $n_slaves   = scalar @$slaves - 1;
-            my @chunks     = (0);
-            while ( $oktorun && ($chunks[0] < $max_chunk) ) {
-               for my $i ( 0..$n_slaves ) {
-                  my $slave = $slaves->[$i];
-                  my ($chunk) = $slave->dbh()->selectrow_array($sql);
-                  MKDEBUG && _d($slave->name(), 'max chunk:', $chunk);
-                  $chunks[$i] = $chunk || 0;
-               }
-               @chunks = sort { $a <=> $b } @chunks;
-               if ( $chunks[0] < $max_chunk ) {
-                  if ( $check_pr ) {
-                     $check_pr->update(sub { return $chunks[0]; });
-                  }
-
-                  # We shouldn't have to wait long here because we already
-                  # waited for all slaves to catchup at least until --max-lag.
-                  $sleep_time += 0.25 if $sleep_time <= $o->get('max-lag');
-                  MKDEBUG && _d('Sleeping', $sleep_time, 'to wait for chunks');
-                  sleep $sleep_time;
-               }
-            }
-
+            # Check each slave for checksum diffs.
             foreach my $slave ( @$slaves ) {
-               my $diffs = $rc->find_replication_differences(
-                  dbh        => $slave->dbh(),
-                  repl_table => $repl_table,
-                  where      => "db='$tbl->{db}' AND tbl='$tbl->{tbl}'",
-               );
-               MKDEBUG && _d(scalar @$diffs, 'checksum diffs on',
-                  $slave->name());
-               if ( @$diffs ) {
-                  $tbl->{checksum_results}->{diffs} = scalar @$diffs;
+               eval {
+                  my $diffs = $rc->find_replication_differences(
+                     dbh        => $slave->dbh(),
+                     repl_table => $repl_table,
+                     where      => "db='$tbl->{db}' AND tbl='$tbl->{tbl}'",
+                  );
+                  MKDEBUG && _d(scalar @$diffs, 'checksum diffs on',
+                     $slave->name());
+                  if ( @$diffs ) {
+                     $tbl->{checksum_results}->{diffs} = scalar @$diffs;
+                  }
+               };
+               if ($EVAL_ERROR) {
+                  if ( $o->get('quiet') < 2 ) {
+                     warn ts("Error checking for checksum differences of table "
+                        . "$tbl->{db}.$tbl->{tbl} on replica " . $slave->name()
+                        . ": $EVAL_ERROR\n"
+                        . "Check that the replica is running and has the "
+                        . "replicate table $repl_table.\n");
+                  }
+                  $tbl->{checksum_results}->{errors}++;
                }
             }
          }
@@ -7223,6 +7214,73 @@ sub have_more_chunks {
    }
 
    return 1; # more chunks
+}
+
+sub wait_for_last_checksum {
+   my (%args) = @_;
+   my @required_args = qw(tbl repl_table slaves max_chunk OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($tbl, $repl_table, $slaves, $max_chunk, $o) = @args{@required_args};
+   my $check_pr = $args{check_pr};
+
+   # Requiring "AND master_crc IS NOT NULL" avoids a race condition
+   # when the system is fast but replication is slow.  In such cases,
+   # we can select on the slave before the update for $update_sth
+   # replicates; this causes a false-positive diff.
+   my $sql = "SELECT MAX(chunk) FROM $repl_table "
+           . "WHERE db='$tbl->{db}' AND tbl='$tbl->{tbl}' "
+           . "AND master_crc IS NOT NULL";
+   MKDEBUG && _d($sql);
+
+   my $sleep_time = 0;
+   my $n_slaves   = scalar @$slaves - 1;
+   my @chunks;
+   my %skip_slave;
+   while ( $oktorun && ($chunks[0] || 0) < $max_chunk ) {
+      @chunks = ();
+      for my $i ( 0..$n_slaves ) {
+         my $slave = $slaves->[$i];
+         if ( $skip_slave{$i} ) {
+            MKDEBUG && _d('Skipping slave', $slave->name(),
+               'due to previous error it caused');
+            next;
+         }
+         eval {
+            my ($chunk) = $slave->dbh()->selectrow_array($sql);
+            MKDEBUG && _d($slave->name(), 'max chunk:', $chunk);
+            push @chunks, $chunk || 0;
+         };
+         if ($EVAL_ERROR) {
+            if ( $o->get('quiet') < 2 ) {
+               warn ts("Error waiting for the last checksum of table "
+                  . "$tbl->{db}.$tbl->{tbl} to replicate to "
+                  . "replica " . $slave->name() . ": $EVAL_ERROR\n"
+                  . "Check that the replica is running and has the "
+                  . "replicate table $repl_table.  Checking the replica "
+                  . "for checksum differences will probably cause "
+                  . "another error.\n");
+            }
+            $tbl->{checksum_results}->{errors}++;
+            $skip_slave{$i} = 1;
+            next;
+         }
+      }
+      @chunks = sort { $a <=> $b } @chunks;
+      if ( $chunks[0] < $max_chunk ) {
+         if ( $check_pr ) {
+            $check_pr->update(sub { return $chunks[0]; });
+         }
+
+         # We shouldn't wait long here because we already waited
+         # for all slaves to catchup at least until --max-lag.
+         $sleep_time += 0.25 if $sleep_time <= $o->get('max-lag');
+         MKDEBUG && _d('Sleep', $sleep_time, 'waiting for chunks');
+         sleep $sleep_time;
+      }
+   }
+   return;
 }
 
 # Catches signals so we can exit gracefully.
