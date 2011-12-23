@@ -2749,7 +2749,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -2767,8 +2767,8 @@ sub main {
    # #########################################################################
    # Make common modules.
    # #########################################################################
-   my $trp         = new TextResultSetParser();
-   my $config_cmp  = new MySQLConfigComparer(
+   my $trp         = TextResultSetParser->new();
+   my $config_cmp  = MySQLConfigComparer->new(
       ignore_variables => $o->get('ignore-variables'),
    );
    my %common_modules = (
@@ -2788,7 +2788,7 @@ sub main {
    foreach my $config_src ( @ARGV ) {
       if ( -f $config_src ) {
          MKDEBUG && _d('Config source', $config_src, 'is a file');
-         push @configs, new MySQLConfig(
+         push @configs, MySQLConfig->new(
             file => $config_src,
             %common_modules,
          );
@@ -2801,7 +2801,7 @@ sub main {
          $dp->fill_in_dsn($dbh, $dsn);
          $last_dsn = $dsn;
 
-         push @configs, new MySQLConfig(
+         push @configs, MySQLConfig->new(
             dbh => $dbh,
             %common_modules,
          );
@@ -2816,13 +2816,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -2832,7 +2832,7 @@ sub main {
    my $report;
    my $truncate_callback;
    if ( $o->get('report') ) {
-      $report = new ReportFormatter(
+      $report = ReportFormatter->new(
          line_prefix => '',
          line_width  => $o->get('report-width'),
       ); 
