@@ -3024,7 +3024,7 @@ use IO::File;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-Transformers->import qw(ts unix_timestamp);
+Transformers->import(qw(ts unix_timestamp));
 
 my @dbhs;  # Holds slave DBHs if --recurse
 my @sths;  # Holds [$host, $sth] if --recurse
@@ -3039,7 +3039,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -3089,8 +3089,8 @@ sub main {
    # ########################################################################
    # Make common modules and var for frequently used options.
    # ########################################################################
-   my $q  = new Quoter();
-   my $tp = new TableParser(Quoter => $q);
+   my $q  = Quoter->new();
+   my $tp = TableParser->new(Quoter => $q);
 
    my $interval = $o->get('interval');
    my $skew     = $o->get('update') ? 0 : $o->get('skew');
@@ -3205,8 +3205,8 @@ sub main {
          my $master_server_id = $o->get('master-server-id');
          if ( !$master_server_id ) {
             eval {
-               my $vp = new VersionParser();
-               my $ms = new MasterSlave(VersionParser => $vp);
+               my $vp = VersionParser->new();
+               my $ms = MasterSlave->new(VersionParser => $vp);
                my $master_dsn = $ms->get_master_dsn($dbh, $dsn, $dp)
                   or die "This server is not a slave";
                my $master_dbh = $dp->get_dbh($dp->get_cxn_params($master_dsn),
@@ -3393,13 +3393,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -3533,8 +3533,8 @@ sub check_delay {
    # Collect a list of connections to the slaves.
    if ( $o->get('recurse') ) {
       MKDEBUG && _d('Recursing to slaves');
-      my $vp = new VersionParser();
-      my $ms = new MasterSlave(VersionParser => $vp);
+      my $vp = VersionParser->new();
+      my $ms = MasterSlave->new(VersionParser => $vp);
       $ms->recurse_to_slaves(
          {  dbh        => $dbh,
             dsn        => $dsn,
