@@ -615,7 +615,7 @@ sub generate_wrappers {
    if ( ($self->{sanity} || '') ne "$args{next_event}" ){
       MKDEBUG && _d("Clearing and recreating internal state");
       eval { require SysLogParser; }; # Required for tests to work.
-      my $sl = new SysLogParser();
+      my $sl = SysLogParser->new();
 
       # We need a special item in %args for syslog parsing.  (This might not be
       # a syslog log file...)  See the test for t/samples/pg-syslog-002.txt for
