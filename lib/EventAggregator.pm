@@ -1046,7 +1046,7 @@ sub merge {
 
    # Create a new EventAggregator obj, initialize it with the summed results,
    # and return it.
-   my $ea_merged = new EventAggregator(
+   my $ea_merged = EventAggregator->new(
       groupby    => $ea1->{groupby},
       worst      => $ea1->{worst},
       attributes => { map { $_=>[$_] } keys %attrib_types },
