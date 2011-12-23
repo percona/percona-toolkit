@@ -2722,8 +2722,8 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $q  = new Quoter();
-   $o     = new OptionParser();
+   my $q  = Quoter->new();
+   $o     = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -2765,8 +2765,8 @@ sub main {
    my $need_table_struct = grep { $o->got($_); } @table_struct_tests;
    MKDEBUG && _d('Need table struct:', $need_table_struct);
    if ( $need_table_struct ) {
-      $du = new MySQLDump();
-      $tp = new TableParser(Quoter => $q);
+      $du = MySQLDump->new();
+      $tp = TableParser->new(Quoter => $q);
    }
 
    # ########################################################################
@@ -2777,7 +2777,7 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -2838,7 +2838,7 @@ sub main {
    ($server_id) = $dbh->selectrow_array('SELECT @@SERVER_ID');
 
    # Discover if we need to get stored code.  Need dbh to do this.
-   my $vp = new VersionParser();
+   my $vp = VersionParser->new();
    my $need_stored_code = $vp->version_ge($dbh, '5.0.0');
    $need_stored_code = grep { $o->got($_); } @stored_code_tests
       if $need_stored_code;
