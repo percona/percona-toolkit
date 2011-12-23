@@ -3574,13 +3574,13 @@ sub main {
    my %summary = ( 'Total Indexes' => 0 );
    my %seen_tbl;
 
-   my $q  = new Quoter();
-   my $tp = new TableParser(Quoter => $q);
+   my $q  = Quoter->new();
+   my $tp = TableParser->new(Quoter => $q);
 
    # #######################################################################
    # Get configuration information and parse command line options.
    # #######################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -3597,7 +3597,7 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -3613,15 +3613,15 @@ sub main {
    my $dbh          = $dp->get_dbh($dp->get_cxn_params($dsn),
                               { AutoCommit => 1, });
 
-   my $vp = new VersionParser();
+   my $vp = VersionParser->new();
    my $version = $vp->parse($dbh->selectrow_array('SELECT VERSION()'));
 
    # #######################################################################
    # Do the main work.
    # #######################################################################
-   my $ks = $o->get('summary') ? new KeySize(q=>$q) : undef;
-   my $dk = new DuplicateKeyFinder();
-   my $du = new MySQLDump();
+   my $ks = $o->get('summary') ? KeySize->new(q=>$q) : undef;
+   my $dk = DuplicateKeyFinder->new();
+   my $du = MySQLDump->new();
 
    my %tp_opts = (
       ignore_type  => $o->get('all-structs'),
@@ -3632,8 +3632,8 @@ sub main {
    my $get_keys = $o->get('key-types') =~ m/k/ ? 1 : 0;
    my $get_fks  = $o->get('key-types') =~ m/f/ ? 1 : 0;
 
-   my $schema     = new Schema();
-   my $schema_itr = new SchemaIterator(
+   my $schema     = Schema->new();
+   my $schema_itr = SchemaIterator->new(
       dbh          => $dbh,
       OptionParser => $o,
       Quoter       => $q,
