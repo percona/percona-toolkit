@@ -200,7 +200,7 @@ sub get_specs {
             %$attribs,
          };
       };
-      my $dsn_o = new OptionParser(
+      my $dsn_o = OptionParser->new(
          description       => 'DSN OPTIONS',
          head1             => 'DSN OPTIONS',
          dsn               => 0,         # XXX don't infinitely recurse!
