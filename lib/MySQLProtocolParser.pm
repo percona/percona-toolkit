@@ -1369,7 +1369,7 @@ sub uncompress_data {
 
    # Uncompress the compressed binary data.
    my $uncomp_bin_data = '';
-   my $z = new IO::Uncompress::Inflate(
+   my $z = IO::Uncompress::Inflate->new(
       \$comp_bin_data
    ) or die "IO::Uncompress::Inflate failed: $InflateError";
    my $status = $z->read(\$uncomp_bin_data, $len)
