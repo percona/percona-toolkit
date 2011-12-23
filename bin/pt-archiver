@@ -3349,8 +3349,8 @@ my ( $src, $dst );
 # Holds the arguments for the $sth's bind variables, so it can be re-tried
 # easily.
 my @beginning_of_txn;
-my $vp = new VersionParser;
-my $q  = new Quoter;
+my $vp = VersionParser->new();
+my $q  = Quoter->new();
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -3371,7 +3371,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -3461,7 +3461,7 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
       
@@ -3496,8 +3496,8 @@ sub main {
    # Inspect DB servers and tables.
    # ########################################################################
 
-   my $tp = new TableParser(Quoter => $q);
-   my $du = new MySQLDump();
+   my $tp = TableParser->new(Quoter => $q);
+   my $du = MySQLDump->new();
    foreach my $table ( grep { $_ } ($src, $dst) ) {
       my $ac = !$txnsize && !$commit_each;
       if ( !defined $table->{p} && $o->get('ask-pass') ) {
@@ -3606,7 +3606,7 @@ sub main {
       my $dsn_defaults = $dp->parse_options($o);
       my $dsn  = $dp->parse($o->get('check-slave-lag'), $dsn_defaults);
       $lag_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      $ms      = new MasterSlave(VersionParser => $vp);
+      $ms      = MasterSlave->new(VersionParser => $vp);
    }
 
    # ########################################################################
@@ -3627,7 +3627,7 @@ sub main {
    # Design SQL statements.
    # ########################################################################
    my $dbh = $src->{dbh};
-   my $nibbler = new TableNibbler(
+   my $nibbler = TableNibbler->new(
       TableParser => $tp,
       Quoter      => $q,
    );
