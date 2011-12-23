@@ -85,7 +85,7 @@ sub event_report {
    }
 
    # Side-by-side hosts report.
-   my $report = new ReportFormatter(
+   my $report = ReportFormatter->new(
       underline_header => 0,
       strip_whitespace => 0,
    );
