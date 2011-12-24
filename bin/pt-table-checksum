@@ -5976,9 +5976,9 @@ sub main {
       }
 
       # #####################################################################
-      # Check replication slaves and possibly exit.
+      # Possibly check replication slaves and exit.
       # #####################################################################
-      if ( $o->get('replicate-check') && !$o->get('recheck') ) {
+      if ( $o->get('replicate-check') && $o->get('replicate-check-only') ) {
          MKDEBUG && _d('Will --replicate-check and exit');
 
          foreach my $slave ( @$slaves ) {
@@ -7325,11 +7325,10 @@ pt-table-checksum - Verify MySQL replication integrity.
 Usage: pt-table-checksum [OPTION...] [DSN]
 
 pt-table-checksum performs an online replication consistency check by executing
-checksum queries on the master.  The checksum queries replicate and re-execute
-on replicas, where they produce different results if the replicas have
-different data from the master.  The C<DSN>, if specified, must be the master
-host.  The tool exits non-zero if any differences are found, or if any warnings
-or errors occur.
+checksum queries on the master, which produces different results on replicas
+that are inconsistent with the master.  The optional DSN specifies the master
+host.  The tool's exit status is nonzero if any differences are found, or if any
+warnings or errors occur.
 
 The following command will connect to the replication master on localhost,
 checksum every table, and report the results on every detected replica:
@@ -7346,11 +7345,13 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-table-checksum executes queries that cause the MySQL server to checksum its
-data.  This can cause significant server load.  The tool also inserts a small
-amount of data into the L<"--replicate"> table.
+pt-table-checksum can add load to the MySQL server, although it has many
+safeguards to prevent this.  It inserts a small amount of data into a table that
+contains checksum results.  It has checks that, if disabled, can potentially
+cause replication to fail when unsafe replication options are used.  In short,
+it is safe by default, but it permits you to turn off its safety checks.
 
-At the time of this release, we know of no bugs that could cause serious harm to
+At the time of this release, we know of no bugs that could cause harm to
 users.
 
 The authoritative source for updated information is always the online issue
@@ -7366,33 +7367,35 @@ pt-table-checksum is designed to do the right thing by default in almost every
 case.  When in doubt, use L<"--explain"> to see how the tool will checksum a
 table.  The following is a high-level overview of how the tool functions.
 
-In contrast to older versions of pt-table-checksum, this version of the tool
-does not have the ability to connect to and checksum many servers in parallel
-using multi-processing.  It executes checksum queries on only one server, and
+In contrast to older versions of pt-table-checksum, this tool is focused on a
+single purpose, and does not have a lot of complexity or support many different
+checksumming techniques.  It executes checksum queries on only one server, and
 these flow through replication to re-execute on replicas.  If you need the older
-behavior for any reason, you can simply download Percona Toolkit version 1.0 and
-use it.
+behavior, you can use Percona Toolkit version 1.0.
 
 pt-table-checksum connects to the server you specify, and finds databases and
 tables that match the filters you specify (if any).  It works one table at a
-time, so it does not accumulate large amounts of memory and do a lot of work
+time, so it does not accumulate large amounts of memory or do a lot of work
 before beginning to checksum.  This makes it usable on very large servers. We
 have used it on servers with hundreds of thousands of databases and tables, and
 trillions of rows.  No matter how large the server is, pt-table-checksum works
 equally well.
 
-Part of the reason it can work on very large tables is that it divides each
-table into chunks of rows, and checksums each chunk with a single
-REPLACE..SELECT query.  It varies the chunk size to make the checksum queries
-run in the desired amount of time.  The goal of chunking the tables, instead of
-doing each table with a single big query, is to ensure that checksums are
-unintrusive and don't cause too much replication lag or load on the server.
-That's why the target time for each chunk is half a second by default.  The tool
-keeps track of how quickly the server is able to execute the queries, and
-adjusts the chunks as it learns more about the server's performance.  It uses an
-exponentially decaying weighted average to make the chunk size stable, yet
-responsive if the server's performance changes during checksumming for any
-reason.
+One reason it can work on very large tables is that it divides each table into
+chunks of rows, and checksums each chunk with a single REPLACE..SELECT query.
+It varies the chunk size to make the checksum queries run in the desired amount
+of time.  The goal of chunking the tables, instead of doing each table with a
+single big query, is to ensure that checksums are unintrusive and don't cause
+too much replication lag or load on the server.  That's why the target time for
+each chunk is 0.5 seconds by default.
+
+The tool keeps track of how quickly the server is able to execute the queries,
+and adjusts the chunks as it learns more about the server's performance.  It
+uses an exponentially decaying weighted average to keep the chunk size stable,
+yet remain responsive if the server's performance changes during checksumming
+for any reason.  This means that the tool will quickly throttle itself if your
+server becomes heavily loaded during a traffic spike or a background task, for
+example.
 
 Chunking is accomplished by a technique that we used to call "nibbling" in other
 tools in Percona Toolkit.  It is the same technique used for pt-archiver, for
@@ -7403,50 +7406,54 @@ table into chunks is an index of some sort (preferably a primary key or unique
 index).  If there is no index, and the table contains a suitably small number of
 rows, the tool will checksum the table in a single chunk.
 
-One of the most important goals for pt-table-checksum is to ensure that it does
-not interfere with any server's operation.  This includes replicas.  To
-accomplish this, pt-table-checksum tries to automatically detect replicas and
-connect to them.  (If this fails, you can give it a hint with the
---recursion-method option.)  pt-table-checksum monitors replicas continually as
-it progresses.  If any replica falls too far behind in replication,
-pt-table-checksum pauses to allow it to catch up.  If any replica has an error,
-or replication stops for any reason, pt-table-checksum pauses and waits.  In
-addition, pt-table-checksum looks for some common causes of problems, such as
+pt-table-checksum has many other safeguards to ensure that it does not interfere
+with any server's operation, including replicas.  To accomplish this,
+pt-table-checksum detects replicas and connects to them automatically.  (If this
+fails, you can give it a hint with the L<"--recursion-method"> option.)
+
+The tool monitors replicas continually.  If any replica falls too far behind in
+replication, pt-table-checksum pauses to allow it to catch up.  If any replica
+has an error, or replication stops, pt-table-checksum pauses and waits.  In
+addition, pt-table-checksum looks for common causes of problems, such as
 replication filters, and refuses to operate unless you force it to.  Replication
 filters are dangerous, because the queries that pt-table-checksum executes could
 potentially conflict with them and cause replication to fail.
 
-There are also several other safeguards. For example, pt-table-checksum sets its
+pt-table-checksum verifies that chunks are not too large to checksum safely. It
+performs an EXPLAIN query on each chunk, and skips chunks that might be larger
+than the desired number of rows. You can configure the sensitivity of this
+safeguard with the L<"--chunk-size-limit"> option. If a table will be
+checksummed in a single chunk because it has a small number of rows, then
+pt-table-checksum additionally verifies that the table isn't oversized on
+replicas.  This avoids the following scenario: a table is empty on the master
+but is very large on a replica, and is checksummed in a single large query,
+which causes a very long delay in replication.
+
+There are several other safeguards. For example, pt-table-checksum sets its
 session-level innodb_lock_wait_timeout to 1 second, so that if there is a lock
 wait, it will be the victim instead of causing other queries to time out.
-Another important safeguard is checking for too much load on the database
-server. There is no single right answer for how to do this, but by default
-pt-table-checksum will check after every chunk to ensure that there are not more
-than 25 concurrently executing queries; if there are, it will wait until the
-concurrency decreases.  You should probably set a sane value for your server if
-this is important to you.  You can use the L<"--max-load"> option for this.
+Another safeguard checks the load on the database server, and pauses if the load
+is too high. There is no single right answer for how to do this, but by default
+pt-table-checksum will pause if there are more than 25 concurrently executing
+queries.  You should probably set a sane value for your server with the
+L<"--max-load"> option.
 
-In addition to trying to avoid interference, pt-table-checksum is designed to
-tolerate and recover from many error conditions.  The assumption is that
-checksumming is a low-priority task that should yield to other work on the
-server. However, it is our experience that a tool that must be restarted
-constantly is difficult to use.  Thus, we tried to make pt-table-checksum
-resilient to errors and exceptions.  For example, if the database administrator
-needs to kill pt-table-checksum's queries for any reason, that is not a fatal
-error (the authors often run pt-kill on servers while we checksum them,
-configured to kill any long-running checksum queries). The tool will simply
-retry that query once, and if it fails again, it will move on to the next chunk
-of that table.  The same behavior applies if there is a lock wait timeout.  The
-tool will print a warning if such an error happens, but only once per table, to
-avoid printing too many warnings and making the output unreadable.  Similarly,
-if any connection to any server fails for some reason, pt-table-checksum will
-attempt to reconnect and continue working.
+Checksumming usually is a low-priority task that should yield to other work on
+the server. However, a tool that must be restarted constantly is difficult to
+use.  Thus, pt-table-checksum is very resilient to errors.  For example, if the
+database administrator needs to kill pt-table-checksum's queries for any reason,
+that is not a fatal error.  Users often run pt-kill to kill any long-running
+checksum queries. The tool will retry a killed query once, and if it fails
+again, it will move on to the next chunk of that table.  The same behavior
+applies if there is a lock wait timeout.  The tool will print a warning if such
+an error happens, but only once per table.  If the connection to any server
+fails, pt-table-checksum will attempt to reconnect and continue working.
 
 If pt-table-checksum encounters a condition that causes it to stop completely,
-it is easy to resume it with the --resume option. It will detect the last chunk
-of the last table that it processed, and begin again from there.  You can also
-safely stop the tool with CTRL-C.  It will finish the chunk it is currently
-processing, and then exit.  You can resume it as usual afterwards.
+it is easy to resume it with the L<"--resume"> option. It will begin from the
+last chunk of the last table that it processed.  You can also safely stop the
+tool with CTRL-C.  It will finish the chunk it is currently processing, and then
+exit.  You can resume it as usual afterwards.
 
 After pt-table-checksum finishes checksumming all of the chunks in a table, it
 pauses and waits for all detected replicas to finish executing the checksum
@@ -7454,7 +7461,14 @@ queries.  Once that is finished, it checks all of the replicas to see if they
 have the same data as the master, and then prints a line of output with the
 results.  You can see a sample of its output later in this documentation.
 
-If you wish, you can query the checksum tables manually to get a report on which
+The tool prints progress indicators during time-consuming operations.  It prints
+a progress indicator as each table is checksummed.  The progress is computed by
+the estimated number of rows in the table. It will also print a progress report
+when it pauses to wait for replication to catch up, and when it is waiting to
+check replicas for differences from the master.  You can make the output less
+verbose with the L<"--quiet"> option.
+
+If you wish, you can query the checksum tables manually to get a report of which
 tables and chunks have differences from the master.  The following query will
 report every database and table with differences, along with a summary of the
 number of chunks and rows possibly affected:
@@ -7471,35 +7485,30 @@ The table referenced in that query is the checksum table, where the checksums
 are stored.  Each row in the table contains the checksum of one chunk of data
 from some table in the server.
 
-At the time of writing, pt-table-checksum's checksum table format has been
-improved in a way that is not backwards compatible with pt-table-sync, which has
-not yet been updated to match.  In some cases this is not a serious problem.
-Adding a "boundaries" column to the table, and then updating it with a manually
-generated WHERE clause, may suffice to let pt-table-sync interoperate with
-pt-table-checksum's table.  Assuming an integer primary key named 'id', You can
-try something like the following:
+Version 2.0 of pt-table-checksum is not backwards compatible with pt-table-sync
+version 1.0.  In some cases this is not a serious problem.  Adding a
+"boundaries" column to the table, and then updating it with a manually generated
+WHERE clause, may suffice to let pt-table-sync version 1.0 interoperate with
+pt-table-checksum version 2.0.  Assuming an integer primary key named 'id', You
+can try something like the following:
 
   ALTER TABLE checksums ADD boundaries VARCHAR(500);
   UPDATE checksums
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
 
-The tool prints progress indicators during several of its time-consuming
-operations.  It prints a progress indicator as each table is checksummed.  The
-progress is computed by the estimated number of rows in the table. It will also
-print a progress report when it pauses to wait for replication to catch up, and
-when it is waiting to check replicas for differences from the master.  You can
-make the output less verbose with the --quiet option.
-
 =head1 OUTPUT
 
 The tool prints tabular results, one line per table:
 
-              TS ERRORS  DIFFS     ROWS  CHUNKS SKIPPED    TIME TABLE
-  10-20T08:36:50      0      0      200       1       0   0.005 sakila.actor
-  10-20T08:36:50      0      0      603       7       0   0.035 sakila.address
-  10-20T08:36:50      0      0       16       1       0   0.003 sakila.category
-  10-20T08:36:50      0      0      600       6       0   0.024 sakila.city
+              TS ERRORS  DIFFS  ROWS  CHUNKS SKIPPED    TIME TABLE
+  10-20T08:36:50      0      0   200       1       0   0.005 db1.tbl1
+  10-20T08:36:50      0      0   603       7       0   0.035 db1.tbl2
+  10-20T08:36:50      0      0    16       1       0   0.003 db2.tbl3
+  10-20T08:36:50      0      0   600       6       0   0.024 db2.tbl4
+
+Errors, warnings, and progress reports are printed to standard error.  See also
+L<"--quiet">.
 
 Each table's results are printed when the tool finishes checksumming the table.
 The columns are as follows:
@@ -7519,8 +7528,9 @@ progress.
 =item DIFFS
 
 The number of chunks that differ from the master on one or more replicas.  If
-C<--no-replicate-check> is specified, this column will always have zero values.
-If C<--no-recheck> is specified, then only tables with differences are printed.
+--no-replicate-check is specified, this column will always have zeros.
+If --replicate-check-only is specified, then only tables with differences
+are printed.
 
 =item ROWS
 
@@ -7546,13 +7556,9 @@ The database and table that was checksummed.
 
 =back
 
-Errors, warnings, and progress reports are printed to standard error.  See also
-L<"--quiet">.
-
 =head1 EXIT STATUS
 
-A non-zero exit status indicates one or more error, warning, or checksum
-difference.
+A non-zero exit status indicates errors, warnings, or checksum differences.
 
 =head1 OPTIONS
 
@@ -7578,9 +7584,19 @@ Sleep time between checks for L<"--max-lag">.
 default: yes; group: Safety
 
 Do not checksum if any replication filters are set on any replicas.
-The tool looks for options that filter replication, such as
+The tool looks for server options that filter replication, such as
 binlog_ignore_db and replicate_do_db.  If it finds any such filters,
 it aborts with an error.
+
+If the replicas are configured with any filtering options, you should be careful
+not to checksum any databases or tables that exist on the master and not the
+replicas.  Changes to such tables might normally be skipped on the replicas
+because of the filtering options, but the checksum queries modify the contents
+of the table that stores the checksums, not the tables whose data you are
+checksumming.  Therefore, these queries will be executed on the replica, and if
+the table or database you're checksumming does not exist, the queries will cause
+replication to fail.  For more information on replication rules, see
+L<http://dev.mysql.com/doc/en/replication-rules.html>.
 
 Replication filtering makes it impossible to be sure that the checksum queries
 won't break replication (or simply fail to replicate).  If you are sure that
@@ -7593,19 +7609,24 @@ type: string; group: Throttle
 
 Pause checksumming until this replica's lag is less than L<"--max-lag">.  The
 value is a DSN that inherits properties from the master host and the connection
-options (L<"--port">, L<"--user">, etc.).
+options (L<"--port">, L<"--user">, etc.).  This option overrides the normal
+behavior of finding and continually monitoring replication lag on ALL connected
+replicas.  If you don't want to monitor ALL replicas, but you want more than
+just one replica to be monitored, then use the DSN option to the
+L<"--recursion-method"> option instead of this option.
 
 =item --chunk-index
 
 type: string
 
 Prefer this index for chunking tables.  By default, pt-table-checksum chooses
-an appropriate index for chunking.  This option lets you specify the index
+the most appropriate index for chunking.  This option lets you specify the index
 that you prefer.  If the index doesn't exist, then pt-table-checksum will fall
-back to its default behavior.  pt-table-checksum adds the index to the checksum
-SQL statements in a C<FORCE INDEX> clause.  Be careful when using this option;
-a poor choice of index could cause bad performance.  This is probably best to
-use when you are checksumming only a single table, not an entire server.
+back to its default behavior of choosing an index.  pt-table-checksum adds the
+index to the checksum SQL statements in a C<FORCE INDEX> clause.  Be careful
+when using this option; a poor choice of index could cause bad performance.
+This is probably best to use when you are checksumming only a single table, not
+an entire server.
 
 =item --chunk-size
 
@@ -7614,53 +7635,65 @@ type: size; default: 1000
 Number of rows to select for each checksum query.  Allowable suffixes are
 k, M, G.
 
-The chunk size is automatically adjusted to satisfy L<"--chunk-time"> when
-that option is not zero (and it's not by default).
+This option can override the default behavior, which is to adjust chunk size
+dynamically to try to make chunks run in exactly L<"--chunk-time"> seconds.
+When this option isn't set explicitly, its default value is used as a starting
+point, but after that, the tool ignores this option's value.  If you set this
+option explicitly, however, then it disables the dynamic adjustment behavior and
+tries to make all chunks exactly the specified number of rows.
 
-In general, the chunk size limits how many rows the tool selects for
-each checksum query.  If a table's rows are large, this prevents overloading
-MySQL with trying to checksum too much data.
-
-If a table does not have any unique indexes, the chunk size may be inaccurate,
-in which case L<"--chunk-size-limit"> can help prevent overloading MySQL.
-
-If this option is specified on the command line, then the given
-chunk size is always used and L<"--chunk-time"> is set to zero.
+There is a subtlety: if the chunk index is not unique, then it's possible that
+chunks will be larger than desired. For example, if a table is chunked by an
+index that contains 10,000 of a given value, there is no way to write a WHERE
+clause that matches only 1,000 of the values, and that chunk will be at least
+10,000 rows large.  Such a chunk will probably be skipped because of
+L<"--chunk-size-limit">.
 
 =item --chunk-size-limit
 
 type: float; default: 2.0; group: Safety
 
-Do not checksum chunks with this many times more rows than L<"--chunk-size">.
+Do not checksum chunks this much larger than the desired chunk size.
 
-When a table has no unique indexes, chunking may result in inaccurate
-chunk sizes.  This option specifies an upper limit to the inaccuracy.
-C<EXPLAIN> is used to get an estimate of how many rows are in the chunk.
-If that estimate exceeds the limit, the chunk is skipped.  Since
-L<"--chunk-size"> is adjust automatically (unless L<"--chunk-time"> is zero),
-the limit varies.
+When a table has no unique indexes, chunk sizes can be inaccurate.  This option
+specifies a maximum tolerable limit to the inaccuracy.  The tool uses <EXPLAIN>
+to estimate how many rows are in the chunk.  If that estimate exceeds the
+desired chunk size times the limit (twice as large, by default), then the tool
+skips the chunk.
 
-The minimum value for this option is 1 which means that no chunk can be any
-larger than L<"--chunk-size">.  You probably don't want to specify 1 because
-rows reported by EXPLAIN are estimates which can be greater than or less than
-the real number of rows in the chunk.  If too many chunks are skipped because
-they are oversize, you might want to specify a value larger than 2.
+The minimum value for this option is 1, which means that no chunk can be larger
+than L<"--chunk-size">.  You probably don't want to specify 1, because rows
+reported by EXPLAIN are estimates, which can be different from the real number
+of rows in the chunk.  If the tool skips too many chunks because they are
+oversized, you might want to specify a value larger than the default of 2.
 
-You can disable oversize chunk checking by specifying a value of 0.
+You can disable oversized chunk checking by specifying a value of 0.
 
 =item --chunk-time
 
 type: float; default: 0.5
 
-Adjust L<"--chunk-size"> so each checksum query takes this long to execute.
+Adjust the chunk size dynamically so each checksum query takes this long to execute.
 
-The tool tracks the checksum rate (rows/second) for all tables and each
-table individually.  These rates are used to adjust L<"--chunk-size">
-after each checksum query so that the next checksum query takes this amount
-of time (in seconds) to execute.
+The tool tracks the checksum rate (rows per second) for all tables and each
+table individually.  It uses these rates to adjust the chunk size after each
+checksum query, so that the next checksum query takes this amount of time (in
+seconds) to execute.
 
-If this option is set to zero, L<"--chunk-size"> doesn't auto-adjust,
-so query checksum times will vary, but query checksum sizes will not.
+The algorithm is as follows: at the beginning of each table, the chunk size is
+initialized from the overall average rows per second since the tool began
+working, or the value of L<"--chunk-size"> if the tool hasn't started working
+yet. For each subsequent chunk of a table, the tool adjusts the chunk size to
+try to make queries run in the desired amount of time.  It keeps an
+exponentially decaying moving average of queries per second, so that if the
+server's performance changes due to changes in server load, the tool adapts
+quickly.  This allows the tool to achieve predictably timed queries for each
+table, and for the server overall.
+
+If this option is set to zero, the chunk size doesn't auto-adjust, so query
+checksum times will vary, but query checksum sizes will not. Another way to do
+the same thing is to specify a value for L<"--chunk-size"> explicitly, instead
+of leaving it at the default.
 
 =item --columns
 
@@ -7708,12 +7741,12 @@ default: yes
 
 Delete previous checksums for each table before checksumming the table.  This
 option does not truncate the entire table, it only deletes rows (checksums) for
-each table right before checksumming the table.  Therefore, if checksumming
-stops prematurely, the table will still contain rows for tables that were not
-checksummed before the tool was stopped.
+each table just before checksumming the table.  Therefore, if checksumming stops
+prematurely and there was preexisting data, there will still be rows for tables
+that were not checksummed before the tool was stopped.
 
 If you're resuming from a previous checksum run, then the checksum records for
-the table where the tool resumes won't be emptied.
+the table from which the tool resumes won't be emptied.
 
 =item --engines
 
@@ -7726,14 +7759,15 @@ Only checksum tables which use these storage engines.
 cumulative: yes; default: 0; group: Output
 
 Show, but do not execute, checksum queries (disables
-L<"--[no]empty-replicate-table">).  If specified twice, the tables are chunked
-and the upper and lower boundary values for each chunk are printed.
+L<"--[no]empty-replicate-table">).  If specified twice, the tool actually
+iterates through the chunking algorithm, printing the upper and lower boundary
+values for each chunk, but not executing the checksum queries.
 
 =item --float-precision
 
 type: int
 
-Precision for C<FLOAT> and C<DOUBLE> number-to-string conversion.  Causes FLOAT
+Precision for FLOAT and DOUBLE number-to-string conversion.  Causes FLOAT
 and DOUBLE values to be rounded to the specified number of digits after the
 decimal point, with the ROUND() function in MySQL.  This can help avoid
 checksum mismatches due to different floating-point representations of the same
@@ -7748,18 +7782,19 @@ type: string
 
 Hash function for checksums (FNV1A_64, MURMUR_HASH, SHA1, MD5, CRC32, etc).
 
-The default is to use C<CRC32>, but C<MD5> and C<SHA1> also work, and you
-can use your own function, such as a compiled UDF, if you wish.  Whatever
+The default is to use CRC32(), but MD5() and SHA1() also work, and you
+can use your own function, such as a compiled UDF, if you wish.  The
 function you specify is run in SQL, not in Perl, so it must be available
 to MySQL.
 
-The C<FNV1A_64> UDF mentioned in the benchmarks is much faster than C<MD5>.  The
-C++ source code is distributed with Percona Toolkit.  It is very simple to
-compile and install; look at the header in the source code for instructions.  If
-it is installed, it is preferred over C<MD5>.  You can also use the MURMUR_HASH
-function if you compile and install that as a UDF; the source is also
-distributed with Percona Toolkit, and it is faster and has better distribution than
-FNV1A_64.
+MySQL doesn't have good built-in hash functions that are fast.  CRC32() is too
+prone to hash collisions, and MD5() and SHA1() are very CPU-intensive. The
+FNV1A_64() UDF that is distributed with Percona Server is a faster alternative.
+It is very simple to compile and install; look at the header in the source code
+for instructions.  If it is installed, it is preferred over MD5().  You can also
+use the MURMUR_HASH() function if you compile and install that as a UDF; the
+source is also distributed with Percona Server, and it might be better than
+FNV1A_64().
 
 =item --help
 
@@ -7814,23 +7849,23 @@ Ignore tables whose names match the Perl regex.
 
 type: int; default: 1
 
-Set the session value of the C<innodb_lock_wait_timeout> on the master host.
+Set the session value of the innodb_lock_wait_timeout variable on the master host.
 Setting this option dynamically requires the InnoDB plugin, so this works only
-on newer InnoDB and MySQL versions.  This option helps protect against long lock
+on newer InnoDB and MySQL versions.  This option helps guard against long lock
 waits if the checksum queries become slow for some reason.
 
 =item --max-lag
 
 type: time; default: 1s; group: Throttle
 
-Pause checksumming until all replicas' lag is less than this value.
-
-After each checksum query (each chunk), pt-table-checksum looks at the lag
-(C<Seconds_Behind_Master>) of all replicas discovered automatically and waits
-until all replicas' lag is less than this value.  If any replica is lagging too
-much, pt-table-checksum will sleep for L<"--check-interval"> seconds, then check
-all replicas again.  If you specify L<"--check-slave-lag">, then the tool only
-examines the given server for lag, not all servers.
+Pause checksumming until all replicas' lag is less than this value.  After each
+checksum query (each chunk), pt-table-checksum looks at the replication lag of
+all replicas to which it connects, using Seconds_Behind_Master. If any replica
+is lagging more than the value of this option, then pt-table-checksum will sleep
+for L<"--check-interval"> seconds, then check all replicas again.  If you
+specify L<"--check-slave-lag">, then the tool only examines that server for
+lag, not all servers.  If you want to control exactly which servers the tool
+monitors, use the DSN value to L<"--recursion-method">.
 
 The tool waits forever for replicas to stop lagging.  If any replica is
 stopped, the tool waits forever until the replica is started.  Checksumming
@@ -7853,10 +7888,19 @@ threshold by examining the current value and increasing it by 20%.
 For example, if you want the tool to pause when Threads_connected gets too high,
 you can specify "Threads_connected", and the tool will check the current value
 when it starts working and add 20% to that value.  If the current value is 100,
-then the tool will pause whenever the value exceeds 120, and resume working when
-the value drops down below 120 again.  If you want to specify an explicit
-threshold, such as 110, you can use either "Threads_connected:110" or
-"Threads_connected=110".
+then the tool will pause when Threads_connected exceeds 120, and resume working
+when it is below 120 again.  If you want to specify an explicit threshold, such
+as 110, you can use either "Threads_connected:110" or "Threads_connected=110".
+
+The purpose of this option is to prevent the tool from adding too much load to
+the server. If the checksum queries are intrusive, or if they cause lock waits,
+then other queries on the server will tend to block and queue. This will
+typically cause Threads_running to increase, and the tool can detect that by
+running SHOW GLOBAL STATUS immediately after each checksum query finishes.  If
+you specify a threshold for this variable, then you can instruct the tool to
+wait until queries are running normally again.  This will not prevent queueing,
+however; it will only give the server a chance to recover from the queueing.  If
+you notice queueing, it is best to decrease the chunk time.
 
 =item --password
 
@@ -7891,7 +7935,9 @@ Print progress reports to STDERR.
 
 The value is a comma-separated list with two parts.  The first part can be
 percentage, time, or iterations; the second part specifies how often an update
-should be printed, in percentage, seconds, or number of iterations.
+should be printed, in percentage, seconds, or number of iterations.  The tool
+prints progress reports for a variety of time-consuming operations, including
+waiting for replicas to catch up if they become lagged.
 
 =item --quiet
 
@@ -7899,25 +7945,11 @@ short form: -q; cumulative: yes; default: 0
 
 Print only the most important information (disables L<"--progress">).
 Specifying this option once causes the tool to print only errors, warnings, and
-tables with checksum differences.
+tables that have checksum differences.
 
 Specifying this option twice causes the tool to print only errors.  In this
-case, the tool's exit status indicates if there were any warnings or checksum
-differences.
-
-=item --[no]recheck
-
-default: yes
-
-Check replicas for differences while checksumming tables.
-
-This is a legacy option which no longer has the same meaning.  It is only
-used in relation to L<"--[no]replicate-check">.  If C<--no-recheck> is
-specified, pt-table-checksum only checks replicas for differences and exits.
-Else, the tool checks for differences while checksumming tables.
-
-In other words, if you do not want to checksum tables, and you only want
-to check replicas for differences, specify C<--no-recheck>.
+case, you can use the tool's exit status to determine if there were any warnings
+or checksum differences.
 
 =item --recurse
 
@@ -7938,16 +7970,16 @@ Preferred recursion method for discovering replicas.  Possible methods are:
   hosts        SHOW SLAVE HOSTS
   dsn=DSN      DSNs from a table
 
-The C<processlist> method is preferred because C<SHOW SLAVE HOSTS> is not
-reliable.  However, the C<hosts> method is required if the server uses a
-non-standard port (not 3306).  Usually the tool does the right thing and
+The processlist method is the default, because SHOW SLAVE HOSTS is not
+reliable.  However, the hosts method can work better if the server uses a
+non-standard port (not 3306).  The tool usually does the right thing and
 finds all replicas, but you may give a preferred method and it will be used
 first.
 
-The <hosts> method requires replicas to be configured with C<report-host>,
-C<report-port>, etc.
+The hosts method requires replicas to be configured with report_host,
+report_port, etc.
 
-The C<dsn> method is special: it specifies a DSN from which other DSN strings
+The dsn method is special: it specifies a table from which other DSN strings
 are read.  The specified DSN must specify a D and t, or a database-qualified
 t.  The DSN table should have the following structure:
 
@@ -7958,8 +7990,10 @@ t.  The DSN table should have the following structure:
     PRIMARY KEY (`id`)
   );
 
-One row specifies one DSN in the C<dsn> column.  Currently, the DSNs are
-ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
+To make the tool monitor only the hosts 10.10.1.16 and 10.10.1.17 for
+replication lag and checksum differences, insert the values C<h=10.10.1.16> and
+C<h=10.10.1.17> into the table. Currently, the DSNs are ordered by id, but id
+and parent_id are otherwise ignored.  
 
 =item --replicate
 
@@ -7989,23 +8023,14 @@ By default, L<"--[no]create-replicate-table"> is true, so the database and
 the table specified by this option are created automatically if they do not
 exist.
 
-Be sure to choose an appropriate storage engine for the replicate table.
-If you are checksumming InnoDB tables, for instance, a deadlock will break
-replication if the replicate table is non-transactional because the transaction
-will still be written to the binlog.  It will then replay without a deadlock
-on the replicas and break replication with "different error on master and
-slave."  This is not a problem with pt-table-checksum; it's a problem with
+Be sure to choose an appropriate storage engine for the replicate table.  If you
+are checksumming InnoDB tables, and you use MyISAM for this table, a deadlock
+will break replication, because the mixture of transactional and
+non-transactional tables in the checksum statements will cause it to be written
+to the binlog even though it had an error.  It will then replay without a
+deadlock on the replicas, and break replication with "different error on master
+and slave."  This is not a problem with pt-table-checksum; it's a problem with
 MySQL replication, and you can read more about it in the MySQL manual.
-
-If the slaves have any C<--replicate-do-X> or C<--replicate-ignore-X> options,
-you should be careful not to checksum any databases or tables that exist on the
-master and not the slaves.  Changes to such tables may not normally be executed
-on the slaves because of the --replicate options, but the checksum queries
-modify the contents of the table that stores the checksums, not the tables whose
-data you are checksumming.  Therefore, these queries will be executed on the
-slave, and if the table or database you're checksumming does not exist, the
-queries will cause replication to fail.  For more information on replication
-rules, see L<http://dev.mysql.com/doc/en/replication-rules.html>.
 
 The replicate table is never checksummed (the tool automatically adds this
 table to L<"--ignore-tables">).
@@ -8014,32 +8039,39 @@ table to L<"--ignore-tables">).
 
 default: yes
 
-Check replicas for data differences.  Differences are found by recursing to
-replicas, and executing a simple C<SELECT> statement to compare the replica's
-checksum results to the master's checksum results.  Any differences are reported
-in the C<DIFFS> column of the tool's output.
+Check replicas for data differences after finishing each table.  The tool finds
+differences by executing a simple SELECT statement on all connected replicas.
+The query compares the replica's checksum results to the master's checksum
+results.  It reports differences in the DIFFS column of the output.
+
+=item --replicate-check-only
+
+Check replicas for consistency without executing checksum queries.
+This option is used only with L<"--[no]replicate-check">.  If specified,
+pt-table-checksum doesn't checksum any tables. It checks replicas for
+differences found by previous checksumming, and then exits.  It might be useful
+if you run pt-table-checksum quietly in a cron job, for example, and later want
+a report on the results of the cron job, perhaps to implement a Nagios check.
 
 =item --replicate-database
 
 type: string
 
-C<USE> only this database with L<"--replicate">.  By default, pt-table-checksum
-executes USE to set its default database to the database that contains the table
-it's currently working on.  It changes its default database as it works on
-different tables.  This is is a best effort to avoid problems with replication
-filters such as binlog_ignore_db and replicate_ignore_db.  However, replication
-filters can create a situation where there simply is no one right way to do
-things.  Some statements might not be replicated, and others might cause
-replication to fail on the slaves.  In such cases, it is up to the user to
-specify a safe default database.  This option specifies a default database that
-pt-table-checksum selects with USE, and never changes afterwards.  See also
-<L"--[no]check-replication-filters">.
+USE only this database.  By default, pt-table-checksum executes USE to select
+the database that contains the table it's currently working on.  This is is a
+best effort to avoid problems with replication filters such as binlog_ignore_db
+and replicate_ignore_db.  However, replication filters can create a situation
+where there simply is no one right way to do things.  Some statements might not
+be replicated, and others might cause replication to fail.  In such cases, you
+can use this option to specify a default database that pt-table-checksum selects
+with USE, and never changes.  See also <L"--[no]check-replication-filters">.
 
 =item --resume
 
-Resume checksumming from the last completed chunk (disables L<"--[no]empty-replicate-table">).  If the tool is stopped before it finishes checksumming all
-tables, checksumming can resume from the last chunk of the last table
-finished by specifying this option.
+Resume checksumming from the last completed chunk (disables
+L<"--[no]empty-replicate-table">).  If the tool stops before it checksums all
+tables, this option makes checksumming resume from the last chunk of the last
+table that it finished.
 
 =item --retries
 
@@ -8083,10 +8115,10 @@ Checksum only tables whose names match this Perl regex.
 
 =item --trim
 
-Add C<TRIM()> to C<VARCHAR> columns (helps when comparing 4.1 to >= 5.0).
+Add TRIM() to VARCHAR columns (helps when comparing 4.1 to >= 5.0).
 This is useful when you don't care about the trailing space differences between
 MySQL versions that vary in their handling of trailing spaces. MySQL 5.0 and 
-later all retain trailing spaces in C<VARCHAR>, while previous versions would 
+later all retain trailing spaces in VARCHAR, while previous versions would 
 remove them.  These differences will cause false checksum differences.
 
 =item --user
@@ -8105,15 +8137,15 @@ Show version and exit.
 
 type: string
 
-Do only rows matching this C<WHERE> clause.  You can use this option to limit
+Do only rows matching this WHERE clause.  You can use this option to limit
 the checksum to only part of the table.  This is particularly useful if you have
 append-only tables and don't want to constantly re-check all rows; you could run
 a daily job to just check yesterday's rows, for instance.
 
 This option is much like the -w option to mysqldump.  Do not specify the WHERE
-keyword.  You may need to quote the value.  Here is an example:
+keyword.  You might need to quote the value.  Here is an example:
 
-  pt-table-checksum --where "foo=bar"
+  pt-table-checksum --where "ts > CURRENT_DATE - INTERVAL 1 DAY"
 
 =back
 
