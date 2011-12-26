@@ -2831,7 +2831,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -2863,9 +2863,9 @@ sub main {
    # #########################################################################
    # Load rules from POD and plugins.
    # #########################################################################
-   my $p   = new PodParser();
-   my $var = new VariableAdvisorRules(PodParser => $p);
-   my $adv = new Advisor(
+   my $p   = PodParser->new();
+   my $var = VariableAdvisorRules->new(PodParser => $p);
+   my $adv = Advisor->new(
       match_type   => "bool",
       ignore_rules => $o->get('ignore-rules'),
    );
@@ -2882,8 +2882,8 @@ sub main {
    # #########################################################################
    # Make common modules.
    # #########################################################################
-   my $vp  = new VersionParser();
-   my $trp = new TextResultSetParser();
+   my $vp  = VersionParser->new();
+   my $trp = TextResultSetParser->new();
    my %common_modules = (
       OptionParser        => $o,
       DSNParser           => $dp,
@@ -2913,13 +2913,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
