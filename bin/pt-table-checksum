@@ -5010,7 +5010,7 @@ sub main {
    $already_checksummed                        = undef;
    %tables_to_checksum                         = ();
 
-   my $q = new Quoter();
+   my $q = Quoter->new();
    my $exit_status = 0;
 
    # ########################################################################
@@ -5018,7 +5018,7 @@ sub main {
    # ########################################################################
    # Because of --arg-table, $final_o is the OptionParser obj used to get
    # most options (see my $final_o below).
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -5181,19 +5181,19 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
    # ########################################################################
    # Ready to work now.
    # ########################################################################
-   my $vp = new VersionParser();
-   my $tp = new TableParser(Quoter => $q);
-   my $tc = new TableChecksum(Quoter=> $q, VersionParser => $vp);
-   my $ms = new MasterSlave(VersionParser => $vp);
-   my $du = new MySQLDump();
-   my $ch = new TableChunker(Quoter => $q, MySQLDump => $du); 
+   my $vp = VersionParser->new();
+   my $tp = TableParser->new(Quoter => $q);
+   my $tc = TableChecksum->new(Quoter=> $q, VersionParser => $vp);
+   my $ms = MasterSlave->new(VersionParser => $vp);
+   my $du = MySQLDump->new();
+   my $ch = TableChunker->new(Quoter => $q, MySQLDump => $du); 
    my %common_modules = (
       ch => $ch,
       dp => $dp,
@@ -5456,7 +5456,7 @@ sub get_all_tbls_info {
    my $dbh    = $args{dbh};
    MKDEBUG && _d('Getting all schema objects');
 
-   my $si = new SchemaIterator(
+   my $si = SchemaIterator->new(
       dbh          => $dbh,
       OptionParser => $args{o},
       Quoter       => $args{q},
@@ -5853,7 +5853,7 @@ sub checksum_chunks {
    my @hosts   = @{$args{hosts}};
    my $tbl     = $args{tbl}; 
 
-   my $retry = new Retry();
+   my $retry = Retry->new();
 
    # ##################################################################
    # This loop may seem suboptimal, because it causes a new child to be
@@ -5909,7 +5909,7 @@ sub checksum_chunks {
       if ( $throttle_method eq 'slavelag' ) {
          my $pr;
          if ( $o->get('progress') ) {
-            $pr = new Progress(
+            $pr = Progress->new(
                jobsize => scalar @{$args{slaves}},
                spec    => $o->get('progress'),
                name    => "Wait for slave(s) to catch up",
