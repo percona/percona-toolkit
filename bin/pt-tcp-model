@@ -1902,7 +1902,7 @@ sub main {
    # ##########################################################################
    # Get configuration information.
    # ##########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
    if ( !$o->get('help') ) {
@@ -1922,13 +1922,13 @@ sub main {
    # ########################################################################
    # Set up objects and variables.
    # ########################################################################
-   my $fi     = new FileIterator();
+   my $fi     = FileIterator->new();
    my $parser;
    if ( $o->get('type') eq 'tcpdump' ) { # Default: parse tcpdump
-      $parser = new SimpleTCPDumpParser(watch => $o->get('watch-server'));
+      $parser = SimpleTCPDumpParser->new(watch => $o->get('watch-server'));
    }
    else {
-      $parser = new TCPRequestAggregator(
+      $parser = TCPRequestAggregator->new(
          interval => $o->get('run-time'),
          quantile => $o->get('quantile')
       );
@@ -1963,7 +1963,7 @@ sub main {
       # #####################################################################
       my $pr;
       if ( $o->get('progress') && $filename && -e $filename ) {
-         $pr = new Progress(
+         $pr = Progress->new(
             jobsize => -s $filename,
             spec    => $o->get('progress'),
             name    => $filename,
