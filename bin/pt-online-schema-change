@@ -4102,7 +4102,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-Transformers->import qw(ts);
+Transformers->import(qw(ts));
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
@@ -4110,16 +4110,16 @@ my $quiet = 0;  # for msg()
 
 sub main {
    @ARGV       = @_;  # set global ARGV for this package
-   my $vp      = new VersionParser();
-   my $q       = new Quoter();
-   my $tp      = new TableParser(Quoter => $q);
-   my $du      = new MySQLDump();
-   my $chunker = new TableChunker(Quoter => $q, MySQLDump => $du);
+   my $vp      = VersionParser->new();
+   my $q       = Quoter->new();
+   my $tp      = TableParser->new(Quoter => $q);
+   my $du      = MySQLDump->new();
+   my $chunker = TableChunker->new(Quoter => $q, MySQLDump => $du);
 
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -4143,7 +4143,7 @@ sub main {
       }
    }
 
-   my $rename_fk_method = lc $o->get('update-foreign-keys-method');
+   my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
    if ( ($rename_fk_method || '') eq 'drop_old_table' ) {
       $o->set('rename-tables',  0);
       $o->set('drop-old-table', 0),
@@ -4205,7 +4205,7 @@ sub main {
    my $daemon;
    if ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -4236,8 +4236,8 @@ sub main {
    # Create the capture-sync and copy-rows plugins.  Currently, we just have
    # one method for each.
    # ########################################################################
-   my $capture_sync = new OSCCaptureSync();
-   my $copy_rows    = new CopyRowsInsertSelect(Retry => new Retry());
+   my $capture_sync = OSCCaptureSync->new();
+   my $copy_rows    = CopyRowsInsertSelect->new(Retry => Retry->new());
 
    # More values are added later.  These are the minimum need to do --cleanup.
    my %plugin_args = (
@@ -4313,7 +4313,7 @@ sub main {
       %range_stats,
    );
    $plugin_args{chunks}   = \@chunks;
-   $plugin_args{Progress} = new Progress(
+   $plugin_args{Progress} = Progress->new(
       jobsize => scalar @chunks,
       spec    => $o->get('progress'),
       name    => "Copying rows",
