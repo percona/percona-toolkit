@@ -2372,8 +2372,8 @@ $OUTPUT_AUTOFLUSH = 1;
 
 my $o;
 my $dp;
-my $q  = new Quoter();
-my $vp = new VersionParser();
+my $q  = Quoter->new();
+my $vp = VersionParser->new();
 my %children;
 
 sub main {
@@ -2382,7 +2382,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   $o  = new OptionParser();
+   $o  = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -2454,13 +2454,13 @@ sub main {
    # Daemonize only after connecting and doing --ask-pass.
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -2469,7 +2469,7 @@ sub main {
 
    # Despite the name, recursing to slaves actually begins at the specified
    # server, so the named server may also be watched, if it's a slave.
-   my $ms = new MasterSlave(VersionParser => $vp);
+   my $ms = MasterSlave->new(VersionParser => $vp);
    $ms->recurse_to_slaves(
       {  dbh        => $dbh,
          dsn        => $dsn,
