@@ -20,8 +20,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -33,11 +33,11 @@ else {
 
 $sb->create_dbs($dbh, ['test']);
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
-my $vp = new VersionParser();
-my $du = new MySQLDump();
-my $c  = new TableChecksum(Quoter=>$q, VersionParser=>$vp);
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
+my $vp = VersionParser->new();
+my $du = MySQLDump->new();
+my $c  = TableChecksum->new(Quoter=>$q, VersionParser=>$vp);
 
 my $t;
 

@@ -27,8 +27,8 @@ use Retry;
 use TableSyncer;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -40,26 +40,26 @@ else {
 
 my $mysql = $sb->_use_for('master');
 
-my $q  = new Quoter();
-my $ms = new MasterSlave();
-my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump();
-my $vp = new VersionParser();
-my $rr = new Retry();
+my $q  = Quoter->new();
+my $ms = MasterSlave->new();
+my $tp = TableParser->new(Quoter=>$q);
+my $du = MySQLDump->new();
+my $vp = VersionParser->new();
+my $rr = Retry->new();
 
-my $nibbler = new TableNibbler(
+my $nibbler = TableNibbler->new(
    TableParser => $tp,
    Quoter      => $q,
 );
-my $checksum = new TableChecksum(
+my $checksum = TableChecksum->new(
    Quoter        => $q,
    VersionParser => $vp,
 );
-my $chunker = new TableChunker(
+my $chunker = TableChunker->new(
    MySQLDump => $du,
    Quoter    => $q
 );
-my $t = new TableSyncNibble(
+my $t = TableSyncNibble->new(
    TableNibbler  => $nibbler,
    TableParser   => $tp,
    TableChunker  => $chunker,
@@ -68,7 +68,7 @@ my $t = new TableSyncNibble(
 );
 
 my @rows;
-my $ch = new ChangeHandler(
+my $ch = ChangeHandler->new(
    Quoter    => $q,
    right_db  => 'test',
    right_tbl => 'test1',
@@ -79,7 +79,7 @@ my $ch = new ChangeHandler(
    queue     => 0,
 );
 
-my $syncer = new TableSyncer(
+my $syncer = TableSyncer->new(
    MasterSlave   => $ms,
    TableChecksum => $checksum,
    Quoter        => $q,

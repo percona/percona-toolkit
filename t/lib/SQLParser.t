@@ -20,7 +20,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $sp = new SQLParser();
+my $sp = SQLParser->new();
 
 # ############################################################################
 # Should throw some errors for stuff it can't do.
@@ -2304,15 +2304,15 @@ use FileIterator;
 use Schema;
 use SchemaIterator;
 
-my $o  = new OptionParser(description => 'SchemaIterator');
+my $o  = OptionParser->new(description => 'SchemaIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
-my $q          = new Quoter;
-my $tp         = new TableParser(Quoter => $q);
-my $fi         = new FileIterator();
+my $q          = Quoter->new;
+my $tp         = TableParser->new(Quoter => $q);
+my $fi         = FileIterator->new();
 my $file_itr   = $fi->get_file_itr("$trunk/t/lib/samples/mysqldump-no-data/dump001.txt");
-my $schema     = new Schema();
-my $schema_itr = new SchemaIterator(
+my $schema     = Schema->new();
+my $schema_itr = SchemaIterator->new(
    file_itr     => $file_itr,
    OptionParser => $o,
    Quoter       => $q,

@@ -66,7 +66,7 @@ my $opts = [
    },
 ];
 
-my $dp = new DSNParser(opts => $opts);
+my $dp = DSNParser->new(opts => $opts);
 
 is_deeply(
    $dp->parse('u=a,p=b'),
@@ -301,7 +301,7 @@ throws_ok (
 # #############################################################################
 # Test parse_options().
 # #############################################################################
-my $o = new OptionParser(
+my $o = OptionParser->new(
    description => 'parses command line options.',
    dp          => $dp,
 );
@@ -336,7 +336,7 @@ is_deeply(
 # #############################################################################
 
 push @$opts, { key => 't', desc => 'table' };
-$dp = new DSNParser(opts => $opts);
+$dp = DSNParser->new(opts => $opts);
 
 my $dsn_1 = {
    D => undef,
@@ -420,7 +420,7 @@ SKIP: {
    # it now else we'll get an error.
    $dbh->disconnect();
 
-   $dp = new DSNParser(opts => $opts);
+   $dp = DSNParser->new(opts => $opts);
    $dp->prop('set-vars', 'wait_timeout=1000');
    $d  = $dp->parse('h=127.0.0.1,P=12345,A=utf8,u=msandbox,p=msandbox');
    my $dbh2 = $dp->get_dbh($dp->get_cxn_params($d), {mysql_use_result=>1});

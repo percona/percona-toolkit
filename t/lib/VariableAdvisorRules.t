@@ -17,8 +17,8 @@ use VariableAdvisorRules;
 use Advisor;
 use PerconaTest;
 
-my $p   = new PodParser();
-my $var = new VariableAdvisorRules(PodParser => $p);
+my $p   = PodParser->new();
+my $var = VariableAdvisorRules->new(PodParser => $p);
 
 isa_ok($var, 'VariableAdvisorRules');
 
@@ -357,7 +357,7 @@ my @cases = (
 );
 
 
-my $adv = new Advisor(match_type => "bool");
+my $adv = Advisor->new(match_type => "bool");
 $adv->load_rules($var);
 
 foreach my $test ( @cases ) {

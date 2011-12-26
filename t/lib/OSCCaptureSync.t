@@ -21,8 +21,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -36,7 +36,7 @@ else {
 $sb->load_file("master", "t/lib/samples/osc/tbl001.sql");
 $dbh->do("USE osc");
 
-my $osc = new OSCCaptureSync();
+my $osc = OSCCaptureSync->new();
 
 my $msg = sub { print "$_[0]\n"; };
 

@@ -19,7 +19,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $r = new TextResultSetParser();
+my $r = TextResultSetParser->new();
 isa_ok($r, 'TextResultSetParser');
 
 throws_ok(
@@ -153,7 +153,7 @@ is(
 # #############################################################################
 # Parse with NAME_lc for lowercase key/col names.
 # #############################################################################
-$r = new TextResultSetParser(NAME_lc => 1);
+$r = TextResultSetParser->new(NAME_lc => 1);
 
 $recset = $r->parse(load_file('t/lib/samples/show-variables/vars001.txt'));
 $got_var = grep { $_->{variable_name} eq 'warning_count' } @$recset;

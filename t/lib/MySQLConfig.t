@@ -17,8 +17,8 @@ use Sandbox;
 use TextResultSetParser;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 use Data::Dumper;
@@ -28,11 +28,11 @@ $Data::Dumper::Quotekeys = 0;
 
 my $output;
 my $sample = "t/lib/samples/configs/";
-my $trp    = new TextResultSetParser();
+my $trp    = TextResultSetParser->new();
 
 throws_ok(
    sub {
-      my $config = new MySQLConfig(
+      my $config = MySQLConfig->new(
          TextResultSetParser => $trp,
       );
    },
@@ -42,7 +42,7 @@ throws_ok(
 
 throws_ok(
    sub {
-      my $config = new MySQLConfig(
+      my $config = MySQLConfig->new(
          file   => 'foo',
          output => 'bar',
          TextResultSetParser => $trp,
@@ -54,7 +54,7 @@ throws_ok(
 
 throws_ok(
    sub {
-      my $config = new MySQLConfig(
+      my $config = MySQLConfig->new(
          file => 'fooz',
          TextResultSetParser => $trp,
       );
@@ -320,7 +320,7 @@ is_deeply(
 # #############################################################################
 # Config from mysqld --help --verbose
 # #############################################################################
-my $config = new MySQLConfig(
+my $config = MySQLConfig->new(
    file                => "$trunk/$sample/mysqldhelp001.txt",
    TextResultSetParser => $trp,
 );
@@ -612,7 +612,7 @@ ok(
 # #############################################################################
 # Config from SHOW VARIABLES
 # #############################################################################
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    result_set          => [ [qw(foo bar)], [qw(a z)] ],
    TextResultSetParser => $trp,
 );
@@ -646,7 +646,7 @@ ok(
 # #############################################################################
 # Config from my_print_defaults
 # #############################################################################
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    file                => "$trunk/$sample/myprintdef001.txt",
    TextResultSetParser => $trp,
 );
@@ -686,7 +686,7 @@ is_deeply(
 # #############################################################################
 # Config from option file (my.cnf)
 # #############################################################################
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    file                => "$trunk/$sample/mycnf001.txt",
    TextResultSetParser => $trp,
 );
@@ -723,7 +723,7 @@ is_deeply(
    "Vars from option file"
 ) or print Dumper($config->variables());
 
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    file                => "$trunk/$sample/mycnf002.txt",
    TextResultSetParser => $trp,
 );
@@ -750,7 +750,7 @@ is_deeply(
 # ############################################################################
 # Baron's test cases.
 # ############################################################################
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    file                => "$trunk/$sample/mycnf-baron-001.txt",
    TextResultSetParser => $trp,
 );
@@ -770,7 +770,7 @@ is_deeply(
    "mycnf-baron-001.cnf"
 );
 
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    file => "$trunk/t/lib/samples/show-variables/vars-baron-001.txt",
    TextResultSetParser => $trp,
 );
@@ -787,7 +787,7 @@ is(
    "Get vars from unformatted SHOW VARIABLES output"
 );
 
-$config = new MySQLConfig(
+$config = MySQLConfig->new(
    file                => "$trunk/$sample/mycnf-baron-002.txt",
    TextResultSetParser => $trp,
 );
@@ -804,7 +804,7 @@ is_deeply(
 SKIP: {
    skip 'Cannot connect to sandbox master', 3 unless $dbh;
 
-   $config = new MySQLConfig(
+   $config = MySQLConfig->new(
       dbh => $dbh,
    );
 

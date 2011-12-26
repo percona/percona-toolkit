@@ -16,8 +16,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( $dbh ) {
@@ -45,15 +45,15 @@ my $mysql = $sb->_use_for('master');
 
 diag(`$mysql < $trunk/t/lib/samples/before-TableSyncChunk.sql`);
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
-my $vp = new VersionParser();
-my $ms = new MasterSlave();
-my $rr = new Retry();
-my $chunker    = new TableChunker( Quoter => $q, MySQLDump => $du );
-my $checksum   = new TableChecksum( Quoter => $q, VersionParser => $vp );
-my $syncer     = new TableSyncer(
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
+my $du = MySQLDump->new();
+my $vp = VersionParser->new();
+my $ms = MasterSlave->new();
+my $rr = Retry->new();
+my $chunker    = TableChunker->new( Quoter => $q, MySQLDump => $du );
+my $checksum   = TableChecksum->new( Quoter => $q, VersionParser => $vp );
+my $syncer     = TableSyncer->new(
    MasterSlave   => $ms,
    TableChecksum => $checksum,
    Quoter        => $q,
@@ -76,8 +76,8 @@ my $dst = {
    dbh => $dbh,
 };
 
-my $ch = new ChangeHandler(
-   Quoter    => new Quoter(),
+my $ch = ChangeHandler->new(
+   Quoter    => Quoter->new(),
    right_db  => 'test',
    right_tbl => 'test1',
    left_db   => 'test',
@@ -87,7 +87,7 @@ my $ch = new ChangeHandler(
    queue     => 0,
 );
 
-my $t = new TableSyncChunk(
+my $t = TableSyncChunk->new(
    TableChunker  => $chunker,
    Quoter        => $q,
 );

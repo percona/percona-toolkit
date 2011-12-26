@@ -18,8 +18,8 @@ use Sandbox;
 use CompareQueryTimes;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -50,7 +50,7 @@ sub get_id {
 
 # diag(`/tmp/12345/use < samples/compare-warnings.sql`);
 
-$ct = new CompareQueryTimes(
+$ct = CompareQueryTimes->new(
    get_id => \&get_id,
 );
 

@@ -16,8 +16,8 @@ use QueryRewriter;
 use QueryParser;
 use PerconaTest;
 
-my $qp = new QueryParser();
-my $qr = new QueryRewriter(QueryParser=>$qp);
+my $qp = QueryParser->new();
+my $qr = QueryRewriter->new(QueryParser=>$qp);
 
 # #############################################################################
 # strip_comments()

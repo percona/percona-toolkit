@@ -19,9 +19,9 @@ use PodParser;
 # This module's purpose is to run rules and return a list of the IDs of the
 # triggered rules.  It should be very simple.  (But we don't want to put the two
 # modules together.  Their purposes are distinct.)
-my $p   = new PodParser();
-my $qar = new QueryAdvisorRules(PodParser => $p);
-my $adv = new Advisor(match_type=>"pos");
+my $p   = PodParser->new();
+my $qar = QueryAdvisorRules->new(PodParser => $p);
+my $adv = Advisor->new(match_type=>"pos");
 
 # This should make $qa internally call get_rules() on $qar and save the rules
 # into its own list.  If the user plugs in his own module, we'd call
@@ -76,7 +76,7 @@ is_deeply(
 # #############################################################################
 # Ignore rules.
 # #############################################################################
-$adv = new Advisor(
+$adv = Advisor->new(
    match_type   => "pos",
    ignore_rules => { 'LIT.002' => 1 },
 );

@@ -17,20 +17,20 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts => $dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts => $dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 throws_ok(
-   sub { new ChangeHandler() },
+   sub { ChangeHandler->new() },
    qr/I need a Quoter/,
    'Needs a Quoter',
 );
 
 my @rows;
 my @dbhs;
-my $q  = new Quoter();
-my $ch = new ChangeHandler(
+my $q  = Quoter->new();
+my $ch = ChangeHandler->new(
    Quoter    => $q,
    right_db  => 'test',  # dst
    right_tbl => 'foo',
@@ -150,7 +150,7 @@ is_deeply(
 # #############################################################################
 # Test switching direction (swap src/dst).
 # #############################################################################
-$ch = new ChangeHandler(
+$ch = ChangeHandler->new(
    Quoter    => $q,
    left_db   => 'test',
    left_tbl  => 'left_foo',
@@ -204,7 +204,7 @@ SKIP: {
 
    $dbh->do('CREATE DATABASE IF NOT EXISTS test');
 
-   $ch = new ChangeHandler(
+   $ch = ChangeHandler->new(
       Quoter    => $q,
       right_db  => 'test',  # dst
       right_tbl => 'foo',
@@ -245,7 +245,7 @@ my $row = {
 my $tbl_struct = {
    col_posn => { id=>0, foo=>1, bar=>2 },
 };
-$ch = new ChangeHandler(
+$ch = ChangeHandler->new(
    Quoter     => $q,
    right_db   => 'test',       # dst
    right_tbl  => 'issue_371',
@@ -342,7 +342,7 @@ $tbl_struct = {
    cols     => [qw(a x b)],
    type_for => {a=>'int', x=>'blob', b=>'varchar'},
 };
-$ch = new ChangeHandler(
+$ch = ChangeHandler->new(
    Quoter     => $q,
    left_db    => 'test',
    left_tbl   => 'lt',
@@ -360,7 +360,7 @@ is(
    "Wraps BLOB column in CONCAT('0x', HEX(col)) AS col"
 );
 
-$ch = new ChangeHandler(
+$ch = ChangeHandler->new(
    Quoter     => $q,
    left_db    => 'test',
    left_tbl   => 'lt',
@@ -387,7 +387,7 @@ $tbl_struct = {
    cols     => [qw(t)],
    type_for => {t=>'text'},
 };
-$ch = new ChangeHandler(
+$ch = ChangeHandler->new(
    Quoter     => $q,
    left_db    => 'test',
    left_tbl   => 't',
@@ -417,7 +417,7 @@ SKIP: {
       col_posn => {id=>0, b=>1},
       type_for => {id=>'int', b=>'blob'},
    };
-   $ch = new ChangeHandler(
+   $ch = ChangeHandler->new(
       Quoter     => $q,
       left_db    => 'issue_641',
       left_tbl   => 'lt',
@@ -447,7 +447,7 @@ SKIP: {
 # Issue 387: More useful comments in mk-table-sync statements
 # #############################################################################
 @rows = ();
-$ch = new ChangeHandler(
+$ch = ChangeHandler->new(
    Quoter    => $q,
    right_db  => 'test',  # dst
    right_tbl => 'foo',

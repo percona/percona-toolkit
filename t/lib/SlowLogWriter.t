@@ -15,8 +15,8 @@ use SlowLogParser;
 use SlowLogWriter;
 use PerconaTest;
 
-my $p = new SlowLogParser;
-my $w = new SlowLogWriter;
+my $p = SlowLogParser->new;
+my $w = SlowLogWriter->new;
 
 sub __no_diff {
    my ( $filename, $expected ) = @_;

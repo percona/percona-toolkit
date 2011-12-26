@@ -15,7 +15,7 @@ use TcpdumpParser;
 use PerconaTest;
 
 my $sample = "t/lib/samples/tcpdump/";
-my $p = new TcpdumpParser();
+my $p = TcpdumpParser->new();
 
 # First, parse the TCP and IP packet...
 my $contents = <<EOF;

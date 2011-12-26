@@ -16,12 +16,12 @@ use PerconaTest;
 
 my $m;
 
-$m = new MockSth();
+$m = MockSth->new();
 
 is($m->{Active}, 0, 'Empty is not active');
 is($m->fetchrow_hashref(), undef, 'Cannot fetch from empty');
 
-$m = new MockSth(
+$m = MockSth->new(
    { a => 1 },
 );
 ok($m->{Active}, 'Has rows, is active');

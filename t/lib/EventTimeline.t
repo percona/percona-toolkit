@@ -16,10 +16,10 @@ use QueryRewriter;
 use EventTimeline;
 use PerconaTest;
 
-my $qr = new QueryRewriter();
+my $qr = QueryRewriter->new();
 my ( $result, $events, $et, $expected );
 
-$et = new EventTimeline(
+$et = EventTimeline->new(
    groupby    => [qw(fingerprint)],
    attributes => [qw(Query_time ts)],
 );

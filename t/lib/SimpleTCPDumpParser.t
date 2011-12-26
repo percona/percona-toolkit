@@ -19,7 +19,7 @@ use PerconaTest;
 
 my $in = "t/lib/samples/simple-tcpdump/"; 
 
-my $p = new SimpleTCPDumpParser(watch => ':3306');
+my $p = SimpleTCPDumpParser->new(watch => ':3306');
 
 # Check that I can parse a log in the default format.
 test_log_parser(

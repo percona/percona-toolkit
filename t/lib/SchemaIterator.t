@@ -28,14 +28,14 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $q   = new Quoter();
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $q   = Quoter->new();
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 my ($du, $tp);
-my $fi = new FileIterator();
-my $o  = new OptionParser(description => 'SchemaIterator');
+my $fi = FileIterator->new();
+my $o  = OptionParser->new(description => 'SchemaIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
 my $in  = "$trunk/t/lib/samples/mysqldump-no-data/";
@@ -54,7 +54,7 @@ sub test_so {
    my $si;
    if ( $args{files} ) {
       my $file_itr = $fi->get_file_itr(@{$args{files}});
-      $si = new SchemaIterator(
+      $si = SchemaIterator->new(
          file_itr     => $file_itr,
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          OptionParser => $o,
@@ -63,7 +63,7 @@ sub test_so {
       );
    }
    else {
-      $si = new SchemaIterator(
+      $si = SchemaIterator->new(
          dbh          => $dbh,
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          OptionParser => $o,
@@ -287,7 +287,7 @@ SKIP: {
    # mk-index-usage does not have any of the schema filters with default
    # values like --engines so when we do --tables that will be the only
    # filter.
-   $o = new OptionParser(description => 'SchemaIterator');
+   $o = OptionParser->new(description => 'SchemaIterator');
    $o->get_specs("$trunk/bin/pt-index-usage");
 
    test_so(
@@ -312,7 +312,7 @@ SKIP: {
    # ########################################################################
    # Getting CREATE TALBE (ddl).
    # ########################################################################
-   $du = new MySQLDump();
+   $du = MySQLDump->new();
    test_so(
       filters   => [qw(-t mysql.user)],
       result    => $sandbox_version eq '5.1' ? "$out/mysql-user-ddl.txt"
@@ -375,7 +375,7 @@ is(
    'No tbl_struct without TableParser'
 );
 
-$tp = new TableParser(Quoter => $q);
+$tp = TableParser->new(Quoter => $q);
 
 $objs = test_so(
    files     => ["$in/dump001.txt"],

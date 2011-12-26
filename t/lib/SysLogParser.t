@@ -14,7 +14,7 @@ use Test::More tests => 26;
 use SysLogParser;
 use PerconaTest;
 
-my $p = new SysLogParser;
+my $p = SysLogParser->new;
 
 # The final line is broken across two lines in the actual log, but it's one
 # logical event.

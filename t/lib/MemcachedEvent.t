@@ -14,7 +14,7 @@ use Test::More tests => 15;
 use MemcachedEvent;
 use PerconaTest;
 
-my $memce = new MemcachedEvent();
+my $memce = MemcachedEvent->new();
 isa_ok($memce, 'MemcachedEvent');
 
 sub make_events {

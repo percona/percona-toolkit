@@ -15,7 +15,7 @@ use PgLogParser;
 use SysLogParser;
 use PerconaTest;
 
-my $p = new PgLogParser;
+my $p = PgLogParser->new;
 
 # Run some tests of duration_to_secs().
 my @duration_tests = (

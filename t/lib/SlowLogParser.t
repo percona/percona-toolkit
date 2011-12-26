@@ -14,7 +14,7 @@ use Test::More tests => 48;
 use SlowLogParser;
 use PerconaTest;
 
-my $p      = new SlowLogParser;
+my $p      = SlowLogParser->new;
 my $sample = "t/lib/samples/slowlogs/";
 
 # Check that I can parse a slow log in the default slow log format.
@@ -653,7 +653,7 @@ test_log_parser(
    ],
 );
 
-$p = new SlowLogParser;
+$p = SlowLogParser->new;
 
 # Parses commented event lines after uncommented meta-lines
 test_log_parser(

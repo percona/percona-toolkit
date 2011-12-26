@@ -24,8 +24,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
 
 if ( !$dbh ) {
@@ -37,9 +37,9 @@ else {
 
 $dbh->do('use sakila');
 
-my $qr  = new QueryRewriter();
-my $qp  = new QueryParser();
-my $exa = new ExplainAnalyzer(QueryRewriter => $qr, QueryParser => $qp);
+my $qr  = QueryRewriter->new();
+my $qp  = QueryParser->new();
+my $exa = ExplainAnalyzer->new(QueryRewriter => $qr, QueryParser => $qp);
 
 # #############################################################################
 # Tests for getting an EXPLAIN from a database.

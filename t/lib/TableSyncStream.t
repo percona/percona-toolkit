@@ -18,19 +18,19 @@ use RowDiff;
 use ChangeHandler;
 use PerconaTest;
 
-my $q = new Quoter();
+my $q = Quoter->new();
 my @rows;
 
 throws_ok(
-   sub { new TableSyncStream() },
+   sub { TableSyncStream->new() },
    qr/I need a Quoter/,
    'Quoter required'
 );
-my $t = new TableSyncStream(
+my $t = TableSyncStream->new(
    Quoter => $q,
 );
 
-my $ch = new ChangeHandler(
+my $ch = ChangeHandler->new(
    Quoter    => $q,
    right_db  => 'test',
    right_tbl => 'foo',
@@ -74,15 +74,15 @@ is(
 # Changed from undef to 0 due to r4802.
 is( $t->done, 0, 'Not done yet' );
 
-my $d = new RowDiff( dbh => 1 );
+my $d = RowDiff->new( dbh => 1 );
 $d->compare_sets(
-   left_sth => new MockSth(
+   left_sth => MockSth->new(
       { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
       # { a => 4, b => 2, c => 3 },
    ),
-   right_sth => new MockSth(
+   right_sth => MockSth->new(
       # { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },

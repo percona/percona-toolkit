@@ -24,7 +24,7 @@ $Data::Dumper::Quotekeys = 0;
 my $sample = "$trunk/t/lib/samples/";
 
 my ($next_fh, $fh, $name, $size);
-my $fi = new FileIterator();
+my $fi = FileIterator->new();
 isa_ok($fi, 'FileIterator');
 
 # #############################################################################

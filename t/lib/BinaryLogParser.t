@@ -14,7 +14,7 @@ use Test::More tests => 7;
 use PerconaTest;
 use BinaryLogParser;
 
-my $p = new BinaryLogParser();
+my $p = BinaryLogParser->new();
 
 my $oktorun = 1;
 my $sample  = "t/lib/samples/binlogs/";

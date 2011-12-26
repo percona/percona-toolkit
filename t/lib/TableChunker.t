@@ -19,8 +19,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -32,10 +32,10 @@ else {
 
 $sb->create_dbs($dbh, ['test']);
 
-my $q  = new Quoter();
-my $p  = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
-my $c  = new TableChunker(Quoter => $q, MySQLDump => $du);
+my $q  = Quoter->new();
+my $p  = TableParser->new(Quoter => $q);
+my $du = MySQLDump->new();
+my $c  = TableChunker->new(Quoter => $q, MySQLDump => $du);
 my $t;
 
 $t = $p->parse( load_file('t/lib/samples/sakila.film.sql') );

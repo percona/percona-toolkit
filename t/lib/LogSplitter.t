@@ -19,8 +19,8 @@ my $output;
 my $tmpdir = '/tmp/LogSplitter';
 diag(`rm -rf $tmpdir ; mkdir $tmpdir`);
 
-my $lp = new SlowLogParser();
-my $ls = new LogSplitter(
+my $lp = SlowLogParser->new();
+my $ls = LogSplitter->new(
    attribute     => 'foo',
    base_dir      => $tmpdir,
    parser        => $lp,
@@ -54,7 +54,7 @@ is(
 # Test a simple split of 6 events, 3 sessions into 3 session files.
 # #############################################################################
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute      => 'Thread_id',
    base_dir       => $tmpdir,
    parser         => $lp,
@@ -92,7 +92,7 @@ is(
 # Test splitting more sessions than we can have open filehandles at once.
 # #############################################################################
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute       => 'Thread_id',
    base_dir        => $tmpdir,
    parser          => $lp,
@@ -128,7 +128,7 @@ like(
 # Test max_sessions.
 # #############################################################################
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute      => 'Thread_id',
    base_dir       => $tmpdir,
    parser         => $lp,
@@ -181,7 +181,7 @@ is_deeply(
 # Test session file merging.
 # #############################################################################
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute      => 'Thread_id',
    base_dir       => $tmpdir,
    parser         => $lp,
@@ -209,7 +209,7 @@ ok(
 # LogSplitter should pre-process queries before writing them so that they
 # do not contain blank lines.
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute     => 'Thread_id',
    base_dir      => $tmpdir,
    parser        => $lp,
@@ -226,7 +226,7 @@ is(
 
 # Make sure it works for --maxsessionfiles
 #diag(`rm -rf $tmpdir/*`);
-#$ls = new LogSplitter(
+#$ls = LogSplitter->new(
 #   attribute       => 'Thread_id',
 #   saveto_dir      => "$tmpdir/",
 #   lp              => $lp,
@@ -247,7 +247,7 @@ is(
 my $callback = sub {
    return;
 };
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute     => 'Thread_id',
    base_dir      => $tmpdir,
    parser        => $lp,
@@ -266,7 +266,7 @@ is(
 # Issue 798: Make mk-log-player --split work without an attribute
 # #############################################################################
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute      => 'Thread_id',
    split_random   => 1,
    base_dir       => $tmpdir,
@@ -294,7 +294,7 @@ is(
 # Issue 1179: mk-log-player --filter example does not work
 # #############################################################################
 diag(`rm -rf $tmpdir/*`);
-$ls = new LogSplitter(
+$ls = LogSplitter->new(
    attribute      => 'cmd',
    base_dir       => $tmpdir,
    parser         => $lp,

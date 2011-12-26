@@ -14,7 +14,7 @@ use Test::More tests => 7;
 use GeneralLogParser;
 use PerconaTest;
 
-my $p = new GeneralLogParser();
+my $p = GeneralLogParser->new();
 
 my $oktorun = 1;
 my $sample  = "t/lib/samples/genlogs/";

@@ -26,7 +26,7 @@ my %args = (
 # A simple run stopped by a proc returning and exit status.
 # #############################################################################
 
-my $pipeline = new Pipeline();
+my $pipeline = Pipeline->new();
 $pipeline->add(
    name    => 'proc1',
    process => sub {
@@ -53,7 +53,7 @@ is(
 $oktorun = 1;
 my @exit = (undef, 1);
 
-$pipeline = new Pipeline();
+$pipeline = Pipeline->new();
 $pipeline->add(
    name    => 'proc1',
    process => sub {
@@ -92,7 +92,7 @@ is(
 # #############################################################################
 
 $oktorun = 0;
-$pipeline = new Pipeline();
+$pipeline = Pipeline->new();
 $pipeline->add(
    name    => 'proc1',
    process => sub {
@@ -119,7 +119,7 @@ my $pargs = {};
 $args{pipeline_data} = $pargs;
 
 $oktorun  = 1;
-$pipeline = new Pipeline();
+$pipeline = Pipeline->new();
 $pipeline->add(
    name    => 'proc1',
    process => sub {
@@ -160,7 +160,7 @@ is(
 # Instrumentation.
 # #############################################################################
 $oktorun = 1;
-$pipeline = new Pipeline(instrument => 1);
+$pipeline = Pipeline->new(instrument => 1);
 $pipeline->add(
    name    => 'proc1',
    process => sub {
@@ -204,7 +204,7 @@ is(
 # Continue on error.
 # #############################################################################
 $oktorun  = 1;
-$pipeline = new Pipeline(continue_on_error=>1);
+$pipeline = Pipeline->new(continue_on_error=>1);
 
 my @die = qw(1 0);
 $pipeline->add(

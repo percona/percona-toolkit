@@ -16,11 +16,11 @@ use ProtocolParser;
 use HTTPProtocolParser;
 use PerconaTest;
 
-my $tcpdump  = new TcpdumpParser();
+my $tcpdump  = TcpdumpParser->new();
 my $protocol; # Create a new HTTPProtocolParser for each test.
 
 # GET a very simple page.
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -40,7 +40,7 @@ test_protocol_parser(
 );
 
 # Get http://www.percona.com/about-us.html
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -160,7 +160,7 @@ test_protocol_parser(
 );
 
 # A reponse received in out of order packet.
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -180,7 +180,7 @@ test_protocol_parser(
 );
 
 # A client request broken over 2 packets.
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -201,7 +201,7 @@ test_protocol_parser(
 
 # Out of order header that might look like the text header
 # but is really data; text header arrives last.
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -221,7 +221,7 @@ test_protocol_parser(
 );
 
 # One 2.6M image that took almost a minute to load (very slow wifi).
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -241,7 +241,7 @@ test_protocol_parser(
 );
 
 # A simple POST.
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -261,7 +261,7 @@ test_protocol_parser(
 );
 
 # .http instead of .80
-$protocol = new HTTPProtocolParser();
+$protocol = HTTPProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,

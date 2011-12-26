@@ -19,13 +19,13 @@ use BinaryLogParser;
 use Transformers;
 use PerconaTest;
 
-my $qr = new QueryRewriter();
-my $qp = new QueryParser();
-my $p  = new SlowLogParser();
-my $bp = new BinaryLogParser();
+my $qr = QueryRewriter->new();
+my $qp = QueryParser->new();
+my $p  = SlowLogParser->new();
+my $bp = BinaryLogParser->new();
 my ( $result, $events, $ea, $expected );
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'Query_time',
    attributes => {
@@ -203,7 +203,7 @@ is_deeply(
 );
 
 # Test with a nonexistent 'worst' attribute.
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'nonexistent',
    attributes => {
@@ -294,7 +294,7 @@ is_deeply( $ea->results->{globals},
 # #############################################################################
 # Test grouping on user
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'user',
    worst      => 'Query_time',
    attributes => {
@@ -729,7 +729,7 @@ is( $EVAL_ERROR, '', "Handles an undef attrib OK" );
 # #############################################################################
 # Issue 184: db OR Schema
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby => 'arg',
    attributes => {
       db => [qw(db Schema)],
@@ -758,7 +758,7 @@ is( $ea->results->{classes}->{foo2}->{db}->{min},
 # #############################################################################
 # Make sure large values are kept reasonable.
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    attributes   => { Rows_read => [qw(Rows_read)], },
    attrib_limit => 1000,
    worst        => 'foo',
@@ -864,7 +864,7 @@ is_deeply( $ea->results, $result, 'Limited attribute values', );
    }
 }
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'foo',
    attributes => {
@@ -962,7 +962,7 @@ $events = [
    },
 ];
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'tables',
    worst      => 'foo',
    attributes => {
@@ -1035,7 +1035,7 @@ is_deeply(
 );
 
 # Event attribute with space in name.
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'Query time',
    attributes => {
@@ -1054,7 +1054,7 @@ is(
 );
 
 # Make sure types can be hinted directly.
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'Query time',
    attributes => {
@@ -1080,7 +1080,7 @@ is(
 # #############################################################################
 # Issue 323: mk-query-digest does not properly handle logs with an empty Schema:
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'Query time',
    attributes => {
@@ -1257,7 +1257,7 @@ is_deeply(
 # #############################################################################
 # Issue 396: Make mk-query-digest detect properties of events to output
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby       => 'arg',
    worst         => 'Query_time',
 );
@@ -1405,7 +1405,7 @@ my $only_query_time_results =  {
       }
 };
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby    => 'arg',
    worst      => 'Query_time',
    attributes => {
@@ -1421,7 +1421,7 @@ is_deeply(
    'Do not auto-detect attributes if given explicit attributes',
 );
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby           => 'arg',
    worst             => 'Query_time',
    ignore_attributes => [ qw(new_prop other_prop Schema) ],
@@ -1439,7 +1439,7 @@ is_deeply(
 # Issue 458: mk-query-digest Use of uninitialized value in division (/) at
 # line 3805.
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby           => 'arg',
    worst             => 'Query_time',
 );
@@ -1515,7 +1515,7 @@ ok(
 # Issue 514: mk-query-digest does not create handler sub for new auto-detected
 # attributes
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby      => 'arg',
    worst        => 'Query_time',
 );
@@ -1530,7 +1530,7 @@ ok(
    'New event class has new attrib; default unroll_limit(issue 514)'
 );
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby      => 'arg',
    worst        => 'Query_time',
    unroll_limit => 50,
@@ -1562,7 +1562,7 @@ $events = [
    },
 ];
 
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby      => 'arg',
    worst        => 'Query_time',
 );
@@ -1595,7 +1595,7 @@ is_deeply(
 # Issue 607: mk-query-digest throws Possible unintended interpolation of
 # @session in string
 # #############################################################################
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby      => 'arg',
    worst        => 'Query_time',
    unroll_limit => 1,
@@ -1612,7 +1612,7 @@ is(
 # #############################################################################
 # merge()
 # #############################################################################
-my $ea1 = new EventAggregator(
+my $ea1 = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'Query_time',
    attributes => {
@@ -1625,7 +1625,7 @@ my $ea1 = new EventAggregator(
       ea2_only   => [qw(ea2_only)],
    },
 );
-my $ea2 = new EventAggregator(
+my $ea2 = EventAggregator->new(
    groupby    => 'fingerprint',
    worst      => 'Query_time',
    attributes => {
@@ -1875,7 +1875,7 @@ is(
 
 # Any attrib called *_crc should be automatically treated as a string,
 # so no need to specify type_for.
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby => 'arg',
    worst   => 'Query_time',
 );
