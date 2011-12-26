@@ -7266,7 +7266,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -7368,23 +7368,23 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
    # ########################################################################
    # Do the work.
    # ########################################################################
-   my $q         = new Quoter();
-   my $tp        = new TableParser( Quoter => $q );
-   my $vp        = new VersionParser();
-   my $ms        = new MasterSlave(VersionParser => $vp);
-   my $du        = new MySQLDump( cache => 0 );
-   my $rt        = new Retry();
-   my $chunker   = new TableChunker( Quoter => $q, MySQLDump => $du );
-   my $nibbler   = new TableNibbler( Quoter => $q, TableParser => $tp );
-   my $checksum  = new TableChecksum( Quoter => $q, VersionParser => $vp );
-   my $syncer    = new TableSyncer(
+   my $q         = Quoter->new();
+   my $tp        = TableParser->new( Quoter => $q );
+   my $vp        = VersionParser->new();
+   my $ms        = MasterSlave->new(VersionParser => $vp);
+   my $du        = MySQLDump->new( cache => 0 );
+   my $rt        = Retry->new();
+   my $chunker   = TableChunker->new( Quoter => $q, MySQLDump => $du );
+   my $nibbler   = TableNibbler->new( Quoter => $q, TableParser => $tp );
+   my $checksum  = TableChecksum->new( Quoter => $q, VersionParser => $vp );
+   my $syncer    = TableSyncer->new(
       Quoter        => $q,
       VersionParser => $vp,
       MasterSlave   => $ms,
@@ -7876,7 +7876,7 @@ sub sync_all {
       tbl      => undef,  # set later
    };
 
-   my $si = new SchemaIterator(
+   my $si = SchemaIterator->new(
       Quoter => $args{Quoter},
    );
    $si->set_filter($si->make_filter($o));
@@ -8103,8 +8103,8 @@ sub sync_a_table {
       my $change_dbh = get_change_dbh(tbl_struct => $tbl_struct, %args);
       my $actions    = make_action_subs(change_dbh => $change_dbh, %args);
 
-      my $rd = new RowDiff(dbh => $src->{misc_dbh});
-      my $ch = new ChangeHandler(
+      my $rd = RowDiff->new(dbh => $src->{misc_dbh});
+      my $ch = ChangeHandler->new(
          left_db    => $src->{db},
          left_tbl   => $src->{tbl},
          right_db   => $dst->{db},
