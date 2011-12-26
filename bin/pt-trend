@@ -1806,7 +1806,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
    $o->set('progress', undef) if $o->get('quiet');
@@ -1822,8 +1822,8 @@ sub main {
    $o->usage_or_errors();
 
    # Set up common modules.
-   my $fi  = new FileIterator();
-   my $tst = new TimeSeriesTrender(callback => \&print_report);
+   my $fi  = FileIterator->new();
+   my $tst = TimeSeriesTrender->new(callback => \&print_report);
 
    # ########################################################################
    # If --pid, check it first since we'll die if it already exists.
@@ -1833,7 +1833,7 @@ sub main {
       # We're not daemonizing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -1854,7 +1854,7 @@ sub main {
       # #####################################################################
       my $pr;
       if ( $o->get('progress') && $filename && -e $filename ) {
-         $pr = new Progress(
+         $pr = Progress->new(
             jobsize => -s $filename,
             spec    => $o->get('progress'),
             name    => $filename,
