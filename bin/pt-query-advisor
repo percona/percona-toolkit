@@ -6036,7 +6036,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -6063,9 +6063,9 @@ sub main {
    # #########################################################################
    # Load rules from POD and plugins.
    # #########################################################################
-   my $p   = new PodParser();
-   my $qar = new QueryAdvisorRules(PodParser => $p);
-   my $adv = new Advisor(
+   my $p   = PodParser->new();
+   my $qar = QueryAdvisorRules->new(PodParser => $p);
+   my $adv = Advisor->new(
       match_type   => "pos",
       ignore_rules => $o->get('ignore-rules'),
    );
@@ -6082,12 +6082,12 @@ sub main {
    # #########################################################################
    # Make common modules.
    # #########################################################################
-   my $q  = new Quoter();
-   my $qp = new QueryParser();
-   my $qr = new QueryRewriter( QueryParser => $qp );
-   my $sp = new SQLParser();
-   my $tp = new TableParser(Quoter => $q);
-   my $du = new MySQLDump();
+   my $q  = Quoter->new();
+   my $qp = QueryParser->new();
+   my $qr = QueryRewriter->new( QueryParser => $qp );
+   my $sp = SQLParser->new();
+   my $tp = TableParser->new(Quoter => $q);
+   my $du = MySQLDump->new();
    my %common_modules = (
       DSNParser     => $dp,
       Quoter        => $q,
@@ -6370,13 +6370,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -6453,7 +6453,7 @@ sub main {
    # ########################################################################
    if ( keys %severity_count ) {
       eval {
-         my $profile = new ReportFormatter(
+         my $profile = ReportFormatter->new(
             long_last_column => 1,
             extend_right     => 1,
          );
