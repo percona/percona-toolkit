@@ -2552,7 +2552,7 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -2580,7 +2580,7 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.  Keep $daemon
       # in the the scope of main() because when it's destroyed it automatically
       # removes the PID file.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -2595,8 +2595,8 @@ sub main {
 
    # Despite the name, recursing to slaves actually begins at the specified
    # server, so the named server may also be included.
-   my $vp = new VersionParser();
-   my $ms = new MasterSlave(VersionParser => $vp);
+   my $vp = VersionParser->new();
+   my $ms = MasterSlave->new(VersionParser => $vp);
    $ms->recurse_to_slaves(
       {  dbh        => $dbh,
          dsn        => $master_dsn,
