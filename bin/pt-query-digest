@@ -11803,7 +11803,7 @@ sub main {
    # ##########################################################################
    # Get configuration information.
    # ##########################################################################
-   my $o = new OptionParser();
+   my $o = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -11888,9 +11888,9 @@ sub main {
    # ########################################################################
    # Common modules.
    # #######################################################################
-   my $q  = new Quoter();
-   my $qp = new QueryParser();
-   my $qr = new QueryRewriter(QueryParser=>$qp);
+   my $q  = Quoter->new();
+   my $qp = QueryParser->new();
+   my $qr = QueryRewriter->new(QueryParser=>$qp);
    my %common_modules = (
       OptionParser  => $o,
       DSNParser     => $dp,
@@ -11913,7 +11913,7 @@ sub main {
       );
       $ep_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
 
-      $exa = new ExplainAnalyzer(
+      $exa = ExplainAnalyzer->new(
          QueryRewriter => $qr,
          QueryParser   => $qp,
       );
@@ -11926,8 +11926,8 @@ sub main {
    my $qv_dbh;  # For QueryReview
    my $qv_dbh2; # For QueryReview and --review-history
    if ( $review_dsn ) {
-      my $tp  = new TableParser(Quoter => $q);
-      my $du  = new MySQLDump();
+      my $tp  = TableParser->new(Quoter => $q);
+      my $du  = MySQLDump->new();
       $qv_dbh = get_cxn(
          for          => '--review',
          dsn          => $review_dsn,
@@ -11962,7 +11962,7 @@ sub main {
 
       # Set up the new QueryReview object.
       my $struct = $tp->parse($du->get_create_table($qv_dbh, $q, @db_tbl));
-      $qv = new QueryReview(
+      $qv = QueryReview->new(
          dbh         => $qv_dbh,
          db_tbl      => $db_tbl,
          tbl_struct  => $struct,
@@ -12067,7 +12067,7 @@ sub main {
    my $instrument = $o->get('pipeline-profile') || $o->get('execute-throttle');
    MKDEBUG && _d('Instrument:', $instrument);
 
-   my $pipeline = new Pipeline(
+   my $pipeline = Pipeline->new(
       instrument        => $instrument,
       continue_on_error => $o->get('continue-on-error'),
    );
@@ -12096,7 +12096,7 @@ sub main {
    } # prep
 
    { # input
-      my $fi        = new FileIterator();
+      my $fi        = FileIterator->new();
       my $next_file = $fi->get_file_itr(@ARGV);
       my $input_fh; # the current input fh
       my $pr;       # Progress obj for ^
@@ -12138,7 +12138,7 @@ sub main {
 
                   # Make a progress reporter, one per file.
                   if ( $o->get('progress') && $filename && -e $filename ) {
-                     $pr = new Progress(
+                     $pr = Progress->new(
                         jobsize => $filesize,
                         spec    => $o->get('progress'),
                         name    => $filename,
@@ -12161,8 +12161,8 @@ sub main {
    { # event
       my $misc;
       if ( my $ps_dsn = $o->get('processlist') ) {
-         my $ms = new MasterSlave();
-         my $pl = new Processlist(
+         my $ms = MasterSlave->new();
+         my $pl = Processlist->new(
             interval    => $o->get('interval') * 1_000_000,
             MasterSlave => $ms
          );
@@ -12321,7 +12321,7 @@ sub main {
       else {
          $now_callback = sub { return; };
       }
-      $pipeline_data->{Runtime} = new Runtime(
+      $pipeline_data->{Runtime} = Runtime->new(
          now     => $now_callback,
          runtime => $o->get('run-time'),
       );
@@ -12537,7 +12537,7 @@ sub main {
 
                if ( $o->get('statistics') ) {
                   if ( keys %stats ) {
-                     my $report = new ReportFormatter(
+                     my $report = ReportFormatter->new(
                         line_width => 74,
                      );
                      $report->set_columns(
@@ -12858,7 +12858,7 @@ sub main {
             );
          };
 
-         $et = new ExecutionThrottler(
+         $et = ExecutionThrottler->new(
             rate_max  => $rate_max,
             get_rate  => $get_rate,
             check_int => $int,
@@ -12974,7 +12974,7 @@ sub main {
    } # execute throttle and execute
 
    if ( $o->get('print') ) {
-      my $w = new SlowLogWriter();
+      my $w = SlowLogWriter->new();
       $pipeline->add(
          name    => 'print',
          process => sub {
@@ -13017,7 +13017,7 @@ sub main {
          Killed       => 'bool',
       };
 
-      my $ea = new EventAggregator(
+      my $ea = EventAggregator->new(
          groupby           => $groupby,
          attributes        => { %attributes },
          worst             => $orderby_attrib,
@@ -13040,7 +13040,7 @@ sub main {
       # If user wants a timeline report, too, then create an EventTimeline
       # aggregator for this groupby attrib and add it to the callbacks, too.
       if ( $o->get('timeline') ) {
-         my $tl = new EventTimeline(
+         my $tl = EventTimeline->new(
             groupby    => [$groupby],
             attributes => [qw(Query_time ts)],
          );
@@ -13062,13 +13062,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -13159,14 +13159,14 @@ sub print_reports {
             $print_header = 1;
          }
 
-         my $qrf = new QueryReportFormatter(
+         my $qrf = QueryReportFormatter->new(
             dbh             => $ep_dbh,
             %args,
          );
          # http://code.google.com/p/maatkit/issues/detail?id=1141
          $qrf->set_report_formatter(
             report    => 'profile',
-            formatter => new ReportFormatter (
+            formatter => ReportFormatter->new(
                line_width       => $o->get('explain') ? 82 : 74,
                long_last_column => 1,
                extend_right     => 1,
@@ -13221,7 +13221,7 @@ sub print_reports {
    } # Each groupby
 
    if ( $o->get('pipeline-profile') ) {
-      my $report = new ReportFormatter(
+      my $report = ReportFormatter->new(
          line_width => 74,
       );
       $report->set_columns(
