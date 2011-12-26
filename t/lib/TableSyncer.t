@@ -38,8 +38,8 @@ use PerconaTest;
 
 use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh      = $sb->get_dbh_for('master');
 my $src_dbh  = $sb->get_dbh_for('master');
 my $dst_dbh  = $sb->get_dbh_for('slave1');
@@ -57,43 +57,43 @@ else {
 $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', 't/lib/samples/before-TableSyncChunk.sql');
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump( cache => 0 );
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter=>$q);
+my $du = MySQLDump->new( cache => 0 );
 
 # ###########################################################################
 # Make a TableSyncer object.
 # ###########################################################################
 throws_ok(
-   sub { new TableSyncer() },
+   sub { TableSyncer->new() },
    qr/I need a MasterSlave/,
    'MasterSlave required'
 );
 throws_ok(
-   sub { new TableSyncer(MasterSlave=>1) },
+   sub { TableSyncer->new(MasterSlave=>1) },
    qr/I need a Quoter/,
    'Quoter required'
 );
 throws_ok(
-   sub { new TableSyncer(MasterSlave=>1, Quoter=>1) },
+   sub { TableSyncer->new(MasterSlave=>1, Quoter=>1) },
    qr/I need a VersionParser/,
    'VersionParser required'
 );
 throws_ok(
-   sub { new TableSyncer(MasterSlave=>1, Quoter=>1, VersionParser=>1) },
+   sub { TableSyncer->new(MasterSlave=>1, Quoter=>1, VersionParser=>1) },
    qr/I need a TableChecksum/,
    'TableChecksum required'
 );
 
-my $rd       = new RowDiff(dbh=>$src_dbh);
-my $ms       = new MasterSlave();
-my $vp       = new VersionParser();
-my $rt       = new Retry();
-my $checksum = new TableChecksum(
+my $rd       = RowDiff->new(dbh=>$src_dbh);
+my $ms       = MasterSlave->new();
+my $vp       = VersionParser->new();
+my $rt       = Retry->new();
+my $checksum = TableChecksum->new(
    Quoter         => $q,
    VersionParser => $vp,
 );
-my $syncer = new TableSyncer(
+my $syncer = TableSyncer->new(
    MasterSlave   => $ms,
    Quoter        => $q,
    TableChecksum => $checksum,
@@ -103,8 +103,8 @@ my $syncer = new TableSyncer(
 );
 isa_ok($syncer, 'TableSyncer');
 
-my $chunker = new TableChunker( Quoter => $q, MySQLDump => $du );
-my $nibbler = new TableNibbler( TableParser => $tp, Quoter => $q );
+my $chunker = TableChunker->new( Quoter => $q, MySQLDump => $du );
+my $nibbler = TableNibbler->new( TableParser => $tp, Quoter => $q );
 
 # Global vars used/set by the subs below and accessed throughout the tests.
 my $src;
@@ -117,18 +117,18 @@ my $plugins = [];
 
 # Call this func to re-make/reset the plugins.
 sub make_plugins {
-   $sync_chunk = new TableSyncChunk(
+   $sync_chunk = TableSyncChunk->new(
       TableChunker => $chunker,
       Quoter       => $q,
    );
-   $sync_nibble = new TableSyncNibble(
+   $sync_nibble = TableSyncNibble->new(
       TableNibbler  => $nibbler,
       TableChunker  => $chunker,
       TableParser   => $tp,
       Quoter        => $q,
    );
-   $sync_groupby = new TableSyncGroupBy( Quoter => $q );
-   $sync_stream  = new TableSyncStream( Quoter => $q );
+   $sync_groupby = TableSyncGroupBy->new( Quoter => $q );
+   $sync_stream  = TableSyncStream->new( Quoter => $q );
 
    $plugins = [$sync_chunk, $sync_nibble, $sync_groupby, $sync_stream];
 
@@ -137,7 +137,7 @@ sub make_plugins {
 
 sub new_ch {
    my ( $dbh, $queue ) = @_;
-   return new ChangeHandler(
+   return ChangeHandler->new(
       Quoter    => $q,
       left_db   => $src->{db},
       left_tbl  => $src->{tbl},

@@ -15,7 +15,7 @@ use OptionParser;
 use DSNParser;
 use PerconaTest;
 
-my $o  = new OptionParser(
+my $o  = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>",
 );
@@ -87,7 +87,7 @@ my $dsn_opts = [
       copy => 1,
    },
 ];
-my $dp = new DSNParser(opts => $dsn_opts);
+my $dp = DSNParser->new(opts => $dsn_opts);
 
 # #############################################################################
 # Test basic usage.
@@ -102,7 +102,7 @@ ok(
 );
 
 # More exhaustive test of how the standard interface works internally.
-$o  = new OptionParser(
+$o  = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -450,7 +450,7 @@ like(
 # #############################################################################
 # Test option defaults.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME [OPTIONS]",
 );
@@ -715,7 +715,7 @@ ok(
    'Options aligned and custom prompt included'
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -732,7 +732,7 @@ ok(
 # #############################################################################
 # Test _get_participants()
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -757,7 +757,7 @@ is_deeply(
 # #############################################################################
 # Test required options.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -795,7 +795,7 @@ is(
 # #############################################################################
 # Test option rules.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -834,7 +834,7 @@ my @ird_specs = (
    { spec => 'delete|d',   desc => 'Delete'                                   },
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -850,7 +850,7 @@ is_deeply(
    'Error set with long opt name and nice commas when rule violated',
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description => 'OptionParser.t parses command line options.',
    usage       => "$PROGRAM_NAME <options>",
 );
@@ -866,7 +866,7 @@ like(
    'Die on using nonexistent option in one-and-only-one rule'
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>",
 );
@@ -882,7 +882,7 @@ is_deeply(
    'Error set with one-and-only-one rule violated',
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -898,7 +898,7 @@ is_deeply(
    'Error set with one-and-only-one when none specified',
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -914,7 +914,7 @@ is_deeply(
    'Error set with at-least-one when none specified',
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -930,7 +930,7 @@ ok(
 );
 use Data::Dumper;
 $Data::Dumper::Indent=1;
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -966,7 +966,7 @@ is_deeply(
 );
 
 # Option can't disable a nonexistent option.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -983,7 +983,7 @@ like(
 );
 
 # Option can't 'allowed with' a nonexistent option.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1003,7 +1003,7 @@ like(
 # #############################################################################
 # Test default values encoded in description.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1094,7 +1094,7 @@ is(
 # #############################################################################
 # Test size option type.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1145,7 +1145,7 @@ is_deeply(
 # #############################################################################
 # Test time option type.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1194,7 +1194,7 @@ is_deeply(
 );
 
 # Use shorter, simpler specs to test usage for time blurb.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>",
 );
@@ -1219,7 +1219,7 @@ is_deeply(
 # #############################################################################
 # Test DSN option type.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1272,7 +1272,7 @@ ok(
    'DSN stringified with inheritance into post-processed args'
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1304,7 +1304,7 @@ is_deeply(
 # #############################################################################
 # Test [Hh]ash and [Aa]rray option types.
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1368,7 +1368,7 @@ ok(
 # Test groups.
 # #############################################################################
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1418,7 +1418,7 @@ is_deeply(
 # #############################################################################
 # Test clone().
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1493,7 +1493,7 @@ is_deeply(
    'Reads a config file',
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1513,7 +1513,7 @@ is_deeply(
 );
 ok(!$o->got('config'), 'Did not got --config');
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1530,7 +1530,7 @@ ok(
 );
 
 @ARGV=qw(--config /path/to/config --cat);
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1552,7 +1552,7 @@ ok(
    'Parses special --config option first',
 );
 
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1575,7 +1575,7 @@ is_deeply(
 );
 
 # And now we can actually get it to read a config file into the options!
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>",
 );
@@ -1617,7 +1617,7 @@ is($o->get('verbose'), 2, 'Got --verbose value twice');
 # Issue 409: OptionParser modifies second value of
 # ' -- .*','(\w+): ([^,]+)' for array type opt
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1638,7 +1638,7 @@ is_deeply(
 # #############################################################################
 # Issue 349: Make OptionParser die on unrecognized attributes
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1655,7 +1655,7 @@ like(
 # #############################################################################
 
 # The problem is actually in how OptionParser handles copying DSN vals.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1694,7 +1694,7 @@ is_deeply(
 # See the 5 cases (i.-v.) at http://groups.google.com/group/maatkit-discuss/browse_thread/thread/f4bf1e659c60f03e
 
 # case ii.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1765,7 +1765,7 @@ is_deeply(
 #  Issue 617: Command line options do no override config file options
 # #############################################################################
 diag(`echo "iterations=4" > ~/.OptionParser.t.conf`);
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1784,7 +1784,7 @@ diag(`rm -rf ~/.OptionParser.t.conf`);
 # #############################################################################
 
 # time type opts need to allow leading +/-
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1820,7 +1820,7 @@ is(
 # This happens because --ignore-attributes has a really long default
 # value like val,val,val.  man can't break this line unless that list
 # has spaces like val, val, val.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1839,7 +1839,7 @@ is_deeply(
 # #############################################################################
 # Issue 940: OptionParser cannot resolve option dependencies
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1881,7 +1881,7 @@ is_deeply(
 );
 
 # Should die on circular dependency, avoid infinite loop.
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1914,7 +1914,7 @@ throws_ok(
 # #############################################################################
 # Issue 344
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1932,7 +1932,7 @@ is(
 # #############################################################################
 # Issue 55: Integrate DSN specifications into POD
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1954,7 +1954,7 @@ like(
 # #############################################################################
 # Issue 1123: OptionParser type: string; default: 0 doesn't work
 # #############################################################################
-$o = new OptionParser(
+$o = OptionParser->new(
    description  => 'OptionParser.t parses command line options.',
    usage        => "$PROGRAM_NAME <options>"
 );
@@ -1971,7 +1971,7 @@ is(
 # #############################################################################
 # Issue 338: Make all of tool's --help output come from POD
 # #############################################################################
-$o = new OptionParser(file => "$trunk/bin/pt-archiver");
+$o = OptionParser->new(file => "$trunk/bin/pt-archiver");
 
 my %synop  = $o->_parse_synopsis();
 

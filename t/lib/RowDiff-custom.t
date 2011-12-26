@@ -76,15 +76,15 @@ use TableParser;
 use MySQLDump;
 use Quoter;
 
-my $d  = new RowDiff(dbh => 1);
-my $s  = new MockSync();
-my $q  = new Quoter();
-my $du = new MySQLDump();
-my $tp = new TableParser(Quoter => $q);
-my $dp = new DSNParser(opts=>$dsn_opts);
+my $d  = RowDiff->new(dbh => 1);
+my $s  = MockSync->new();
+my $q  = Quoter->new();
+my $du = MySQLDump->new();
+my $tp = TableParser->new(Quoter => $q);
+my $dp = DSNParser->new(opts=>$dsn_opts);
 
 # Connect to sandbox now to make sure it's running.
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 if ( !$master_dbh ) {
@@ -108,7 +108,7 @@ my $left_sth  = $master_dbh->prepare('SELECT * FROM test.issue_11');
 my $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
 $left_sth->execute();
 $right_sth->execute();
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
    left  => $left_sth,
    right => $right_sth,
@@ -126,7 +126,7 @@ $left_sth  = $master_dbh->prepare('SELECT * FROM test.issue_11');
 $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
 $left_sth->execute();
 $right_sth->execute();
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
    left   => $left_sth,
    right  => $right_sth,
@@ -149,7 +149,7 @@ $left_sth  = $master_dbh->prepare('SELECT * FROM test.issue_11');
 $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
 $left_sth->execute();
 $right_sth->execute();
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
    left   => $left_sth,
    right  => $right_sth,
@@ -170,7 +170,7 @@ $left_sth  = $master_dbh->prepare('SELECT * FROM test.issue_11');
 $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
 $left_sth->execute();
 $right_sth->execute();
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
    left   => $left_sth,
    right  => $right_sth,

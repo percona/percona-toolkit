@@ -20,8 +20,8 @@ use Sandbox;
 use CompareWarnings;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
 
 if ( !$dbh ) {
@@ -35,8 +35,8 @@ $sb->create_dbs($dbh, ['test']);
 
 Transformers->import(qw(make_checksum));
 
-my $q  = new Quoter();
-my $qp = new QueryParser();
+my $q  = Quoter->new();
+my $qp = QueryParser->new();
 my %modules = (
    Quoter      => $q,
    QueryParser => $qp,
@@ -88,7 +88,7 @@ diag(`/tmp/12345/use < $trunk/t/lib/samples/compare-warnings.sql`);
    },
 );
 
-$cw = new CompareWarnings(
+$cw = CompareWarnings->new(
    'clear-warnings'       => 1,
    'clear-warnings-table' => 'mysql.bad',
    get_id => \&get_id,
@@ -110,7 +110,7 @@ like(
    "Can't clear warnings with bad table"
 );
 
-$cw = new CompareWarnings(
+$cw = CompareWarnings->new(
    'clear-warnings' => 1,
    get_id => \&get_id,
    %modules,

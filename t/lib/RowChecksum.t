@@ -20,8 +20,8 @@ use OptionParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -33,13 +33,13 @@ else {
 
 $sb->create_dbs($dbh, ['test']);
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
-my $o  = new OptionParser(description => 'NibbleIterator');
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
+my $du = MySQLDump->new();
+my $o  = OptionParser->new(description => 'NibbleIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
-my $c  = new RowChecksum(
+my $c  = RowChecksum->new(
    OptionParser  => $o,
    Quoter        => $q,
 );

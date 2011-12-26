@@ -15,7 +15,7 @@ use TimeSeriesTrender;
 use PerconaTest;
 
 my $result;
-my $tst = new TimeSeriesTrender(
+my $tst = TimeSeriesTrender->new(
    callback => sub { $result = $_[0]; },
 );
 

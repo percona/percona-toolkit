@@ -32,8 +32,8 @@ use Sandbox;
 use CompareResults;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh1 = $sb->get_dbh_for('master');
 my $dbh2 = $sb->get_dbh_for('slave1');
 
@@ -51,15 +51,15 @@ $sb->create_dbs($dbh1, ['test']);
 
 Transformers->import(qw(make_checksum));
 
-my $vp = new VersionParser();
-my $q  = new Quoter();
-my $qp = new QueryParser();
-my $du = new MySQLDump(cache => 0);
-my $tp = new TableParser(Quoter => $q);
-my $tc = new TableChecksum(Quoter => $q, VersionParser => $vp);
-my $of = new Outfile();
-my $rr = new Retry();
-my $ts = new TableSyncer(
+my $vp = VersionParser->new();
+my $q  = Quoter->new();
+my $qp = QueryParser->new();
+my $du = MySQLDump->new(cache => 0);
+my $tp = TableParser->new(Quoter => $q);
+my $tc = TableChecksum->new(Quoter => $q, VersionParser => $vp);
+my $of = Outfile->new();
+my $rr = Retry->new();
+my $ts = TableSyncer->new(
    Quoter        => $q,
    VersionParser => $vp,
    TableChecksum => $tc,
@@ -76,7 +76,7 @@ my %modules = (
    Outfile       => $of,
 );
 
-my $plugin = new TableSyncGroupBy(Quoter => $q);
+my $plugin = TableSyncGroupBy->new(Quoter => $q);
 
 my $cr;
 my $i;
@@ -112,7 +112,7 @@ sub get_id {
 
 diag(`/tmp/12345/use < $trunk/t/lib/samples/compare-results.sql`);
 
-$cr = new CompareResults(
+$cr = CompareResults->new(
    method     => 'checksum',
    'base-dir' => '/dev/null',  # not used with checksum method
    plugins    => [$plugin],
@@ -333,7 +333,7 @@ my $tmpdir = '/tmp/mk-upgrade-res';
 diag(`/tmp/12345/use < $trunk/t/lib/samples/compare-results.sql`);
 diag(`rm -rf $tmpdir; mkdir $tmpdir`);
 
-$cr = new CompareResults(
+$cr = CompareResults->new(
    method     => 'rows',
    'base-dir' => $tmpdir,
    plugins    => [$plugin],
@@ -728,7 +728,7 @@ is(
    },
 );
 
-$cr = new CompareResults(
+$cr = CompareResults->new(
    method     => 'checksum',
    'base-dir' => '/dev/null',  # not used with checksum method
    plugins    => [$plugin],
@@ -758,7 +758,7 @@ is_deeply(
    'No differences after bad compare()'
 );
 
-$cr = new CompareResults(
+$cr = CompareResults->new(
    method     => 'rows',
    'base-dir' => $tmpdir,
    plugins    => [$plugin],

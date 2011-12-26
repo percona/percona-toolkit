@@ -23,18 +23,18 @@ use PerconaTest;
 
 my ($d, $s);
 
-my $q  = new Quoter();
-my $du = new MySQLDump();
-my $tp = new TableParser(Quoter => $q);
-my $dp = new DSNParser(opts=>$dsn_opts);
+my $q  = Quoter->new();
+my $du = MySQLDump->new();
+my $tp = TableParser->new(Quoter => $q);
+my $dp = DSNParser->new(opts=>$dsn_opts);
 
 # Connect to sandbox now to make sure it's running.
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 
-throws_ok( sub { new RowDiff() }, qr/I need a dbh/, 'DBH required' );
-$d = new RowDiff(dbh => 1);
+throws_ok( sub { RowDiff->new() }, qr/I need a dbh/, 'DBH required' );
+$d = RowDiff->new(dbh => 1);
 
 # #############################################################################
 # Test key_cmp().
@@ -162,10 +162,10 @@ is(
 # Test compare_sets() using a mock syncer.
 # #############################################################################
 
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
-   left_sth   => new MockSth(),
-   right_sth  => new MockSth(),
+   left_sth   => MockSth->new(),
+   right_sth  => MockSth->new(),
    syncer     => $s,
    tbl_struct => {},
 );
@@ -177,11 +177,11 @@ is_deeply(
    'no rows',
 );
 
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
-   left_sth   => new MockSth(
+   left_sth   => MockSth->new(
    ),
-   right_sth  => new MockSth(
+   right_sth  => MockSth->new(
       { a => 1, b => 2, c => 3 },
    ),
    syncer     => $s,
@@ -196,12 +196,12 @@ is_deeply(
    'right only',
 );
 
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
-   left_sth   => new MockSth(
+   left_sth   => MockSth->new(
       { a => 1, b => 2, c => 3 },
    ),
-   right_sth  => new MockSth(
+   right_sth  => MockSth->new(
    ),
    syncer     => $s,
    tbl_struct => {},
@@ -215,12 +215,12 @@ is_deeply(
    'left only',
 );
 
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
-   left_sth   => new MockSth(
+   left_sth   => MockSth->new(
       { a => 1, b => 2, c => 3 },
    ),
-   right_sth  => new MockSth(
+   right_sth  => MockSth->new(
       { a => 1, b => 2, c => 3 },
    ),
    syncer     => $s,
@@ -235,15 +235,15 @@ is_deeply(
    'one identical row',
 );
 
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
-   left_sth  => new MockSth(
+   left_sth  => MockSth->new(
       { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
       # { a => 4, b => 2, c => 3 },
    ),
-   right_sth  => new MockSth(
+   right_sth  => MockSth->new(
       # { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
@@ -264,12 +264,12 @@ is_deeply(
    'differences in basic set of rows',
 );
 
-$s = new MockSync();
+$s = MockSync->new();
 $d->compare_sets(
-   left_sth   => new MockSth(
+   left_sth   => MockSth->new(
       { a => 1, b => 2, c => 3 },
    ),
-   right_sth  => new MockSth(
+   right_sth  => MockSth->new(
       { a => 1, b => 2, c => 3 },
    ),
    syncer     => $s,
@@ -287,13 +287,13 @@ is_deeply(
 SKIP: {
    skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
 
-   $d = new RowDiff(dbh => $master_dbh);
-   $s = new MockSync();
+   $d = RowDiff->new(dbh => $master_dbh);
+   $s = MockSync->new();
    $d->compare_sets(
-      left_sth   => new MockSth(
+      left_sth   => MockSth->new(
          { a => 'A', b => 2, c => 3 },
       ),
-      right_sth  => new MockSth(
+      right_sth  => MockSth->new(
          # The difference is the lowercase 'a', which in a _ci collation will
          # sort the same.  So the rows are really identical, from MySQL's point
          # of view.
@@ -329,8 +329,8 @@ my $key_cmp = sub {
    push @rows, "col $col differs";
 };
 
-$s = new MockSync();
-$d = new RowDiff(
+$s = MockSync->new();
+$d = RowDiff->new(
    dbh          => 1,
    key_cmp      => $key_cmp,
    same_row     => $same_row,
@@ -339,13 +339,13 @@ $d = new RowDiff(
 );
 @rows = ();
 $d->compare_sets(
-   left_sth => new MockSth(
+   left_sth => MockSth->new(
       { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
       # { a => 4, b => 2, c => 3 },
    ),
-   right_sth => new MockSth(
+   right_sth => MockSth->new(
       # { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
@@ -367,7 +367,7 @@ is_deeply(
 );
 
 my $i = 0;
-$d = new RowDiff(
+$d = RowDiff->new(
    dbh          => 1,
    key_cmp      => $key_cmp,
    same_row     => $same_row,
@@ -377,13 +377,13 @@ $d = new RowDiff(
 );
 @rows = ();
 $d->compare_sets(
-   left_sth => new MockSth(
+   left_sth => MockSth->new(
       { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
       # { a => 4, b => 2, c => 3 },
    ),
-   right_sth => new MockSth(
+   right_sth => MockSth->new(
       # { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
@@ -403,7 +403,7 @@ is_deeply(
    'done callback'
 );
 
-$d = new RowDiff(
+$d = RowDiff->new(
    dbh          => 1,
    key_cmp      => $key_cmp,
    same_row     => $same_row,
@@ -416,11 +416,11 @@ $d = new RowDiff(
 );
 @rows = ();
 $d->compare_sets(
-   left_sth => new MockSth(
+   left_sth => MockSth->new(
       { a => 1, b => 2, c => 3 },
       { a => 4, b => 5, c => 6 },
    ),
-   right_sth => new MockSth(
+   right_sth => MockSth->new(
       { a => 7,  b => 8,  c => 9  },
       { a => 10, b => 11, c => 12 },
    ),
@@ -444,7 +444,7 @@ SKIP: {
    skip 'Cannot connect to sandbox master', 4 unless $master_dbh;
    skip 'Cannot connect to sandbox slave',  4 unless $slave_dbh;
 
-   $d = new RowDiff(dbh => $master_dbh);
+   $d = RowDiff->new(dbh => $master_dbh);
 
    diag(`$trunk/sandbox/mk-test-env reset >/dev/null 2>&1`);
    $sb->create_dbs($master_dbh, [qw(test)]);
@@ -469,7 +469,7 @@ SKIP: {
    my $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
    $left_sth->execute();
    $right_sth->execute();
-   $s = new MockSync();
+   $s = MockSync->new();
    $d->compare_sets(
       left_sth   => $left_sth,
       right_sth  => $right_sth,
@@ -487,7 +487,7 @@ SKIP: {
    $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
    $left_sth->execute();
    $right_sth->execute();
-   $s = new MockSync();
+   $s = MockSync->new();
    $d->compare_sets(
       left_sth   => $left_sth,
       right_sth  => $right_sth,
@@ -510,7 +510,7 @@ SKIP: {
    $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
    $left_sth->execute();
    $right_sth->execute();
-   $s = new MockSync();
+   $s = MockSync->new();
    $d->compare_sets(
       left_sth   => $left_sth,
       right_sth  => $right_sth,
@@ -531,7 +531,7 @@ SKIP: {
    $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');
    $left_sth->execute();
    $right_sth->execute();
-   $s = new MockSync();
+   $s = MockSync->new();
    $d->compare_sets(
       left_sth   => $left_sth,
       right_sth  => $right_sth,

@@ -164,8 +164,8 @@ is(
 
 use DSNParser;
 use Sandbox;
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 SKIP: {
    skip 'Cannot connect to sandbox master', 1 unless $dbh;

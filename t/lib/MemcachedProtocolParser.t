@@ -15,11 +15,11 @@ use MemcachedProtocolParser;
 use TcpdumpParser;
 use PerconaTest;
 
-my $tcpdump  = new TcpdumpParser();
+my $tcpdump  = TcpdumpParser->new();
 my $protocol; # Create a new MemcachedProtocolParser for each test.
 
 # A session with a simple set().
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -41,7 +41,7 @@ test_protocol_parser(
 );
 
 # A session with a simple get().
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -63,7 +63,7 @@ test_protocol_parser(
 );
 
 # A session with a simple incr() and decr().
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -97,7 +97,7 @@ test_protocol_parser(
 );
 
 # A session with a simple incr() and decr(), but the value doesn't exist.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -132,7 +132,7 @@ test_protocol_parser(
 );
 
 # A session with a huge set() that will not fit into a single TCP packet.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -154,7 +154,7 @@ test_protocol_parser(
 );
 
 # A session with a huge get() that will not fit into a single TCP packet.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -177,7 +177,7 @@ test_protocol_parser(
 );
 
 # A session with a get() that doesn't exist.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -202,7 +202,7 @@ test_protocol_parser(
 # A session with a huge get() that will not fit into a single TCP packet, but
 # the connection seems to be broken in the middle of the receive and then the
 # new client picks up and asks for something different.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -237,7 +237,7 @@ test_protocol_parser(
 );
 
 # A session with a delete() that doesn't exist. TODO: delete takes a queue_time.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -260,7 +260,7 @@ test_protocol_parser(
 );
 
 # A session with a delete() that does exist.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -286,7 +286,7 @@ test_protocol_parser(
 # Issue 537: MySQLProtocolParser and MemcachedProtocolParser do not handle
 # multiple servers.
 # #############################################################################
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -324,7 +324,7 @@ test_protocol_parser(
 # #############################################################################
 
 # Multiple delete in one packet.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -346,7 +346,7 @@ test_protocol_parser(
 );
 
 # Multiple mixed commands: get delete delete
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -375,7 +375,7 @@ test_protocol_parser(
 # #############################################################################
 
 # A replace command.
-$protocol = new MemcachedProtocolParser();
+$protocol = MemcachedProtocolParser->new();
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,

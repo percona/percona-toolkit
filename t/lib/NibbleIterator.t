@@ -31,8 +31,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -42,12 +42,12 @@ else {
    plan tests => 20;
 }
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump();
-my $nb = new TableNibbler(TableParser=>$tp, Quoter=>$q);
-my $o  = new OptionParser(description => 'NibbleIterator');
-my $rc = new RowChecksum(OptionParser => $o, Quoter=>$q);
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter=>$q);
+my $du = MySQLDump->new();
+my $nb = TableNibbler->new(TableParser=>$tp, Quoter=>$q);
+my $o  = OptionParser->new(description => 'NibbleIterator');
+my $rc = RowChecksum->new(OptionParser => $o, Quoter=>$q);
 
 $o->get_specs("$trunk/bin/pt-table-checksum");
 
@@ -70,8 +70,8 @@ sub make_nibble_iter {
    @ARGV = $args{argv} ? @{$args{argv}} : ();
    $o->get_opts();
 
-   my $schema = new Schema();
-   my $si     = new SchemaIterator(
+   my $schema = Schema->new();
+   my $si     = SchemaIterator->new(
       dbh          => $dbh,
       keep_ddl     => 1,
       Schema       => $schema,
@@ -79,7 +79,7 @@ sub make_nibble_iter {
    );
    1 while $si->next_schema_object();
 
-   my $ni = new NibbleIterator(
+   my $ni = NibbleIterator->new(
       dbh       => $dbh,
       tbl       => $schema->get_table($args{db}, $args{tbl}),
       callbacks => $args{callbacks},

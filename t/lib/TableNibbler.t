@@ -16,9 +16,9 @@ use TableNibbler;
 use Quoter;
 use PerconaTest;
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
-my $n  = new TableNibbler(
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
+my $n  = TableNibbler->new(
    TableParser => $tp,
    Quoter      => $q,
 );

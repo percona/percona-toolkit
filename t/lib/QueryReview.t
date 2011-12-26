@@ -23,8 +23,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
 
 if ( !$dbh ) {
@@ -37,16 +37,16 @@ else {
 $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', "t/lib/samples/query_review.sql");
 my $output = "";
-my $qr = new QueryRewriter();
-my $lp = new SlowLogParser;
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
-my $opt_parser = new OptionParser( description => 'hi' );
+my $qr = QueryRewriter->new();
+my $lp = SlowLogParser->new;
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
+my $du = MySQLDump->new();
+my $opt_parser = OptionParser->new( description => 'hi' );
 my $tbl_struct = $tp->parse(
    $du->get_create_table($dbh, $q, 'test', 'query_review'));
 
-my $qv = new QueryReview(
+my $qv = QueryReview->new(
    dbh        => $dbh,
    db_tbl     => '`test`.`query_review`',
    tbl_struct => $tbl_struct,

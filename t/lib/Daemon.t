@@ -15,8 +15,8 @@ use Daemon;
 use OptionParser;
 use PerconaTest;
 
-my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
-my $d = new Daemon(o=>$o);
+my $o = OptionParser->new(file => "$trunk/t/lib/samples/daemonizes.pl");
+my $d = Daemon->new(o=>$o);
 
 my $pid_file = '/tmp/daemonizes.pl.pid';
 my $log_file = '/tmp/daemonizes.output'; 
@@ -201,7 +201,7 @@ rm_tmp_files();
    @ARGV = qw(--pid /tmp/d2.pid);
    $o->get_specs("$trunk/t/lib/samples/daemonizes.pl");
    $o->get_opts();
-   my $d2 = new Daemon(o=>$o);
+   my $d2 = Daemon->new(o=>$o);
    $d2->make_PID_file();
    ok(
       -f '/tmp/d2.pid',
@@ -222,7 +222,7 @@ ok(
    @ARGV = qw(--pid /tmp/d2.pid);
    $o->get_opts();
    eval {
-      my $d2 = new Daemon(o=>$o);  # should die here actually
+      my $d2 = Daemon->new(o=>$o);  # should die here actually
       $d2->make_PID_file();
    };
    like(

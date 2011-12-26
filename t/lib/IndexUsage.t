@@ -28,12 +28,12 @@ $Data::Dumper::Quotekeys = 0;
 
 Transformers->import(qw(make_checksum));
 
-my $qr  = new QueryRewriter();
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $qr  = QueryRewriter->new();
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
-my $iu = new IndexUsage();
+my $iu = IndexUsage->new();
 
 # These are mock TableParser::get_keys() structs.
 my $actor_idx = {
@@ -118,7 +118,7 @@ SKIP: {
    # pre-populate the tables with mysql.*, sakila.*, etc.
    `$trunk/bin/pt-index-usage -F /tmp/12345/my.sandbox.cnf --create-save-results-database --save-results-database D=mk_iu --empty-save-results-tables --no-report --quiet --databases foo $trunk/t/lib/samples/empty >/dev/null`;
 
-   $iu = new IndexUsage();
+   $iu = IndexUsage->new();
 
    # #####################################################################
    # First, add all the index, tbl and query data.

@@ -21,8 +21,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $trp = new TextResultSetParser();
-my $cc  = new MySQLConfigComparer();
+my $trp = TextResultSetParser->new();
+my $cc  = MySQLConfigComparer->new();
 my $c1;
 my $c2;
 
@@ -47,7 +47,7 @@ sub missing {
    return $missing;
 }
 
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    file                => "$trunk/$sample/mysqldhelp001.txt",
    TextResultSetParser => $trp,
 );
@@ -57,7 +57,7 @@ is_deeply(
    "mysqld config does not differ with itself"
 );
 
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['query_cache_size', 0]],
 );
 is_deeply(
@@ -66,7 +66,7 @@ is_deeply(
    "SHOW VARS config does not differ with itself"
 );
 
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['query_cache_size', 1024]],
 );
 is_deeply(
@@ -80,11 +80,11 @@ is_deeply(
 # #############################################################################
 # Compare one config against another.
 # #############################################################################
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    file => "$trunk/$sample/mysqldhelp001.txt",
    TextResultSetParser => $trp,
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    file => "$trunk/$sample/mysqldhelp002.txt",
    TextResultSetParser => $trp,
 );
@@ -150,10 +150,10 @@ is_deeply(
 # #############################################################################
 # Missing vars.
 # #############################################################################
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [['query_cache_size', 1024]],
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [],
    TextResultSetParser => $trp,
 );
@@ -167,7 +167,7 @@ is_deeply(
    "Missing var, right"
 ) or print Dumper($missing);
 
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['query_cache_size', 1024]],
 );
 $missing = missing($c1, $c2);
@@ -177,7 +177,7 @@ is_deeply(
    "No missing vars"
 );
 
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['query_cache_size', 1024], ['foo', 1]],
 );
 $missing = missing($c1, $c2);
@@ -193,11 +193,11 @@ is_deeply(
 # #############################################################################
 # Some tricky vars.
 # #############################################################################
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [['log_error', undef]],
    format     => 'optiona_file',
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['log_error', '/tmp/12345/data/mysqld.log']],
    format     => 'show_variables',
 );
@@ -208,11 +208,11 @@ is_deeply(
    "log_error: undef, value"
 );
 
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [['log_error', '/tmp/12345/data/mysqld.log']],
    format     => 'show_variables',
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['log_error', undef]],
    format     => 'option_file',
 );
@@ -223,11 +223,11 @@ is_deeply(
    "log_error: value, undef"
 );
 
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [[qw(log_bin mysql-bin)]],
    format     => 'option_file',
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [[qw(log_bin ON)]],
    format     => 'show_variables',
 );
@@ -242,14 +242,14 @@ is_deeply(
 # ############################################################################
 # Vars with default values.
 # ############################################################################
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [
       ['log',        ''],
       ['log_bin',    ''],
    ],
    type => 'option_file',
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [
       ['log',        '/opt/mysql/data/mysqld.log'],
       ['log_bin',    '/opt/mysql/data/mysql-bin' ],
@@ -271,7 +271,7 @@ my $datadir = '/tmp/12345/data';
 
 # This simulates a my.cnf.  We just need vars with relative paths, so no need
 # to parse a real my.cnf with other vars that we don't need.
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [
       ['basedir',    $basedir             ],  # must have this
       ['datadir',    $datadir             ],  # must have this
@@ -283,7 +283,7 @@ $c1 = new MySQLConfig(
 # This simulates SHOW VARIABLES.  Like $c1, we just need vars with relative
 # paths.  But be sure to get real values because the whole point here is the
 # different way these vars are listed in my.cnf vs. SHOW VARS.
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [
       ['basedir',    $basedir                   ],  # must have this
       ['datadir',    $datadir                   ],  # must have this
@@ -303,15 +303,15 @@ is_deeply(
 # ############################################################################
 # Compare 3 configs.
 # ############################################################################
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [['log_error', '/tmp/12345/data/mysqld.log']],
    format     => 'show_variables',
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['log_error', undef]],
    format     => 'option_file',
 );
-my $c3 = new MySQLConfig(
+my $c3 = MySQLConfig->new(
    result_set => [['log_error', '/tmp/12345/data/mysqld.log']],
    format     => 'show_variables',
 );
@@ -323,7 +323,7 @@ is_deeply(
    "Compare 3 configs"
 );
 
-$c3 = new MySQLConfig(
+$c3 = MySQLConfig->new(
    result_set => [['log_error', '/tmp/12345/data/mysql-error.log']],
    format     => 'show_variables',
 );
@@ -344,17 +344,17 @@ is_deeply(
 # ############################################################################
 # Add to, override defaults.
 # ############################################################################
-$c1 = new MySQLConfig(
+$c1 = MySQLConfig->new(
    result_set => [['log_error', 'foo']],
    format     => 'show_variables',
 );
-$c2 = new MySQLConfig(
+$c2 = MySQLConfig->new(
    result_set => [['log_error', 'bar']],
    format     => 'show_variables',
 );
 
 {
-   my $cc = new MySQLConfigComparer(
+   my $cc = MySQLConfigComparer->new(
       ignore_variables => [qw(log_error)],
    );
    

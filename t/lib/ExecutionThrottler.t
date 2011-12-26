@@ -28,7 +28,7 @@ my %args = (
 );
 my $get_rate = sub { return $rate; };
 
-my $et = new ExecutionThrottler(
+my $et = ExecutionThrottler->new(
    rate_max  => 90,
    get_rate  => $get_rate,
    check_int => 0.4,

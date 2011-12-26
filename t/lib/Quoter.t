@@ -14,7 +14,7 @@ use Test::More tests => 31;
 use Quoter;
 use PerconaTest;
 
-my $q = new Quoter;
+my $q = Quoter->new;
 
 is(
    $q->quote('a'),

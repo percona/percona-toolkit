@@ -23,8 +23,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $ms  = new MasterSlave();
-my $rsp = new TextResultSetParser();
+my $ms  = MasterSlave->new();
+my $rsp = TextResultSetParser->new();
 my $pl;
 my $procs;
 my @events;
@@ -42,7 +42,7 @@ sub parse_n_times {
 # A cxn that's connecting should be seen but ignored until it begins
 # to execute a query.
 # ###########################################################################
-$pl = new Processlist(MasterSlave=>$ms);
+$pl = Processlist->new(MasterSlave=>$ms);
 
 $procs = [
    [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', undef,

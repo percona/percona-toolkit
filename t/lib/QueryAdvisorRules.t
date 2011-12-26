@@ -27,8 +27,8 @@ use SQLParser;
 #     store its own rule info.  But plugins supplied by users should.
 #   - It has a get_rule_info() method that accepts an ID and returns a hashref:
 #     {ID => 'ID', Severity => 'NOTE|WARN|CRIT', Description => '......'}
-my $p   = new PodParser();
-my $qar = new QueryAdvisorRules(PodParser => $p);
+my $p   = PodParser->new();
+my $qar = QueryAdvisorRules->new(PodParser => $p);
 
 my @rules = $qar->get_rules();
 ok(
@@ -469,18 +469,18 @@ my @cases = (
 );
 
 # Run the test cases.
-$qar = new QueryAdvisorRules(PodParser => $p);
+$qar = QueryAdvisorRules->new(PodParser => $p);
 $qar->load_rule_info(
    rules   => [ $qar->get_rules() ],
    file    => "$trunk/bin/pt-query-advisor",
    section => 'RULES',
 );
 
-my $adv = new Advisor(match_type => "pos");
+my $adv = Advisor->new(match_type => "pos");
 $adv->load_rules($qar);
 $adv->load_rule_info($qar);
 
-my $sp = new SQLParser();
+my $sp = SQLParser->new();
 
 foreach my $test ( @cases ) {
    my $query_struct = $sp->parse($test->{query});

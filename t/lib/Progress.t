@@ -44,7 +44,7 @@ foreach my $test ( (
    throws_ok($test->[0], qr/$test->[1]/, $test->[1]);
 }
 
-$pr = new Progress (
+$pr = Progress->new (
    jobsize => 100,
    spec    => [qw(percentage 15)],
 );
@@ -56,7 +56,7 @@ is ($pr->{interval}, 15, 'interval is 15');
 # Simple percentage-based completion.
 # #############################################################################
 
-$pr = new Progress(
+$pr = Progress->new(
    jobsize  => 100,
    report   => 'percentage',
    interval => 5,
@@ -112,7 +112,7 @@ is($callbacks_called, 20, 'Callback not called any more times');
 # Iteration-based completion.
 # #############################################################################
 
-$pr = new Progress(
+$pr = Progress->new(
    jobsize  => 500,
    report   => 'iterations',
    interval => 2,
@@ -139,7 +139,7 @@ is($callbacks_called, 26, 'Callback called every 2 iterations');
 # Time-based completion.
 # #############################################################################
 
-$pr = new Progress(
+$pr = Progress->new(
    jobsize  => 600,
    report   => 'time',
    interval => 10, # Every ten seconds
@@ -169,7 +169,7 @@ my $buffer;
 eval {
    local *STDERR;
    open STDERR, '>', \$buffer or die $OS_ERROR;
-   $pr = new Progress(
+   $pr = Progress->new(
       jobsize  => 600,
       report   => 'time',
       interval => 10, # Every ten seconds
@@ -185,7 +185,7 @@ $buffer = '';
 eval {
    local *STDERR;
    open STDERR, '>', \$buffer or die $OS_ERROR;
-   $pr = new Progress(
+   $pr = Progress->new(
       jobsize  => 600,
       report   => 'time',
       interval => 10, # Every ten seconds

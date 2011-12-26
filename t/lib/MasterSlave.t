@@ -17,10 +17,10 @@ use VersionParser;
 use Sandbox;
 use PerconaTest;
 
-my $vp = new VersionParser();
-my $ms = new MasterSlave(VersionParser => $vp);
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $vp = VersionParser->new();
+my $ms = MasterSlave->new(VersionParser => $vp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 
 # #############################################################################
 # First we need to setup a special replication sandbox environment apart from

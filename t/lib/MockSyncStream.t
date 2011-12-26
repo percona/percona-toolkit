@@ -17,7 +17,7 @@ use MockSth;
 use RowDiff;
 use PerconaTest;
 
-my $rd = new RowDiff( dbh => 1 );
+my $rd = RowDiff->new( dbh => 1 );
 my @rows;
 
 sub same_row {
@@ -30,7 +30,7 @@ sub not_in_right {
    push @rows, 'not in right';
 }
 
-my $mss = new MockSyncStream(
+my $mss = MockSyncStream->new(
    query        => 'SELECT a, b, c FROM foo WHERE id = 1',
    cols         => [qw(a b c)],
    same_row     => \&same_row,
@@ -48,13 +48,13 @@ is( $mss->done(), undef, 'Not done yet' );
 
 @rows = ();
 $rd->compare_sets(
-   left_sth => new MockSth(
+   left_sth => MockSth->new(
       { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
       # { a => 4, b => 2, c => 3 },
    ),
-   right_sth => new MockSth(
+   right_sth => MockSth->new(
       # { a => 1, b => 2, c => 3 },
       { a => 2, b => 2, c => 3 },
       { a => 3, b => 2, c => 3 },
@@ -79,8 +79,8 @@ is_deeply(
 # #############################################################################
 use DSNParser;
 use Sandbox;
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 SKIP: {

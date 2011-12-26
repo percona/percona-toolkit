@@ -26,8 +26,8 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -41,8 +41,8 @@ else {
    plan tests => 8;
 }
 
-my $rr     = new Retry();
-my $osc    = new CopyRowsInsertSelect(Retry => $rr);
+my $rr     = Retry->new();
+my $osc    = CopyRowsInsertSelect->new(Retry => $rr);
 my $msg    = sub { print "$_[0]\n"; };
 my $output = "";
 
@@ -109,7 +109,7 @@ my $chunks = [
    "`city_id` >= '491' AND `city_id` < '561'",
    "`city_id` >= '561'",
 ];
-my $pr = new Progress(
+my $pr = Progress->new(
    jobsize => scalar @$chunks,
    spec    => [qw(percentage 10)],
    name    => "Copy rows"

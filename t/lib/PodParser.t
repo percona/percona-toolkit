@@ -19,7 +19,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $p = new PodParser();
+my $p = PodParser->new();
 
 $p->parse_from_file("$trunk/t/lib/samples/pod/pod_sample_mqa.txt");
 

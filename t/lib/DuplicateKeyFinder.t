@@ -16,9 +16,9 @@ use Quoter;
 use TableParser;
 use PerconaTest;
 
-my $dk = new DuplicateKeyFinder();
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
+my $dk = DuplicateKeyFinder->new();
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
 
 my $sample = "t/lib/samples/dupekeys/";
 my $dupes;

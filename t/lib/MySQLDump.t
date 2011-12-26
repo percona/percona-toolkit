@@ -17,8 +17,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp = DSNParser->new(opts=>$dsn_opts);
+my $sb = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 
 my $dbh = $sb->get_dbh_for('master');
 
@@ -31,8 +31,8 @@ else {
 
 $sb->create_dbs($dbh, ['test']);
 
-my $du = new MySQLDump();
-my $q  = new Quoter();
+my $du = MySQLDump->new();
+my $q  = Quoter->new();
 
 my $dump;
 

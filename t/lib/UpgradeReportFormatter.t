@@ -22,8 +22,8 @@ my $result;
 my $expected;
 my ($meta_events, $events1, $events2, $meta_ea, $ea1, $ea2);
 
-my $qr  = new QueryRewriter();
-my $urf = new UpgradeReportFormatter();
+my $qr  = QueryRewriter->new();
+my $urf = UpgradeReportFormatter->new();
 
 sub aggregate {
    foreach my $event (@$meta_events) {
@@ -42,15 +42,15 @@ sub aggregate {
    $ea2->calculate_statistical_metrics(); 
 }
 
-$meta_ea = new EventAggregator(
+$meta_ea = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'differences',
 );
-$ea1 = new EventAggregator(
+$ea1 = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
 );
-$ea2 = new EventAggregator(
+$ea2 = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
 );

@@ -27,18 +27,18 @@ use DSNParser;
 
 my $in = "$trunk/t/lib/samples/mysqldump-no-data/";
 
-my $q  = new Quoter;
-my $tp = new TableParser(Quoter => $q);
-my $fi = new FileIterator();
+my $q  = Quoter->new;
+my $tp = TableParser->new(Quoter => $q);
+my $fi = FileIterator->new();
 
-my $o  = new OptionParser(description => 'SchemaIterator');
+my $o  = OptionParser->new(description => 'SchemaIterator');
 @ARGV = qw();
 $o->get_specs("$trunk/bin/pt-table-checksum");
 $o->get_opts();
 
 my $file_itr = $fi->get_file_itr("$in/dump001.txt");
-my $sq       = new Schema();
-my $si       = new SchemaIterator (
+my $sq       = Schema->new();
+my $si       = SchemaIterator->new (
    file_itr     => $file_itr,
    OptionParser => $o,
    Quoter       => $q,

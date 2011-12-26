@@ -14,7 +14,7 @@ use Test::More tests => 1;
 use ProtocolParser;
 use PerconaTest;
 
-my $protocol = new ProtocolParser();
+my $protocol = ProtocolParser->new();
 isa_ok($protocol, 'ProtocolParser');
 
 # #############################################################################

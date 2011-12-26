@@ -30,21 +30,21 @@ use ExplainAnalyzer;
 use Sandbox;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master', {no_lc=>1});  # for explain sparkline
 
 my ($result, $events, $expected);
 
-my $q   = new Quoter();
-my $qp  = new QueryParser();
-my $qr  = new QueryRewriter(QueryParser=>$qp);
-my $o   = new OptionParser(description=>'qrf');
-my $ex  = new ExplainAnalyzer(QueryRewriter => $qr, QueryParser => $qp);
+my $q   = Quoter->new();
+my $qp  = QueryParser->new();
+my $qr  = QueryRewriter->new(QueryParser=>$qp);
+my $o   = OptionParser->new(description=>'qrf');
+my $ex  = ExplainAnalyzer->new(QueryRewriter => $qr, QueryParser => $qp);
 
 $o->get_specs("$trunk/bin/pt-query-digest");
 
-my $qrf = new QueryReportFormatter(
+my $qrf = QueryReportFormatter->new(
    OptionParser    => $o,
    QueryRewriter   => $qr,
    QueryParser     => $qp,
@@ -52,7 +52,7 @@ my $qrf = new QueryReportFormatter(
    ExplainAnalyzer => $ex,
 );
 
-my $ea  = new EventAggregator(
+my $ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    attributes => {
@@ -204,7 +204,7 @@ ok(
 
 SKIP: {
    skip 'Wider labels not used, not tested', 1;
-$qrf = new QueryReportFormatter(label_width => 15);
+$qrf = QueryReportFormatter->new(label_width => 15);
 
 $result = $qrf->event_report(
    $ea,
@@ -225,13 +225,13 @@ ok(
    'Event report with wider label'
 );
 
-$qrf = new QueryReportFormatter;
+$qrf = QueryReportFormatter->new;
 };
 
 # ########################################################################
 # This one is all about an event that's all zeroes.
 # ########################################################################
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    attributes => {
@@ -358,7 +358,7 @@ $events = [
    }
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -468,7 +468,7 @@ $events = [
    },
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -522,7 +522,7 @@ $events = [
    }
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -553,10 +553,10 @@ ok(
 # line 3805
 # #############################################################################
 use SlowLogParser;
-my $p = new SlowLogParser();
+my $p = SlowLogParser->new();
 
 sub report_from_file {
-   my $ea2 = new EventAggregator(
+   my $ea2 = EventAggregator->new(
       groupby => 'fingerprint',
       worst   => 'Query_time',
    );
@@ -634,7 +634,7 @@ $events = [
    },
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -752,7 +752,7 @@ $events = [
    }
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -797,7 +797,7 @@ $events = [
    },
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'arg',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -887,7 +887,7 @@ $events = [
    },
 ];
 
-$ea  = new EventAggregator(
+$ea  = EventAggregator->new(
    groupby => 'arg',
    worst   => 'Query_time',
    ignore_attributes => [qw(arg cmd)],
@@ -928,7 +928,7 @@ $events = [
       db          => 'foodb',
    },
 ];
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
 );
@@ -948,7 +948,7 @@ $o->get_opts();
 # prepared statements subreport will reuse/reprint stuff from the
 # profile subreport.  And the line width is 82 because that's the new
 # default to accommodate the EXPLAIN sparkline (issue 1141).
-my $report = new ReportFormatter(line_width=>82);
+my $report = ReportFormatter->new(line_width=>82);
 $qrf->set_report_formatter(report=>'profile', formatter=>$report);
 ok(
    no_diff(
@@ -966,7 +966,7 @@ ok(
    "print_reports(header, query_report, profile)"
 );
 
-$report = new ReportFormatter(line_width=>82);
+$report = ReportFormatter->new(line_width=>82);
 $qrf->set_report_formatter(report=>'profile', formatter=>$report);
 ok(
    no_diff(
@@ -1009,7 +1009,7 @@ $events = [
       Statement_id  => 2,
    },
 ];
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby  => 'fingerprint',
    worst    => 'Query_time',
    type_for => {
@@ -1020,7 +1020,7 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
+$report = ReportFormatter->new(
    line_width   => 82,
    extend_right => 1,
 );
@@ -1055,7 +1055,7 @@ push @$events,
       pos_in_log    => 100,
       ts            => '091208 09:23:49.637892',
    },
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
 );
@@ -1063,7 +1063,7 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
+$report = ReportFormatter->new(
    line_width   => 82,
    extend_right => 1,
 );
@@ -1100,7 +1100,7 @@ SKIP: {
    @ARGV = qw(--explain F=/tmp/12345/my.sandbox.cnf);
    $o->get_opts();
 
-   my $qrf = new QueryReportFormatter(
+   my $qrf = QueryReportFormatter->new(
       OptionParser    => $o,
       QueryRewriter   => $qr,
       QueryParser     => $qp,
@@ -1135,7 +1135,7 @@ SKIP: {
          ts            => '091208 09:23:49.637394',
       },
    ];
-   $ea = new EventAggregator(
+   $ea = EventAggregator->new(
       groupby => 'fingerprint',
       worst   => 'Query_time',
    );
@@ -1157,7 +1157,7 @@ SKIP: {
       "explain_sparkling() uses db"
    );
 
-   $report = new ReportFormatter(
+   $report = ReportFormatter->new(
       line_width   => 82,
       extend_right => 1,
    );
@@ -1222,7 +1222,7 @@ $events = [
       db          => 'foodb',
    },
 ];
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
 );
@@ -1232,8 +1232,8 @@ foreach my $event ( @$events ) {
 $ea->calculate_statistical_metrics();
 @ARGV = qw();
 $o->get_opts();
-$report = new ReportFormatter(line_width=>82);
-$qrf    = new QueryReportFormatter(
+$report = ReportFormatter->new(line_width=>82);
+$qrf    = QueryReportFormatter->new(
    OptionParser    => $o,
    QueryRewriter   => $qr,
    QueryParser     => $qp,
@@ -1296,7 +1296,7 @@ $events = [
       pos_in_log    => 0,
    },
 ];
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby => 'fingerprint',
    worst   => 'Query_time',
 );
@@ -1304,7 +1304,7 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
+$report = ReportFormatter->new(
    line_width   => 82,
    extend_right => 1,
 );
@@ -1347,7 +1347,7 @@ sub proc_events {
       }
    }
 
-   $ea = new EventAggregator(
+   $ea = EventAggregator->new(
       groupby => 'fingerprint',
       worst   => 'Query_time',
    );
@@ -1521,7 +1521,7 @@ $events = [
       Statement_id  => 1,
    },
 ];
-$ea = new EventAggregator(
+$ea = EventAggregator->new(
    groupby  => 'fingerprint',
    worst    => 'Query_time',
    type_for => {
@@ -1532,7 +1532,7 @@ foreach my $event ( @$events ) {
    $ea->aggregate($event);
 }
 $ea->calculate_statistical_metrics();
-$report = new ReportFormatter(
+$report = ReportFormatter->new(
    line_width   => 82,
    extend_right => 1,
 );

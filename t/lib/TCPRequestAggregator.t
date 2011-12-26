@@ -18,7 +18,7 @@ my $in = "t/lib/samples/simple-tcprequests/";
 my $p;
 
 # Check that I can parse a simple log and aggregate it into 100ths of a second
-$p = new TCPRequestAggregator(interval => '.01', quantile => '.99');
+$p = TCPRequestAggregator->new(interval => '.01', quantile => '.99');
 # intervals.
 test_log_parser(
    parser => $p,
@@ -68,7 +68,7 @@ test_log_parser(
 
 # Check that I can parse a log whose first event is ID = 0, and whose events all
 # fit within one time interval.
-$p = new TCPRequestAggregator(interval => '.01', quantile => '.99');
+$p = TCPRequestAggregator->new(interval => '.01', quantile => '.99');
 test_log_parser(
    parser => $p,
    file   => "$in/simpletcp-requests002.txt",

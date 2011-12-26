@@ -18,8 +18,8 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
@@ -29,9 +29,9 @@ else {
    plan tests => 18;
 }
 
-my $q  = new Quoter();
-my $tp = new TableParser(Quoter => $q);
-my $ks = new KeySize(Quoter=>$q);
+my $q  = Quoter->new();
+my $tp = TableParser->new(Quoter => $q);
+my $ks = KeySize->new(Quoter=>$q);
 
 my $tbl;
 my $struct;

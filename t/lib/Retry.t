@@ -21,7 +21,7 @@ my $tryno;
 my $tries;
 my $die;
 
-my $rt = new Retry();
+my $rt = Retry->new();
 
 my $try = sub {
    if ( $die ) {

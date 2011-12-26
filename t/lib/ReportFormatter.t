@@ -15,7 +15,7 @@ use Transformers;
 use ReportFormatter;
 use PerconaTest;
 
-my $rf = new ReportFormatter();
+my $rf = ReportFormatter->new();
 isa_ok($rf, 'ReportFormatter');
 
 # #############################################################################
@@ -87,7 +87,7 @@ is(
 # #############################################################################
 # Basic report.
 # #############################################################################
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Checksum differences');
 $rf->set_columns(
    {
@@ -119,7 +119,7 @@ is(
 # #############################################################################
 # Header that's too wide.
 # #############################################################################
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_columns(
    { name => 'We are very long header columns that are going to cause', },
    { name => 'this sub to die because together we cannot fit on one line' },
@@ -132,7 +132,7 @@ is(
    "Full auto-fit columns to line"
 );
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_columns(
    {
       name      => 'We are very long header columns that are going to cause',
@@ -152,7 +152,7 @@ is(
    "Two fixed percentage-width columsn"
 );
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_columns(
    {
       name  => 'header1',
@@ -172,7 +172,7 @@ is(
 # #############################################################################
 # Test that header underline respects line width.
 # #############################################################################
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_columns(
    { name => 'col1' },
    { name => 'col2' },
@@ -191,7 +191,7 @@ is(
 # #############################################################################
 # Test taht header labels are always left justified.
 # #############################################################################
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_columns(
    { name => 'Rank',          right_justify => 1, },
    { name => 'Query ID',                          },
@@ -215,7 +215,7 @@ is(
 # #############################################################################
 # Respect line width.
 # #############################################################################
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Respect line width');
 $rf->set_columns(
    { name => 'col1' },
@@ -247,7 +247,7 @@ is(
 # #############################################################################
 # extend_right
 # #############################################################################
-$rf = new ReportFormatter(extend_right=>1);
+$rf = ReportFormatter->new(extend_right=>1);
 $rf->set_title('extend_right');
 $rf->set_columns(
    { name => 'col1' },
@@ -279,7 +279,7 @@ is(
 # #############################################################################
 # Relvative column widths.
 # #############################################################################
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Relative col widths');
 $rf->set_columns(
    { name => 'col1', width_pct=>'20', },
@@ -308,7 +308,7 @@ is(
    "Relative col widths that fit"
 );
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Relative col widths');
 $rf->set_columns(
    { name => 'col1', width_pct=>'20', },
@@ -343,7 +343,7 @@ is(
    "Relative columns made smaller to fit"
 );
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Relative col widths');
 $rf->set_columns(
    { name => 'col1', width    =>'25', },
@@ -379,7 +379,7 @@ is(
 );
 
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Short cols');
 $rf->set_columns(
    { name => 'I am column1', },
@@ -402,7 +402,7 @@ is(
    "Short columsn, blank data"
 );
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Short cols');
 $rf->set_columns(
    { name => 'I am column1', },
@@ -421,7 +421,7 @@ is(
    "Short columsn, undef data"
 );
 
-$rf = new ReportFormatter();
+$rf = ReportFormatter->new();
 $rf->set_title('Short cols');
 $rf->set_columns(
    { name => 'I am column1', },
@@ -446,7 +446,7 @@ is(
 # #############################################################################
 # Issue 1196: mk-query-digest --explain is broken
 # #############################################################################
-$rf = new ReportFormatter(
+$rf = ReportFormatter->new(
    line_width       => 82,
    long_last_column => 1,
    extend_right     => 1,

@@ -14,7 +14,7 @@ use Test::More tests => 3;
 use VersionParser;
 use PerconaTest;
 
-my $vp = new VersionParser;
+my $vp = VersionParser->new;
 
 is(
    $vp->parse('5.0.38-Ubuntu_0ubuntu1.1-log'),
@@ -25,8 +25,8 @@ is(
 # Open a connection to MySQL, or skip the rest of the tests.
 use DSNParser;
 use Sandbox;
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 SKIP: {
    skip 'Cannot connect to MySQL', 2 unless $dbh;

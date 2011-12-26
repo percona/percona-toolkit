@@ -18,7 +18,7 @@ use Runtime;
 # Test a runtime obj with clock time.
 # #############################################################################
 
-my $runtime = new Runtime(
+my $runtime = Runtime->new(
    now     => sub { return time; },
    runtime => 3,
 );
@@ -89,7 +89,7 @@ is(
 # Test a runtime obj with clock time running forever.
 # #############################################################################
 
-$runtime = new Runtime(
+$runtime = Runtime->new(
    now     => sub { return time; },
    # runtime => undef,  # forever
 );
@@ -123,7 +123,7 @@ is(
 # Test start/stop with clock time.
 # #############################################################################
 
-$runtime = new Runtime(
+$runtime = Runtime->new(
    now     => sub { return time; },
    runtime => 3,
 );
@@ -147,7 +147,7 @@ is(
 # #############################################################################
 
 my @time = qw(0 3 7 9);
-$runtime = new Runtime(
+$runtime = Runtime->new(
    now     => sub { return shift @time; },
    runtime => 8,
 );
