@@ -10479,7 +10479,7 @@ sub main {
    # ##########################################################################
    # Get configuration information.
    # ##########################################################################
-   my $o  = new OptionParser();
+   my $o  = OptionParser->new();
    $o->get_specs();
    $o->get_opts();
 
@@ -10546,17 +10546,17 @@ sub main {
    # ########################################################################
    # Make some common modules.
    # ########################################################################
-   my $q        = new Quoter();
-   my $vp       = new VersionParser();
-   my $qp       = new QueryParser();
-   my $qr       = new QueryRewriter();
-   my $du       = new MySQLDump(cache => 0);
-   my $rr       = new Retry();
-   my $tp       = new TableParser(Quoter => $q);
-   my $chunker  = new TableChunker(Quoter => $q, MySQLDump => $du );
-   my $nibbler  = new TableNibbler(Quoter => $q, TableParser => $tp );
-   my $checksum = new TableChecksum(Quoter => $q, VersionParser => $vp);
-   my $syncer   = new TableSyncer(
+   my $q        = Quoter->new();
+   my $vp       = VersionParser->new();
+   my $qp       = QueryParser->new();
+   my $qr       = QueryRewriter->new();
+   my $du       = MySQLDump->new(cache => 0);
+   my $rr       = Retry->new();
+   my $tp       = TableParser->new(Quoter => $q);
+   my $chunker  = TableChunker->new(Quoter => $q, MySQLDump => $du );
+   my $nibbler  = TableNibbler->new(Quoter => $q, TableParser => $tp );
+   my $checksum = TableChecksum->new(Quoter => $q, VersionParser => $vp);
+   my $syncer   = TableSyncer->new(
       MasterSlave   => 1,  # I don't think we need this.
       Quoter        => $q,
       VersionParser => $vp,
@@ -10589,12 +10589,12 @@ sub main {
 
       my $plugins = [];
       if ( $method eq 'rows' ) {
-         push @$plugins, new TableSyncChunk(%common_modules);
-         push @$plugins, new TableSyncNibble(%common_modules);
-         push @$plugins, new TableSyncGroupBy(%common_modules);
+         push @$plugins, TableSyncChunk->new(%common_modules);
+         push @$plugins, TableSyncNibble->new(%common_modules);
+         push @$plugins, TableSyncGroupBy->new(%common_modules);
       }
 
-      push @compare_modules, new CompareResults(
+      push @compare_modules, CompareResults->new(
          method     => $method,
          plugins    => $plugins,
          get_id     => sub { return make_checksum(@_); },
@@ -10604,7 +10604,7 @@ sub main {
    }
 
    if ( $compare->{query_times} ) {
-      push @compare_modules, new CompareQueryTimes(
+      push @compare_modules, CompareQueryTimes->new(
          get_id     => sub { return make_checksum(@_); },
          %common_modules,
       );
@@ -10622,7 +10622,7 @@ sub main {
          }
       }
       if ( $have_warnings ) {
-         push @compare_modules, new CompareWarnings(
+         push @compare_modules, CompareWarnings->new(
             'clear-warnings'       => $o->get('clear-warnings'),
             'clear-warnings-table' => $o->get('clear-warnings-table'),
             get_id => sub { return make_checksum(@_); },
@@ -10636,14 +10636,14 @@ sub main {
    # ########################################################################
    my $groupby = 'fingerprint';
    map {
-      my $ea = new EventAggregator(
+      my $ea = EventAggregator->new(
          groupby => 'fingerprint',
          worst   => 'Query_time',
       );
       $_->{ea} = $ea;
    } @$hosts;
 
-   my $meta_ea = new  EventAggregator(
+   my $meta_ea = EventAggregator->new(
       groupby => 'fingerprint',
       worst   => 'differences'
    );
@@ -10671,7 +10671,7 @@ sub main {
       };
    }
    else {
-      my $parser = new SlowLogParser();
+      my $parser = SlowLogParser->new();
       push @callbacks, sub {
          my ( $event, %args ) = @_;
          return $parser->parse_event(%args);
@@ -10914,13 +10914,13 @@ sub main {
    # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->daemonize();
       MKDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
+      $daemon = Daemon->new(o=>$o);
       $daemon->make_PID_file();
    }
 
@@ -11009,7 +11009,7 @@ sub main {
          $host->{ea}->calculate_statistical_metrics();
       }
 
-      my $urf = new UpgradeReportFormatter();
+      my $urf = UpgradeReportFormatter->new();
       my ($orderby_attrib, $orderby_func) = split(/:/, $o->get('order-by'));
 
       # We don't report on all queries, just the worst, i.e. the top
@@ -11146,7 +11146,7 @@ sub report_errors {
 
    return unless keys %$errors;
 
-   my $rf = new ReportFormatter(extend_right=>1);
+   my $rf = ReportFormatter->new(extend_right=>1);
    $rf->set_title('Errors');
    $rf->set_columns(
       { name => 'Query ID' },
