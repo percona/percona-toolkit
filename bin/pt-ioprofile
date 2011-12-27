@@ -1,0 +1,846 @@
+#!/usr/bin/env bash
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
+# notices and disclaimers.
+
+set -u
+
+# ###########################################################################
+# log_warn_die package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/log_warn_die.sh
+#   t/lib/bash/log_warn_die.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+EXIT_STATUS=0
+
+log() {
+   TS=$(date +%F-%T | tr :- _);
+   echo "$TS $1"
+}
+
+warn() {
+   log "$1" >&2
+   EXIT_STATUS=$((EXIT_STATUS | 1))
+}
+
+die() {
+   warn "$1"
+   exit 1
+}
+
+# ###########################################################################
+# End log_warn_die package
+# ###########################################################################
+
+# ###########################################################################
+# parse_options package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/parse_options.sh
+#   t/lib/bash/parse_options.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION="no"  # If --version was specified
+OPT_HELP="no"     # If --help was specified
+
+usage() {
+   local file=$1
+
+   local usage=$(grep '^Usage: ' $file)
+   echo $usage >&2
+   echo >&2
+   echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
+}
+
+usage_or_errors() {
+   local file=$1
+
+   if [ "$OPT_VERSION" = "yes" ]; then
+      local version=$(grep '^pt-[^ ]\+ [0-9]' $file)
+      echo "$version"
+      return 1
+   fi
+
+   if [ "$OPT_HELP" = "yes" ]; then
+      usage "$file"
+      echo >&2
+      echo "Command line options:" >&2
+      echo >&2
+      for opt in $(ls $TMPDIR/po/); do
+         local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
+         echo "--$opt" >&2
+         echo "  $desc" >&2
+         echo >&2
+      done
+      return 1
+   fi
+
+   if [ $OPT_ERRS -gt 0 ]; then
+      echo >&2
+      usage $file
+      return 1
+   fi
+
+   return 0
+}
+
+parse_options() {
+   local file=$1
+   shift
+
+   mkdir $TMPDIR/po/ 2>/dev/null
+   rm -rf $TMPDIR/po/*
+   (
+      export PO_DIR="$TMPDIR/po"
+      cat $file | perl -ne '
+         BEGIN { $/ = ""; }
+         next unless $_ =~ m/^=head1 OPTIONS/;
+         while ( defined(my $para = <>) ) {
+            last if $para =~ m/^=head1/;
+            chomp;
+            if ( $para =~ m/^=item --(\S+)/ ) {
+               my $opt  = $1;
+               my $file = "$ENV{PO_DIR}/$opt";
+               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+               printf $opt_fh "long:$opt\n";
+               $para = <>;
+               chomp;
+               if ( $para =~ m/^[a-z ]+:/ ) {
+                  map {
+                     chomp;
+                     my ($attrib, $val) = split(/: /, $_);
+                     printf $opt_fh "$attrib:$val\n";
+                  } split(/; /, $para);
+                  $para = <>;
+                  chomp;
+               }
+               my ($desc) = $para =~ m/^([^?.]+)/;
+               printf $opt_fh "desc:$desc.\n";
+               close $opt_fh;
+            }
+         }
+         last;
+      '
+   )
+
+   for opt_spec in $(ls $TMPDIR/po/); do
+      local opt=""
+      local default_val=""
+      local neg=0
+      while read line; do
+         local key=`echo $line | cut -d ':' -f 1`
+         local val=`echo $line | cut -d ':' -f 2`
+         case "$key" in
+            long)
+               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               ;;
+            default)
+               default_val="$val"
+               ;;
+            "short form")
+               ;;
+            type)
+               ;;
+            desc)
+               ;;
+            negatable)
+               if [ "$val" = "yes" ]; then
+                  neg=1
+               fi
+               ;;
+            *)
+               echo "Invalid attribute in $TMPDIR/po/$opt_spec: $line" >&2
+               exit 1
+         esac 
+      done < $TMPDIR/po/$opt_spec
+
+      if [ -z "$opt" ]; then
+         echo "No long attribute in option spec $TMPDIR/po/$opt_spec" >&2
+         exit 1
+      fi
+
+      if [ $neg -eq 1 ]; then
+         if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
+            echo "Option $opt_spec is negatable but not default: yes" >&2
+            exit 1
+         fi
+      fi
+
+      eval "OPT_${opt}"="$default_val"
+   done
+
+   for opt; do
+      if [ $# -eq 0 ]; then
+         break  # no more opts
+      fi
+      opt=$1
+      if [ "$opt" = "--" ]; then
+         shift
+         EXT_ARGV="$@"
+         break
+      fi
+      shift 
+      if [ $(expr "$opt" : "-") -eq 0 ]; then
+         if [ -z "$ARGV" ]; then
+            ARGV="$opt"
+         else
+            ARGV="$ARGV $opt"
+         fi
+         continue
+      fi
+
+      local real_opt="$opt"
+
+      if $(echo $opt | grep -q '^--no-'); then
+         neg=1
+         opt=$(echo $opt | sed 's/^--no-//')
+      else
+         neg=0
+         opt=$(echo $opt | sed 's/^-*//')
+      fi
+
+      if [ -f "$TMPDIR/po/$opt" ]; then
+         spec="$TMPDIR/po/$opt"
+      else
+         spec=$(grep "^short form:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
+         if [ -z "$spec"  ]; then
+            OPT_ERRS=$(($OPT_ERRS + 1))
+            echo "Unknown option: $real_opt" >&2
+            continue
+         fi
+      fi
+
+      required_arg=$(cat $spec | grep '^type:' | cut -d':' -f2)
+      if [ -n "$required_arg" ]; then
+         if [ $# -eq 0 ]; then
+            OPT_ERRS=$(($OPT_ERRS + 1))
+            echo "$real_opt requires a $required_arg argument" >&2
+            continue
+         else
+            val="$1"
+            shift
+         fi
+      else
+         if [ $neg -eq 0 ]; then
+            val="yes"
+         else
+            val="no"
+         fi
+      fi
+
+      opt=$(cat $spec | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+
+      eval "OPT_$opt"="$val"
+   done
+}
+
+# ###########################################################################
+# End parse_options package
+# ###########################################################################
+
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+
+set -u
+
+TMPDIR=""
+
+mk_tmpdir() {
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
+      fi
+      TMPDIR="$dir"
+   else
+      local tool=`basename $0`
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf $TMPDIR
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
+# ###########################################################################
+# Global variables
+# ###########################################################################
+TOOL=`basename $0`
+
+# ###########################################################################
+# Subroutines
+# ###########################################################################
+
+# Read the 'lsof' and 'strace' from the file, and convert it into lines:
+# pid function fd_no size timing filename
+# The arguments are the files to summarize.
+tabulate_strace() {
+   local file="$1"
+
+   cat > $TMPDIR/tabulate_strace.awk <<EOF
+   BEGIN {
+      # These are function names, or partial function names, that we care about.
+      # Later we will ignore any function whose name doesn't look like these.
+      # Keep this in sync with wanted_pat in summarize_strace, too.
+      wanted_pat  = "read|write|sync|open|close|getdents|seek|fcntl|ftrunc";
+      cwd         = ""; # The process's cwd to prepend to ./ filenames later.
+      mode        = 0;  # Whether we're in the lsof or strace part of the input.
+   }
+   /^COMMAND/ { mode = "lsof";   }
+   /^Process/ { mode = "strace"; }
+   {
+      # Save the file descriptor and name for lookup later.
+      if ( mode == "lsof" ) {
+         if ( \$5 == "REG" ) {
+            fd = \$4;
+            gsub(/[rwu-].*/, "", fd);
+            filename_for[fd] = \$9;
+         }
+         else if ( \$5 == "DIR" && \$4 == "cwd" ) {
+            cwd = \$NF;
+         }
+      }
+      else if ( mode == "strace" && \$1 ~ /^\[/ ) {
+         pid = substr(\$2, 1, length(\$2) - 1);
+
+         # Continuation of a previously <unfinished ...> function call
+         if ( \$3 == "<..." ) {
+            funcn      = \$4;
+            fd         = unfinished[pid "," funcn];
+            if ( fd > 0 ) {
+               filename = filename_for[fd];
+               if ( filename != "" ) {
+                  if ( funcn ~ /open/ ) {
+                     size = 0;
+                  }
+                  else {
+                     size_field = NF - 1;
+                     size       = \$size_field;
+                  }
+                  timing = \$NF;
+                  gsub(/[<>]/, "", timing);
+                  print pid, funcn, fd, size, timing, filename;
+               }
+            }
+         }
+
+         # The beginning of a function call (not resumed).  There are basically
+         # two cases here: the whole call is on one line, and it's unfinished
+         # and ends on a later line.
+         else {
+            funcn = substr(\$3, 1, index(\$3, "(") - 1);
+            if ( funcn ~ wanted_pat ) {
+               # Save the file descriptor and name for lookup later.
+               if ( funcn ~ /open/ ) {
+                  filename = substr(\$3, index(\$3, "(") + 2);
+                  filename = substr(filename, 1, index(filename, "\\"") - 1);
+                  if ( "./" == substr(filename, 1, 2) ) {
+                     # Translate relative filenames into absolute ones.
+                     filename = cwd substr(filename, 2);
+                  }
+                  fd_field         = NF - 1;
+                  fd               = \$fd_field;
+                  filename_for[fd] = filename;
+               }
+
+               else {
+                  fd  = substr(\$3, index(\$3, "(") + 1);
+                  gsub(/[^0-9].*/, "", fd);
+               }
+
+               # Save unfinished calls for later
+               if ( \$NF == "...>" ) {
+                  unfinished[pid "," funcn] = fd;
+               }
+
+               # Function calls that are all on one line, not <unfinished ...>
+               else {
+                  filename = filename_for[fd];
+                  if ( filename != "" ) {
+                     if ( funcn ~ /open/ ) {
+                        size = 0;
+                     }
+                     else {
+                        size_field = NF - 1;
+                        size       = \$size_field;
+                     }
+                     timing = \$NF;
+                     gsub(/[<>]/, "", timing);
+                     print pid, funcn, fd, size, timing, filename;
+                  }
+               }
+            }
+         }
+      }
+   }
+EOF
+   awk -f $TMPDIR/tabulate_strace.awk "$file"
+}
+
+# Takes as input the output from tabulate_strace.  Arguments are just a subset
+# of the overall command-line options, but no validation is needed.  The last
+# command-line option is the filename of the tabulate_strace output.
+summarize_strace() {
+   local func="$1"
+   local cell="$2"
+   local group_by="$3"
+   local file="$4"
+
+   cat > $TMPDIR/summarize_strace.awk <<EOF
+   BEGIN {
+      # These are function names, or partial function names, that we care about.
+      # Later we will ignore any function whose name doesn't look like these.
+      # Keep this in sync with wanted_pat in tabulate_strace, too.
+      wanted_pat  = "read|write|sync|open|close|getdents|seek|fcntl|ftrunc";
+      wanted["1"] = "read"; # Will match pread, pread64, etc.
+      wanted["2"] = "write";
+      wanted["3"] = "sync";
+      wanted["4"] = "open";
+      wanted["5"] = "close";
+      wanted["6"] = "getdents";
+      wanted["7"] = "seek";
+      wanted["8"] = "fcntl";
+      wanted["9"] = "ftrunc";
+      num_wanted  = 9;
+      col_pat     = "%10d ";
+      hdr_pat     = "%10s ";
+      if ( "$cell" == "times" ) {
+         col_pat  = "%10.6f ";
+      }
+   }
+   {
+      pid      = \$1;
+      funcn    = \$2;
+      fd       = \$3;
+      size     = \$4;
+      timing   = \$5;
+      filename = \$6;
+      all      = "all";
+      if ( funcn ~ wanted_pat ) {
+         func_names[funcn]++;
+         groupby[$group_by]++;
+         count[funcn "," $group_by]++;
+         sizes[funcn "," $group_by] += size;
+         times[funcn "," $group_by] += timing;
+      }
+   }
+   END {
+      # Choose which functions we want to print out, ordered by wanted[].
+      num_functions = 0;
+      if ( "$group_by" != "all" ) {
+         printf(hdr_pat, "total");
+      }
+      for (i = 1; i <= num_wanted; i++) {
+         pat = wanted[i];
+         for (funcn in func_names) {
+            if ( funcn ~ pat && !accepted[funcn] ) {
+               num_functions++;
+               funcs_to_print[num_functions] = funcn;
+               accepted[funcn]++;
+               if ( "$group_by" != "all" ) {
+                  printf(hdr_pat, funcn);
+               }
+            }
+         }
+      }
+      if ( "$group_by" != "all" ) {
+         print "$group_by";
+      }
+
+      # groupby[] contains only files/pids that have been referenced by some
+      # functions, so we are automatically including only files that have some
+      # activity from wanted functions. We iterate through each function name
+      # and print the cell of the table.
+      for (thing in groupby) {
+         total_count = 0;
+         total_sizes = 0;
+         total_times = 0;
+         output      = "";
+         for (i = 1; i <= num_functions; i++) {
+            funcn = funcs_to_print[i];
+            total_count += count[funcn "," thing];
+            total_sizes += sizes[funcn "," thing];
+            total_times += times[funcn "," thing];
+            result       = $cell[funcn "," thing];
+            if ( "$func" == "avg" ) {
+               if ( count[funcn "," thing] > 0 ) {
+                  result /= count[funcn "," thing];
+               }
+               else {
+                  result = 0;
+               }
+            }
+            if ( "$group_by" != "all" ) {
+               output = output sprintf(col_pat, result);
+            }
+            else {
+               printf(col_pat funcn "\\n", result);
+            }
+         }
+         total_result = total_$cell;
+         if ( "$func" == "avg" ) {
+            if ( total_count > 0 ) {
+               total_result /= total_count;
+            }
+            else {
+               total_result = 0;
+            }
+         }
+         printf(col_pat, total_result);
+         if ( "$group_by" != "all" ) {
+            print(output thing);
+         }
+         else {
+            print "TOTAL";
+         }
+      }
+   }
+EOF
+
+   awk -f $TMPDIR/summarize_strace.awk "$file" > $TMPDIR/summarized_samples
+   if [ "$group_by" != "all" ]; then
+      head -n1 $TMPDIR/summarized_samples
+      tail -n +2 $TMPDIR/summarized_samples | sort -rn -k1
+   else
+      grep TOTAL $TMPDIR/summarized_samples
+      grep -v TOTAL $TMPDIR/summarized_samples | sort -rn -k1
+   fi
+}
+
+main() {
+   if [ $# -eq 0 ]; then
+      # There's no file to analyze, so we'll make one.
+      if which strace > /dev/null 2>&1; then
+
+         local samples=${OPT_SAVE_SAMPLES:-"$TMPDIR/samples"}
+
+         # Get the PID of the process to profile, unless the user
+         # gave us it explicitly with --profile-pid.
+         local proc_pid="$OPT_PROFILE_PID"
+         if [ -z "$proc_pid" ]; then
+            proc_pid=$(pidof -s "$OPT_PROFILE_PROCESS" 2>/dev/null);
+            if [ -z "$proc_pid" ]; then
+               proc_pid=$(pgrep -o -x "$OPT_PROFILE_PROCESS" 2>/dev/null)
+            fi
+            if [ -z "$proc_pid" ]; then
+               proc_pid=$(ps -eaf | grep "$OPT_PROFILE_PROCESS" | grep -v grep | awk '{print $2}' | head -n1);
+            fi
+         fi
+
+         date
+
+         if [ "$proc_pid" ]; then
+            echo "Tracing process ID $proc_pid"
+
+            lsof -n -P -s -p "$proc_pid" > "$samples" 2>&1
+            if [ "$?" -ne "0" ]; then
+               echo "Error: could not execute lsof, error code $?"
+               exit 1
+            fi
+
+            strace -T -s 0 -f -p $proc_pid >> "$samples" 2>&1 &
+            if [ "$?" -ne "0" ]; then
+               echo "Error: could not execute strace, error code $?"
+               exit 1
+            fi
+            strace_pid=$!
+            # sleep one second then check to make sure the strace is
+            # actually running
+            sleep 1
+            ps -p $strace_pid > /dev/null 2>&1
+            if [ "$?" -ne "0" ]; then
+               echo "Cannot find strace process" >&2
+               tail "$samples" >&2
+               exit 1
+            fi 
+            # sleep for interval -1, since we did a one second sleep
+            # before checking for the PID of strace
+            if [ $((${OPT_RUN_TIME}-1)) -gt 0 ]; then
+                sleep $((${OPT_RUN_TIME}-1))
+            fi
+
+            kill -s 2 $strace_pid
+
+            sleep 1
+            kill -s 15 $strace_pid 2>/dev/null
+
+            # Sometimes strace leaves threads/processes in T status.
+            kill -s 18 $proc_pid
+
+            # Summarize the output we just generated.
+            tabulate_strace "$samples" > $TMPDIR/tabulated_samples
+         else
+            echo "Cannot determine PID of $OPT_PROFILE_PROCESS process" >&2
+            exit 1
+         fi
+      else
+         echo "strace is not in PATH" >&2
+         exit 1
+      fi
+   else
+      # Summarize the files the user passed in.
+      tabulate_strace "$@" > $TMPDIR/tabulated_samples
+   fi
+
+   summarize_strace  \
+      $OPT_AGGREGATE \
+      $OPT_CELL      \
+      $OPT_GROUP_BY  \
+      $TMPDIR/tabulated_samples
+}
+
+# Execute the program if it was not included from another file.
+# This makes it possible to include without executing, and thus test.
+if    [ "$(basename "$0")" = "pt-ioprofile" ] \
+   || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+
+   # Parse command line options.  We must do this first so we can
+   # see if --daemonize was specified.
+   mk_tmpdir
+   parse_options $0 "$@"
+   usage_or_errors $0
+   EXIT_STATUS=$?
+   if [ $EXIT_STATUS -eq 0 ]; then
+      # No errors parsing command line options, run the program.
+      main "$EXT_ARGV"
+   fi
+   rm_tmpdir
+   exit $EXIT_STATUS
+fi
+
+# ############################################################################
+# Documentation
+# ############################################################################
+:<<'DOCUMENTATION'
+=pod
+
+=head1 NAME
+
+pt-iostats - Watch process IO and print a table of file and I/O activity.
+
+=head1 SYNOPSIS
+
+Usage: pt-iostats [OPTIONS] [FILE]
+
+pt-iostats does two things: 1) get lsof+strace for -s seconds, 2) aggregate
+the result. If you specify a FILE, then step 1) is not performed.
+
+=head1 RISKS
+
+The following section is included to inform users about the potential risks,
+whether known or unknown, of using this tool.  The two main categories of risks
+are those created by the nature of the tool (e.g. read-only tools vs. read-write
+tools) and those created by bugs.
+
+pt-iostats is a read-only tool.  It should be very low-risk.
+
+At the time of this release, we know of no bugs that could cause serious harm
+to users.
+
+The authoritative source for updated information is always the online issue
+tracking system.  Issues that affect this tool will be marked as such.  You can
+see a list of such issues at the following URL:
+L<http://www.percona.com/bugs/pt-iostats>.
+
+See also L<"BUGS"> for more information on filing bugs and getting help.
+
+=head1 DESCRIPTION
+
+pt-iostats uses strace and lsof to watch a process's IO and print out
+a table of files and I/O activity.
+
+=head1 OPTIONS
+
+=over
+
+=item --aggreate
+
+short form: -a; type: string; default: sum
+
+The aggregate function, either C<sum> or C<avg>.
+
+If sum, then each cell will contain the sum of the values in it.
+If avg, then ach cell will contain the average of the values in it.
+
+=item --cell
+
+short form: -c; type: string; default: times
+
+The cell contents.
+
+Valid values are:
+
+   VALUE  CELLS CONTAIN
+   =====  =======================
+   count  Count of I/O operations
+   sizes  Sizes of I/O operations
+   times  I/O operation timing
+
+=item --group-by
+
+short form: -g; type: string; default: filename
+
+The group-by item.
+
+Valid values are:
+
+   VALUE     GROUPING
+   =====     ======================================
+   all       Summarize into a single line of output
+   filename  One line of output per filename
+   pid       One line of output per process ID
+
+=item --help
+
+Print help and exit.
+
+=item --profile-pid
+
+short form: -p; type: int
+
+The PID to profile, overrides L<"--profile-process">.
+
+=item --profile-process
+
+short form: -b; type: string; default: mysqld
+
+The process name to profile.
+
+=item --run-time
+
+type: int; default: 30
+
+How long to profile.
+
+=item --save-samples
+
+type: string
+
+Filename to save samples in; these can be used for later analysis.
+
+=item --version
+
+Print the tool's version and exit.
+
+=back
+
+=head1 ENVIRONMENT
+
+This tool does not use any environment variables.
+
+=head1 SYSTEM REQUIREMENTS
+
+This tool requires the Bourne shell (F</bin/sh>).
+
+=head1 BUGS
+
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-iostats>.
+
+Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
+Include the following information in your bug report:
+
+=over
+
+=item * Complete command-line used to run the tool
+
+=item * Tool L<"--version">
+
+=item * MySQL version of all servers involved
+
+=item * Output from the tool including STDERR
+
+=item * Input files (log/dump/config files, etc.)
+
+=back
+
+If possible, include debugging output by running the tool with C<PTDEBUG>;
+see L<"ENVIRONMENT">.
+
+=head1 DOWNLOADING
+
+Visit L<http://www.percona.com/software/percona-toolkit/> to download the
+latest release of Percona Toolkit.  Or, get the latest release from the
+command line:
+
+   wget percona.com/get/percona-toolkit.tar.gz
+
+   wget percona.com/get/percona-toolkit.rpm
+
+   wget percona.com/get/percona-toolkit.deb
+
+You can also get individual tools from the latest release:
+
+   wget percona.com/get/TOOL
+
+Replace C<TOOL> with the name of any tool.
+
+=head1 AUTHORS
+
+Baron Schwartz
+
+=head1 ABOUT PERCONA TOOLKIT
+
+This tool is part of Percona Toolkit, a collection of advanced command-line
+tools developed by Percona for MySQL support and consulting.  Percona Toolkit
+was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
+projects were created by Baron Schwartz and developed primarily by him and
+Daniel Nichter, both of whom are employed by Percona.  Visit
+L<http://www.percona.com/software/> for more software developed by Percona.
+
+=head1 COPYRIGHT, LICENSE, AND WARRANTY
+
+This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+Feedback and improvements are welcome.
+
+THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 VERSION
+
+pt-iostats 2.0.0
+
+=cut
+
+DOCUMENTATION
