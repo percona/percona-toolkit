@@ -23,6 +23,8 @@ shift @INC;  # our unshift (above)
 shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
+use Data::Dumper;
+
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -57,6 +59,8 @@ for my $port ( qw(12346 12347) ) {
    diag(`echo "replicate-ignore-db=foo" >> /tmp/$port/my.sandbox.cnf`);
    diag(`/tmp/$port/start >/dev/null`);
 }
+$slave1_dbh = $sb->get_dbh_for('slave1');
+$slave2_dbh = $sb->get_dbh_for('slave2');
 
 my $pos = PerconaTest::get_master_binlog_pos($master_dbh);
 
@@ -102,6 +106,8 @@ for my $port ( qw(12346 12347) ) {
    diag(`mv /tmp/$port/orig.cnf /tmp/$port/my.sandbox.cnf`);
    diag(`/tmp/$port/start >/dev/null`);
 }
+$slave1_dbh = $sb->get_dbh_for('slave1');
+$slave2_dbh = $sb->get_dbh_for('slave2');
 
 # #############################################################################
 # Issue 982: --empty-replicate-table does not work with binlog-ignore-db
