@@ -34,9 +34,10 @@ die() {
 # Paths
 # ############################################################################
 
-TMPDIR="/tmp/percona-toolkit.test"
-if [ ! -d $TMPDIR ]; then
-   mkdir $TMPDIR
+# Do not use TMPDIR because the tools use it for their own secure tmpdir.
+TEST_TMPDIR="/tmp/percona-toolkit.test"
+if [ ! -d $TEST_TMPDIR ]; then
+   mkdir $TEST_TMPDIR
 fi
 
 # ############################################################################
@@ -47,6 +48,7 @@ fi
 load_tests() {
    local test_files="$@"
    local i=0
+   local n_tests=0
    for t in $test_files; do
       # Return unless the test file is bash.  There may be other types of
       # files in the tool's test dir.
@@ -56,22 +58,22 @@ load_tests() {
       head -n 1 $t | grep -q bash || continue
 
       tests[$i]=$t
+      i=$((i + 1))
+
       number_of_tests=$(grep --max-count 1 '^TESTS=[0-9]' $t | cut -d'=' -f2)
       if [ -z "$number_of_tests" ]; then
-         i=$(( i + 1 ))
+         n_tests=$(( $n_tests + 1 ))
       else
-         i=$(( i + $number_of_tests ))
+         n_tests=$(( $n_tests + $number_of_tests ))
       fi
    done
-   echo "1..$i"
+   echo "1..$n_tests"
 }
 
 # Source a test file to run whatever it contains (hopefully tests!).
 run_test() {
    local t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
-   rm -rf $TMPDIR/* >/dev/null 2>&1
-
-   TEST_NUMBER=1  # test number in this test file
+   rm -rf $TEST_TMPDIR/* >/dev/null 2>&1
 
    # Tests assume that they're being ran from their own dir, so they access
    # sample files like "samples/foo.txt".  So cd to the dir of the test file
@@ -91,19 +93,18 @@ run_test() {
 # Print a TAP-style test result.
 result() {
    local result=$1
-   local test_name=${TEST_NAME:-"$TEST_NUMBER"}
+   local test_name=$2
    if [ $result -eq 0 ]; then
       echo "ok $testno - $TEST_FILE $test_name"
    else
       echo "not ok $testno - $TEST_FILE $test_name"
       failed_tests=$(( failed_tests + 1))
       echo "#   Failed '$test_command'" >&2
-      if [ -f $TMPDIR/failed_result ]; then
-         cat $TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
+      if [ -f $TEST_TMPDIR/failed_result ]; then
+         cat $TEST_TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
       fi
    fi
    testno=$((testno + 1))
-   TEST_NUMBER=$((TEST_NUMBER + 1))
    return $result
 }
 
@@ -114,17 +115,26 @@ result() {
 no_diff() {
    local got=$1
    local expected=$2
+   local test_name=$3
    test_command="diff $got $expected"
-   eval $test_command > $TMPDIR/failed_result 2>&1
-   result $?
+   eval $test_command > $TEST_TMPDIR/failed_result 2>&1
+   result $? "$test_name"
 }
 
 is() {
    local got=$1
    local expected=$2
+   local test_name=$3
    test_command="\"$got\" == \"$expected\""
    test "$got" = "$expected"
-   result $?
+   result $? "$test_name"
+}
+
+cmd_ok() {
+   local test_command=$1
+   local test_name=$2
+   eval $test_command
+   result $? "$test_name"
 }
 
 # ############################################################################
@@ -157,6 +167,6 @@ for t in "${tests[@]}"; do
    run_test $t
 done
 
-rm -rf $TMPDIR
+rm -rf $TEST_TMPDIR
 
 exit $failed_tests
