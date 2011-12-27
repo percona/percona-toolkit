@@ -678,7 +678,15 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 =head1 DESCRIPTION
 
 pt-iostats uses strace and lsof to watch a process's IO and print out
-a table of files and I/O activity.
+a table of files and I/O activity.  By default, it watches the mysqld
+process for 30 seconds.  The output is like:
+
+  Tue Dec 27 15:33:57 PST 2011
+  Tracing process ID 1833
+       total       read      write      lseek  ftruncate filename
+    0.000150   0.000029   0.000068   0.000038   0.000015 /tmp/ibBE5opS
+
+You probably need to run this tool as root.
 
 =head1 OPTIONS
 
