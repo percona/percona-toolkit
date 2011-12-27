@@ -79,8 +79,8 @@ like(
 
 like(
    $output,
-   qr/^  --recheck\s+TRUE$/m,
-   "Default --recheck=TRUE"
+   qr/^  --replicate-check-only\s+FALSE$/m,
+   "Default --replicate-check-only=FALSE"
 );
 
 like(

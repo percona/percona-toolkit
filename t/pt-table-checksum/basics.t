@@ -196,7 +196,7 @@ $slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and t
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args, qw(--no-recheck)) },
+      sub { pt_table_checksum::main(@args, qw(--replicate-check-only)) },
       "$sample/no-recheck.txt",
    ),
    "--no-recheck (just --replicate-check)"

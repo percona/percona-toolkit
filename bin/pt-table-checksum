@@ -6767,11 +6767,6 @@ sub exec_nibble {
          # ###################################################################
          my $t_start = time;        
 
-         # Reset the BIT_XOR user vars.
-         my $sql = 'SET @crc := "", @cnt := 0';
-         MKDEBUG && _d($sql);
-         $dbh->do($sql);
-
          # Execute the REPLACE...SELECT checksum query.
          MKDEBUG && _d($sth->{nibble}->{Statement},
             'lower boundary:', @{$boundary->{lower}},
@@ -7527,9 +7522,9 @@ progress.
 
 =item DIFFS
 
-The number of chunks that differ from the master on one or more replicas.  If
---no-replicate-check is specified, this column will always have zeros.
-If --replicate-check-only is specified, then only tables with differences
+The number of chunks that differ from the master on one or more replicas.
+If C<--no-replicate-check> is specified, this column will always have zeros.
+If L<"--replicate-check-only"> is specified, then only tables with differences
 are printed.
 
 =item ROWS
@@ -7553,6 +7548,58 @@ The time elapsed while checksumming the table.
 =item TABLE
 
 The database and table that was checksummed.
+
+=back
+
+If L<"--replicate-check-only"> is specified, only checksum differences on
+detected replicas are printed.  The output is different: one paragraph per
+replica, one checksum difference per line, and values are separted by spaces:
+
+  Differences on h=127.0.0.1,P=12346
+  TABLE CHUNK CNT_DIFF CRC_DIFF CHUNK_INDEX LOWER_BOUNDARY UPPER_BOUNDARY
+  db1.tbl1 1 0 1 PRIMARY 1 100
+  db1.tbl1 6 0 1 PRIMARY 501 600
+
+  Differences on h=127.0.0.1,P=12347
+  TABLE CHUNK CNT_DIFF CRC_DIFF CHUNK_INDEX LOWER_BOUNDARY UPPER_BOUNDARY
+  db1.tbl1 1 0 1 PRIMARY 1 100
+  db2.tbl2 9 5 0 PRIMARY 101 200
+
+The first line of a paragraph indicates the replica with differences.
+In this example there are two: h=127.0.0.1,P=12346 and h=127.0.0.1,P=12347.
+The columns are as follows:
+
+=over
+
+=item TABLE
+
+The database and table that differs from the master.
+
+=item CHUNK
+
+The chunk number of the table that differs from the master.
+
+=item CNT_DIFF
+
+The number of chunk rows on the replica minus the number of chunk rows
+on the master.
+
+=item CRC_DIFF
+
+1 if the CRC of the chunk on the replica is different than the CRC of the
+chunk on the master, else 0.
+
+=item CHUNK_INDEX
+
+The index used to chunk the table.
+
+=item LOWER_BOUNDARY
+
+The index values that define the lower boundary of the chunk.
+
+=item UPPER_BOUNDARY
+
+The index values that define the upper boundary of the chunk.
 
 =back
 
@@ -8040,7 +8087,7 @@ table to L<"--ignore-tables">).
 default: yes
 
 Check replicas for data differences after finishing each table.  The tool finds
-differences by executing a simple SELECT statement on all connected replicas.
+differences by executing a simple SELECT statement on all detected replicas.
 The query compares the replica's checksum results to the master's checksum
 results.  It reports differences in the DIFFS column of the output.
 
@@ -8048,7 +8095,7 @@ results.  It reports differences in the DIFFS column of the output.
 
 Check replicas for consistency without executing checksum queries.
 This option is used only with L<"--[no]replicate-check">.  If specified,
-pt-table-checksum doesn't checksum any tables. It checks replicas for
+pt-table-checksum doesn't checksum any tables.  It checks replicas for
 differences found by previous checksumming, and then exits.  It might be useful
 if you run pt-table-checksum quietly in a cron job, for example, and later want
 a report on the results of the cron job, perhaps to implement a Nagios check.
