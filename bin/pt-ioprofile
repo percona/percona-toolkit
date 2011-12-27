@@ -684,7 +684,7 @@ a table of files and I/O activity.
 
 =over
 
-=item --aggreate
+=item --aggregate
 
 short form: -a; type: string; default: sum
 
