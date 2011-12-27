@@ -139,7 +139,8 @@ $slave1_dbh = $sb->get_dbh_for('slave1');
 # But since db mysql is ignored, the new results for mysql.user should
 # not replicate.
 pt_table_checksum::main(@args, qw(--no-check-replication-filters),
-   '-t', 'mysql.user,sakila.city', qw(--quiet --no-replicate-check));
+   '-t', 'mysql.user,sakila.city', qw(--quiet --no-replicate-check),
+   qw(--chunk-size 1000));
 
 PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', "db='sakila' and tbl='city' and chunk=1");
 
