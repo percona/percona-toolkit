@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 45;
+   plan tests => 46;
 }
 
 my $q   = new Quoter();
@@ -711,6 +711,21 @@ is_deeply(
    "Nibbles only values in --where clause range"
 );
 
+$ni = make_nibble_iter(
+   sql_file   => "a-z.sql",
+   db         => 'test',
+   tbl        => 't',
+   one_nibble => 1,
+   argv       => [qw(--databases test --where c>'m')],
+);
+1 while $ni->next();
+my $sql = $ni->statements()->{nibble}->{Statement};
+is(
+   $sql,
+   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*checksum table*/",
+   "One nibble SQL with where"
+);
+
 # The real number of rows is 13, but MySQL may estimate a little.
 cmp_ok(
    $ni->row_estimate(),
@@ -718,7 +733,6 @@ cmp_ok(
    15,
    "row_estimate()"
 );
-
 
 # ############################################################################
 # Empty table.

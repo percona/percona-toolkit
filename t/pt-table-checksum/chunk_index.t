@@ -32,7 +32,7 @@ else {
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3 -d issue_519 --explain --explain --chunk-size 3), '--max-load', '');
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3 --explain --chunk-size 3), '--max-load', '');
 my $output;
 my $out        = "t/pt-table-checksum/samples/";
 
@@ -40,7 +40,7 @@ $sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args) },
+      sub { pt_table_checksum::main(@args, qw(-t issue_519.t --explain)) },
       "$out/chunkidx001.txt",
    ),
    "Chooses chunk index by default"
@@ -48,7 +48,8 @@ ok(
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args, qw(--chunk-index dog)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-index dog),
+         qw(-t issue_519.t --explain)) },
       "$out/chunkidx001.txt",
    ),
    "Chooses chunk index if --chunk-index doesn't exist"
@@ -56,7 +57,8 @@ ok(
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args, qw(--chunk-index myidx)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-index myidx),
+         qw(-t issue_519.t --explain)) },
       "$out/chunkidx002.txt",
    ),
    "Use --chunk-index"
@@ -66,7 +68,8 @@ ok(
 # is a single column index, so there's really not "left-most".
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args, qw(--chunk-index y)) },
+      sub { pt_table_checksum::main(@args, qw(--chunk-index y),
+         qw(-t issue_519.t --explain)) },
       "$out/chunkidx003.txt",
    ),
    "Chunks on left-most --chunk-index column"
@@ -79,22 +82,23 @@ ok(
 
 # This issue affect --chunk-index.  Tool should auto-choose chunk-index
 # when --where is given but no explicit --chunk-index|column is given.
-# Given the --where clause, MySQL will prefer the y index.
+# Given the --where clause, MySQL will prefer the idx_fk_country_id index.
 
 ok(
    no_diff(
-      sub { pt_table_checksum::main(@args, "--where", "y > 2009") },
+      sub { pt_table_checksum::main(@args, "--where", "country_id > 100",
+         qw(-t sakila.city)) },
       "$out/chunkidx004.txt",
    ),
    "Auto-chosen --chunk-index for --where (issue 378)"
 );
 
 # If user specifies --chunk-index, then ignore the index MySQL wants to
-# use (y in this case) and use the user's index.
+# use (idx_fk_country_id in this case) and use the user's index.
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-index PRIMARY),
-         "--where", "y > 2009") },
+         "--where", "country_id > 100", qw(-t sakila.city)) },
       "$out/chunkidx005.txt",
    ),
    "Explicit --chunk-index overrides MySQL's index for --where"
