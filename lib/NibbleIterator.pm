@@ -95,7 +95,7 @@ sub new {
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-         . ($where ? " AND ($where)" : '')
+         . ($where ? " WHERE $where" : '')
          . " /*checksum table*/";
       MKDEBUG && _d('One nibble statement:', $nibble_sql);
 
@@ -104,7 +104,7 @@ sub new {
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-         . ($where ? " AND ($where)" : '')
+         . ($where ? " WHERE $where" : '')
          . " /*explain checksum table*/";
       MKDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
