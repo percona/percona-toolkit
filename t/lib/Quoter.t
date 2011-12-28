@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 31;
+use Test::More tests => 63;
 
 use Quoter;
 use PerconaTest;
@@ -98,5 +98,77 @@ is( $q->join_quote('db', 'foo.tbl'), '`foo`.`tbl`', 'join_merge(db, foo.tbl)' );
 is( $q->join_quote('`db`', '`tbl`'), '`db`.`tbl`', 'join_merge(`db`, `tbl`)' );
 is( $q->join_quote(undef, '`tbl`'), '`tbl`', 'join_merge(undef, `tbl`)'  );
 is( $q->join_quote('`db`', '`foo`.`tbl`'), '`foo`.`tbl`', 'join_merge(`db`, `foo`.`tbl`)' );
+
+my @serialize_tests = (
+   [ 'a', 'b', ],
+   [ 'a,', 'b', ],
+   [ "a,\\\nc\nas", 'b', ],
+   [ 'a\\\,a', 'c', ],
+   [ 'a\\\\,a', 'c', ],
+   [ 'a\\\\\,aa', 'c', ],
+   [ 'a\\\\\\,aa', 'c', ],
+   [ 'a\\\,a,a', 'c,d,e,d,', ],
+   [ "\\\,\x{e8},a", '!!!!__!*`,`\\', ], # Latin-1
+   [ "\x{30cb}\\\,\x{e8},a", '!!!!__!*`,`\\', ], # UTF-8
+   [ ",,,,,,,,,,,,,,", ",", ],
+   [ "\\,\\,\\,\\,\\,\\,\\,\\,\\,\\,\\,,,,\\", ":(", ],
+   [ "asdfa", "\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\,a", ],
+   [ 1, 2 ],
+   [ 7, 9 ],
+   [ '', '', '', ],
+);
+
+for my $test ( @serialize_tests ) {
+   my $ser = Quoter::serialize_list( @$test );
+   is_deeply(
+      [Quoter::deserialize_list($ser)],
+      $test,
+      "serialize then deserialize works"
+   );
+}
+
+use DSNParser;
+use Sandbox;
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('master');
+SKIP: {
+   skip 'Cannot connect to sandbox master', 1 unless $dbh;
+
+   $dbh->do('CREATE DATABASE IF NOT EXISTS serialize_test');
+   $dbh->do('DROP TABLE IF EXISTS serialize_test.serialize');
+   $dbh->do('CREATE TABLE serialize_test.serialize (id INT, foo TEXT)');
+
+   my $sth    = $dbh->prepare(
+      "INSERT INTO serialize_test.serialize (id, foo) VALUES (?, ?)"
+   );
+   my $selsth = $dbh->prepare(
+      "SELECT foo FROM serialize_test.serialize WHERE id=? LIMIT 1"
+   );
+
+   for my $test_index ( 0..$#serialize_tests ) {
+      my $ser = Quoter::serialize_list( @{$serialize_tests[$test_index]} );
+
+      # Bit of a hack, but we want to test both of Perl's internal encodings
+      # for correctness.
+      local $dbh->{'mysql_enable_utf8'} = 1 if utf8::is_utf8($ser);
+
+      $sth->execute($test_index, $ser);
+      $selsth->execute($test_index);
+
+      is_deeply(
+         [Quoter::deserialize_list($selsth->fetchrow_array())],
+         $serialize_tests[$test_index],
+         "serialize then deserialize through the DB works"
+      );
+   }
+
+   $sth->finish();
+   $selsth->finish();
+
+   $dbh->do("DROP DATABASE serialize_test");
+
+   $dbh->disconnect();
+};
 
 exit;
