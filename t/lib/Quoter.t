@@ -155,7 +155,7 @@ SKIP: {
       $sth->execute($test_index, $ser);
       $selsth->execute($test_index);
 
-      my $flat_string = "@{$serialize_tests[$test_index]}";
+      my $flat_string =  "[" . join("][", @{$serialize_tests[$test_index]}) . "]";
       $flat_string =~ s/\n/\\n/g;
 
       is_deeply(

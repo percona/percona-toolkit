@@ -172,7 +172,7 @@ sub deserialize_list {
                [^\\,]*  # Same as above.
             )*          # Repeat zero of more times.
          )
-         (?:,|\z)       # Comma dividing elements or absolute end of the string.
+         ,?             # Comma dividing elements or absolute end of the string.
       /sxg;
 
    # Last element will always be empty. Flaw in the regex.
