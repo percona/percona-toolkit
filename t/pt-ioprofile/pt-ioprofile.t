@@ -9,14 +9,16 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 1;
 
 use PerconaTest;
 
-TODO: {
-   local $TODO = "Test pt-ioprofile";
-   ok(1, 'ok');
-};
+my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
+push @ARGV, "$trunk/t/$tool/*.sh" unless @ARGV;
+
+$ENV{BIN_DIR} = "$trunk/bin";
+$ENV{T_DIR}   = "$trunk/t/$tool";
+
+system("$trunk/util/test-bash-functions $trunk/t/lib/samples/bash/dummy.sh @ARGV");
 
 # #############################################################################
 # Done.
