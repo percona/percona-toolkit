@@ -1,0 +1,12 @@
+20974 pread 7792 16384 0.000369 /data/data/abd_2dia/aia_227_223.ibd
+22782 pread 586 16384 0.006348 /data/data/abd_2dia/aia_227_228.ibd
+6594 open 30 0 0.000096 /data/data/abd_2dia/
+6594 getdents64 30 264 0.000164 /data/data/abd_2dia/
+6594 getdents64 30 0 0.000146 /data/data/abd_2dia/
+6594 close 30 0 0.000098 /data/data/abd_2dia/
+6594 open 30 0 0.000054 /data/data/abd_2dia/test/db.opt
+6594 _llseek 30 0 0.000043 /data/data/abd_2dia/test/db.opt
+6594 _llseek 30 0 0.000041 /data/data/abd_2dia/test/db.opt
+6594 _llseek 30 0 0.000043 /data/data/abd_2dia/test/db.opt
+6594 read 30 65 0.000062 /data/data/abd_2dia/test/db.opt
+6594 close 30 0 0.000045 /data/data/abd_2dia/test/db.opt

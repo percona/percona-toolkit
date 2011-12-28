@@ -1,0 +1,19 @@
+COMMAND   PID  USER   FD   TYPE             DEVICE          SIZE      NODE NAME
+mysqld  21219 mysql  cwd    DIR               8,17          4096    409603 /data/data
+mysqld  21219 mysql    0r   CHR                1,3                    4906 /dev/null
+mysqld  21219 mysql    1u   REG                8,6         17423  19071075 /var/log/mysql/error.log
+mysqld  21219 mysql    2u   REG                8,6         17423  19071075 /var/log/mysql/error.log
+mysqld  21219 mysql    3w   REG                8,6          1334  19071001 /var/log/mysql/slow-query.log
+mysqld  21219 mysql    4u   REG               8,17          6494    409629 /data/binlogs/mysql-bin.index
+mysqld  21219 mysql    5uW  REG               8,17    2097152000    409624 /data/data/ibdata1
+mysqld  21219 mysql    6u   REG                8,6          5402  21299212 /tmp/ib1LLekh (deleted)
+mysqld  21219 mysql    7u   REG               8,17            21 342253570 /data/tmp/ibgFmgEX (deleted)
+mysqld  21219 mysql    8u   REG                8,6             0  21299213 /tmp/ib4r3hYD (deleted)
+mysqld  21219 mysql    9u   REG               8,17             0 342253571 /data/tmp/ibZOff4r (deleted)
+mysqld  21219 mysql   10uW  REG               8,17    7707033600    409712 /data/data/ibdata2
+mysqld  21219 mysql   11uW  REG               8,17    2097152000    409737 /data/data/ib_logfile0
+mysqld  21219 mysql   12uW  REG               8,17    2097152000    409664 /data/data/ib_logfile1
+mysqld  21219 mysql   13w   REG               8,17      25745098    409742 /data/binlogs/mysql-bin.001856
+Process 21219 attached with 41 threads - interrupt to quit
+[pid 21248] fsync(11 <unfinished ...>
+[pid 21248] <... fsync resumed> )       = 0 <0.468671>

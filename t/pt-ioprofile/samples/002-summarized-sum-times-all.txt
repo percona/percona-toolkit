@@ -1,0 +1,7 @@
+  0.007509 TOTAL
+  0.006717 pread
+  0.000310 getdents64
+  0.000150 open
+  0.000143 close
+  0.000127 _llseek
+  0.000062 read
