@@ -699,7 +699,7 @@ short form: -a; type: string; default: sum
 The aggregate function, either C<sum> or C<avg>.
 
 If sum, then each cell will contain the sum of the values in it.
-If avg, then ach cell will contain the average of the values in it.
+If avg, then each cell will contain the average of the values in it.
 
 =item --cell
 
