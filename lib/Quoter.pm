@@ -144,6 +144,67 @@ sub join_quote {
    return $db ? "$db.$tbl" : $tbl;
 }
 
+# Return the list passed in, with the elements passed through quotemeta,
+# and the results concatenated with ','.
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   if ( @args && $args[-1] eq '' ) {
+      # If the last element is an empty string, it conflicts
+      # with the assumptions of the somewhat lax regex below,
+      # which always leaves an empty element in the end.
+      # We could fix the regex, but it's a lot of extra
+      # complexity for little gain, or we could add a
+      # special-case here. Just by tagging another empty
+      # string, we get the desired result.
+      push @args, '';
+   }
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,?             # Comma dividing elements or absolute end of the string.
+      /sxg;
+
+   # Last element will always be empty. Flaw in the regex.
+   # But easier to fix this way. Faster, too.
+   pop @escaped_parts;
+
+   # Undo the quotemeta().
+   my @unescaped_parts = map {
+      my $part = $_;
+      # Here be weirdness. Unfortunately quotemeta() is broken, and exposes
+      # the internal representation of scalars. Namely, the latin-1 range,
+      # \128-\377 (\p{Latin1} in newer Perls) is all escaped in downgraded
+      # strings, but left alone in UTF-8 strings. Thus, this.
+
+      # TODO: quotemeta() might change in 5.16 to mean
+      # qr/(?=\p{ASCII})\W|\p{Pattern_Syntax}/
+      # And also fix this whole weird behavior under
+      # use feature 'unicode_strings' --  If/once that's
+      # implemented, this will have to change.
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                                             # characters in the ASCII range
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+                                             # same as above, but also
+                                             # unescape the latin-1 range.
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
 1;
 }
 # ###########################################################################
