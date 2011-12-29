@@ -1104,6 +1104,43 @@ sub join_quote {
    return $db ? "$db.$tbl" : $tbl;
 }
 
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   if ( @args && $args[-1] eq '' ) {
+      push @args, '';
+   }
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,?             # Comma dividing elements or absolute end of the string.
+      /sxg;
+
+   pop @escaped_parts;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
 1;
 }
 # ###########################################################################
@@ -8847,16 +8884,14 @@ sub diff_where {
       MKDEBUG && _d('Ascend params:', Dumper($asc));
    }
 
-   my @lb = split ',', $diff->{lower_boundary};
    my $lb_sql = $asc->{boundaries}->{'>='};
-   foreach my $val (@lb) {
+   foreach my $val ( $q->deserialize_list($diff->{lower_boundary}) ) {
       my $quoted_val = $q->quote_val($val);
       $lb_sql =~ s/\?/$val/;
    }
 
-   my @ub = split ',', $diff->{upper_boundary};
    my $ub_sql = $asc->{boundaries}->{'<='};
-   foreach my $val (@ub) {
+   foreach my $val ( $q->deserialize_list($diff->{upper_boundary}) ) {
       my $quoted_val = $q->quote_val($val);
       $ub_sql =~ s/\?/$val/;
    }

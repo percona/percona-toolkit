@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 47;
+use Test::More tests => 52;
 
 use Quoter;
 use PerconaTest;
@@ -103,6 +103,24 @@ is( $q->join_quote('`db`', '`foo`.`tbl`'), '`foo`.`tbl`', 'join_merge(`db`, `foo
 # (de)serialize_list
 # ###########################################################################
 
+is(
+   $q->serialize_list(),
+   undef,
+   "Serialize empty list"
+);
+
+is(
+   $q->serialize_list(''),
+   '',
+   "Serialize 1 empty string",
+);
+
+is(
+   $q->serialize_list('', '', ''),
+   ',,',
+   "Serialize 3 empty strings",
+);
+
 my @serialize_tests = (
    [ 'a', 'b', ],
    [ 'a,', 'b', ],
@@ -120,6 +138,8 @@ my @serialize_tests = (
    [ 1, 2 ],
    [ 7, 9 ],
    [ '', '', '', ],
+   [ '' ],
+   [ undef ],
 );
 
 use DSNParser;

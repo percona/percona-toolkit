@@ -1602,6 +1602,43 @@ sub join_quote {
    return $db ? "$db.$tbl" : $tbl;
 }
 
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   if ( @args && $args[-1] eq '' ) {
+      push @args, '';
+   }
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,?             # Comma dividing elements or absolute end of the string.
+      /sxg;
+
+   pop @escaped_parts;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
 1;
 }
 # ###########################################################################
@@ -6753,8 +6790,8 @@ sub exec_nibble {
    my $dbh         = $cxn->dbh();
    my $sth         = $nibble_iter->statements();
    my $boundary    = $nibble_iter->boundaries();
-   my $lb_quoted   = join(',', @{$boundary->{lower}});
-   my $ub_quoted   = join(',', @{$boundary->{upper}});
+   my $lb_quoted   = $q->serialize_list(@{$boundary->{lower}});
+   my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
    my $chunk_index = $nibble_iter->nibble_index();
 
