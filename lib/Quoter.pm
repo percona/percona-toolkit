@@ -148,21 +148,16 @@ sub join_quote {
 # and the results concatenated with ','.
 sub serialize_list {
    my ( $self, @args ) = @_;
-   if ( @args && $args[-1] eq '' ) {
-      # If the last element is an empty string, it conflicts
-      # with the assumptions of the somewhat lax regex below,
-      # which always leaves an empty element in the end.
-      # We could fix the regex, but it's a lot of extra
-      # complexity for little gain, or we could add a
-      # special-case here. Just by tagging another empty
-      # string, we get the desired result.
-      push @args, '';
-   }
+   return unless @args;
+   return $args[0] if @args == 1 && !defined $args[0];
+   die "serialize_list can't handle undef (NULLs) unless they are the only value"
+      if grep { !defined $_ } @args;
    return join ',', map { quotemeta } @args;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
+   return $string unless defined $string;
    my @escaped_parts = $string =~ /
          \G             # Start of string, or end of previous match.
          (              # Each of these is an element in the original list.
@@ -172,12 +167,13 @@ sub deserialize_list {
                [^\\,]*  # Same as above.
             )*          # Repeat zero of more times.
          )
-         ,?             # Comma dividing elements or absolute end of the string.
-      /sxg;
+         ,              # Comma dividing elements
+      /sxgc;
 
-   # Last element will always be empty. Flaw in the regex.
-   # But easier to fix this way. Faster, too.
-   pop @escaped_parts;
+   # Grab the rest of the string following the last match.
+   # If there wasn't a last match, like for a single-element list,
+   # the entire string represents the single element, so grab that.
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
 
    # Undo the quotemeta().
    my @unescaped_parts = map {
