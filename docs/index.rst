@@ -35,6 +35,7 @@ Tools
 
    pt-*
 
+
 Configuration
 =============
 
@@ -42,9 +43,9 @@ Configuration
    :maxdepth: 1
 
    configuration_files
+   dsn_data_source_name_specifications
    environment
    system_requirements
-   glossary
 
 Miscellaneous
 =============
