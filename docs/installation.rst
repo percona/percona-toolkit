@@ -3,7 +3,7 @@
 =======================================
 
 Visit `http://www.percona.com/software/percona-toolkit/ <http://www.percona.com/software/percona-toolkit/>`_ to download the
-latest release of |Percona Toolkit|.  Or, get the latest release from the
+latest release of Percona Toolkit.  Or, get the latest release from the
 command line:
 
 
