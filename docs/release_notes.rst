@@ -4,11 +4,10 @@ Release Notes
 v2.0.1 released 2011-12-30
 ==========================
 
-The Percona Toolkit development team is proud to announce the next genc
-na Toolkit development team is proud to announce a new major version: 2.0.
-Beginning with Percona Toolkit 2.0, we are overhauling, redesigning, and
+The Percona Toolkit development team is proud to announce a new major version:
+2.0.  Beginning with Percona Toolkit 2.0, we are overhauling, redesigning, and
 improving the major tools.  2.0 tools are therefore not backwards compatible
-with 1.0 tools, which= we still support but will not continue to develop.
+with 1.0 tools, which we still support but will not continue to develop.
 
 New in Percona Toolkit 2.0.1 is a completely redesigned pt-table-checksum.
 The original pt-table-checksum 1.0 was rather complex, but it worked well
