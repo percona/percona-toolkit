@@ -122,13 +122,13 @@ is_deeply(
    'Synced OK with Nibble'
 );
 
-# Save original MKDEBUG env because we modify it below.
-my $dbg = $ENV{MKDEBUG};
+# Save original PTDEBUG env because we modify it below.
+my $dbg = $ENV{PTDEBUG};
 
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$ENV{MKDEBUG} = 1;
+$ENV{PTDEBUG} = 1;
 $output = run_cmd('test1', 'test2', '--algorithms Nibble --no-bin-log --chunk-size 1 --transaction --lock 1');
-delete $ENV{MKDEBUG};
+delete $ENV{PTDEBUG};
 like(
    $output,
    qr/Executing statement on source/,
@@ -141,9 +141,9 @@ is_deeply(
 );
 
 # Sync tables that have values with leading zeroes
-$ENV{MKDEBUG} = 1;
+$ENV{PTDEBUG} = 1;
 $output = run('test3', 'test4', '--print --no-bin-log --verbose --function MD5');
-delete $ENV{MKDEBUG};
+delete $ENV{PTDEBUG};
 like(
    $output,
    qr/UPDATE `test`.`test4`.*51707/,
@@ -165,8 +165,8 @@ $output = run('test3', 'test4', '--algorithms Nibble --chunk-size 1k --print --v
 # If it lived, it's OK.
 ok($output, 'Synced with Nibble and data-size chunksize');
 
-# Restore MKDEBUG env.
-$ENV{MKDEBUG} = $dbg || 0;
+# Restore PTDEBUG env.
+$ENV{PTDEBUG} = $dbg || 0;
 
 
 # #############################################################################

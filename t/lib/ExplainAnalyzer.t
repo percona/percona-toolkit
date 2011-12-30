@@ -6,7 +6,7 @@ BEGIN {
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 };
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);

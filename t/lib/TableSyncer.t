@@ -35,7 +35,7 @@ use DSNParser;
 use Sandbox;
 use PerconaTest;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -773,18 +773,18 @@ SKIP: {
 
          my $left_ts  = $lr->{ts};
          my $right_ts = $rr->{ts};
-         MKDEBUG && TableSyncer::_d("left ts: $left_ts");
-         MKDEBUG && TableSyncer::_d("right ts: $right_ts");
+         PTDEBUG && TableSyncer::_d("left ts: $left_ts");
+         PTDEBUG && TableSyncer::_d("right ts: $right_ts");
 
          my $cmp = ($left_ts || '') cmp ($right_ts || '');
          if ( $cmp == -1 ) {
-            MKDEBUG && TableSyncer::_d("right dbh $dbh3 is newer; update left dbh $src_dbh");
+            PTDEBUG && TableSyncer::_d("right dbh $dbh3 is newer; update left dbh $src_dbh");
             $ch->set_src('right', $dbh3);
             $auth_row   = $args{rr};
             $change_dbh = $src_dbh;
          }
          elsif ( $cmp == 1 ) {
-            MKDEBUG && TableSyncer::_d("left dbh $src_dbh is newer; update right dbh $dbh3");
+            PTDEBUG && TableSyncer::_d("left dbh $src_dbh is newer; update right dbh $dbh3");
             $ch->set_src('left', $src_dbh);
             $auth_row  = $args{lr};
             $change_dbh = $dbh3;

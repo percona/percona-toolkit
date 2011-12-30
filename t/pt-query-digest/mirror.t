@@ -48,9 +48,9 @@ $cmd  = "$trunk/bin/pt-query-digest "
 # match this test script and any vi mk-query-digest[.t] that may happen
 # to be running.
 
-$ENV{MKDEBUG}=1;
+$ENV{PTDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
-$ENV{MKDEBUG}=0;
+$ENV{PTDEBUG}=0;
 sleep 5;
 $dbh1->do('select sleep(1)');
 sleep 1;
