@@ -1604,14 +1604,19 @@ sub join_quote {
 
 sub serialize_list {
    my ( $self, @args ) = @_;
-   if ( @args && $args[-1] eq '' ) {
-      push @args, '';
-   }
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
    return join ',', map { quotemeta } @args;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
+   return $string unless defined $string;
    my @escaped_parts = $string =~ /
          \G             # Start of string, or end of previous match.
          (              # Each of these is an element in the original list.
@@ -1621,10 +1626,10 @@ sub deserialize_list {
                [^\\,]*  # Same as above.
             )*          # Repeat zero of more times.
          )
-         ,?             # Comma dividing elements or absolute end of the string.
-      /sxg;
+         ,              # Comma dividing elements
+      /sxgc;
 
-   pop @escaped_parts;
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
 
    my @unescaped_parts = map {
       my $part = $_;
@@ -6402,13 +6407,17 @@ sub main {
          # --explain level 2: print chunk,lower boundary values,upper
          # boundary values.
          if ( $o->get('explain') > 1 ) {
-            my $lb_quoted = join(',', @{$boundary->{lower} || []});
-            my $ub_quoted = join(',', @{$boundary->{upper} || []});
-            my $chunk     = $nibble_iter->nibble_number();
-            printf "%d %s %s\n",
-               $chunk,
-               (defined $lb_quoted ? $lb_quoted : '1=1'),
-               (defined $ub_quoted ? $ub_quoted : '1=1');
+            my $chunk = $nibble_iter->nibble_number();
+            if ( $nibble_iter->one_nibble() ) {
+               printf "%d 1=1\n", $chunk;
+            }
+            else {
+               my $lb_quoted = join(
+                  ',', map { defined $_ ? $_ : 'NULL'} @{$boundary->{lower}});
+               my $ub_quoted = join(
+                  ',', map { defined $_ ? $_ : 'NULL'} @{$boundary->{upper}});
+               printf "%d %s %s\n", $chunk, $lb_quoted, $ub_quoted;
+            }
             if ( !$nibble_iter->more_boundaries() ) {
                print "\n"; # blank line between this table and the next table
             }
@@ -6814,8 +6823,8 @@ sub exec_nibble {
             $tbl->{tbl},            # tbl
             $chunk,                 # chunk (number)
             $chunk_index,           # chunk_index
-            $lb_quoted || undef,    # lower_boundary
-            $ub_quoted || undef,    # upper_boundary
+            $lb_quoted,             # lower_boundary
+            $ub_quoted,             # upper_boundary
             # this_cnt, this_crc WHERE
             @{$boundary->{lower}},  # upper boundary values
             @{$boundary->{upper}},  # lower boundary values

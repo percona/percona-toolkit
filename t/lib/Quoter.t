@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 52;
+use Test::More tests => 54;
 
 use Quoter;
 use PerconaTest;
@@ -119,6 +119,18 @@ is(
    $q->serialize_list('', '', ''),
    ',,',
    "Serialize 3 empty strings",
+);
+
+is(
+   $q->serialize_list(undef),
+   undef,
+   "Serialize undef string",
+);
+
+is(
+   $q->deserialize_list(undef),
+   undef,
+   "Deserialize undef string",
 );
 
 my @serialize_tests = (
