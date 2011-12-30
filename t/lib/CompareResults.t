@@ -12,7 +12,6 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use Quoter;
-use MySQLDump;
 use TableParser;
 use DSNParser;
 use QueryParser;
@@ -54,7 +53,6 @@ Transformers->import(qw(make_checksum));
 my $vp = new VersionParser();
 my $q  = new Quoter();
 my $qp = new QueryParser();
-my $du = new MySQLDump(cache => 0);
 my $tp = new TableParser(Quoter => $q);
 my $tc = new TableChecksum(Quoter => $q, VersionParser => $vp);
 my $of = new Outfile();
@@ -72,7 +70,6 @@ my %modules = (
    TableParser   => $tp,
    TableSyncer   => $ts,
    QueryParser   => $qp,
-   MySQLDump     => $du,
    Outfile       => $of,
 );
 

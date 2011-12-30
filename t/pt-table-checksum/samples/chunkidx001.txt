@@ -1,0 +1,19 @@
+--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` >= ?)) AND ((`i` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` < ?)) ORDER BY `i` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` > ?)) ORDER BY `i` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `i` FROM `issue_519`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`i` >= ?)) ORDER BY `i` LIMIT ?, 2 /*next chunk boundary*/
+
+1 1 3
+2 4 6
+3 7 9
+4 10 11
+5  1
+6 11 
+

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 29;
+use Test::More tests => 31;
 
 use SchemaIterator;
 use FileIterator;
@@ -17,7 +17,6 @@ use Quoter;
 use DSNParser;
 use Sandbox;
 use OptionParser;
-use MySQLDump;
 use TableParser;
 use PerconaTest;
 
@@ -33,7 +32,7 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
-my ($du, $tp);
+my $tp;
 my $fi = new FileIterator();
 my $o  = new OptionParser(description => 'SchemaIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
@@ -57,6 +56,7 @@ sub test_so {
       $si = new SchemaIterator(
          file_itr     => $file_itr,
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
+         resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
          TableParser  => $tp,
@@ -66,9 +66,9 @@ sub test_so {
       $si = new SchemaIterator(
          dbh          => $dbh,
          keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
+         resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
-         MySQLDump    => $du,
          TableParser  => $tp,
       );
    }
@@ -79,14 +79,14 @@ sub test_so {
 
    my $res = "";
    my @objs;
-   while ( my $obj = $si->next_schema_object() ) {
+   while ( my $obj = $si->next() ) {
       if ( $args{return_objs} ) {
          push @objs, $obj;
       }
       else {
          if ( $result_file || $args{ddl} ) {
             $res .= "$obj->{db}.$obj->{tbl}\n";
-            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $du;
+            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
          }
          else {
             $res .= "$obj->{db}.$obj->{tbl} ";
@@ -102,7 +102,6 @@ sub test_so {
             $res,
             $args{result},
             cmd_output    => 1,
-            update_sample => $args{update_sample},
          ),
          $args{test_name},
       );
@@ -225,7 +224,7 @@ SKIP: {
          unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
 
       test_so(
-         filteres  => [qw(-d sakila)],
+         filters   => [qw(-d sakila)],
          result    => "",  # hack; uses unlike instead
          unlike    => qr/
              actor_info
@@ -312,7 +311,7 @@ SKIP: {
    # ########################################################################
    # Getting CREATE TALBE (ddl).
    # ########################################################################
-   $du = new MySQLDump();
+   $tp = new TableParser(Quoter => $q);
    test_so(
       filters   => [qw(-t mysql.user)],
       result    => $sandbox_version eq '5.1' ? "$out/mysql-user-ddl.txt"
@@ -320,8 +319,8 @@ SKIP: {
       test_name => "Get CREATE TABLE with dbh",
    );
 
-   # Kill the MySQLDump obj in case the next tests don't want to use it.
-   $du = undef;
+   # Kill the TableParser obj in case the next tests don't want to use it.
+   $tp = undef;
 
    $sb->wipe_clean($dbh);
 };
@@ -412,6 +411,24 @@ is(
    $n_ddls,
    0,
    'DDL deleted unless keep_ddl'
+);
+
+# ############################################################################
+# Resume
+# ############################################################################
+test_so(
+   filters   => [qw(-d sakila)],
+   result    => "$out/resume-from-sakila-payment.txt",
+   resume    => 'sakila.payment',
+   test_name => "Resume"
+);
+
+# Ignore the table being resumed from; resume from next table.
+test_so(
+   filters   => [qw(-d sakila --ignore-tables sakila.payment)],
+   result    => "$out/resume-from-ignored-sakila-payment.txt",
+   resume    => 'sakila.payment',
+   test_name => "Resume from ignored table"
 );
 
 # #############################################################################

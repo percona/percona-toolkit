@@ -30,7 +30,6 @@ use TableNibbler;
 use ChangeHandler;
 use RowDiff;
 # And other modules:
-use MySQLDump;
 use TableParser;
 use DSNParser;
 use Sandbox;
@@ -59,7 +58,6 @@ $sb->load_file('master', 't/lib/samples/before-TableSyncChunk.sql');
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump( cache => 0 );
 
 # ###########################################################################
 # Make a TableSyncer object.
@@ -103,8 +101,8 @@ my $syncer = new TableSyncer(
 );
 isa_ok($syncer, 'TableSyncer');
 
-my $chunker = new TableChunker( Quoter => $q, MySQLDump => $du );
-my $nibbler = new TableNibbler( TableParser => $tp, Quoter => $q );
+my $chunker = new TableChunker( Quoter => $q, TableParser => $tp );
+my $nibbler = new TableNibbler( Quoter => $q, TableParser => $tp );
 
 # Global vars used/set by the subs below and accessed throughout the tests.
 my $src;
@@ -182,7 +180,7 @@ sub sync_table {
       make_plugins();
    }
    $tbl_struct = $tp->parse(
-      $du->get_create_table($src_dbh, $q, $src_db, $src_tbl));
+      $tp->get_create_table($src_dbh, $src_db, $src_tbl));
    $src = {
       dbh      => $src_dbh,
       dsn      => {h=>'127.1',P=>'12345',},
@@ -221,7 +219,7 @@ sub sync_table {
 # Test get_best_plugin() (formerly best_algorithm()).
 # ###########################################################################
 make_plugins();
-$tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q, 'test', 'test5'));
+$tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'test', 'test5'));
 is_deeply(
    [
       $syncer->get_best_plugin(
@@ -233,7 +231,7 @@ is_deeply(
    'Best plugin GroupBy'
 );
 
-$tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q,'test','test3'));
+$tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'test', 'test3'));
 my ($plugin, %plugin_args) = $syncer->get_best_plugin(
    plugins     => $plugins,
    tbl_struct  => $tbl_struct,
@@ -247,7 +245,7 @@ is_deeply(
 # With the introduction of char chunking (issue 568), test6 can be chunked
 # with Chunk or Nibble.  Chunk will be prefered.
 
-$tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q,'test','test6'));
+$tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'test', 'test6'));
 ($plugin, %plugin_args) = $syncer->get_best_plugin(
    plugins     => $plugins,
    tbl_struct  => $tbl_struct,
@@ -759,15 +757,11 @@ is_deeply(
 # #############################################################################
 # Issue 464: Make mk-table-sync do two-way sync
 # #############################################################################
-SKIP: {
-   skip "Not tested with MySQL $sandbox_version", 7
-      unless $sandbox_version gt '4.0';
-
-diag(`$trunk/sandbox/start-sandbox master 12347 >/dev/null`);
-my $dbh2 = $sb->get_dbh_for('slave2');
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+my $dbh3 = $sb->get_dbh_for('master1');
 SKIP: {
    skip 'Cannot connect to sandbox master', 7 unless $dbh;
-   skip 'Cannot connect to second sandbox master', 7 unless $dbh2;
+   skip 'Cannot connect to second sandbox master', 7 unless $dbh3;
 
    sub set_bidi_callbacks {
       $sync_chunk->set_callback('same_row', sub {
@@ -784,27 +778,27 @@ SKIP: {
 
          my $cmp = ($left_ts || '') cmp ($right_ts || '');
          if ( $cmp == -1 ) {
-            MKDEBUG && TableSyncer::_d("right dbh $dbh2 is newer; update left dbh $src_dbh");
-            $ch->set_src('right', $dbh2);
+            MKDEBUG && TableSyncer::_d("right dbh $dbh3 is newer; update left dbh $src_dbh");
+            $ch->set_src('right', $dbh3);
             $auth_row   = $args{rr};
             $change_dbh = $src_dbh;
          }
          elsif ( $cmp == 1 ) {
-            MKDEBUG && TableSyncer::_d("left dbh $src_dbh is newer; update right dbh $dbh2");
+            MKDEBUG && TableSyncer::_d("left dbh $src_dbh is newer; update right dbh $dbh3");
             $ch->set_src('left', $src_dbh);
             $auth_row  = $args{lr};
-            $change_dbh = $dbh2;
+            $change_dbh = $dbh3;
          }
          return ('UPDATE', $auth_row, $change_dbh);
       });
       $sync_chunk->set_callback('not_in_right', sub {
          my ( %args ) = @_;
          $args{syncer}->{ChangeHandler}->set_src('left', $src_dbh);
-         return 'INSERT', $args{lr}, $dbh2;
+         return 'INSERT', $args{lr}, $dbh3;
       });
       $sync_chunk->set_callback('not_in_left', sub {
          my ( %args ) = @_;
-         $args{syncer}->{ChangeHandler}->set_src('right', $dbh2);
+         $args{syncer}->{ChangeHandler}->set_src('right', $dbh3);
          return 'INSERT', $args{rr}, $src_dbh;
       });
    };
@@ -838,17 +832,17 @@ SKIP: {
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/table.sql');
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/master-data.sql');
    # Load remote data.
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/table.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
+   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/table.sql');
+   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
    make_plugins();
    set_bidi_callbacks();
-   $tbl_struct = $tp->parse($du->get_create_table($src_dbh, $q, 'bidi','t'));
+   $tbl_struct = $tp->parse($tp->get_create_table($src_dbh, 'bidi', 't'));
 
    $src->{db}           = 'bidi';
    $src->{tbl}          = 't';
    $dst->{db}           = 'bidi';
    $dst->{tbl}          = 't';
-   $dst->{dbh}          = $dbh2;            # Must set $dbh2 here and
+   $dst->{dbh}          = $dbh3;            # Must set $dbh3 here and
 
    my %args = (
       src           => $src,
@@ -857,7 +851,7 @@ SKIP: {
       cols          => [qw(ts)],  # Compare only ts col when chunks differ.
       plugins       => $plugins,
       function      => 'SHA1',
-      ChangeHandler => new_ch($dbh2, 0), # here to override $dst_dbh.
+      ChangeHandler => new_ch($dbh3, 0), # here to override $dst_dbh.
       RowDiff       => $rd,
       chunk_size    => 2,
    );
@@ -872,7 +866,7 @@ SKIP: {
       'Bidirectional sync "master" (chunk size 2)'
    );
 
-   $res = $dbh2->selectall_arrayref('select * from bidi.t order by id');
+   $res = $dbh3->selectall_arrayref('select * from bidi.t order by id');
    is_deeply(
       $res,
       $bidi_data,
@@ -884,11 +878,11 @@ SKIP: {
    # ########################################################################
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/table.sql');
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/master-data.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/table.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
+   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/table.sql');
+   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
    make_plugins();
    set_bidi_callbacks();
-   $args{ChangeHandler} = new_ch($dbh2, 0);
+   $args{ChangeHandler} = new_ch($dbh3, 0);
    @rows = ();
 
    $syncer->sync_table(%args, plugins => [$sync_chunk], chunk_size => 10);
@@ -900,7 +894,7 @@ SKIP: {
       'Bidirectional sync "master" (chunk size 10)'
    );
 
-   $res = $dbh2->selectall_arrayref('select * from bidi.t order by id');
+   $res = $dbh3->selectall_arrayref('select * from bidi.t order by id');
    is_deeply(
       $res,
       $bidi_data,
@@ -912,11 +906,11 @@ SKIP: {
    # ########################################################################
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/table.sql');
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/master-data.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/table.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
+   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/table.sql');
+   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
    make_plugins();
    set_bidi_callbacks();
-   $args{ChangeHandler} = new_ch($dbh2, 0);
+   $args{ChangeHandler} = new_ch($dbh3, 0);
    @rows = ();
 
    $syncer->sync_table(%args, plugins => [$sync_chunk], chunk_size => 100000);
@@ -928,7 +922,7 @@ SKIP: {
       'Bidirectional sync "master" (whole table chunk)'
    );
 
-   $res = $dbh2->selectall_arrayref('select * from bidi.t order by id');
+   $res = $dbh3->selectall_arrayref('select * from bidi.t order by id');
    is_deeply(
       $res,
       $bidi_data,
@@ -938,18 +932,15 @@ SKIP: {
    # ########################################################################
    # See TableSyncer.pm for why this is so.
    # ######################################################################## 
-   $args{ChangeHandler} = new_ch($dbh2, 1);
+   $args{ChangeHandler} = new_ch($dbh3, 1);
    throws_ok(
       sub { $syncer->sync_table(%args, bidirectional => 1, plugins => [$sync_chunk]) },
       qr/Queueing does not work with bidirectional syncing/,
       'Queueing does not work with bidirectional syncing'
    );
 
-   $sb->wipe_clean($dbh2);
-   diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null &`);
+   diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null &`);
 }
-}
-
 
 # #############################################################################
 # Test with transactions.

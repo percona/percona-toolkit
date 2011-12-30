@@ -13,6 +13,8 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -27,37 +29,55 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-table-checksum -F $cnf 127.0.0.1";
 
 $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-checksum/samples/issue_94.sql');
 
-# #############################################################################
-# Issue 94: Enhance mk-table-checksum, add a --ignore-columns option
-# #############################################################################
+PerconaTest::wait_for_table($slave_dbh, 'test.issue_94', 'a=11');
+$slave_dbh->do("update test.issue_94 set c=''");
 
-$output = `$cmd -d test -t issue_94  P=12346 --algorithm ACCUM | awk '{print \$7}'`;
-like(
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test -t issue_94)) },
+   trf => sub { return PerconaTest::count_checksum_results(@_, 'DIFFS') },
+);
+is(
    $output,
-   qr/CHECKSUM\n00000006B6BDB8E6\n00000006B6BDB8E6/,
-   'Checksum ok with all 3 columns (issue 94 1/2)'
+   "1",
+   "Diff when column not ignored"
 );
 
-$output = `$cmd -d test -t issue_94 P=12346 --algorithm ACCUM --ignore-columns c | awk '{print \$7}'`;
-like(
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test -t issue_94),
+      qw(--ignore-columns c)) },
+   trf => sub { return PerconaTest::count_checksum_results(@_, 'DIFFS') },
+);
+is(
    $output,
-   qr/CHECKSUM\n000000066094F8AA\n000000066094F8AA/,
-   'Checksum ok with ignored column (issue 94 2/2)'
+   "0",
+   "No diff when column ignored"
+);
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-d test -t issue_94),
+      qw(--ignore-columns c --explain)) },
+);
+unlike(
+   $output,
+   qr/`c`/,
+   "Ignored column is not in checksum query"
 );
 
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 exit;

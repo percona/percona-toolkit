@@ -10,7 +10,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 29;
+use Test::More tests => 31;
 
 use Transformers;
 use Progress;
@@ -153,7 +153,7 @@ $pr->set_callback(
       $callbacks_called++;
    }
 );
-$pr->update(sub{return 60}, 35);
+$pr->update(sub{return 60}, now => 35);
 is_deeply(
    $completion_arr,
    [.1, 25, 225, 260, 60 ],
@@ -175,7 +175,7 @@ eval {
       interval => 10, # Every ten seconds
    );
    $pr->start(10); # Current time is 10 seconds.
-   $pr->update(sub{return 60}, 35);
+   $pr->update(sub{return 60}, now => 35);
    is($buffer, "Progress:  10% 03:45 remain\n",
       'Tested the default callback');
 };
@@ -193,11 +193,56 @@ eval {
       start    => 10, # Current time is 10 seconds, alternate interface
    );
    is($pr->{start}, 10, 'Custom start time param works');
-   $pr->update(sub{return 60}, 35);
+   $pr->update(sub{return 60}, now => 35);
    is($buffer, "custom name:  10% 03:45 remain\n",
       'Tested the default callback with custom name');
 };
 is ($EVAL_ERROR, '', "No error in default callback with custom name");
+
+# ############################################################################
+# Do a "first report" before the normal interval reports.
+# ############################################################################
+$pr = new Progress(
+   jobsize  => 600,
+   report   => 'time',
+   interval => 10, # Every ten seconds
+);
+$pr->start(2); # Current time is 2 seconds.
+$callbacks_called       = 0;
+my $first_report_called = 0;
+$pr->set_callback(
+   sub {
+      $completion_arr = [ @_ ];
+      $callbacks_called++;
+   }
+);
+$pr->update(
+   sub { return 60 },
+   now          => 5,
+   first_report =>  sub { $first_report_called++ }
+);
+$pr->update(
+   sub { return 70 },
+   now          => 16,
+   first_report =>  sub { $first_report_called++ }
+);
+$pr->update(
+   sub { return 100 },
+   now          => 27,
+   first_report =>  sub { $first_report_called++ }
+);
+
+is(
+   $first_report_called,
+   1,
+   "Called first_report ocne"
+);
+
+is(
+   $callbacks_called,
+   2,
+   "Called interval report twice"
+);
 
 # #############################################################################
 # Done.

@@ -41,6 +41,8 @@ my %port_for = (
    slave2  => 12347,
    master1 => 12348, # master-master
    master2 => 12349, # master-master
+   master3 => 2900,
+   master4 => 2901,
 );
 
 sub new {

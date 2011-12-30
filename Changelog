@@ -1,5 +1,6 @@
 Changelog for Percona Toolkit
 
+  * Completely redesigned pt-table-checksum.
   * Fixed bug 821717: pt-tcp-model --type=requests crashes
 
 v1.0.1 released 2011-09-01

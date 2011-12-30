@@ -137,7 +137,7 @@ is (
 
 is (
    $dp->as_string({ h=>'localhost', P=>'3306',p=>'omg'}, [qw(h P)]),
-   'P=3306,h=localhost',
+   'h=localhost,P=3306',
    'DSN stringifies only requested parts'
 );
 

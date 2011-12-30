@@ -57,10 +57,12 @@ my $tbl_name     = qr{
 #   Quoter       - <Quoter> object.
 #
 # Optional Arguments:
-#   Schema      - <Schema> object to initialize while iterating.
-#   MySQLDump   - <MySQLDump> object to get CREATE TABLE when iterating dbh.
-#   TableParser - <TableParser> object to parse CREATE TABLE for tbl_struct.
-#   keep_ddl    - Keep CREATE TABLE (default false)
+#   Schema          - <Schema> object to initialize while iterating.
+#   TableParser     - <TableParser> object get tbl_struct.
+#   keep_ddl        - Keep SHOW CREATE TABLE (default false).
+#   keep_tbl_status - Keep SHOW TABLE STATUS (default false).
+#   resume          - Skip tables so first call to <next()> returns
+#                     this "db.table".
 #
 # Returns:
 #   SchemaIterator object
@@ -76,8 +78,19 @@ sub new {
    die "I need either a dbh or file_itr argument"
       if (!$dbh && !$file_itr) || ($dbh && $file_itr);
 
+   my %resume;
+   if ( my $table = $args{resume} ) {
+      MKDEBUG && _d('Will resume from or after', $table);
+      my ($db, $tbl) = $args{Quoter}->split_unquote($table);
+      die "Resume table must be database-qualified: $table"
+         unless $db && $tbl;
+      $resume{db}  = $db;
+      $resume{tbl} = $tbl;
+   }
+
    my $self = {
       %args,
+      resume  => \%resume,
       filters => _make_filters(%args),
    };
 
@@ -167,12 +180,12 @@ sub _make_filters {
    return \%filters;
 }
 
-# Sub: next_schema_object
+# Sub: next
 #   Return the next schema object or undef when no more schema objects.
 #   Only filtered schema objects are returned.  If iterating dump files
 #   (i.e. the obj was created with a file_itr arg), then the returned
 #   schema object will always have a ddl (see below).  But if iterating
-#   a dbh, then you must create the obj with a MySQLDump obj to get a ddl.
+#   a dbh, then you must create the obj with a TableParser obj to get a ddl.
 #   If this object was created with a TableParser, then the ddl, if present,
 #   is parsed, too.
 #
@@ -187,8 +200,18 @@ sub _make_filters {
 #   }
 #   (end code)
 #   The ddl is suitable for <TableParser::parse()>.
-sub next_schema_object {
+sub next {
    my ( $self ) = @_;
+
+   if ( !$self->{initialized} ) {
+      $self->{initialized} = 1;
+      if ( $self->{resume}->{tbl}
+           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+         MKDEBUG && _d('Will resume after',
+            join('.', @{$self->{resume}}{qw(db tbl)}));
+         $self->{resume}->{after} = 1;
+      }
+   }
 
    my $schema_obj;
    if ( $self->{file_itr} ) {
@@ -205,6 +228,7 @@ sub next_schema_object {
       }
 
       delete $schema_obj->{ddl} unless $self->{keep_ddl};
+      delete $schema_obj->{tbl_status} unless $self->{keep_tbl_status};
 
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
@@ -243,7 +267,8 @@ sub _iterate_files {
          my $db = $1; # XXX
          $db =~ s/^`//;  # strip leading `
          $db =~ s/`$//;  # and trailing `
-         if ( $self->database_is_allowed($db) ) {
+         if ( $self->database_is_allowed($db)
+              && $self->_resume_from_database($db) ) {
             $self->{db} = $db;
          }
       }
@@ -262,7 +287,8 @@ sub _iterate_files {
          my ($tbl) = $chunk =~ m/$tbl_name/;
          $tbl      =~ s/^\s*`//;
          $tbl      =~ s/`\s*$//;
-         if ( $self->table_is_allowed($self->{db}, $tbl) ) {
+         if ( $self->_resume_from_table($tbl)
+              && $self->table_is_allowed($self->{db}, $tbl) ) {
             my ($ddl) = $chunk =~ m/^(?:$open_comment)?(CREATE TABLE.+?;)$/ms;
             if ( !$ddl ) {
                warn "Failed to parse CREATE TABLE from\n" . $chunk;
@@ -309,7 +335,9 @@ sub _iterate_dbh {
    }
 
    if ( !$self->{db} ) {
-      $self->{db} = shift @{$self->{dbs}};
+      do {
+         $self->{db} = shift @{$self->{dbs}};
+      } until $self->_resume_from_database($self->{db});
       MKDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
@@ -322,8 +350,9 @@ sub _iterate_dbh {
       }
       grep {
          my ($tbl, $type) = @$_;
-         $self->table_is_allowed($self->{db}, $tbl)
-            && (!$type || ($type ne 'VIEW'));
+         (!$type || ($type ne 'VIEW'))
+         && $self->_resume_from_table($tbl)
+         && $self->table_is_allowed($self->{db}, $tbl);
       }
       @{$dbh->selectall_arrayref($sql)};
       MKDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
@@ -331,27 +360,33 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $engine;
+      # If there are engine filters, we have to get the table status.
+      # Else, get it if the user wants to keep it since they'll expect
+      # it to be available.
+      my $tbl_status;
       if ( $self->{filters}->{'engines'}
-           || $self->{filters}->{'ignore-engines'} ) {
+           || $self->{filters}->{'ignore-engines'}
+           || $self->{keep_tbl_status} )
+      {
          my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
                  . " LIKE \'$tbl\'";
          MKDEBUG && _d($sql);
-         $engine = $dbh->selectrow_hashref($sql)->{engine};
-         MKDEBUG && _d($tbl, 'uses', $engine, 'engine');
+         $tbl_status = $dbh->selectrow_hashref($sql);
+         MKDEBUG && _d(Dumper($tbl_status));
       }
 
-
-      if ( !$engine || $self->engine_is_allowed($engine) ) {
+      if ( !$tbl_status
+           || $self->engine_is_allowed($tbl_status->{engine}) ) {
          my $ddl;
-         if ( my $du = $self->{MySQLDump} ) {
-            $ddl = $du->get_create_table($dbh, $q, $self->{db}, $tbl)->[1];
+         if ( my $tp = $self->{TableParser} ) {
+            $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
          }
 
          return {
-            db  => $self->{db},
-            tbl => $tbl,
-            ddl => $ddl,
+            db         => $self->{db},
+            tbl        => $tbl,
+            ddl        => $ddl,
+            tbl_status => $tbl_status,
          };
       }
    }
@@ -401,7 +436,6 @@ sub database_is_allowed {
       return 0;
    }
 
-   # MKDEBUG && _d('Database', $db, 'is allowed');
    return 1;
 }
 
@@ -414,6 +448,11 @@ sub table_is_allowed {
    $tbl = lc $tbl;
 
    my $filter = $self->{filters};
+
+   # Always auto-skip these pseudo tables.
+   if ( $db eq 'mysql' && ($tbl eq 'general_log' || $tbl eq 'slow_log') ) {
+      return 0;
+   }
 
    if ( $filter->{'ignore-tables'}->{$tbl}
         && ($filter->{'ignore-tables'}->{$tbl} eq '*'
@@ -458,7 +497,6 @@ sub table_is_allowed {
       return 0;
    }
 
-   # MKDEBUG && _d('Table', $tbl, 'is allowed');
    return 1;
 }
 
@@ -481,8 +519,43 @@ sub engine_is_allowed {
       return 0;
    }
 
-   # MKDEBUG && _d('Engine', $engine, 'is allowed');
    return 1;
+}
+
+sub _resume_from_database {
+   my ($self, $db) = @_;
+
+   # "Resume" from any db if we're not, in fact, resuming.
+   return 1 unless $self->{resume}->{db};
+
+   if ( $db eq $self->{resume}->{db} ) {
+      MKDEBUG && _d('At resume db', $db);
+      delete $self->{resume}->{db};
+      return 1;
+   }
+
+   return 0;
+}
+
+sub _resume_from_table {
+   my ($self, $tbl) = @_;
+
+   # "Resume" from any table if we're not, in fact, resuming.
+   return 1 unless $self->{resume}->{tbl};
+
+   if ( $tbl eq $self->{resume}->{tbl} ) {
+      if ( !$self->{resume}->{after} ) {
+         MKDEBUG && _d('Resuming from table', $tbl);
+         delete $self->{resume}->{tbl};
+         return 1;
+      }
+      else {
+         MKDEBUG && _d('Resuming after table', $tbl);
+         delete $self->{resume}->{tbl};
+      }
+   }
+
+   return 0;
 }
 
 sub _d {
