@@ -4428,11 +4428,11 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-achiver is a read-write tool.  It deletes data from the source by default, so
-you should test your archiving jobs with the L<"--dry-run"> option if you're not
-sure about them.  It is designed to have as little impact on production systems
-as possible, but tuning with L<"--limit">, L<"--txn-size"> and similar options
-might be a good idea too.
+pt-archiver is a read-write tool.  It deletes data from the source by default,
+so you should test your archiving jobs with the L<"--dry-run"> option if
+you're not sure about them.  It is designed to have as little impact on
+production systems as possible, but tuning with L<"--limit">, L<"--txn-size">
+and similar options might be a good idea too.
 
 If you write or use L<"--plugin"> modules, you should ensure they are good
 quality and well-tested. 
