@@ -26,6 +26,10 @@ This release of Percona Toolkit includes the following tools:
 
 =over
 
+=item pt-align
+
+Align output from other tools to columns.
+
 =item pt-archiver
 
 Archive rows from a MySQL table into another table or a file.
@@ -69,6 +73,10 @@ Monitor MySQL replication delay.
 =item pt-index-usage
 
 Read queries from a log and analyze how they use indexes.
+
+=item pt-ioprofile
+
+Watch process IO and print a table of file and I/O activity.
 
 =item pt-kill
 
@@ -132,7 +140,7 @@ Summarize system information in a nice way.
 
 =item pt-table-checksum
 
-Perform an online replication consistency check, or checksum MySQL tables efficiently on one or many servers.
+Verify MySQL replication integrity.
 
 =item pt-table-sync
 
@@ -466,6 +474,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v1.0.1 released 2011-09-01
+Percona Toolkit v2.0.1 released 2011-12-30
 
 =cut
