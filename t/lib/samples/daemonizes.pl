@@ -13,7 +13,7 @@ use strict;
 use warnings FATAL => 'all';
 
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG};
+use constant PTDEBUG => $ENV{PTDEBUG};
 
 use Daemon;
 use OptionParser;

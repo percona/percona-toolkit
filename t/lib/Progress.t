@@ -16,7 +16,7 @@ use Transformers;
 use Progress;
 use PerconaTest;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;

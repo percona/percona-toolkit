@@ -14,7 +14,7 @@ use Test::More tests => 12;
 use ExecutionThrottler;
 use PerconaTest;
 
-use constant MKDEBUG => $ENV{MKDEBUG};
+use constant PTDEBUG => $ENV{PTDEBUG};
 
 my $rate    = 100;
 my $oktorun = 1;

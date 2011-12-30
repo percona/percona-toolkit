@@ -43,10 +43,10 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-sync/samples/issue_37.sql');
 $sb->use('master', '-e \'INSERT INTO test.issue_37 VALUES (5), (6), (7), (8), (9);\'');
 
-$output = `MKDEBUG=1 $trunk/bin/pt-table-sync h=127.0.0.1,P=12345,u=msandbox,p=msandbox P=12346 -d test -t issue_37 --algorithms Chunk --chunk-size 3 --no-check-slave --no-check-triggers --print 2>&1 | grep 'src: '`;
+$output = `PTDEBUG=1 $trunk/bin/pt-table-sync h=127.0.0.1,P=12345,u=msandbox,p=msandbox P=12346 -d test -t issue_37 --algorithms Chunk --chunk-size 3 --no-check-slave --no-check-triggers --print 2>&1 | grep 'src: '`;
 like($output, qr/FROM `test`\.`issue_37` FORCE INDEX \(`idx_a`\) WHERE/, 'Injects USE INDEX hint by default');
 
-$output = `MKDEBUG=1 $trunk/bin/pt-table-sync h=127.0.0.1,P=12345,u=msandbox,p=msandbox P=12346 -d test -t issue_37 --algorithms Chunk --chunk-size 3 --no-check-slave --no-check-triggers --no-index-hint --print 2>&1 | grep 'src: '`;
+$output = `PTDEBUG=1 $trunk/bin/pt-table-sync h=127.0.0.1,P=12345,u=msandbox,p=msandbox P=12346 -d test -t issue_37 --algorithms Chunk --chunk-size 3 --no-check-slave --no-check-triggers --no-index-hint --print 2>&1 | grep 'src: '`;
 like($output, qr/FROM `test`\.`issue_37`  WHERE/, 'No USE INDEX hint with --no-index-hint');
 
 # #############################################################################
