@@ -5882,7 +5882,7 @@ sub main {
 
       return if $o->get('explain');
 
-      my $sql = 'SET /*!50108 @@binlog_format := "STATEMENT"*/';
+      my $sql = '/*!50108 SET @@binlog_format := "STATEMENT"*/';
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
