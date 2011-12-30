@@ -1,3 +1,20 @@
+percona-toolkit (2.0.1) unstable; urgency=low
+
+  * Completely redesigned pt-table-checksum
+  * Fixed bug 856065: pt-trend does not work
+  * Fixed bug 887688: Prepared statements crash pt-query-digest
+  * Fixed bug 888286: align not part of percona-toolkit
+  * Fixed bug 897961: ptc 2.0 replicate-check error does not include hostname
+  * Fixed bug 898318: ptc 2.0 --resume with --tables does not always work
+  * Fixed bug 903513: MKDEBUG should be PTDEBUG
+  * Fixed bug 908256: Percona Toolkit should include pt-ioprofile
+  * Fixed bug 821717: pt-tcp-model --type=requests crashes
+  * Fixed bug 844038: pt-online-schema-change documentation example w/drop-tmp-table does not work
+  * Fixed bug 864205: Remove the query to reset @crc from pt-table-checksum
+  * Fixed bug 898663: Typo in pt-log-player documentation
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 30 Dec 2011 22:43:13 +0000
+
 percona-toolkit (1.0.1) unstable; urgency=low
 
   * Fixed bug 819421: MasterSlave::is_replication_thread() doesn't match all

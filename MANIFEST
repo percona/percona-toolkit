@@ -4,6 +4,7 @@ INSTALL
 Makefile.PL
 MANIFEST
 README
+bin/pt-align
 bin/pt-archiver
 bin/pt-collect
 bin/pt-config-diff
@@ -15,6 +16,7 @@ bin/pt-find
 bin/pt-fk-error-logger
 bin/pt-heartbeat
 bin/pt-index-usage
+bin/pt-ioprofile
 bin/pt-kill
 bin/pt-log-player
 bin/pt-mext

@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.0.1 released 2011-12-30
+
   * Completely redesigned pt-table-checksum
   * Fixed bug 856065: pt-trend does not work
   * Fixed bug 887688: Prepared statements crash pt-query-digest
