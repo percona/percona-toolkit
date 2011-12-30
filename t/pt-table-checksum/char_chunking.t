@@ -25,7 +25,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 5;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -56,6 +56,27 @@ ok(
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),
    "Char chunk ascii, chunk size 20"
+);
+
+my $row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=1");
+is_deeply(
+   $row,
+   [ '', 'burt' ],
+   "First boundaries"
+);
+
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=9");
+is_deeply(
+   $row,
+   [ undef, '' ],
+   "Lower oob boundary"
+);
+
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=10");
+is_deeply(
+   $row,
+   [ 'ZESUS\!\!\!', undef ],
+   "Upper oob boundary"
 );
 
 # #############################################################################

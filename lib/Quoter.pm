@@ -149,9 +149,20 @@ sub join_quote {
 sub serialize_list {
    my ( $self, @args ) = @_;
    return unless @args;
+
+   # If the only value is undef, which is NULL for MySQL, then return
+   # the same.  undef/NULL is a valid boundary value, however...
    return $args[0] if @args == 1 && !defined $args[0];
-   die "serialize_list can't handle undef (NULLs) unless they are the only value"
+
+   # ... if there's an undef/NULL value and more than one value,
+   # then we have no easy way to serialize the values into a list.
+   # We can't convert undef to "NULL" because "NULL" is a valid
+   # value itself, and we can't make it "" because a blank string
+   # is also a valid value.  In practice, a boundary value with
+   # two NULL values should be rare.
+   die "Cannot serialize multiple values with undef/NULL"
       if grep { !defined $_ } @args;
+
    return join ',', map { quotemeta } @args;
 }
 
