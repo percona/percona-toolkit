@@ -9,138 +9,103 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 14;
+use Test::More tests => 6;
 
 use Retry;
 use PerconaTest;
 
-my $success;
-my $failure;
-my $waitno;
-my $tryno;
-my $tries;
-my $die;
-
 my $rt = new Retry();
 
+my @called = ();
+my @retry  = ();
+my @die    = ();
+
 my $try = sub {
-   if ( $die ) {
-      $die = 0;
-      die "I die!\n";
-   }
-   return $tryno++ == $tries ? "succeed" : undef;
+   push @called, 'try';
+   die if shift @die;
+};
+my $fail = sub {
+   push @called, 'fail';
+   return shift @retry;
 };
 my $wait = sub {
-   $waitno++;
+   push @called, 'wait';
 };
-my $on_success = sub {
-   $success = "succeed on $tryno";
+my $final_fail = sub {
+   push @called, 'final_fail';
+   return;
 };
-my $on_failure = sub {
-   $failure = "failed on $tryno";
-};
-sub try_it {
-   my ( %args ) = @_;
-   $success = "";
-   $failure = "";
-   $waitno  = $args{wainot} || 0;
-   $tryno   = $args{tryno}  || 1;
-   $tries   = $args{tries}  || 3;
 
+sub try_it {
    return $rt->retry(
-      try          => $try,
-      wait         => $wait,
-      on_success   => $on_success,
-      on_failure   => $on_failure,
-      retry_on_die => $args{retry_on_die},
+      try        => $try,
+      fail       => $fail,
+      wait       => $wait,
+      final_fail => $final_fail,
    );
 }
 
-my $retval = try_it();
-is(
-   $retval,
-   "succeed",
-   "Retry succeeded"
+# Success on first try;
+@called = ();
+@retry  = ();
+@die    = ();
+try_it();
+is_deeply(
+   \@called,
+   ['try'],
+   'Success on first try'
 );
 
-is(
-   $success,
-   "succeed on 4",
-   "Called on_success code"
+# Success on 2nd try.
+@called = ();
+@retry  = (1),
+@die    = (1);
+try_it();
+is_deeply(
+   \@called,
+   ['try', 'fail', 'wait',
+    'try'
+   ],
+   'Success on second try'
 );
 
-is(
-   $waitno,
-   2,
-   "Called wait code"
+# Success on 3rd, last try.
+@called = ();
+@retry  = (1, 1),
+@die    = (1, 1);
+try_it();
+is_deeply(
+   \@called,
+   ['try', 'fail', 'wait',
+    'try', 'fail', 'wait',
+    'try'
+   ],
+   'Success on third, final try'
 );
 
-# Default tries is 3 so allowing ourself 4 tries will cause the retry
-# to fail and the on_failure code should be called.
-$retval = try_it(tries=>4);
-ok(
-   !defined $retval,
-   "Returned undef on failure"
+# Failure.
+@called = ();
+@retry  = (1, 1, 1);
+@die    = (1, 1, 1);
+try_it();
+is_deeply(
+   \@called,
+   ['try', 'fail', 'wait',
+    'try', 'fail', 'wait',
+    'try', 'final_fail',
+   ],
+   'Failure'
 );
 
-is(
-   $failure,
-   "failed on 4",
-   "Called on_failure code"
-);
-
-is(
-   $success,
-   "",
-   "Did not call on_success code"
-);
-
-# Test what happens if the try code dies.  try_it() will reset $die to 0.
-$die = 1;
-eval { try_it(); };
-is(
-   $EVAL_ERROR,
-   "I die!\n",
-   "Dies if code dies without retry_on_die"
-);
-
-ok(
-   !defined $retval,
-   "Returned undef on try die"
-);
-
-is(
-   $failure,
-   "",
-   "Did not call on_failure code on try die without retry_on_die"
-);
-
-is(
-   $success,
-   "",
-   "Did not call on_success code"
-);
-
-# Test retry_on_die.  This should work with tries=2 because the first
-# try will die leaving with only 2 more retries.
-$die = 1;
-$retval = try_it(retry_on_die=>1, tries=>2);
-is(
-   $retval,
-   "succeed",
-   "Retry succeeded with retry_on_die"
-);
-
-is(
-   $success,
-   "succeed on 3",
-   "Called on_success code with retry_on_die"
-);
-
-is(
-   $waitno,
-   2,
-   "Called wait code with retry_on_die"
+# Fail and no retry.
+@called = ();
+@retry  = (0);
+@die    = (1);
+try_it();
+is_deeply(
+   \@called,
+   ['try', 'fail', 'final_fail'],
+   "Fail, don't retry"
 );
 
 # #############################################################################

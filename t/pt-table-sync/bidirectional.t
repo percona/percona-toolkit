@@ -25,11 +25,11 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $c1_dbh = $sb->get_dbh_for('master');
 
-diag(`$trunk/sandbox/start-sandbox master 12347 >/dev/null`);
-my $r1_dbh = $sb->get_dbh_for('slave2');
+diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null`);
+my $r1_dbh = $sb->get_dbh_for('master3');
 
-diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
-my $r2_dbh = $sb->get_dbh_for('master1');
+diag(`$trunk/sandbox/start-sandbox master 2901 >/dev/null`);
+my $r2_dbh = $sb->get_dbh_for('master4');
 
 if ( !$c1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -44,16 +44,16 @@ else {
 
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1,P=12345', 'P=12347', qw(-d bidi --bidirectional));
+my @args = ('-F', $cnf, 'h=127.1,P=12345', 'P=2900', qw(-d bidi --bidirectional));
 
 $sb->wipe_clean($c1_dbh);
 $sb->wipe_clean($r1_dbh);
 
 sub load_bidi_data {
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/table.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/table.sql');
+   $sb->load_file('master3', 't/pt-table-sync/samples/bidirectional/table.sql');
    $sb->load_file('master', 't/pt-table-sync/samples/bidirectional/master-data.sql');
-   $sb->load_file('slave2', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
+   $sb->load_file('master3', 't/pt-table-sync/samples/bidirectional/remote-1.sql');
 }
 
 my $r1_data_synced =  [
@@ -135,13 +135,13 @@ $output = output(
 
 is(
    $output,
-"/*127.1:12347*/ UPDATE `bidi`.`t` SET `c`='ghi', `d`='5', `ts`='2010-02-01 09:17:52' WHERE `id`='3' LIMIT 1;
+"/*127.1:2900*/ UPDATE `bidi`.`t` SET `c`='ghi', `d`='5', `ts`='2010-02-01 09:17:52' WHERE `id`='3' LIMIT 1;
 /*127.1:12345*/ UPDATE `bidi`.`t` SET `c`=NULL, `d`='0', `ts`='2010-02-02 05:10:00' WHERE `id`='5' LIMIT 1;
 /*127.1:12345*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('11', '?', '0', '2010-01-29 11:17:12');
 /*127.1:12345*/ UPDATE `bidi`.`t` SET `c`='hmm', `d`='1', `ts`='2010-02-02 12:17:31' WHERE `id`='13' LIMIT 1;
 /*127.1:12345*/ UPDATE `bidi`.`t` SET `c`='gtg', `d`='7', `ts`='2010-02-02 06:01:08' WHERE `id`='15' LIMIT 1;
 /*127.1:12345*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('17', 'good', '1', '2010-02-02 21:38:03');
-/*127.1:12347*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('20', 'new', '100', '2010-02-01 04:15:36');
+/*127.1:2900*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('20', 'new', '100', '2010-02-01 04:15:36');
 ",
    '--print correct SQL for c1<->r1 bidirectional sync'
 );
@@ -181,7 +181,7 @@ is(
 /*127.1:12345*/ UPDATE `bidi`.`t` SET `c`='hmm', `d`='1', `ts`='2010-02-02 12:17:31' WHERE `id`='13' LIMIT 1;
 /*127.1:12345*/ UPDATE `bidi`.`t` SET `c`='gtg', `d`='7', `ts`='2010-02-02 06:01:08' WHERE `id`='15' LIMIT 1;
 /*127.1:12345*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('17', 'good', '1', '2010-02-02 21:38:03');
-/*127.1:12347*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('20', 'new', '100', '2010-02-01 04:15:36');
+/*127.1:2900*/ INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('20', 'new', '100', '2010-02-01 04:15:36');
 ",
   'SQL for c1<->r1 with conflict'
 );
@@ -324,14 +324,14 @@ is_deeply(
 # Test bidirectional sync with 3 servers.
 # #############################################################################
 
-# It's confusing but master1 = 12348, aka our 3rd master server.
+# It's confusing but master4 = 2901, aka our 3rd master server.
 
 SKIP: {
    skip 'Cannot connect to third sandbox master', 9 unless $r2_dbh;
 
    load_bidi_data();
-   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/table.sql');
-   $sb->load_file('master1', 't/pt-table-sync/samples/bidirectional/remote-2.sql');
+   $sb->load_file('master4', 't/pt-table-sync/samples/bidirectional/table.sql');
+   $sb->load_file('master4', 't/pt-table-sync/samples/bidirectional/remote-2.sql');
 
    $res = $r2_dbh->selectall_arrayref('select * from bidi.t order by id');
    is_deeply(
@@ -361,7 +361,7 @@ SKIP: {
       local *STDERR;
       open STDERR, '>', \$err;
       $output = output(
-         sub { pt_table_sync::main(@args, 'h=127.1,P=12348',
+         sub { pt_table_sync::main(@args, 'h=127.1,P=2901',
             qw(--print --execute --chunk-size 2),
             qw(--conflict-column ts --conflict-comparison newest)) }
       );
@@ -456,7 +456,7 @@ SKIP: {
       local *STDERR;
       open STDERR, '>', \$err;
       $output = output(
-         sub { pt_table_sync::main(@args, 'h=127.1,P=12348',
+         sub { pt_table_sync::main(@args, 'h=127.1,P=2901',
             qw(--print --execute --chunk-size 2),
             qw(--conflict-column ts --conflict-comparison newest)) }
       );
@@ -534,7 +534,6 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
-diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-$sb->wipe_clean($c1_dbh);
+diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 2901 >/dev/null`);
 exit;

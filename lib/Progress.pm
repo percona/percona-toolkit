@@ -114,6 +114,7 @@ sub set_callback {
 sub start {
    my ( $self, $start ) = @_;
    $self->{start} = $self->{last_reported} = $start || time();
+   $self->{first_report} = 0;
 }
 
 # Provide a progress update.  Pass in a callback subroutine which this code can
@@ -125,10 +126,20 @@ sub start {
 # many lines we're done processing -- a number between 0 and 800.  You can also
 # optionally pass in the current time, but this is only for testing.
 sub update {
-   my ( $self, $callback, $now ) = @_;
+   my ( $self, $callback, %args ) = @_;
    my $jobsize   = $self->{jobsize};
-   $now        ||= time();
+   my $now    ||= $args{now} || time;
+
    $self->{iterations}++; # How many updates have happened;
+
+   # The caller may want to report something special before the actual
+   # first report ($callback) if, for example, they know that the wait
+   # could be long.  This is called only once; subsequent reports will
+   # come from $callback after 30s, or whatever the interval is.
+   if ( !$self->{first_report} && $args{first_report} ) {
+      $args{first_report}->();
+      $self->{first_report} = 1;
+   }
 
    # Determine whether to just quit and return...
    if ( $self->{report} eq 'time'

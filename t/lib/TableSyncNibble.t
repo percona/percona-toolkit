@@ -20,7 +20,6 @@ use TableChecksum;
 use TableChunker;
 use TableNibbler;
 use TableParser;
-use MySQLDump;
 use VersionParser;
 use MasterSlave;
 use Retry;
@@ -43,7 +42,6 @@ my $mysql = $sb->_use_for('master');
 my $q  = new Quoter();
 my $ms = new MasterSlave();
 my $tp = new TableParser(Quoter=>$q);
-my $du = new MySQLDump();
 my $vp = new VersionParser();
 my $rr = new Retry();
 
@@ -56,8 +54,8 @@ my $checksum = new TableChecksum(
    VersionParser => $vp,
 );
 my $chunker = new TableChunker(
-   MySQLDump => $du,
-   Quoter    => $q
+   TableParser => $tp,
+   Quoter      => $q
 );
 my $t = new TableSyncNibble(
    TableNibbler  => $nibbler,
@@ -89,7 +87,7 @@ my $syncer = new TableSyncer(
 
 $sb->create_dbs($dbh, ['test']);
 diag(`$mysql < $trunk/t/lib/samples/before-TableSyncNibble.sql`);
-my $ddl        = $du->get_create_table($dbh, $q, 'test', 'test1');
+my $ddl        = $tp->get_create_table($dbh, 'test', 'test1');
 my $tbl_struct = $tp->parse($ddl);
 my $src = {
    db  => 'test',
@@ -362,7 +360,7 @@ like(
 # Issue 96: mk-table-sync: Nibbler infinite loop
 # #########################################################################
 $sb->load_file('master', 't/lib/samples/issue_96.sql');
-$tbl_struct = $tp->parse($du->get_create_table($dbh, $q, 'issue_96', 't'));
+$tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_96', 't'));
 $t->prepare_to_sync(
    ChangeHandler  => $ch,
    cols           => $tbl_struct->{cols},
@@ -420,7 +418,7 @@ is(
 # If small_table is true, the index check should be skipped.
 diag(`/tmp/12345/use -e 'create table issue_96.t3 (i int, unique index (i))'`);
 diag(`/tmp/12345/use -e 'insert into issue_96.t3 values (1)'`);
-$tbl_struct = $tp->parse($du->get_create_table($dbh, $q, 'issue_96', 't3'));
+$tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_96', 't3'));
 $t->prepare_to_sync(
    ChangeHandler  => $ch,
    cols           => $tbl_struct->{cols},
@@ -462,7 +460,7 @@ SKIP: {
 my $where = '`player_id` >= 201 AND `player_id` < 301';
 
 $sb->load_file('master', 't/pt-table-sync/samples/issue_560.sql');
-$tbl_struct = $tp->parse($du->get_create_table($dbh, $q, 'issue_560', 'buddy_list'));
+$tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_560', 'buddy_list'));
 (undef, %plugin_args) = $t->can_sync(tbl_struct => $tbl_struct);
 $t->prepare_to_sync(
    ChangeHandler  => $ch,
@@ -573,7 +571,7 @@ is(
 # Issue 804: mk-table-sync: can't nibble because index name isn't lower case?
 # #############################################################################
 $sb->load_file('master', 't/lib/samples/issue_804.sql');
-$tbl_struct = $tp->parse($du->get_create_table($dbh, $q, 'issue_804', 't'));
+$tbl_struct = $tp->parse($tp->get_create_table($dbh, 'issue_804', 't'));
 ($can_sync, %plugin_args) = $t->can_sync(tbl_struct => $tbl_struct);
 is(
    $can_sync,

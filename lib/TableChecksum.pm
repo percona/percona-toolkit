@@ -470,18 +470,16 @@ sub make_checksum_query {
 sub find_replication_differences {
    my ( $self, $dbh, $table ) = @_;
 
-   (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
-         COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
-         COALESCE(
-            this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
-            0
-         ) AS crc_diff,
-         this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
-      WHERE master_cnt <> this_cnt OR master_crc <> this_crc
-      OR ISNULL(master_crc) <> ISNULL(this_crc)
-   EOF
+   my $sql
+      = "SELECT db, tbl, CONCAT(db, '.', tbl) AS `table`, "
+      . "chunk, chunk_index, lower_boundary, upper_boundary, "
+      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE("
+      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      . "FROM $table "
+      . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
+      . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
 
    MKDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
