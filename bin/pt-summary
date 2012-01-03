@@ -53,8 +53,7 @@ fuzz () {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-# pt-summary isn't ready for this yet.
-#set -u
+set -u
 
 TMPDIR=""
 
