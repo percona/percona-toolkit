@@ -22,8 +22,7 @@ usage() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-# pt-mysql-summary isn't ready for this yet.
-# set -u
+set -u
 
 TMPDIR=""
 
@@ -244,6 +243,9 @@ fuzzy_pct () {
 # which should be in $TMPDIR/percona-toolkit.
 parse_mysqld_instances () {
    local file=$1
+   local socket=${socket:-""}
+   local port=${port:-""}
+   local datadir=${datadir:-""}
    echo "  Port  Data Directory             Socket"
    echo "  ===== ========================== ======"
    $AP_GREP '/mysqld ' $file | while read line; do
@@ -269,7 +271,7 @@ parse_mysqld_instances () {
 # interested in, in case there are multiple instances.
 find_my_cnf_file() {
    local file=$1
-   local port=$2
+   local port=${2:-""}
    if test -n "$port" && $AP_GREP -- "/mysqld.*--port=$port" $file >/dev/null 2>&1 ; then
       $AP_GREP -- "/mysqld.*--port=$port" $file \
          | $AP_AWK 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
