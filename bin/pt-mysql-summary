@@ -13,6 +13,47 @@ usage() {
    exit 1
 }
 
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+# pt-mysql-summary isn't ready for this yet.
+# set -u
+
+TMPDIR=""
+
+mk_tmpdir() {
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
+      fi
+      TMPDIR="$dir"
+   else
+      local tool=`basename $0`
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf $TMPDIR
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
 # ########################################################################
 # Some global setup is necessary for cross-platform compatibility, even
 # when sourcing this script for testing purposes.
@@ -62,9 +103,9 @@ fuzzy_formula='
 # symlink them to /etc/passwd and then run this program as root.  Call this
 # function with "rm" or "touch" as an argument.
 temp_files() {
-   for file in /tmp/percona-toolkit{,-mysql-variables,-mysql-status,-innodb-status} \
-         /tmp/percona-toolkit{2,-mysql-databases,-mysql-processlist,-noncounters} \
-         /tmp/percona-toolkit-mysql{dump,-slave};
+   for file in $TMPDIR/percona-toolkit{,-mysql-variables,-mysql-status,-innodb-status} \
+         $TMPDIR/percona-toolkit{2,-mysql-databases,-mysql-processlist,-noncounters} \
+         $TMPDIR/percona-toolkit-mysql{dump,-slave};
    do
       case "$1" in
       touch)
@@ -127,16 +168,16 @@ secs_to_time () {
    }'
 }
 
-# gets a value from /tmp/percona-toolkit-mysql-variables.  Returns zero if it doesn't
+# gets a value from $TMPDIR/percona-toolkit-mysql-variables.  Returns zero if it doesn't
 # exist.
 get_var () {
-   v="$($AP_AWK "\$1 ~ /^$1$/ { print \$2 }" /tmp/percona-toolkit-mysql-variables)"
+   v="$($AP_AWK "\$1 ~ /^$1$/ { print \$2 }" $TMPDIR/percona-toolkit-mysql-variables)"
    echo "${v:-0}"
 }
 
 # Returns true if a variable exists
 var_exists () {
-   $AP_GREP "$1" /tmp/percona-toolkit-mysql-variables >/dev/null 2>&1;
+   $AP_GREP "$1" $TMPDIR/percona-toolkit-mysql-variables >/dev/null 2>&1;
 }
 
 # Returns "Enabled", "Disabled", or "Not Supported" depending on whether the
@@ -145,7 +186,7 @@ var_exists () {
 # (string equal) to some value.
 feat_on() {
    if var_exists $1 ; then
-      var="$($AP_AWK "\$1 ~ /^$1$/ { print \$2 }" /tmp/percona-toolkit-mysql-variables)"
+      var="$($AP_AWK "\$1 ~ /^$1$/ { print \$2 }" $TMPDIR/percona-toolkit-mysql-variables)"
       if [ "${var}" = "ON" ]; then
          echo "Enabled"
       elif [ "${var}" = "OFF" -o "${var}" = "0" -o -z "${var}" ]; then
@@ -172,10 +213,10 @@ feat_on() {
    fi
 }
 
-# gets a value from /tmp/percona-toolkit-mysql-status.  Returns zero if it doesn't
+# gets a value from $TMPDIR/percona-toolkit-mysql-status.  Returns zero if it doesn't
 # exist.
 get_stat () {
-   v="$($AP_AWK "\$1 ~ /^$1$/ { print \$2 }" /tmp/percona-toolkit-mysql-status)"
+   v="$($AP_AWK "\$1 ~ /^$1$/ { print \$2 }" $TMPDIR/percona-toolkit-mysql-status)"
    echo "${v:-0}"
 }
 
@@ -195,12 +236,12 @@ fuzzy_pct () {
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
 # easily.  The calling convention is that the data they need to run is prepared
-# first by putting it into /tmp/percona-toolkit.  Then code that's testing just needs to
-# put sample data into /tmp/percona-toolkit and call it.
+# first by putting it into $TMPDIR/percona-toolkit.  Then code that's testing
+# just needs to put sample data into $TMPDIR/percona-toolkit and call it.
 # ##############################################################################
 
 # Parses the output of 'ps -e -o args | $AP_GREP mysqld' or 'ps auxww...'
-# which should be in /tmp/percona-toolkit.
+# which should be in $TMPDIR/percona-toolkit.
 parse_mysqld_instances () {
    local file=$1
    echo "  Port  Data Directory             Socket"
@@ -224,7 +265,7 @@ parse_mysqld_instances () {
 }
 
 # Tries to find the my.cnf file by examining 'ps' output, which should be in
-# /tmp/percona-toolkit.  You have to specify the port for the instance you are
+# $TMPDIR/percona-toolkit.  You have to specify the port for the instance you are
 # interested in, in case there are multiple instances.
 find_my_cnf_file() {
    local file=$1
@@ -240,7 +281,7 @@ find_my_cnf_file() {
    fi
 }
 
-# Gets the MySQL system time.  Uses input from /tmp/percona-toolkit-mysql-variables.
+# Gets the MySQL system time.  Uses input from $TMPDIR/percona-toolkit-mysql-variables.
 get_mysql_timezone () {
    tz="$(get_var time_zone)"
    if [ "${tz}" = "SYSTEM" ]; then
@@ -249,14 +290,14 @@ get_mysql_timezone () {
    echo "${tz}"
 }
 
-# Gets the MySQL system version.  Uses input from /tmp/percona-toolkit-mysql-variables.
+# Gets the MySQL system version.  Uses input from $TMPDIR/percona-toolkit-mysql-variables.
 get_mysql_version () {
    name_val Version "$(get_var version) $(get_var version_comment)"
    name_val "Built On" "$(get_var version_compile_os) $(get_var version_compile_machine)"
 }
 
 # Gets the system start and uptime in human readable format.  Last restart date
-# should be in /tmp/percona-toolkit.
+# should be in $TMPDIR/percona-toolkit.
 get_mysql_uptime () {
    local file=$1
    restart="$(cat $file)"
@@ -265,7 +306,7 @@ get_mysql_uptime () {
    echo "${restart} (up ${uptime})"
 }
 
-# Summarizes the output of SHOW MASTER LOGS, which is in /tmp/percona-toolkit
+# Summarizes the output of SHOW MASTER LOGS, which is in $TMPDIR/percona-toolkit
 summarize_binlogs () {
    local file=$1
    name_val "Binlogs" $(wc -l $file)
@@ -282,7 +323,7 @@ format_binlog_filters () {
 }
 
 # Takes as input a file that has two samples of SHOW STATUS, columnized next to
-# each other.  These should be in /tmp/percona-toolkit.  Outputs fuzzy-ed numbers:
+# each other.  These should be in $TMPDIR/percona-toolkit.  Outputs fuzzy-ed numbers:
 # absolute, all-time per second, and per-second over the interval between the
 # samples.  Omits any rows that are all zeroes.
 format_status_variables () {
@@ -387,7 +428,7 @@ summarize_processlist () {
    echo
 }
 
-# Pretty-prints the my.cnf file, which should be in /tmp/percona-toolkit.  It's super
+# Pretty-prints the my.cnf file, which should be in $TMPDIR/percona-toolkit.  It's super
 # annoying, but some *modern* versions of awk don't support POSIX character
 # sets in regular expressions, like [[:space:]] (looking at you, Debian).  So
 # the below patterns contain [<space><tab>] and must remain that way.
@@ -545,8 +586,8 @@ format_innodb_status () {
    name_val "Pending I/O Writes"  "$(find_pending_io_writes "${file}")"
    name_val "Pending I/O Flushes" "$(find_pending_io_flushes "${file}")"
    $AP_AWK -F, '/^---TRANSACTION/{print $2}' "${file}" \
-      | $AP_SED -e 's/ [0-9]* sec.*//' | sort | uniq -c > /tmp/percona-toolkit2
-   name_val "Transaction States" "$(group_concat /tmp/percona-toolkit2)"
+      | $AP_SED -e 's/ [0-9]* sec.*//' | sort | uniq -c > $TMPDIR/percona-toolkit2
+   name_val "Transaction States" "$(group_concat $TMPDIR/percona-toolkit2)"
    if $AP_GREP 'TABLE LOCK table' "${file}" >/dev/null ; then
       echo "Tables Locked"
       $AP_AWK '/^TABLE LOCK table/{print $4}' "${file}" \
@@ -633,9 +674,9 @@ format_overall_db_stats () {
             printf fmt, db, counts[db ",tables"], counts[db ",views"], counts[db ",sps"], counts[db ",trg"], counts[db ",func"], counts[db ",fk"], counts[db ",partn"];
          }
       }
-   ' $file > /tmp/percona-toolkit
-   head -n2 /tmp/percona-toolkit
-   tail -n +3 /tmp/percona-toolkit | sort
+   ' $file > $TMPDIR/percona-toolkit
+   head -n2 $TMPDIR/percona-toolkit
+   tail -n +3 $TMPDIR/percona-toolkit | sort
 
    echo
    # Now do the summary of engines per DB
@@ -693,9 +734,9 @@ format_overall_db_stats () {
             print "";
          }
       }
-   ' $file > /tmp/percona-toolkit
-   head -n1 /tmp/percona-toolkit
-   tail -n +2 /tmp/percona-toolkit | sort
+   ' $file > $TMPDIR/percona-toolkit
+   head -n1 $TMPDIR/percona-toolkit
+   tail -n +2 $TMPDIR/percona-toolkit | sort
 
    echo
    # Now do the summary of index types per DB. Careful -- index is a reserved
@@ -766,9 +807,9 @@ format_overall_db_stats () {
             print "";
          }
       }
-   ' $file > /tmp/percona-toolkit
-   head -n1 /tmp/percona-toolkit
-   tail -n +2 /tmp/percona-toolkit | sort
+   ' $file > $TMPDIR/percona-toolkit
+   head -n1 $TMPDIR/percona-toolkit
+   tail -n +2 $TMPDIR/percona-toolkit | sort
 
    echo
    # Now do the summary of datatypes per DB
@@ -857,10 +898,10 @@ format_overall_db_stats () {
             print "";
          }
       }
-   ' $file > /tmp/percona-toolkit
-   hdr=$($AP_GREP -n Database /tmp/percona-toolkit | cut -d: -f1);
-   head -n${hdr} /tmp/percona-toolkit
-   tail -n +$((${hdr} + 1)) /tmp/percona-toolkit | sort
+   ' $file > $TMPDIR/percona-toolkit
+   hdr=$($AP_GREP -n Database $TMPDIR/percona-toolkit | cut -d: -f1);
+   head -n${hdr} $TMPDIR/percona-toolkit
+   tail -n +$((${hdr} + 1)) $TMPDIR/percona-toolkit | sort
    echo
 }
 
@@ -878,6 +919,7 @@ main() {
    export PATH="/usr/gnu/bin/:/usr/xpg4/bin/:${PATH}"
 
    # Set up temporary files.
+   mk_tmpdir
    temp_files "rm"
    temp_files "touch"
 
@@ -887,25 +929,26 @@ main() {
    section Percona_Toolkit_MySQL_Summary_Report
    name_val "System time" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
    section Instances
-   ps auxww 2>/dev/null | $AP_GREP mysqld > /tmp/percona-toolkit
-   parse_mysqld_instances /tmp/percona-toolkit
+   ps auxww 2>/dev/null | $AP_GREP mysqld > $TMPDIR/percona-toolkit
+   parse_mysqld_instances $TMPDIR/percona-toolkit
 
    # ########################################################################
    # Fetch some basic info so we can start
    # ########################################################################
-   mysql "$@" -ss -e 'SELECT CURRENT_USER()' > /tmp/percona-toolkit
+   mysql "$@" -ss -e 'SELECT CURRENT_USER()' > $TMPDIR/percona-toolkit
    if [ "$?" != "0" ]; then
       echo "Cannot connect to mysql, please specify command-line options."
       temp_files "rm"
+      rm_tmpdir
       exit 1
    fi
-   user="$(cat /tmp/percona-toolkit)";
-   mysql "$@" -ss  -e 'SHOW /*!40100 GLOBAL*/ VARIABLES' > /tmp/percona-toolkit-mysql-variables
-   mysql "$@" -ss  -e 'SHOW /*!50000 GLOBAL*/ STATUS' > /tmp/percona-toolkit-mysql-status
-   mysql "$@" -ss  -e 'SHOW DATABASES' > /tmp/percona-toolkit-mysql-databases 2>/dev/null
-   mysql "$@" -ssE -e 'SHOW SLAVE STATUS' > /tmp/percona-toolkit-mysql-slave 2>/dev/null
-   mysql "$@" -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' > /tmp/percona-toolkit-innodb-status 2>/dev/null
-   mysql "$@" -ssE -e 'SHOW FULL PROCESSLIST' > /tmp/percona-toolkit-mysql-processlist 2>/dev/null
+   user="$(cat $TMPDIR/percona-toolkit)";
+   mysql "$@" -ss  -e 'SHOW /*!40100 GLOBAL*/ VARIABLES' > $TMPDIR/percona-toolkit-mysql-variables
+   mysql "$@" -ss  -e 'SHOW /*!50000 GLOBAL*/ STATUS' > $TMPDIR/percona-toolkit-mysql-status
+   mysql "$@" -ss  -e 'SHOW DATABASES' > $TMPDIR/percona-toolkit-mysql-databases 2>/dev/null
+   mysql "$@" -ssE -e 'SHOW SLAVE STATUS' > $TMPDIR/percona-toolkit-mysql-slave 2>/dev/null
+   mysql "$@" -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' > $TMPDIR/percona-toolkit-innodb-status 2>/dev/null
+   mysql "$@" -ssE -e 'SHOW FULL PROCESSLIST' > $TMPDIR/percona-toolkit-mysql-processlist 2>/dev/null
    now="$(mysql "$@" -ss -e 'SELECT NOW()')"
    port="$(get_var port)"
 
@@ -920,16 +963,16 @@ main() {
 
    uptime="$(get_stat Uptime)"
    mysql "$@" -ss -e "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)" \
-      > /tmp/percona-toolkit
-   name_val Started "$(get_mysql_uptime /tmp/percona-toolkit)"
+      > $TMPDIR/percona-toolkit
+   name_val Started "$(get_mysql_uptime $TMPDIR/percona-toolkit)"
 
-   name_val Databases "$($AP_GREP -c . /tmp/percona-toolkit-mysql-databases)"
+   name_val Databases "$($AP_GREP -c . $TMPDIR/percona-toolkit-mysql-databases)"
    name_val Datadir "$(get_var datadir)"
    procs="$(get_stat Threads_connected)"
    procr="$(get_stat Threads_running)"
    name_val Processes "$(fuzz ${procs}) connected, $(fuzz ${procr}) running"
-   if [ -s /tmp/percona-toolkit-mysql-slave ]; then slave=""; else slave="not "; fi
-   slavecount=$($AP_GREP -c 'Binlog Dump' /tmp/percona-toolkit-mysql-processlist)
+   if [ -s $TMPDIR/percona-toolkit-mysql-slave ]; then slave=""; else slave="not "; fi
+   slavecount=$($AP_GREP -c 'Binlog Dump' $TMPDIR/percona-toolkit-mysql-processlist)
    name_val Replication "Is ${slave}a slave, has ${slavecount} slaves connected"
 
    # TODO move this into a section with other files: error log, slow log and
@@ -942,7 +985,7 @@ main() {
    # Processlist, sliced several different ways
    # ########################################################################
    section Processlist
-   summarize_processlist /tmp/percona-toolkit-mysql-processlist
+   summarize_processlist $TMPDIR/percona-toolkit-mysql-processlist
 
    # ########################################################################
    # Queries and query plans
@@ -951,7 +994,7 @@ main() {
    sleep 10
    # TODO: gather this data in the same format as normal: stats, TS line
    mysql "$@" -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' \
-      | join /tmp/percona-toolkit-mysql-status - > /tmp/percona-toolkit 
+      | join $TMPDIR/percona-toolkit-mysql-status - > $TMPDIR/percona-toolkit 
    # Make a file with a list of things we want to omit because they aren't
    # counters, they are gauges (in RRDTool terminology).  Gauges are shown
    # elsewhere in the output.
@@ -975,9 +1018,9 @@ main() {
       Threads_cached Threads_connected Threads_running \
       Uptime_since_flush_status;
    do
-      echo "${var}" >> /tmp/percona-toolkit-noncounters
+      echo "${var}" >> $TMPDIR/percona-toolkit-noncounters
    done
-   format_status_variables /tmp/percona-toolkit | $AP_GREP -v -f /tmp/percona-toolkit-noncounters
+   format_status_variables $TMPDIR/percona-toolkit | $AP_GREP -v -f $TMPDIR/percona-toolkit-noncounters
 
    # ########################################################################
    # Table cache
@@ -1054,22 +1097,22 @@ main() {
          trg_arg="${trg_arg} ${triggers}";
       fi
       # Find out which databases to dump
-      num_dbs="$($AP_GREP -c . /tmp/percona-toolkit-mysql-databases)"
+      num_dbs="$($AP_GREP -c . $TMPDIR/percona-toolkit-mysql-databases)"
       echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
       echo -n "Type the name of the database, or press Enter to dump all of them. "
       read dbtodump
       mysqldump "$@" --no-data --skip-comments \
          --skip-add-locks --skip-add-drop-table --compact \
          --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-         ${trg_arg} ${dbtodump:---all-databases} > /tmp/percona-toolkit-mysqldump
+         ${trg_arg} ${dbtodump:---all-databases} > $TMPDIR/percona-toolkit-mysqldump
       # Test the result by checking the file, not by the exit status, because we
       # might get partway through and then die, and the info is worth analyzing
       # anyway.
-      if $AP_GREP 'CREATE TABLE' /tmp/percona-toolkit-mysqldump >/dev/null 2>&1; then
-         format_overall_db_stats /tmp/percona-toolkit-mysqldump
+      if $AP_GREP 'CREATE TABLE' $TMPDIR/percona-toolkit-mysqldump >/dev/null 2>&1; then
+         format_overall_db_stats $TMPDIR/percona-toolkit-mysqldump
       else
          echo "Skipping schema analysis due to apparent error in dump file"
-         rm -f /tmp/percona-toolkit-mysqldump
+         rm -f $TMPDIR/percona-toolkit-mysqldump
       fi
    else
       echo "Skipping schema analysis"
@@ -1079,23 +1122,23 @@ main() {
    # Noteworthy Technologies
    # ########################################################################
    section Noteworthy_Technologies
-   if [ -e /tmp/percona-toolkit-mysqldump ]; then
-      if $AP_GREP FULLTEXT /tmp/percona-toolkit-mysqldump > /dev/null; then
+   if [ -e $TMPDIR/percona-toolkit-mysqldump ]; then
+      if $AP_GREP FULLTEXT $TMPDIR/percona-toolkit-mysqldump > /dev/null; then
          name_val "Full Text Indexing" Yes
       else
          name_val "Full Text Indexing" No
       fi
-      if $AP_GREP 'GEOMETRY\|POINT\|LINESTRING\|POLYGON' /tmp/percona-toolkit-mysqldump > /dev/null; then
+      if $AP_GREP 'GEOMETRY\|POINT\|LINESTRING\|POLYGON' $TMPDIR/percona-toolkit-mysqldump > /dev/null; then
          name_val "Geospatial Types" Yes
       else
          name_val "Geospatial Types" No
       fi
-      if $AP_GREP 'FOREIGN KEY' /tmp/percona-toolkit-mysqldump > /dev/null; then
+      if $AP_GREP 'FOREIGN KEY' $TMPDIR/percona-toolkit-mysqldump > /dev/null; then
          name_val "Foreign Keys" Yes
       else
          name_val "Foreign Keys" No
       fi
-      if $AP_GREP 'PARTITION BY' /tmp/percona-toolkit-mysqldump > /dev/null; then
+      if $AP_GREP 'PARTITION BY' $TMPDIR/percona-toolkit-mysqldump > /dev/null; then
          name_val "Partitioning" Yes
       else
          name_val "Partitioning" No
@@ -1175,8 +1218,8 @@ main() {
       name_val "Adaptive Flushing"   $(get_var innodb_adaptive_flushing)
       name_val "Adaptive Checkpoint" $(get_var innodb_adaptive_checkpoint)
 
-      if [ -s /tmp/percona-toolkit-innodb-status ]; then
-         format_innodb_status /tmp/percona-toolkit-innodb-status
+      if [ -s $TMPDIR/percona-toolkit-innodb-status ]; then
+         format_innodb_status $TMPDIR/percona-toolkit-innodb-status
       fi
    fi
 
@@ -1211,15 +1254,15 @@ main() {
    section Binary_Logging
    binlog=$(get_var log_bin)
    if [ "${binlog}" ]; then
-      mysql "$@" -ss -e 'SHOW MASTER LOGS' > /tmp/percona-toolkit 2>/dev/null
-      summarize_binlogs /tmp/percona-toolkit
+      mysql "$@" -ss -e 'SHOW MASTER LOGS' > $TMPDIR/percona-toolkit 2>/dev/null
+      summarize_binlogs $TMPDIR/percona-toolkit
       format="$(get_var binlog_format)"
       name_val binlog_format "${format:-STATEMENT}"
       name_val expire_logs_days $(get_var expire_logs_days)
       name_val sync_binlog $(get_var sync_binlog)
       name_val server_id $(get_var server_id)
-      mysql "$@" -ss -e 'SHOW MASTER STATUS' > /tmp/percona-toolkit 2>/dev/null
-      format_binlog_filters /tmp/percona-toolkit
+      mysql "$@" -ss -e 'SHOW MASTER STATUS' > $TMPDIR/percona-toolkit 2>/dev/null
+      format_binlog_filters $TMPDIR/percona-toolkit
    fi
 
 # Replication: seconds behind, running, filters, skip_slave_start, skip_errors,
@@ -1252,8 +1295,8 @@ main() {
    # If there is a my.cnf in a standard location, see if we can pretty-print it.
    # ########################################################################
    section Configuration_File
-   ps auxww 2>/dev/null | $AP_GREP mysqld > /tmp/percona-toolkit
-   cnf_file=$(find_my_cnf_file /tmp/percona-toolkit ${port});
+   ps auxww 2>/dev/null | $AP_GREP mysqld > $TMPDIR/percona-toolkit
+   cnf_file=$(find_my_cnf_file $TMPDIR/percona-toolkit ${port});
    if [ ! -e "${cnf_file}" ]; then
       name_val "Config File" "Cannot autodetect, trying common locations"
       cnf_file="/etc/my.cnf";
@@ -1266,13 +1309,14 @@ main() {
    fi
    if [ -e "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
-      cat "${cnf_file}" > /tmp/percona-toolkit
-      pretty_print_cnf_file /tmp/percona-toolkit
+      cat "${cnf_file}" > $TMPDIR/percona-toolkit
+      pretty_print_cnf_file $TMPDIR/percona-toolkit
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
 
    temp_files "rm"
+   rm_tmpdir
 
    # Make sure that we signal the end of the tool's output.
    section The_End
@@ -1325,8 +1369,8 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 pt-mysql-summary works by connecting to a MySQL database server and querying
 it for status and configuration information.  It saves these bits of data
-into files in /tmp, and then formats them neatly with awk and other scripting
-languages.
+into files in a temporary directory, and then formats them neatly with awk
+and other scripting languages.
 
 To use, simply execute it.  Optionally add the same command-line options
 you would use to connect to MySQL, like  C<pt-mysql-summary --user=foo>.
