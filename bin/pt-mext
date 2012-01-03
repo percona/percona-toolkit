@@ -17,7 +17,50 @@ if [ -z "$1" ]; then
    usage;
 fi
 
-FILE=/tmp/mext_temp_file;
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+# pt-mext isn't ready for this yet
+#set -u
+
+TMPDIR=""
+
+mk_tmpdir() {
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
+      fi
+      TMPDIR="$dir"
+   else
+      local tool=`basename $0`
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf $TMPDIR
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
+mk_tmpdir
+
+FILE=`mktemp -p $TMPDIR mext_temp_file.XXXXXX`;
 NUM=0;
 REL=0;
 rm -f $FILE*;
