@@ -4285,7 +4285,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
 This program is copyright 2006 Proven Scaling LLC and Six Apart Ltd,
-2007-2011 Percona Inc.
+2007-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 Feedback and improvements are welcome.
@@ -4306,6 +4306,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.0.1
+pt-heartbeat 2.0.2
 
 =cut

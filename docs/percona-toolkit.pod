@@ -455,7 +455,7 @@ for details.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011 Percona Inc. and others.
+Percona Toolkit is copyright 2011-2012 Percona Inc. and others.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -474,6 +474,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.0.1 released 2011-12-30
+Percona Toolkit v2.0.2 released 2012-01-05
 
 =cut

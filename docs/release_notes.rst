@@ -1,6 +1,23 @@
 Release Notes
 *************
 
+v2.0.2 released 2012-01-05
+==========================
+
+Percona Toolkit 2.0.2 fixes one critical bug: pt-table-sync --replicate
+did not work with character values, causing an "Unknown column" error.
+If using Percona Toolkit 2.0.1, you should upgrade to 2.0.2.
+
+Download the latest release of Percona Toolkit 2.0 from
+http://www.percona.com/software/percona-toolkit/
+or the Percona Software Repositories
+(http://www.percona.com/docs/wiki/repositories:start).
+
+Changelog
+---------
+
+* Fixed bug 911996: pt-table-sync --replicate causes "Unknown column" error
+
 v2.0.1 released 2011-12-30
 ==========================
 
