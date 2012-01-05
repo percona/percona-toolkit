@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+  * Fixed bug 911996: pt-table-sync --replicate causes "Unknown column" error
+
 v2.0.1 released 2011-12-30
 
   * Completely redesigned pt-table-checksum
