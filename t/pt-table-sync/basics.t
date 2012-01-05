@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 17;
+   plan tests => 19;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -168,6 +168,35 @@ ok($output, 'Synced with Nibble and data-size chunksize');
 # Restore PTDEBUG env.
 $ENV{PTDEBUG} = $dbg || 0;
 
+# ###########################################################################
+# Fix bug 911996.
+# ###########################################################################
+`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor --quiet`;
+
+PerconaTest::wait_for_table($slave_dbh, "percona.checksums", "db='sakila' and tbl='actor' and chunk=7");
+$slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='actor' and chunk=3");
+$slave_dbh->do("update sakila.actor set last_name='' where actor_id=30");
+
+$output = output(
+   sub {
+      pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox',
+         qw(--print --execute --replicate percona.checksums),
+         qw(--no-foreign-key-checks))
+   }
+);
+
+like(
+   $output,
+   qr/^REPLACE INTO `sakila`.`actor`\(`actor_id`, `first_name`, `last_name`, `last_update`\) VALUES \('30', 'SANDRA', 'PECK', '2006-02-15 04:34:33'\)/,
+   "--replicate with char index col (bug 911996)"
+);
+
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor`;
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   0,
+   "Synced diff (bug 911996)"
+);
 
 # #############################################################################
 # Done.

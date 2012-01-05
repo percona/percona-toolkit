@@ -8892,13 +8892,13 @@ sub diff_where {
    my $lb_sql = $asc->{boundaries}->{'>='};
    foreach my $val ( $q->deserialize_list($diff->{lower_boundary}) ) {
       my $quoted_val = $q->quote_val($val);
-      $lb_sql =~ s/\?/$val/;
+      $lb_sql =~ s/\?/$quoted_val/;
    }
 
    my $ub_sql = $asc->{boundaries}->{'<='};
    foreach my $val ( $q->deserialize_list($diff->{upper_boundary}) ) {
       my $quoted_val = $q->quote_val($val);
-      $ub_sql =~ s/\?/$val/;
+      $ub_sql =~ s/\?/$quoted_val/;
    }
 
    return "$lb_sql AND $ub_sql";
