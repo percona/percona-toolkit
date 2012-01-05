@@ -1,3 +1,9 @@
+percona-toolkit (2.0.2) unstable; urgency=low
+
+  * Fixed bug 911996: pt-table-sync --replicate causes "Unknown column" error
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 05 Jan 2012 19:18:08 +0000
+
 percona-toolkit (2.0.1) unstable; urgency=low
 
   * Completely redesigned pt-table-checksum

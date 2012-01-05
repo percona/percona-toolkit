@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.0.2 released 2012-01-05
+
   * Fixed bug 911996: pt-table-sync --replicate causes "Unknown column" error
 
 v2.0.1 released 2011-12-30
