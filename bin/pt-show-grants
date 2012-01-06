@@ -1756,7 +1756,7 @@ sub main {
 
             my @result;
             if ( $o->get('separate') ) {
-               @result = map { "REVOKE $grant ON $on_what FROM $user" }
+               @result = map { "REVOKE $_ ON $on_what FROM $user" }
                   split(', ', $grants);
             }
             else {
