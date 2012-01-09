@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 9;
+   plan tests => 10;
 }
 
 $sb->wipe_clean($dbh);
@@ -65,7 +65,11 @@ like(
    qr/at \d{4}/,
    'It has a timestamp',
 );
-
+like(
+   $output,
+   qr/^REVOKE ALL PRIVILEGES/m,
+   "Revoke statement is correct (bug 821709)"
+);
 
 $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--no-timestamp --drop --flush --revoke --separate)); }
