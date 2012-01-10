@@ -48,7 +48,7 @@ sub new {
       device_regex       => qr/.+/,
       block_size         => 512,
       out_fh             => \*STDOUT,
-      filter_zeroed_rows => $o->get('zero-rows') ? undef : 1,
+      zero_rows          => $o->get('zero-rows') ? 1 : undef,
       sample_time        => $o->get('sample-time') || 0,
       interactive        => 0,
 
@@ -122,14 +122,14 @@ sub set_first_ts {
    $self->{_ts}->{first} = $val || 0;
 }
 
-sub filter_zeroed_rows {
+sub zero_rows {
    my ($self) = @_;
-   return $self->{filter_zeroed_rows};
+   return $self->{zero_rows};
 }
 
-sub set_filter_zeroed_rows {
+sub set_zero_rows {
    my ($self, $new_val) = @_;
-   $self->{filter_zeroed_rows} = $new_val;
+   $self->{zero_rows} = $new_val;
 }
 
 sub sample_time {
@@ -861,7 +861,7 @@ sub print_header {
 
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
-   if ( $self->filter_zeroed_rows() ) {
+   if ( ! $self->zero_rows() ) {
       # Conundrum: What is "zero"?
       # Is 0.000001 zero? How about 0.1?
       # Here the answer is "it looks like zero after formatting";
