@@ -398,6 +398,7 @@ sub get_new_value_for {
 sub get_new_regex_for {
    my ($looking_for, $message) = @_;
    (my $looking_for_o = $looking_for) =~ s/_.*$/s/;
+   $looking_for = "set_$looking_for";
    return sub {
       my (%args)    = @_;
       my $new_regex = get_blocking_input($message);

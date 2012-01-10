@@ -175,21 +175,26 @@ sub set_out_fh {
    }
 }
 
-
 sub column_regex {
-   my ( $self, $new_re ) = @_;
-   if ($new_re) {
-      return $self->{column_regex} = $new_re;
-   }
+   my ( $self ) = @_;
    return $self->{column_regex};
 }
 
+sub set_column_regex {
+   my ( $self, $new_re ) = @_;
+   return $self->{column_regex} = $new_re;
+}
+
 sub device_regex {
+   my ( $self ) = @_;
+   return $self->{device_regex};
+}
+
+sub set_device_regex {
    my ( $self, $new_re ) = @_;
    if ($new_re) {
       return $self->{device_regex} = $new_re;
    }
-   return $self->{device_regex};
 }
 
 sub filename {
