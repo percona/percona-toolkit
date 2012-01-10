@@ -296,7 +296,7 @@ sub help {
    my $device_re   = $args{options}->{OptionParser}->get('devices');
    my $interval    = $obj->sample_time() || '(none)';
    my $disp_int    = $args{options}->{OptionParser}->get('redisplay-interval');
-   my $inact_disk  = $obj->filter_zeroed_rows() ? 'yes' : 'no';
+   my $inact_disk  = $obj->zero_rows() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
@@ -368,10 +368,8 @@ sub hide_inactive_disks {
    my (%args)  = @_;
    my $new_val = get_blocking_input("Filter inactive rows? (Leave blank for 'No') ");
 
-   # Eeep. In OptionParser, "true" means show; in Diskstats, "true" means hide.
-   # Thus !$new_val for OptionParser
    $args{options}->{OptionParser}->set('zero-rows', !$new_val);
-   $args{options}->{current_group_by_obj}->set_filter_zeroed_rows($new_val);
+   $args{options}->{current_group_by_obj}->set_zero_rows(!$new_val);
 
    return;
 }

@@ -41,14 +41,14 @@ can_ok( $obj, qw(
 # Test the constructor
 use File::Temp ();
 for my $attr (
-      [ filename           => (File::Temp::tempfile($0.'diskstats.XXXXXX', OPEN=>0, UNLINK=>1))[1]],
-      [ column_regex       => qr/!!!/                ],
-      [ device_regex       => qr/!!!/                ],
-      [ block_size         => 215                    ],
-      [ out_fh             => \*STDERR               ],
-      [ filter_zeroed_rows => 1                      ],
-      [ sample_time        => 1                      ],
-      [ interactive        => 1                      ],
+      [ filename     => (File::Temp::tempfile($0.'diskstats.XXXXXX', OPEN=>0, UNLINK=>1))[1]],
+      [ column_regex => qr/!!!/  ],
+      [ device_regex => qr/!!!/  ],
+      [ block_size   => 215      ],
+      [ out_fh       => \*STDERR ],
+      [ zero_rows    => 1        ],
+      [ sample_time  => 1        ],
+      [ interactive  => 1        ],
    ) {
    my $attribute   = $attr->[0];
    my $value       = $attr->[1];
@@ -221,7 +221,7 @@ is_deeply(
    "...And clears the internal duplicate-checking list"
 );
 
-$obj->set_filter_zeroed_rows(1);
+$obj->set_zero_rows(0);
 my $print_output = output(
    sub {
       $obj->print_rows(
@@ -231,12 +231,12 @@ my $print_output = output(
          );
    }
 );
-$obj->set_filter_zeroed_rows(0);
+$obj->set_zero_rows(1);
 
 is(
    $print_output,
    "",
-   "->filter_zeroed_rows works"
+   "->zero_rows works"
 );
 
 for my $method ( qw( delta_against delta_against_ts group_by ) ) {
@@ -291,7 +291,7 @@ for my $test (
          method              => "group_by_sample",
          results_file_prefix => "sample",
       }) {
-   my $obj    = $test->{class}->new(OptionParser => $o, filter_zeroed_rows => 0);
+   my $obj    = $test->{class}->new(OptionParser => $o, zero_rows => 1);
    my $method = $test->{method};
    my $prefix = $test->{results_file_prefix};
 
