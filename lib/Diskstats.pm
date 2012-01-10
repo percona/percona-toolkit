@@ -519,36 +519,6 @@ sub _parse_diskstats_line {
 
       return ( $dev, \%dev_stats );
    }
-   elsif ((@dev_stats{qw( major minor )}, $dev,
-           @dev_stats{ qw( reads read_sectors writes written_sectors ) }) =
-           $line =~ /^
-            # Partition format
-               \s*   (\d+)    # major
-               \s+   (\d+)    # minor
-               \s+   (.+?)    # Device name
-               \s+   (\d+)    # # of reads issued
-               \s+   (\d+)    # # of sectors read
-               \s+   (\d+)    # # of writes issued
-               \s+   (\d+)    # # of sectors written
-               \s*$/x)
-   {
-      for my $key ( @diskstats_fields ) {
-         # Unintiialized values should be 0
-         $dev_stats{$key} ||= 0;
-      }
-      # Copypaste from above, should probably abstract, but it would make
-      # the common case slower.
-      $dev_stats{read_bytes} = $dev_stats{read_sectors} * $block_size;
-      $dev_stats{written_bytes} =
-        $dev_stats{written_sectors} * $block_size;
-      $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
-      $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
-      $dev_stats{ios_requested} = $dev_stats{reads} + $dev_stats{writes};
-      $dev_stats{ios_in_bytes}  = $dev_stats{read_bytes}
-                                + $dev_stats{written_bytes};
-
-      return ( $dev, \%dev_stats );
-   }
    else {
       return;
    }
