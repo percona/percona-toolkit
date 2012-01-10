@@ -12,9 +12,25 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 BEGIN {
    $INC{$_} = __FILE__ for map {
          (my $t = $_ . ".pm") =~ s!::!/!g; $t
-      } qw( OptionParser ReadKeyMini Diskstats DiskstatsGroupByAll DiskstatsGroupByDisk DiskstatsGroupBySample DiskstatsMenu pt_diskstats );
+      } qw( OptionParser Transformers ReadKeyMini Diskstats DiskstatsGroupByAll DiskstatsGroupByDisk DiskstatsGroupBySample DiskstatsMenu pt_diskstats );
 }
 
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # OptionParser package
 # This package is a copy without comments from the original.  The original
@@ -1040,9 +1056,298 @@ if ( MKDEBUG ) {
 # End OptionParser package
 # ###########################################################################
 
+# This program is copyright 2008-2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# Transformers package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Transformers;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+
+use Time::Local qw(timegm timelocal);
+use Digest::MD5 qw(md5_hex);
+
+require Exporter;
+our @ISA         = qw(Exporter);
+our %EXPORT_TAGS = ();
+our @EXPORT      = ();
+our @EXPORT_OK   = qw(
+   micro_t
+   percentage_of
+   secs_to_time
+   time_to_secs
+   shorten
+   ts
+   parse_timestamp
+   unix_timestamp
+   any_unix_timestamp
+   make_checksum
+   crc32
+);
+
+our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
+our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
+our $n_ts      = qr/(\d{1,5})([shmd]?)/; # Limit \d{1,5} because \d{6} looks
+
+sub micro_t {
+   my ( $t, %args ) = @_;
+   my $p_ms = defined $args{p_ms} ? $args{p_ms} : 0;  # precision for ms vals
+   my $p_s  = defined $args{p_s}  ? $args{p_s}  : 0;  # precision for s vals
+   my $f;
+
+   $t = 0 if $t < 0;
+
+   $t = sprintf('%.17f', $t) if $t =~ /e/;
+
+   $t =~ s/\.(\d{1,6})\d*/\.$1/;
+
+   if ($t > 0 && $t <= 0.000999) {
+      $f = ($t * 1000000) . 'us';
+   }
+   elsif ($t >= 0.001000 && $t <= 0.999999) {
+      $f = sprintf("%.${p_ms}f", $t * 1000);
+      $f = ($f * 1) . 'ms'; # * 1 to remove insignificant zeros
+   }
+   elsif ($t >= 1) {
+      $f = sprintf("%.${p_s}f", $t);
+      $f = ($f * 1) . 's'; # * 1 to remove insignificant zeros
+   }
+   else {
+      $f = 0;  # $t should = 0 at this point
+   }
+
+   return $f;
+}
+
+sub percentage_of {
+   my ( $is, $of, %args ) = @_;
+   my $p   = $args{p} || 0; # float precision
+   my $fmt = $p ? "%.${p}f" : "%d";
+   return sprintf $fmt, ($is * 100) / ($of ||= 1);
+}
+
+sub secs_to_time {
+   my ( $secs, $fmt ) = @_;
+   $secs ||= 0;
+   return '00:00' unless $secs;
+
+   $fmt ||= $secs >= 86_400 ? 'd'
+          : $secs >= 3_600  ? 'h'
+          :                   'm';
+
+   return
+      $fmt eq 'd' ? sprintf(
+         "%d+%02d:%02d:%02d",
+         int($secs / 86_400),
+         int(($secs % 86_400) / 3_600),
+         int(($secs % 3_600) / 60),
+         $secs % 60)
+      : $fmt eq 'h' ? sprintf(
+         "%02d:%02d:%02d",
+         int(($secs % 86_400) / 3_600),
+         int(($secs % 3_600) / 60),
+         $secs % 60)
+      : sprintf(
+         "%02d:%02d",
+         int(($secs % 3_600) / 60),
+         $secs % 60);
+}
+
+sub time_to_secs {
+   my ( $val, $default_suffix ) = @_;
+   die "I need a val argument" unless defined $val;
+   my $t = 0;
+   my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
+   $suffix = $suffix || $default_suffix || 's';
+   if ( $suffix =~ m/[smhd]/ ) {
+      $t = $suffix eq 's' ? $num * 1        # Seconds
+         : $suffix eq 'm' ? $num * 60       # Minutes
+         : $suffix eq 'h' ? $num * 3600     # Hours
+         :                  $num * 86400;   # Days
+
+      $t *= -1 if $prefix && $prefix eq '-';
+   }
+   else {
+      die "Invalid suffix for $val: $suffix";
+   }
+   return $t;
+}
+
+sub shorten {
+   my ( $num, %args ) = @_;
+   my $p = defined $args{p} ? $args{p} : 2;     # float precision
+   my $d = defined $args{d} ? $args{d} : 1_024; # divisor
+   my $n = 0;
+   my @units = ('', qw(k M G T P E Z Y));
+   while ( $num >= $d && $n < @units - 1 ) {
+      $num /= $d;
+      ++$n;
+   }
+   return sprintf(
+      $num =~ m/\./ || $n
+         ? "%.${p}f%s"
+         : '%d',
+      $num, $units[$n]);
+}
+
+sub ts {
+   my ( $time, $gmt ) = @_;
+   my ( $sec, $min, $hour, $mday, $mon, $year )
+      = $gmt ? gmtime($time) : localtime($time);
+   $mon  += 1;
+   $year += 1900;
+   my $val = sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+      $year, $mon, $mday, $hour, $min, $sec);
+   if ( my ($us) = $time =~ m/(\.\d+)$/ ) {
+      $us = sprintf("%.6f", $us);
+      $us =~ s/^0\././;
+      $val .= $us;
+   }
+   return $val;
+}
+
+sub parse_timestamp {
+   my ( $val ) = @_;
+   if ( my($y, $m, $d, $h, $i, $s, $f)
+         = $val =~ m/^$mysql_ts$/ )
+   {
+      return sprintf "%d-%02d-%02d %02d:%02d:"
+                     . (defined $f ? '%09.6f' : '%02d'),
+                     $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   return $val;
+}
+
+sub unix_timestamp {
+   my ( $val, $gmt ) = @_;
+   if ( my($y, $m, $d, $h, $i, $s, $us) = $val =~ m/^$proper_ts$/ ) {
+      $val = $gmt
+         ? timegm($s, $i, $h, $d, $m - 1, $y)
+         : timelocal($s, $i, $h, $d, $m - 1, $y);
+      if ( defined $us ) {
+         $us = sprintf('%.6f', $us);
+         $us =~ s/^0\././;
+         $val .= $us;
+      }
+   }
+   return $val;
+}
+
+sub any_unix_timestamp {
+   my ( $val, $callback ) = @_;
+
+   if ( my ($n, $suffix) = $val =~ m/^$n_ts$/ ) {
+      $n = $suffix eq 's' ? $n            # Seconds
+         : $suffix eq 'm' ? $n * 60       # Minutes
+         : $suffix eq 'h' ? $n * 3600     # Hours
+         : $suffix eq 'd' ? $n * 86400    # Days
+         :                  $n;           # default: Seconds
+      MKDEBUG && _d('ts is now - N[shmd]:', $n);
+      return time - $n;
+   }
+   elsif ( $val =~ m/^\d{9,}/ ) {
+      MKDEBUG && _d('ts is already a unix timestamp');
+      return $val;
+   }
+   elsif ( my ($ymd, $hms) = $val =~ m/^(\d{6})(?:\s+(\d+:\d+:\d+))?/ ) {
+      MKDEBUG && _d('ts is MySQL slow log timestamp');
+      $val .= ' 00:00:00' unless $hms;
+      return unix_timestamp(parse_timestamp($val));
+   }
+   elsif ( ($ymd, $hms) = $val =~ m/^(\d{4}-\d\d-\d\d)(?:[T ](\d+:\d+:\d+))?/) {
+      MKDEBUG && _d('ts is properly formatted timestamp');
+      $val .= ' 00:00:00' unless $hms;
+      return unix_timestamp($val);
+   }
+   else {
+      MKDEBUG && _d('ts is MySQL expression');
+      return $callback->($val) if $callback && ref $callback eq 'CODE';
+   }
+
+   MKDEBUG && _d('Unknown ts type:', $val);
+   return;
+}
+
+sub make_checksum {
+   my ( $val ) = @_;
+   my $checksum = uc substr(md5_hex($val), -16);
+   MKDEBUG && _d($checksum, 'checksum for', $val);
+   return $checksum;
+}
+
+sub crc32 {
+   my ( $string ) = @_;
+   return unless $string;
+   my $poly = 0xEDB88320;
+   my $crc  = 0xFFFFFFFF;
+   foreach my $char ( split(//, $string) ) {
+      my $comp = ($crc ^ ord($char)) & 0xFF;
+      for ( 1 .. 8 ) {
+         $comp = $comp & 1 ? $poly ^ ($comp >> 1) : $comp >> 1;
+      }
+      $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
+   }
+   return $crc ^ 0xFFFFFFFF;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Transformers package
+# ###########################################################################
+
+# This program is copyright 2010-2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # ReadKeyMini
 # ###########################################################################
+{
 BEGIN {
 
 package ReadKeyMini;
@@ -1142,9 +1447,10 @@ sub readkey {
    cbreak();
    sysread(STDIN, $key, 1);
    my $timeout = 0.1;
-   if ( $key eq "\033" ) { # Ugly and broken hack, but good enough for the two minutes it took to write.
-   # Namely, Ctrl escapes, the F keys, and other stuff you can send from the keyboard
-   # take more than one "character" to represent, and wrong be wrong to break into pieces.
+   if ( $key eq "\033" ) {
+   # Ugly and broken hack, but good enough for the two minutes it took to write.
+   # Namely, Ctrl escapes, the F-NUM keys, and other stuff you can send from the keyboard
+   # take more than one "character" to represent, and would be wrong to break into pieces.
       {
          my $x = '';
          STDIN->blocking(0);
@@ -1185,12 +1491,28 @@ sub _GetTerminalSize {
 }
 
 }
-
+}
 1;
 # ###########################################################################
 # End ReadKeyMini package
 # ###########################################################################
 
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # Diskstats package
 # This package is a copy without comments from the original.  The original
@@ -1206,7 +1528,7 @@ package Diskstats;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use IO::Handle;
 use List::Util qw( max first );
@@ -1240,8 +1562,10 @@ sub new {
    };
 
    if ( $o->get('memory-for-speed') ) {
+      PTDEBUG && _d('Diskstats', "Called with memory-for-speed");
       eval {
-         require Memoize; Memoize::memoize('_parse_diskstats_line')
+         require Memoize;
+         Memoize::memoize('_parse_diskstats_line');
       };
       if ($EVAL_ERROR) {
          warn "Can't trade memory for speed: $EVAL_ERROR. Continuing as usual.";
@@ -1265,27 +1589,28 @@ sub new {
 }
 
 
-sub _ts_common {
-   my ($self, $key, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{$key} = $val;
-   }
-   return $self->{_ts}->{$key};
-}
-
 sub curr_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("curr", $val);
+   if ($val) {
+      $self->{_ts}->{curr} = $val;
+   }
+   return $self->{_ts}->{curr} || 0;
 }
 
 sub prev_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("prev", $val);
+   if ($val) {
+      $self->{_ts}->{prev} = $val;
+   }
+   return $self->{_ts}->{prev} || 0;
 }
 
 sub first_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("first", $val);
+   if ($val) {
+      $self->{_ts}->{first} = $val;
+   }
+   return $self->{_ts}->{first} || 0;
 }
 
 sub filter_zeroed_rows {
@@ -1421,28 +1746,31 @@ sub clear_first_stats {
    $self->_clear_stats_common( "_first_stats_for", @args );
 }
 
-sub _stats_for_common {
-   my ( $self, $dev, $key ) = @_;
-   $self->{$key} ||= {};
-   if ($dev) {
-      return $self->{$key}->{$dev};
-   }
-   return $self->{$key};
-}
-
 sub stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_stats_for' );
+   $self->{_stats_for} ||= {};
+   if ($dev) {
+      return $self->{_stats_for}->{$dev};
+   }
+   return $self->{_stats_for};
 }
 
 sub prev_stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_prev_stats_for' );
+   $self->{_prev_stats_for} ||= {};
+   if ($dev) {
+      return $self->{_prev_stats_for}->{$dev};
+   }
+   return $self->{_prev_stats_for};
 }
 
 sub first_stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_first_stats_for' );
+   $self->{_first_stats_for} ||= {};
+   if ($dev) {
+      return $self->{_first_stats_for}->{$dev};
+   }
+   return $self->{_first_stats_for};
 }
 
 sub has_stats {
@@ -1507,7 +1835,7 @@ sub dev_ok {
    return $device =~ $regex;
 }
 
-my @columns_in_order = (
+our @columns_in_order = (
    [ "   rd_s" => "%7.1f",   "reads_sec", ],
    [ "rd_avkb" => "%7.1f",   "avg_read_sz", ],
    [ "rd_mb_s" => "%7.1f",   "mbytes_read_sec", ],
@@ -1862,12 +2190,16 @@ sub _calc_stats_for_deltas {
 
    my $devs_in_group = $self->compute_devs_in_group();
 
-   foreach my $dev (
-         grep { $self->dev_ok($_) && $self->stats_for($_) }
+   foreach my $dev_and_curr (
+         map {
+            my $curr = $self->dev_ok($_) && $self->stats_for($_);
+            $curr ? [ $_, $curr ] : ()
+         }
          @devices )
    {
-      my $curr      = $self->stats_for($dev);
-      my $against   = $self->delta_against($dev);
+      my $dev     = $dev_and_curr->[0];
+      my $curr    = $dev_and_curr->[1];
+      my $against = $self->delta_against($dev);
 
       my $delta_for       = $self->_calc_delta_for( $curr, $against );
       my $in_progress     = $curr->{"ios_in_progress"};
@@ -1920,7 +2252,7 @@ sub print_header {
    }
 }
 
-sub print_rest {
+sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
    if ( $self->filter_zeroed_rows() ) {
       return unless grep {
@@ -1933,6 +2265,7 @@ sub print_rest {
 
 sub print_deltas {
    my ( $self, %args ) = @_;
+
    my ( $header, $format, $cols ) = $self->design_print_formats(
       max_device_length => $args{max_device_length},
       columns           => $args{columns},
@@ -1941,7 +2274,7 @@ sub print_deltas {
    return unless $self->delta_against_ts();
 
    @$cols = map { $self->_column_to_key($_) } @$cols;
-   my ( $header_callback, $rest_callback ) = @args{qw( header_callback rest_callback )};
+   my ( $header_callback, $rows_callback ) = @args{qw( header_callback rows_callback )};
 
    if ( $header_callback ) {
       $self->$header_callback( $header, "#ts", "device" );
@@ -1951,11 +2284,11 @@ sub print_deltas {
    }
 
    for my $stat ( $self->_calc_deltas() ) {
-      if ($rest_callback) {
-         $self->$rest_callback( $format, $cols, $stat );
+      if ($rows_callback) {
+         $self->$rows_callback( $format, $cols, $stat );
       }
       else {
-         $self->print_rest( $format, $cols, $stat );
+         $self->print_rows( $format, $cols, $stat );
       }
    }
 }
@@ -1988,12 +2321,36 @@ sub group_by {
    die 'You must override group_by() in a subclass';
 }
 
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
 1;
 }
 # ###########################################################################
 # End Diskstats package
 # ###########################################################################
 
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # DiskstatsGroupByAll package
 # This package is a copy without comments from the original.  The original
@@ -2023,7 +2380,7 @@ sub group_by_all {
          sample_callback => sub {
                $self->print_deltas(
                   map { ( $_ => $args{$_} ) }
-                     qw( header_callback rest_callback ),
+                     qw( header_callback rows_callback ),
                );
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
@@ -2042,7 +2399,7 @@ sub group_by_all {
                      }
                      $self->{_print_header} = undef;
                   },
-                  rest_callback => $args{rest_callback},
+                  rows_callback => $args{rows_callback},
                );
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
@@ -2097,6 +2454,22 @@ sub compute_line_ts {
 # End DiskstatsGroupByAll package
 # ###########################################################################
 
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # DiskstatsGroupByDisk package
 # This package is a copy without comments from the original.  The original
@@ -2131,7 +2504,7 @@ sub group_by {
 
 sub group_by_disk {
    my ($self, %args) = @_;
-   my ($header_callback, $rest_callback) = $args{ qw( header_callback rest_callback ) };
+   my ($header_callback, $rows_callback) = $args{ qw( header_callback rows_callback ) };
 
    $self->clear_state() unless $self->interactive();
 
@@ -2158,7 +2531,7 @@ sub group_by_disk {
                         }
                         $self->{_print_header} = undef;
                      },
-                     rest_callback   => $args{rest_callback},
+                     rows_callback   => $args{rows_callback},
                   );
 
                   $self->{_iterations} = -1;
@@ -2187,7 +2560,7 @@ sub group_by_disk {
 
    $self->print_deltas( 
       header_callback => $args{header_callback},
-      rest_callback   => $args{rest_callback},
+      rows_callback   => $args{rows_callback},
    );
 
    $self->clear_state();
@@ -2229,6 +2602,22 @@ sub compute_in_progress {
 # End DiskstatsGroupByDisk package
 # ###########################################################################
 
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # DiskstatsGroupBySample package
 # This package is a copy without comments from the original.  The original
@@ -2264,7 +2653,7 @@ sub group_by {
 
 sub group_by_sample {
    my ( $self,      %args )    = @_;
-   my ( $header_callback, $rest_callback ) = $args{qw( header_callback rest_callback )};
+   my ( $header_callback, $rows_callback ) = $args{qw( header_callback rows_callback )};
 
    $self->clear_state() unless $self->interactive();
 
@@ -2303,9 +2692,9 @@ sub _sample_callback {
                $self->{_print_header} = undef;
             }
          },
-         rest_callback => sub {
+         rows_callback => sub {
             my ( $self, $format, $cols, $stat ) = @_;
-            my $method = $args{rest_callback} || "print_rest";
+            my $method = $args{rows_callback} || "print_rows";
             $self->$method( $format, $cols, $stat );
             $printed_a_line = 1;
          }
@@ -2409,6 +2798,22 @@ sub _calc_stats_for_deltas {
 # End DiskstatsGroupBySample package
 # ###########################################################################
 
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # DiskstatsMenu
 # ###########################################################################
@@ -2420,13 +2825,14 @@ package DiskstatsMenu;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use IO::Handle;
 use IO::Select;
 use Scalar::Util qw( looks_like_number blessed );
 
 use ReadKeyMini  qw( ReadMode );
+use Transformers qw( ts       );
 
 require DiskstatsGroupByAll;
 require DiskstatsGroupByDisk;
@@ -2437,16 +2843,25 @@ my %actions = (
    'D' => \&group_by,
    'S' => \&group_by,
    'i' => \&hide_inactive_disks,
-   'd' => get_new_value_for( "redisplay_interval", "Enter a new redisplay interval in seconds: " ),
-   'z' => get_new_value_for( "sample_time", "Enter a new interval between samples in seconds: " ),
-   'c' => get_new_regex_for( "column_regex", "Enter a column pattern: " ),
-   '/' => get_new_regex_for( "device_regex", "Enter a disk/device pattern: " ),
+   'd' => get_new_value_for( "redisplay_interval",
+                       "Enter a new redisplay interval in seconds: " ),
+   'z' => get_new_value_for( "sample_time",
+                       "Enter a new interval between samples in seconds: " ),
+   'c' => get_new_regex_for( "column_regex",
+                       "Enter a column pattern: " ),
+   '/' => get_new_regex_for( "device_regex",
+                       "Enter a disk/device pattern: " ),
+         # Magical return value.
    'q' => sub { return 'last' },
-   'p' => sub { print "Paused - press any key to continue\n"; pause(@_); return; },
+   'p' => sub {
+         print "Paused - press any key to continue\n";
+         pause(@_);
+         return;
+      },
    '?' => \&help,
 );
 
-my %option_to_object = (
+my %input_to_object = (
       D  => "DiskstatsGroupByDisk",
       A  => "DiskstatsGroupByAll",
       S  => "DiskstatsGroupBySample",
@@ -2458,7 +2873,6 @@ sub new {
 
 sub run_interactive {
    my ($self, %args) = @_;
-
    my @required_args = qw(OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
@@ -2507,6 +2921,8 @@ sub run_interactive {
       }
    }
 
+   PTDEBUG && _d("Using filename", $filename);
+
    # I don't think either of these are needed actually, since piped opens
    # are supposed to deal with children on their own, but it doesn't hurt.
    local $SIG{CHLD} = 'IGNORE';
@@ -2521,7 +2937,7 @@ sub run_interactive {
                  : $group_by =~ m/sample/i ? 'DiskstatsGroupBySample'
                  : $group_by =~ m/all/i    ? 'DiskstatsGroupByAll'
                  : die "Invalid --group-by: $group_by";
-   $opts{obj}   = $class->new( %opts );
+   $opts{current_group_by_obj}   = $class->new( %opts );
 
    if ( $args{filename} ) {
       group_by(
@@ -2550,29 +2966,31 @@ sub run_interactive {
       # As a possible source of confusion, note that this calls the group_by
       # _method_ in DiskstatsGroupBySomething, not the group_by _function_
       # defined below.
-      $opts{obj}->group_by( filehandle => $tmp_fh, clear_state => 0 ) || 0;
+      $opts{current_group_by_obj}->group_by( filehandle => $tmp_fh ) || 0;
 
       if ( eof $tmp_fh ) {
-         # If we are gathering samples (don't have a filename), and we have a sample
-         # limit (set by --iterations), the child process just calls it quits once
-         # it gathers enough samples. When that happens, we are also done.
-         if ( !$args{filename} && $o->get('iterations') && kill 0, $child_pid ) {
-            last MAIN_LOOP;
-         }
-
          # This one comes from IO::Handle. I clears the eof flag
          # from a filehandle, so we can try reading from it again.
          $tmp_fh->clearerr;
       }
+      # If we are gathering samples (don't have a filename), and
+      # we have a sample limit (set by --iterations), the child
+      # process just calls it quits once it gathers enough samples.
+      # When that happens, we are also done.
+      if ( !$args{filename} && $o->get('iterations')
+            && !kill(0, $child_pid) ) {
+         waitpid $child_pid, 0;
+         last MAIN_LOOP;
+      }
    }
    ReadKeyMini::cooked();
 
-   if ( !$args{filename} ) {
+   if ( !$args{filename} && kill 0, $child_pid ) {
       $child_fh->printflush("End\n");
       waitpid $child_pid, 0;
    }
 
-   close($tmp_fh) or die "Cannot close: $OS_ERROR";
+   close $tmp_fh or die "Cannot close: $OS_ERROR";
    return 0; # Exit status
 }
 
@@ -2597,12 +3015,11 @@ sub gather_samples {
       if ( read_command_timeout( $sel, $opts{sampling_interval} ) ) {
          last GATHER_DATA;
       }
-
       open my $fh, ">>", $filename or die $OS_ERROR;
       open my $diskstats_fh, "<", "/proc/diskstats"
             or die $OS_ERROR;
 
-      my @to_print = `date +'TS %s.%N %F %T'`;
+      my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
 
       # Lovely little method from IO::Handle: turns on autoflush,
@@ -2612,7 +3029,8 @@ sub gather_samples {
       close $fh or die $OS_ERROR;
 
       $samples++;
-      if ( defined($opts{samples_to_gather}) && $samples >= $opts{samples_to_gather} ) {
+      if ( defined($opts{samples_to_gather})
+            && $samples >= $opts{samples_to_gather} ) {
          last GATHER_DATA;
       }
    }
@@ -2620,23 +3038,29 @@ sub gather_samples {
 }
 
 sub group_by {
-   my (%args) = @_;
+   my (%args)  = @_;
 
-   my $input = $args{input};
+   my @required_args = qw( options input );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($options, $input) = @args{@required_args};
 
-   if ( ref( $args{options}->{obj} ) ne $option_to_object{$input} ) {
+   if ( ref( $args{options}->{current_group_by_obj} ) ne $input_to_object{$input} ) {
       # Particularly important! Otherwise we would depend on the
       # object's ->new being smart about discarding unrecognized
       # values.
-      delete $args{options}->{obj};
+      delete $args{options}->{current_group_by_obj};
       # This would fail on a stricter constructor, so it probably
       # needs fixing.
-      $args{options}->{obj} = $option_to_object{$input}->new( %{$args{options}});
+      $args{options}->{current_group_by_obj} = $input_to_object{$input}->new(
+                                 %{$args{options}}
+                              );
    }
    seek $args{filehandle}, 0, 0;
 
    # Just aliasing this for a bit.
-   for my $obj ( $args{options}->{obj} ) {
+   for my $obj ( $args{options}->{current_group_by_obj} ) {
       if ( $obj->isa("DiskstatsGroupBySample") ) {
          $obj->interactive(1);
       }
@@ -2662,7 +3086,7 @@ sub group_by {
 
 sub help {
    my (%args)      = @_;
-   my $obj         = $args{options}->{obj};
+   my $obj         = $args{options}->{current_group_by_obj};
    my $mode        = substr ref($obj), 16, 1;
    my $column_re   = $args{options}->{OptionParser}->get('columns');
    my $device_re   = $args{options}->{OptionParser}->get('devices');
@@ -2695,18 +3119,22 @@ sub file_to_use {
    my ( $filename ) = @_;
 
    if ( !$filename ) {
+      PTDEBUG && _d('No explicit filename passed in, trying to get one from mktemp');
       chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
    }
 
    if ( $filename ) {
-      open my $fh, "<", $filename
+      open my $fh, "+>", $filename
          or die "Cannot open $filename: $OS_ERROR";
       return $fh, $filename;
    }
    else {
+      PTDEBUG && _d("mktemp didn't return a filename, trying to use File::Temp");
       local $EVAL_ERROR;
       if ( !eval { require File::Temp } ) {
-         die "Can't call mktemp nor load File::Temp. Install either of those, or pass in an explicit filename through --save-samples.";
+         die "Can't call mktemp nor load File::Temp.",
+             " Install either of those, or pass in an explicit",
+             " filename through --save-samples.";
       }
       my $dir = File::Temp::tempdir( CLEANUP => 1 );
       return File::Temp::tempfile(
@@ -2718,7 +3146,7 @@ sub file_to_use {
    }
 }
 
-sub get_input {
+sub get_blocking_input {
    my ($message) = @_;
 
    STDIN->blocking(1);
@@ -2734,12 +3162,12 @@ sub get_input {
 
 sub hide_inactive_disks {
    my (%args)  = @_;
-   my $new_val = get_input("Filter inactive rows? (Leave blank for 'No') ");
+   my $new_val = get_blocking_input("Filter inactive rows? (Leave blank for 'No') ");
 
    # Eeep. In OptionParser, "true" means show; in Diskstats, "true" means hide.
    # Thus !$new_val for OptionParser
    $args{options}->{OptionParser}->set('zero-rows', !$new_val);
-   $args{options}->{obj}->filter_zeroed_rows($new_val);
+   $args{options}->{current_group_by_obj}->filter_zeroed_rows($new_val);
 
    return;
 }
@@ -2749,12 +3177,13 @@ sub get_new_value_for {
    (my $looking_for_o = $looking_for) =~ tr/_/-/;
    return sub {
       my (%args)       = @_;
-      my $new_interval = get_input($message) || 0;
+      my $new_interval = get_blocking_input($message) || 0;
    
-      die "invalid timeout specification" unless looks_like_number($new_interval);
+      die "Invalid timeout: $new_interval"
+         unless looks_like_number($new_interval);
 
-      if ( $args{options}->{obj}->can($looking_for) ) {
-         $args{options}->{obj}->$looking_for($new_interval);
+      if ( $args{options}->{current_group_by_obj}->can($looking_for) ) {
+         $args{options}->{current_group_by_obj}->$looking_for($new_interval);
       }
       $args{options}->{OptionParser}->set($looking_for_o, $new_interval);
       return $new_interval;
@@ -2766,11 +3195,11 @@ sub get_new_regex_for {
    (my $looking_for_o = $looking_for) =~ s/_.*$/s/;
    return sub {
       my (%args)    = @_;
-      my $new_regex = get_input($message);
+      my $new_regex = get_blocking_input($message);
    
       local $EVAL_ERROR;
       if ( $new_regex && (my $re = eval { qr/$new_regex/i }) ) {
-         $args{options}->{obj}->$looking_for( $re );
+         $args{options}->{current_group_by_obj}->$looking_for( $re );
          $args{options}->{OptionParser}->set($looking_for_o, $new_regex);
       }
       elsif ( !$EVAL_ERROR && !$new_regex ) {
@@ -2778,7 +3207,7 @@ sub get_new_regex_for {
          # somewhat magical, and basically just asking for trouble.
          # Instead we give them what awk would, a pattern that always
          # matches.
-         $args{options}->{obj}->$looking_for( qr/(?=)/ );
+         $args{options}->{current_group_by_obj}->$looking_for( qr/(?=)/ );
          $args{options}->{OptionParser}->set($looking_for_o, '');
       }
       else {
@@ -2795,6 +3224,30 @@ sub pause {
    STDIN->blocking(0);
    scalar <STDIN>;
    return;
+}
+
+my $got_highres = eval { require Time::HiRes };
+sub timestamp {
+   if ( $got_highres ) {
+      # Can do everything in Perl
+      # TS timestamp.nanoseconds ISO8601-timestamp
+      PTDEBUG && _d('Timestamp', "Using the pure Perl version");
+      my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
+      return sprintf( "TS %d.%d %s\n", $seconds,
+                       $microseconds*1000, Transformers::ts($seconds) );
+   }
+   else {
+      PTDEBUG && _d('Timestamp', "Using the system's date command");
+      `date +'TS %s.%N %F %T'`;
+   }
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -2829,17 +3282,21 @@ local $SIG{__DIE__} = sub {
 } if MKDEBUG;
 
 sub main {
-   local @ARGV = @_;  # set global ARGV for this package
+   @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = OptionParser->new( file => __FILE__ );
+   my $o = new OptionParser file => __FILE__;
    $o->get_specs();
    $o->get_opts();
 
+   $o->usage_or_errors();
+
+   my $diskstats = new DiskstatsMenu;
+
    # Interactive mode. Delegate to DiskstatsMenu::run_interactive
-   return DiskstatsMenu->run_interactive( OptionParser => $o, filename => $ARGV[0] );
+   return $diskstats->run_interactive( OptionParser => $o, filename => $ARGV[0] );
 }
 
 # Somewhat important if STDOUT is tied to a terminal.
@@ -3084,7 +3541,8 @@ Show rows with all zero values.
 
 =item --memory-for-speed
 
-XXX TODO INTERNAL yadda
+EXPERIMENTAL! Trades memory for speed, by storing more things in memory.
+What it stores, and how, may all be subject to change.
 
 =item --help
 
@@ -3149,7 +3607,7 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz
+Baron Schwartz, Brian Fraser, and Daniel Nichter
 
 =head1 ABOUT PERCONA TOOLKIT
 
