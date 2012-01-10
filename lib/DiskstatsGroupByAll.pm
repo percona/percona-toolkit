@@ -64,7 +64,7 @@ sub group_by_all {
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
       );
-      if (!$self->prev_ts) {
+      if (!$self->prev_ts()) {
          seek $args{filehandle}, $orig, 0;
       }
       return;

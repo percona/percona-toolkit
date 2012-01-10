@@ -168,15 +168,16 @@ throws_ok( sub { $obj->design_print_formats( columns => {} ) },
         qr/The columns argument to design_print_formats should be an arrayref/,
         "design_print_formats dies when passed an invalid columns argument");
 
-for my $meth ( qw( curr_ts prev_ts first_ts ) ) {
-   ok(!$obj->$meth(), "Diskstats->$meth is initially false");
+for my $method ( qw( curr_ts prev_ts first_ts ) ) {
+   my $setter = "set_$method";
+   ok(!$obj->$method(), "Diskstats->$method is initially false");
 
-   $obj->$meth(10);
-   is($obj->$meth(), 10, "Diskstats->$meth(10) sets it to 10");
+   $obj->$setter(10);
+   is($obj->$method(), 10, "Diskstats->$setter(10) sets it to 10");
 
-   $obj->$meth(20);
+   $obj->$setter(20);
    $obj->clear_ts();
-   ok(!$obj->$meth(), "Diskstats->clear_ts does as advertized");
+   ok(!$obj->$method(), "Diskstats->clear_ts does as advertized");
 }
 
 is($obj->out_fh(), \*STDOUT, "by default, outputs to STDOUT");
@@ -371,9 +372,9 @@ EOF
       );
    }
 
-   $obj->curr_ts(0);
-   $obj->prev_ts(0);
-   $obj->first_ts(0);
+   $obj->set_curr_ts(0);
+   $obj->set_prev_ts(0);
+   $obj->set_first_ts(0);
 
    throws_ok(
       sub { $obj->_calc_deltas() },
