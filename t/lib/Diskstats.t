@@ -96,7 +96,7 @@ my ($dev, $res) = $obj->parse_diskstats_line($line, $obj->block_size);
 
 is_deeply( $res, \%expected_results, "parse_diskstats_line works" );
 
-$obj->column_regex(qr/./);
+$obj->set_column_regex(qr/./);
 my ($header, $rows, $cols) = $obj->design_print_formats();
 is_deeply(
    $cols,
@@ -105,7 +105,7 @@ is_deeply(
 );
 
                   # qr/ \A (?!.*io_s$|\s*[qs]time$) /x
-$obj->column_regex(qr/cnc|rt|busy|prg|[mk]b|[dr]_s|mrg/);
+$obj->set_column_regex(qr/cnc|rt|busy|prg|[mk]b|[dr]_s|mrg/);
 ($header, $rows, $cols) = $obj->design_print_formats();
 is(
    $header,
@@ -113,7 +113,7 @@ is(
    "design_print_formats: sanity check for defaults"
 );
 
-$obj->column_regex(qr/./);
+$obj->set_column_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(max_device_length => 10);
 my $all_columns_format = join(" ", q{%5s %-10s}, map { $_->[0] } @columns_in_order);
 is(
@@ -122,7 +122,7 @@ is(
    "design_print_formats: max_device_length works"
 );
 
-$obj->column_regex(qr/(?!)/); # Will never match
+$obj->set_column_regex(qr/(?!)/); # Will never match
 ($header, $rows, $cols) = $obj->design_print_formats(max_device_length => 10);
 is(
    $header,
@@ -130,7 +130,7 @@ is(
    "design_print_formats respects column_regex"
 );
 
-$obj->column_regex(qr/./);
+$obj->set_column_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(
                                     max_device_length => 10,
                                     columns           => []
@@ -141,7 +141,7 @@ is(
    "...unless we pass an explicit column array"
 );
 
-$obj->column_regex(qr/./);
+$obj->set_column_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(
                                  max_device_length => 10,
                                  columns           => [qw( busy )]
@@ -295,7 +295,7 @@ for my $test (
    my $method = $test->{method};
    my $prefix = $test->{results_file_prefix};
 
-   $obj->column_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
+   $obj->set_column_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
