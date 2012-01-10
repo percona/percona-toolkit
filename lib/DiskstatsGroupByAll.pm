@@ -35,7 +35,7 @@ sub group_by_all {
 
    $self->clear_state();
 
-   if (!$self->interactive) {
+   if (!$self->interactive()) {
       $self->parse_from(
          sample_callback => sub {
                $self->print_deltas(

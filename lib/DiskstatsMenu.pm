@@ -266,10 +266,10 @@ sub group_by {
    # Just aliasing this for a bit.
    for my $obj ( $args{options}->{current_group_by_obj} ) {
       if ( $obj->isa("DiskstatsGroupBySample") ) {
-         $obj->interactive(1);
+         $obj->set_interactive(1);
       }
       else {
-         $obj->interactive(0);
+         $obj->set_interactive(0);
       }
       $obj->group_by(
                filehandle => $args{filehandle},
@@ -283,7 +283,7 @@ sub group_by {
                      };
                   }->(),
                );
-      $obj->interactive(1);
+      $obj->set_interactive(1);
       $obj->{_print_header} = 0;
    }
 }

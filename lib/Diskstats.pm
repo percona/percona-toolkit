@@ -145,11 +145,15 @@ sub set_sample_time {
 }
 
 sub interactive {
+   my ($self) = @_;
+   return $self->{interactive};
+}
+
+sub set_interactive {
    my ($self, $new_val) = @_;
    if (defined($new_val)) {
       $self->{interactive} = $new_val;
    }
-   return $self->{interactive};
 }
 
 # What this method does is thee-fold:
