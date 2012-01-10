@@ -116,9 +116,10 @@ sub readkey {
    cbreak();
    sysread(STDIN, $key, 1);
    my $timeout = 0.1;
-   if ( $key eq "\033" ) { # Ugly and broken hack, but good enough for the two minutes it took to write.
-   # Namely, Ctrl escapes, the F keys, and other stuff you can send from the keyboard
-   # take more than one "character" to represent, and wrong be wrong to break into pieces.
+   if ( $key eq "\033" ) {
+   # Ugly and broken hack, but good enough for the two minutes it took to write.
+   # Namely, Ctrl escapes, the F-NUM keys, and other stuff you can send from the keyboard
+   # take more than one "character" to represent, and would be wrong to break into pieces.
       {
          my $x = '';
          STDIN->blocking(0);

@@ -40,7 +40,7 @@ sub group_by_all {
          sample_callback => sub {
                $self->print_deltas(
                   map { ( $_ => $args{$_} ) }
-                     qw( header_callback rest_callback ),
+                     qw( header_callback rows_callback ),
                );
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
@@ -59,7 +59,7 @@ sub group_by_all {
                      }
                      $self->{_print_header} = undef;
                   },
-                  rest_callback => $args{rest_callback},
+                  rows_callback => $args{rows_callback},
                );
             },
          map( { ($_ => $args{$_}) } qw(filehandle filename data) ),

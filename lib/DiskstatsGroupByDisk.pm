@@ -47,7 +47,7 @@ sub group_by {
 # last sample.
 sub group_by_disk {
    my ($self, %args) = @_;
-   my ($header_callback, $rest_callback) = $args{ qw( header_callback rest_callback ) };
+   my ($header_callback, $rows_callback) = $args{ qw( header_callback rows_callback ) };
 
    $self->clear_state() unless $self->interactive();
 
@@ -74,7 +74,7 @@ sub group_by_disk {
                         }
                         $self->{_print_header} = undef;
                      },
-                     rest_callback   => $args{rest_callback},
+                     rows_callback   => $args{rows_callback},
                   );
 
                   $self->{_iterations} = -1;
@@ -103,7 +103,7 @@ sub group_by_disk {
 
    $self->print_deltas( 
       header_callback => $args{header_callback},
-      rest_callback   => $args{rest_callback},
+      rows_callback   => $args{rows_callback},
    );
 
    $self->clear_state();

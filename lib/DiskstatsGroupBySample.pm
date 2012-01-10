@@ -48,7 +48,7 @@ sub group_by {
 # last sample.
 sub group_by_sample {
    my ( $self,      %args )    = @_;
-   my ( $header_callback, $rest_callback ) = $args{qw( header_callback rest_callback )};
+   my ( $header_callback, $rows_callback ) = $args{qw( header_callback rows_callback )};
 
    $self->clear_state() unless $self->interactive();
 
@@ -96,9 +96,9 @@ sub _sample_callback {
                $self->{_print_header} = undef;
             }
          },
-         rest_callback => sub {
+         rows_callback => sub {
             my ( $self, $format, $cols, $stat ) = @_;
-            my $method = $args{rest_callback} || "print_rest";
+            my $method = $args{rows_callback} || "print_rows";
             $self->$method( $format, $cols, $stat );
             $printed_a_line = 1;
          }

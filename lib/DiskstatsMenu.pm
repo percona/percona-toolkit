@@ -25,13 +25,14 @@ package DiskstatsMenu;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use IO::Handle;
 use IO::Select;
 use Scalar::Util qw( looks_like_number blessed );
 
 use ReadKeyMini  qw( ReadMode );
+use Transformers qw( ts       );
 
 require DiskstatsGroupByAll;
 require DiskstatsGroupByDisk;
@@ -60,7 +61,7 @@ my %actions = (
    '?' => \&help,
 );
 
-my %option_to_object = (
+my %input_to_object = (
       D  => "DiskstatsGroupByDisk",
       A  => "DiskstatsGroupByAll",
       S  => "DiskstatsGroupBySample",
@@ -72,7 +73,6 @@ sub new {
 
 sub run_interactive {
    my ($self, %args) = @_;
-
    my @required_args = qw(OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
@@ -121,6 +121,8 @@ sub run_interactive {
       }
    }
 
+   PTDEBUG && _d("Using filename", $filename);
+
    # I don't think either of these are needed actually, since piped opens
    # are supposed to deal with children on their own, but it doesn't hurt.
    local $SIG{CHLD} = 'IGNORE';
@@ -135,7 +137,7 @@ sub run_interactive {
                  : $group_by =~ m/sample/i ? 'DiskstatsGroupBySample'
                  : $group_by =~ m/all/i    ? 'DiskstatsGroupByAll'
                  : die "Invalid --group-by: $group_by";
-   $opts{obj}   = $class->new( %opts );
+   $opts{current_group_by_obj}   = $class->new( %opts );
 
    if ( $args{filename} ) {
       group_by(
@@ -164,26 +166,26 @@ sub run_interactive {
       # As a possible source of confusion, note that this calls the group_by
       # _method_ in DiskstatsGroupBySomething, not the group_by _function_
       # defined below.
-      $opts{obj}->group_by( filehandle => $tmp_fh ) || 0;
+      $opts{current_group_by_obj}->group_by( filehandle => $tmp_fh ) || 0;
 
       if ( eof $tmp_fh ) {
-         # If we are gathering samples (don't have a filename), and
-         # we have a sample limit (set by --iterations), the child
-         # process just calls it quits once it gathers enough samples.
-         # When that happens, we are also done.
-         if ( !$args{filename} && $o->get('iterations')
-               && kill 0, $child_pid ) {
-            last MAIN_LOOP;
-         }
-
          # This one comes from IO::Handle. I clears the eof flag
          # from a filehandle, so we can try reading from it again.
          $tmp_fh->clearerr;
       }
+      # If we are gathering samples (don't have a filename), and
+      # we have a sample limit (set by --iterations), the child
+      # process just calls it quits once it gathers enough samples.
+      # When that happens, we are also done.
+      if ( !$args{filename} && $o->get('iterations')
+            && !kill(0, $child_pid) ) {
+         waitpid $child_pid, 0;
+         last MAIN_LOOP;
+      }
    }
    ReadKeyMini::cooked();
 
-   if ( !$args{filename} ) {
+   if ( !$args{filename} && kill 0, $child_pid ) {
       $child_fh->printflush("End\n");
       waitpid $child_pid, 0;
    }
@@ -213,12 +215,11 @@ sub gather_samples {
       if ( read_command_timeout( $sel, $opts{sampling_interval} ) ) {
          last GATHER_DATA;
       }
-
       open my $fh, ">>", $filename or die $OS_ERROR;
       open my $diskstats_fh, "<", "/proc/diskstats"
             or die $OS_ERROR;
 
-      my @to_print = `date +'TS %s.%N %F %T'`;
+      my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
 
       # Lovely little method from IO::Handle: turns on autoflush,
@@ -237,24 +238,29 @@ sub gather_samples {
 }
 
 sub group_by {
-   my (%args) = @_;
-   my $input  = $args{input};
+   my (%args)  = @_;
 
-   if ( ref( $args{options}->{obj} ) ne $option_to_object{$input} ) {
+   my @required_args = qw( options input );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($options, $input) = @args{@required_args};
+
+   if ( ref( $args{options}->{current_group_by_obj} ) ne $input_to_object{$input} ) {
       # Particularly important! Otherwise we would depend on the
       # object's ->new being smart about discarding unrecognized
       # values.
-      delete $args{options}->{obj};
+      delete $args{options}->{current_group_by_obj};
       # This would fail on a stricter constructor, so it probably
       # needs fixing.
-      $args{options}->{obj} = $option_to_object{$input}->new(
+      $args{options}->{current_group_by_obj} = $input_to_object{$input}->new(
                                  %{$args{options}}
                               );
    }
    seek $args{filehandle}, 0, 0;
 
    # Just aliasing this for a bit.
-   for my $obj ( $args{options}->{obj} ) {
+   for my $obj ( $args{options}->{current_group_by_obj} ) {
       if ( $obj->isa("DiskstatsGroupBySample") ) {
          $obj->interactive(1);
       }
@@ -280,7 +286,7 @@ sub group_by {
 
 sub help {
    my (%args)      = @_;
-   my $obj         = $args{options}->{obj};
+   my $obj         = $args{options}->{current_group_by_obj};
    my $mode        = substr ref($obj), 16, 1;
    my $column_re   = $args{options}->{OptionParser}->get('columns');
    my $device_re   = $args{options}->{OptionParser}->get('devices');
@@ -313,20 +319,22 @@ sub file_to_use {
    my ( $filename ) = @_;
 
    if ( !$filename ) {
+      PTDEBUG && _d('No explicit filename passed in, trying to get one from mktemp');
       chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
    }
 
    if ( $filename ) {
-      open my $fh, "<", $filename
+      open my $fh, "+>", $filename
          or die "Cannot open $filename: $OS_ERROR";
       return $fh, $filename;
    }
    else {
+      PTDEBUG && _d("mktemp didn't return a filename, trying to use File::Temp");
       local $EVAL_ERROR;
       if ( !eval { require File::Temp } ) {
-         die "Can't call mktemp nor load File::Temp.
-              Install either of those, or pass in an explicit
-              filename through --save-samples.";
+         die "Can't call mktemp nor load File::Temp.",
+             " Install either of those, or pass in an explicit",
+             " filename through --save-samples.";
       }
       my $dir = File::Temp::tempdir( CLEANUP => 1 );
       return File::Temp::tempfile(
@@ -359,7 +367,7 @@ sub hide_inactive_disks {
    # Eeep. In OptionParser, "true" means show; in Diskstats, "true" means hide.
    # Thus !$new_val for OptionParser
    $args{options}->{OptionParser}->set('zero-rows', !$new_val);
-   $args{options}->{obj}->filter_zeroed_rows($new_val);
+   $args{options}->{current_group_by_obj}->filter_zeroed_rows($new_val);
 
    return;
 }
@@ -371,10 +379,11 @@ sub get_new_value_for {
       my (%args)       = @_;
       my $new_interval = get_blocking_input($message) || 0;
    
-      die "invalid timeout specification" unless looks_like_number($new_interval);
+      die "Invalid timeout: $new_interval"
+         unless looks_like_number($new_interval);
 
-      if ( $args{options}->{obj}->can($looking_for) ) {
-         $args{options}->{obj}->$looking_for($new_interval);
+      if ( $args{options}->{current_group_by_obj}->can($looking_for) ) {
+         $args{options}->{current_group_by_obj}->$looking_for($new_interval);
       }
       $args{options}->{OptionParser}->set($looking_for_o, $new_interval);
       return $new_interval;
@@ -390,7 +399,7 @@ sub get_new_regex_for {
    
       local $EVAL_ERROR;
       if ( $new_regex && (my $re = eval { qr/$new_regex/i }) ) {
-         $args{options}->{obj}->$looking_for( $re );
+         $args{options}->{current_group_by_obj}->$looking_for( $re );
          $args{options}->{OptionParser}->set($looking_for_o, $new_regex);
       }
       elsif ( !$EVAL_ERROR && !$new_regex ) {
@@ -398,7 +407,7 @@ sub get_new_regex_for {
          # somewhat magical, and basically just asking for trouble.
          # Instead we give them what awk would, a pattern that always
          # matches.
-         $args{options}->{obj}->$looking_for( qr/(?=)/ );
+         $args{options}->{current_group_by_obj}->$looking_for( qr/(?=)/ );
          $args{options}->{OptionParser}->set($looking_for_o, '');
       }
       else {
@@ -415,6 +424,30 @@ sub pause {
    STDIN->blocking(0);
    scalar <STDIN>;
    return;
+}
+
+my $got_highres = eval { require Time::HiRes };
+sub timestamp {
+   if ( $got_highres ) {
+      # Can do everything in Perl
+      # TS timestamp.nanoseconds ISO8601-timestamp
+      PTDEBUG && _d('Timestamp', "Using the pure Perl version");
+      my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
+      return sprintf( "TS %d.%d %s\n", $seconds,
+                       $microseconds*1000, Transformers::ts($seconds) );
+   }
+   else {
+      PTDEBUG && _d('Timestamp', "Using the system's date command");
+      `date +'TS %s.%N %F %T'`;
+   }
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
