@@ -27,6 +27,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use POSIX qw( :sys_wait_h );
+
 use IO::Handle;
 use IO::Select;
 use Scalar::Util qw( looks_like_number blessed );
@@ -150,8 +152,9 @@ sub run_interactive {
    }
 
    ReadKeyMini::cbreak();
+   my $run = 1;
    MAIN_LOOP:
-   while (1) {
+   while ($run) {
       if ( my $input = read_command_timeout($sel, $o->get('redisplay-interval') ) ) {
          if ($actions{$input}) {
             my $ret = $actions{$input}->(
@@ -178,14 +181,15 @@ sub run_interactive {
       # process just calls it quits once it gathers enough samples.
       # When that happens, we are also done.
       if ( !$args{filename} && $o->get('iterations')
-            && !kill(0, $child_pid) ) {
-         waitpid $child_pid, 0;
-         last MAIN_LOOP;
+            && waitpid($child_pid, WNOHANG) != 0 ) {
+         $run = 0;
       }
    }
    ReadKeyMini::cooked();
 
-   if ( !$args{filename} && kill 0, $child_pid ) {
+   # If we don't have a filename, the daemon might still be running.
+   # If it is, ask it nicely to end, then wait.
+   if ( !$args{filename} && !defined $o->get('iterations') && kill 0, $child_pid ) {
       $child_fh->printflush("End\n");
       waitpid $child_pid, 0;
    }
