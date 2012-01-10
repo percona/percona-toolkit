@@ -221,7 +221,7 @@ is_deeply(
    "...And clears the internal duplicate-checking list"
 );
 
-$obj->filter_zeroed_rows(1);
+$obj->set_filter_zeroed_rows(1);
 my $print_output = output(
    sub {
       $obj->print_rows(
@@ -231,7 +231,7 @@ my $print_output = output(
          );
    }
 );
-$obj->filter_zeroed_rows(0);
+$obj->set_filter_zeroed_rows(0);
 
 is(
    $print_output,

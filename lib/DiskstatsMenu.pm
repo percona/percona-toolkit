@@ -371,7 +371,7 @@ sub hide_inactive_disks {
    # Eeep. In OptionParser, "true" means show; in Diskstats, "true" means hide.
    # Thus !$new_val for OptionParser
    $args{options}->{OptionParser}->set('zero-rows', !$new_val);
-   $args{options}->{current_group_by_obj}->filter_zeroed_rows($new_val);
+   $args{options}->{current_group_by_obj}->set_filter_zeroed_rows($new_val);
 
    return;
 }
