@@ -45,7 +45,7 @@ sub new {
       # Defaults
       filename           => '/proc/diskstats',
       column_regex       => qr/cnc|rt|busy|prg|time|io_s/,
-      device_regex       => qr/(?=)/,
+      device_regex       => qr/.+/,
       block_size         => 512,
       out_fh             => \*STDOUT,
       filter_zeroed_rows => $o->get('zero-rows') ? undef : 1,
