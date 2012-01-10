@@ -123,11 +123,13 @@ sub set_first_ts {
 }
 
 sub filter_zeroed_rows {
-   my ($self, $new_val) = @_;
-   if ( defined($new_val) ) {
-      $self->{filter_zeroed_rows} = $new_val;
-   }
+   my ($self) = @_;
    return $self->{filter_zeroed_rows};
+}
+
+sub set_filter_zeroed_rows {
+   my ($self, $new_val) = @_;
+   $self->{filter_zeroed_rows} = $new_val;
 }
 
 sub sample_time {
