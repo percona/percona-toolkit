@@ -413,7 +413,7 @@ sub get_new_regex_for {
          # somewhat magical, and basically just asking for trouble.
          # Instead we give them what awk would, a pattern that always
          # matches.
-         $args{options}->{current_group_by_obj}->$looking_for( qr/(?=)/ );
+         $args{options}->{current_group_by_obj}->$looking_for( qr/.+/ );
          $args{options}->{OptionParser}->set($looking_for_o, '');
       }
       else {
