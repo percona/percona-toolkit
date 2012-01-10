@@ -198,11 +198,15 @@ sub set_device_regex {
 }
 
 sub filename {
+   my ( $self ) = @_;
+   return $self->{filename};
+}
+
+sub set_filename {
    my ( $self, $new_filename ) = @_;
    if ( $new_filename ) {
       return $self->{filename} = $new_filename;
    }
-   return $self->{filename};
 }
 
 sub block_size {

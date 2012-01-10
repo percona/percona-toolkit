@@ -346,7 +346,7 @@ for my $test (
    
       is($got, $expected, "$method: $filename with an extra TS at the top");
    
-      $obj->filename( $file_with_trunk );
+      $obj->set_filename( $file_with_trunk );
       $got = output(
          sub {
             $obj->$method();
