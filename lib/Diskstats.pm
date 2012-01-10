@@ -27,7 +27,7 @@ package Diskstats;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use IO::Handle;
 use List::Util qw( max first );
@@ -63,8 +63,10 @@ sub new {
    };
 
    if ( $o->get('memory-for-speed') ) {
+      PTDEBUG && _d('Diskstats', "Called with memory-for-speed");
       eval {
-         require Memoize; Memoize::memoize('_parse_diskstats_line')
+         require Memoize;
+         Memoize::memoize('_parse_diskstats_line');
       };
       if ($EVAL_ERROR) {
          warn "Can't trade memory for speed: $EVAL_ERROR. Continuing as usual.";
@@ -90,27 +92,28 @@ sub new {
 
 # The next lot are accessors, plus some convenience functions.
 
-sub _ts_common {
-   my ($self, $key, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{$key} = $val;
-   }
-   return $self->{_ts}->{$key};
-}
-
 sub curr_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("curr", $val);
+   if ($val) {
+      $self->{_ts}->{curr} = $val;
+   }
+   return $self->{_ts}->{curr} || 0;
 }
 
 sub prev_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("prev", $val);
+   if ($val) {
+      $self->{_ts}->{prev} = $val;
+   }
+   return $self->{_ts}->{prev} || 0;
 }
 
 sub first_ts {
    my ($self, $val) = @_;
-   return $self->_ts_common("first", $val);
+   if ($val) {
+      $self->{_ts}->{first} = $val;
+   }
+   return $self->{_ts}->{first} || 0;
 }
 
 sub filter_zeroed_rows {
@@ -256,28 +259,31 @@ sub clear_first_stats {
    $self->_clear_stats_common( "_first_stats_for", @args );
 }
 
-sub _stats_for_common {
-   my ( $self, $dev, $key ) = @_;
-   $self->{$key} ||= {};
-   if ($dev) {
-      return $self->{$key}->{$dev};
-   }
-   return $self->{$key};
-}
-
 sub stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_stats_for' );
+   $self->{_stats_for} ||= {};
+   if ($dev) {
+      return $self->{_stats_for}->{$dev};
+   }
+   return $self->{_stats_for};
 }
 
 sub prev_stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_prev_stats_for' );
+   $self->{_prev_stats_for} ||= {};
+   if ($dev) {
+      return $self->{_prev_stats_for}->{$dev};
+   }
+   return $self->{_prev_stats_for};
 }
 
 sub first_stats_for {
    my ( $self, $dev ) = @_;
-   $self->_stats_for_common( $dev, '_first_stats_for' );
+   $self->{_first_stats_for} ||= {};
+   if ($dev) {
+      return $self->{_first_stats_for}->{$dev};
+   }
+   return $self->{_first_stats_for};
 }
 
 sub has_stats {
@@ -344,7 +350,7 @@ sub dev_ok {
    return $device =~ $regex;
 }
 
-my @columns_in_order = (
+our @columns_in_order = (
    # Column        # Format   # Key name
    [ "   rd_s" => "%7.1f",   "reads_sec", ],
    [ "rd_avkb" => "%7.1f",   "avg_read_sz", ],
@@ -500,6 +506,7 @@ sub _parse_diskstats_line {
                \s*$/x)
    {
       for my $key ( @diskstats_fields ) {
+         # Unintiialized values should be 0
          $dev_stats{$key} ||= 0;
       }
       # Copypaste from above, should probably abstract, but it would make
@@ -791,13 +798,17 @@ sub _calc_stats_for_deltas {
 
    my $devs_in_group = $self->compute_devs_in_group();
 
-   # Read "For each device that passes the regex, and we have stats for"
-   foreach my $dev (
-         grep { $self->dev_ok($_) && $self->stats_for($_) }
+   # Read "For each device that passes the dev_ok regex, and we have stats for"
+   foreach my $dev_and_curr (
+         map {
+            my $curr = $self->dev_ok($_) && $self->stats_for($_);
+            $curr ? [ $_, $curr ] : ()
+         }
          @devices )
    {
-      my $curr      = $self->stats_for($dev);
-      my $against   = $self->delta_against($dev);
+      my $dev     = $dev_and_curr->[0];
+      my $curr    = $dev_and_curr->[1];
+      my $against = $self->delta_against($dev);
 
       my $delta_for       = $self->_calc_delta_for( $curr, $against );
       my $in_progress     = $curr->{"ios_in_progress"};
@@ -851,7 +862,7 @@ sub print_header {
    }
 }
 
-sub print_rest {
+sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
    if ( $self->filter_zeroed_rows() ) {
       # Conundrum: What is "zero"?
@@ -871,7 +882,9 @@ sub print_rest {
 
 sub print_deltas {
    my ( $self, %args ) = @_;
+
    my ( $header, $format, $cols ) = $self->design_print_formats(
+      # Not required args, because design_print_formats picks sane defaults.
       max_device_length => $args{max_device_length},
       columns           => $args{columns},
    );
@@ -879,7 +892,7 @@ sub print_deltas {
    return unless $self->delta_against_ts();
 
    @$cols = map { $self->_column_to_key($_) } @$cols;
-   my ( $header_callback, $rest_callback ) = @args{qw( header_callback rest_callback )};
+   my ( $header_callback, $rows_callback ) = @args{qw( header_callback rows_callback )};
 
    if ( $header_callback ) {
       $self->$header_callback( $header, "#ts", "device" );
@@ -889,11 +902,11 @@ sub print_deltas {
    }
 
    for my $stat ( $self->_calc_deltas() ) {
-      if ($rest_callback) {
-         $self->$rest_callback( $format, $cols, $stat );
+      if ($rows_callback) {
+         $self->$rows_callback( $format, $cols, $stat );
       }
       else {
-         $self->print_rest( $format, $cols, $stat );
+         $self->print_rows( $format, $cols, $stat );
       }
    }
 }
@@ -924,6 +937,14 @@ sub delta_against_ts {
 
 sub group_by {
    die 'You must override group_by() in a subclass';
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;

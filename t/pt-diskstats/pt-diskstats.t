@@ -9,11 +9,42 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More qw( no_plan );
+use Test::More tests => 16;
 use File::Spec;
+use File::Temp ();
 
 use PerconaTest;
 use pt_diskstats;
+
+my ($fh, $tempfile) = File::Temp::tempfile(
+                           "diskstats.test.XXXXXXXXX",
+                           OPEN => 1, UNLINK => 1 );
+
+my $iterations = 2;
+my $out = output( sub {
+   pt_diskstats::main(
+      "--group-by"     => "all",
+      "--columns"      => "cnc|rt|mb|busy|prg",
+      "--save-samples" => $tempfile,
+      "--iterations"   => $iterations,
+      "--zero-rows",
+   );
+});
+
+sub FakeParser::get {}
+
+my $count = 0;
+Diskstats->new(
+                 OptionParser => bless {}, "FakeParser"
+              )->parse_from_filename( $tempfile, sub { $count++ } );
+
+is(
+   $count-1,
+   $iterations,
+   "--save-samples and --iterations work"
+);
+
+close $fh;
 
 {
 # Tie magic. During the tests we tie STDIN to always return a lone "q".

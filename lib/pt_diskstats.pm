@@ -34,6 +34,8 @@ sub main {
    $o->get_specs();
    $o->get_opts();
 
+   $o->usage_or_errors();
+
    my $diskstats = new DiskstatsMenu;
 
    # Interactive mode. Delegate to DiskstatsMenu::run_interactive
@@ -282,7 +284,8 @@ Show rows with all zero values.
 
 =item --memory-for-speed
 
-XXX TODO INTERNAL yadda
+EXPERIMENTAL! Trades memory for speed, by storing more things in memory.
+What it stores, and how, may all be subject to change.
 
 =item --help
 
