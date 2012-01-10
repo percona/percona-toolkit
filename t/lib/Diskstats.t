@@ -182,7 +182,7 @@ for my $method ( qw( curr_ts prev_ts first_ts ) ) {
 
 is($obj->out_fh(), \*STDOUT, "by default, outputs to STDOUT");
 open my $fh, "<", \my $tmp;
-$obj->out_fh($fh);
+$obj->set_out_fh($fh);
 is($obj->out_fh(), $fh, "Changing it works");
 close($fh);
 is($obj->out_fh(), \*STDOUT, "and if we close the set filehandle, it reverts to STDOUT");
