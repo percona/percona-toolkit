@@ -156,23 +156,25 @@ sub set_interactive {
    }
 }
 
-# What this method does is thee-fold:
-# It sets or returns the currently set filehandle, kind of like a poor man's
-# select(); but also, it checks whenever said filehandle is open. If it's not,
-# it defaults to STDOUT.
-
+# Checks whenever said filehandle is open. If it's not, defaults to STDOUT.
 sub out_fh {
-   my ( $self, $new_fh ) = @_;
-
-                  # ->opened comes from IO::Handle.
-   if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
-      $self->{out_fh} = $new_fh;
-   }
+   my ( $self ) = @_;
    if ( !$self->{out_fh} || !$self->{out_fh}->opened ) {
       $self->{out_fh} = \*STDOUT;
    }
    return $self->{out_fh};
 }
+
+# It sets or returns the currently set filehandle, kind of like a poor man's
+# select().
+sub set_out_fh {
+   my ( $self, $new_fh ) = @_;
+                  # ->opened comes from IO::Handle.
+   if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
+      $self->{out_fh} = $new_fh;
+   }
+}
+
 
 sub column_regex {
    my ( $self, $new_re ) = @_;
