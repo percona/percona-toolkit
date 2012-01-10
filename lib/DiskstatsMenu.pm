@@ -386,8 +386,9 @@ sub get_new_value_for {
       die "Invalid timeout: $new_interval"
          unless looks_like_number($new_interval);
 
-      if ( $args{options}->{current_group_by_obj}->can($looking_for) ) {
-         $args{options}->{current_group_by_obj}->$looking_for($new_interval);
+      if ( my $setter = $args{options}->{current_group_by_obj}->can("set_$looking_for") )
+      {
+         $args{options}->{current_group_by_obj}->$setter($new_interval);
       }
       $args{options}->{OptionParser}->set($looking_for_o, $new_interval);
       return $new_interval;
