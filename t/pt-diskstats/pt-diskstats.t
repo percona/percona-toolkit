@@ -45,6 +45,7 @@ is(
 );
 
 close $fh;
+1 while unlink $tempfile;
 
 {
 # Tie magic. During the tests we tie STDIN to always return a lone "q".
