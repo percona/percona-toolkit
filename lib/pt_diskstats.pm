@@ -25,7 +25,7 @@ local $SIG{__DIE__} = sub {
 } if MKDEBUG;
 
 sub main {
-   local @ARGV = @_;  # set global ARGV for this package
+   @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.
