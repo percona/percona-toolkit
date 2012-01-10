@@ -133,11 +133,15 @@ sub set_filter_zeroed_rows {
 }
 
 sub sample_time {
+   my ($self) = @_;
+   return $self->{sample_time};
+}
+
+sub set_sample_time {
    my ($self, $new_val) = @_;
    if (defined($new_val)) {
       $self->{sample_time} = $new_val;
    }
-   return $self->{sample_time};
 }
 
 sub interactive {
