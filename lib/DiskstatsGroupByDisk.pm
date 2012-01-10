@@ -88,7 +88,7 @@ sub group_by_disk {
       data       => $args{data},
    );
 
-   if ($self->interactive) {
+   if ($self->interactive()) {
       if ($self->{_iterations} == -1 && defined($original_offset)
             && eof($args{filehandle})) {
          $self->clear_state;
