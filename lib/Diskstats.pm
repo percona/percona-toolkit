@@ -93,27 +93,33 @@ sub new {
 # The next lot are accessors, plus some convenience functions.
 
 sub curr_ts {
-   my ($self, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{curr} = $val;
-   }
+   my ($self) = @_;
    return $self->{_ts}->{curr} || 0;
 }
 
-sub prev_ts {
+sub set_curr_ts {
    my ($self, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{prev} = $val;
-   }
+   $self->{_ts}->{curr} = $val || 0;
+}
+
+sub prev_ts {
+   my ($self) = @_;
    return $self->{_ts}->{prev} || 0;
 }
 
-sub first_ts {
+sub set_prev_ts {
    my ($self, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{first} = $val;
-   }
+   $self->{_ts}->{prev} = $val || 0;
+}
+
+sub first_ts {
+   my ($self) = @_;
    return $self->{_ts}->{first} || 0;
+}
+
+sub set_first_ts {
+   my ($self, $val) = @_;
+   $self->{_ts}->{first} = $val || 0;
 }
 
 sub filter_zeroed_rows {
@@ -306,7 +312,7 @@ sub _save_curr_as_prev {
          $self->{_prev_stats_for}->{$dev}->{sum_ios_in_progress} +=
             $curr->{$dev}->{ios_in_progress};
       }
-      $self->prev_ts($self->curr_ts());
+      $self->set_prev_ts($self->curr_ts());
    }
 
    return;
@@ -321,7 +327,7 @@ sub _save_curr_as_first {
          # be enough.
          map { $_ => {%{$curr->{$_}}} } keys %$curr
       };
-      $self->first_ts($self->curr_ts());
+      $self->set_first_ts($self->curr_ts());
       $self->{_first} = undef;
    }
 }
@@ -627,7 +633,7 @@ sub _load {
          if ( $current_ts && %$new_cur ) {
             $self->_save_curr_as_prev( $self->stats_for() );
             $self->_save_stats($new_cur);
-            $self->curr_ts($current_ts);
+            $self->set_curr_ts($current_ts);
             $self->_save_curr_as_first( $new_cur );
             $new_cur = {};
          }
@@ -646,7 +652,7 @@ sub _load {
       if ( %{$new_cur} ) {
          $self->_save_curr_as_prev( $self->stats_for() );
          $self->_save_stats($new_cur);
-         $self->curr_ts($current_ts);
+         $self->set_curr_ts($current_ts);
          $self->_save_curr_as_first( $new_cur );
          $new_cur = {};
       }
