@@ -28,16 +28,16 @@ EXIT_STATUS=0
 
 log() {
    TS=$(date +%F-%T | tr :- _);
-   echo "$TS $1"
+   echo "$TS $*"
 }
 
 warn() {
-   log "$1" >&2
-   EXIT_STATUS=$((EXIT_STATUS | 1))
+   log "$*" >&2
+   EXIT_STATUS=1
 }
 
 die() {
-   warn "$1"
+   warn "$*"
    exit 1
 }
 

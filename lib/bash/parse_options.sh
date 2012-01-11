@@ -45,19 +45,19 @@ OPT_HELP="no"     # If --help was specified
 # Optional Global Variables:
 #   OPT_ERR - Command line option error message.
 usage() {
-   local file=$1
+   local file="$1"
 
-   local usage=$(grep '^Usage: ' $file)
+   local usage=$(grep '^Usage: ' "$file")
    echo $usage >&2
    echo >&2
    echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
 }
 
 usage_or_errors() {
-   local file=$1
+   local file="$1"
 
    if [ "$OPT_VERSION" = "yes" ]; then
-      local version=$(grep '^pt-[^ ]\+ [0-9]' $file)
+      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
@@ -78,7 +78,7 @@ usage_or_errors() {
 
    if [ $OPT_ERRS -gt 0 ]; then
       echo >&2
-      usage $file
+      usage "$file"
       return 1
    fi
 
@@ -100,7 +100,7 @@ usage_or_errors() {
 #   option, removing the option's leading --, changing all - to _, and
 #   prefixing with "OPT_".  E.g. --foo-bar becomes OPT_FOO_BAR.
 parse_options() {
-   local file=$1
+   local file="$1"
    shift
 
    # Parse the program options (po) from the POD.  Each option has
@@ -111,11 +111,11 @@ parse_options() {
    #   default=foo
    # That's the spec for --string-opt2.  Each line is a key:value pair
    # from the option's POD line like "type: string; default: foo".
-   mkdir $TMPDIR/po/ 2>/dev/null
-   rm -rf $TMPDIR/po/*
+   mkdir "$TMPDIR/po/" 2>/dev/null
+   rm -rf "$TMPDIR"/po/*
    (
       export PO_DIR="$TMPDIR/po"
-      cat $file | perl -ne '
+      cat "$file" | perl -ne '
          BEGIN { $/ = ""; }
          next unless $_ =~ m/^=head1 OPTIONS/;
          while ( defined(my $para = <>) ) {
@@ -149,13 +149,13 @@ parse_options() {
    # Evaluate the program options into existence as global variables
    # transformed like --my-op == $OPT_MY_OP.  If an option has a default
    # value, it's assigned that value.  Else, it's value is an empty string.
-   for opt_spec in $(ls $TMPDIR/po/); do
+   for opt_spec in $(ls "$TMPDIR/po/"); do
       local opt=""
       local default_val=""
       local neg=0
       while read line; do
-         local key=`echo $line | cut -d ':' -f 1`
-         local val=`echo $line | cut -d ':' -f 2`
+         local key=$(echo $line | cut -d ':' -f 1)
+         local val=$(echo $line | cut -d ':' -f 2)
          case "$key" in
             long)
                opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
@@ -178,7 +178,7 @@ parse_options() {
                echo "Invalid attribute in $TMPDIR/po/$opt_spec: $line" >&2
                exit 1
          esac 
-      done < $TMPDIR/po/$opt_spec
+      done < "$TMPDIR/po/$opt_spec"
 
       if [ -z "$opt" ]; then
          echo "No long attribute in option spec $TMPDIR/po/$opt_spec" >&2
@@ -243,7 +243,7 @@ parse_options() {
       if [ -f "$TMPDIR/po/$opt" ]; then
          spec="$TMPDIR/po/$opt"
       else
-         spec=$(grep "^short form:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
+         spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
          if [ -z "$spec"  ]; then
             OPT_ERRS=$(($OPT_ERRS + 1))
             echo "Unknown option: $real_opt" >&2
@@ -255,7 +255,7 @@ parse_options() {
       # says it has a type, then it requires a value and that value should
       # be the next item ($1).  Else, typeless options (like --version) are
       # either "yes" if specified, else "no" if negatable and --no-opt.
-      required_arg=$(cat $spec | grep '^type:' | cut -d':' -f2)
+      local required_arg=$(cat $spec | awk -F: '/^type:/{print $2}')
       if [ -n "$required_arg" ]; then
          if [ $# -eq 0 ]; then
             OPT_ERRS=$(($OPT_ERRS + 1))

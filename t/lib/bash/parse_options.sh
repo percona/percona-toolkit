@@ -77,9 +77,8 @@ is "$err" "1" "Non-zero exit on unknown option"
 # ###########################################################################
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" --help
 usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
-no_diff \
-   "$TMPFILE" \
-   "$T_LIB_DIR/samples/bash/help001.txt" \
+cmd_ok \
+   "grep -q \"For more information, 'man pt-stalk' or 'perldoc\" $TMPFILE" \
    "--help"
 
 # ############################################################################

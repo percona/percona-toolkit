@@ -25,7 +25,7 @@ set -u
 
 # seq N, return 1, ..., 5
 _seq() {
-   local i=$1
+   local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
 }
 

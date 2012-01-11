@@ -30,8 +30,8 @@ set -u
 #   file - File to write PID to.
 #   pid  - PID to write into file.
 make_pid_file() {
-   local file=$1
-   local pid=$2
+   local file="$1"
+   local pid="$2"
 
    # Yes there's a race condition here, between checking if the file exists
    # and creating it, but it's not important enough to handle.
@@ -39,7 +39,7 @@ make_pid_file() {
    if [ -f "$file" ]; then
       # PID file already exists.  See if the pid it contains is still running.
       # If yes, then die.  Else, the pid file is stale and we can reclaim it.
-      local old_pid=$(cat $file)
+      local old_pid=$(cat "$file")
       if [ -z "$old_pid" ]; then
          # PID file is empty, so be safe and die since we can't check a
          # non-existent pid.
@@ -56,13 +56,13 @@ make_pid_file() {
    fi
 
    # PID file doesn't exist, or it does but its pid is stale.
-   echo "$pid" > $file
+   echo "$pid" > "$file"
 }
 
 remove_pid_file() {
-   local file=$1
+   local file="$1"
    if [ -f "$file" ]; then
-      rm $file
+      rm "$file"
    fi
 }
 
