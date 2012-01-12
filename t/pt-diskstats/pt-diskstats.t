@@ -31,15 +31,16 @@ my $out = output( sub {
    );
 });
 
-sub FakeParser::get {}
+my $o = new OptionParser(description => 'Diskstats');
+$o->get_specs("$trunk/bin/pt-diskstats");
 
 my $count = 0;
 Diskstats->new(
-                 OptionParser => bless {}, "FakeParser"
-              )->parse_from_filename( $tempfile, sub { $count++ } );
+                 OptionParser => $o,
+              )->parse_from( filename => $tempfile, sample_callback => sub { $count++ } );
 
 is(
-   $count-1,
+   $count,
    $iterations,
    "--save-samples and --iterations work"
 );

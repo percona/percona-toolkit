@@ -70,7 +70,7 @@ my %input_to_object = (
    );
 
 sub new {
-   bless {}, shift;
+   return bless {}, shift;
 }
 
 sub run_interactive {
@@ -81,10 +81,8 @@ sub run_interactive {
    }
    my ($o) = @args{@required_args};
 
-   my %opts = (
-      interactive        => 1,
-      OptionParser       => $o,
-   );
+   # TODO Find out if there's a better way to do this.
+   $o->{opts}->{current_group_by_obj}->{value} = undef;
 
    my ($tmp_fh, $filename, $child_pid, $child_fh);
 
@@ -139,15 +137,20 @@ sub run_interactive {
                  : $group_by =~ m/sample/i ? 'DiskstatsGroupBySample'
                  : $group_by =~ m/all/i    ? 'DiskstatsGroupByAll'
                  : die "Invalid --group-by: $group_by";
-   $opts{current_group_by_obj}   = $class->new( %opts );
+   $o->set("current_group_by_obj",
+            $class->new( OptionParser => $o, interactive => 1 )
+          );
+
+   my $header_callback = $o->get("current_group_by_obj")
+                           ->can("print_header");
 
    if ( $args{filename} ) {
       group_by(
-         header_callback  => sub { shift->print_header(@_) },
-         select_obj => $sel,
-         options    => \%opts,
-         filehandle => $tmp_fh,
-         input      => substr(ucfirst($group_by), 0, 1),
+         header_callback => $header_callback,
+         select_obj      => $sel,
+         OptionParser    => $o,
+         filehandle      => $tmp_fh,
+         input           => substr(ucfirst($group_by), 0, 1),
       );
    }
 
@@ -155,13 +158,14 @@ sub run_interactive {
    my $run = 1;
    MAIN_LOOP:
    while ($run) {
-      if ( my $input = read_command_timeout($sel, $o->get('redisplay-interval') ) ) {
+      my $redisplay_interval = $o->get('redisplay-interval');
+      if ( my $input = read_command_timeout($sel, $redisplay_interval ) ) {
          if ($actions{$input}) {
             my $ret = $actions{$input}->(
-                              select_obj => $sel,
-                              options    => \%opts,
-                              input      => $input,
-                              filehandle => $tmp_fh,
+                              select_obj   => $sel,
+                              OptionParser => $o,
+                              input        => $input,
+                              filehandle   => $tmp_fh,
                            ) || '';
             last MAIN_LOOP if $ret eq 'last';
          }
@@ -169,7 +173,8 @@ sub run_interactive {
       # As a possible source of confusion, note that this calls the group_by
       # _method_ in DiskstatsGroupBySomething, not the group_by _function_
       # defined below.
-      $opts{current_group_by_obj}->group_by( filehandle => $tmp_fh ) || 0;
+      $o->get("current_group_by_obj")
+        ->group_by( filehandle => $tmp_fh );
 
       if ( eof $tmp_fh ) {
          # This one comes from IO::Handle. I clears the eof flag
@@ -189,7 +194,8 @@ sub run_interactive {
 
    # If we don't have a filename, the daemon might still be running.
    # If it is, ask it nicely to end, then wait.
-   if ( !$args{filename} && !defined $o->get('iterations') && kill 0, $child_pid ) {
+   if ( !$args{filename} && !defined $o->get('iterations')
+            && kill 0, $child_pid ) {
       $child_fh->printflush("End\n");
       waitpid $child_pid, 0;
    }
@@ -207,16 +213,16 @@ sub read_command_timeout {
 }
 
 sub gather_samples {
-   my (%opts)  = @_;
+   my (%args)  = @_;
    my $samples = 0;
 
    STDIN->blocking(0);
    my $sel      = IO::Select->new(\*STDIN);
-   my $filename = $opts{filename};
+   my $filename = $args{filename};
 
    GATHER_DATA:
-   while ( $opts{gather_while}->() ) {
-      if ( read_command_timeout( $sel, $opts{sampling_interval} ) ) {
+   while ( $args{gather_while}->() ) {
+      if ( read_command_timeout( $sel, $args{sampling_interval} ) ) {
          last GATHER_DATA;
       }
       open my $fh, ">>", $filename or die $OS_ERROR;
@@ -233,8 +239,8 @@ sub gather_samples {
       close $fh or die $OS_ERROR;
 
       $samples++;
-      if ( defined($opts{samples_to_gather})
-            && $samples >= $opts{samples_to_gather} ) {
+      if ( defined($args{samples_to_gather})
+            && $samples >= $args{samples_to_gather} ) {
          last GATHER_DATA;
       }
    }
@@ -244,45 +250,48 @@ sub gather_samples {
 sub group_by {
    my (%args)  = @_;
 
-   my @required_args = qw( options input );
+   my @required_args = qw( OptionParser input );
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($options, $input) = @args{@required_args};
+   my ($o, $input) = @args{@required_args};
 
-   if ( ref( $args{options}->{current_group_by_obj} ) ne $input_to_object{$input} ) {
+   if ( ref( $o->get("current_group_by_obj") ) ne $input_to_object{$input} ) {
       # Particularly important! Otherwise we would depend on the
       # object's ->new being smart about discarding unrecognized
       # values.
-      delete $args{options}->{current_group_by_obj};
+      $o->set("current_group_by_obj", undef);
       # This would fail on a stricter constructor, so it probably
       # needs fixing.
-      $args{options}->{current_group_by_obj} = $input_to_object{$input}->new(
-                                 %{$args{options}}
-                              );
+      $o->set("current_group_by_obj",
+               $input_to_object{$input}->new(
+                                 OptionParser => $o,
+                                 interactive  => 1,
+                              )
+             );
    }
    seek $args{filehandle}, 0, 0;
 
    # Just aliasing this for a bit.
-   for my $obj ( $args{options}->{current_group_by_obj} ) {
+   for my $obj ( $o->get("current_group_by_obj") ) {
       if ( $obj->isa("DiskstatsGroupBySample") ) {
          $obj->set_interactive(1);
       }
       else {
          $obj->set_interactive(0);
       }
+
+      my $print_header;
+      my $header_callback = $args{header_callback} || sub {
+                              my ($self, @args) = @_;
+                              $self->print_header(@args) unless $print_header++
+                           };
+
       $obj->group_by(
-               filehandle => $args{filehandle},
+               filehandle      => $args{filehandle},
                # Only print the header once, as if in interactive.
-               header_callback => $args{header_callback} || sub {
-                     my $print_header;
-                     return sub {
-                        unless ($print_header++) {
-                           shift->print_header(@_)
-                        }
-                     };
-                  }->(),
-               );
+               header_callback => $header_callback,
+            );
       $obj->set_interactive(1);
       $obj->{_print_header} = 0;
    }
@@ -290,12 +299,12 @@ sub group_by {
 
 sub help {
    my (%args)      = @_;
-   my $obj         = $args{options}->{current_group_by_obj};
+   my $obj         = $args{OptionParser}->get("current_group_by_obj");
    my $mode        = substr ref($obj), 16, 1;
-   my $column_re   = $args{options}->{OptionParser}->get('columns');
-   my $device_re   = $args{options}->{OptionParser}->get('devices');
+   my $column_re   = $args{OptionParser}->get('columns');
+   my $device_re   = $args{OptionParser}->get('devices');
    my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{options}->{OptionParser}->get('redisplay-interval');
+   my $disp_int    = $args{OptionParser}->get('redisplay-interval');
    my $inact_disk  = $obj->zero_rows() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
@@ -323,7 +332,8 @@ sub file_to_use {
    my ( $filename ) = @_;
 
    if ( !$filename ) {
-      PTDEBUG && _d('No explicit filename passed in, trying to get one from mktemp');
+      PTDEBUG && _d('No explicit filename passed in,',
+                    'trying to get one from mktemp');
       chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
    }
 
@@ -333,7 +343,8 @@ sub file_to_use {
       return $fh, $filename;
    }
    else {
-      PTDEBUG && _d("mktemp didn't return a filename, trying to use File::Temp");
+      PTDEBUG && _d("mktemp didn't return a filename,",
+                    "trying to use File::Temp");
       local $EVAL_ERROR;
       if ( !eval { require File::Temp } ) {
          die "Can't call mktemp nor load File::Temp.",
@@ -366,10 +377,14 @@ sub get_blocking_input {
 
 sub hide_inactive_disks {
    my (%args)  = @_;
-   my $new_val = get_blocking_input("Filter inactive rows? (Leave blank for 'No') ");
+   my $new_val = get_blocking_input(
+                  "Filter inactive rows? (Leave blank for 'No') "
+                 );
 
-   $args{options}->{OptionParser}->set('zero-rows', !$new_val);
-   $args{options}->{current_group_by_obj}->set_zero_rows(!$new_val);
+   $args{OptionParser}->set('zero-rows', !$new_val);
+
+   $args{OptionParser}->get("current_group_by_obj")
+                      ->set_zero_rows(!$new_val);
 
    return;
 }
@@ -379,16 +394,17 @@ sub get_new_value_for {
    (my $looking_for_o = $looking_for) =~ tr/_/-/;
    return sub {
       my (%args)       = @_;
+      my $o            = $args{OptionParser};
       my $new_interval = get_blocking_input($message) || 0;
    
       die "Invalid timeout: $new_interval"
          unless looks_like_number($new_interval);
 
-      if ( my $setter = $args{options}->{current_group_by_obj}->can("set_$looking_for") )
-      {
-         $args{options}->{current_group_by_obj}->$setter($new_interval);
+      my $obj = $o->get("current_group_by_obj");
+      if ( my $setter = $obj->can("set_$looking_for") ) {
+         $obj->$setter($new_interval);
       }
-      $args{options}->{OptionParser}->set($looking_for_o, $new_interval);
+      $o->set($looking_for_o, $new_interval);
       return $new_interval;
    };
 }
@@ -399,20 +415,24 @@ sub get_new_regex_for {
    $looking_for = "set_$looking_for";
    return sub {
       my (%args)    = @_;
+      my $o         = $args{OptionParser};
       my $new_regex = get_blocking_input($message);
    
       local $EVAL_ERROR;
       if ( $new_regex && (my $re = eval { qr/$new_regex/i }) ) {
-         $args{options}->{current_group_by_obj}->$looking_for( $re );
-         $args{options}->{OptionParser}->set($looking_for_o, $new_regex);
+         $o->get("current_group_by_obj")
+           ->$looking_for( $re );
+
+         $o->set($looking_for_o, $new_regex);
       }
       elsif ( !$EVAL_ERROR && !$new_regex ) {
          # This might seem weird, but an empty pattern is
          # somewhat magical, and basically just asking for trouble.
          # Instead we give them what awk would, a pattern that always
          # matches.
-         $args{options}->{current_group_by_obj}->$looking_for( qr/.+/ );
-         $args{options}->{OptionParser}->set($looking_for_o, '');
+         $o->get("current_group_by_obj")
+           ->$looking_for( qr/.+/ );
+         $o->set($looking_for_o, '');
       }
       else {
          die "invalid regex specification: $EVAL_ERROR";
