@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 112;
+use Test::More tests => 108;
 
 use PerconaTest;
 
@@ -33,7 +33,7 @@ $o->get_opts();
 my $obj = new Diskstats(OptionParser => $o);
 
 can_ok( $obj, qw(
-                  output_fh column_regex device_regex filename
+                  column_regex device_regex filename
                   block_size ordered_devs clear_state clear_ordered_devs
                   stats_for prev_stats_for first_stats_for
                   has_stats design_print_formats parse_diskstats_line
@@ -49,7 +49,6 @@ for my $attr (
       [ column_regex => qr/!!!/  ],
       [ device_regex => qr/!!!/  ],
       [ block_size   => 215      ],
-      [ output_fh    => \*STDERR ],
       [ zero_rows    => 1        ],
       [ sample_time  => 1        ],
       [ interactive  => 1        ],
@@ -248,23 +247,6 @@ for my $method ( qw( curr_ts prev_ts first_ts ) ) {
    $obj->clear_ts();
    ok(!$obj->$method(), "Diskstats->clear_ts does as advertized");
 }
-
-# ############################################################################
-# output_fh
-# ############################################################################
-
-is($obj->output_fh(), \*STDOUT, "by default, outputs to STDOUT");
-
-open my $fh, "<", \my $tmp;
-$obj->set_output_fh($fh);
-is($obj->output_fh(), $fh, "Changing it works");
-
-close($fh);
-is(
-   $obj->output_fh(),
-   \*STDOUT,
-   "and if we close the set filehandle, it reverts to STDOUT"
-);
 
 # ############################################################################
 # Adding, removing and listing devices.

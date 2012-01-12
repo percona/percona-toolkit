@@ -77,7 +77,6 @@ sub new {
       # Defaults
       filename           => '/proc/diskstats',
       block_size         => 512,
-      output_fh             => \*STDOUT,
       zero_rows          => $o->get('zero-rows'),
       sample_time        => $o->get('sample-time') || 0,
       column_regex       => qr/$columns/,
@@ -178,25 +177,6 @@ sub set_interactive {
    my ($self, $new_val) = @_;
    if (defined($new_val)) {
       $self->{interactive} = $new_val;
-   }
-}
-
-# Checks whenever said filehandle is open. If it's not, defaults to STDOUT.
-sub output_fh {
-   my ( $self ) = @_;
-   if ( !$self->{output_fh} || !$self->{output_fh}->opened ) {
-      $self->{output_fh} = \*STDOUT;
-   }
-   return $self->{output_fh};
-}
-
-# It sets or returns the currently set filehandle, kind of like a poor man's
-# select().
-sub set_output_fh {
-   my ( $self, $new_fh ) = @_;
-                  # ->opened comes from IO::Handle.
-   if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
-      $self->{output_fh} = $new_fh;
    }
 }
 
@@ -812,7 +792,7 @@ sub _calc_deltas {
 sub print_header {
    my ($self, $header, @args) = @_;
    if ( $self->{_print_header} ) {
-      printf { $self->output_fh() } $header . "\n", @args;
+      printf $header . "\n", @args;
    }
 }
 
@@ -830,8 +810,7 @@ sub print_rows {
             sprintf("%7.1f", $_) != 0
          } @{ $stat }{ @$cols };
    }
-   printf { $self->output_fh() } $format . "\n",
-           @{ $stat }{ qw( line_ts dev ), @$cols };
+   printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
 }
 
 sub print_deltas {
