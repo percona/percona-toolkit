@@ -64,7 +64,7 @@ foreach my $file ( map "diskstats-00$_.txt", 1..5 ) {
 # --save-samples and --iterations
 # ###########################################################################
 
-# TODO: fix this
+# TODO: fix this one
 
 #my $iterations = 2;
 #my $out = output( sub {
