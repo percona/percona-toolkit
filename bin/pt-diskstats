@@ -3491,7 +3491,7 @@ Perl regex of which columns to include.
 
 =item --devices
 
-type: string
+type: string; default: .+
 
 Perl regex of which devices to include.
 

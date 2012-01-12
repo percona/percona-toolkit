@@ -32,62 +32,76 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use IO::Handle;
 use List::Util qw( max first );
 
-my $constants;
+my $diskstat_colno_for;
 BEGIN {
-$constants = {
-   major               => 0,
-   minor               => 1,
-   device              => 2,
-   reads               => 3,
-   reads_merged        => 4,
-   read_sectors        => 5,
-   ms_spent_reading    => 6,
-   writes              => 7,
-   writes_merged       => 8,
-   written_sectors     => 9,
-   ms_spent_writing    => 10,
-   ios_in_progress     => 11,
-   ms_spent_doing_io   => 12,
-   ms_weighted         => 13,
-   read_bytes          => 14,
-   read_kbs            => 15,
-   written_bytes       => 16,
-   written_kbs         => 17,
-   ios_requested       => 18,
-   ios_in_bytes        => 19,
-   sum_ios_in_progress => 20,
-};
-
-require constant;
-constant->import($constants);
+   $diskstat_colno_for = {
+      # Columns of a /proc/diskstats line.
+      MAJOR               => 0,
+      MINOR               => 1,
+      DEVICE              => 2,
+      READS               => 3,
+      READS_MERGED        => 4,
+      READ_SECTORS        => 5,
+      MS_SPENT_READING    => 6,
+      WRITES              => 7,
+      WRITES_MERGED       => 8,
+      WRITTEN_SECTORS     => 9,
+      MS_SPENT_WRITING    => 10,
+      IOS_IN_PROGRESS     => 11,
+      MS_SPENT_DOING_IO   => 12,
+      MS_WEIGHTED         => 13,
+      # Values we compute from the preceding columns.
+      READ_KBS            => 14,
+      WRITTEN_KBS         => 15,
+      IOS_REQUESTED       => 16,
+      IOS_IN_BYTES        => 17,
+      SUM_IOS_IN_PROGRESS => 18,
+   };
+   require constant;
+   constant->import($diskstat_colno_for);
 }
+
 sub new {
    my ( $class, %args ) = @_;
-
    my @required_args = qw(OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my $o = delete $args{OptionParser};
-   # We take OptionParser out of %args, since the latter
-   # will be saved inside the new object, and OptionParser
-   # is abused by DiskstatsMenu to store the current
-   # GroupBy object.
+   my ($o) = @args{@required_args};
 
-   local $EVAL_ERROR;
+   # Regex patterns.
+   my $columns = $o->get('columns');
+   my $devices = $o->get('devices');
+
    my $self = {
       # Defaults
       filename           => '/proc/diskstats',
-      column_regex       => qr/cnc|rt|busy|prg|time|io_s/,
-      device_regex       => qr/.+/,
       block_size         => 512,
       output_fh             => \*STDOUT,
-      zero_rows          => $o->get('zero-rows')   ?  1 : undef,
+      zero_rows          => $o->get('zero-rows'),
       sample_time        => $o->get('sample-time') || 0,
+      column_regex       => qr/$columns/,
+      device_regex       => qr/$devices/,
       interactive        => 0,
 
       %args,
 
+      delta_cols         => [  # Calc deltas for these cols, must be uppercase
+         qw(
+            READS
+            READS_MERGED
+            READ_SECTORS
+            MS_SPENT_READING
+            WRITES
+            WRITES_MERGED
+            WRITTEN_SECTORS
+            MS_SPENT_WRITING
+            READ_KBS
+            WRITTEN_KBS
+            MS_SPENT_DOING_IO
+            MS_WEIGHTED
+         )
+      ],
       _stats_for         => {},
       _ordered_devs      => [],
       _ts                => {},
@@ -97,20 +111,6 @@ sub new {
       _save_curr_as_prev => 1,
       _print_header      => 1,
    };
-
-   # This next part turns the strings passed in from the command line
-   # into actual regexen, but also avoids the case where they entered
-   # --devices '' or --columns ''. When qr//'d, those become the empty
-   # pattern, which is magical; Instead, we give them what awk would:
-   # A pattern that always matches.
-   my %pod_to_attribute = (
-      columns => 'column_regex',
-      devices => 'device_regex'
-   );
-   for my $key ( grep { defined $o->get($_) } keys %pod_to_attribute ) {
-      my $re = $o->get($key) || '.+';
-      $self->{ $pod_to_attribute{$key} } = qr/$re/i;
-   }
 
    return bless $self, $class;
 }
@@ -355,8 +355,8 @@ sub _save_curr_as_prev {
    if ( $self->{_save_curr_as_prev} ) {
       $self->{_prev_stats_for} = $curr;
       for my $dev (keys %$curr) {
-         $self->{_prev_stats_for}->{$dev}->[sum_ios_in_progress] +=
-            $curr->{$dev}->[ios_in_progress];
+         $self->{_prev_stats_for}->{$dev}->[SUM_IOS_IN_PROGRESS] +=
+            $curr->{$dev}->[IOS_IN_PROGRESS];
       }
       $self->set_prev_ts($self->curr_ts());
    }
@@ -391,8 +391,7 @@ sub col_ok {
 
 sub dev_ok {
    my ( $self, $device ) = @_;
-   my $regex = $self->device_regex();
-   return $device =~ $regex;
+   return $device =~ $self->{device_regex};
 }
 
 our @columns_in_order = (
@@ -414,8 +413,8 @@ our @columns_in_order = (
    [ "busy"    => "%3.0f%%", "busy", ],
    [ "in_prg"  => "%6d",     "in_progress", ],
    [ "   io_s" => "%7.1f",   "s_spent_doing_io", ],
-   [ " qtime"   => "%6.1f",   "qtime", ],
-   [ " stime"   => "%5.1f",   "stime", ],
+   [ " qtime"  => "%6.1f",   "qtime", ],
+   [ " stime"  => "%5.1f",   "stime", ],
 );
 
 {
@@ -477,58 +476,25 @@ sub design_print_formats {
    return ( $header, $format, $columns );
 }
 
-{
-# This is hot code. In any given run it could end up being called
-# thousands of times, so beware: Here could be dragons.
-
 sub parse_diskstats_line {
    my ( $self, $line, $block_size ) = @_;
-   my @dev_stats;
-   $#dev_stats = 30; # Pre-expand the amount of keys for this array.
 
-#   The following split replaces this:
-#         $line =~ /^
-#            # Disk format
-#               \s*   (\d+)    # major
-#               \s+   (\d+)    # minor
-#               \s+   (.+?)    # Device name
-#               \s+   (\d+)    # # of reads issued
-#               \s+   (\d+)    # # of reads merged
-#               \s+   (\d+)    # # of sectors read
-#               \s+   (\d+)    # # of milliseconds spent reading
-#               \s+   (\d+)    # # of writes completed
-#               \s+   (\d+)    # # of writes merged
-#               \s+   (\d+)    # # of sectors written
-#               \s+   (\d+)    # # of milliseconds spent writing
-#               \s+   (\d+)    # # of IOs currently in progress
-#               \s+   (\d+)    # # of milliseconds spent doing IOs
-#               \s+   (\d+)    # weighted # of milliseconds spent doing IOs
-#               \s*$/x
-#
-#   Since we assume that device names can't have spaces.
-
-   # Assigns the first two elements of the list created by split() into
-   # %dev_stats as the major and minor, the third element into $dev,
-   # and the remaining elements back into %dev_stats.
-   if ( 14 == ( @dev_stats = split " ", $line ) ) {
-      $dev_stats[read_kbs]    =
-         ( $dev_stats[read_bytes] = $dev_stats[read_sectors]
-                                  * $block_size ) / 1024;
-      $dev_stats[written_kbs] =
-         ( $dev_stats[written_bytes] = $dev_stats[written_sectors]
-                                     * $block_size ) / 1024;
-      $dev_stats[ios_requested] = $dev_stats[reads]
-                                + $dev_stats[writes];
-
-      $dev_stats[ios_in_bytes]  = $dev_stats[read_bytes]
-                                + $dev_stats[written_bytes];
-
-      return ( $dev_stats[device], \@dev_stats );
-   }
-   else {
+   # Since we assume that device names can't have spaces.
+   my @dev_stats = split ' ', $line;
+   if ( @dev_stats != 14 ) {
+      PTDEBUG && _d("Ignoring short diskstats line:", $line);
       return;
    }
-}
+
+   my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
+   my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
+
+   $dev_stats[READ_KBS]      = $read_bytes    / 1024;
+   $dev_stats[WRITTEN_KBS]   = $written_bytes / 1024;
+   $dev_stats[IOS_IN_BYTES]  = $read_bytes + $written_bytes;
+   $dev_stats[IOS_REQUESTED] = $dev_stats[READS] + $dev_stats[WRITES];
+
+   return $dev_stats[DEVICE], \@dev_stats;
 }
 
 # Method: parse_from()
@@ -775,27 +741,13 @@ sub _calc_misc_stats {
    return %extra_stats;
 }
 
-# An array of arrayefs; the first element of each arrayref is
-# the value we are calculating the delta for, while the second
-# element is the index in which the value resides.
-# Basically, each arrayref is
-# [ reads => reads() ]
-my @delta_keys = map { [ $_ => $constants->{$_} ] }
-         qw( reads reads_merged read_sectors ms_spent_reading
-         writes writes_merged written_sectors ms_spent_writing
-         read_kbs written_kbs
-         ms_spent_doing_io ms_weighted );
-
 sub _calc_delta_for {
    my ( $self, $curr, $against ) = @_;
    my %deltas;
-
-   for my $delta_key (@delta_keys) {
-      my ($key, $index) = @$delta_key;
-      $deltas{$key} = ($curr->[ $index ]    || 0 )
-                    - ($against->[ $index ] || 0 );
+   foreach my $col ( @{$self->{delta_cols}} ) {
+      my $colno = $diskstat_colno_for->{$col};
+      $deltas{lc $col} = ($curr->[$colno] || 0) - ($against->[$colno] || 0);
    }
-
    return \%deltas;
 }
 
@@ -813,8 +765,8 @@ sub _calc_stats_for_deltas {
       my $against = $self->delta_against($dev);
 
       my $delta_for       = $self->_calc_delta_for( $curr, $against );
-      my $in_progress     = $curr->[ios_in_progress];
-      my $tot_in_progress = $against->[sum_ios_in_progress] || 0;
+      my $in_progress     = $curr->[IOS_IN_PROGRESS];
+      my $tot_in_progress = $against->[SUM_IOS_IN_PROGRESS] || 0;
 
       # Compute the per-second stats for reads, writes, and overall.
       my %stats = (

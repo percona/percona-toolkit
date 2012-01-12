@@ -26,7 +26,8 @@ BEGIN {
 }
 
 my $o   = new OptionParser(description => 'Diskstats');
-$o->get_specs( File::Spec->catfile($trunk, "bin", "pt-diskstats") );
+$o->get_specs("$trunk/bin/pt-diskstats");
+$o->get_opts();
 
 {
 my $obj = new Diskstats(OptionParser => $o);
@@ -559,3 +560,8 @@ EOF
    );
 
 }
+
+# ###########################################################################
+# Done.
+# ###########################################################################
+exit;
