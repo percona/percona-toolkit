@@ -9,11 +9,14 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 128;
+use Test::More tests => 112;
 
 use PerconaTest;
 
+use OptionParser;
+
 use File::Spec;
+use File::Temp ();
 
 BEGIN {
    use_ok "Diskstats";
@@ -22,30 +25,30 @@ BEGIN {
    use_ok "DiskstatsGroupBySample";
 }
 
-sub FakeParser::get {};
+my $o   = new OptionParser(description => 'Diskstats');
+$o->get_specs( File::Spec->catfile($trunk, "bin", "pt-diskstats") );
 
 {
-
-my $o = bless {}, "FakeParser";
-
-my $obj = new_ok(Diskstats => [OptionParser => $o]);
+my $obj = new Diskstats(OptionParser => $o);
 
 can_ok( $obj, qw(
-                  out_fh column_regex device_regex filename
+                  output_fh column_regex device_regex filename
                   block_size ordered_devs clear_state clear_ordered_devs
                   stats_for prev_stats_for first_stats_for
                   has_stats design_print_formats parse_diskstats_line
                   parse_from print_deltas
                ) );
 
-# Test the constructor
-use File::Temp ();
+# ############################################################################
+# Testing the constructor.
+# ############################################################################
 for my $attr (
-      [ filename     => (File::Temp::tempfile($0.'diskstats.XXXXXX', OPEN=>0, UNLINK=>1))[1]],
+      [ filename     => (File::Temp::tempfile($0.'diskstats.XXXXXX',
+                                              OPEN=>0, UNLINK=>1))[1] ],
       [ column_regex => qr/!!!/  ],
       [ device_regex => qr/!!!/  ],
       [ block_size   => 215      ],
-      [ out_fh       => \*STDERR ],
+      [ output_fh    => \*STDERR ],
       [ zero_rows    => 1        ],
       [ sample_time  => 1        ],
       [ interactive  => 1        ],
@@ -61,40 +64,103 @@ for my $attr (
    );
 }
 
-my $line = "104    0 cciss/c0d0 2139885 162788 37361471 8034486 17999682 83425310 811400340 12711047 0 6869437 20744582";
+# ############################################################################
+# parse_diskstats_line
+# ############################################################################
+for my $test (
+   [
+      "104    0 cciss/c0d0 2139885 162788 37361471 8034486 17999682 83425310 811400340 12711047 0 6869437 20744582",
+      [
+         104, 0, "cciss/c0d0",   # major, minor, device
+      
+         2139885,     # reads
+         162788,      # reads_merged
+         37361471,    # read_sectors
+         8034486,     # ms_spent_reading
+      
+         17999682,    # writes
+         83425310,    # writes_merged
+         811400340,   # written_sectors
+         12711047,    # ms_spent_writing
+      
+         0,           # ios_in_progress
+         6869437,     # ms_spent_doing_io
+         20744582,    # ms_weighted
+      
+         19129073152, # read_bytes
+         18680735.5,  # read_kbs
+         415436974080,#written_bytes
+         405700170,   # written_kbs
+         20139567,    # ios_requested
+         434566047232,# ios_in_bytes
+      ],
+      "parse_diskstats_line works"
+   ],
+   [
+      "  8 33 sdc1 1572537676 2369344 3687151364 1575056414 2541895139 1708184481 3991989096 121136333 1 982122453 1798311795",
+      [
+          '8', '33', 'sdc1', 1572537676, '2369344', 3687151364,
+          '1575056414', 2541895139, '1708184481', 3991989096,
+          '121136333', '1', '982122453', '1798311795',
+          '1887821498368', '1843575682', '2043898417152',
+          '1995994548', 4114432815, '3931719915520'
+      ],
+      "parse_diskstats_line works"
+   ],
+   [
+      "  8 33 sdc1 1572537676 2369344 3687151364 1575056414 2541895139 1708184481 3991989096 121136333 1 982122453 1798311795\n",
+      [
+          '8', '33', 'sdc1', 1572537676, '2369344', 3687151364,
+          '1575056414', 2541895139, '1708184481', 3991989096,
+          '121136333', '1', '982122453', '1798311795',
+          '1887821498368', '1843575682', '2043898417152',
+          '1995994548', 4114432815, '3931719915520'
+      ],
+      "parse_diskstats_line ignores a trailing newline"
+   ],
+   [
+      "  8 33 sdc1 1572537676 2369344 3687151364 1575056414 2541895139 1708184481 3991989096 121136333 1 982122453 \n",
+      undef,
+      "parse_diskstats_line fails on a line without enough fields"
+   ],
+   [
+      "  8 33 sdc1 1572537676 2369344 3687151364 1575056414 2541895139 1708184481 3991989096 121136333 1 982122453 12224123 12312312",
+      undef,
+      "parse_diskstats_line fails on a line with too many fields"
+   ],
+   [
+      "",
+      undef,
+      "parse_diskstats_line returns undef on an empty string",
+   ],
+   [
+      "Malformed line",
+      undef,
+      "parse_diskstats_line returns undef on a malformed line",
+   ],
+) {
+   my ($line, $expected_results, $desc) = @$test;
+   my ($dev, $res) = $obj->parse_diskstats_line($line, $obj->block_size);
+   is_deeply( $res, $expected_results, $desc );
+}
 
-my %expected_results = (
-      'major'              => 104,
-      'minor'              => 0,
-
-      'reads'              => 2139885,
-      'reads_merged'       => 162788,
-      'read_sectors'       => 37361471,
-      'ms_spent_reading'   => 8034486,
-      'read_bytes'         => 19129073152,
-      'read_kbs'           => 18680735.5,
-
-      'writes'             => 17999682,
-      'writes_merged'      => 83425310,
-      'written_sectors'    => 811400340,
-      'ms_spent_writing'   => 12711047,
-      'written_bytes'      => 415436974080,
-      'written_kbs'        => 405700170,
-
-      'ios_in_progress'    => 0,
-      'ms_spent_doing_io'  => 6869437,
-      'ms_weighted'        => 20744582,
-
-      'ios_requested'      => 20139567,
-      'ios_in_bytes'       => 434566047232,
+# For speed, ->parse_diskstats_line doesn't check for undef.
+# In any case, this should never happen, since it's internally
+# used within a readline() loop.
+local $EVAL_ERROR;
+eval { $obj->parse_diskstats_line(undef, $obj->block_size); };
+like(
+   $EVAL_ERROR,
+   qr/Use of uninitialized value/,
+   "parse_diskstats_line should fail on undef",
 );
 
-# Copypasted from Diskstats.pm. If the one in there changes so should this.
+
+# ############################################################################
+# design_print_formats
+# ############################################################################
+
 my @columns_in_order = @Diskstats::columns_in_order;
-
-my ($dev, $res) = $obj->parse_diskstats_line($line, $obj->block_size);
-
-is_deeply( $res, \%expected_results, "parse_diskstats_line works" );
 
 $obj->set_column_regex(qr/./);
 my ($header, $rows, $cols) = $obj->design_print_formats();
@@ -154,9 +220,8 @@ is(
 
 ($header, $rows, $cols) = $obj->design_print_formats(
                                  max_device_length => 10,
-                                 columns           => [
-                                                        map  { $_->[0] } @columns_in_order
-                                                      ],
+                                 columns           =>
+                                    [ map  { $_->[0] } @columns_in_order ],
                            );
 is(
    $header,
@@ -168,6 +233,9 @@ throws_ok( sub { $obj->design_print_formats( columns => {} ) },
         qr/The columns argument to design_print_formats should be an arrayref/,
         "design_print_formats dies when passed an invalid columns argument");
 
+# ############################################################################
+# timestamp methods
+# ############################################################################
 for my $method ( qw( curr_ts prev_ts first_ts ) ) {
    my $setter = "set_$method";
    ok(!$obj->$method(), "Diskstats->$method is initially false");
@@ -180,14 +248,26 @@ for my $method ( qw( curr_ts prev_ts first_ts ) ) {
    ok(!$obj->$method(), "Diskstats->clear_ts does as advertized");
 }
 
-is($obj->out_fh(), \*STDOUT, "by default, outputs to STDOUT");
+# ############################################################################
+# output_fh
+# ############################################################################
+
+is($obj->output_fh(), \*STDOUT, "by default, outputs to STDOUT");
+
 open my $fh, "<", \my $tmp;
-$obj->set_out_fh($fh);
-is($obj->out_fh(), $fh, "Changing it works");
+$obj->set_output_fh($fh);
+is($obj->output_fh(), $fh, "Changing it works");
+
 close($fh);
-is($obj->out_fh(), \*STDOUT, "and if we close the set filehandle, it reverts to STDOUT");
+is(
+   $obj->output_fh(),
+   \*STDOUT,
+   "and if we close the set filehandle, it reverts to STDOUT"
+);
 
-
+# ############################################################################
+# Adding, removing and listing devices.
+# ############################################################################
 is_deeply(
    [ $obj->ordered_devs() ],
    [],
@@ -221,6 +301,9 @@ is_deeply(
    "...And clears the internal duplicate-checking list"
 );
 
+# ############################################################################
+# zero_rows -- That is, whenever it prints inactive devices.
+# ############################################################################
 $obj->set_zero_rows(0);
 my $print_output = output(
    sub {
@@ -239,6 +322,9 @@ is(
    "->zero_rows works"
 );
 
+# ############################################################################
+# Sane defaults and fatal errors
+# ############################################################################
 for my $method ( qw( delta_against delta_against_ts group_by ) ) {
    throws_ok(
       sub { Diskstats->$method() },
@@ -262,7 +348,7 @@ is(
 );
 
 my $output = output(
-   sub { $obj->parse_from_data( "ASMFHNASJNFASKLFLKHNSKD" ); },
+   sub { $obj->parse_from( data => "ASMFHNASJNFASKLFLKHNSKD" ); },
    stderr => 1,
 );
 
@@ -272,30 +358,137 @@ like(
    "->parse_from and friends fail on malformed data"
 );
 
+# ############################################################################
+# _calc* methods
+# ############################################################################
+
+$obj->clear_state();
+
+my $prev = {
+   TS   => 1281367519,
+   data => ($obj->parse_diskstats_line(
+"104    0 cciss/c0d0 2139885 162788 37361471 8034486 17999682 83425310 811400340 12711047 0 6869437 20744582", $obj->block_size))[1]
+};
+my $curr = {
+   TS   => 1281367521,
+   data => ($obj->parse_diskstats_line(
+"104    0 cciss/c0d0 2139886 162790 37361478 8034489 17999738 83425580 811402798 12711097 3 6869449 20744632", $obj->block_size))[1]
+};
+
+$obj->first_ts( $prev->{TS} );
+$obj->prev_ts( $prev->{TS} );
+$obj->curr_ts( $curr->{TS} );
+
+my $deltas = $obj->_calc_delta_for($curr->{data}, $prev->{data});
+
+is_deeply(
+   $deltas,
+   {
+      ms_spent_doing_io => 12,
+      ms_spent_reading => 3,
+      ms_spent_writing => 50,
+      ms_weighted => 50,
+      read_kbs => 3.5,
+      read_sectors => 7,
+      reads => 1,
+      reads_merged => 2,
+      writes => 56,
+      writes_merged => 270,
+      written_kbs => 1229,
+      written_sectors => 2458,
+   },
+   "_calc_delta_for works"
+);
+
+local $EVAL_ERROR;
+eval { $obj->_calc_delta_for($curr->{data}, []) };
+ok(!$EVAL_ERROR, "_calc_delta_for guards against undefined values");
+
+my %read_stats = $obj->_calc_read_stats(
+   delta_for     => $deltas,
+   elapsed       => $curr->{TS} - $prev->{TS},
+   devs_in_group => 1,
+);
+
+is_deeply(
+   \%read_stats,
+   {
+      avg_read_sz => '3.5',
+      ios_read_sec => '0.003',
+      mbytes_read_sec => '0.001708984375',
+      read_conc => '0.0015',
+      read_merge_pct => '66.6666666666667',
+      read_requests => 3,
+      read_rtime => '3',
+      reads_sec => '0.5'
+   },
+   "_calc_read_stats works"
+);
+
+my %write_stats = $obj->_calc_write_stats(
+   delta_for     => $deltas,
+   elapsed       => $curr->{TS} - $prev->{TS},
+   devs_in_group => 1,
+);
+
+is_deeply(
+   \%write_stats,
+   {
+      avg_write_sz => '21.9464285714286',
+      ios_written_sec => '0.05',
+      mbytes_written_sec => '0.60009765625',
+      write_conc => '0.025',
+      write_merge_pct => '82.8220858895706',
+      write_requests => 326,
+      write_rtime => '0.892857142857143',
+      writes_sec => '28',
+   },
+   "_calc_write_stats works"
+);
+
+my %misc_stats = $obj->_calc_misc_stats(
+   delta_for     => $deltas,
+   elapsed       => $curr->{TS} - $prev->{TS},
+   devs_in_group => 1,
+   stats         => { %write_stats, %read_stats },
+);
+
+is_deeply(
+   \%misc_stats,
+   {
+      busy => '0.6',
+      line_ts => '  0.0',
+      qtime => 0,
+      s_spent_doing_io => '0.053',
+      stime => 0,
+   },
+   "_calc_misc_stats works"
+);
+
+$obj->clear_state();
+
 }
-# Common tests for all three subclasses
-my $o = bless {}, "FakeParser";
+# ############################################################################
+# The three subclasses
+# ############################################################################
 for my $test (
       {
          class               => "DiskstatsGroupByAll",
-         method              => "group_by_all",
          results_file_prefix => "all",
       },
       {
          class               => "DiskstatsGroupByDisk",
-         method              => "group_by_disk",
          results_file_prefix => "disk",
       },
       {
          class               => "DiskstatsGroupBySample",
-         method              => "group_by_sample",
          results_file_prefix => "sample",
       }) {
    my $obj    = $test->{class}->new(OptionParser => $o, zero_rows => 1);
-   my $method = $test->{method};
    my $prefix = $test->{results_file_prefix};
 
    $obj->set_column_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
+   $obj->set_zero_rows(1);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
@@ -305,54 +498,31 @@ for my $test (
 
       my $got = output(
          sub {
-            $obj->$method(
+            $obj->group_by(
                filename => $file_with_trunk,
             );
          });
-
-      if ( $filename =~ /003/ && $prefix eq "disk" ) {
-         open my $yadda, ">", "TEMP.txt";
-         print { $yadda } $got;
-         close($yadda);
-      }
       
-      is($got, $expected, "$method: $filename via filename");
+      is($got, $expected, "group_by $prefix: $filename via filename");
    
       $got = output(
          sub {
             open my $fh, "<", $file_with_trunk or die $!;
-            $obj->$method(
+            $obj->group_by(
                filehandle => $fh,
             );
          });
    
-      is($got, $expected, "$method: $filename via filehandle");
+      is($got, $expected, "group_by $prefix: $filename via filehandle");
    
       $got = output(
          sub {
-            $obj->$method(
-               data => load_file( $file ),
-            );
-         });
-   
-      is($got, $expected, "$method: $filename via data");
-   
-      $got = output(
-         sub {
-            $obj->$method(
+            $obj->group_by(
                data => "TS 1298130002.073935000\n" . load_file( $file ),
             );
          });
    
-      is($got, $expected, "$method: $filename with an extra TS at the top");
-   
-      $obj->set_filename( $file_with_trunk );
-      $got = output(
-         sub {
-            $obj->$method();
-         });
-   
-      is($got, $expected, "$method: $filename via obj->filename()");
+      is($got, $expected, "group_by $prefix: $filename with an extra TS at the top");
    }
 
    my $data = <<'EOF';
@@ -361,16 +531,12 @@ TS 1297205887.156653000
 TS 1297205888.161613000
 EOF
    
-   {
-      local $TODO = "Group by all works a bit differently. Probably worth it to make all three consistent, eventually" if ($prefix eq "all");
-      local $EVAL_ERROR;
-      my $got = output( sub { $obj->$method(data => $data) }, stderr => 1 );
-      like(
-         $got,
-         qr/Time elapsed is/,
-         "$method: 1 line of data between two TS lines results in an error"
-      );
-   }
+   my $got = output( sub { $obj->group_by(data => $data) }, stderr => 1 );
+   is(
+      $got,
+      '',
+      "group_by $prefix: 1 line of data between two TS lines results in no output"
+   );
 
    $obj->set_curr_ts(0);
    $obj->set_prev_ts(0);
@@ -378,7 +544,18 @@ EOF
 
    throws_ok(
       sub { $obj->_calc_deltas() },
-      qr/Time elapsed is/,
+      qr/Time between samples should be > 0, is /,
       "$test->{class}, ->_calc_deltas fails if the time elapsed is 0"
    );
+
+   $obj->set_curr_ts(0);
+   $obj->set_prev_ts(4);
+   $obj->set_first_ts(4);
+
+   throws_ok(
+      sub { $obj->_calc_deltas() },
+      qr/Time between samples should be > 0, is /,
+      "$test->{class}, ->_calc_deltas fails if the time elapsed is negative"
+   );
+
 }

@@ -30,66 +30,49 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use base qw( Diskstats );
 
-sub group_by_all {
+sub group_by {
    my ($self, %args) = @_;
 
    $self->clear_state();
 
    if (!$self->interactive()) {
       $self->parse_from(
+         filehandle      => $args{filehandle},
+         filename        => $args{filename},
+         data            => $args{data},
          sample_callback => sub {
                $self->print_deltas(
-                  map { ( $_ => $args{$_} ) }
-                     qw( header_callback rows_callback ),
+                  header_callback => $args{header_callback},
+                  rows_callback   => $args{rows_callback},
                );
-            },
-         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
+         },
       );
    }
    else {
-      my $orig = tell $args{filehandle};
+      my $orig = tell $args{filehandle} if $args{filehandle};
+      my $header_callback =  $args{header_callback} || sub {
+                           my ($self, @args) = @_;
+                           $self->print_header(@args) if $self->{_print_header};
+                           $self->{_print_header} = 0;
+                         };
       $self->parse_from(
+         filehandle      => $args{filehandle},
+         filename        => $args{filename},
+         data            => $args{data},
          sample_callback => sub {
                $self->print_deltas(
-                  header_callback => sub {
-                     my $self = shift;
-                     if ( $self->{_print_header} ) {
-                        my $meth = $args{header_callback} || "print_header";
-                        $self->$meth(@_);
-                     }
-                     $self->{_print_header} = undef;
-                  },
-                  rows_callback => $args{rows_callback},
+                  header_callback => $header_callback,
+                  rows_callback   => $args{rows_callback},
                );
             },
-         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
       );
-      if (!$self->prev_ts()) {
-         seek $args{filehandle}, $orig, 0;
-      }
-      return;
+      seek $args{filehandle}, $orig, 0 unless $self->prev_ts();
    }
-   $self->clear_state();
+
+   return;
 }
 
 # The next methods are all overrides!
-
-sub group_by {
-   my $self = shift;
-   $self->group_by_all(@_);
-}
-
-sub clear_state {
-   my $self = shift;
-   if (!$self->interactive()) {
-      $self->SUPER::clear_state(@_);
-   }
-   else {
-      my $orig_print_header = $self->{_print_header};
-      $self->SUPER::clear_state(@_);
-      $self->{_print_header} = $orig_print_header;
-   }
-}
 
 sub delta_against {
    my ($self, $dev) = @_;

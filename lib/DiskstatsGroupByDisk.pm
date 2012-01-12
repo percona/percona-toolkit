@@ -38,20 +38,18 @@ sub new {
    return $self;
 }
 
-sub group_by {
-   my ($self, @args) = @_;
-   $self->group_by_disk(@args);
-}
-
 # Prints out one line for each disk, summing over the interval from first to
 # last sample.
-sub group_by_disk {
+sub group_by {
    my ($self, %args) = @_;
-   my ($header_callback, $rows_callback) = $args{ qw( header_callback rows_callback ) };
+   my @optional_args = qw( header_callback rows_callback );
+   my ($header_callback, $rows_callback) = $args{ @optional_args };
 
    $self->clear_state() unless $self->interactive();
 
-   my $original_offset = $args{filehandle} ? tell($args{filehandle}) : undef;
+   my $original_offset = ($args{filehandle} || ref($args{data}))
+                       ? tell($args{filehandle} || $args{data})
+                       : undef;
 
    my $lines_read = $self->parse_from(
       sample_callback => sub {
@@ -89,19 +87,24 @@ sub group_by_disk {
    );
 
    if ($self->interactive()) {
-      if ($self->{_iterations} == -1 && defined($original_offset)
-            && eof($args{filehandle})) {
+      # This is a guard against the weird but nasty situation where
+      # we read several samples from the filehandle, but reach
+      # the end of file before $elapsed >= $self->sample_time().
+      # If that happens, we need to rewind the filehandle to
+      # where we started, so subsequent attempts (i.e. when
+      # the file has more data) have greater chances of succeeding,
+      # and no data goes unreported.
+      if ($self->{_iterations} != -1 && defined($original_offset)
+            && eof($args{filehandle} || $args{data}) ) {
          $self->clear_state;
-         seek $args{filehandle}, $original_offset, 0;
+         seek( ($args{filehandle} || $args{data}), $original_offset, 0);
       }
       return $lines_read;
    }
 
-   if ( $self->{_iterations} < 2 ) {
-      return;
-   }
+   return if $self->{_iterations} < 2;
 
-   $self->print_deltas( 
+   $self->print_deltas(
       header_callback => $args{header_callback},
       rows_callback   => $args{rows_callback},
    );

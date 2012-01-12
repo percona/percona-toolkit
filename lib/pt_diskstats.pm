@@ -30,27 +30,27 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser file => __FILE__;
+   my $o = new OptionParser(file => __FILE__);
    $o->get_specs();
    $o->get_opts();
 
    $o->usage_or_errors();
 
-   my $diskstats = new DiskstatsMenu;
+   my $diskstats = new DiskstatsMenu();
 
    # Interactive mode. Delegate to DiskstatsMenu::run_interactive
-   return $diskstats->run_interactive( OptionParser => $o, filename => $ARGV[0] );
+   return $diskstats->run_interactive(
+                  OptionParser => $o,
+                  filename     => $ARGV[0]
+            );
 }
-
-# Somewhat important if STDOUT is tied to a terminal.
-END { close STDOUT or die "Couldn't close stdout: $OS_ERROR" }
 
 # ############################################################################
 # Run the program.
 # ############################################################################
 if ( !caller ) { exit main(@ARGV); }
 
-1;
+1; # Because this is a module as well as a script.
 }
 
 # #############################################################################
@@ -281,11 +281,6 @@ Sample /proc/diskstats every N seconds.
 =item --zero-rows
 
 Show rows with all zero values.
-
-=item --memory-for-speed
-
-EXPERIMENTAL! Trades memory for speed, by storing more things in memory.
-What it stores, and how, may all be subject to change.
 
 =item --help
 

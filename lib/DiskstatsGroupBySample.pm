@@ -39,16 +39,12 @@ sub new {
    return $self;
 }
 
-sub group_by {
-   my $self = shift;
-   $self->group_by_sample(@_);
-}
-
 # Prints out one line for each disk, summing over the interval from first to
 # last sample.
-sub group_by_sample {
-   my ( $self,      %args )    = @_;
-   my ( $header_callback, $rows_callback ) = $args{qw( header_callback rows_callback )};
+sub group_by {
+   my ( $self, %args ) = @_;
+   my @optional_args   = qw( header_callback rows_callback );
+   my ( $header_callback, $rows_callback ) = $args{ @optional_args };
 
    $self->clear_state() unless $self->interactive();
 
@@ -145,7 +141,7 @@ sub compute_dev {
    $devs ||= $self->compute_devs_in_group();
    return $devs > 1
      ? "{" . $devs . "}"
-     : ( $self->ordered_devs )[0];
+     : $self->{ordered_devs}->[0];
 }
 
 # Terrible breach of encapsulation, but it'll have to do for the moment.
@@ -159,7 +155,7 @@ sub _calc_stats_for_deltas {
       my $against = $self->delta_against($dev);
 
       my $delta = $self->_calc_delta_for( $curr, $against );
-      $delta->{ios_in_progress} = $curr->{ios_in_progress};
+      $delta->{ios_in_progress} = $curr->[Diskstats::ios_in_progress];
       while ( my ( $k, $v ) = each %$delta ) {
          $delta_for->{$k} += $v;
       }
