@@ -155,7 +155,7 @@ sub _calc_stats_for_deltas {
       my $against = $self->delta_against($dev);
 
       my $delta = $self->_calc_delta_for( $curr, $against );
-      $delta->{ios_in_progress} = $curr->[Diskstats::ios_in_progress];
+      $delta->{ios_in_progress} = $curr->[Diskstats::IOS_IN_PROGRESS];
       while ( my ( $k, $v ) = each %$delta ) {
          $delta_for->{$k} += $v;
       }
