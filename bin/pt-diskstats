@@ -1533,25 +1533,71 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use IO::Handle;
 use List::Util qw( max first );
 
+my $diskstat_colno_for;
+BEGIN {
+   $diskstat_colno_for = {
+      MAJOR               => 0,
+      MINOR               => 1,
+      DEVICE              => 2,
+      READS               => 3,
+      READS_MERGED        => 4,
+      READ_SECTORS        => 5,
+      MS_SPENT_READING    => 6,
+      WRITES              => 7,
+      WRITES_MERGED       => 8,
+      WRITTEN_SECTORS     => 9,
+      MS_SPENT_WRITING    => 10,
+      IOS_IN_PROGRESS     => 11,
+      MS_SPENT_DOING_IO   => 12,
+      MS_WEIGHTED         => 13,
+      READ_KBS            => 14,
+      WRITTEN_KBS         => 15,
+      IOS_REQUESTED       => 16,
+      IOS_IN_BYTES        => 17,
+      SUM_IOS_IN_PROGRESS => 18,
+   };
+   require constant;
+   constant->import($diskstat_colno_for);
+}
+
 sub new {
    my ( $class, %args ) = @_;
-
    my @required_args = qw(OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($o) = @args{@required_args};
 
+   my $columns = $o->get('columns');
+   my $devices = $o->get('devices');
+
    my $self = {
       filename           => '/proc/diskstats',
-      column_regex       => qr/cnc|rt|busy|prg|time|io_s/,
-      device_regex       => qr/(?=)/,
       block_size         => 512,
-      out_fh             => \*STDOUT,
-      filter_zeroed_rows => $o->get('zero-rows') ? undef : 1,
+      zero_rows          => $o->get('zero-rows'),
       sample_time        => $o->get('sample-time') || 0,
+      column_regex       => qr/$columns/,
+      device_regex       => qr/$devices/,
       interactive        => 0,
 
+      %args,
+
+      delta_cols         => [  # Calc deltas for these cols, must be uppercase
+         qw(
+            READS
+            READS_MERGED
+            READ_SECTORS
+            MS_SPENT_READING
+            WRITES
+            WRITES_MERGED
+            WRITTEN_SECTORS
+            MS_SPENT_WRITING
+            READ_KBS
+            WRITTEN_KBS
+            MS_SPENT_DOING_IO
+            MS_WEIGHTED
+         )
+      ],
       _stats_for         => {},
       _ordered_devs      => [],
       _ts                => {},
@@ -1561,121 +1607,110 @@ sub new {
       _print_header      => 1,
    };
 
-   if ( $o->get('memory-for-speed') ) {
-      PTDEBUG && _d('Diskstats', "Called with memory-for-speed");
-      eval {
-         require Memoize;
-         Memoize::memoize('_parse_diskstats_line');
-      };
-      if ($EVAL_ERROR) {
-         warn "Can't trade memory for speed: $EVAL_ERROR. Continuing as usual.";
-      }
-   }
-
-   my %pod_to_attribute = (
-      columns => 'column_regex',
-      devices => 'device_regex'
-   );
-   for my $key ( grep { defined $o->get($_) } keys %pod_to_attribute ) {
-      my $re = $o->get($key) || '(?=)';
-      $self->{ $pod_to_attribute{$key} } = qr/$re/i;
-   }
-
-   for my $attribute ( grep { !/^_/ && defined $args{$_} } keys %$self ) {
-      $self->{$attribute} = $args{$attribute};
-   }
-
    return bless $self, $class;
 }
 
 
 sub curr_ts {
-   my ($self, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{curr} = $val;
-   }
+   my ($self) = @_;
    return $self->{_ts}->{curr} || 0;
 }
 
-sub prev_ts {
+sub set_curr_ts {
    my ($self, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{prev} = $val;
-   }
+   $self->{_ts}->{curr} = $val || 0;
+}
+
+sub prev_ts {
+   my ($self) = @_;
    return $self->{_ts}->{prev} || 0;
 }
 
-sub first_ts {
+sub set_prev_ts {
    my ($self, $val) = @_;
-   if ($val) {
-      $self->{_ts}->{first} = $val;
-   }
+   $self->{_ts}->{prev} = $val || 0;
+}
+
+sub first_ts {
+   my ($self) = @_;
    return $self->{_ts}->{first} || 0;
 }
 
-sub filter_zeroed_rows {
+sub set_first_ts {
+   my ($self, $val) = @_;
+   $self->{_ts}->{first} = $val || 0;
+}
+
+sub zero_rows {
+   my ($self) = @_;
+   return $self->{zero_rows};
+}
+
+sub set_zero_rows {
    my ($self, $new_val) = @_;
-   if ( defined($new_val) ) {
-      $self->{filter_zeroed_rows} = $new_val;
-   }
-   return $self->{filter_zeroed_rows};
+   $self->{zero_rows} = $new_val;
 }
 
 sub sample_time {
+   my ($self) = @_;
+   return $self->{sample_time};
+}
+
+sub set_sample_time {
    my ($self, $new_val) = @_;
    if (defined($new_val)) {
       $self->{sample_time} = $new_val;
    }
-   return $self->{sample_time};
 }
 
 sub interactive {
+   my ($self) = @_;
+   return $self->{interactive};
+}
+
+sub set_interactive {
    my ($self, $new_val) = @_;
    if (defined($new_val)) {
       $self->{interactive} = $new_val;
    }
-   return $self->{interactive};
-}
-
-
-sub out_fh {
-   my ( $self, $new_fh ) = @_;
-
-   if ( $new_fh && ref($new_fh) && $new_fh->opened ) {
-      $self->{out_fh} = $new_fh;
-   }
-   if ( !$self->{out_fh} || !$self->{out_fh}->opened ) {
-      $self->{out_fh} = \*STDOUT;
-   }
-   return $self->{out_fh};
 }
 
 sub column_regex {
-   my ( $self, $new_re ) = @_;
-   if ($new_re) {
-      return $self->{column_regex} = $new_re;
-   }
+   my ( $self ) = @_;
    return $self->{column_regex};
 }
 
+sub set_column_regex {
+   my ( $self, $new_re ) = @_;
+   return $self->{column_regex} = $new_re;
+}
+
 sub device_regex {
+   my ( $self ) = @_;
+   return $self->{device_regex};
+}
+
+sub set_device_regex {
    my ( $self, $new_re ) = @_;
    if ($new_re) {
       return $self->{device_regex} = $new_re;
    }
-   return $self->{device_regex};
 }
 
 sub filename {
+   my ( $self ) = @_;
+   return $self->{filename};
+}
+
+sub set_filename {
    my ( $self, $new_filename ) = @_;
    if ( $new_filename ) {
       return $self->{filename} = $new_filename;
    }
-   return $self->{filename};
 }
 
 sub block_size {
-   my $self = shift;
+   my ( $self ) = @_;
    return $self->{block_size};
 }
 
@@ -1714,7 +1749,7 @@ sub clear_ts {
 }
 
 sub clear_ordered_devs {
-   my $self = shift;
+   my ($self) = @_;
    $self->{_seen_devs} = {};
    $self->ordered_devs( [] );
 }
@@ -1778,7 +1813,7 @@ sub has_stats {
    my $stats  = $self->stats_for;
 
    for my $key ( keys %$stats ) {
-      return 1 if $stats->{$key} && %{ $stats->{$key} }
+      return 1 if $stats->{$key} && @{ $stats->{$key} }
    }
 
    return;
@@ -1790,10 +1825,10 @@ sub _save_curr_as_prev {
    if ( $self->{_save_curr_as_prev} ) {
       $self->{_prev_stats_for} = $curr;
       for my $dev (keys %$curr) {
-         $self->{_prev_stats_for}->{$dev}->{sum_ios_in_progress} +=
-            $curr->{$dev}->{ios_in_progress};
+         $self->{_prev_stats_for}->{$dev}->[SUM_IOS_IN_PROGRESS] +=
+            $curr->{$dev}->[IOS_IN_PROGRESS];
       }
-      $self->prev_ts($self->curr_ts());
+      $self->set_prev_ts($self->curr_ts());
    }
 
    return;
@@ -1804,16 +1839,11 @@ sub _save_curr_as_first {
 
    if ( $self->{_first} ) {
       $self->{_first_stats_for} = {
-         map { $_ => {%{$curr->{$_}}} } keys %$curr
+         map { $_ => [@{$curr->{$_}}] } keys %$curr
       };
-      $self->first_ts($self->curr_ts());
+      $self->set_first_ts($self->curr_ts());
       $self->{_first} = undef;
    }
-}
-
-sub _save_stats {
-   my ( $self, $stats ) = @_;
-   return $self->{_stats_for} = $stats;
 }
 
 sub trim {
@@ -1831,8 +1861,7 @@ sub col_ok {
 
 sub dev_ok {
    my ( $self, $device ) = @_;
-   my $regex = $self->device_regex();
-   return $device =~ $regex;
+   return $device =~ $self->{device_regex};
 }
 
 our @columns_in_order = (
@@ -1853,8 +1882,8 @@ our @columns_in_order = (
    [ "busy"    => "%3.0f%%", "busy", ],
    [ "in_prg"  => "%6d",     "in_progress", ],
    [ "   io_s" => "%7.1f",   "s_spent_doing_io", ],
-   [ " qtime"   => "%6.1f",   "qtime", ],
-   [ " stime"   => "%5.1f",   "stime", ],
+   [ " qtime"  => "%6.1f",   "qtime", ],
+   [ " stime"  => "%5.1f",   "stime", ],
 );
 
 {
@@ -1883,7 +1912,7 @@ our @columns_in_order = (
 sub design_print_formats {
    my ( $self,       %args )    = @_;
    my ( $dev_length, $columns ) = @args{qw( max_device_length columns )};
-   $dev_length ||= max 6, map length, $self->ordered_devs;
+   $dev_length ||= max 6, map length, $self->ordered_devs();
    my ( $header, $format );
 
    $header = $format = qq{%5s %-${dev_length}s };
@@ -1901,135 +1930,82 @@ sub design_print_formats {
    return ( $header, $format, $columns );
 }
 
-{
-my @diskstats_fields = qw(
-   reads  reads_merged  read_sectors      ms_spent_reading
-   writes writes_merged written_sectors   ms_spent_writing
-   ios_in_progress      ms_spent_doing_io ms_weighted
-);
+sub parse_diskstats_line {
+   my ( $self, $line, $block_size ) = @_;
 
-sub parse_diskstats_line  { shift; goto &_parse_diskstats_line }
-sub _parse_diskstats_line {
-   my ( $line, $block_size ) = @_;
-   my $dev;
-   keys my %dev_stats = 30; # Pre-expand the amount of buckets for this hash.
-
-
-   if ( 14 == (( @dev_stats{qw( major minor )}, $dev, @dev_stats{@diskstats_fields} ) =
-         split " ", $line, 14 ) )
-   {
-      $dev_stats{read_kbs}    =
-         ( $dev_stats{read_bytes} = $dev_stats{read_sectors}
-                                  * $block_size ) / 1024;
-      $dev_stats{written_kbs} =
-         ( $dev_stats{written_bytes} = $dev_stats{written_sectors}
-                                     * $block_size ) / 1024;
-      $dev_stats{ios_requested} = $dev_stats{reads}
-                                + $dev_stats{writes};
-
-      $dev_stats{ios_in_bytes}  = $dev_stats{read_bytes}
-                                + $dev_stats{written_bytes};
-
-      return ( $dev, \%dev_stats );
-   }
-   elsif ((@dev_stats{qw( major minor )}, $dev,
-           @dev_stats{ qw( reads read_sectors writes written_sectors ) }) =
-           $line =~ /^
-               \s*   (\d+)    # major
-               \s+   (\d+)    # minor
-               \s+   (.+?)    # Device name
-               \s+   (\d+)    # # of reads issued
-               \s+   (\d+)    # # of sectors read
-               \s+   (\d+)    # # of writes issued
-               \s+   (\d+)    # # of sectors written
-               \s*$/x)
-   {
-      for my $key ( @diskstats_fields ) {
-         $dev_stats{$key} ||= 0;
-      }
-      $dev_stats{read_bytes} = $dev_stats{read_sectors} * $block_size;
-      $dev_stats{written_bytes} =
-        $dev_stats{written_sectors} * $block_size;
-      $dev_stats{read_kbs}    = $dev_stats{read_bytes} / 1024;
-      $dev_stats{written_kbs} = $dev_stats{written_bytes} / 1024;
-      $dev_stats{ios_requested} = $dev_stats{reads} + $dev_stats{writes};
-      $dev_stats{ios_in_bytes}  = $dev_stats{read_bytes}
-                                + $dev_stats{written_bytes};
-
-      return ( $dev, \%dev_stats );
-   }
-   else {
+   my @dev_stats = split ' ', $line;
+   if ( @dev_stats != 14 ) {
+      PTDEBUG && _d("Ignoring short diskstats line:", $line);
       return;
    }
-}
+
+   my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
+   my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
+
+   $dev_stats[READ_KBS]      = $read_bytes    / 1024;
+   $dev_stats[WRITTEN_KBS]   = $written_bytes / 1024;
+   $dev_stats[IOS_IN_BYTES]  = $read_bytes + $written_bytes;
+   $dev_stats[IOS_REQUESTED] = $dev_stats[READS] + $dev_stats[WRITES];
+
+   return $dev_stats[DEVICE], \@dev_stats;
 }
 
 
 sub parse_from {
-    my ( $self, %args ) = @_;
+   my ( $self, %args ) = @_;
 
-    my $lines_read = $args{filehandle}
-      ? $self->parse_from_filehandle( @args{qw( filehandle sample_callback )} )
-      : $args{data}
-      ? $self->parse_from_data( @args{qw( data sample_callback )} )
-      : $self->parse_from_filename( @args{qw( filename sample_callback )} );
-    return $lines_read;
-}
-
-
-sub parse_from_filename {
-   my ( $self, $filename, $sample_callback ) = @_;
-
-   $filename ||= $self->filename();
-
-   open my $fh, "<", $filename
-     or die "Cannot parse $filename: $OS_ERROR";
-   my $lines_read = $self->parse_from_filehandle( $fh, $sample_callback );
-   close $fh or die "Cannot close: $OS_ERROR";
+   my $lines_read;
+   if ($args{filehandle}) {
+      $lines_read = $self->_parse_from_filehandle(
+                        @args{qw( filehandle sample_callback )}
+                     );
+   }
+   elsif ( $args{data} ) {
+      open( my $fh, "<", ref($args{data}) ? $args{data} : \$args{data} )
+         or die "Couldn't parse data: $OS_ERROR";
+      my $lines_read = $self->_parse_from_filehandle(
+                        $fh, $args{sample_callback}
+                     );
+      close $fh or warn "Cannot close: $OS_ERROR";
+   }
+   else {
+      my $filename = $args{filename} || $self->filename();
+   
+      open my $fh, "<", $filename
+         or die "Cannot parse $filename: $OS_ERROR";
+      $lines_read = $self->_parse_from_filehandle(
+                        $fh, $args{sample_callback}
+                     );
+      close $fh or warn "Cannot close: $OS_ERROR";
+   }
 
    return $lines_read;
 }
 
 
-sub parse_from_filehandle {
+sub _parse_from_filehandle {
    my ( $self, $filehandle, $sample_callback ) = @_;
-   return $self->_load( $filehandle, $sample_callback );
-}
-
-sub parse_from_data {
-   my ( $self, $data, $sample_callback ) = @_;
-
-   open( my $fh, "<", ref($data) ? $data : \$data )
-     or die "Couldn't parse data: $OS_ERROR";
-   my $lines_read = $self->parse_from_filehandle( $fh, $sample_callback );
-   close $fh or die "";
-
-   return $lines_read;
+   return $self->_parse_and_load_diskstats( $filehandle, $sample_callback );
 }
 
 
-sub _load {
+sub _parse_and_load_diskstats {
    my ( $self, $fh, $sample_callback ) = @_;
    my $block_size = $self->block_size();
    my $current_ts = 0;
    my $new_cur    = {};
 
    while ( my $line = <$fh> ) {
-      if ( my ( $dev, $dev_stats ) = $self->parse_diskstats_line($line, $block_size) )
+      if ( my ( $dev, $dev_stats )
+               = $self->parse_diskstats_line($line, $block_size) )
       {
          $new_cur->{$dev} = $dev_stats;
          $self->add_ordered_dev($dev);
       }
       elsif ( my ($new_ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
          if ( $current_ts && %$new_cur ) {
-            $self->_save_curr_as_prev( $self->stats_for() );
-            $self->_save_stats($new_cur);
-            $self->curr_ts($current_ts);
-            $self->_save_curr_as_first( $new_cur );
+            $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
             $new_cur = {};
-         }
-         if ($sample_callback) {
-            $self->$sample_callback($current_ts);
          }
          $current_ts = $new_ts;
       }
@@ -2039,19 +2015,25 @@ sub _load {
       }
    }
 
-   if ( $current_ts ) {
-      if ( %{$new_cur} ) {
-         $self->_save_curr_as_prev( $self->stats_for() );
-         $self->_save_stats($new_cur);
-         $self->curr_ts($current_ts);
-         $self->_save_curr_as_first( $new_cur );
-         $new_cur = {};
-      }
-      if ($sample_callback) {
-         $self->$sample_callback($current_ts);
-      }
+   if ( $current_ts && %{$new_cur} ) {
+      $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
+      $new_cur = {};
    }
    return $INPUT_LINE_NUMBER;
+}
+
+sub _handle_ts_line {
+   my ($self, $current_ts, $new_cur, $sample_callback) = @_;
+
+   $self->_save_curr_as_prev( $self->stats_for() );
+   $self->{_stats_for} = $new_cur;
+   $self->set_curr_ts($current_ts);
+   $self->_save_curr_as_first( $new_cur );
+
+   if ($sample_callback) {
+      $self->$sample_callback($current_ts);
+   }
+   return;
 }
 
 sub _calc_read_stats {
@@ -2141,10 +2123,10 @@ sub _calc_misc_stats {
    my ($delta_for, $elapsed, $devs_in_group, $stats) = @args{ @required_args };
    my %extra_stats;
 
-   $extra_stats{busy} =
-      100 *
-      $delta_for->{ms_spent_doing_io} /
-      ( 1000 * $elapsed * $devs_in_group );
+   $extra_stats{busy}
+      = 100
+      * $delta_for->{ms_spent_doing_io}
+      / ( 1000 * $elapsed * $devs_in_group ); # Highlighting failure: /
 
    my $number_of_ios        = $stats->{ios_requested};
    my $total_ms_spent_on_io = $delta_for->{ms_spent_reading}
@@ -2171,15 +2153,11 @@ sub _calc_misc_stats {
 
 sub _calc_delta_for {
    my ( $self, $curr, $against ) = @_;
-   my %deltas = (
-      map { ( $_ => ($curr->{$_} || 0) - ($against->{$_} || 0) ) }
-        qw(
-         reads reads_merged read_sectors ms_spent_reading
-         writes writes_merged written_sectors ms_spent_writing
-         read_kbs written_kbs
-         ms_spent_doing_io ms_weighted
-        )
-   );
+   my %deltas;
+   foreach my $col ( @{$self->{delta_cols}} ) {
+      my $colno = $diskstat_colno_for->{$col};
+      $deltas{lc $col} = ($curr->[$colno] || 0) - ($against->[$colno] || 0);
+   }
    return \%deltas;
 }
 
@@ -2190,20 +2168,14 @@ sub _calc_stats_for_deltas {
 
    my $devs_in_group = $self->compute_devs_in_group();
 
-   foreach my $dev_and_curr (
-         map {
-            my $curr = $self->dev_ok($_) && $self->stats_for($_);
-            $curr ? [ $_, $curr ] : ()
-         }
-         @devices )
-   {
-      my $dev     = $dev_and_curr->[0];
-      my $curr    = $dev_and_curr->[1];
+   foreach my $dev ( grep { $self->dev_ok($_) } @devices ) {
+      my $curr    = $self->stats_for($dev);
+      next unless $curr;
       my $against = $self->delta_against($dev);
 
       my $delta_for       = $self->_calc_delta_for( $curr, $against );
-      my $in_progress     = $curr->{"ios_in_progress"};
-      my $tot_in_progress = $against->{"sum_ios_in_progress"} || 0;
+      my $in_progress     = $curr->[IOS_IN_PROGRESS];
+      my $tot_in_progress = $against->[SUM_IOS_IN_PROGRESS] || 0;
 
       my %stats = (
          $self->_calc_read_stats(
@@ -2240,7 +2212,7 @@ sub _calc_deltas {
    my ( $self ) = @_;
 
    my $elapsed = $self->curr_ts() - $self->delta_against_ts();
-   die "Time elapsed is [$elapsed]" unless $elapsed;
+   die "Time between samples should be > 0, is [$elapsed]" if $elapsed <= 0;
 
    return $self->_calc_stats_for_deltas($elapsed);
 }
@@ -2248,19 +2220,18 @@ sub _calc_deltas {
 sub print_header {
    my ($self, $header, @args) = @_;
    if ( $self->{_print_header} ) {
-      printf { $self->out_fh() } $header . "\n", @args;
+      printf $header . "\n", @args;
    }
 }
 
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
-   if ( $self->filter_zeroed_rows() ) {
+   if ( ! $self->zero_rows() ) {
       return unless grep {
             sprintf("%7.1f", $_) != 0
-         } @{$stat}{ @$cols };
+         } @{ $stat }{ @$cols };
    }
-   printf { $self->out_fh() } $format . "\n",
-           @{$stat}{ qw( line_ts dev ), @$cols };
+   printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
 }
 
 sub print_deltas {
@@ -2274,22 +2245,14 @@ sub print_deltas {
    return unless $self->delta_against_ts();
 
    @$cols = map { $self->_column_to_key($_) } @$cols;
-   my ( $header_callback, $rows_callback ) = @args{qw( header_callback rows_callback )};
 
-   if ( $header_callback ) {
-      $self->$header_callback( $header, "#ts", "device" );
-   }
-   else {
-      $self->print_header( $header, "#ts", "device" );
-   }
+   my $header_method = $args{header_callback} || "print_header";
+   my $rows_method   = $args{rows_callback}   || "print_rows";
 
-   for my $stat ( $self->_calc_deltas() ) {
-      if ($rows_callback) {
-         $self->$rows_callback( $format, $cols, $stat );
-      }
-      else {
-         $self->print_rows( $format, $cols, $stat );
-      }
+   $self->$header_method( $header, "#ts", "device" );
+
+   foreach my $stat ( $self->_calc_deltas() ) {
+      $self->$rows_method( $format, $cols, $stat );
    }
 }
 
@@ -2370,65 +2333,48 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use base qw( Diskstats );
 
-sub group_by_all {
+sub group_by {
    my ($self, %args) = @_;
 
    $self->clear_state();
 
-   if (!$self->interactive) {
-      $self->parse_from(
-         sample_callback => sub {
-               $self->print_deltas(
-                  map { ( $_ => $args{$_} ) }
-                     qw( header_callback rows_callback ),
-               );
-            },
-         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
-      );
-   }
-   else {
-      my $orig = tell $args{filehandle};
-      $self->parse_from(
-         sample_callback => sub {
-               $self->print_deltas(
-                  header_callback => sub {
-                     my $self = shift;
-                     if ( $self->{_print_header} ) {
-                        my $meth = $args{header_callback} || "print_header";
-                        $self->$meth(@_);
-                     }
-                     $self->{_print_header} = undef;
-                  },
-                  rows_callback => $args{rows_callback},
-               );
-            },
-         map( { ($_ => $args{$_}) } qw(filehandle filename data) ),
-      );
-      if (!$self->prev_ts) {
-         seek $args{filehandle}, $orig, 0;
-      }
-      return;
-   }
-   $self->clear_state();
-}
-
-
-sub group_by {
-   my $self = shift;
-   $self->group_by_all(@_);
-}
-
-sub clear_state {
-   my $self = shift;
    if (!$self->interactive()) {
-      $self->SUPER::clear_state(@_);
+      $self->parse_from(
+         filehandle      => $args{filehandle},
+         filename        => $args{filename},
+         data            => $args{data},
+         sample_callback => sub {
+               $self->print_deltas(
+                  header_callback => $args{header_callback},
+                  rows_callback   => $args{rows_callback},
+               );
+         },
+      );
    }
    else {
-      my $orig_print_header = $self->{_print_header};
-      $self->SUPER::clear_state(@_);
-      $self->{_print_header} = $orig_print_header;
+      my $orig = tell $args{filehandle} if $args{filehandle};
+      my $header_callback =  $args{header_callback} || sub {
+                           my ($self, @args) = @_;
+                           $self->print_header(@args) if $self->{_print_header};
+                           $self->{_print_header} = 0;
+                         };
+      $self->parse_from(
+         filehandle      => $args{filehandle},
+         filename        => $args{filename},
+         data            => $args{data},
+         sample_callback => sub {
+               $self->print_deltas(
+                  header_callback => $header_callback,
+                  rows_callback   => $args{rows_callback},
+               );
+            },
+      );
+      seek $args{filehandle}, $orig, 0 unless $self->prev_ts();
    }
+
+   return;
 }
+
 
 sub delta_against {
    my ($self, $dev) = @_;
@@ -2498,17 +2444,15 @@ sub new {
 }
 
 sub group_by {
-   my ($self, @args) = @_;
-   $self->group_by_disk(@args);
-}
-
-sub group_by_disk {
    my ($self, %args) = @_;
-   my ($header_callback, $rows_callback) = $args{ qw( header_callback rows_callback ) };
+   my @optional_args = qw( header_callback rows_callback );
+   my ($header_callback, $rows_callback) = $args{ @optional_args };
 
    $self->clear_state() unless $self->interactive();
 
-   my $original_offset = $args{filehandle} ? tell($args{filehandle}) : undef;
+   my $original_offset = ($args{filehandle} || ref($args{data}))
+                       ? tell($args{filehandle} || $args{data})
+                       : undef;
 
    my $lines_read = $self->parse_from(
       sample_callback => sub {
@@ -2545,20 +2489,18 @@ sub group_by_disk {
       data       => $args{data},
    );
 
-   if ($self->interactive) {
-      if ($self->{_iterations} == -1 && defined($original_offset)
-            && eof($args{filehandle})) {
+   if ($self->interactive()) {
+      if ($self->{_iterations} != -1 && defined($original_offset)
+            && eof($args{filehandle} || $args{data}) ) {
          $self->clear_state;
-         seek $args{filehandle}, $original_offset, 0;
+         seek( ($args{filehandle} || $args{data}), $original_offset, 0);
       }
       return $lines_read;
    }
 
-   if ( $self->{_iterations} < 2 ) {
-      return;
-   }
+   return if $self->{_iterations} < 2;
 
-   $self->print_deltas( 
+   $self->print_deltas(
       header_callback => $args{header_callback},
       rows_callback   => $args{rows_callback},
    );
@@ -2647,13 +2589,9 @@ sub new {
 }
 
 sub group_by {
-   my $self = shift;
-   $self->group_by_sample(@_);
-}
-
-sub group_by_sample {
-   my ( $self,      %args )    = @_;
-   my ( $header_callback, $rows_callback ) = $args{qw( header_callback rows_callback )};
+   my ( $self, %args ) = @_;
+   my @optional_args   = qw( header_callback rows_callback );
+   my ( $header_callback, $rows_callback ) = $args{ @optional_args };
 
    $self->clear_state() unless $self->interactive();
 
@@ -2740,7 +2678,7 @@ sub compute_dev {
    $devs ||= $self->compute_devs_in_group();
    return $devs > 1
      ? "{" . $devs . "}"
-     : ( $self->ordered_devs )[0];
+     : $self->{ordered_devs}->[0];
 }
 
 sub _calc_stats_for_deltas {
@@ -2753,7 +2691,7 @@ sub _calc_stats_for_deltas {
       my $against = $self->delta_against($dev);
 
       my $delta = $self->_calc_delta_for( $curr, $against );
-      $delta->{ios_in_progress} = $curr->{ios_in_progress};
+      $delta->{ios_in_progress} = $curr->[Diskstats::IOS_IN_PROGRESS];
       while ( my ( $k, $v ) = each %$delta ) {
          $delta_for->{$k} += $v;
       }
@@ -2815,17 +2753,23 @@ sub _calc_stats_for_deltas {
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# DiskstatsMenu
+# DiskstatsMenu package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/DiskstatsMenu.pm
+#   t/lib/DiskstatsMenu.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
 package DiskstatsMenu;
 
-# DiskstatsMenu
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use POSIX qw( :sys_wait_h );
 
 use IO::Handle;
 use IO::Select;
@@ -2851,7 +2795,6 @@ my %actions = (
                        "Enter a column pattern: " ),
    '/' => get_new_regex_for( "device_regex",
                        "Enter a disk/device pattern: " ),
-         # Magical return value.
    'q' => sub { return 'last' },
    'p' => sub {
          print "Paused - press any key to continue\n";
@@ -2868,7 +2811,7 @@ my %input_to_object = (
    );
 
 sub new {
-   bless {}, shift;
+   return bless {}, shift;
 }
 
 sub run_interactive {
@@ -2879,32 +2822,22 @@ sub run_interactive {
    }
    my ($o) = @args{@required_args};
 
-   my %opts = (
-      interactive        => 1,
-      OptionParser       => $o,
-   );
+   $o->{opts}->{current_group_by_obj}->{value} = undef;
 
    my ($tmp_fh, $filename, $child_pid, $child_fh);
 
-   # Here's a big crux of the program. If we have a filename, we don't
-   # need to fork and create a child, just read from it.
    if ( $filename = $args{filename} ) {
       open $tmp_fh, "<", $filename or die "Cannot open $filename: $OS_ERROR";
    }
    else {
       ($tmp_fh, $filename) = file_to_use( $o->get('save-samples') );
 
-      # fork(), but future-proofing it in case we ever need to speak to
-      # the child
       $child_pid = open $child_fh, "|-";
    
       die "Cannot fork: $OS_ERROR" unless defined $child_pid;
       
       if ( !$child_pid ) {
-         # Child
    
-         # Bit of helpful magic: Changes how the program's name is displayed,
-         # so it's easier to track in things like ps.
          local $PROGRAM_NAME = "$PROGRAM_NAME (data-gathering daemon)";
    
          close $tmp_fh;
@@ -2923,8 +2856,6 @@ sub run_interactive {
 
    PTDEBUG && _d("Using filename", $filename);
 
-   # I don't think either of these are needed actually, since piped opens
-   # are supposed to deal with children on their own, but it doesn't hurt.
    local $SIG{CHLD} = 'IGNORE';
    local $SIG{PIPE} = 'IGNORE';
 
@@ -2937,55 +2868,54 @@ sub run_interactive {
                  : $group_by =~ m/sample/i ? 'DiskstatsGroupBySample'
                  : $group_by =~ m/all/i    ? 'DiskstatsGroupByAll'
                  : die "Invalid --group-by: $group_by";
-   $opts{current_group_by_obj}   = $class->new( %opts );
+   $o->set("current_group_by_obj",
+            $class->new( OptionParser => $o, interactive => 1 )
+          );
+
+   my $header_callback = $o->get("current_group_by_obj")
+                           ->can("print_header");
 
    if ( $args{filename} ) {
       group_by(
-         header_callback  => sub { shift->print_header(@_) },
-         select_obj => $sel,
-         options    => \%opts,
-         filehandle => $tmp_fh,
-         input      => substr(ucfirst($group_by), 0, 1),
+         header_callback => $header_callback,
+         select_obj      => $sel,
+         OptionParser    => $o,
+         filehandle      => $tmp_fh,
+         input           => substr(ucfirst($group_by), 0, 1),
       );
    }
 
    ReadKeyMini::cbreak();
+   my $run = 1;
    MAIN_LOOP:
-   while (1) {
-      if ( my $input = read_command_timeout($sel, $o->get('redisplay-interval') ) ) {
+   while ($run) {
+      my $redisplay_interval = $o->get('redisplay-interval');
+      if ( my $input = read_command_timeout($sel, $redisplay_interval ) ) {
          if ($actions{$input}) {
             my $ret = $actions{$input}->(
-                              select_obj => $sel,
-                              options    => \%opts,
-                              input      => $input,
-                              filehandle => $tmp_fh,
+                              select_obj   => $sel,
+                              OptionParser => $o,
+                              input        => $input,
+                              filehandle   => $tmp_fh,
                            ) || '';
             last MAIN_LOOP if $ret eq 'last';
          }
       }
-      # As a possible source of confusion, note that this calls the group_by
-      # _method_ in DiskstatsGroupBySomething, not the group_by _function_
-      # defined below.
-      $opts{current_group_by_obj}->group_by( filehandle => $tmp_fh ) || 0;
+      $o->get("current_group_by_obj")
+        ->group_by( filehandle => $tmp_fh );
 
       if ( eof $tmp_fh ) {
-         # This one comes from IO::Handle. I clears the eof flag
-         # from a filehandle, so we can try reading from it again.
          $tmp_fh->clearerr;
       }
-      # If we are gathering samples (don't have a filename), and
-      # we have a sample limit (set by --iterations), the child
-      # process just calls it quits once it gathers enough samples.
-      # When that happens, we are also done.
       if ( !$args{filename} && $o->get('iterations')
-            && !kill(0, $child_pid) ) {
-         waitpid $child_pid, 0;
-         last MAIN_LOOP;
+            && waitpid($child_pid, WNOHANG) != 0 ) {
+         $run = 0;
       }
    }
    ReadKeyMini::cooked();
 
-   if ( !$args{filename} && kill 0, $child_pid ) {
+   if ( !$args{filename} && !defined $o->get('iterations')
+            && kill 0, $child_pid ) {
       $child_fh->printflush("End\n");
       waitpid $child_pid, 0;
    }
@@ -3003,16 +2933,16 @@ sub read_command_timeout {
 }
 
 sub gather_samples {
-   my (%opts)  = @_;
+   my (%args)  = @_;
    my $samples = 0;
 
    STDIN->blocking(0);
    my $sel      = IO::Select->new(\*STDIN);
-   my $filename = $opts{filename};
+   my $filename = $args{filename};
 
    GATHER_DATA:
-   while ( $opts{gather_while}->() ) {
-      if ( read_command_timeout( $sel, $opts{sampling_interval} ) ) {
+   while ( $args{gather_while}->() ) {
+      if ( read_command_timeout( $sel, $args{sampling_interval} ) ) {
          last GATHER_DATA;
       }
       open my $fh, ">>", $filename or die $OS_ERROR;
@@ -3022,15 +2952,13 @@ sub gather_samples {
       my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
 
-      # Lovely little method from IO::Handle: turns on autoflush,
-      # prints, and then restores the original autoflush state.
       $fh->printflush(@to_print);
       close $diskstats_fh or die $OS_ERROR;
       close $fh or die $OS_ERROR;
 
       $samples++;
-      if ( defined($opts{samples_to_gather})
-            && $samples >= $opts{samples_to_gather} ) {
+      if ( defined($args{samples_to_gather})
+            && $samples >= $args{samples_to_gather} ) {
          last GATHER_DATA;
       }
    }
@@ -3040,59 +2968,55 @@ sub gather_samples {
 sub group_by {
    my (%args)  = @_;
 
-   my @required_args = qw( options input );
+   my @required_args = qw( OptionParser input );
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($options, $input) = @args{@required_args};
+   my ($o, $input) = @args{@required_args};
 
-   if ( ref( $args{options}->{current_group_by_obj} ) ne $input_to_object{$input} ) {
-      # Particularly important! Otherwise we would depend on the
-      # object's ->new being smart about discarding unrecognized
-      # values.
-      delete $args{options}->{current_group_by_obj};
-      # This would fail on a stricter constructor, so it probably
-      # needs fixing.
-      $args{options}->{current_group_by_obj} = $input_to_object{$input}->new(
-                                 %{$args{options}}
-                              );
+   if ( ref( $o->get("current_group_by_obj") ) ne $input_to_object{$input} ) {
+      $o->set("current_group_by_obj", undef);
+      $o->set("current_group_by_obj",
+               $input_to_object{$input}->new(
+                                 OptionParser => $o,
+                                 interactive  => 1,
+                              )
+             );
    }
    seek $args{filehandle}, 0, 0;
 
-   # Just aliasing this for a bit.
-   for my $obj ( $args{options}->{current_group_by_obj} ) {
+   for my $obj ( $o->get("current_group_by_obj") ) {
       if ( $obj->isa("DiskstatsGroupBySample") ) {
-         $obj->interactive(1);
+         $obj->set_interactive(1);
       }
       else {
-         $obj->interactive(0);
+         $obj->set_interactive(0);
       }
+
+      my $print_header;
+      my $header_callback = $args{header_callback} || sub {
+                              my ($self, @args) = @_;
+                              $self->print_header(@args) unless $print_header++
+                           };
+
       $obj->group_by(
-               filehandle => $args{filehandle},
-               # Only print the header once, as if in interactive.
-               header_callback => $args{header_callback} || sub {
-                     my $print_header;
-                     return sub {
-                        unless ($print_header++) {
-                           shift->print_header(@_)
-                        }
-                     };
-                  }->(),
-               );
-      $obj->interactive(1);
+               filehandle      => $args{filehandle},
+               header_callback => $header_callback,
+            );
+      $obj->set_interactive(1);
       $obj->{_print_header} = 0;
    }
 }
 
 sub help {
    my (%args)      = @_;
-   my $obj         = $args{options}->{current_group_by_obj};
+   my $obj         = $args{OptionParser}->get("current_group_by_obj");
    my $mode        = substr ref($obj), 16, 1;
-   my $column_re   = $args{options}->{OptionParser}->get('columns');
-   my $device_re   = $args{options}->{OptionParser}->get('devices');
+   my $column_re   = $args{OptionParser}->get('columns');
+   my $device_re   = $args{OptionParser}->get('devices');
    my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{options}->{OptionParser}->get('redisplay-interval');
-   my $inact_disk  = $obj->filter_zeroed_rows() ? 'yes' : 'no';
+   my $disp_int    = $args{OptionParser}->get('redisplay-interval');
+   my $inact_disk  = $obj->zero_rows() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
@@ -3119,7 +3043,8 @@ sub file_to_use {
    my ( $filename ) = @_;
 
    if ( !$filename ) {
-      PTDEBUG && _d('No explicit filename passed in, trying to get one from mktemp');
+      PTDEBUG && _d('No explicit filename passed in,',
+                    'trying to get one from mktemp');
       chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
    }
 
@@ -3129,7 +3054,8 @@ sub file_to_use {
       return $fh, $filename;
    }
    else {
-      PTDEBUG && _d("mktemp didn't return a filename, trying to use File::Temp");
+      PTDEBUG && _d("mktemp didn't return a filename,",
+                    "trying to use File::Temp");
       local $EVAL_ERROR;
       if ( !eval { require File::Temp } ) {
          die "Can't call mktemp nor load File::Temp.",
@@ -3162,12 +3088,14 @@ sub get_blocking_input {
 
 sub hide_inactive_disks {
    my (%args)  = @_;
-   my $new_val = get_blocking_input("Filter inactive rows? (Leave blank for 'No') ");
+   my $new_val = get_blocking_input(
+                  "Filter inactive rows? (Leave blank for 'No') "
+                 );
 
-   # Eeep. In OptionParser, "true" means show; in Diskstats, "true" means hide.
-   # Thus !$new_val for OptionParser
-   $args{options}->{OptionParser}->set('zero-rows', !$new_val);
-   $args{options}->{current_group_by_obj}->filter_zeroed_rows($new_val);
+   $args{OptionParser}->set('zero-rows', !$new_val);
+
+   $args{OptionParser}->get("current_group_by_obj")
+                      ->set_zero_rows(!$new_val);
 
    return;
 }
@@ -3177,15 +3105,17 @@ sub get_new_value_for {
    (my $looking_for_o = $looking_for) =~ tr/_/-/;
    return sub {
       my (%args)       = @_;
+      my $o            = $args{OptionParser};
       my $new_interval = get_blocking_input($message) || 0;
    
       die "Invalid timeout: $new_interval"
          unless looks_like_number($new_interval);
 
-      if ( $args{options}->{current_group_by_obj}->can($looking_for) ) {
-         $args{options}->{current_group_by_obj}->$looking_for($new_interval);
+      my $obj = $o->get("current_group_by_obj");
+      if ( my $setter = $obj->can("set_$looking_for") ) {
+         $obj->$setter($new_interval);
       }
-      $args{options}->{OptionParser}->set($looking_for_o, $new_interval);
+      $o->set($looking_for_o, $new_interval);
       return $new_interval;
    };
 }
@@ -3193,22 +3123,23 @@ sub get_new_value_for {
 sub get_new_regex_for {
    my ($looking_for, $message) = @_;
    (my $looking_for_o = $looking_for) =~ s/_.*$/s/;
+   $looking_for = "set_$looking_for";
    return sub {
       my (%args)    = @_;
+      my $o         = $args{OptionParser};
       my $new_regex = get_blocking_input($message);
    
       local $EVAL_ERROR;
       if ( $new_regex && (my $re = eval { qr/$new_regex/i }) ) {
-         $args{options}->{current_group_by_obj}->$looking_for( $re );
-         $args{options}->{OptionParser}->set($looking_for_o, $new_regex);
+         $o->get("current_group_by_obj")
+           ->$looking_for( $re );
+
+         $o->set($looking_for_o, $new_regex);
       }
       elsif ( !$EVAL_ERROR && !$new_regex ) {
-         # This might seem weird, but an empty pattern is
-         # somewhat magical, and basically just asking for trouble.
-         # Instead we give them what awk would, a pattern that always
-         # matches.
-         $args{options}->{current_group_by_obj}->$looking_for( qr/(?=)/ );
-         $args{options}->{OptionParser}->set($looking_for_o, '');
+         $o->get("current_group_by_obj")
+           ->$looking_for( qr/.+/ );
+         $o->set($looking_for_o, '');
       }
       else {
          die "invalid regex specification: $EVAL_ERROR";
@@ -3229,8 +3160,6 @@ sub pause {
 my $got_highres = eval { require Time::HiRes };
 sub timestamp {
    if ( $got_highres ) {
-      # Can do everything in Perl
-      # TS timestamp.nanoseconds ISO8601-timestamp
       PTDEBUG && _d('Timestamp', "Using the pure Perl version");
       my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
       return sprintf( "TS %d.%d %s\n", $seconds,
@@ -3269,17 +3198,15 @@ package pt_diskstats;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use DiskstatsMenu;
-use OptionParser;
-
-# This gives us a nice little backtrace should an exception happen while
-# debugging is enabled.
-local $SIG{__DIE__} = sub {
-   require Carp;
-   Carp::confess(@_) unless $^S; # This is $EXCEPTIONS_BEING_CAUGHT
-} if MKDEBUG;
+# Dump backtrace on exception if debugging is enabled.
+if ( PTDEBUG ) {
+   local $SIG{__DIE__} = sub {
+      require Carp;
+      Carp::confess(@_) unless $EXCEPTIONS_BEING_CAUGHT;
+   };
+}
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -3287,20 +3214,29 @@ sub main {
    # ########################################################################
    # Get configuration information.
    # ########################################################################
-   my $o = new OptionParser file => __FILE__;
+   my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
 
+   if ( !$o->get('help') ) {
+      if ( !$o->get('columns') ) {
+         $o->save_error("A regex pattern for --devices must be specified");
+      }
+
+      if ( !$o->get('devices') ) {
+         $o->save_error("A regex pattern for --devices must be specified");
+      }
+   }
+
    $o->usage_or_errors();
 
-   my $diskstats = new DiskstatsMenu;
-
    # Interactive mode. Delegate to DiskstatsMenu::run_interactive
-   return $diskstats->run_interactive( OptionParser => $o, filename => $ARGV[0] );
+   my $diskstats = new DiskstatsMenu();
+   return $diskstats->run_interactive(
+      OptionParser => $o,
+      filename => $ARGV[0]
+   );
 }
-
-# Somewhat important if STDOUT is tied to a terminal.
-END { close STDOUT or die "Couldn't close stdout: $OS_ERROR" }
 
 # ############################################################################
 # Run the program.
