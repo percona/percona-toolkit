@@ -215,7 +215,7 @@ $obj->set_column_regex(qr/./);
 is(
    $header,
    q{%5s %-10s busy},
-   ""
+   "Header"
 );
 
 ($header, $rows, $cols) = $obj->design_print_formats(
@@ -226,7 +226,7 @@ is(
 is(
    $header,
    $all_columns_format,
-   ""
+   "All columns format"
 );
 
 throws_ok( sub { $obj->design_print_formats( columns => {} ) },
@@ -335,10 +335,10 @@ my $output = output(
    stderr => 1,
 );
 
-like(
+is(
    $output,
-   qr/isn't in the diskstats format/,
-   "->parse_from and friends fail on malformed data"
+   "",
+   "Doesn't die parsing unknown line"
 );
 
 # ############################################################################

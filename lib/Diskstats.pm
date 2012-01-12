@@ -461,10 +461,7 @@ sub parse_diskstats_line {
 
    # Since we assume that device names can't have spaces.
    my @dev_stats = split ' ', $line;
-   if ( @dev_stats != 14 ) {
-      PTDEBUG && _d("Ignoring short diskstats line:", $line);
-      return;
-   }
+   return unless @dev_stats == 14;
 
    my $read_bytes    = $dev_stats[READ_SECTORS]    * $block_size;
    my $written_bytes = $dev_stats[WRITTEN_SECTORS] * $block_size;
@@ -567,7 +564,8 @@ sub _parse_and_load_diskstats {
          $new_cur->{$dev} = $dev_stats;
          $self->add_ordered_dev($dev);
       }
-      elsif ( my ($new_ts) = $line =~ /TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
+      elsif ( my ($new_ts) = $line =~ /^TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
+         PTDEBUG && _d("Timestamp:", $line);
          if ( $current_ts && %$new_cur ) {
             $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
             $new_cur = {};
@@ -575,8 +573,7 @@ sub _parse_and_load_diskstats {
          $current_ts = $new_ts;
       }
       else {
-         chomp($line);
-         warn "Line $INPUT_LINE_NUMBER: [$line] isn't in the diskstats format";
+         PTDEBUG && _d("Ignoring unknown diskstats line:", $line);
       }
    }
 
@@ -584,7 +581,7 @@ sub _parse_and_load_diskstats {
       $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
       $new_cur = {};
    }
-   # Seems like this could be useful.
+
    return $INPUT_LINE_NUMBER;
 }
 
