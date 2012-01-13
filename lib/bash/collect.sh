@@ -37,8 +37,8 @@ CMD_TCPDUMP=${CMD_TCPDUMP:-"tcpdump"}
 CMD_VMSTAT=${CMD_VMSTAT:-"vmstat"}
 
 collect() {
-   local d=$1  # directory to save results in
-   local p=$2  # prefix for each result file
+   local d="$1"  # directory to save results in
+   local p="$2"  # prefix for each result file
 
    # Get pidof mysqld; pidof doesn't exist on some systems.  We try our best...
    local mysqld_pid=$(pidof -s mysqld);
@@ -50,7 +50,7 @@ collect() {
    fi
 
    # Get memory allocation info before anything else.
-   if [ -x "$CMD_PMAP" -a "$mysqld_pid" ]; then
+   if [ "$mysqld_pid" ]; then
       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
          $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
       else
@@ -160,7 +160,7 @@ collect() {
 
    local have_lock_waits_table=0
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
-      | grep -qi "INNODB_LOCK_WAITS"
+      | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       have_lock_waits_table=1
    fi

@@ -24,10 +24,10 @@
 set -u
 
 disk_space() {
-   local filesystem=${1:-"$PWD"}
+   local filesystem="${1:-$PWD}"
    # Filesystem   1024-blocks     Used Available Capacity  Mounted on
    # /dev/disk0s2   118153176 94409664  23487512    81%    /
-   df -P -k $filesystem
+   df -P -k "$filesystem"
 }
 
 # Sub: check_disk_space
@@ -44,18 +44,18 @@ disk_space() {
 # Returns:
 #   0 if there is/will be enough disk space, else 1.
 check_disk_space() {
-   local file=$1
-   local mb=${2:-"0"}
-   local pc=${3:-"0"}
-   local mb_margin=${4:-"0"}
+   local file="$1"
+   local mb="${2:-0}"
+   local pc="${3:-0}"
+   local mb_margin="${4:-0}"
 
    # Convert MB to KB because the df output should be in 1k blocks.
    local kb=$(($mb * 1024))
    local kb_margin=$(($mb_margin * 1024))
 
-   local kb_used=$(cat $file | awk '/^\//{print $3}');
-   local kb_free=$(cat $file | awk '/^\//{print $4}');
-   local pc_used=$(cat $file | awk '/^\//{print $5}' | sed -e 's/%//g');
+   local kb_used=$(cat "$file" | awk '/^\//{print $3}');
+   local kb_free=$(cat "$file" | awk '/^\//{print $4}');
+   local pc_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
 
    if [ "$kb_margin" -gt "0" ]; then
       local kb_total=$(($kb_used + $kb_free))
