@@ -60,6 +60,7 @@ my %actions = (
          pause(@_);
          return;
       },
+   ' ' => \&print_header,
    '?' => \&help,
 );
 
@@ -89,7 +90,8 @@ sub run_interactive {
    # Here's a big crux of the program. If we have a filename, we don't
    # need to fork and create a child, just read from it.
    if ( $filename = $args{filename} ) {
-      open $tmp_fh, "<", $filename or die "Cannot open $filename: $OS_ERROR";
+      open $tmp_fh, "<", $filename
+         or die "Cannot open $filename: $OS_ERROR";
    }
    else {
       ($tmp_fh, $filename) = file_to_use( $o->get('save-samples') );
@@ -220,14 +222,16 @@ sub gather_samples {
    my $sel      = IO::Select->new(\*STDIN);
    my $filename = $args{filename};
 
+   open my $fh, ">>", $filename
+      or die "Cannot open $filename for appending: $OS_ERROR";
+
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
       if ( read_command_timeout( $sel, $args{sampling_interval} ) ) {
          last GATHER_DATA;
       }
-      open my $fh, ">>", $filename or die $OS_ERROR;
       open my $diskstats_fh, "<", "/proc/diskstats"
-            or die $OS_ERROR;
+         or die "Cannot open /proc/diskstats: $OS_ERROR";
 
       my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
@@ -236,7 +240,6 @@ sub gather_samples {
       # prints, and then restores the original autoflush state.
       $fh->printflush(@to_print);
       close $diskstats_fh or die $OS_ERROR;
-      close $fh or die $OS_ERROR;
 
       $samples++;
       if ( defined($args{samples_to_gather})
@@ -244,7 +247,22 @@ sub gather_samples {
          last GATHER_DATA;
       }
    }
+   close $fh or die $OS_ERROR;
    return;
+}
+
+sub print_header {
+   my (%args) = @_;
+   my @required_args = qw( OptionParser );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($o) = @args{@required_args};
+
+   my $obj = $o->get("current_group_by_obj");
+   my ($header) = $obj->design_print_formats();
+   local $obj->{_print_header} = 1;
+   return $obj->print_header($header, "#ts", "device");
 }
 
 sub group_by {
@@ -301,11 +319,11 @@ sub help {
    my (%args)      = @_;
    my $obj         = $args{OptionParser}->get("current_group_by_obj");
    my $mode        = substr ref($obj), 16, 1;
-   my $column_re   = $args{OptionParser}->get('columns');
-   my $device_re   = $args{OptionParser}->get('devices');
+   my $column_re   = $args{OptionParser}->get('columns-regex');
+   my $device_re   = $args{OptionParser}->get('devices-regex');
    my $interval    = $obj->sample_time() || '(none)';
    my $disp_int    = $args{OptionParser}->get('redisplay-interval');
-   my $inact_disk  = $obj->zero_rows() ? 'no' : 'yes';
+   my $inact_disk  = $obj->show_inactive() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
@@ -381,10 +399,10 @@ sub hide_inactive_disks {
                   "Filter inactive rows? (Leave blank for 'No') "
                  );
 
-   $args{OptionParser}->set('zero-rows', !$new_val);
+   $args{OptionParser}->set('show-inactive', !$new_val);
 
    $args{OptionParser}->get("current_group_by_obj")
-                      ->set_zero_rows(!$new_val);
+                      ->set_show_inactive(!$new_val);
 
    return;
 }
@@ -411,7 +429,7 @@ sub get_new_value_for {
 
 sub get_new_regex_for {
    my ($looking_for, $message) = @_;
-   (my $looking_for_o = $looking_for) =~ s/_.*$/s/;
+   (my $looking_for_o = $looking_for) =~ tr/_/-/;
    $looking_for = "set_$looking_for";
    return sub {
       my (%args)    = @_;
@@ -426,12 +444,21 @@ sub get_new_regex_for {
          $o->set($looking_for_o, $new_regex);
       }
       elsif ( !$EVAL_ERROR && !$new_regex ) {
-         # This might seem weird, but an empty pattern is
-         # somewhat magical, and basically just asking for trouble.
-         # Instead we give them what awk would, a pattern that always
-         # matches.
+         my $re;
+         if ( $looking_for =~ /device/ ) {
+            # Special case code for device regexen. If they left the field
+            # blank, we return to the original, magical behavior:
+            $re = undef;
+         }
+         else {
+            # This might seem weird, but an empty pattern is
+            # somewhat magical, and basically just asking for trouble.
+            # Instead we give them what awk would, a pattern that always
+            # matches.
+            $re = qr/.+/;
+         }
          $o->get("current_group_by_obj")
-           ->$looking_for( qr/.+/ );
+           ->$looking_for( $re );
          $o->set($looking_for_o, '');
       }
       else {
@@ -451,18 +478,20 @@ sub pause {
 }
 
 my $got_highres = eval { require Time::HiRes };
+PTDEBUG && _d('Timestamp', $got_highres
+                           ? "Using the pure Perl version"
+                           : "Using the system's date command" );
+
 sub timestamp {
    if ( $got_highres ) {
       # Can do everything in Perl
       # TS timestamp.nanoseconds ISO8601-timestamp
-      PTDEBUG && _d('Timestamp', "Using the pure Perl version");
       my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
       return sprintf( "TS %d.%d %s\n", $seconds,
                        $microseconds*1000, Transformers::ts($seconds) );
    }
    else {
-      PTDEBUG && _d('Timestamp', "Using the system's date command");
-      `date +'TS %s.%N %F %T'`;
+      return `date +'TS %s.%N %F %T'`;
    }
 }
 

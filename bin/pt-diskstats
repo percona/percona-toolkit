@@ -1568,16 +1568,16 @@ sub new {
    }
    my ($o) = @args{@required_args};
 
-   my $columns = $o->get('columns');
-   my $devices = $o->get('devices');
+   my $columns = $o->get('columns-regex');
+   my $devices = $o->get('devices-regex');
 
    my $self = {
       filename           => '/proc/diskstats',
       block_size         => 512,
-      zero_rows          => $o->get('zero-rows'),
+      show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
       column_regex       => qr/$columns/,
-      device_regex       => qr/$devices/,
+      device_regex       => $devices ? qr/$devices/ : undef,
       interactive        => 0,
 
       %args,
@@ -1600,8 +1600,11 @@ sub new {
       ],
       _stats_for         => {},
       _ordered_devs      => [],
+      _active_devices    => {},
       _ts                => {},
       _first             => 1,
+      _first_time_magic  => 1,
+      _nochange_skips    => [],
 
       _save_curr_as_prev => 1,
       _print_header      => 1,
@@ -1641,14 +1644,14 @@ sub set_first_ts {
    $self->{_ts}->{first} = $val || 0;
 }
 
-sub zero_rows {
+sub show_inactive {
    my ($self) = @_;
-   return $self->{zero_rows};
+   return $self->{show_inactive};
 }
 
-sub set_zero_rows {
+sub set_show_inactive {
    my ($self, $new_val) = @_;
-   $self->{zero_rows} = $new_val;
+   $self->{show_inactive} = $new_val;
 }
 
 sub sample_time {
@@ -1692,9 +1695,7 @@ sub device_regex {
 
 sub set_device_regex {
    my ( $self, $new_re ) = @_;
-   if ($new_re) {
-      return $self->{device_regex} = $new_re;
-   }
+   return $self->{device_regex} = $new_re;
 }
 
 sub filename {
@@ -1857,11 +1858,6 @@ sub col_ok {
    my ( $self, $column ) = @_;
    my $regex = $self->column_regex();
    return ($column =~ $regex) || (trim($column) =~ $regex);
-}
-
-sub dev_ok {
-   my ( $self, $device ) = @_;
-   return $device =~ $self->{device_regex};
 }
 
 our @columns_in_order = (
@@ -2159,6 +2155,33 @@ sub _calc_delta_for {
    return \%deltas;
 }
 
+sub _print_device_if {
+
+   my ($self, $dev ) = @_;
+   my $dev_re = $self->device_regex();
+
+   if ( $dev_re ) {
+      return $dev if $dev =~ $dev_re;
+   }
+   else {
+      return $dev if $self->{_first_time_magic}; # First time around
+   
+      if ( $self->show_inactive() || $self->active_device($dev) ) {
+         return $dev;
+      }
+      else {
+         my $curr  = $self->stats_for($dev);
+         my $first = $self->first_stats_for($dev);
+         if ( first { $curr->[$_] != $first->[$_] } READS..MS_WEIGHTED ) {
+            $self->set_active_device($dev, 1);
+            return $dev;
+         }
+      }
+   }
+   push @{$self->{_nochange_skips}}, $dev;
+   return;
+}
+
 sub _calc_stats_for_deltas {
    my ( $self, $elapsed ) = @_;
    my @end_stats;
@@ -2166,10 +2189,11 @@ sub _calc_stats_for_deltas {
 
    my $devs_in_group = $self->compute_devs_in_group();
 
-   foreach my $dev ( grep { $self->dev_ok($_) } @devices ) {
+   foreach my $dev ( grep { $self->_print_device_if($_) } @devices ) {
       my $curr    = $self->stats_for($dev);
-      next unless $curr;
       my $against = $self->delta_against($dev);
+
+      next unless $curr && $against;
 
       my $delta_for       = $self->_calc_delta_for( $curr, $against );
       my $in_progress     = $curr->[IOS_IN_PROGRESS];
@@ -2203,6 +2227,12 @@ sub _calc_stats_for_deltas {
 
       push @end_stats, \%stats;
    }
+   $self->{_first_time_magic} = undef;
+   if ( @{$self->{_nochange_skips}} ) {
+      my $devs = join ", ", @{$self->{_nochange_skips}};
+      PTDEBUG && _d("Skipping [$devs], haven't changed from the first sample");
+      $self->{_nochange_skips} = [];
+   }
    return @end_stats;
 }
 
@@ -2222,13 +2252,24 @@ sub print_header {
    }
 }
 
+sub active_device {
+   my ( $self, $dev ) = @_;
+   return $self->{_active_devices}->{$dev};
+}
+
+sub set_active_device {
+   my ($self, $dev, $val) = @_;
+   return $self->{_active_devices}->{$dev} = $val;
+}
+
+sub clear_active_devices {
+   my ( $self ) = @_;
+   return $self->{_active_devices} = {};
+}
+
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
-   if ( ! $self->zero_rows() ) {
-      return unless grep {
-            sprintf("%7.1f", $_) != 0
-         } @{ $stat }{ @$cols };
-   }
+
    printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
 }
 
@@ -2573,7 +2614,7 @@ package DiskstatsGroupBySample;
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 
@@ -2667,7 +2708,7 @@ sub compute_devs_in_group {
    my $stats  = $self->stats_for();
    my $re     = $self->device_regex();
    return scalar grep {
-            $stats->{$_} && $_ =~ $re
+            $stats->{$_} && $self->_print_device_if($_)
          } $self->ordered_devs;
 }
 
@@ -2684,9 +2725,11 @@ sub _calc_stats_for_deltas {
 
    my $delta_for;
 
-   foreach my $dev ( grep { $self->dev_ok($_) } $self->ordered_devs ) {
+   foreach my $dev ( grep { $self->_print_device_if($_) } $self->ordered_devs() ) {
       my $curr    = $self->stats_for($dev);
       my $against = $self->delta_against($dev);
+
+      next unless $curr && $against;
 
       my $delta = $self->_calc_delta_for( $curr, $against );
       $delta->{ios_in_progress} = $curr->[Diskstats::IOS_IN_PROGRESS];
@@ -2724,6 +2767,13 @@ sub _calc_stats_for_deltas {
    @stats{ keys %extras } = values %extras;
 
    $stats{dev} = $self->compute_dev( $devs_in_group );
+
+   $self->{_first_time_magic} = undef;
+   if ( @{$self->{_nochange_skips}} ) {
+      my $devs = join ", ", @{$self->{_nochange_skips}};
+      PTDEBUG && _d("Skipping [$devs], haven't changed from the first sample");
+      $self->{_nochange_skips} = [];
+   }
 
    return \%stats;
 }
@@ -2799,6 +2849,7 @@ my %actions = (
          pause(@_);
          return;
       },
+   ' ' => \&print_header,
    '?' => \&help,
 );
 
@@ -2825,7 +2876,8 @@ sub run_interactive {
    my ($tmp_fh, $filename, $child_pid, $child_fh);
 
    if ( $filename = $args{filename} ) {
-      open $tmp_fh, "<", $filename or die "Cannot open $filename: $OS_ERROR";
+      open $tmp_fh, "<", $filename
+         or die "Cannot open $filename: $OS_ERROR";
    }
    else {
       ($tmp_fh, $filename) = file_to_use( $o->get('save-samples') );
@@ -2938,21 +2990,22 @@ sub gather_samples {
    my $sel      = IO::Select->new(\*STDIN);
    my $filename = $args{filename};
 
+   open my $fh, ">>", $filename
+      or die "Cannot open $filename for appending: $OS_ERROR";
+
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
       if ( read_command_timeout( $sel, $args{sampling_interval} ) ) {
          last GATHER_DATA;
       }
-      open my $fh, ">>", $filename or die $OS_ERROR;
       open my $diskstats_fh, "<", "/proc/diskstats"
-            or die $OS_ERROR;
+         or die "Cannot open /proc/diskstats: $OS_ERROR";
 
       my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
 
       $fh->printflush(@to_print);
       close $diskstats_fh or die $OS_ERROR;
-      close $fh or die $OS_ERROR;
 
       $samples++;
       if ( defined($args{samples_to_gather})
@@ -2960,7 +3013,22 @@ sub gather_samples {
          last GATHER_DATA;
       }
    }
+   close $fh or die $OS_ERROR;
    return;
+}
+
+sub print_header {
+   my (%args) = @_;
+   my @required_args = qw( OptionParser );
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($o) = @args{@required_args};
+
+   my $obj = $o->get("current_group_by_obj");
+   my ($header) = $obj->design_print_formats();
+   local $obj->{_print_header} = 1;
+   return $obj->print_header($header, "#ts", "device");
 }
 
 sub group_by {
@@ -3010,11 +3078,11 @@ sub help {
    my (%args)      = @_;
    my $obj         = $args{OptionParser}->get("current_group_by_obj");
    my $mode        = substr ref($obj), 16, 1;
-   my $column_re   = $args{OptionParser}->get('columns');
-   my $device_re   = $args{OptionParser}->get('devices');
+   my $column_re   = $args{OptionParser}->get('columns-regex');
+   my $device_re   = $args{OptionParser}->get('devices-regex');
    my $interval    = $obj->sample_time() || '(none)';
    my $disp_int    = $args{OptionParser}->get('redisplay-interval');
-   my $inact_disk  = $obj->zero_rows() ? 'no' : 'yes';
+   my $inact_disk  = $obj->show_inactive() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
@@ -3090,10 +3158,10 @@ sub hide_inactive_disks {
                   "Filter inactive rows? (Leave blank for 'No') "
                  );
 
-   $args{OptionParser}->set('zero-rows', !$new_val);
+   $args{OptionParser}->set('show-inactive', !$new_val);
 
    $args{OptionParser}->get("current_group_by_obj")
-                      ->set_zero_rows(!$new_val);
+                      ->set_show_inactive(!$new_val);
 
    return;
 }
@@ -3120,7 +3188,7 @@ sub get_new_value_for {
 
 sub get_new_regex_for {
    my ($looking_for, $message) = @_;
-   (my $looking_for_o = $looking_for) =~ s/_.*$/s/;
+   (my $looking_for_o = $looking_for) =~ tr/_/-/;
    $looking_for = "set_$looking_for";
    return sub {
       my (%args)    = @_;
@@ -3135,8 +3203,15 @@ sub get_new_regex_for {
          $o->set($looking_for_o, $new_regex);
       }
       elsif ( !$EVAL_ERROR && !$new_regex ) {
+         my $re;
+         if ( $looking_for =~ /device/ ) {
+            $re = undef;
+         }
+         else {
+            $re = qr/.+/;
+         }
          $o->get("current_group_by_obj")
-           ->$looking_for( qr/.+/ );
+           ->$looking_for( $re );
          $o->set($looking_for_o, '');
       }
       else {
@@ -3156,16 +3231,18 @@ sub pause {
 }
 
 my $got_highres = eval { require Time::HiRes };
+PTDEBUG && _d('Timestamp', $got_highres
+                           ? "Using the pure Perl version"
+                           : "Using the system's date command" );
+
 sub timestamp {
    if ( $got_highres ) {
-      PTDEBUG && _d('Timestamp', "Using the pure Perl version");
       my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
       return sprintf( "TS %d.%d %s\n", $seconds,
                        $microseconds*1000, Transformers::ts($seconds) );
    }
    else {
-      PTDEBUG && _d('Timestamp', "Using the system's date command");
-      `date +'TS %s.%N %F %T'`;
+      return `date +'TS %s.%N %F %T'`;
    }
 }
 
@@ -3199,12 +3276,10 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Dump backtrace on exception if debugging is enabled.
-if ( PTDEBUG ) {
-   local $SIG{__DIE__} = sub {
-      require Carp;
-      Carp::confess(@_) unless $EXCEPTIONS_BEING_CAUGHT;
-   };
-}
+local $SIG{__DIE__} = sub {
+   require Carp;
+   Carp::confess(@_) unless $EXCEPTIONS_BEING_CAUGHT;
+} if PTDEBUG;
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -3217,17 +3292,13 @@ sub main {
    $o->get_opts();
 
    # --sample-time only applies to --group-by sample.
-   if ( $o->get('group-by') !~ m/sample/i ) {
-      $o->set('sample-time', undef);
+   if ( PTDEBUG && $o->get('group-by') !~ m/sample/i ) {
+      _d("Possibly useless use of --sample-time without --group-by sample");
    }
 
    if ( !$o->get('help') ) {
-      if ( !$o->get('columns') ) {
-         $o->save_error("A regex pattern for --devices must be specified");
-      }
-
-      if ( !$o->get('devices') ) {
-         $o->save_error("A regex pattern for --devices must be specified");
+      if ( !$o->get('columns-regex') ) {
+         $o->save_error("A regex pattern for --column-regex must be specified");
       }
    }
 
@@ -3237,8 +3308,16 @@ sub main {
    my $diskstats = new DiskstatsMenu();
    return $diskstats->run_interactive(
       OptionParser => $o,
-      filename => $ARGV[0]
+      filename     => $ARGV[0]
    );
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 # ############################################################################
@@ -3422,15 +3501,15 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --columns
+=item --columns-regex
 
 type: string; default: cnc|rt|busy|prg|time|io_s
 
 Perl regex of which columns to include.
 
-=item --devices
+=item --devices-regex
 
-type: string; default: .+
+type: string
 
 Perl regex of which devices to include.
 
@@ -3474,14 +3553,9 @@ type: int; default: 1
 
 Sample /proc/diskstats every N seconds.
 
-=item --zero-rows
+=item --show-inactive
 
-Show rows with all zero values.
-
-=item --memory-for-speed
-
-EXPERIMENTAL! Trades memory for speed, by storing more things in memory.
-What it stores, and how, may all be subject to change.
+Show inactive devices.
 
 =item --help
 

@@ -70,17 +70,17 @@ sub new {
    my ($o) = @args{@required_args};
 
    # Regex patterns.
-   my $columns = $o->get('columns');
-   my $devices = $o->get('devices');
+   my $columns = $o->get('columns-regex');
+   my $devices = $o->get('devices-regex');
 
    my $self = {
       # Defaults
       filename           => '/proc/diskstats',
       block_size         => 512,
-      zero_rows          => $o->get('zero-rows'),
+      show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
       column_regex       => qr/$columns/,
-      device_regex       => qr/$devices/,
+      device_regex       => $devices ? qr/$devices/ : undef,
       interactive        => 0,
 
       %args,
@@ -103,8 +103,11 @@ sub new {
       ],
       _stats_for         => {},
       _ordered_devs      => [],
+      _active_devices    => {},
       _ts                => {},
       _first             => 1,
+      _first_time_magic  => 1,
+      _nochange_skips    => [],
 
       # Internal for now, but might need APIfying.
       _save_curr_as_prev => 1,
@@ -146,14 +149,14 @@ sub set_first_ts {
    $self->{_ts}->{first} = $val || 0;
 }
 
-sub zero_rows {
+sub show_inactive {
    my ($self) = @_;
-   return $self->{zero_rows};
+   return $self->{show_inactive};
 }
 
-sub set_zero_rows {
+sub set_show_inactive {
    my ($self, $new_val) = @_;
-   $self->{zero_rows} = $new_val;
+   $self->{show_inactive} = $new_val;
 }
 
 sub sample_time {
@@ -197,9 +200,7 @@ sub device_regex {
 
 sub set_device_regex {
    my ( $self, $new_re ) = @_;
-   if ($new_re) {
-      return $self->{device_regex} = $new_re;
-   }
+   return $self->{device_regex} = $new_re;
 }
 
 sub filename {
@@ -367,11 +368,6 @@ sub col_ok {
    my ( $self, $column ) = @_;
    my $regex = $self->column_regex();
    return ($column =~ $regex) || (trim($column) =~ $regex);
-}
-
-sub dev_ok {
-   my ( $self, $device ) = @_;
-   return $device =~ $self->{device_regex};
 }
 
 our @columns_in_order = (
@@ -728,6 +724,49 @@ sub _calc_delta_for {
    return \%deltas;
 }
 
+sub _print_device_if {
+   # This method decides whenever a device should be printed.
+   # As per Baron's mail, it tries this:
+   # * Print all devices specified by --devices-regex, regardless
+   #   of whether they've changed
+   # Otherwise,
+   # * Print all devices when --show-inactive is given
+   # Otherwise,
+   # * Print all devices whose line in /proc/diskstats is different
+   #   from the first-ever observed sample
+
+   my ($self, $dev ) = @_;
+   my $dev_re = $self->device_regex();
+
+   if ( $dev_re ) {
+      # device_regex was set explicitly, either through --devices-regex,
+      # or by using the d option in interactive mode, and not leaving
+      # it blank
+      return $dev if $dev =~ $dev_re;
+   }
+   else {
+      return $dev if $self->{_first_time_magic}; # First time around
+   
+      if ( $self->show_inactive() || $self->active_device($dev) ) {
+         # If --show-interactive is enabled, or we've seen
+         # the device be active at least once.
+         return $dev;
+      }
+      else {
+         my $curr  = $self->stats_for($dev);
+         my $first = $self->first_stats_for($dev);
+         if ( first { $curr->[$_] != $first->[$_] } READS..MS_WEIGHTED ) {
+            # It's different from the first one. Mark as active and return.
+            $self->set_active_device($dev, 1);
+            return $dev;
+         }
+      }
+   }
+   # Not active, add it to the list of skips for debugging.
+   push @{$self->{_nochange_skips}}, $dev;
+   return;
+}
+
 sub _calc_stats_for_deltas {
    my ( $self, $elapsed ) = @_;
    my @end_stats;
@@ -736,10 +775,11 @@ sub _calc_stats_for_deltas {
    my $devs_in_group = $self->compute_devs_in_group();
 
    # Read "For each device that passes the dev_ok regex, and we have stats for"
-   foreach my $dev ( grep { $self->dev_ok($_) } @devices ) {
+   foreach my $dev ( grep { $self->_print_device_if($_) } @devices ) {
       my $curr    = $self->stats_for($dev);
-      next unless $curr;
       my $against = $self->delta_against($dev);
+
+      next unless $curr && $against;
 
       my $delta_for       = $self->_calc_delta_for( $curr, $against );
       my $in_progress     = $curr->[IOS_IN_PROGRESS];
@@ -774,6 +814,12 @@ sub _calc_stats_for_deltas {
 
       push @end_stats, \%stats;
    }
+   $self->{_first_time_magic} = undef;
+   if ( @{$self->{_nochange_skips}} ) {
+      my $devs = join ", ", @{$self->{_nochange_skips}};
+      PTDEBUG && _d("Skipping [$devs], haven't changed from the first sample");
+      $self->{_nochange_skips} = [];
+   }
    return @end_stats;
 }
 
@@ -793,20 +839,24 @@ sub print_header {
    }
 }
 
+sub active_device {
+   my ( $self, $dev ) = @_;
+   return $self->{_active_devices}->{$dev};
+}
+
+sub set_active_device {
+   my ($self, $dev, $val) = @_;
+   return $self->{_active_devices}->{$dev} = $val;
+}
+
+sub clear_active_devices {
+   my ( $self ) = @_;
+   return $self->{_active_devices} = {};
+}
+
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
-   if ( ! $self->zero_rows() ) {
-      # Conundrum: What is "zero"?
-      # Is 0.000001 zero? How about 0.1?
-      # Here the answer is "it looks like zero after formatting";
-      # unfortunately, we lack the formats at this point. We could
-      # fetch them again, but that's a pain, so instead we use
-      # %7.1f, which is what most of them are anyway, and should
-      # work for nearly all cases.
-      return unless grep {
-            sprintf("%7.1f", $_) != 0
-         } @{ $stat }{ @$cols };
-   }
+
    printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
 }
 

@@ -26,7 +26,7 @@ package DiskstatsGroupBySample;
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 
@@ -132,7 +132,7 @@ sub compute_devs_in_group {
    my $re     = $self->device_regex();
    return scalar grep {
             # Got stats for that device, and it matches the devices re
-            $stats->{$_} && $_ =~ $re
+            $stats->{$_} && $self->_print_device_if($_)
          } $self->ordered_devs;
 }
 
@@ -150,9 +150,11 @@ sub _calc_stats_for_deltas {
 
    my $delta_for;
 
-   foreach my $dev ( grep { $self->dev_ok($_) } $self->ordered_devs ) {
+   foreach my $dev ( grep { $self->_print_device_if($_) } $self->ordered_devs() ) {
       my $curr    = $self->stats_for($dev);
       my $against = $self->delta_against($dev);
+
+      next unless $curr && $against;
 
       my $delta = $self->_calc_delta_for( $curr, $against );
       $delta->{ios_in_progress} = $curr->[Diskstats::IOS_IN_PROGRESS];
@@ -190,6 +192,13 @@ sub _calc_stats_for_deltas {
    @stats{ keys %extras } = values %extras;
 
    $stats{dev} = $self->compute_dev( $devs_in_group );
+
+   $self->{_first_time_magic} = undef;
+   if ( @{$self->{_nochange_skips}} ) {
+      my $devs = join ", ", @{$self->{_nochange_skips}};
+      PTDEBUG && _d("Skipping [$devs], haven't changed from the first sample");
+      $self->{_nochange_skips} = [];
+   }
 
    return \%stats;
 }

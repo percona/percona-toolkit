@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 108;
+use Test::More tests => 107;
 
 use PerconaTest;
 
@@ -46,12 +46,12 @@ can_ok( $obj, qw(
 for my $attr (
       [ filename     => (File::Temp::tempfile($0.'diskstats.XXXXXX',
                                               OPEN=>0, UNLINK=>1))[1] ],
-      [ column_regex => qr/!!!/  ],
-      [ device_regex => qr/!!!/  ],
-      [ block_size   => 215      ],
-      [ zero_rows    => 1        ],
-      [ sample_time  => 1        ],
-      [ interactive  => 1        ],
+      [ column_regex  => qr/!!!/  ],
+      [ device_regex  => qr/!!!/  ],
+      [ block_size    => 215      ],
+      [ show_inactive => 1        ],
+      [ sample_time   => 1        ],
+      [ interactive   => 1        ],
    ) {
    my $attribute   = $attr->[0];
    my $value       = $attr->[1];
@@ -87,9 +87,7 @@ for my $test (
          6869437,     # ms_spent_doing_io
          20744582,    # ms_weighted
       
-         19129073152, # read_bytes
          18680735.5,  # read_kbs
-         415436974080,#written_bytes
          405700170,   # written_kbs
          20139567,    # ios_requested
          434566047232,# ios_in_bytes
@@ -101,8 +99,7 @@ for my $test (
       [
           '8', '33', 'sdc1', 1572537676, '2369344', 3687151364,
           '1575056414', 2541895139, '1708184481', 3991989096,
-          '121136333', '1', '982122453', '1798311795',
-          '1887821498368', '1843575682', '2043898417152',
+          '121136333', '1', '982122453', '1798311795', '1843575682',
           '1995994548', 4114432815, '3931719915520'
       ],
       "parse_diskstats_line works"
@@ -113,7 +110,7 @@ for my $test (
           '8', '33', 'sdc1', 1572537676, '2369344', 3687151364,
           '1575056414', 2541895139, '1708184481', 3991989096,
           '121136333', '1', '982122453', '1798311795',
-          '1887821498368', '1843575682', '2043898417152',
+          '1843575682',
           '1995994548', 4114432815, '3931719915520'
       ],
       "parse_diskstats_line ignores a trailing newline"
@@ -285,25 +282,28 @@ is_deeply(
 );
 
 # ############################################################################
-# zero_rows -- That is, whenever it prints inactive devices.
+# show_inactive -- Whenever it prints inactive devices.
 # ############################################################################
-$obj->set_zero_rows(0);
-my $print_output = output(
-   sub {
-      $obj->print_rows(
-            "SHOULDN'T PRINT THIS",
-            [ qw( a b c ) ],
-            { a => 0, b => 0, c => 0, d => 10 }
-         );
-   }
-);
-$obj->set_zero_rows(1);
-
-is(
-   $print_output,
-   "",
-   "->zero_rows works"
-);
+##
+## show_inactive now functions inside parse_from
+##
+#$obj->set_show_inactive(0);
+#my $print_output = output(
+#   sub {
+#      $obj->print_rows(
+#            "SHOULDN'T PRINT THIS",
+#            [ qw( a b c ) ],
+#            { a => 0, b => 0, c => 0, d => 10 }
+#         );
+#   }
+#);
+#$obj->set_show_inactive(1);
+#
+#is(
+#   $print_output,
+#   "",
+#   "->show_inactive works"
+#);
 
 # ############################################################################
 # Sane defaults and fatal errors
@@ -467,11 +467,11 @@ for my $test (
          class               => "DiskstatsGroupBySample",
          results_file_prefix => "sample",
       }) {
-   my $obj    = $test->{class}->new(OptionParser => $o, zero_rows => 1);
+   my $obj    = $test->{class}->new(OptionParser => $o, show_inactive => 1);
    my $prefix = $test->{results_file_prefix};
 
    $obj->set_column_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
-   $obj->set_zero_rows(1);
+   $obj->set_show_inactive(1);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
