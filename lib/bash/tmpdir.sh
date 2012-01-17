@@ -35,7 +35,7 @@ TMPDIR=""
 # Set Global Variables:
 #   TMPDIR - Absolute path of secure temp directory.
 mk_tmpdir() {
-   local dir=${1:-""}
+   local dir="${1:-""}"
 
    if [ -n "$dir" ]; then
       if [ ! -d "$dir" ]; then
@@ -60,7 +60,7 @@ mk_tmpdir() {
 #   TMPDIR - Set to "".
 rm_tmpdir() {
    if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf $TMPDIR
+      rm -rf "$TMPDIR"
    fi
    TMPDIR=""
 }
