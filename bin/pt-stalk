@@ -267,7 +267,7 @@ set -u
 TMPDIR=""
 
 mk_tmpdir() {
-   local dir=${1:-""}
+   local dir="${1:-""}"
 
    if [ -n "$dir" ]; then
       if [ ! -d "$dir" ]; then
@@ -284,7 +284,7 @@ mk_tmpdir() {
 
 rm_tmpdir() {
    if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf $TMPDIR
+      rm -rf "$TMPDIR"
    fi
    TMPDIR=""
 }
@@ -1176,7 +1176,7 @@ Print all output to this file when daemonized.
 
 type: string
 
-Match pattern for C<processles> L<"--function">.
+Match pattern for C<processlist> L<"--function">.
 
 =item --notify-by-email
 
