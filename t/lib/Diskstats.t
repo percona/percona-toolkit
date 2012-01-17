@@ -33,7 +33,7 @@ $o->get_opts();
 my $obj = new Diskstats(OptionParser => $o);
 
 can_ok( $obj, qw(
-                  column_regex device_regex filename
+                  columns_regex devices_regex filename
                   block_size ordered_devs clear_state clear_ordered_devs
                   stats_for prev_stats_for first_stats_for
                   has_stats design_print_formats parse_diskstats_line
@@ -46,8 +46,8 @@ can_ok( $obj, qw(
 for my $attr (
       [ filename     => (File::Temp::tempfile($0.'diskstats.XXXXXX',
                                               OPEN=>0, UNLINK=>1))[1] ],
-      [ column_regex  => qr/!!!/  ],
-      [ device_regex  => qr/!!!/  ],
+      [ columns_regex  => qr/!!!/  ],
+      [ devices_regex  => qr/!!!/  ],
       [ block_size    => 215      ],
       [ show_inactive => 1        ],
       [ sample_time   => 1        ],
@@ -159,7 +159,7 @@ like(
 
 my @columns_in_order = @Diskstats::columns_in_order;
 
-$obj->set_column_regex(qr/./);
+$obj->set_columns_regex(qr/./);
 my ($header, $rows, $cols) = $obj->design_print_formats();
 is_deeply(
    $cols,
@@ -168,15 +168,15 @@ is_deeply(
 );
 
                   # qr/ \A (?!.*io_s$|\s*[qs]time$) /x
-$obj->set_column_regex(qr/cnc|rt|busy|prg|[mk]b|[dr]_s|mrg/);
+$obj->set_columns_regex(qr/cnc|rt|busy|prg|[mk]b|[dr]_s|mrg/);
 ($header, $rows, $cols) = $obj->design_print_formats();
 is(
    $header,
-   join(" ", q{%5s %-6s}, grep { $_ =~ $obj->column_regex() } map { $_->[0] } @columns_in_order),
+   join(" ", q{%5s %-6s}, grep { $_ =~ $obj->columns_regex() } map { $_->[0] } @columns_in_order),
    "design_print_formats: sanity check for defaults"
 );
 
-$obj->set_column_regex(qr/./);
+$obj->set_columns_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(max_device_length => 10);
 my $all_columns_format = join(" ", q{%5s %-10s}, map { $_->[0] } @columns_in_order);
 is(
@@ -185,15 +185,15 @@ is(
    "design_print_formats: max_device_length works"
 );
 
-$obj->set_column_regex(qr/(?!)/); # Will never match
+$obj->set_columns_regex(qr/(?!)/); # Will never match
 ($header, $rows, $cols) = $obj->design_print_formats(max_device_length => 10);
 is(
    $header,
    q{%5s %-10s },
-   "design_print_formats respects column_regex"
+   "design_print_formats respects columns_regex"
 );
 
-$obj->set_column_regex(qr/./);
+$obj->set_columns_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(
                                     max_device_length => 10,
                                     columns           => []
@@ -204,7 +204,7 @@ is(
    "...unless we pass an explicit column array"
 );
 
-$obj->set_column_regex(qr/./);
+$obj->set_columns_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(
                                  max_device_length => 10,
                                  columns           => [qw( busy )]
@@ -470,7 +470,7 @@ for my $test (
    my $obj    = $test->{class}->new(OptionParser => $o, show_inactive => 1);
    my $prefix = $test->{results_file_prefix};
 
-   $obj->set_column_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
+   $obj->set_columns_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
    $obj->set_show_inactive(1);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {

@@ -1576,8 +1576,8 @@ sub new {
       block_size         => 512,
       show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
-      column_regex       => qr/$columns/,
-      device_regex       => $devices ? qr/$devices/ : undef,
+      columns_regex       => qr/$columns/,
+      devices_regex       => $devices ? qr/$devices/ : undef,
       interactive        => 0,
 
       %args,
@@ -1602,8 +1602,7 @@ sub new {
       _ordered_devs      => [],
       _active_devices    => {},
       _ts                => {},
-      _first             => 1,
-      _first_time_magic  => 1,
+      _first_stats_for   => {},
       _nochange_skips    => [],
 
       _save_curr_as_prev => 1,
@@ -1678,24 +1677,24 @@ sub set_interactive {
    }
 }
 
-sub column_regex {
+sub columns_regex {
    my ( $self ) = @_;
-   return $self->{column_regex};
+   return $self->{columns_regex};
 }
 
-sub set_column_regex {
+sub set_columns_regex {
    my ( $self, $new_re ) = @_;
-   return $self->{column_regex} = $new_re;
+   return $self->{columns_regex} = $new_re;
 }
 
-sub device_regex {
+sub devices_regex {
    my ( $self ) = @_;
-   return $self->{device_regex};
+   return $self->{devices_regex};
 }
 
-sub set_device_regex {
+sub set_devices_regex {
    my ( $self, $new_re ) = @_;
-   return $self->{device_regex} = $new_re;
+   return $self->{devices_regex} = $new_re;
 }
 
 sub filename {
@@ -1735,7 +1734,6 @@ sub add_ordered_dev {
 
 sub clear_state {
    my ($self) = @_;
-   $self->{_first} = 1;
    $self->{_print_header} = 1;
    $self->clear_curr_stats();
    $self->clear_prev_stats();
@@ -1838,7 +1836,7 @@ sub _save_curr_as_prev {
 sub _save_curr_as_first {
    my ($self, $curr) = @_;
 
-   if ( $self->{_first} ) {
+   if ( !%{$self->{_first_stats_for}} ) {
       $self->{_first_stats_for} = {
          map { $_ => [@{$curr->{$_}}] } keys %$curr
       };
@@ -1856,7 +1854,7 @@ sub trim {
 
 sub col_ok {
    my ( $self, $column ) = @_;
-   my $regex = $self->column_regex();
+   my $regex = $self->columns_regex();
    return ($column =~ $regex) || (trim($column) =~ $regex);
 }
 
@@ -1879,7 +1877,7 @@ our @columns_in_order = (
    [ "in_prg"  => "%6d",     "in_progress", ],
    [ "   io_s" => "%7.1f",   "s_spent_doing_io", ],
    [ " qtime"  => "%6.1f",   "qtime", ],
-   [ " stime"  => "%5.1f",   "stime", ],
+   [ "stime"   => "%5.1f",   "stime", ],
 );
 
 {
@@ -2158,14 +2156,12 @@ sub _calc_delta_for {
 sub _print_device_if {
 
    my ($self, $dev ) = @_;
-   my $dev_re = $self->device_regex();
+   my $dev_re = $self->devices_regex();
 
    if ( $dev_re ) {
       return $dev if $dev =~ $dev_re;
    }
-   else {
-      return $dev if $self->{_first_time_magic}; # First time around
-   
+   else {   
       if ( $self->show_inactive() || $self->active_device($dev) ) {
          return $dev;
       }
@@ -2227,7 +2223,6 @@ sub _calc_stats_for_deltas {
 
       push @end_stats, \%stats;
    }
-   $self->{_first_time_magic} = undef;
    if ( @{$self->{_nochange_skips}} ) {
       my $devs = join ", ", @{$self->{_nochange_skips}};
       PTDEBUG && _d("Skipping [$devs], haven't changed from the first sample");
@@ -2706,7 +2701,6 @@ sub clear_state {
 sub compute_devs_in_group {
    my ($self) = @_;
    my $stats  = $self->stats_for();
-   my $re     = $self->device_regex();
    return scalar grep {
             $stats->{$_} && $self->_print_device_if($_)
          } $self->ordered_devs;
@@ -2737,6 +2731,8 @@ sub _calc_stats_for_deltas {
          $delta_for->{$k} += $v;
       }
    }
+
+   return unless $delta_for && %{$delta_for};
 
    my $in_progress     = $delta_for->{ios_in_progress};
    my $tot_in_progress = 0;
@@ -2831,26 +2827,27 @@ require DiskstatsGroupByDisk;
 require DiskstatsGroupBySample;
 
 my %actions = (
-   'A' => \&group_by,
-   'D' => \&group_by,
-   'S' => \&group_by,
-   'i' => \&hide_inactive_disks,
-   'd' => get_new_value_for( "redisplay_interval",
+   'A'  => \&group_by,
+   'D'  => \&group_by,
+   'S'  => \&group_by,
+   'i'  => \&hide_inactive_disks,
+   'd'  => get_new_value_for( "redisplay_interval",
                        "Enter a new redisplay interval in seconds: " ),
-   'z' => get_new_value_for( "sample_time",
+   'z'  => get_new_value_for( "sample_time",
                        "Enter a new interval between samples in seconds: " ),
-   'c' => get_new_regex_for( "column_regex",
+   'c'  => get_new_regex_for( "columns_regex",
                        "Enter a column pattern: " ),
-   '/' => get_new_regex_for( "device_regex",
+   '/'  => get_new_regex_for( "devices_regex",
                        "Enter a disk/device pattern: " ),
-   'q' => sub { return 'last' },
-   'p' => sub {
-         print "Paused - press any key to continue\n";
-         pause(@_);
-         return;
-      },
-   ' ' => \&print_header,
-   '?' => \&help,
+   'q'  => sub { return 'last' },
+   'p'  => sub {
+            print "Paused - press any key to continue\n";
+            pause(@_);
+            return;
+         },
+   ' '  => \&print_header,
+   "\n" => \&print_header,
+   '?'  => \&help,
 );
 
 my %input_to_object = (
@@ -2933,6 +2930,9 @@ sub run_interactive {
          filehandle      => $tmp_fh,
          input           => substr(ucfirst($group_by), 0, 1),
       );
+      if ( !-t STDOUT && !tied *STDIN ) {
+          return 0
+      }
    }
 
    ReadKeyMini::cbreak();
@@ -3154,14 +3154,11 @@ sub get_blocking_input {
 
 sub hide_inactive_disks {
    my (%args)  = @_;
-   my $new_val = get_blocking_input(
-                  "Filter inactive rows? (Leave blank for 'No') "
-                 );
+   my $obj     = $args{OptionParser}->get("current_group_by_obj");
+   my $new_val = !$obj->show_inactive();
 
    $args{OptionParser}->set('show-inactive', !$new_val);
-
-   $args{OptionParser}->get("current_group_by_obj")
-                      ->set_show_inactive(!$new_val);
+   $obj->set_show_inactive(!$new_val);
 
    return;
 }
@@ -3274,12 +3271,6 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-# Dump backtrace on exception if debugging is enabled.
-local $SIG{__DIE__} = sub {
-   require Carp;
-   Carp::confess(@_) unless $EXCEPTIONS_BEING_CAUGHT;
-} if PTDEBUG;
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -3637,23 +3628,4 @@ This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
-systems, you can issue `man perlgpl' or `man perlartistic' to read these
-licenses.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
-
-=head1 VERSION
-
-pt-diskstats 2.0.0_WIP
-
-=cut
-
-__END__
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, TH

@@ -129,7 +129,6 @@ sub clear_state {
 sub compute_devs_in_group {
    my ($self) = @_;
    my $stats  = $self->stats_for();
-   my $re     = $self->device_regex();
    return scalar grep {
             # Got stats for that device, and it matches the devices re
             $stats->{$_} && $self->_print_device_if($_)
@@ -162,6 +161,8 @@ sub _calc_stats_for_deltas {
          $delta_for->{$k} += $v;
       }
    }
+
+   return unless $delta_for && %{$delta_for};
 
    my $in_progress     = $delta_for->{ios_in_progress};
    my $tot_in_progress = 0;

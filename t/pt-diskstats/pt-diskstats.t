@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 16;
+use Test::More tests => 19;
 
 use File::Temp ();
 
@@ -24,7 +24,9 @@ require "$trunk/bin/pt-diskstats";
 # of this file about *DATA. Please don't close it.
 {
 sub Test::TIEHANDLE {
-   return bless {}, "Test";
+   my ($class, @cmds) = @_;
+   push @cmds, "q";
+   return bless \@cmds, $class;
 }
 
 sub Test::FILENO {
@@ -32,19 +34,21 @@ sub Test::FILENO {
 }
 
 sub Test::READLINE {
-   return "q";
+   my ($self) = @_;
+   return shift @$self;
 }
 }
 
 sub test_diskstats_file {
-   my (%args) = @_;
-   my $file = "$trunk/t/pt-diskstats/samples/$args{file}";
+   my (%args)   = @_;
+   my $file     = "$trunk/t/pt-diskstats/samples/$args{file}";
+   my @commands = @{ $args{commands} || [qw( q )] };
    die "$file does not exist" unless -f $file;
    foreach my $groupby ( qw(all disk sample) ) {
       ok(
          no_diff(
             sub {
-               tie local *STDIN, "Test";
+               tie local *STDIN, Test => @commands;
                pt_diskstats::main(
                   qw(--show-inactive --group-by), $groupby,
                   '--columns-regex','cnc|rt|mb|busy|prg',
@@ -61,6 +65,11 @@ sub test_diskstats_file {
 foreach my $file ( map "diskstats-00$_.txt", 1..5 ) {
    test_diskstats_file(file => $file);
 }
+
+test_diskstats_file(
+   file => "switch_to_sample.txt",
+   commands => [ qw( S q ) ]
+);
 
 # ###########################################################################
 # --save-samples and --iterations

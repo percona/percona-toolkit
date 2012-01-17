@@ -79,8 +79,8 @@ sub new {
       block_size         => 512,
       show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
-      column_regex       => qr/$columns/,
-      device_regex       => $devices ? qr/$devices/ : undef,
+      columns_regex       => qr/$columns/,
+      devices_regex       => $devices ? qr/$devices/ : undef,
       interactive        => 0,
 
       %args,
@@ -105,8 +105,7 @@ sub new {
       _ordered_devs      => [],
       _active_devices    => {},
       _ts                => {},
-      _first             => 1,
-      _first_time_magic  => 1,
+      _first_stats_for   => {},
       _nochange_skips    => [],
 
       # Internal for now, but might need APIfying.
@@ -183,24 +182,24 @@ sub set_interactive {
    }
 }
 
-sub column_regex {
+sub columns_regex {
    my ( $self ) = @_;
-   return $self->{column_regex};
+   return $self->{columns_regex};
 }
 
-sub set_column_regex {
+sub set_columns_regex {
    my ( $self, $new_re ) = @_;
-   return $self->{column_regex} = $new_re;
+   return $self->{columns_regex} = $new_re;
 }
 
-sub device_regex {
+sub devices_regex {
    my ( $self ) = @_;
-   return $self->{device_regex};
+   return $self->{devices_regex};
 }
 
-sub set_device_regex {
+sub set_devices_regex {
    my ( $self, $new_re ) = @_;
-   return $self->{device_regex} = $new_re;
+   return $self->{devices_regex} = $new_re;
 }
 
 sub filename {
@@ -245,7 +244,6 @@ sub add_ordered_dev {
 
 sub clear_state {
    my ($self) = @_;
-   $self->{_first} = 1;
    $self->{_print_header} = 1;
    $self->clear_curr_stats();
    $self->clear_prev_stats();
@@ -348,7 +346,7 @@ sub _save_curr_as_prev {
 sub _save_curr_as_first {
    my ($self, $curr) = @_;
 
-   if ( $self->{_first} ) {
+   if ( !%{$self->{_first_stats_for}} ) {
       $self->{_first_stats_for} = {
          map { $_ => [@{$curr->{$_}}] } keys %$curr
       };
@@ -366,7 +364,7 @@ sub trim {
 
 sub col_ok {
    my ( $self, $column ) = @_;
-   my $regex = $self->column_regex();
+   my $regex = $self->columns_regex();
    return ($column =~ $regex) || (trim($column) =~ $regex);
 }
 
@@ -390,7 +388,7 @@ our @columns_in_order = (
    [ "in_prg"  => "%6d",     "in_progress", ],
    [ "   io_s" => "%7.1f",   "s_spent_doing_io", ],
    [ " qtime"  => "%6.1f",   "qtime", ],
-   [ " stime"  => "%5.1f",   "stime", ],
+   [ "stime"   => "%5.1f",   "stime", ],
 );
 
 {
@@ -736,7 +734,7 @@ sub _print_device_if {
    #   from the first-ever observed sample
 
    my ($self, $dev ) = @_;
-   my $dev_re = $self->device_regex();
+   my $dev_re = $self->devices_regex();
 
    if ( $dev_re ) {
       # device_regex was set explicitly, either through --devices-regex,
@@ -744,9 +742,7 @@ sub _print_device_if {
       # it blank
       return $dev if $dev =~ $dev_re;
    }
-   else {
-      return $dev if $self->{_first_time_magic}; # First time around
-   
+   else {   
       if ( $self->show_inactive() || $self->active_device($dev) ) {
          # If --show-interactive is enabled, or we've seen
          # the device be active at least once.
@@ -814,7 +810,6 @@ sub _calc_stats_for_deltas {
 
       push @end_stats, \%stats;
    }
-   $self->{_first_time_magic} = undef;
    if ( @{$self->{_nochange_skips}} ) {
       my $devs = join ", ", @{$self->{_nochange_skips}};
       PTDEBUG && _d("Skipping [$devs], haven't changed from the first sample");
