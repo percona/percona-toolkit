@@ -102,8 +102,20 @@ parse_options() {
    local file="$1"
    shift
 
-   mkdir "$TMPDIR/po/" 2>/dev/null
+   if [ ! -d "$TMPDIR/po/" ]; then
+      mkdir "$TMPDIR/po/"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $TMPDIR/po/" >&2
+         exit 1
+      fi
+   fi
+
    rm -rf "$TMPDIR"/po/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $TMPDIR/po/*" >&2
+      exit 1
+   fi
+   
    (
       export PO_DIR="$TMPDIR/po"
       cat "$file" | perl -ne '
@@ -399,6 +411,9 @@ make_pid_file() {
    fi
 
    echo "$pid" > "$file"
+   if [ $? -ne 0 ]; then
+      die "Cannot create or write PID file $file"
+   fi
 }
 
 remove_pid_file() {
@@ -890,18 +905,29 @@ main() {
    # we don't know our own PID.  See the usage of $! below.
    log "$0 started"
 
-   # Make a secure tmpdir.
-   mk_tmpdir
-
    # Make the collection dir exists.
-   mkdir -p "$OPT_DEST" || die "Can't make the destination directory"
-   test -d "$OPT_DEST"  || die "$OPT_DEST isn't a directory"
-   test -w "$OPT_DEST"  || die "$OPT_DEST isn't writable"
+   if [ ! -d "$OPT_DEST" ]; then
+      mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
+   fi
+   # Check access to the --dest dir.  By setting -x in the subshell,
+   # if either command fails, the subshell will exit immediately and
+   # $? will be non-zero.
+   (
+      set -e
+      touch "$OPT_DEST/test"
+      rm "$OPT_DEST/test"
+   )
+   if [ $? -ne 0 ]; then
+      die "Cannot read and write files to --dest $OPT_DEST"
+   fi
 
    # Test if we have root; warn if not, but it isn't critical.
    if [ "$(id -u)" != "0" ]; then
       log 'Not running with root privileges!';
    fi
+
+   # Make a secure tmpdir.
+   mk_tmpdir
 
    # Set TRIGGER_FUNCTION based on --function.
    set_trg_func
@@ -948,6 +974,15 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
    if [ "$OPT_DAEMONIZE" = "yes" ]; then
+      # Check access to the --log file.
+      (
+         set -e
+         touch "$OPT_LOG"
+      )
+      if [ $? -ne 0 ]; then
+         die "Cannot write to --log $OPT_LOG"
+      fi
+
       # The PID file will at first have our (parent) PID.
       # This is fine for ensuring that only one of us is
       # running, but it's not fine if the user wants to use

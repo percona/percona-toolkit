@@ -57,6 +57,9 @@ make_pid_file() {
 
    # PID file doesn't exist, or it does but its pid is stale.
    echo "$pid" > "$file"
+   if [ $? -ne 0 ]; then
+      die "Cannot create or write PID file $file"
+   fi
 }
 
 remove_pid_file() {
