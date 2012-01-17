@@ -136,7 +136,7 @@ diag(`rm $dest/*   2>/dev/null`);
 my (undef, $uptime) = $dbh->selectrow_array("SHOW STATUS LIKE 'Uptime'");
 my $threshold = $uptime + 2;
 
-$retval = system("$trunk/bin/pt-stalk --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 2 --run-time 2 -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 2 --run-time 2 --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
 
 sleep 3;
 

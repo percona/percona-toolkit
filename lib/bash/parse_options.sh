@@ -111,8 +111,20 @@ parse_options() {
    #   default=foo
    # That's the spec for --string-opt2.  Each line is a key:value pair
    # from the option's POD line like "type: string; default: foo".
-   mkdir "$TMPDIR/po/" 2>/dev/null
+   if [ ! -d "$TMPDIR/po/" ]; then
+      mkdir "$TMPDIR/po/"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $TMPDIR/po/" >&2
+         exit 1
+      fi
+   fi
+
    rm -rf "$TMPDIR"/po/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $TMPDIR/po/*" >&2
+      exit 1
+   fi
+   
    (
       export PO_DIR="$TMPDIR/po"
       cat "$file" | perl -ne '
