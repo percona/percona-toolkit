@@ -41,27 +41,28 @@ require DiskstatsGroupByDisk;
 require DiskstatsGroupBySample;
 
 my %actions = (
-   'A' => \&group_by,
-   'D' => \&group_by,
-   'S' => \&group_by,
-   'i' => \&hide_inactive_disks,
-   'd' => get_new_value_for( "redisplay_interval",
+   'A'  => \&group_by,
+   'D'  => \&group_by,
+   'S'  => \&group_by,
+   'i'  => \&hide_inactive_disks,
+   'd'  => get_new_value_for( "redisplay_interval",
                        "Enter a new redisplay interval in seconds: " ),
-   'z' => get_new_value_for( "sample_time",
+   'z'  => get_new_value_for( "sample_time",
                        "Enter a new interval between samples in seconds: " ),
-   'c' => get_new_regex_for( "column_regex",
+   'c'  => get_new_regex_for( "columns_regex",
                        "Enter a column pattern: " ),
-   '/' => get_new_regex_for( "device_regex",
+   '/'  => get_new_regex_for( "devices_regex",
                        "Enter a disk/device pattern: " ),
          # Magical return value.
-   'q' => sub { return 'last' },
-   'p' => sub {
-         print "Paused - press any key to continue\n";
-         pause(@_);
-         return;
-      },
-   ' ' => \&print_header,
-   '?' => \&help,
+   'q'  => sub { return 'last' },
+   'p'  => sub {
+            print "Paused - press any key to continue\n";
+            pause(@_);
+            return;
+         },
+   ' '  => \&print_header,
+   "\n" => \&print_header,
+   '?'  => \&help,
 );
 
 my %input_to_object = (
@@ -154,6 +155,12 @@ sub run_interactive {
          filehandle      => $tmp_fh,
          input           => substr(ucfirst($group_by), 0, 1),
       );
+      if ( !-t STDOUT && !tied *STDIN ) {
+          # If we were passed down a file but aren't tied to a tty,
+          # -and- STDIN isn't tied (so we aren't in testing mode),
+          # then this is the end of the program.
+          return 0
+      }
    }
 
    ReadKeyMini::cbreak();
@@ -395,14 +402,11 @@ sub get_blocking_input {
 
 sub hide_inactive_disks {
    my (%args)  = @_;
-   my $new_val = get_blocking_input(
-                  "Filter inactive rows? (Leave blank for 'No') "
-                 );
+   my $obj     = $args{OptionParser}->get("current_group_by_obj");
+   my $new_val = !$obj->show_inactive();
 
    $args{OptionParser}->set('show-inactive', !$new_val);
-
-   $args{OptionParser}->get("current_group_by_obj")
-                      ->set_show_inactive(!$new_val);
+   $obj->set_show_inactive(!$new_val);
 
    return;
 }
