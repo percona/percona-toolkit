@@ -135,11 +135,8 @@ sub readkey {
 
 # As per perlfaq8:
 
-sub _GetTerminalSize {
-   if ( @_ ) {
-      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
-   }
-   eval { require 'sys/ioctl.ph' };
+BEGIN {
+   eval { no warnings; local $^W; require 'sys/ioctl.ph' };
    if ( !defined &TIOCGWINSZ ) {
       *TIOCGWINSZ = sub () {
             # Very few systems actually have ioctl.ph, thus it comes to this.
@@ -150,13 +147,37 @@ sub _GetTerminalSize {
             :                    0x40087468;
       };
    }
-   open( TTY, "+<", "/dev/tty" ) or die "No tty: $OS_ERROR";
-   my $winsize = '';
-   unless ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
-      die sprintf "$0: ioctl TIOCGWINSZ (%08x: $OS_ERROR)\n", &TIOCGWINSZ;
+}
+
+sub _GetTerminalSize {
+   if ( @_ ) {
+      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
    }
-   my ( $row, $col, $xpixel, $ypixel ) = unpack( 'S4', $winsize );
-   return ( $col, $row, $xpixel, $ypixel );
+
+   my ( $rows, $cols );
+
+   if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
+      my $winsize = '';
+      if ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
+         ( $rows, $cols, my ( $xpixel, $ypixel ) ) = unpack( 'S4', $winsize );
+         return ( $cols, $rows, $xpixel, $ypixel );
+      }
+   }
+
+   if ( $rows = `tput lines` ) {
+      chomp($rows);
+      chomp($cols = `tput cols`);
+   }
+   elsif ( my $stty = `stty -a` ) {
+      ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
+   }
+   else {
+      ($cols, $rows) = @ENV{qw( COLUMNS LINES )};
+      $cols ||= 80;
+      $rows ||= 24;
+   }
+
+   return ( $cols, $rows );
 }
 
 }

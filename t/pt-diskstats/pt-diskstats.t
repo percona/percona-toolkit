@@ -57,7 +57,9 @@ sub test_diskstats_file {
             sub {
                tie local *STDIN, TestInteractive => @commands;
                pt_diskstats::main(
-                  qw(--show-inactive --group-by), $groupby,
+                  '--show-inactive',
+                  '--no-automatic-headers',
+                  '--group-by', $groupby,
                   '--columns-regex','cnc|rt|mb|busy|prg',
                   $file);
             },
@@ -68,7 +70,6 @@ sub test_diskstats_file {
       );
    }
 }
-
 
 foreach my $file ( map "diskstats-00$_.txt", 1..5 ) {
    test_diskstats_file(file => $file);

@@ -190,7 +190,7 @@ sub run_interactive {
                my $obj = $o->get("current_group_by_obj");
                # Force it to print the header
                $obj->clear_state();
-               local $obj->{_print_header} = 1;
+               local $obj->{force_header} = 1;
                group_by(
                   select_obj      => $sel,
                   OptionParser    => $o,
@@ -291,8 +291,7 @@ sub print_header {
 
    my $obj = $o->get("current_group_by_obj");
    my ($header) = $obj->design_print_formats();
-   local $obj->{_print_header} = 1;
-   return $obj->print_header($header, "#ts", "device");
+   return $obj->force_print_header($header, "#ts", "device");
 }
 
 sub group_by {
@@ -341,7 +340,7 @@ sub group_by {
                header_callback => $header_callback,
             );
       $obj->set_interactive(1);
-      $obj->{_print_header} = 0;
+      $obj->set_force_header(0);
    }
 }
 
@@ -372,7 +371,8 @@ sub help {
    q) Quit the program
    ------------------- Press any key to continue -----------------------
 HELP
-   pause(@_);
+
+   pause(%args);
    return;
 }
 
@@ -421,6 +421,7 @@ sub get_blocking_input {
 
    ReadKeyMini::cbreak();
    STDIN->blocking(0);
+
    return $new_opt;
 }
 

@@ -35,7 +35,6 @@ sub new {
    my $self = $class->SUPER::new(%args);
    $self->{_iterations}        = 0;
    $self->{_save_curr_as_prev} = 0;
-   $self->{_print_header}      = 1;
    return $self;
 }
 
@@ -86,10 +85,10 @@ sub _sample_callback {
          header_callback         => sub {
             my ( $self, $header, @args ) = @_;
 
-            if ( $self->{_print_header} ) {
+            if ( $self->force_header() ) {
                my $method = $args{header_callback} || "print_header";
                $self->$method( $header, @args );
-               $self->{_print_header} = undef;
+               $self->set_force_header(undef);
             }
          },
          rows_callback => sub {
@@ -122,7 +121,6 @@ sub clear_state {
    my ( $self, @args )         = @_;
    $self->{_iterations}        = 0;
    $self->{_save_curr_as_prev} = 0;
-   $self->{_print_header}      = 1;
    $self->SUPER::clear_state(@args);
 }
 

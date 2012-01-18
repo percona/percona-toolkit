@@ -322,12 +322,12 @@ is(
    "compute_line_ts has a sane default",
 );
 
-$obj->{_print_header} = 0;
+$obj->set_force_header(0);
 
 is(
-   output( sub { $obj->print_header } ),
+   output( sub { $obj->print_header("asdasdas") } ),
    "",
-   "INTERNAL: _print_header works"
+   "force_header works"
 );
 
 my $output = output(
@@ -472,6 +472,7 @@ for my $test (
 
    $obj->set_columns_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
    $obj->set_show_inactive(1);
+   $obj->set_automatic_headers(0);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
