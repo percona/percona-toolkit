@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 19;
+use Test::More tests => 22;
 
 use File::Temp ();
 
@@ -23,32 +23,39 @@ require "$trunk/bin/pt-diskstats";
 # All we do is send 'q', the command to quit.  See the note in the bottom
 # of this file about *DATA. Please don't close it.
 {
-sub Test::TIEHANDLE {
+sub TestInteractive::TIEHANDLE {
    my ($class, @cmds) = @_;
    push @cmds, "q";
    return bless \@cmds, $class;
 }
 
-sub Test::FILENO {
+sub TestInteractive::FILENO {
    return fileno(*DATA);
 }
 
-sub Test::READLINE {
+sub TestInteractive::READLINE {
    my ($self) = @_;
-   return shift @$self;
+   my $cmd = shift @$self;
+   print $cmd if $cmd =~ /\n/;
+   return $cmd;
 }
 }
 
 sub test_diskstats_file {
-   my (%args)   = @_;
-   my $file     = "$trunk/t/pt-diskstats/samples/$args{file}";
-   my @commands = @{ $args{commands} || [qw( q )] };
+   my (%args)     = @_;
+   my $file       = "$trunk/t/pt-diskstats/samples/$args{file}";
+   my @commands   = @{ $args{commands} || [qw( q )] };
+   my $print_cmds = join "][",
+                        map {
+                           ( my $x = $_ ) =~ s/\n/\\n/g;
+                           $x
+                        } @commands;
    die "$file does not exist" unless -f $file;
    foreach my $groupby ( qw(all disk sample) ) {
       ok(
          no_diff(
             sub {
-               tie local *STDIN, Test => @commands;
+               tie local *STDIN, TestInteractive => @commands;
                pt_diskstats::main(
                   qw(--show-inactive --group-by), $groupby,
                   '--columns-regex','cnc|rt|mb|busy|prg',
@@ -57,10 +64,11 @@ sub test_diskstats_file {
             "t/pt-diskstats/expected/${groupby}_int_$args{file}",
             keep_output=>1,
          ),
-         "$args{file} --group-by $groupby"
+         "$args{file} --group-by $groupby, commands: [$print_cmds]"
       );
    }
 }
+
 
 foreach my $file ( map "diskstats-00$_.txt", 1..5 ) {
    test_diskstats_file(file => $file);
@@ -69,6 +77,11 @@ foreach my $file ( map "diskstats-00$_.txt", 1..5 ) {
 test_diskstats_file(
    file => "switch_to_sample.txt",
    commands => [ qw( S q ) ]
+);
+
+test_diskstats_file(
+   file     => "commands.txt",
+   commands => [ "i", "/", "cciss\n", "q" ]
 );
 
 # ###########################################################################

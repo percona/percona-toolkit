@@ -27,10 +27,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use POSIX qw( :sys_wait_h );
+use POSIX qw( fmod :sys_wait_h );
 
 use IO::Handle;
 use IO::Select;
+use Time::HiRes  qw( gettimeofday );
 use Scalar::Util qw( looks_like_number blessed );
 
 use ReadKeyMini  qw( ReadMode );
@@ -45,8 +46,8 @@ my %actions = (
    'D'  => \&group_by,
    'S'  => \&group_by,
    'i'  => \&hide_inactive_disks,
-   'd'  => get_new_value_for( "redisplay_interval",
-                       "Enter a new redisplay interval in seconds: " ),
+   'd'  => get_new_value_for( "refresh_interval",
+                       "Enter a new refresh interval in seconds: " ),
    'z'  => get_new_value_for( "sample_time",
                        "Enter a new interval between samples in seconds: " ),
    'c'  => get_new_regex_for( "columns_regex",
@@ -115,7 +116,6 @@ sub run_interactive {
          gather_samples(
                gather_while      => sub { getppid() },
                samples_to_gather => $o->get('iterations'),
-               sampling_interval => $o->get('interval'),
                filename          => $filename,
          );
    
@@ -167,8 +167,11 @@ sub run_interactive {
    my $run = 1;
    MAIN_LOOP:
    while ($run) {
-      my $redisplay_interval = $o->get('redisplay-interval');
-      if ( my $input = read_command_timeout($sel, $redisplay_interval ) ) {
+      my $refresh_interval = $o->get('refresh-interval');
+      my $time  = scalar Time::HiRes::gettimeofday();
+      my $sleep = $refresh_interval - fmod( $time, ($refresh_interval + 0.5) );
+
+      if ( my $input = read_command_timeout($sel, $sleep ) ) {
          if ($actions{$input}) {
             my $ret = $actions{$input}->(
                               select_obj   => $sel,
@@ -177,6 +180,24 @@ sub run_interactive {
                               filehandle   => $tmp_fh,
                            ) || '';
             last MAIN_LOOP if $ret eq 'last';
+
+            # If we were passed a filename, render everything again after
+            # a change of options, so long as those options aren't
+            # A, S, D, <space>, or <enter>.
+            if ( $args{filename}
+                  && !grep { $input eq $_ } qw( A S D ), ' ', "\n" )
+            {
+               my $obj = $o->get("current_group_by_obj");
+               # Force it to print the header
+               $obj->clear_state();
+               local $obj->{_print_header} = 1;
+               group_by(
+                  select_obj      => $sel,
+                  OptionParser    => $o,
+                  input           => substr(ref($obj), 16, 1),
+                  filehandle      => $tmp_fh,
+               );
+            }
          }
       }
       # As a possible source of confusion, note that this calls the group_by
@@ -234,7 +255,9 @@ sub gather_samples {
 
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
-      if ( read_command_timeout( $sel, $args{sampling_interval} ) ) {
+      my $time  = scalar Time::HiRes::gettimeofday();
+      my $sleep = 1 - fmod( $time, 1 );
+      if ( read_command_timeout( $sel, $sleep ) ) {
          last GATHER_DATA;
       }
       open my $diskstats_fh, "<", "/proc/diskstats"
@@ -329,7 +352,7 @@ sub help {
    my $column_re   = $args{OptionParser}->get('columns-regex');
    my $device_re   = $args{OptionParser}->get('devices-regex');
    my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{OptionParser}->get('redisplay-interval');
+   my $disp_int    = $args{OptionParser}->get('refresh-interval');
    my $inact_disk  = $obj->show_inactive() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
@@ -344,7 +367,7 @@ sub help {
    /) Enter a Perl regex to match disk names   $device_re
    z) Set the sample size in seconds           $interval
    i) Hide inactive disks                      $inact_disk
-   d) Set the redisplay interval in seconds    $disp_int
+   d) Set the refresh interval in seconds      $disp_int
    p) Pause the program
    q) Quit the program
    ------------------- Press any key to continue -----------------------
@@ -363,6 +386,7 @@ sub file_to_use {
    }
 
    if ( $filename ) {
+      unlink $filename;
       open my $fh, "+>", $filename
          or die "Cannot open $filename: $OS_ERROR";
       return $fh, $filename;
@@ -405,8 +429,8 @@ sub hide_inactive_disks {
    my $obj     = $args{OptionParser}->get("current_group_by_obj");
    my $new_val = !$obj->show_inactive();
 
-   $args{OptionParser}->set('show-inactive', !$new_val);
-   $obj->set_show_inactive(!$new_val);
+   $args{OptionParser}->set('show-inactive', $new_val);
+   $obj->set_show_inactive($new_val);
 
    return;
 }
@@ -420,7 +444,8 @@ sub get_new_value_for {
       my $new_interval = get_blocking_input($message) || 0;
    
       die "Invalid timeout: $new_interval"
-         unless looks_like_number($new_interval);
+         unless looks_like_number($new_interval)
+                  && ($new_interval = int($new_interval));
 
       my $obj = $o->get("current_group_by_obj");
       if ( my $setter = $obj->can("set_$looking_for") ) {
@@ -481,22 +506,11 @@ sub pause {
    return;
 }
 
-my $got_highres = eval { require Time::HiRes };
-PTDEBUG && _d('Timestamp', $got_highres
-                           ? "Using the pure Perl version"
-                           : "Using the system's date command" );
-
 sub timestamp {
-   if ( $got_highres ) {
-      # Can do everything in Perl
-      # TS timestamp.nanoseconds ISO8601-timestamp
-      my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
-      return sprintf( "TS %d.%d %s\n", $seconds,
-                       $microseconds*1000, Transformers::ts($seconds) );
-   }
-   else {
-      return `date +'TS %s.%N %F %T'`;
-   }
+   # TS timestamp.nanoseconds ISO8601-timestamp
+   my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
+   return sprintf( "TS %d.%d %s\n", $seconds,
+                     $microseconds*1000, Transformers::ts($seconds) );
 }
 
 sub _d {
