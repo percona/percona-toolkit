@@ -32,6 +32,10 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use IO::Handle;
 use List::Util qw( max first );
 
+use ReadKeyMini qw( GetTerminalSize );
+
+my (undef, $max_lines) = GetTerminalSize;
+
 my $diskstat_colno_for;
 BEGIN {
    $diskstat_colno_for = {
@@ -79,9 +83,11 @@ sub new {
       block_size         => 512,
       show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
-      columns_regex       => qr/$columns/,
-      devices_regex       => $devices ? qr/$devices/ : undef,
+      automatic_headers  => $o->get('automatic-headers'),
+      columns_regex      => qr/$columns/,
+      devices_regex      => $devices ? qr/$devices/ : undef,
       interactive        => 0,
+      force_header       => 1,
 
       %args,
 
@@ -110,13 +116,38 @@ sub new {
 
       # Internal for now, but might need APIfying.
       _save_curr_as_prev => 1,
-      _print_header      => 1,
    };
 
    return bless $self, $class;
 }
 
 # The next lot are accessors, plus some convenience functions.
+
+sub active_device {
+   my ( $self, $dev ) = @_;
+   return $self->{_active_devices}->{$dev};
+}
+
+sub set_active_device {
+   my ($self, $dev, $val) = @_;
+   return $self->{_active_devices}->{$dev} = $val;
+}
+
+sub clear_active_devices {
+   my ( $self ) = @_;
+   return $self->{_active_devices} = {};
+}
+
+
+sub automatic_headers {
+   my ($self) = @_;
+   return $self->{automatic_headers};
+}
+
+sub set_automatic_headers {
+   my ($self, $new_val) = @_;
+   return $self->{automatic_headers} = $new_val;
+}
 
 sub curr_ts {
    my ($self) = @_;
@@ -242,9 +273,19 @@ sub add_ordered_dev {
 # clear_stuff methods. Like the name says, they clear state stored inside
 # the object.
 
+sub force_header {
+   my ($self) = @_;
+   return $self->{force_header};
+}
+
+sub set_force_header {
+   my ($self, $new_val) = @_;
+   return $self->{force_header} = $new_val;
+}
+
 sub clear_state {
    my ($self) = @_;
-   $self->{_print_header} = 1;
+   $self->set_force_header(1);
    $self->clear_curr_stats();
    $self->clear_prev_stats();
    $self->clear_first_stats();
@@ -740,26 +781,44 @@ sub _print_device_if {
       # device_regex was set explicitly, either through --devices-regex,
       # or by using the d option in interactive mode, and not leaving
       # it blank
+      $self->_mark_if_active($dev);
       return $dev if $dev =~ $dev_re;
    }
    else {   
-      if ( $self->show_inactive() || $self->active_device($dev) ) {
+      if ( $self->active_device($dev) ) {
          # If --show-interactive is enabled, or we've seen
          # the device be active at least once.
          return $dev;
       }
+      elsif ( $self->show_inactive() ) {
+         $self->_mark_if_active($dev);
+         return $dev;
+      }
       else {
-         my $curr  = $self->stats_for($dev);
-         my $first = $self->first_stats_for($dev);
-         if ( first { $curr->[$_] != $first->[$_] } READS..MS_WEIGHTED ) {
-            # It's different from the first one. Mark as active and return.
-            $self->set_active_device($dev, 1);
-            return $dev;
-         }
+         return $dev if $self->_mark_if_active($dev);
       }
    }
    # Not active, add it to the list of skips for debugging.
    push @{$self->{_nochange_skips}}, $dev;
+   return;
+}
+
+sub _mark_if_active {
+   my ($self, $dev) = @_;
+
+   return $dev if $self->active_device($dev);
+
+   my $curr         = $self->stats_for($dev);
+   my $first        = $self->first_stats_for($dev);
+
+   return unless $curr && $first;
+
+ # read 'any' instead of 'first'
+   if ( first { $curr->[$_] != $first->[$_] } READS..MS_WEIGHTED ) {
+      # It's different from the first one. Mark as active and return.
+      $self->set_active_device($dev, 1);
+      return $dev;
+   }
    return;
 }
 
@@ -827,32 +886,31 @@ sub _calc_deltas {
    return $self->_calc_stats_for_deltas($elapsed);
 }
 
+# Always print a header, disgreard the value of $self->force_header()
+sub force_print_header {
+   my ($self, @args) = @_;
+   my $orig = $self->force_header();
+   $self->force_header(1);
+   $self->print_header(@args);
+   $self->force_header($orig);
+   return;
+}
+
 sub print_header {
    my ($self, $header, @args) = @_;
-   if ( $self->{_print_header} ) {
+   if ( $self->force_header() ) {
       printf $header . "\n", @args;
+      $Diskstats::printed_lines--;
+      $Diskstats::printed_lines ||= $max_lines;
    }
-}
-
-sub active_device {
-   my ( $self, $dev ) = @_;
-   return $self->{_active_devices}->{$dev};
-}
-
-sub set_active_device {
-   my ($self, $dev, $val) = @_;
-   return $self->{_active_devices}->{$dev} = $val;
-}
-
-sub clear_active_devices {
-   my ( $self ) = @_;
-   return $self->{_active_devices} = {};
+   return;
 }
 
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
 
    printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
+   $Diskstats::printed_lines--;
 }
 
 sub print_deltas {
@@ -870,11 +928,34 @@ sub print_deltas {
 
    my $header_method = $args{header_callback} || "print_header";
    my $rows_method   = $args{rows_callback}   || "print_rows";
+   
+   $Diskstats::printed_lines ||= $max_lines;
 
    $self->$header_method( $header, "#ts", "device" );
 
-   foreach my $stat ( $self->_calc_deltas() ) {
-      $self->$rows_method( $format, $cols, $stat );
+   my @stats = $self->_calc_deltas();
+
+   # Split the stats in chunks no greater than how many lines
+   # we have left until printing the next header.
+   while ( my @stats_chunk = splice @stats, 0, $Diskstats::printed_lines ) {
+      # Print the stats
+      foreach my $stat ( @stats_chunk ) {
+         $self->$rows_method( $format, $cols, $stat );
+      }
+
+      if ( $Diskstats::printed_lines == 0 ) {
+         # If zero, reset the counter
+         $Diskstats::printed_lines ||= $max_lines;
+
+         # If we are automagically printing headers and aren't in
+         # --group-by all,
+         if ( $self->automatic_headers()
+               && !$self->isa("DiskstatsGroupByAll") )
+         {
+            local $self->{force_header} = 1;
+            $self->$header_method( $header, "#ts", "device" );
+         }
+      }
    }
 }
 

@@ -34,7 +34,6 @@ sub new {
    my ($class, %args) = @_;
    my $self = $class->SUPER::new(%args);
    $self->{_iterations}   = 0;
-   $self->{_print_header} = 1;
    return $self;
 }
 
@@ -65,12 +64,12 @@ sub group_by {
                      header_callback => sub {
                         my ($self, @args) = @_;
 
-                        if ( $self->{_print_header} ) {
+                        if ( $self->force_header() ) {
                            my $method = $args{header_callback}
                                         || "print_header";
                            $self->$method(@args);
                         }
-                        $self->{_print_header} = undef;
+                        $self->set_force_header(undef);
                      },
                      rows_callback   => $args{rows_callback},
                   );
@@ -116,10 +115,10 @@ sub group_by {
 
 sub clear_state {
    my ($self, @args)   = @_;
-   my $orig_print_h = $self->{_print_header};
+   my $orig_print_h = $self->{force_header};
    $self->{_iterations} = 0;
    $self->SUPER::clear_state(@args);
-   $self->{_print_header} = $orig_print_h;
+   $self->{force_header} = $orig_print_h;
 }
 
 sub compute_line_ts {
