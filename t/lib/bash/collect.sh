@@ -30,7 +30,7 @@ ls -1 $TMPDIR/collect | sort > $TMPDIR/collect-files
 # Else, those files should not exist.
 if [ -f /proc/diskstats ]; then
    cmd_ok \
-      "grep '[0-9]' $TMPDIR/collect/2011_12_05-diskstats" \
+      "grep -q '[0-9]' $TMPDIR/collect/2011_12_05-diskstats" \
       "/proc/diskstats"
 else
    test -f $TMPDIR/collect/2011_12_05-diskstats
