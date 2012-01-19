@@ -128,20 +128,20 @@ parse_options() {
                my $opt  = $1;
                my $file = "$ENV{PO_DIR}/$opt";
                open my $opt_fh, ">", $file or die "Cannot open $file: $!";
-               printf $opt_fh "long:$opt\n";
+               print $opt_fh "long:$opt\n";
                $para = <>;
                chomp;
                if ( $para =~ m/^[a-z ]+:/ ) {
                   map {
                      chomp;
                      my ($attrib, $val) = split(/: /, $_);
-                     printf $opt_fh "$attrib:$val\n";
+                     print $opt_fh "$attrib:$val\n";
                   } split(/; /, $para);
                   $para = <>;
                   chomp;
                }
                my ($desc) = $para =~ m/^([^?.]+)/;
-               printf $opt_fh "desc:$desc.\n";
+               print $opt_fh "desc:$desc.\n";
                close $opt_fh;
             }
          }

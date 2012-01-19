@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=26
+TESTS=27
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 
@@ -80,6 +80,14 @@ usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
 cmd_ok \
    "grep -q \"For more information, 'man pt-stalk' or 'perldoc\" $TMPFILE" \
    "--help"
+
+# Don't interpolate.
+parse_options "$T_LIB_DIR/samples/bash/po003.sh" --help
+usage_or_errors "$T_LIB_DIR/samples/bash/po003.sh" >$TMPFILE 2>&1
+
+cmd_ok \
+   "grep -q 'Exit if the disk is less than this %full.' $TMPFILE" \
+   "Don't interpolate --help descriptions"
 
 # ############################################################################
 # Done
