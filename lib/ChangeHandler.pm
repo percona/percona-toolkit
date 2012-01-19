@@ -25,7 +25,7 @@ package ChangeHandler;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $DUPE_KEY  = qr/Duplicate entry/;
 our @ACTIONS  = qw(DELETE REPLACE INSERT UPDATE);
@@ -91,7 +91,7 @@ sub new {
 sub fetch_back {
    my ( $self, $dbh ) = @_;
    $self->{fetch_back} = $dbh;
-   MKDEBUG && _d('Set fetch back dbh', $dbh);
+   PTDEBUG && _d('Set fetch back dbh', $dbh);
    return;
 }
 
@@ -121,7 +121,7 @@ sub set_src {
    else {
       die "src argument must be either 'left' or 'right'"
    }
-   MKDEBUG && _d('Set src to', $src);
+   PTDEBUG && _d('Set src to', $src);
    $self->fetch_back($dbh) if $dbh;
    return;
 }
@@ -156,7 +156,7 @@ sub dst {
 #   dbh - optional dbh passed to the action callback
 sub _take_action {
    my ( $self, $sql, $dbh ) = @_;
-   MKDEBUG && _d('Calling subroutines on', $dbh, $sql);
+   PTDEBUG && _d('Calling subroutines on', $dbh, $sql);
    foreach my $action ( @{$self->{actions}} ) {
       $action->($sql, $dbh);
    }
@@ -177,7 +177,7 @@ sub _take_action {
 #   dbh    - Optional dbh passed to <_take_action()>
 sub change {
    my ( $self, $action, $row, $cols, $dbh ) = @_;
-   MKDEBUG && _d($dbh, $action, 'where', $self->make_where_clause($row, $cols));
+   PTDEBUG && _d($dbh, $action, 'where', $self->make_where_clause($row, $cols));
 
    # Undef action means don't do anything.  This allows deeply
    # nested callers to avoid/skip a change without dying.
@@ -195,7 +195,7 @@ sub change {
          $self->_take_action($self->$func($row, $cols), $dbh);
       };
       if ( $EVAL_ERROR =~ m/$DUPE_KEY/ ) {
-         MKDEBUG && _d('Duplicate key violation; will queue and rewrite');
+         PTDEBUG && _d('Duplicate key violation; will queue and rewrite');
          $self->{queue}++;
          $self->{replace} = 1;
          $self->__queue($action, $row, $cols, $dbh);
@@ -218,7 +218,7 @@ sub change {
 #   dbh    - Optional dbh passed to <_take_action()>
 sub __queue {
    my ( $self, $action, $row, $cols, $dbh ) = @_;
-   MKDEBUG && _d('Queueing change for later');
+   PTDEBUG && _d('Queueing change for later');
    if ( $self->{replace} ) {
       $action = $action eq 'DELETE' ? $action : 'REPLACE';
    }
@@ -239,16 +239,16 @@ sub process_rows {
    my $error_count = 0;
    TRY: {
       if ( $queue_level && $queue_level < $self->{queue} ) { # see redo below!
-         MKDEBUG && _d('Not processing now', $queue_level, '<', $self->{queue});
+         PTDEBUG && _d('Not processing now', $queue_level, '<', $self->{queue});
          return;
       }
-      MKDEBUG && _d('Processing rows:');
+      PTDEBUG && _d('Processing rows:');
       my ($row, $cur_act);
       eval {
          foreach my $action ( @ACTIONS ) {
             my $func = "make_$action";
             my $rows = $self->{$action};
-            MKDEBUG && _d(scalar(@$rows), 'to', $action);
+            PTDEBUG && _d(scalar(@$rows), 'to', $action);
             $cur_act = $action;
             while ( @$rows ) {
                # Each row is an arrayref like:
@@ -266,7 +266,7 @@ sub process_rows {
          $error_count = 0;
       };
       if ( !$error_count++ && $EVAL_ERROR =~ m/$DUPE_KEY/ ) {
-         MKDEBUG && _d('Duplicate key violation; re-queueing and rewriting');
+         PTDEBUG && _d('Duplicate key violation; re-queueing and rewriting');
          $self->{queue}++; # Defer rows to the very end
          $self->{replace} = 1;
          $self->__queue($cur_act, @$row);
@@ -289,7 +289,7 @@ sub process_rows {
 #   A DELETE statement for the given row and columns
 sub make_DELETE {
    my ( $self, $row, $cols ) = @_;
-   MKDEBUG && _d('Make DELETE');
+   PTDEBUG && _d('Make DELETE');
    return "DELETE FROM $self->{dst_db_tbl} WHERE "
       . $self->make_where_clause($row, $cols)
       . ' LIMIT 1';
@@ -306,7 +306,7 @@ sub make_DELETE {
 #   An UPDATE statement for the given row and columns
 sub make_UPDATE {
    my ( $self, $row, $cols ) = @_;
-   MKDEBUG && _d('Make UPDATE');
+   PTDEBUG && _d('Make UPDATE');
    if ( $self->{replace} ) {
       return $self->make_row('REPLACE', $row, $cols);
    }
@@ -315,7 +315,7 @@ sub make_UPDATE {
    my @cols;
    if ( my $dbh = $self->{fetch_back} ) {
       my $sql = $self->make_fetch_back_query($where);
-      MKDEBUG && _d('Fetching data on dbh', $dbh, 'for UPDATE:', $sql);
+      PTDEBUG && _d('Fetching data on dbh', $dbh, 'for UPDATE:', $sql);
       my $res = $dbh->selectrow_hashref($sql);
       @{$row}{keys %$res} = values %$res;
       @cols = $self->sort_cols($res);
@@ -343,7 +343,7 @@ sub make_UPDATE {
 #   An INSERT statement for the given row and columns
 sub make_INSERT {
    my ( $self, $row, $cols ) = @_;
-   MKDEBUG && _d('Make INSERT');
+   PTDEBUG && _d('Make INSERT');
    if ( $self->{replace} ) {
       return $self->make_row('REPLACE', $row, $cols);
    }
@@ -362,7 +362,7 @@ sub make_INSERT {
 #   A REPLACE statement for the given row and columns
 sub make_REPLACE {
    my ( $self, $row, $cols ) = @_;
-   MKDEBUG && _d('Make REPLACE');
+   PTDEBUG && _d('Make REPLACE');
    return $self->make_row('REPLACE', $row, $cols);
 }
 
@@ -383,7 +383,7 @@ sub make_row {
    if ( my $dbh = $self->{fetch_back} ) {
       my $where = $self->make_where_clause($row, $cols);
       my $sql   = $self->make_fetch_back_query($where);
-      MKDEBUG && _d('Fetching data on dbh', $dbh, 'for', $verb, ':', $sql);
+      PTDEBUG && _d('Fetching data on dbh', $dbh, 'for', $verb, ':', $sql);
       my $res = $dbh->selectrow_hashref($sql);
       @{$row}{keys %$res} = values %$res;
       @cols = $self->sort_cols($res);
@@ -499,7 +499,7 @@ sub make_fetch_back_query {
 
       if ( !$cols ) {
          # This shouldn't happen in the real world.
-         MKDEBUG && _d('Failed to make explicit columns list from tbl struct');
+         PTDEBUG && _d('Failed to make explicit columns list from tbl struct');
          $cols = '*';
       }
    }

@@ -28,7 +28,7 @@ package PodParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # List =item from these head1 sections will be parsed into a hash
 # with the item's name as the key and its paragraphs parsed as
@@ -82,7 +82,7 @@ sub get_magic {
 sub parse_from_file {
    my ( $self, $file ) = @_;
    return unless $file;
-   MKDEBUG && _d('Parsing POD in', $file);
+   PTDEBUG && _d('Parsing POD in', $file);
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    my $para;
@@ -95,7 +95,7 @@ sub parse_from_file {
       if ( $para =~ m/^=(head|item|over|back)/ ) {
          my ($cmd, $name) = $para =~ m/^=(\w+)(?:\s+(.+))?/;
          $name ||= '';
-         MKDEBUG && _d('cmd:', $cmd, 'name:', $name);
+         PTDEBUG && _d('cmd:', $cmd, 'name:', $name);
          $self->command($cmd, $name);
       }
       elsif ( $parse_items_from{$self->{current_section}} ) {
@@ -114,12 +114,12 @@ sub command {
    $name =~ s/\s+\Z//m;  # Remove \n and blank line after name.
 
    if  ( $cmd eq 'head1' ) {
-      MKDEBUG && _d('In section', $name);
+      PTDEBUG && _d('In section', $name);
       $self->{current_section} = $name;
    }
    elsif ( $cmd eq 'over' ) {
       if ( $parse_items_from{$name} ) {
-         MKDEBUG && _d('Start items in', $self->{current_section});
+         PTDEBUG && _d('Start items in', $self->{current_section});
          $self->{items}->{$self->{current_section}} = {};
       }
    }
@@ -127,7 +127,7 @@ sub command {
       my $pat = $item_pattern_for{ $self->{current_section} };
       my ($item) = $name =~ m/$pat/;
       if ( $item ) {
-         MKDEBUG && _d($self->{current_section}, 'item:', $item);
+         PTDEBUG && _d($self->{current_section}, 'item:', $item);
          $self->{items}->{ $self->{current_section} }->{$item} = {
             desc => '',  # every item should have a desc
          };
@@ -139,7 +139,7 @@ sub command {
    }
    elsif ( $cmd eq 'back' ) {
       if ( $parse_items_from{$self->{current_section}} ) {
-         MKDEBUG && _d('End items in', $self->{current_section});
+         PTDEBUG && _d('End items in', $self->{current_section});
       }
    }
    else {
@@ -161,7 +161,7 @@ sub textblock {
    $para =~ s/\s+\Z//;
 
    if ( $para =~ m/^[a-z]\w+[:;] / ) {
-      MKDEBUG && _d('Item attributes:', $para);
+      PTDEBUG && _d('Item attributes:', $para);
       map {
          my ($attrib, $val) = split(/: /, $_);
          $item->{$attrib} = defined $val ? $val : 1;
@@ -177,12 +177,12 @@ sub textblock {
          if ( $indent ) {
             $para =~ s/^\s{$indent}//mg;
             $para =~ s/\s+$//;
-            MKDEBUG && _d("MAGIC", $self->{magic_ident}, "para:", $para);
+            PTDEBUG && _d("MAGIC", $self->{magic_ident}, "para:", $para);
             $self->{magic}->{$self->{current_section}}->{$self->{magic_ident}}
                = $para;
          }
          else {
-            MKDEBUG && _d("MAGIC", $self->{magic_ident},
+            PTDEBUG && _d("MAGIC", $self->{magic_ident},
                "para is not indented; treating as normal para");
          }
 
@@ -190,7 +190,7 @@ sub textblock {
       }
 
       # Save the para text to the description for this item.
-      MKDEBUG && _d('Item desc:', substr($para, 0, 40),
+      PTDEBUG && _d('Item desc:', substr($para, 0, 40),
          length($para) > 40 ? '...' : '');
       $para =~ s/\n+/ /g;
       $item->{desc} .= $para;
@@ -200,7 +200,7 @@ sub textblock {
       # handle it next call in code block above.
       if ( $para =~ m/MAGIC_(\w+)/ ) {
          $self->{magic_ident} = $1;  # XXX
-         MKDEBUG && _d("MAGIC", $self->{magic_ident}, "follows");
+         PTDEBUG && _d("MAGIC", $self->{magic_ident}, "follows");
       }
    }
 

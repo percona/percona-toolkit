@@ -26,7 +26,7 @@ package CopyRowsInsertSelect;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -79,7 +79,7 @@ sub copy {
          $msg->($sql);
       }
       else {
-         MKDEBUG && _d($dbh, $sql);
+         PTDEBUG && _d($dbh, $sql);
          my $error;
          $self->{Retry}->retry(
             wait  => sub { sleep 1; },
@@ -91,7 +91,7 @@ sub copy {
             fail => sub {
                my (%args) = @_;
                my $error = $args{error};
-               MKDEBUG && _d($error);
+               PTDEBUG && _d($error);
                if ( $error =~ m/Lock wait timeout exceeded/ ) {
                   $msg->("Lock wait timeout exceeded; retrying $sql");
                   return 1; # call wait, call try

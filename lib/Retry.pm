@@ -25,7 +25,7 @@ package Retry;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -63,29 +63,29 @@ sub retry {
    my $tryno = 0;
    TRY:
    while ( ++$tryno <= $tries ) {
-      MKDEBUG && _d("Try", $tryno, "of", $tries);
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
       my $result;
       eval {
          $result = $try->(tryno=>$tryno);
       };
       if ( $EVAL_ERROR ) {
-         MKDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
          $last_error = $EVAL_ERROR;
 
          if ( $tryno < $tries ) {   # more retries
             my $retry = $fail->(tryno=>$tryno, error=>$last_error);
             last TRY unless $retry;
-            MKDEBUG && _d("Calling wait code");
+            PTDEBUG && _d("Calling wait code");
             $wait->(tryno=>$tryno);
          }
       }
       else {
-         MKDEBUG && _d("Try code succeeded");
+         PTDEBUG && _d("Try code succeeded");
          return $result;
       }
    }
 
-   MKDEBUG && _d('Try code did not succeed');
+   PTDEBUG && _d('Try code did not succeed');
    return $final_fail->(error=>$last_error);
 }
 

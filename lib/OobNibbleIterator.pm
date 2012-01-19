@@ -32,7 +32,7 @@ use base 'NibbleIterator';
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -78,7 +78,7 @@ sub new {
          . " WHERE " . $self->{sql}->{boundaries}->{'<'}
          . $tail_sql
          . " /*past lower chunk*/";
-      MKDEBUG && _d('Past lower statement:', $past_lower_sql);
+      PTDEBUG && _d('Past lower statement:', $past_lower_sql);
 
       my $explain_past_lower_sql
          = "EXPLAIN SELECT "
@@ -88,14 +88,14 @@ sub new {
          . " WHERE " . $self->{sql}->{boundaries}->{'<'}
          . $tail_sql
          . " /*explain past lower chunk*/";
-      MKDEBUG && _d('Past lower statement:', $explain_past_lower_sql);
+      PTDEBUG && _d('Past lower statement:', $explain_past_lower_sql);
 
       my $past_upper_sql
          = $head_sql
          . " WHERE " . $self->{sql}->{boundaries}->{'>'}
          . $tail_sql
          . " /*past upper chunk*/";
-      MKDEBUG && _d('Past upper statement:', $past_upper_sql);
+      PTDEBUG && _d('Past upper statement:', $past_upper_sql);
       
       my $explain_past_upper_sql
          = "EXPLAIN SELECT "
@@ -105,7 +105,7 @@ sub new {
          . " WHERE " . $self->{sql}->{boundaries}->{'>'}
          . $tail_sql
          . " /*explain past upper chunk*/";
-      MKDEBUG && _d('Past upper statement:', $explain_past_upper_sql);
+      PTDEBUG && _d('Past upper statement:', $explain_past_upper_sql);
 
       $self->{past_lower_sql}         = $past_lower_sql;
       $self->{past_upper_sql}         = $past_upper_sql;
@@ -127,7 +127,7 @@ sub new {
                                   : [];
          }
       }
-      MKDEBUG && _d('Nibble past', @{$self->{past_nibbles}});
+      PTDEBUG && _d('Nibble past', @{$self->{past_nibbles}});
 
    } # not one nibble
 
@@ -155,7 +155,7 @@ sub statements {
 
 sub _prepare_sths {
    my ($self) = @_;
-   MKDEBUG && _d('Preparing out-of-bound statement handles');
+   PTDEBUG && _d('Preparing out-of-bound statement handles');
 
    # Prepare our statements for nibbles past the lower and upper boundaries.
    if ( !$self->{one_nibble} ) {
@@ -179,7 +179,7 @@ sub _next_boundaries {
    # Parent has no more boundaries.  Use our past boundaries.
    if ( my $past = shift @{$self->{past_nibbles}} ) {
       if ( $past eq 'lower' ) {
-         MKDEBUG && _d('Nibbling values below lower boundary');
+         PTDEBUG && _d('Nibbling values below lower boundary');
          $self->{nibble_sth}         = $self->{past_lower_sth};
          $self->{explain_nibble_sth} = $self->{explain_past_lower_sth};
          $self->{lower}              = [];
@@ -187,7 +187,7 @@ sub _next_boundaries {
          $self->{next_lower}         = undef;
       }
       elsif ( $past eq 'upper' ) {
-         MKDEBUG && _d('Nibbling values above upper boundary');
+         PTDEBUG && _d('Nibbling values above upper boundary');
          $self->{nibble_sth}         = $self->{past_upper_sth};
          $self->{explain_nibble_sth} = $self->{explain_past_upper_sth};
          $self->{lower}              = $self->boundaries()->{last_upper};
@@ -200,7 +200,7 @@ sub _next_boundaries {
       return 1; # continue nibbling
    }
 
-   MKDEBUG && _d('Done nibbling past boundaries');
+   PTDEBUG && _d('Done nibbling past boundaries');
    return; # stop nibbling
 }
 
@@ -208,7 +208,7 @@ sub DESTROY {
    my ( $self ) = @_;
    foreach my $key ( keys %$self ) {
       if ( $key =~ m/_sth$/ ) {
-         MKDEBUG && _d('Finish', $key);
+         PTDEBUG && _d('Finish', $key);
          $self->{$key}->finish();
       }
    }

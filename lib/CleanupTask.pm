@@ -26,7 +26,7 @@ package CleanupTask;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -42,14 +42,14 @@ sub new {
    my $self = {
       task => $task,
    };
-   MKDEBUG && _d('Created cleanup task', $task);
+   PTDEBUG && _d('Created cleanup task', $task);
    return bless $self, $class;
 }
 
 sub DESTROY {
    my ($self) = @_;
    my $task = $self->{task};
-   MKDEBUG && _d('Calling cleanup task', $task);
+   PTDEBUG && _d('Calling cleanup task', $task);
    $task->();
    return;
 }

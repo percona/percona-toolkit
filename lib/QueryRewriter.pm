@@ -25,7 +25,7 @@ package QueryRewriter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # A list of verbs that can appear in queries.  I know this is incomplete -- it
 # does not have CREATE, DROP, ALTER, TRUNCATE for example.  But I don't need
@@ -242,7 +242,7 @@ sub distill_verbs {
    # that may show up in place of B and since these clauses are at the
    # end of the statement, we remove everything from the clause onward.
    if ( $query =~ m/\A\s*SHOW\s+/i ) {
-      MKDEBUG && _d($query);
+      PTDEBUG && _d($query);
 
       # Remove common keywords.
       $query = uc $query;
@@ -258,7 +258,7 @@ sub distill_verbs {
       # collapse whitespace, and we're done.
       $query =~ s/\A(SHOW(?:\s+\S+){1,2}).*\Z/$1/s;
       $query =~ s/\s+/ /g;
-      MKDEBUG && _d($query);
+      PTDEBUG && _d($query);
       return $query;
    }
 
@@ -273,10 +273,10 @@ sub distill_verbs {
    if ( $dds) {
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      MKDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
-      MKDEBUG && _d('Matches db or table:', $db_or_tbl);
+      PTDEBUG && _d('Matches db or table:', $db_or_tbl);
       return uc($dds . ($obj ? " $obj" : '')), $db_or_tbl;
    }
 
@@ -298,7 +298,7 @@ sub distill_verbs {
    # we need to check it else SELECT c FROM t WHERE col='delete'
    # will incorrectly distill as SELECT DELETE t.
    if ( ($verbs[0] || '') eq 'SELECT' && @verbs > 1 ) {
-      MKDEBUG && _d("False-positive verbs after SELECT:", @verbs[1..$#verbs]);
+      PTDEBUG && _d("False-positive verbs after SELECT:", @verbs[1..$#verbs]);
       my $union = grep { $_ eq 'UNION' } @verbs;
       @verbs    = $union ? qw(SELECT UNION) : qw(SELECT);
    }
@@ -450,12 +450,12 @@ sub __delete_to_select {
 
 sub __insert_to_select {
    my ( $tbl, $cols, $vals ) = @_;
-   MKDEBUG && _d('Args:', @_);
+   PTDEBUG && _d('Args:', @_);
    my @cols = split(/,/, $cols);
-   MKDEBUG && _d('Cols:', @cols);
+   PTDEBUG && _d('Cols:', @cols);
    $vals =~ s/^\(|\)$//g; # Strip leading/trailing parens
    my @vals = $vals =~ m/($quote_re|[^,]*${bal}[^,]*|[^,]+)/g;
-   MKDEBUG && _d('Vals:', @vals);
+   PTDEBUG && _d('Vals:', @vals);
    if ( @cols == @vals ) {
       return "select * from $tbl where "
          . join(' and ', map { "$cols[$_]=$vals[$_]" } (0..$#cols));

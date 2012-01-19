@@ -25,7 +25,7 @@ package MySQLStatusWaiter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -74,7 +74,7 @@ sub _parse_spec {
    my ($spec, $get_status) = @args{@required_args};
 
    if ( !@$spec ) {
-      MKDEBUG && _d('No spec, disabling status var waits');
+      PTDEBUG && _d('No spec, disabling status var waits');
       return;
    }
 
@@ -84,10 +84,10 @@ sub _parse_spec {
       die "Invalid spec: $var_val" unless $var;
       if ( !$val ) {
          my $init_val = $get_status->($var);
-         MKDEBUG && _d('Initial', $var, 'value:', $init_val);
+         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
          $val = int(($init_val * .20) + $init_val);
       }
-      MKDEBUG && _d('Wait if', $var, '>=', $val);
+      PTDEBUG && _d('Wait if', $var, '>=', $val);
       $max_val_for{$var} = $val;
    }
 
@@ -140,10 +140,10 @@ sub wait {
 
    # Wait until all vars' vals are < their permitted maximums.
    while ( $oktorun->() ) {
-      MKDEBUG && _d('Checking status variables');
+      PTDEBUG && _d('Checking status variables');
       foreach my $var ( sort keys %vals_too_high ) {
          my $val = $get_status->($var);
-         MKDEBUG && _d($var, '=', $val);
+         PTDEBUG && _d($var, '=', $val);
          if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
@@ -154,19 +154,19 @@ sub wait {
 
       last unless scalar keys %vals_too_high;
 
-      MKDEBUG && _d(scalar keys %vals_too_high, 'values are too high:',
+      PTDEBUG && _d(scalar keys %vals_too_high, 'values are too high:',
          %vals_too_high);
       if ( $pr ) {
          # There's no real progress because we can't estimate how long
          # it will take the values to abate.
          $pr->update(sub { return 0; });
       }
-      MKDEBUG && _d('Calling sleep callback');
+      PTDEBUG && _d('Calling sleep callback');
       $sleep->();
       %vals_too_high = %{$self->{max_val_for}}; # recheck all vars
    }
 
-   MKDEBUG && _d('All var vals are low enough');
+   PTDEBUG && _d('All var vals are low enough');
    return;
 }
 

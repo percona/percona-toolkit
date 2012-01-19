@@ -25,7 +25,7 @@ package CompareQueryTimes;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 Transformers->import(qw(micro_t));
 use POSIX qw(floor);
@@ -96,11 +96,11 @@ sub execute {
    my ($event, $dbh) = @args{@required_args};
 
    if ( exists $event->{Query_time} ) {
-      MKDEBUG && _d('Query already executed');
+      PTDEBUG && _d('Query already executed');
       return $event;
    }
 
-   MKDEBUG && _d('Executing query');
+   PTDEBUG && _d('Executing query');
    my $query = $event->{arg};
    my ( $start, $end, $query_time );
 

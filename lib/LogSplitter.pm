@@ -25,7 +25,7 @@ package LogSplitter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -44,7 +44,7 @@ sub new {
    $args{base_dir} .= '/' if substr($args{base_dir}, -1, 1) ne '/';
 
    if ( $args{split_random} ) {
-      MKDEBUG && _d('Split random');
+      PTDEBUG && _d('Split random');
       $args{attribute} = '_sessionno';  # set round-robin 1..session_files
    }
 
@@ -76,7 +76,7 @@ sub new {
       created_dirs       => [],
    };
 
-   MKDEBUG && _d('new LogSplitter final args:', Dumper($self));
+   PTDEBUG && _d('new LogSplitter final args:', Dumper($self));
    return bless $self, $class;
 }
 
@@ -94,7 +94,7 @@ sub split {
    }
 
    if ( @logs == 0 ) {
-      MKDEBUG && _d('Implicitly reading STDIN because no logs were given');
+      PTDEBUG && _d('Implicitly reading STDIN because no logs were given');
       push @logs, '-';
    }
 
@@ -120,7 +120,7 @@ sub split {
          }
       }
 
-      MKDEBUG && _d('Splitting', $log);
+      PTDEBUG && _d('Splitting', $log);
       my $event           = {};
       my $more_events     = 1;
       my $more_events_sub = sub { $more_events = $_[0]; };
@@ -145,7 +145,7 @@ sub split {
             $self->_save_event($event) if $event;
          }
          if ( !$more_events ) {
-            MKDEBUG && _d('Done parsing', $log);
+            PTDEBUG && _d('Done parsing', $log);
             close $fh;
             next LOG;
          }
@@ -172,13 +172,13 @@ sub _save_event {
 
    if ( !defined $session->{fh} ) {
       $self->{n_sessions_saved}++;
-      MKDEBUG && _d('New session:', $session_id, ',',
+      PTDEBUG && _d('New session:', $session_id, ',',
          $self->{n_sessions_saved}, 'of', $self->{max_sessions});
 
       my $session_file = $self->_get_next_session_file();
       if ( !$session_file ) {
          $oktorun = 0;
-         MKDEBUG && _d('Not oktorun because no _get_next_session_file');
+         PTDEBUG && _d('Not oktorun because no _get_next_session_file');
          return;
       }
 
@@ -200,7 +200,7 @@ sub _save_event {
 
       push @{$self->{session_fhs}}, { fh => $fh, session_id => $session_id };
 
-      MKDEBUG && _d('Created', $session_file, 'for session',
+      PTDEBUG && _d('Created', $session_file, 'for session',
          $self->{attribute}, '=', $session_id);
 
       # This special comment lets mk-log-player know when a session begins.
@@ -225,11 +225,11 @@ sub _save_event {
        $session->{active} = 1;
        $self->{n_open_fhs}++;
 
-       MKDEBUG && _d('Reopend', $session->{session_file}, 'for session',
+       PTDEBUG && _d('Reopend', $session->{session_file}, 'for session',
          $self->{attribute}, '=', $session_id);
    }
    else {
-      MKDEBUG && _d('Event belongs to active session', $session_id);
+      PTDEBUG && _d('Event belongs to active session', $session_id);
    }
 
    my $session_fh = $session->{fh};
@@ -254,7 +254,7 @@ sub _get_session_ds {
 
    my $attrib = $self->{attribute};
    if ( !$event->{ $attrib } ) {
-      MKDEBUG && _d('No attribute', $attrib, 'in event:', Dumper($event));
+      PTDEBUG && _d('No attribute', $attrib, 'in event:', Dumper($event));
       return;
    }
 
@@ -285,7 +285,7 @@ sub _get_session_ds {
    }
    else {
       $self->{n_sessions_skipped} += 1;
-      MKDEBUG && _d('Skipping new session', $session_id,
+      PTDEBUG && _d('Skipping new session', $session_id,
          'because max_sessions is reached');
    }
 
@@ -298,7 +298,7 @@ sub _close_lru_session {
    my $lru_n       = $self->{n_sessions_saved} - $self->{max_open_files} - 1;
    my $close_to_n  = $lru_n + $self->{close_lru_files} - 1;
 
-   MKDEBUG && _d('Closing session fhs', $lru_n, '..', $close_to_n,
+   PTDEBUG && _d('Closing session fhs', $lru_n, '..', $close_to_n,
       '(',$self->{n_sessions}, 'sessions', $self->{n_open_fhs}, 'open fhs)');
 
    foreach my $session ( @$session_fhs[ $lru_n..$close_to_n ] ) {
@@ -329,15 +329,15 @@ sub _get_next_session_file {
          if ( ($retval >> 8) != 0 ) {
             die "Cannot create new directory $new_dir: $OS_ERROR";
          }
-         MKDEBUG && _d('Created new base_dir', $new_dir);
+         PTDEBUG && _d('Created new base_dir', $new_dir);
          push @{$self->{created_dirs}}, $new_dir;
       }
-      elsif ( MKDEBUG ) {
+      elsif ( PTDEBUG ) {
          _d($new_dir, 'already exists');
       }
    }
    else {
-      MKDEBUG && _d('No dir created; n_files_this_dir:',
+      PTDEBUG && _d('No dir created; n_files_this_dir:',
          $self->{n_files_this_dir}, 'n_files_total:',
          $self->{n_files_total});
    }
@@ -349,7 +349,7 @@ sub _get_next_session_file {
    my $session_file = $self->{base_dir}
                     . $dir_n
                     . $self->{base_file_name}."-$session_n.txt";
-   MKDEBUG && _d('Next session file', $session_file);
+   PTDEBUG && _d('Next session file', $session_file);
    return $session_file;
 }
 

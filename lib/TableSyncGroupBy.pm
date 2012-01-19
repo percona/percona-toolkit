@@ -28,7 +28,7 @@ package TableSyncGroupBy;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -63,7 +63,7 @@ sub prepare_to_sync {
       # Prepend more _ until not a column.
       $self->{count_col} = "_$self->{count_col}";
    }
-   MKDEBUG && _d('COUNT column will be named', $self->{count_col});
+   PTDEBUG && _d('COUNT column will be named', $self->{count_col});
 
    $self->{done} = 0;
 
