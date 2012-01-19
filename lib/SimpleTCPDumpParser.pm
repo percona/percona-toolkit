@@ -25,7 +25,7 @@ package SimpleTCPDumpParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timelocal);
 use Data::Dumper;
@@ -163,7 +163,7 @@ sub make_event {
       $event->{port} = $src_port;
       $event->{arg}  = undef;
       delete $event->{status};
-      MKDEBUG && _d('Properties of event:', Dumper($event));
+      PTDEBUG && _d('Properties of event:', Dumper($event));
       return $event;
    }
    return undef;

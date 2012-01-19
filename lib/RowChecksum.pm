@@ -25,7 +25,7 @@ package RowChecksum;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Data::Dumper;
@@ -117,7 +117,7 @@ sub make_row_checksum {
       $query .= "$fnv_func(" . join(', ', @{$cols->{select}}) . ')';
    }
 
-   MKDEBUG && _d('Row checksum:', $query);
+   PTDEBUG && _d('Row checksum:', $query);
    return $query;
 }
 
@@ -152,7 +152,7 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   MKDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
+   PTDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
 
    # This checksum algorithm concatenates the columns in each row and
    # checksums them, then slices this checksum up into 16-character chunks.
@@ -184,7 +184,7 @@ sub make_chunk_checksum {
    }
 
    my $select = "COUNT(*) AS cnt, $crc AS crc";
-   MKDEBUG && _d('Chunk checksum:', $select);
+   PTDEBUG && _d('Chunk checksum:', $select);
    return $select;
 }
 
@@ -279,14 +279,14 @@ sub _get_hash_func {
    foreach my $func ( @funcs ) {
       eval {
          my $sql = "SELECT $func('test-string')";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
       };
       if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
          $error .= qq{$func cannot be used because "$1"\n};
-         MKDEBUG && _d($func, 'cannot be used because', $1);
+         PTDEBUG && _d($func, 'cannot be used because', $1);
       }
-      MKDEBUG && _d('Chosen hash func:', $result);
+      PTDEBUG && _d('Chosen hash func:', $result);
       return $func;
    }
    die $error || 'No hash functions (CRC32, MD5, etc.) are available';
@@ -328,13 +328,13 @@ sub _get_crc_type {
       $sth->execute();
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
-      MKDEBUG && _d($sql, $type, $length);
+      PTDEBUG && _d($sql, $type, $length);
       if ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
    $sth->finish;
-   MKDEBUG && _d('crc_type:', $type, 'length:', $length);
+   PTDEBUG && _d('crc_type:', $type, 'length:', $length);
    return $type;
 }
 
@@ -363,7 +363,7 @@ sub _optimize_xor {
    my $crc_width = length($unsliced) < 16 ? 16 : length($unsliced);
 
    do { # Try different positions till sliced result equals non-sliced.
-      MKDEBUG && _d('Trying slice', $opt_slice);
+      PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do('SET @crc := "", @cnt := 0');
       my $slices = $self->_make_xor_slices(
          row_checksum => "\@crc := $func('a')",
@@ -374,18 +374,18 @@ sub _optimize_xor {
       my $sql = "SELECT CONCAT($slices) AS TEST FROM (SELECT NULL) AS x";
       $sliced = ($dbh->selectrow_array($sql))[0];
       if ( $sliced ne $unsliced ) {
-         MKDEBUG && _d('Slice', $opt_slice, 'does not work');
+         PTDEBUG && _d('Slice', $opt_slice, 'does not work');
          $start += 16;
          ++$opt_slice;
       }
    } while ( $start < $crc_width && $sliced ne $unsliced );
 
    if ( $sliced eq $unsliced ) {
-      MKDEBUG && _d('Slice', $opt_slice, 'works');
+      PTDEBUG && _d('Slice', $opt_slice, 'works');
       return $opt_slice;
    }
    else {
-      MKDEBUG && _d('No slice works');
+      PTDEBUG && _d('No slice works');
       return undef;
    }
 }
@@ -464,7 +464,7 @@ sub find_replication_differences {
       . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
       .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
       . ($args{where} ? " AND ($args{where})" : "");
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
    return $diffs;
 }

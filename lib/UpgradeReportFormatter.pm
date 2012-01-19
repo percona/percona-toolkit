@@ -25,7 +25,7 @@ package UpgradeReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG           => $ENV{MKDEBUG};
+use constant PTDEBUG           => $ENV{PTDEBUG};
 
 Transformers->import(qw(make_checksum percentage_of shorten micro_t));
 

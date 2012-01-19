@@ -25,7 +25,7 @@ package EventTimeline;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 Transformers->import(qw(parse_timestamp secs_to_time unix_timestamp));
 
@@ -101,7 +101,7 @@ sub make_handler {
       my $type = $val  =~ m/^(?:\d+|$float_re)$/o ? 'num'
                : $val  =~ m/^(?:Yes|No)$/         ? 'bool'
                :                                    'string';
-      MKDEBUG && _d('Type for', $attrib, 'is', $type, '(sample:', $val, ')');
+      PTDEBUG && _d('Type for', $attrib, 'is', $type, '(sample:', $val, ')');
       $self->{type_for}->{$attrib} = $type;
 
       push @lines, (
@@ -156,7 +156,7 @@ sub make_handler {
    my $code = join("\n", @lines);
    $self->{code} = $code;
 
-   MKDEBUG && _d('Timeline handler:', $code);
+   PTDEBUG && _d('Timeline handler:', $code);
    my $sub = eval $code;
    die if $EVAL_ERROR;
    return $sub;

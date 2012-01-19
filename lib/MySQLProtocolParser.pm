@@ -39,7 +39,7 @@ package MySQLProtocolParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 eval {
    require IO::Uncompress::Inflate;
@@ -238,7 +238,7 @@ sub new {
       o              => $args{o},
       fake_thread_id => 2**32,   # see _make_event()
    };
-   MKDEBUG && $self->{server} && _d('Watching only server', $self->{server});
+   PTDEBUG && $self->{server} && _d('Watching only server', $self->{server});
    return bless $self, $class;
 }
 
@@ -258,7 +258,7 @@ sub parse_event {
    if ( my $server = $self->{server} ) {  # Watch only the given server.
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
-         MKDEBUG && _d('Packet is not to or from', $server);
+         PTDEBUG && _d('Packet is not to or from', $server);
          return;
       }
    }
@@ -276,10 +276,10 @@ sub parse_event {
       $client      = $src_host;
    }
    else {
-      MKDEBUG && _d('Packet is not to or from a MySQL server');
+      PTDEBUG && _d('Packet is not to or from a MySQL server');
       return;
    }
-   MKDEBUG && _d('Client', $client);
+   PTDEBUG && _d('Client', $client);
 
    # Get the client's session info or create a new session if
    # we catch the TCP SYN sequence or the packetno is 0.
@@ -294,13 +294,13 @@ sub parse_event {
    }
    if ( !exists $self->{sessions}->{$client} ) {
       if ( $packet->{syn} ) {
-         MKDEBUG && _d('New session (SYN)');
+         PTDEBUG && _d('New session (SYN)');
       }
       elsif ( $packetno == 0 ) {
-         MKDEBUG && _d('New session (packetno 0)');
+         PTDEBUG && _d('New session (packetno 0)');
       }
       else {
-         MKDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
+         PTDEBUG && _d('Ignoring mid-stream', $packet_from, 'data,',
             'packetno', $packetno);
          return;
       }
@@ -318,7 +318,7 @@ sub parse_event {
       };
    }
    my $session = $self->{sessions}->{$client};
-   MKDEBUG && _d('Client state:', $session->{state});
+   PTDEBUG && _d('Client state:', $session->{state});
 
    # Save raw packets to dump later in case something fails.
    push @{$session->{raw_packets}}, $packet->{raw_packet};
@@ -326,7 +326,7 @@ sub parse_event {
    # Check client port reuse.
    # http://code.google.com/p/maatkit/issues/detail?id=794
    if ( $packet->{syn} && ($session->{n_queries} > 0 || $session->{state}) ) {
-      MKDEBUG && _d('Client port reuse and last session did not quit');
+      PTDEBUG && _d('Client port reuse and last session did not quit');
       # Fail the session so we can see the last thing the previous
       # session was doing.
       $self->fail_session($session,
@@ -338,7 +338,7 @@ sub parse_event {
    # Return early if there's no TCP/MySQL data.  These are usually
    # TCP control packets: SYN, ACK, FIN, etc.
    if ( $packet->{data_len} == 0 ) {
-      MKDEBUG && _d('TCP control:',
+      PTDEBUG && _d('TCP control:',
          map { uc $_ } grep { $packet->{$_} } qw(syn ack fin rst));
       return;
    }
@@ -364,7 +364,7 @@ sub parse_event {
       $packet->{mysql_data_len} = $session->{mysql_data_len};
       $packet->{number}         = $session->{number};
 
-      MKDEBUG && _d('Appending data to buff; expecting',
+      PTDEBUG && _d('Appending data to buff; expecting',
          $session->{buff_left}, 'more bytes');
    }
    else { 
@@ -376,7 +376,7 @@ sub parse_event {
          remove_mysql_header($packet);
       };
       if ( $EVAL_ERROR ) {
-         MKDEBUG && _d('remove_mysql_header() failed; failing session');
+         PTDEBUG && _d('remove_mysql_header() failed; failing session');
          $session->{EVAL_ERROR} = $EVAL_ERROR;
          $self->fail_session($session, 'remove_mysql_header() failed');
          return;
@@ -392,7 +392,7 @@ sub parse_event {
    elsif ( $packet_from eq 'client' ) {
       if ( $session->{buff} ) {
          if ( $session->{buff_left} <= 0 ) {
-            MKDEBUG && _d('Data is complete');
+            PTDEBUG && _d('Data is complete');
             $self->_delete_buff($session);
          }
          else {
@@ -403,7 +403,7 @@ sub parse_event {
 
          # http://code.google.com/p/maatkit/issues/detail?id=832
          if ( $session->{cmd} && ($session->{state} || '') eq 'awaiting_reply' ) {
-            MKDEBUG && _d('No server OK to previous command (frag)');
+            PTDEBUG && _d('No server OK to previous command (frag)');
             $self->fail_session($session, 'no server OK to previous command');
             # The MySQL header is removed by this point, so put it back.
             $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
@@ -422,7 +422,7 @@ sub parse_event {
          $session->{buff_left}
             ||= $packet->{mysql_data_len} - ($packet->{data_len} - 4);
 
-         MKDEBUG && _d('Data not complete; expecting',
+         PTDEBUG && _d('Data not complete; expecting',
             $session->{buff_left}, 'more bytes');
          return;
       }
@@ -434,7 +434,7 @@ sub parse_event {
          # query, chances are we missed the server's OK response to the
          # first query.  So fail the first query and re-parse this second
          # query.
-         MKDEBUG && _d('No server OK to previous command');
+         PTDEBUG && _d('No server OK to previous command');
          $self->fail_session($session, 'no server OK to previous command');
          # The MySQL header is removed by this point, so put it back.
          $packet->{data} = $packet->{mysql_hdr} . $packet->{data};
@@ -448,10 +448,10 @@ sub parse_event {
       die 'Packet origin unknown';
    }
 
-   MKDEBUG && _d('Done parsing packet; client state:', $session->{state});
+   PTDEBUG && _d('Done parsing packet; client state:', $session->{state});
    if ( $session->{closed} ) {
       delete $self->{sessions}->{$session->{client}};
-      MKDEBUG && _d('Session deleted');
+      PTDEBUG && _d('Session deleted');
    }
 
    $args{stats}->{events_parsed}++ if $args{stats};
@@ -470,11 +470,11 @@ sub _packet_from_server {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   MKDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
 
    if ( ($session->{server_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{server_retransmissions} }, $packet->{seq};
-      MKDEBUG && _d('TCP retransmission');
+      PTDEBUG && _d('TCP retransmission');
       return;
    }
    $session->{server_seq} = $packet->{seq};
@@ -488,7 +488,7 @@ sub _packet_from_server {
    # be a result set header, field, row data, etc.
 
    my ( $first_byte ) = substr($data, 0, 2, '');
-   MKDEBUG && _d('First byte of packet:', $first_byte);
+   PTDEBUG && _d('First byte of packet:', $first_byte);
    if ( !$first_byte ) {
       $self->fail_session($session, 'no first byte');
       return;
@@ -522,7 +522,7 @@ sub _packet_from_server {
          return;
       }
       else {
-         MKDEBUG && _d('Ignoring mid-stream server response');
+         PTDEBUG && _d('Ignoring mid-stream server response');
          return;
       }
    }
@@ -533,9 +533,9 @@ sub _packet_from_server {
 
             $session->{compress} = $session->{will_compress};
             delete $session->{will_compress};
-            MKDEBUG && $session->{compress} && _d('Packets will be compressed');
+            PTDEBUG && $session->{compress} && _d('Packets will be compressed');
 
-            MKDEBUG && _d('Admin command: Connect');
+            PTDEBUG && _d('Admin command: Connect');
             return $self->_make_event(
                {  cmd => 'Admin',
                   arg => 'administrator command: Connect',
@@ -550,7 +550,7 @@ sub _packet_from_server {
             my $com = $session->{cmd}->{cmd};
             my $ok;
             if ( $com eq COM_STMT_PREPARE ) {
-               MKDEBUG && _d('OK for prepared statement');
+               PTDEBUG && _d('OK for prepared statement');
                $ok = parse_ok_prepared_statement_packet($data);
                if ( !$ok ) {
                   $self->fail_session($session,
@@ -601,7 +601,7 @@ sub _packet_from_server {
             );
          } 
          else {
-            MKDEBUG && _d('Looks like an OK packet but session has no cmd');
+            PTDEBUG && _d('Looks like an OK packet but session has no cmd');
          }
       }
       elsif ( $first_byte eq 'ff' ) {
@@ -613,7 +613,7 @@ sub _packet_from_server {
          my $event;
 
          if ( $session->{state} eq 'client_auth' ) {
-            MKDEBUG && _d('Connection failed');
+            PTDEBUG && _d('Connection failed');
             $event = {
                cmd      => 'Admin',
                arg      => 'administrator command: Connect',
@@ -650,7 +650,7 @@ sub _packet_from_server {
             return $self->_make_event($event, $packet, $session);
          }
          else {
-            MKDEBUG && _d('Looks like an error packet but client is not '
+            PTDEBUG && _d('Looks like an error packet but client is not '
                . 'authenticating and session has no cmd');
          }
       }
@@ -660,12 +660,12 @@ sub _packet_from_server {
               && $session->{state} eq 'client_auth'
               && $packet->{number} == 2 )
          {
-            MKDEBUG && _d('Server has old password table;',
+            PTDEBUG && _d('Server has old password table;',
                'client will resend password using old algorithm');
             $session->{state} = 'client_auth_resend';
          }
          else {
-            MKDEBUG && _d('Got an EOF packet');
+            PTDEBUG && _d('Got an EOF packet');
             $self->fail_session($session, 'got an unexpected EOF packet');
             # ^^^ We shouldn't reach this because EOF should come after a
             # header, field, or row data packet; and we should be firing the
@@ -680,9 +680,9 @@ sub _packet_from_server {
          # is not done.  This means we will NOT process EOF packets
          # themselves (see above).
          if ( $session->{cmd} ) {
-            MKDEBUG && _d('Got a row/field/result packet');
+            PTDEBUG && _d('Got a row/field/result packet');
             my $com = $session->{cmd}->{cmd};
-            MKDEBUG && _d('Responding to client', $com_for{$com});
+            PTDEBUG && _d('Responding to client', $com_for{$com});
             my $event = { ts  => $packet->{ts} };
             if ( $com eq COM_QUERY || $com eq COM_STMT_EXECUTE ) {
                $event->{cmd} = 'Query';
@@ -713,7 +713,7 @@ sub _packet_from_server {
             return $self->_make_event($event, $packet, $session);
          }
          else {
-            MKDEBUG && _d('Unknown in-stream server response');
+            PTDEBUG && _d('Unknown in-stream server response');
          }
       }
    }
@@ -733,11 +733,11 @@ sub _packet_from_client {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   MKDEBUG && _d('Packet is from client; state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from client; state:', $session->{state}); 
 
    if ( ($session->{client_seq} || '') eq $packet->{seq} ) {
       push @{ $session->{client_retransmissions} }, $packet->{seq};
-      MKDEBUG && _d('TCP retransmission');
+      PTDEBUG && _d('TCP retransmission');
       return;
    }
    $session->{client_seq} = $packet->{seq};
@@ -746,7 +746,7 @@ sub _packet_from_client {
    my $ts    = $packet->{ts};
 
    if ( ($session->{state} || '') eq 'server_handshake' ) {
-      MKDEBUG && _d('Expecting client authentication packet');
+      PTDEBUG && _d('Expecting client authentication packet');
       # The connection is a 3-way handshake:
       #    server > client  (protocol version, thread id, etc.)
       #    client > server  (user, pass, default db, etc.)
@@ -772,13 +772,13 @@ sub _packet_from_client {
    }
    elsif ( ($session->{state} || '') eq 'client_auth_resend' ) {
       # Don't know how to parse this packet.
-      MKDEBUG && _d('Client resending password using old algorithm');
+      PTDEBUG && _d('Client resending password using old algorithm');
       $session->{state} = 'client_auth';
    }
    elsif ( ($session->{state} || '') eq 'awaiting_reply' ) {
       my $arg = $session->{cmd}->{arg} ? substr($session->{cmd}->{arg}, 0, 50)
               : 'unknown';
-      MKDEBUG && _d('More data for previous command:', $arg, '...'); 
+      PTDEBUG && _d('More data for previous command:', $arg, '...'); 
       return;
    }
    else {
@@ -805,12 +805,12 @@ sub _packet_from_client {
       }
 
       if ( $com->{code} eq COM_STMT_EXECUTE ) {
-         MKDEBUG && _d('Execute prepared statement');
+         PTDEBUG && _d('Execute prepared statement');
          my $exec = parse_execute_packet($com->{data}, $session->{sths});
          if ( !$exec ) {
             # This does not signal a failure, it could just be that
             # the statement handle ID is unknown.
-            MKDEBUG && _d('Failed to parse execute packet');
+            PTDEBUG && _d('Failed to parse execute packet');
             $session->{state} = undef;
             return;
          }
@@ -837,7 +837,7 @@ sub _packet_from_client {
       };
 
       if ( $com->{code} eq COM_QUIT ) { # Fire right away; will cleanup later.
-         MKDEBUG && _d('Got a COM_QUIT');
+         PTDEBUG && _d('Got a COM_QUIT');
 
          # See http://code.google.com/p/maatkit/issues/detail?id=794
          $session->{closed} = 1;  # delete session when done
@@ -875,7 +875,7 @@ sub _packet_from_client {
 # Make and return an event from the given packet and session.
 sub _make_event {
    my ( $self, $event, $packet, $session ) = @_;
-   MKDEBUG && _d('Making event');
+   PTDEBUG && _d('Making event');
 
    # Clear packets that preceded this event.
    $session->{raw_packets}  = [];
@@ -884,7 +884,7 @@ sub _make_event {
    if ( !$session->{thread_id} ) {
       # Only the server handshake packet gives the thread id, so for
       # sessions caught mid-stream we assign a fake thread id.
-      MKDEBUG && _d('Giving session fake thread id', $self->{fake_thread_id});
+      PTDEBUG && _d('Giving session fake thread id', $self->{fake_thread_id});
       $session->{thread_id} = $self->{fake_thread_id}++;
    }
 
@@ -909,7 +909,7 @@ sub _make_event {
       No_index_used      => ($event->{No_index_used}      ? 'Yes' : 'No'),
    };
    @{$new_event}{keys %{$session->{attribs}}} = values %{$session->{attribs}};
-   MKDEBUG && _d('Properties of event:', Dumper($new_event));
+   PTDEBUG && _d('Properties of event:', Dumper($new_event));
 
    # Delete cmd to prevent re-making the same event if the
    # server sends extra stuff that looks like a result set, etc.
@@ -1002,11 +1002,11 @@ sub decode_len {
    else {
       # This shouldn't happen, but it may if we're passed data
       # that isn't length encoded.
-      MKDEBUG && _d('data:', $data, 'first byte:', $first_byte);
+      PTDEBUG && _d('data:', $data, 'first byte:', $first_byte);
       die "Invalid length encoded byte: $first_byte";
    }
 
-   MKDEBUG && _d('len:', $len, 'encode len', $encode_len);
+   PTDEBUG && _d('len:', $len, 'encode len', $encode_len);
    return $data, $len, $encode_len;
 }
 
@@ -1063,9 +1063,9 @@ sub get_lcb {
 sub parse_error_packet {
    my ( $data ) = @_;
    return unless $data;
-   MKDEBUG && _d('ERROR data:', $data);
+   PTDEBUG && _d('ERROR data:', $data);
    if ( length $data < 16 ) {
-      MKDEBUG && _d('Error packet is too short:', $data);
+      PTDEBUG && _d('Error packet is too short:', $data);
       return;
    }
    my $errno    = to_num(substr($data, 0, 4));
@@ -1078,7 +1078,7 @@ sub parse_error_packet {
       sqlstate => $marker . $sqlstate,
       message  => $message,
    };
-   MKDEBUG && _d('Error packet:', Dumper($pkt));
+   PTDEBUG && _d('Error packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1095,9 +1095,9 @@ sub parse_error_packet {
 sub parse_ok_packet {
    my ( $data ) = @_;
    return unless $data;
-   MKDEBUG && _d('OK data:', $data);
+   PTDEBUG && _d('OK data:', $data);
    if ( length $data < 12 ) {
-      MKDEBUG && _d('OK packet is too short:', $data);
+      PTDEBUG && _d('OK packet is too short:', $data);
       return;
    }
    my $affected_rows = get_lcb(\$data);
@@ -1114,7 +1114,7 @@ sub parse_ok_packet {
       warnings      => $warnings,
       message       => $message,
    };
-   MKDEBUG && _d('OK packet:', Dumper($pkt));
+   PTDEBUG && _d('OK packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1128,9 +1128,9 @@ sub parse_ok_packet {
 sub parse_ok_prepared_statement_packet {
    my ( $data ) = @_;
    return unless $data;
-   MKDEBUG && _d('OK prepared statement data:', $data);
+   PTDEBUG && _d('OK prepared statement data:', $data);
    if ( length $data < 8 ) {
-      MKDEBUG && _d('OK prepared statement packet is too short:', $data);
+      PTDEBUG && _d('OK prepared statement packet is too short:', $data);
       return;
    }
    my $sth_id     = to_num(substr($data, 0, 8, ''));
@@ -1141,7 +1141,7 @@ sub parse_ok_prepared_statement_packet {
       num_cols   => $num_cols,
       num_params => $num_params,
    };
-   MKDEBUG && _d('OK prepared packet:', Dumper($pkt));
+   PTDEBUG && _d('OK prepared packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1149,7 +1149,7 @@ sub parse_ok_prepared_statement_packet {
 sub parse_server_handshake_packet {
    my ( $data ) = @_;
    return unless $data;
-   MKDEBUG && _d('Server handshake data:', $data);
+   PTDEBUG && _d('Server handshake data:', $data);
    my $handshake_pattern = qr{
                         # Bytes                Name
       ^                 # -----                ----
@@ -1169,7 +1169,7 @@ sub parse_server_handshake_packet {
       thread_id      => to_num($thread_id),
       flags          => parse_flags($flags),
    };
-   MKDEBUG && _d('Server handshake packet:', Dumper($pkt));
+   PTDEBUG && _d('Server handshake packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1177,7 +1177,7 @@ sub parse_server_handshake_packet {
 sub parse_client_handshake_packet {
    my ( $data ) = @_;
    return unless $data;
-   MKDEBUG && _d('Client handshake data:', $data);
+   PTDEBUG && _d('Client handshake data:', $data);
    my ( $flags, $user, $buff_len ) = $data =~ m{
       ^
       (.{8})         # Client flags
@@ -1191,7 +1191,7 @@ sub parse_client_handshake_packet {
    # the server sends the client a packet first (its handshake) and
    # then the client only and ever sends back its handshake.
    if ( !$buff_len ) {
-      MKDEBUG && _d('Did not match client handshake packet');
+      PTDEBUG && _d('Did not match client handshake packet');
       return;
    }
 
@@ -1208,7 +1208,7 @@ sub parse_client_handshake_packet {
       db    => $db ? to_string($db) : '',
       flags => parse_flags($flags),
    };
-   MKDEBUG && _d('Client handshake packet:', Dumper($pkt));
+   PTDEBUG && _d('Client handshake packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1217,13 +1217,13 @@ sub parse_client_handshake_packet {
 sub parse_com_packet {
    my ( $data, $len ) = @_;
    return unless $data && $len;
-   MKDEBUG && _d('COM data:',
+   PTDEBUG && _d('COM data:',
       (substr($data, 0, 100).(length $data > 100 ? '...' : '')),
       'len:', $len);
    my $code = substr($data, 0, 2);
    my $com  = $com_for{$code};
    if ( !$com ) {
-      MKDEBUG && _d('Did not match COM packet');
+      PTDEBUG && _d('Did not match COM packet');
       return;
    }
    if (    $code ne COM_STMT_EXECUTE
@@ -1240,7 +1240,7 @@ sub parse_com_packet {
       com  => $com,
       data => $data,
    };
-   MKDEBUG && _d('COM packet:', Dumper($pkt));
+   PTDEBUG && _d('COM packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1263,12 +1263,12 @@ sub parse_execute_packet {
 
    my $sth = $sths->{$sth_id};
    if ( !$sth ) {
-      MKDEBUG && _d('Skipping unknown statement handle', $sth_id);
+      PTDEBUG && _d('Skipping unknown statement handle', $sth_id);
       return;
    }
    my $null_count  = int(($sth->{num_params} + 7) / 8) || 1;
    my $null_bitmap = to_num(substr($data, 20, $null_count * 2));
-   MKDEBUG && _d('NULL bitmap:', $null_bitmap, 'count:', $null_count);
+   PTDEBUG && _d('NULL bitmap:', $null_bitmap, 'count:', $null_count);
    
    # This chops off everything up to the byte for new params.
    substr($data, 0, 20 + ($null_count * 2), '');
@@ -1276,7 +1276,7 @@ sub parse_execute_packet {
    my $new_params = to_num(substr($data, 0, 2, ''));
    my @types; 
    if ( $new_params ) {
-      MKDEBUG && _d('New param types');
+      PTDEBUG && _d('New param types');
       # It seems all params are type 254, MYSQL_TYPE_STRING.  Perhaps
       # this depends on the client.  If we ever need these types, they
       # can be saved here.  Otherwise for now I just want to see the
@@ -1284,7 +1284,7 @@ sub parse_execute_packet {
       for my $i ( 0..($sth->{num_params}-1) ) {
          my $type = to_num(substr($data, 0, 4, ''));
          push @types, $type_for{$type};
-         MKDEBUG && _d('Param', $i, 'type:', $type, $type_for{$type});
+         PTDEBUG && _d('Param', $i, 'type:', $type, $type_for{$type});
       }
       $sth->{types} = \@types;
    }
@@ -1296,12 +1296,12 @@ sub parse_execute_packet {
    # $data should now be truncated up to the parameter values.
 
    my $arg  = $sth->{statement};
-   MKDEBUG && _d('Statement:', $arg);
+   PTDEBUG && _d('Statement:', $arg);
    for my $i ( 0..($sth->{num_params}-1) ) {
       my $val;
       my $len;  # in bytes
       if ( $null_bitmap & (2**$i) ) {
-         MKDEBUG && _d('Param', $i, 'is NULL (bitmap)');
+         PTDEBUG && _d('Param', $i, 'is NULL (bitmap)');
          $val = 'NULL';
          $len = 0;
       }
@@ -1311,14 +1311,14 @@ sub parse_execute_packet {
          }
          else {
             # TODO: this is probably going to break parsing other param vals
-            MKDEBUG && _d('No handler for param', $i, 'type', $types[$i]);
+            PTDEBUG && _d('No handler for param', $i, 'type', $types[$i]);
             $val = '?';
             $len = 0;
          }
       }
 
       # Replace ? in prepared statement with value.
-      MKDEBUG && _d('Param', $i, 'val:', $val);
+      PTDEBUG && _d('Param', $i, 'val:', $val);
       $arg =~ s/\?/$val/;
 
       # Remove this param val from the data, putting us at the next one.
@@ -1329,7 +1329,7 @@ sub parse_execute_packet {
       sth_id => $sth_id,
       arg    => "EXECUTE $arg",
    };
-   MKDEBUG && _d('Execute packet:', Dumper($pkt));
+   PTDEBUG && _d('Execute packet:', Dumper($pkt));
    return $pkt;
 }
 
@@ -1343,7 +1343,7 @@ sub get_sth_id {
 sub parse_flags {
    my ( $flags ) = @_;
    die "I need flags" unless $flags;
-   MKDEBUG && _d('Flag data:', $flags);
+   PTDEBUG && _d('Flag data:', $flags);
    my %flags     = %flag_for;
    my $flags_dec = to_num($flags);
    foreach my $flag ( keys %flag_for ) {
@@ -1361,7 +1361,7 @@ sub uncompress_data {
    die "I need data" unless $data;
    die "I need a len argument" unless $len;
    die "I need a scalar reference to data" unless ref $data eq 'SCALAR';
-   MKDEBUG && _d('Uncompressing data');
+   PTDEBUG && _d('Uncompressing data');
    our $InflateError;
 
    # Pack hex string into compressed binary data.
@@ -1387,7 +1387,7 @@ sub uncompress_data {
 # (uncompress_packet() returns 0).
 sub detect_compression {
    my ( $self, $packet, $session ) = @_;
-   MKDEBUG && _d('Checking for client compression');
+   PTDEBUG && _d('Checking for client compression');
    # This is a necessary hack for detecting compression in-stream without
    # having seen the client handshake and CLIENT_COMPRESS flag.  If the
    # client is compressing packets, there will be an extra 7 bytes before
@@ -1398,7 +1398,7 @@ sub detect_compression {
    # compression.
    my $com = parse_com_packet($packet->{data}, $packet->{mysql_data_len});
    if ( $com && $com->{code} eq COM_SLEEP ) {
-      MKDEBUG && _d('Client is using compression');
+      PTDEBUG && _d('Client is using compression');
       $session->{compress} = 1;
 
       # Since parse_packet() didn't know the packet was compressed, it
@@ -1410,7 +1410,7 @@ sub detect_compression {
       remove_mysql_header($packet);
    }
    else {
-      MKDEBUG && _d('Client is NOT using compression');
+      PTDEBUG && _d('Client is NOT using compression');
       $session->{compress} = 0;
    }
    return 1;
@@ -1442,7 +1442,7 @@ sub uncompress_packet {
       $comp_data_len   = to_num(substr($comp_hdr, 0, 6));
       $pkt_num         = to_num(substr($comp_hdr, 6, 2));
       $uncomp_data_len = to_num(substr($comp_hdr, 8, 6));
-      MKDEBUG && _d('Compression header data:', $comp_hdr,
+      PTDEBUG && _d('Compression header data:', $comp_hdr,
          'compressed data len (bytes)', $comp_data_len,
          'number', $pkt_num,
          'uncompressed data len (bytes)', $uncomp_data_len);
@@ -1466,7 +1466,7 @@ sub uncompress_packet {
       }
    }
    else {
-      MKDEBUG && _d('Packet is not really compressed');
+      PTDEBUG && _d('Packet is not really compressed');
       $packet->{data} = $$data;
    }
 
@@ -1486,7 +1486,7 @@ sub remove_mysql_header {
    my $mysql_hdr      = substr($packet->{data}, 0, 8, '');
    my $mysql_data_len = to_num(substr($mysql_hdr, 0, 6));
    my $pkt_num        = to_num(substr($mysql_hdr, 6, 2));
-   MKDEBUG && _d('MySQL packet: header data', $mysql_hdr,
+   PTDEBUG && _d('MySQL packet: header data', $mysql_hdr,
       'data len (bytes)', $mysql_data_len, 'number', $pkt_num);
 
    $packet->{mysql_hdr}      = $mysql_hdr;
@@ -1505,7 +1505,7 @@ sub _get_errors_fh {
    my $o = $self->{o};
    if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
       my $errors_file = $o->get('tcpdump-errors');
-      MKDEBUG && _d('tcpdump-errors file:', $errors_file);
+      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
       open $errors_fh, '>>', $errors_file
          or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
    }
@@ -1516,7 +1516,7 @@ sub _get_errors_fh {
 
 sub fail_session {
    my ( $self, $session, $reason ) = @_;
-   MKDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
+   PTDEBUG && _d('Client', $session->{client}, 'failed because', $reason);
    my $errors_fh = $self->_get_errors_fh();
    if ( $errors_fh ) {
       my $raw_packets = $session->{raw_packets};

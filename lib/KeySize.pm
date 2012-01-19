@@ -25,7 +25,7 @@ package KeySize;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -65,7 +65,7 @@ sub get_key_size {
    }
 
    my $key_exists = $self->_key_exists(%args);
-   MKDEBUG && _d('Key', $name, 'exists in', $args{tbl_name}, ':',
+   PTDEBUG && _d('Key', $name, 'exists in', $args{tbl_name}, ':',
       $key_exists ? 'yes': 'no');
 
    # Construct a SQL statement with WHERE conditions on all key
@@ -94,7 +94,7 @@ sub get_key_size {
    }
    $sql .= join(' OR ', @where_cols);
    $self->{query} = $sql;
-   MKDEBUG && _d('sql:', $sql);
+   PTDEBUG && _d('sql:', $sql);
 
    my $explain;
    my $sth = $dbh->prepare($sql);
@@ -110,7 +110,7 @@ sub get_key_size {
    my $key_len      = $explain->{key_len};
    my $rows         = $explain->{rows};
    my $chosen_key   = $explain->{key};  # May differ from $name
-   MKDEBUG && _d('MySQL chose key:', $chosen_key, 'len:', $key_len,
+   PTDEBUG && _d('MySQL chose key:', $chosen_key, 'len:', $key_len,
       'rows:', $rows);
 
    my $key_size = 0;

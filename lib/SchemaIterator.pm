@@ -25,7 +25,7 @@ package SchemaIterator;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -80,7 +80,7 @@ sub new {
 
    my %resume;
    if ( my $table = $args{resume} ) {
-      MKDEBUG && _d('Will resume from or after', $table);
+      PTDEBUG && _d('Will resume from or after', $table);
       my ($db, $tbl) = $args{Quoter}->split_unquote($table);
       die "Resume table must be database-qualified: $table"
          unless $db && $tbl;
@@ -152,11 +152,11 @@ sub _make_filters {
                # Database-qualified tables require special handling.
                # See table_is_allowed().
                $db ||= '*';
-               MKDEBUG && _d('Filter', $filter, 'value:', $db, $tbl);
+               PTDEBUG && _d('Filter', $filter, 'value:', $db, $tbl);
                $filters{$filter}->{$tbl} = $db;
             }
             else { # database
-               MKDEBUG && _d('Filter', $filter, 'value:', $obj);
+               PTDEBUG && _d('Filter', $filter, 'value:', $obj);
                $filters{$filter}->{$obj} = 1;
             }
          }
@@ -172,11 +172,11 @@ sub _make_filters {
          my $pat = $o->get($filter);
          next REGEX_FILTER unless $pat;
          $filters{$filter} = qr/$pat/;
-         MKDEBUG && _d('Filter', $filter, 'value:', $filters{$filter});
+         PTDEBUG && _d('Filter', $filter, 'value:', $filters{$filter});
       }
    }
 
-   MKDEBUG && _d('Schema object filters:', Dumper(\%filters));
+   PTDEBUG && _d('Schema object filters:', Dumper(\%filters));
    return \%filters;
 }
 
@@ -207,7 +207,7 @@ sub next {
       $self->{initialized} = 1;
       if ( $self->{resume}->{tbl}
            && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
-         MKDEBUG && _d('Will resume after',
+         PTDEBUG && _d('Will resume after',
             join('.', @{$self->{resume}}{qw(db tbl)}));
          $self->{resume}->{after} = 1;
       }
@@ -233,7 +233,7 @@ sub next {
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
       }
-      MKDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
+      PTDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
    }
 
    return $schema_obj;
@@ -245,14 +245,14 @@ sub _iterate_files {
    if ( !$self->{fh} ) {
       my ($fh, $file) = $self->{file_itr}->();
       if ( !$fh ) {
-         MKDEBUG && _d('No more files to iterate');
+         PTDEBUG && _d('No more files to iterate');
          return;
       }
       $self->{fh}   = $fh;
       $self->{file} = $file;
    }
    my $fh = $self->{fh};
-   MKDEBUG && _d('Getting next schema object from', $self->{file});
+   PTDEBUG && _d('Getting next schema object from', $self->{file});
 
    local $INPUT_RECORD_SEPARATOR = '';
    CHUNK:
@@ -276,7 +276,7 @@ sub _iterate_files {
          if ($chunk =~ m/DROP VIEW IF EXISTS/) {
             # Tables that are actually views have this DROP statment in the
             # chunk just before the CREATE TABLE.  We don't want views.
-            MKDEBUG && _d('Table is a VIEW, skipping');
+            PTDEBUG && _d('Table is a VIEW, skipping');
             next CHUNK;
          }
 
@@ -309,7 +309,7 @@ sub _iterate_files {
       }
    }  # CHUNK
 
-   MKDEBUG && _d('No more schema objects in', $self->{file});
+   PTDEBUG && _d('No more schema objects in', $self->{file});
    close $self->{fh};
    $self->{fh} = undef;
 
@@ -322,15 +322,15 @@ sub _iterate_dbh {
    my ( $self ) = @_;
    my $q   = $self->{Quoter};
    my $dbh = $self->{dbh};
-   MKDEBUG && _d('Getting next schema object from dbh', $dbh);
+   PTDEBUG && _d('Getting next schema object from dbh', $dbh);
 
    if ( !defined $self->{dbs} ) {
       # This happens once, the first time we're called.
       my $sql = 'SHOW DATABASES';
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       my @dbs = grep { $self->database_is_allowed($_) }
                 @{$dbh->selectcol_arrayref($sql)};
-      MKDEBUG && _d('Found', scalar @dbs, 'databases');
+      PTDEBUG && _d('Found', scalar @dbs, 'databases');
       $self->{dbs} = \@dbs;
    }
 
@@ -338,13 +338,13 @@ sub _iterate_dbh {
       do {
          $self->{db} = shift @{$self->{dbs}};
       } until $self->_resume_from_database($self->{db});
-      MKDEBUG && _d('Next database:', $self->{db});
+      PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
 
    if ( !defined $self->{tbls} ) {
       my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       my @tbls = map {
          $_->[0];  # (tbl, type)
       }
@@ -355,7 +355,7 @@ sub _iterate_dbh {
          && $self->table_is_allowed($self->{db}, $tbl);
       }
       @{$dbh->selectall_arrayref($sql)};
-      MKDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
+      PTDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
       $self->{tbls} = \@tbls;
    }
 
@@ -370,9 +370,9 @@ sub _iterate_dbh {
       {
          my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
                  . " LIKE \'$tbl\'";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $tbl_status = $dbh->selectrow_hashref($sql);
-         MKDEBUG && _d(Dumper($tbl_status));
+         PTDEBUG && _d(Dumper($tbl_status));
       }
 
       if ( !$tbl_status
@@ -391,7 +391,7 @@ sub _iterate_dbh {
       }
    }
 
-   MKDEBUG && _d('No more tables in database', $self->{db});
+   PTDEBUG && _d('No more tables in database', $self->{db});
    $self->{db}   = undef;
    $self->{tbls} = undef;
 
@@ -409,30 +409,30 @@ sub database_is_allowed {
    my $filter = $self->{filters};
 
    if ( $db =~ m/information_schema|performance_schema|lost\+found/ ) {
-      MKDEBUG && _d('Database', $db, 'is a system database, ignoring');
+      PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
       return 0;
    }
 
    if ( $self->{filters}->{'ignore-databases'}->{$db} ) {
-      MKDEBUG && _d('Database', $db, 'is in --ignore-databases list');
+      PTDEBUG && _d('Database', $db, 'is in --ignore-databases list');
       return 0;
    }
 
    if ( $filter->{'ignore-databases-regex'}
         && $db =~ $filter->{'ignore-databases-regex'} ) {
-      MKDEBUG && _d('Database', $db, 'matches --ignore-databases-regex');
+      PTDEBUG && _d('Database', $db, 'matches --ignore-databases-regex');
       return 0;
    }
 
    if ( $filter->{'databases'}
         && !$filter->{'databases'}->{$db} ) {
-      MKDEBUG && _d('Database', $db, 'is not in --databases list, ignoring');
+      PTDEBUG && _d('Database', $db, 'is not in --databases list, ignoring');
       return 0;
    }
 
    if ( $filter->{'databases-regex'}
         && $db !~ $filter->{'databases-regex'} ) {
-      MKDEBUG && _d('Database', $db, 'does not match --databases-regex, ignoring');
+      PTDEBUG && _d('Database', $db, 'does not match --databases-regex, ignoring');
       return 0;
    }
 
@@ -457,25 +457,25 @@ sub table_is_allowed {
    if ( $filter->{'ignore-tables'}->{$tbl}
         && ($filter->{'ignore-tables'}->{$tbl} eq '*'
             || $filter->{'ignore-tables'}->{$tbl} eq $db) ) {
-      MKDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
+      PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
       return 0;
    }
 
    if ( $filter->{'ignore-tables-regex'}
         && $tbl =~ $filter->{'ignore-tables-regex'} ) {
-      MKDEBUG && _d('Table', $tbl, 'matches --ignore-tables-regex');
+      PTDEBUG && _d('Table', $tbl, 'matches --ignore-tables-regex');
       return 0;
    }
 
    if ( $filter->{'tables'}
         && !$filter->{'tables'}->{$tbl} ) { 
-      MKDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
+      PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
       return 0;
    }
 
    if ( $filter->{'tables-regex'}
         && $tbl !~ $filter->{'tables-regex'} ) {
-      MKDEBUG && _d('Table', $tbl, 'does not match --tables-regex, ignoring');
+      PTDEBUG && _d('Table', $tbl, 'does not match --tables-regex, ignoring');
       return 0;
    }
 
@@ -492,7 +492,7 @@ sub table_is_allowed {
         && $filter->{'tables'}->{$tbl}
         && $filter->{'tables'}->{$tbl} ne '*'
         && $filter->{'tables'}->{$tbl} ne $db ) {
-      MKDEBUG && _d('Table', $tbl, 'is only allowed in database',
+      PTDEBUG && _d('Table', $tbl, 'is only allowed in database',
          $filter->{'tables'}->{$tbl});
       return 0;
    }
@@ -509,13 +509,13 @@ sub engine_is_allowed {
    my $filter = $self->{filters};
 
    if ( $filter->{'ignore-engines'}->{$engine} ) {
-      MKDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
       return 0;
    }
 
    if ( $filter->{'engines'}
         && !$filter->{'engines'}->{$engine} ) {
-      MKDEBUG && _d('Engine', $engine, 'is not in --engines list, ignoring');
+      PTDEBUG && _d('Engine', $engine, 'is not in --engines list, ignoring');
       return 0;
    }
 
@@ -529,7 +529,7 @@ sub _resume_from_database {
    return 1 unless $self->{resume}->{db};
 
    if ( $db eq $self->{resume}->{db} ) {
-      MKDEBUG && _d('At resume db', $db);
+      PTDEBUG && _d('At resume db', $db);
       delete $self->{resume}->{db};
       return 1;
    }
@@ -545,12 +545,12 @@ sub _resume_from_table {
 
    if ( $tbl eq $self->{resume}->{tbl} ) {
       if ( !$self->{resume}->{after} ) {
-         MKDEBUG && _d('Resuming from table', $tbl);
+         PTDEBUG && _d('Resuming from table', $tbl);
          delete $self->{resume}->{tbl};
          return 1;
       }
       else {
-         MKDEBUG && _d('Resuming after table', $tbl);
+         PTDEBUG && _d('Resuming after table', $tbl);
          delete $self->{resume}->{tbl};
       }
    }

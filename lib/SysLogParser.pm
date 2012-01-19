@@ -25,7 +25,7 @@ package SysLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # This regex matches the message number, line number, and content of a syslog
 # message:
@@ -73,7 +73,7 @@ sub generate_wrappers {
    # then they'll keep reading from old filehandles.  The sanity check is based
    # on the memory address of the closure!
    if ( ($self->{sanity} || '') ne "$args{next_event}" ){
-      MKDEBUG && _d("Clearing and recreating internal state");
+      PTDEBUG && _d("Clearing and recreating internal state");
       @{$self}{qw(next_event tell is_syslog)} = $self->make_closures(%args);
       $self->{sanity} = "$args{next_event}";
    }
@@ -102,15 +102,15 @@ sub make_closures {
    # The first thing to do is get a line from the log and see if it's from
    # syslog.
    my $test_line = $next_event->();
-   MKDEBUG && _d('Read first sample/test line:', $test_line);
+   PTDEBUG && _d('Read first sample/test line:', $test_line);
 
    # If it's syslog, we have to generate a moderately elaborate wrapper
    # function.
    if ( defined $test_line && $test_line =~ m/$syslog_regex/o ) {
 
       # Within syslog-parsing subroutines, we'll use LLSP (low-level syslog
-      # parser) as a MKDEBUG line prefix.
-      MKDEBUG && _d('This looks like a syslog line, MKDEBUG prefix=LLSP');
+      # parser) as a PTDEBUG line prefix.
+      PTDEBUG && _d('This looks like a syslog line, PTDEBUG prefix=LLSP');
 
       # Grab the interesting bits out of the test line, and save the result.
       my ($msg_nr, $line_nr, $content) = $test_line =~ m/$syslog_regex/o;
@@ -121,7 +121,7 @@ sub make_closures {
       # Generate the subroutine for getting a full log message without syslog
       # breaking it across multiple lines.
       my $new_next_event = sub {
-         MKDEBUG && _d('LLSP: next_event()');
+         PTDEBUG && _d('LLSP: next_event()');
 
          # Keeping the pos_in_log variable right is a bit tricky!  In general,
          # we have to tell() the filehandle before trying to read from it,
@@ -129,7 +129,7 @@ sub make_closures {
          # rule is that when we push something onto @pending, which we almost
          # always do, then $pos_in_log should point to the beginning of that
          # saved content in the file.
-         MKDEBUG && _d('LLSP: Current virtual $fh position:', $pos_in_log);
+         PTDEBUG && _d('LLSP: Current virtual $fh position:', $pos_in_log);
          my $new_pos = 0;
 
          # @arg_lines is where we store up the content we're about to return.
@@ -148,7 +148,7 @@ sub make_closures {
                defined($line = $next_event->());
             }
          ) {
-            MKDEBUG && _d('LLSP: Line:', $line);
+            PTDEBUG && _d('LLSP: Line:', $line);
 
             # Parse the line.
             ($msg_nr, $line_nr, $content) = $line =~ m/$syslog_regex/o;
@@ -158,7 +158,7 @@ sub make_closures {
 
             # The message number has changed -- thus, new message.
             elsif ( $msg_nr != $last_msg_nr ) {
-               MKDEBUG && _d('LLSP: $msg_nr', $last_msg_nr, '=>', $msg_nr);
+               PTDEBUG && _d('LLSP: $msg_nr', $last_msg_nr, '=>', $msg_nr);
                $last_msg_nr = $msg_nr;
                last LINE;
             }
@@ -166,7 +166,7 @@ sub make_closures {
             # Or, the caller gave us a custom new_event_test and it is true --
             # thus, also new message.
             elsif ( @arg_lines && $new_event_test && $new_event_test->($content) ) {
-               MKDEBUG && _d('LLSP: $new_event_test matches');
+               PTDEBUG && _d('LLSP: $new_event_test matches');
                last LINE;
             }
 
@@ -180,29 +180,29 @@ sub make_closures {
             $content =~ s/#(\d{3})/chr(oct($1))/ge;
             $content =~ s/\^I/\t/g;
             if ( $line_filter ) {
-               MKDEBUG && _d('LLSP: applying $line_filter');
+               PTDEBUG && _d('LLSP: applying $line_filter');
                $content = $line_filter->($content);
             }
 
             push @arg_lines, $content;
          }
-         MKDEBUG && _d('LLSP: Exited while-loop after finding a complete entry');
+         PTDEBUG && _d('LLSP: Exited while-loop after finding a complete entry');
 
          # Mash the pending stuff together to return it.
          my $psql_log_event = @arg_lines ? join('', @arg_lines) : undef;
-         MKDEBUG && _d('LLSP: Final log entry:', $psql_log_event);
+         PTDEBUG && _d('LLSP: Final log entry:', $psql_log_event);
 
          # Save the new content into @pending for the next time.  $pos_in_log
          # must also be updated to whatever $new_pos is.
          if ( defined $line ) {
-            MKDEBUG && _d('LLSP: Saving $line:', $line);
+            PTDEBUG && _d('LLSP: Saving $line:', $line);
             @pending = $line;
-            MKDEBUG && _d('LLSP: $pos_in_log:', $pos_in_log, '=>', $new_pos);
+            PTDEBUG && _d('LLSP: $pos_in_log:', $pos_in_log, '=>', $new_pos);
             $pos_in_log = $new_pos;
          }
          else {
             # We hit the end of the file.
-            MKDEBUG && _d('LLSP: EOF reached');
+            PTDEBUG && _d('LLSP: EOF reached');
             @pending     = ();
             $last_msg_nr = 0;
          }
@@ -212,7 +212,7 @@ sub make_closures {
 
       # Create the closure for $tell->();
       my $new_tell = sub {
-         MKDEBUG && _d('LLSP: tell()', $pos_in_log);
+         PTDEBUG && _d('LLSP: tell()', $pos_in_log);
          return $pos_in_log;
       };
 
@@ -222,9 +222,9 @@ sub make_closures {
    # This is either at EOF already, or it's not syslog format.
    else {
 
-      # Within plain-log-parsing subroutines, we'll use PLAIN as a MKDEBUG
+      # Within plain-log-parsing subroutines, we'll use PLAIN as a PTDEBUG
       # line prefix.
-      MKDEBUG && _d('Plain log, or we are at EOF; MKDEBUG prefix=PLAIN');
+      PTDEBUG && _d('Plain log, or we are at EOF; PTDEBUG prefix=PLAIN');
 
       # The @pending array is really only needed to return the one line we
       # already read as a test.  Too bad we can't just push it back onto the
@@ -233,11 +233,11 @@ sub make_closures {
       my @pending = defined $test_line ? ($test_line) : ();
 
       my $new_next_event = sub {
-         MKDEBUG && _d('PLAIN: next_event(); @pending:', scalar @pending);
+         PTDEBUG && _d('PLAIN: next_event(); @pending:', scalar @pending);
          return @pending ? shift @pending : $next_event->();
       };
       my $new_tell = sub {
-         MKDEBUG && _d('PLAIN: tell(); @pending:', scalar @pending);
+         PTDEBUG && _d('PLAIN: tell(); @pending:', scalar @pending);
          return @pending ? 0 : $tell->();
       };
       return ($new_next_event, $new_tell, 0);
