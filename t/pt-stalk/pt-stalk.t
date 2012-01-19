@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 14;
+   plan tests => 15;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -159,6 +159,13 @@ is(
    $output,
    "",
    "pt-stalk is not running"
+);
+
+$output = `cat $dest/*-trigger`;
+like(
+   $output,
+   qr/pt-stalk ran with --function=status --variable=Uptime --threshold=$threshold/,
+   "Trigger file logs how pt-stalk was ran"
 );
 
 # #############################################################################
