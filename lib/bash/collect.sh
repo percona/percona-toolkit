@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -24,17 +24,17 @@
 set -u
 
 # Global variables.
-CMD_GDB=${CMD_GDB:-"gdb"}
-CMD_IOSTAT=${CMD_IOSTAT:-"iostat"}
-CMD_MPSTAT=${CMD_MPSTAT:-"mpstat"}
-CMD_MYSQL=${CMD_MSSQL:-"mysql"}
-CMD_MYSQLADMIN=${CMD_MYSQL_ADMIN:-"mysqladmin"}
-CMD_OPCONTROL=${CMD_OPCONTROL:-"opcontrol"}
-CMD_OPREPORT=${CMD_OPREPORT:-"opreport"}
-CMD_PMAP=${CMD_PMAP:-"pmap"}
-CMD_STRACE=${CMD_STRACE:-"strace"}
-CMD_TCPDUMP=${CMD_TCPDUMP:-"tcpdump"}
-CMD_VMSTAT=${CMD_VMSTAT:-"vmstat"}
+CMD_GDB="$(which gdb)"
+CMD_IOSTAT="$(which iostat)"
+CMD_MPSTAT="$(which mpstat)"
+CMD_MYSQL="$(which mysql)"
+CMD_MYSQLADMIN="$(which mysqladmin)"
+CMD_OPCONTROL="$(which opcontrol)"
+CMD_OPREPORT="$(which opreport)"
+CMD_PMAP="$(which pmap)"
+CMD_STRACE="$(which strace)"
+CMD_TCPDUMP="$(which tcpdump)"
+CMD_VMSTAT="$(which vmstat)"
 
 collect() {
    local d="$1"  # directory to save results in
@@ -50,7 +50,7 @@ collect() {
    fi
 
    # Get memory allocation info before anything else.
-   if [ "$mysqld_pid" ]; then
+   if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
          $CMD_PMAP -x $mysqld_pid > "$d/$p-pmap"
       else
@@ -60,15 +60,13 @@ collect() {
    fi
 
    # Getting a GDB stacktrace can be an intensive operation,
-   # so do this only if necessary.
-   if [ "$OPT_COLLECT_GDB" = "yes" -a "$mysqld_pid" ]; then
+   # so do this only if necessary (and possible).
+   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" = "yes" -a "$mysqld_pid" ]; then
       $CMD_GDB                     \
          -ex "set pagination 0"    \
          -ex "thread apply all bt" \
          --batch -p $mysqld_pid    \
          >> "$d/$p-stacktrace"
-   else
-      echo "GDB (--collect-gdb) was not enabled" >> "$d/$p-stacktrace"
    fi
 
    # Get MySQL's variables if possible.  Then sleep long enough that we probably
@@ -114,7 +112,7 @@ collect() {
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
-   if [ "$OPT_COLLECT_TCPDUMP" = "yes" ]; then
+   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" = "yes" ]; then
       local port=$(awk '/^port/{print $2}' "$d/$p-variables")
       if [ "$port" ]; then
          $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
@@ -125,12 +123,12 @@ collect() {
    # Next, start oprofile gathering data during the whole rest of this process.
    # The --init should be a no-op if it has already been init-ed.
    local have_oprofile="no"
-   if [ "$OPT_COLLECT_OPROFILE" = "yes" ]; then
+   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" = "yes" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
          have_oprofile="yes"
       fi
-   elif [ "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
       # Don't run oprofile and strace at the same time.
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
       local strace_pid=$!
@@ -138,16 +136,22 @@ collect() {
 
    # Grab a few general things first.  Background all of these so we can start
    # them all up as quickly as possible.  
-   ps -eaf                            >> "$d/$p-ps"             2>&1 &
-   sysctl -a                          >> "$d/$p-sysctl"         2>&1 &
-   top -bn1                           >> "$d/$p-top"            2>&1 &
-   $CMD_VMSTAT 1 $OPT_INTERVAL        >> "$d/$p-vmstat"         2>&1 &
-   $CMD_VMSTAT $OPT_INTERVAL 2        >> "$d/$p-vmstat-overall" 2>&1 &
-   $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         2>&1 &
-   $CMD_IOSTAT -dx  $OPT_INTERVAL 2   >> "$d/$p-iostat-overall" 2>&1 &
-   $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         2>&1 &
-   $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" 2>&1 &
-   lsof -nP -p $mysqld_pid -bw        >> "$d/$p-lsof"           2>&1 &
+   ps -eaf                     >> "$d/$p-ps"     2>&1 &
+   sysctl -a                   >> "$d/$p-sysctl" 2>&1 &
+   top -bn1                    >> "$d/$p-top"    2>&1 &
+   lsof -nP -p $mysqld_pid -bw >> "$d/$p-lsof"   2>&1 &
+   if [ "$CMD_VMSTAT" ]; then
+      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         2>&1 &
+      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" 2>&1 &
+   fi
+   if [ "$CMD_IOSTAT" ]; then
+      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         2>&1 &
+      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" 2>&1 &
+   fi
+   if [ "$CMD_MPSTAT" ]; then
+      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         2>&1 &
+      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" 2>&1 &
+   fi
 
    # Collect multiple snapshots of the status variables.  We use
    # mysqladmin -c even though it is buggy and won't stop on its
@@ -183,15 +187,29 @@ collect() {
       local ts="$(date +"TS %s.%N %F %T")"
 
       # Collect the stuff for this cycle
-      (cat /proc/diskstats  2>&1; echo $ts) >> "$d/$p-diskstats"   &
-      (cat /proc/stat       2>&1; echo $ts) >> "$d/$p-procstat"    &
-      (cat /proc/vmstat     2>&1; echo $ts) >> "$d/$p-procvmstat"  &
-      (cat /proc/meminfo    2>&1; echo $ts) >> "$d/$p-meminfo"     &
-      (cat /proc/slabinfo   2>&1; echo $ts) >> "$d/$p-slabinfo"    &
-      (cat /proc/interrupts 2>&1; echo $ts) >> "$d/$p-interrupts"  &
-      (df -h                2>&1; echo $ts) >> "$d/$p-df"          &
-      (netstat -antp        2>&1; echo $ts) >> "$d/$p-netstat"     &
-      (netstat -s           2>&1; echo $ts) >> "$d/$p-netstat_s"   &
+      if [ -d "/proc" ]; then
+         if [ -f "/proc/diskstats" ]; then
+            (cat /proc/diskstats 2>&1; echo $ts) >> "$d/$p-diskstats" &
+         fi
+         if [ -f "/proc/stat" ]; then
+            (cat /proc/stat 2>&1; echo $ts) >> "$d/$p-procstat" &
+         fi
+         if [ -f "/proc/vmstat" ]; then
+            (cat /proc/vmstat 2>&1; echo $ts) >> "$d/$p-procvmstat" &
+         fi
+         if [ -f "/proc/meminfo" ]; then
+            (cat /proc/meminfo 2>&1; echo $ts) >> "$d/$p-meminfo" &
+         fi
+         if [ -f "/proc/slabinfo" ]; then
+            (cat /proc/slabinfo 2>&1; echo $ts) >> "$d/$p-slabinfo" &
+         fi
+         if [ -f "/proc/interrupts" ]; then
+            (cat /proc/interrupts 2>&1; echo $ts) >> "$d/$p-interrupts" &
+         fi
+      fi
+      (df -h          2>&1; echo $ts) >> "$d/$p-df"          &
+      (netstat -antp  2>&1; echo $ts) >> "$d/$p-netstat"     &
+      (netstat -s     2>&1; echo $ts) >> "$d/$p-netstat_s"   &
 
       ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
          >> "$d/$p-processlist"
@@ -226,7 +244,7 @@ collect() {
               "/path/to/mysqld'"                                              \
             > "$d/$p-opreport"
       fi
-   elif [ "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
       kill -s 2 $strace_pid
       sleep 1
       kill -s 15 $strace_pid

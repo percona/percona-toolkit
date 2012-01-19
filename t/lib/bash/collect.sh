@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=18
+TESTS=19
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
@@ -23,12 +23,23 @@ local p="$TMPDIR/collect/2011_12_05"
 collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
 # Even if this system doesn't have all the cmds, collect should still
-# create all the default files.
+# have created some files for cmds that (hopefully) all systems have.
 ls -1 $TMPDIR/collect | sort > $TMPDIR/collect-files
-no_diff \
-   $TMPDIR/collect-files \
-   $T_LIB_DIR/samples/bash/collect001.txt \
-   "Default collect files"
+
+# If this system has /proc, then some files should be collected.
+# Else, those files should not exist.
+if [ -f /proc/diskstats ]; then
+   cmd_ok \
+      "grep '[0-9]' $TMPDIR/collect/2011_12_05-diskstats" \
+      "/proc/diskstats"
+else
+   test -f $TMPDIR/collect/2011_12_05-diskstats
+   is "$?" "1" "No /proc/diskstats"
+fi
+
+cmd_ok \
+   "grep -q '\-hostname\$' $TMPDIR/collect-files" \
+   "Collected hostname"
 
 cmd_ok \
    "grep -q 'Avail' $p-df" \
