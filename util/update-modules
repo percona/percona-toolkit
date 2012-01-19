@@ -99,7 +99,7 @@ replace_pkg_in_tool() {
    $BRANCH/util/extract-package $pkg $pkg_file | grep -v '^ *#' >> $tmp_file
 
    if [ "$tool_lang" = "perl" ]; then
-      echo "}"
+      echo "}" >> $tmp_file
    fi
 
 echo "# ###########################################################################
