@@ -926,7 +926,7 @@ main() {
    RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID"
    log "Starting $0 $RAN_WITH"
 
-   # Make the collection dir exists.
+   # Make sure the collection dir exists.
    if [ ! -d "$OPT_DEST" ]; then
       mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
    fi
@@ -1033,16 +1033,17 @@ fi
 
 =head1 NAME
 
-pt-stalk - Wait for a condition to occur then begin collecting data.
+pt-stalk - Gather forensic data about MySQL when a problem occurs.
 
 =head1 SYNOPSIS
 
 Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
 
-pt-stalk watches for a condition to become true, and when it does, executes
-a script.  By default it executes L<pt-collect>, but that can be customized.
-This tool is useful for gathering diagnostic data when an infrequent event
-occurs, so an expert person can review the data later.
+pt-stalk watches for a trigger condition to become true, and then collects data
+to help in diagnosing problems. It is designed to run as a daemon so that you
+can diagnose intermittent problems that you cannot observe directly. You can
+also use it to execute a custom command, or to gather the data on demand without
+waiting for the trigger to happen.
 
 =head1 RISKS
 
@@ -1051,7 +1052,9 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-stalk is a read-only tool.  It should be very low-risk.
+pt-stalk is a read-only tool.  It should be very low-risk.  Some of the options
+can cause intrusive data collection to be performed, however, so if you enable
+any non-default options, you should read their documentation carefully.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
@@ -1065,37 +1068,42 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-Although pt-stalk comes pre-configured to do a specific thing, in general
-this tool is just a skeleton script for the following flow of actions:
+Sometimes a problem happens infrequently and for a short time, giving you no
+chance to see the system when it happens. How do you solve intermittent MySQL
+problems when you can't observe them? That's why pt-stalk exists. In addition to
+using it when there's a known problem on your servers, it is a good idea to run
+pt-stalk all the time, even when you think nothing is wrong.  You will
+appreciate the data it gathers when a problem occurs, because problems such as
+MySQL lockups or spikes of activity typically leave no evidence to use in root
+cause analysis.
 
-=over
+This tool does two things: it watches a server (typically MySQL) for a trigger
+to occur, and it gathers diagnostic data.  To use it effectively, you need to
+define a good trigger condition. A good trigger is sensitive enough to fire
+reliably when a problem occurs, so that you don't miss a chance to solve
+problems. On the other hand, a good trigger isn't prone to false positives, so
+you don't gather information when the server is functioning normally.
 
-=item 1.
+The most reliable triggers for MySQL tend to be the number of connections to the
+server, and the number of queries running concurrently. These are available in
+the SHOW GLOBAL STATUS command as Threads_connected and Threads_running.
+Sometimes Threads_connected is not a reliable indicator of trouble, but
+Threads_running usually is.  Your job, as the tool's user, is to define an
+appropriate trigger condition for the tool.  Choose carefully, because the
+quality of your results will depend on the trigger you choose.
 
-Loop infinitely, sleeping between iterations.
+The pt-stalk tool, by default, simply watches MySQL repeatedly until the trigger
+becomes true. It then gathers diagnostics for a while, and sleeps afterwards for
+some time to prevent repeatedly gathering data if the condition remains true.
 
-=item 2.
+The diagnostic data is written to files whose names begin with a timestamp, so
+you can distinguish samples from each other in case the tool collects data
+multiple times.  The pt-sift tool is designed to help you browse and analyze the
+resulting samples of data.
 
-In each iteration, run some command and get the output.
-
-=item 3.
-
-If the command fails or the output is larger than the threshold,
-execute the collection script; but do not execute if the destination disk
-is too full.
-
-=back
-
-By default, the tool is configured to execute mysqladmin extended-status and
-extract the value of the Threads_running variable; if this is greater than
-25, it runs the collection script.  This is really just placeholder code,
-and almost certainly needs to be customized!
-
-If the tool does execute the collection script, it will wait for a while
-before checking and executing again.  This is to prevent a continuous
-condition from causing a huge number of executions to fire off.
-
-The name 'stalk' is because 'watch' is already taken, and 'stalk' is fun.
+Although this sounds simple enough, in practice there are a number of
+subtleties, such as detecting when the disk is beginning to fill up so that the
+tool doesn't cause the server to run out of disk space.
 
 =head1 CONFIGURING
 
@@ -1109,51 +1117,87 @@ TODO
 
 default: yes; negatable: yes
 
-Collect system information.
+Collect system information.  You can negate this option to make the tool watch
+the system but not actually gather any diagnostic data.
 
 =item --collect-gdb
 
-Collect GDB stacktraces.
+Collect GDB stacktraces.  This is achieved by attaching to MySQL and printing
+stack traces from all threads. This will freeze the server for some period of
+time, ranging from a second or so to much longer on very busy systems with a lot
+of memory and many threads in the server.  For this reason, it is disabled by
+default. However, if you are trying to diagnose a server stall or lockup,
+freezing the server causes no additional harm, and the stack traces can be vital
+for diagnosis.
+
+In addition to freezing the server, there is also some risk of the server
+crashing or performing badly after GDB detaches from it.
 
 =item --collect-oprofile
 
-Collect oprofile data.
+Collect oprofile data.  This is achieved by starting an oprofile session,
+letting it run for the collection time, and then stopping and saving the
+resulting profile data in the system's default location.  Please read your
+system's oprofile documentation to learn more about this.
 
 =item --collect-strace
 
-Collect strace data.
+Collect strace data. This is achieved by attaching strace to the server, which
+will make it run very slowly until strace detaches.  The same cautions apply as
+those listed in --collect-gdb.  You should not enable this option together with
+--collect-gdb, because GDB and strace can't attach to the server process
+simultaneously.
 
 =item --collect-tcpdump
 
-Collect tcpdump data.
+Collect tcpdump data. This option causes tcpdump to capture all traffic on all
+interfaces for the port on which MySQL is listening.  You can later use
+pt-query-digest to decode the MySQL protocol and extract a log of query traffic
+from it.
 
 =item --cycles
 
 type: int; default: 5
 
-Number of times condition must be met before triggering collection.
+The number of times the trigger condition must be true before collecting data.
+This helps prevent false positives and make the trigger condition less
+susceptible to firing when the condition recovers quickly.
 
 =item --daemonize
 
-Daemonize the tool.
+Daemonize the tool.  This causes the tool to fork into the background and log
+its output as specified in --log.
 
 =item --dest
 
 type: string; default: ${HOME}/collected
 
-Where to store collected data.
+Where to store the diagnostic data.  Each time the tool collects data, it writes
+to a new set of files, which are named with the current system timestamp.
 
 =item --disk-byte-limit
 
 type: int; default: 100
 
-Exit if the disk has less than this many MB free.
+Don't collect data unless the destination disk has this much free space. This
+prevents the tool from filling up the disk with diagnostic data.
+
+If the destination directory contains a previously captured sample of data, the
+tool will measure its size and use that as an estimate of how much data is
+likely to be gathered this time, too.  It will then be even more pessimistic,
+and will refuse to collect data unless the disk has enough free space to hold
+the sample and still have the desired amount of free space.  For example, if
+you'd like 100MB of free space and the previous diagnostic sample consumed
+100MB, the tool won't collect any data unless the disk has 200MB free.
 
 =item --disk-pct-limit
 
 type: int; default: 5
 
-Exit if the disk is less than this %full.
+Don't collect data unless the disk has at least this percent free space. This
+option works similarly to --disk-byte-limit, but specifies a percentage margin
+of safety instead of a byte margin of safety.  The tool honors both options, and
+will not collect any data unless both margins are satisfied.
 
 =item --function
 
