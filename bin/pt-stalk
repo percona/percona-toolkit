@@ -1092,9 +1092,27 @@ Threads_running usually is.  Your job, as the tool's user, is to define an
 appropriate trigger condition for the tool.  Choose carefully, because the
 quality of your results will depend on the trigger you choose.
 
+You can define the trigger with the L<"--function">, L<"--variable">, and
+L<"--threshold"> options, among others.  Please read the documentation for
+--function to learn how to do this.
+
 The pt-stalk tool, by default, simply watches MySQL repeatedly until the trigger
 becomes true. It then gathers diagnostics for a while, and sleeps afterwards for
 some time to prevent repeatedly gathering data if the condition remains true.
+In crude pseudocode, omitting some subtleties,
+
+  while true; do
+    if --variable from --function is greater than --threshold; then
+      observations++
+      if observations is greater than --cycles; then
+        capture diagnostics for --run-time seconds
+        exit if --iterations is exceeded
+        sleep for --sleep seconds
+      done
+    done
+    clean up data that's older than --retention-time
+    sleep for --interval seconds
+  done
 
 The diagnostic data is written to files whose names begin with a timestamp, so
 you can distinguish samples from each other in case the tool collects data
@@ -1203,49 +1221,55 @@ will not collect any data unless both margins are satisfied.
 
 type: string; default: status
 
-Built-in function name or plugin file name which returns the value of C<VARIABLE>.
-
-Possible values are:
+Specifies what to watch for a diagnostic trigger.  The default value watches
+SHOW GLOBAL STATUS, but you can also watch SHOW PROCESSLIST or supply a plugin
+file with your own custom code.  This function supplies the value of
+L<"--variable">, which is then compared against L<"--threshold"> to see if the
+trigger condition is met.  Additional options may be required as well; see
+below. Possible values:
 
 =over
 
 =item * status
 
-Grep the value of C<VARIABLE> from C<mysqladmin extended-status>.
+This value specifies that the source of data for the diagnostic trigger is SHOW
+GLOBAL STATUS.  The value of L<"--variable"> then defines which status counter
+is the trigger.
 
 =item * processlist
 
-Count the number of processes in C<mysqladmin processlist> whose
-C<VARIABLE> column matches C<MATCH>.  For example:
+This value specifies that the data for the diagnostic trigger comes from SHOW
+FULL PROCESSLIST.  The trigger value is the count of processes whose
+L<"--variable"> column matches the L<"--match"> option.  For example, to trigger
+when more than 10 processes are in the "statistics" state, use the following
+options:
 
-   TRIGGER_FUNCTION="processlist" \
-   VARIABLE="State"               \
-   MATCH="statistics"             \
-   THRESHOLD="10"
+  --trigger processlist --variable State --match statistics --threshold 10
 
-The above triggers when more than 10 processes are in the "statistics" state.
-C<MATCH> must be specified for this trigger function.
+=back
 
-=item * magic
+In addition, you can specify a file that contains your custom trigger function,
+written in Unix shell script.  This can be a wrapper that executes anything you
+wish.  If the argument to --function is a file, then it takes precedence over
+builtin functions, so if there is a file in the working directory named "status"
+or "processlist" then the tool will use that file as a plugin, even though those
+are otherwise recognized as reserved words for this option.
 
-TODO
-
-=item * plugin file name
-
-A plugin file allows you to specify a custom trigger function.  The plugin
-file must contain a function called C<trg_plugin>.  For example:
+The plugin file works by providing a function called C<trg_plugin>, and the tool
+simply sources the file and executes the function.  For example, the function
+might look like the following:
 
    trg_plugin() {
-      # Do some stuff.
-      echo "$value"
+      mysql $EXT_ARGV -e "SHOW ENGINE INNODB STATUS" | grep -c "has waited at"
    }
 
-The last output if the function (its "return value") must be a number.
-This number is compared to C<THRESHOLD>.  All L<"ENVIRONMENT"> variables
-are available to the function.
+This snippet will count the number of mutex waits inside of InnoDB. It
+illustrates the general principle: the function must output a number, which is
+then compared to the threshold as usual.  The $EXT_ARGV variable contains the
+MySQL options mentioned in the L<"SYNOPSIS"> above.
 
-Do not alter the tool's existing global variables.  Prefix any plugin-specific
-global variables with "PLUGIN_".
+The plugin should not alter the tool's existing global variables.  Prefix any
+plugin-specific global variables with "PLUGIN_" or make them local.
 
 =back
 
@@ -1257,14 +1281,15 @@ Print help and exit.
 
 type: int; default: 1
 
-Interval between checks.
+Interval between checks for the diagnostic trigger.
 
 =item --iterations
 
 type: int
 
-Exit after triggering C<pt-collect> this many times.  By default, the tool
-will collect as many times as it's triggered.
+Exit after collecting diagnostics this many times.  By default, the tool
+will continue to watch the server forever, but this is useful for scenarios
+where you want to capture once and then exit, for example.
 
 =item --log
 
@@ -1276,13 +1301,14 @@ Print all output to this file when daemonized.
 
 type: string
 
-Match pattern for C<processlist> L<"--function">.
+The pattern to use when watching SHOW PROCESSLIST. See the documentation for
+L<"--function"> for details.
 
 =item --notify-by-email
 
 type: string
 
-Send mail to this list of addresses when C<pt-collect> triggers.
+Send mail to this list of addresses when data is collected.
 
 =item --pid
 
@@ -1294,42 +1320,47 @@ Create a PID file when daemonized.
 
 type: string
 
-Collect file prefix.
-
-If not specified, the current local time is used like C<2011_12_06_14_02_02>,
-which is December 6, 2011 at 14:02:02.
+The filename prefix for diagnostic samples. By default, samples have a timestamp
+prefix based on the current local time, such as 2011_12_06_14_02_02, which is
+December 6, 2011 at 14:02:02.
 
 =item --retention-time
 
 type: int; default: 30
 
-Remove samples after this many days.
+Number of days to retain collected samples.  Any samples that are older will be
+purged.
 
 =item --run-time
 
 type: int; default: 30
 
-How long to collect statistics data for?
-
-Make sure that this isn't longer than SLEEP.
+How long the tool will collect data when it triggers.  This should not be longer
+than L<"--sleep">. It is usually not necessary to change this; if the default 30
+seconds hasn't gathered enough diagnostic data, running longer is not likely to
+do so. In fact, in many cases a shorter collection period is appropriate.
 
 =item --sleep
 
 type: int; default: 300
 
-How long to sleep after collecting?
+How long to sleep after collecting data.  This prevents the tool from triggering
+continuously, which might be a problem if the collection process is intrusive.
+It also prevents filling up the disk or gathering too much data to analyze
+reasonably.
 
 =item --threshold
 
 type: int; default: 25
 
-Max number of C<N> to tolerate.
+The threshold at which the diagnostic trigger should fire.  See L<"--function">
+for details.
 
 =item --variable
 
 type: string; default: Threads_running
 
-This is the thing to check for.
+The variable to compare against the threshold. See L<"--function"> for details.
 
 =item --version
 

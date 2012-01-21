@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
-TESTS=27
+TESTS=37
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
+TOOL="pt-stalk"
+TMPDIR="$TEST_TMPDIR"
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/parse_options.sh"
@@ -11,8 +13,6 @@ source "$LIB_DIR/parse_options.sh"
 # Parse options from POD using all default values.
 # ############################################################################
 
-TOOL="pt-stalk"
-TMPDIR="$TEST_TMPDIR"
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" "" 2>$TMPFILE
 
 is "`cat $TMPFILE`" "" "No warnings or errors"
@@ -20,7 +20,7 @@ is "`cat $TMPFILE`" "" "No warnings or errors"
 is "$OPT_STRING_OPT" "" "Default string option"
 is "$OPT_STRING_OPT2" "foo" "Default string option with default"
 is "$OPT_TYPELESS_OPTION" "" "Default typeless option"
-is "$OPT_NOPTION" "yes" "Defailt neg option"
+is "$OPT_NOPTION" "yes" "Default neg option"
 is "$OPT_INT_OPT" "" "Default int option"
 is "$OPT_INT_OPT2" "42" "Default int option with default"
 is "$OPT_VERSION" "" "--version"
@@ -40,13 +40,21 @@ is "$OPT_INT_OPT2" "42" "Default int option with default (spec)"
 is "$OPT_VERSION" "" "--version (spec)"
 
 # ############################################################################
+# --option=value should work like --option value.
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --int-opt=42
+
+is "$OPT_INT_OPT" "42" "Specified int option (--option=value)"
+
+# ############################################################################
 # Negate an option like --no-option.
 # ############################################################################
 
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" --no-noption
 
 is "$OPT_STRING_OPT" "" "Default string option (neg)"
-is "$OPT_STRING_OPT2" "foo" "Default string option with default (net)"
+is "$OPT_STRING_OPT2" "foo" "Default string option with default (neg)"
 is "$OPT_TYPELESS_OPTION" "" "Default typeless option (neg)"
 is "$OPT_NOPTION" "no" "Negated option (neg)"
 is "$OPT_INT_OPT" "" "Default int option (neg)"
@@ -88,6 +96,31 @@ usage_or_errors "$T_LIB_DIR/samples/bash/po003.sh" >$TMPFILE 2>&1
 cmd_ok \
    "grep -q 'Exit if the disk is less than this %full.' $TMPFILE" \
    "Don't interpolate --help descriptions"
+
+# ###########################################################################
+# Config files.
+# ###########################################################################
+TOOL="pt-test"
+cp "$T_LIB_DIR/samples/bash/config001.conf" "$HOME/.$TOOL.conf"
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" ""
+
+is "$OPT_STRING_OPT" "abc" "Default string option (conf)"
+is "$OPT_STRING_OPT2" "foo" "Default string option with default (conf)"
+is "$OPT_TYPELESS_OPTION" "yes" "Default typeless option (conf)"
+is "$OPT_NOPTION" "yes" "Default neg option (conf)"
+is "$OPT_INT_OPT" "" "Default int option (conf)"
+is "$OPT_INT_OPT2" "42" "Default int option with default (conf)"
+is "$OPT_VERSION" "" "--version (conf)"
+is "$EXT_ARGV" "--host 127.1 --user daniel" "External ARGV (conf)"
+
+# Command line should override config file.
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --string-opt zzz
+
+is "$OPT_STRING_OPT" "zzz" "Command line overrides config file"
+
+rm "$HOME/.$TOOL.conf"
+TOOL="pt-stalk"
 
 # ############################################################################
 # Done
