@@ -108,9 +108,13 @@ parse_options() {
    local file="$1"
    shift
 
-   # Change --op=val to --op val because _parse_command_line() needs
-   # a space-separated list of "op val op val" etc.   
-   local opts=$(echo "$@" | perl -ne 's/--(\S+)=/--$1 /g, print')
+   # Reset the globals (mostly for testing).
+   ARGV=""
+   EXT_ARGV=""
+   OPT_ERRS=0
+   OPT_VERSION="no"
+   OPT_HELP="no"
+   PO_DIR="$TMPDIR/po"
 
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
@@ -129,7 +133,7 @@ parse_options() {
    _parse_pod "$file"
    _eval_po
    _parse_config_files
-   _parse_command_line $opts # do NOT quote, we want "--op" "val" not "--op val"
+   _parse_command_line "$@"
 }
 
 _parse_pod() {
@@ -230,16 +234,22 @@ _parse_config_files() {
    local config_files="/etc/percona-toolkit/percona-toolkit.conf /etc/percona-toolkit/$TOOL.conf $HOME/.percona-toolkit.conf $HOME/.$TOOL.conf"
    for config_file in $config_files; do
       test -f "$config_file" || continue
-
-      # The config file syntax is just like a command line except there
-      # is one option per line.  In Bash, --foo --bar is the same as
-      # --foo
-      # --bar
-      # So we can simply cat the config file into/as the command line.
-      # The Perl changes --foo=bar to --foo bar because _parse_command_line()
-      # needs a space-separated list of "opt val opt val" etc.
-      _parse_command_line \
-         $(cat "$config_file" | perl -ne 's/--(\S+)=/--$1 /g, print')
+      local dashdash=""
+      for conf_opt in $(grep '^[^# ]' "$config_file"); do
+         if [ "$dashdash" ]; then
+            if [ "$EXT_ARGV" ]; then
+               EXT_ARGV="$EXT_ARGV $conf_opt"
+            else
+               EXT_ARGV="$conf_opt"
+            fi
+         else
+            _parse_command_line "$conf_opt"
+            if [ $? -eq 1 ]; then
+               dashdash=1
+               EXT_ARGV=""
+            fi
+         fi
+      done
    done
 }
 
@@ -254,79 +264,113 @@ _parse_command_line() {
    # a default value 100, then $OPT_FOO=100 already, but if --foo=500 is
    # specified on the command line, then we re-eval $OPT_FOO=500 to update
    # $OPT_FOO.
+   local opt=""
+   local val=""
+   local next_opt_is_val=""
+   local opt_is_ok=""
+   local opt_is_negated=""
+   local real_opt=""
+   local required_arg=""
+
    for opt in "$@"; do
-      if [ $# -eq 0 ]; then
-         break  # no more opts
-      fi
-      opt=$1
-      if [ "$opt" = "--" ]; then
-         shift
-         EXT_ARGV="$@"
-         break
-      fi
-      shift 
-      if [ $(expr "$opt" : "-") -eq 0 ]; then
-         # Option does not begin with a hyphen (-), so treat it as
-         # a filename, directory, etc.
-         if [ -z "$ARGV" ]; then
-            ARGV="$opt"
-         else
-            ARGV="$ARGV $opt"
-         fi
-         continue
-      fi
-
-      # Save real opt from cmd line for error messages.
-      local real_opt="$opt"
-
-      # Strip leading -- or --no- from option.
-      if $(echo $opt | grep -q '^--no-'); then
-         neg=1
-         opt=$(echo $opt | sed 's/^--no-//')
-      else
-         neg=0
-         opt=$(echo $opt | sed 's/^-*//')
-      fi
-
-      # Find the option's spec file.
-      if [ -f "$TMPDIR/po/$opt" ]; then
-         spec="$TMPDIR/po/$opt"
-      else
-         spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
-         if [ -z "$spec"  ]; then
-            OPT_ERRS=$(($OPT_ERRS + 1))
-            echo "Unknown option: $real_opt" >&2
-            continue
-         fi
-      fi
-
-      # Get the value specified for the option, if any.  If the opt's spec
-      # says it has a type, then it requires a value and that value should
-      # be the next item ($1).  Else, typeless options (like --version) are
-      # either "yes" if specified, else "no" if negatable and --no-opt.
-      local required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
-      if [ -n "$required_arg" ]; then
-         if [ $# -eq 0 ]; then
+      if [ "$next_opt_is_val" ]; then
+         next_opt_is_val=""
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
             OPT_ERRS=$(($OPT_ERRS + 1))
             echo "$real_opt requires a $required_arg argument" >&2
             continue
-         else
-            val="$1"
-            shift
          fi
+         val="$opt"
+         opt_is_ok=1
       else
-         if [ $neg -eq 0 ]; then
-            val="yes"
+         if [ "$opt" = "--" ]; then
+            EXT_ARGV="$@"
+            return 1
+         fi
+
+         # If option does not begin with a hyphen (-), it's a filename, etc.
+         if [ $(expr "$opt" : "-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
+            continue
+         fi
+
+         # Save real opt from cmd line for error messages.
+         real_opt="$opt"
+
+         # Strip leading -- or --no- from option.
+         if $(echo $opt | grep -q '^--no-'); then
+            opt_is_negated=1
+            opt=$(echo $opt | sed 's/^--no-//')
          else
-            val="no"
+            opt_is_negated=""
+            opt=$(echo $opt | sed 's/^-*//')
+         fi
+
+         # Split opt=val pair.
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+            val="$(echo $opt | awk -F= '{print $2}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
+         fi
+
+         # Find the option's spec file.
+         if [ -f "$TMPDIR/po/$opt" ]; then
+            spec="$TMPDIR/po/$opt"
+         else
+            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               OPT_ERRS=$(($OPT_ERRS + 1))
+               echo "Unknown option: $real_opt" >&2
+               continue
+            fi
+         fi
+
+         # Get the value specified for the option, if any.  If the opt's spec
+         # says it has a type, then it requires a value and that value should
+         # be the next item ($1).  Else, typeless options (like --version) are
+         # either "yes" if specified, else "no" if negatable and --no-opt.
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
+         if [ "$required_arg" ]; then
+            # Option takes a value.
+            if [ "$val" ]; then
+               opt_is_ok=1
+            else
+               next_opt_is_val=1
+            fi
+         else
+            # Option does not take a value.
+            if [ "$val" ]; then
+               OPT_ERRS=$(($OPT_ERRS + 1))
+               echo "Option $real_opt does not take a value" >&2
+               continue
+            fi 
+            if [ "$opt_is_negated" ]; then
+               val=""
+            else
+               val="yes"
+            fi
+            opt_is_ok=1
          fi
       fi
 
-      # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
-      opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+      if [ "$opt_is_ok" ]; then
+         # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
 
-      # Re-eval the option to update its global variable value.
-      eval "OPT_$opt"="$val"
+         # Re-eval the option to update its global variable value.
+         eval "OPT_$opt"="'$val'"
+
+         opt=""
+         val=""
+         next_opt_is_val=""
+         opt_is_ok=""
+         opt_is_negated=""
+         real_opt=""
+         required_arg=""
+      fi
    done
 }
 
