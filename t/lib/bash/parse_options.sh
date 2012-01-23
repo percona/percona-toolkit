@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=46
+TESTS=49
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -73,6 +73,16 @@ is "$OPT_VERSION" "" "--version (neg)"
 
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" -v
 is "$OPT_VERSION" "yes" "Short form"
+
+# ############################################################################
+# Command line options plus externals args.
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --no-noption -- --foo
+
+is "$OPT_NOPTION" "" "Negated option (--)"
+is "$ARGV" "" "ARGV (--)"
+is "$EXT_ARGV" "--foo" "External ARGV (--)"
 
 # ############################################################################
 # An unknown option should produce an error.

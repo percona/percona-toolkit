@@ -50,6 +50,7 @@ set -u
 # sub will be scoped locally.
 ARGV=""              # Non-option args (probably input files)
 EXT_ARGV=""          # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""     # Got --, everything else is put into EXT_ARGV
 OPT_ERRS=0           # How many command line option errors
 OPT_VERSION="no"     # If --version was specified
 OPT_HELP="no"        # If --help was specified
@@ -129,6 +130,7 @@ parse_options() {
    # Reset the globals (mostly for testing).
    ARGV=""
    EXT_ARGV=""
+   HAVE_EXT_ARGV=""
    OPT_ERRS=0
    OPT_VERSION="no"
    OPT_HELP="no"
@@ -254,10 +256,6 @@ _parse_config_files() {
       # Next config file if this one doesn't exist.
       test -f "$config_file" || continue
 
-      # We've hit a -- in the config file, so just append everything
-      # else to EXT_ARGV.
-      local dashdash=""
-
       # We must use while read because values can contain spaces.
       # Else, if we for $(grep ...) then a line like "op=hello world"
       # will return 2 values: "op=hello" and "world".  If we quote
@@ -272,29 +270,19 @@ _parse_config_files() {
          # and end-of-line # comments.
          config_opt="$(echo "$config_opt" | sed -e 's/^[ ]*//' -e 's/[ ]*\$//' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
 
-         if [ "$dashdash" ]; then
-            # Previous line was -- so this and subsequent options are
-            # really external argvs.
-            if [ "$EXT_ARGV" ]; then
-               EXT_ARGV="$EXT_ARGV $config_opt"
-            else
-               EXT_ARGV="$config_opt"
-            fi
-         else
-            # Options in a config file are not prefixed with --,
-            # but command line options are, so one or the other has
-            # to add or remove the -- prefix.  We add it for config
-            # files rather than trying to strip it from command line
-            # options because it's a simpler operation here.
-            _parse_command_line "--$config_opt"
-
-            # _parse_command_line() returns 1 when it sees --.
-            if [ $? -eq 1 ]; then
-               dashdash=1
-               EXT_ARGV=""
-            fi
+         # Options in a config file are not prefixed with --,
+         # but command line options are, so one or the other has
+         # to add or remove the -- prefix.  We add it for config
+         # files rather than trying to strip it from command line
+         # options because it's a simpler operation here.
+         if ! [ "$HAVE_EXT_ARGV" ]; then
+            config_opt="--$config_opt"
          fi
+         _parse_command_line "$config_opt"
       done < "$config_file"
+      
+      HAVE_EXT_ARGV=""  # reset for each file
+
    done
 }
 
@@ -318,6 +306,21 @@ _parse_command_line() {
    local required_arg=""
 
    for opt in "$@"; do
+      if [ "$opt" = "--" -o "$opt" = "----" ]; then
+         HAVE_EXT_ARGV=1
+         continue
+      fi
+      if [ "$HAVE_EXT_ARGV" ]; then
+         # Previous line was -- so this and subsequent options are
+         # really external argvs.
+         if [ "$EXT_ARGV" ]; then
+            EXT_ARGV="$EXT_ARGV $opt"
+         else
+            EXT_ARGV="$opt"
+         fi
+         continue
+      fi
+
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
          if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
@@ -328,11 +331,6 @@ _parse_command_line() {
          val="$opt"
          opt_is_ok=1
       else
-         if [ "$opt" = "--" -o "$opt" = "----" ]; then
-            EXT_ARGV="$@"
-            return 1
-         fi
-
          # If option does not begin with a hyphen (-), it's a filename, etc.
          if [ $(expr "$opt" : "-") -eq 0 ]; then
             if [ -z "$ARGV" ]; then
