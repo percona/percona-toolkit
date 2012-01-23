@@ -26,6 +26,24 @@
 # GLOBAL $TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
 # ***********************************************************
 
+# Parsing command line options with Bash is easy until we have to dealt
+# with values that have spaces, e.g. --option="hello world".  This is
+# further complicated by command line vs. config file.  From the command
+# line, <--option "hello world"> is put into $@ as "--option", "hello world",
+# i.e. 2 args.  From a config file, <option=hello world> is either 2 args
+# split on the space, or 1 arg as a whole line.  It needs to be 2 args
+# split on the = but this isn't possible; see the note before while read
+# in _parse_config_files().  Perl tool config files do not work when the
+# value is quoted, so we can't quote it either.  And in any case, that
+# wouldn't work because then the value would include the literal quotes
+# because it's a line from a file, not a command line where Bash will
+# interpret the quotes and return a single value in the code. So...
+
+# ***************************************************
+# BE CAREFUL MAKING CHANGES TO THIS LIB AND MAKE SURE
+# t/lib/bash/parse_options.sh STILL PASSES!
+# ***************************************************
+
 set -u
 
 # Global variables.  These must be global because declare inside a
@@ -231,25 +249,52 @@ _eval_po() {
 }
 
 _parse_config_files() {
-   local config_files="/etc/percona-toolkit/percona-toolkit.conf /etc/percona-toolkit/$TOOL.conf $HOME/.percona-toolkit.conf $HOME/.$TOOL.conf"
-   for config_file in $config_files; do
+   for config_file in "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+   do
+      # Next config file if this one doesn't exist.
       test -f "$config_file" || continue
+
+      # We've hit a -- in the config file, so just append everything
+      # else to EXT_ARGV.
       local dashdash=""
-      for conf_opt in $(grep '^[^# ]' "$config_file"); do
+
+      # We must use while read because values can contain spaces.
+      # Else, if we for $(grep ...) then a line like "op=hello world"
+      # will return 2 values: "op=hello" and "world".  If we quote
+      # the command like for "$(grep ...)" then the entire config
+      # file is returned as 1 value like "opt=hello world\nop2=42".
+      while read config_opt; do
+
+         # Skip the line if it begins with a # or is blank.
+         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
+         # Strip leading and trailing spaces, and spaces around the first =,
+         # and end-of-line # comments.
+         config_opt="$(echo "$config_opt" | sed -e 's/^[ ]*//' -e 's/[ ]*\$//' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+
          if [ "$dashdash" ]; then
+            # Previous line was -- so this and subsequent options are
+            # really external argvs.
             if [ "$EXT_ARGV" ]; then
-               EXT_ARGV="$EXT_ARGV $conf_opt"
+               EXT_ARGV="$EXT_ARGV $config_opt"
             else
-               EXT_ARGV="$conf_opt"
+               EXT_ARGV="$config_opt"
             fi
          else
-            _parse_command_line "$conf_opt"
+            # Options in a config file are not prefixed with --,
+            # but command line options are, so one or the other has
+            # to add or remove the -- prefix.  We add it for config
+            # files rather than trying to strip it from command line
+            # options because it's a simpler operation here.
+            _parse_command_line "--$config_opt"
+
+            # _parse_command_line() returns 1 when it sees --.
             if [ $? -eq 1 ]; then
                dashdash=1
                EXT_ARGV=""
             fi
          fi
-      done
+      done < "$config_file"
    done
 }
 
@@ -283,7 +328,7 @@ _parse_command_line() {
          val="$opt"
          opt_is_ok=1
       else
-         if [ "$opt" = "--" ]; then
+         if [ "$opt" = "--" -o "$opt" = "----" ]; then
             EXT_ARGV="$@"
             return 1
          fi
