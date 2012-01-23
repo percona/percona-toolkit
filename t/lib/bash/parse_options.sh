@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=44
+TESTS=46
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -48,6 +48,10 @@ is "$EXT_ARGV" "" "External ARGV"
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" --int-opt=42
 
 is "$OPT_INT_OPT" "42" "Specified int option (--option=value)"
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --string-opt="hello world"
+
+is "$OPT_STRING_OPT" "hello world" "Specified int option (--option=\"value\")"
 
 # ############################################################################
 # Negate an option like --no-option.
@@ -128,8 +132,11 @@ is "$OPT_STRING_OPT" "zzz" "Command line overrides config file"
 
 # Config file
 cp "$T_LIB_DIR/samples/bash/config002.conf" "$HOME/.$TOOL.conf"
+
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" ""
+
 is "$OPT_STRING_OPT" "hello world" "Option value with space (conf)"
+is "$OPT_INT_OPT" "100" "Option = value # comment (conf)"
 
 rm "$HOME/.$TOOL.conf"
 TOOL="pt-stalk"

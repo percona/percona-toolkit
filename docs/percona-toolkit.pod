@@ -182,8 +182,8 @@ The syntax of the configuration files is as follows:
 
 =item *
 
-Whitespace followed by a hash (#) sign signifies that the rest of the line is a
-comment.  This is deleted.
+Whitespace followed by a hash sign (#) signifies that the rest of the line is a
+comment.  This is deleted.  For example:
 
 =item *
 
@@ -200,7 +200,9 @@ Each line is permitted to be in either of the following formats:
   option
   option=value
 
-Whitespace around the equals sign is deleted during processing.
+Do not prefix the option with C<-->.  Do not quote the values, even if
+it has spaces; value are literal.  Whitespace around the equals sign is
+deleted during processing.
 
 =item *
 
@@ -213,6 +215,22 @@ further lines are interpreted as additional arguments (not options) to the
 program.
 
 =back
+
+=head2 EXAMPLE
+
+This config file for pt-stalk,
+
+  # Config for pt-stalk
+  variable=Threads_connected
+  cycles=2  # trigger if problem seen twice in a row
+  --
+  --user daniel
+
+is equivalent to this command line:
+
+  pt-stalk --variable Threads_connected --cycles 2 -- --user daniel
+
+Options after C<--> are passed literally to mysql and mysqladmin.
 
 =head2 READ ORDER
 
