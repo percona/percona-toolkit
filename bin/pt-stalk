@@ -971,44 +971,48 @@ stalk() {
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
-         local prefix="${OPT_PREFIX:-$(date +%F-%T | tr :- _)}"
          log "Collect triggered"
 
-         # Check if we'll have enough disk space to collect.  Disk space
-         # is also checked every interval while collecting.
-         local margin="20"  # default 20M margin, unless:
-         if [ -n "$last_prefix" ]; then
-            margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
-         fi 
-         disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
-         check_disk_space                  \
-            "$OPT_DEST/$prefix-disk-space" \
-            "$OPT_DISK_BYTE_LIMIT"         \
-            "$OPT_DISK_PCT_LIMIT"          \
-            "$margin"  # real used MB + margin MB
-         if [ $? -eq 0 ]; then
-            # There should be enough disk space, so collect.
-            log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
-            log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
-            last_prefix="$prefix"
+         # Send email to whomever that collect has been triggered.
+         if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
+            echo "$msg on $(hostname)" \
+            | mail -s "Collect triggered on $(hostname)" \
+              "$OPT_NOTIFY_BY_EMAIL"
+         fi
 
-            # Send email to whomever that collect has been triggered.
-            if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
-               echo "$msg on $(hostname)" \
-               | mail -s "Collect triggered on $(hostname)" \
-                 "$OPT_NOTIFY_BY_EMAIL"
+         if [ "$OPT_COLLECT" ]; then
+            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr :- _)}"
+
+            # Check if we'll have enough disk space to collect.  Disk space
+            # is also checked every interval while collecting.
+            local margin="20"  # default 20M margin, unless:
+            if [ -n "$last_prefix" ]; then
+               margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
+            fi 
+            disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
+            check_disk_space                  \
+               "$OPT_DEST/$prefix-disk-space" \
+               "$OPT_DISK_BYTE_LIMIT"         \
+               "$OPT_DISK_PCT_LIMIT"          \
+               "$margin"  # real used MB + margin MB
+            if [ $? -eq 0 ]; then
+               # There should be enough disk space, so collect.
+               log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
+               log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
+               last_prefix="$prefix"
+
+
+               # Fork and background the collect subroutine which will
+               # run for --run-time seconds.  We (the parent) sleep
+               # while its collecting (hopefully --sleep is longer than
+               # --run-time).
+               (
+                  collect "$OPT_DEST" "$prefix"
+               ) >> "$OPT_DEST/$prefix-output" 2>&1 &
+            else 
+               # There will not be enough disk space, so do not collect.
+               warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
             fi
-
-            # Fork and background the collect subroutine which will
-            # run for --run-time seconds.  We (the parent) sleep
-            # while its collecting (hopefully --sleep is longer than
-            # --run-time).
-            (
-               collect "$OPT_DEST" "$prefix"
-            ) >> "$OPT_DEST/$prefix-output" 2>&1 &
-         else 
-            # There will not be enough disk space, so do not collect.
-            warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
          fi
 
          # ##################################################################
