@@ -1114,13 +1114,7 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
 
    if [ "$OPT_DAEMONIZE" ]; then
       # Check access to the --log file.
-      (
-         set -e
-         touch "$OPT_LOG"
-      )
-      if [ $? -ne 0 ]; then
-         die "Cannot write to --log $OPT_LOG"
-      fi
+      touch "$OPT_LOG" || die "Cannot write to --log $OPT_LOG"
 
       # The PID file will at first have our (parent) PID.
       # This is fine for ensuring that only one of us is
