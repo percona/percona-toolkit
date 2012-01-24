@@ -1356,8 +1356,6 @@ options:
 
   --trigger processlist --variable State --match statistics --threshold 10
 
-=back
-
 In addition, you can specify a file that contains your custom trigger function,
 written in Unix shell script.  This can be a wrapper that executes anything you
 wish.  If the argument to --function is a file, then it takes precedence over
