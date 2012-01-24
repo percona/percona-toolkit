@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=63
+TESTS=64
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -104,6 +104,10 @@ usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
 cmd_ok \
    "grep -q \"For more information, 'man pt-stalk' or 'perldoc\" $TMPFILE" \
    "--help"
+
+cmd_ok \
+   "grep -q '\-\-string-opt[ ]*(No value)' $TMPFILE" \
+   "Options and values after processing arguments"
 
 # Don't interpolate.
 parse_options "$T_LIB_DIR/samples/bash/po003.sh" --help

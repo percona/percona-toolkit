@@ -85,10 +85,18 @@ usage_or_errors() {
       echo
       echo "Command line options:"
       echo
-      for opt in $(ls $TMPDIR/po/); do
+      for opt in $(ls "$PO_DIR"); do
          local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
          echo "--$opt"
          echo "  $desc"
+         echo
+      done
+      echo "Options and values after processing arguments:"
+      echo
+      for opt in $(ls "$PO_DIR"); do
+         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+         local varvalue="${!varname}"
+         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
          echo
       done
       return 1
@@ -184,13 +192,13 @@ _parse_pod() {
 }
 
 _eval_po() {
-   for opt_spec in $(ls "$PO_DIR"); do
+   local old_ifs="$IFS"
+   IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
       local opt=""
       local default_val=""
       local neg=0
-      while read line; do
-         local key=$(echo $line | cut -d ':' -f 1)
-         local val=$(echo $line | cut -d ':' -f 2)
+      while read key val; do
          case "$key" in
             long)
                opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
@@ -210,13 +218,13 @@ _eval_po() {
                fi
                ;;
             *)
-               echo "Invalid attribute in $PO_DIR/$opt_spec: $line" >&2
+               echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
          esac 
-      done < "$PO_DIR/$opt_spec"
+      done < "$opt_spec"
 
       if [ -z "$opt" ]; then
-         echo "No long attribute in option spec $PO_DIR/$opt_spec" >&2
+         echo "No long attribute in option spec $opt_spec" >&2
          exit 1
       fi
 
@@ -229,6 +237,8 @@ _eval_po() {
 
       eval "OPT_${opt}"="$default_val"
    done
+
+   IFS="$old_ifs"
 }
 
 _parse_config_files() {
@@ -574,7 +584,7 @@ collect() {
       fi
    fi
 
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" = "yes" -a "$mysqld_pid" ]; then
+   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
       $CMD_GDB                     \
          -ex "set pagination 0"    \
          -ex "thread apply all bt" \
@@ -613,7 +623,7 @@ collect() {
    open_tables                         >> "$d/$p-opentables1"   2>&1 &
 
    local tcpdump_pid=""
-   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" = "yes" ]; then
+   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
       local port=$(awk '/^port/{print $2}' "$d/$p-variables")
       if [ "$port" ]; then
          $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
@@ -622,12 +632,12 @@ collect() {
    fi
 
    local have_oprofile="no"
-   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" = "yes" ]; then
+   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
          have_oprofile="yes"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
       local strace_pid=$!
    fi
@@ -726,7 +736,7 @@ collect() {
               "/path/to/mysqld'"                                              \
             > "$d/$p-opreport"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       kill -s 2 $strace_pid
       sleep 1
       kill -s 15 $strace_pid
@@ -931,7 +941,7 @@ sigtrap() {
 
 stalk() {
    local cycles_true=0   # increment each time check is true, else set to 0
-   local matched="no"    # set to "yes" when check is true
+   local matched=""      # set to "yes" when check is true
    local last_prefix=""  # prefix of last collection
 
    while oktorun; do
@@ -944,20 +954,20 @@ stalk() {
       if [ -z "$value" ]; then
          # No value.  Maybe we failed to connect to MySQL?
          warn "Detected value is empty; something failed?  Trigger exit status: $trg_exit_status"
-         matched="no"
+         matched=""
          cycles_true=0
       elif [ $value -gt $OPT_THRESHOLD ]; then
          matched="yes"
          cycles_true=$(($cycles_true + 1))
       else
-         matched="no"
+         matched=""
          cycles_true=0
       fi
 
-      local msg="Check results: $OPT_VARIABLE=$value, matched=$matched, cycles_true=$cycles_true"
+      local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
       log "$msg"
 
-      if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
+      if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then 
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
@@ -1089,7 +1099,8 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    po_status=$?
    rm_tmpdir
    if [ $po_status -ne 0 ]; then
-      exit $po_status
+      [ $OPT_ERRS -gt 0 ] && exit 1
+      exit 0
    fi
 
    # Now that we have the cmd line opts, check that we can actually
@@ -1097,7 +1108,7 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
-   if [ "$OPT_DAEMONIZE" = "yes" ]; then
+   if [ "$OPT_DAEMONIZE" ]; then
       # Check access to the --log file.
       (
          set -e
