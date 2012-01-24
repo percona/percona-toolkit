@@ -3622,6 +3622,14 @@ sub main {
          . " at " . ($o->get('interval') || 0) . " second intervals");
    }
 
+   # We don't care about the executed command, and we don't want
+   # to wait for it, so we ignore dead children so we don't have
+   # to reap them and they won't become zombies.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/919819
+   if ( $o->get('execute-command') ) {
+      $SIG{CHLD} = 'IGNORE';
+   }
+
    while ( (!$run_time || $now < $end) && !-f $sentinel ) {
       msg('Checking processlist');
       my $proclist;
