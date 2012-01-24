@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 17;
+   plan tests => 20;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -169,6 +169,38 @@ like(
    "Trigger file logs how pt-stalk was ran"
 );
 
+# ###########################################################################
+# Triggered but --no-collect.
+# ###########################################################################
+diag(`rm $pid_file 2>/dev/null`);
+diag(`rm $log_file 2>/dev/null`);
+diag(`rm $dest/*   2>/dev/null`);
+
+(undef, $uptime) = $dbh->selectrow_array("SHOW STATUS LIKE 'Uptime'");
+$threshold = $uptime + 2;
+
+$retval = system("$trunk/bin/pt-stalk --no-collect --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 1 --run-time 1 --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
+
+sleep 2;
+
+$output = `cat $log_file`;
+like(
+   $output,
+   qr/Collect triggered/,
+   "Collect triggered"
+);
+
+ok(
+   ! -f "$dest/*",
+   "No files collected"
+);
+
+$output = `ps x | grep -v grep | grep 'pt-stalk pt-stalk --iterations 1 --dest $dest'`;
+is(
+   $output,
+   "",
+   "pt-stalk is not running"
+);
 
 # #############################################################################
 # --config
