@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=49
+TESTS=63
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -135,6 +135,28 @@ is "$EXT_ARGV" "--host=127.1 --user=daniel" "External ARGV (conf)"
 parse_options "$T_LIB_DIR/samples/bash/po001.sh" --string-opt zzz
 
 is "$OPT_STRING_OPT" "zzz" "Command line overrides config file"
+
+# User-specified --config
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --config "$T_LIB_DIR/samples/bash/config003.conf" --string-opt bar
+
+is "$OPT_STRING_OPT" "bar" "--config string option"
+is "$OPT_STRING_OPT2" "foo" "--config string option2"
+is "$OPT_TYPELESS_OPTION" "" "--config typeless option"
+is "$OPT_NOPTION" "yes" "--config negatable option"
+is "$OPT_INT_OPT" "123" "--config int option"
+is "$OPT_INT_OPT2" "42" "--config int option2"
+is "$OPT_VERSION" "" "--config version option"
+is "$ARGV" "" "--config ARGV"
+is "$EXT_ARGV" "" "--config External ARGV"
+
+# Multiple --config files, last should take precedence.
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --config $T_LIB_DIR/samples/bash/config001.conf,$T_LIB_DIR/samples/bash/config002.conf
+
+is "$OPT_STRING_OPT" "hello world" "Two --config string option"
+is "$OPT_TYPELESS_OPTION" "yes" "Two --config typeless option"
+is "$OPT_INT_OPT" "100" "Two --config int option"
+is "$ARGV" "" "Two --config ARGV"
+is "$EXT_ARGV" "--host=127.1 --user=daniel" "Two--config External ARGV"
 
 # ############################################################################
 # Option values with spaces.
