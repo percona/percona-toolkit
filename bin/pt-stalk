@@ -883,11 +883,6 @@ trg_processlist() {
    return
 }
 
-trg_magic() {
-   echo "TODO"
-   return
-}
-
 oktorun() {
    if [ $OKTORUN -eq 0 ]; then
       EXIT_REASON="OKTORUN is false"
@@ -1026,7 +1021,9 @@ stalk() {
       fi
 
       # Purge old collect file between checks.
-      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+      if [ -d "$OPT_DEST" ]; then
+         purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+      fi
    done
 }
 
@@ -1041,23 +1038,8 @@ main() {
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
    # we don't know our own PID.  See the usage of $! below.
    RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID"
-   log "Starting $0 $RAN_WITH"
 
-   # Make sure the collection dir exists.
-   if [ ! -d "$OPT_DEST" ]; then
-      mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
-   fi
-   # Check access to the --dest dir.  By setting -x in the subshell,
-   # if either command fails, the subshell will exit immediately and
-   # $? will be non-zero.
-   (
-      set -e
-      touch "$OPT_DEST/test"
-      rm "$OPT_DEST/test"
-   )
-   if [ $? -ne 0 ]; then
-      die "Cannot read and write files to --dest $OPT_DEST"
-   fi
+   log "Starting $0 $RAN_WITH"
 
    # Test if we have root; warn if not, but it isn't critical.
    if [ "$(id -u)" != "0" ]; then
@@ -1111,6 +1093,25 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    # connect to MySQL.
    [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
+
+   # Check existence and access to the --dest dir if we're collecting.
+   if [ "$OPT_COLLECT" ]; then
+      if [ ! -d "$OPT_DEST" ]; then
+         mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
+      fi
+
+      # Check access to the --dest dir.  By setting -x in the subshell,
+      # if either command fails, the subshell will exit immediately and
+      # $? will be non-zero.
+      (
+         set -e
+         touch "$OPT_DEST/test"
+         rm "$OPT_DEST/test"
+      )
+      if [ $? -ne 0 ]; then
+         die "Cannot read and write files to --dest $OPT_DEST"
+      fi
+   fi
 
    if [ "$OPT_DAEMONIZE" ]; then
       # Check access to the --log file.
@@ -1307,7 +1308,7 @@ its output as specified in --log.
 
 =item --dest
 
-type: string; default: ${HOME}/collected
+type: string; default: /var/lib/pt-stalk
 
 Where to store the diagnostic data.  Each time the tool collects data, it writes
 to a new set of files, which are named with the current system timestamp.
@@ -1365,6 +1366,8 @@ options:
 
   --trigger processlist --variable State --match statistics --threshold 10
 
+=back
+
 In addition, you can specify a file that contains your custom trigger function,
 written in Unix shell script.  This can be a wrapper that executes anything you
 wish.  If the argument to --function is a file, then it takes precedence over
@@ -1387,8 +1390,6 @@ MySQL options mentioned in the L<"SYNOPSIS"> above.
 
 The plugin should not alter the tool's existing global variables.  Prefix any
 plugin-specific global variables with "PLUGIN_" or make them local.
-
-=back
 
 =item --help
 
