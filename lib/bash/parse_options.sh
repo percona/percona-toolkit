@@ -91,10 +91,18 @@ usage_or_errors() {
       echo
       echo "Command line options:"
       echo
-      for opt in $(ls $TMPDIR/po/); do
+      for opt in $(ls "$PO_DIR"); do
          local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
          echo "--$opt"
          echo "  $desc"
+         echo
+      done
+      echo "Options and values after processing arguments:"
+      echo
+      for opt in $(ls "$PO_DIR"); do
+         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+         local varvalue="${!varname}"
+         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
          echo
       done
       return 1

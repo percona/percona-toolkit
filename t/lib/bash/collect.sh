@@ -5,6 +5,7 @@ TESTS=19
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
+TOOL="pt-stalk"
 
 mkdir "$TMPDIR/collect" 2>/dev/null
 
