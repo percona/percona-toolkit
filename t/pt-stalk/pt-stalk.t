@@ -178,6 +178,7 @@ diag(`cp $ENV{HOME}/.pt-stalk.conf $ENV{HOME}/.pt-stalk.conf.original 2>/dev/nul
 diag(`cp $trunk/t/pt-stalk/samples/config001.conf $ENV{HOME}/.pt-stalk.conf`);
 
 system "$trunk/bin/pt-stalk --dest $dest --pid $pid_file >$log_file 2>&1 &";
+PerconaTest::wait_for_files($pid_file);
 sleep 1;
 chomp($pid = `cat $pid_file`);
 $retval = system("kill $pid 2>/dev/null");
