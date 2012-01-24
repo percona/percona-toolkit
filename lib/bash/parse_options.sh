@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -22,9 +22,9 @@
 # parse_options parses Perl POD options from Bash tools and creates
 # global variables for each option.
 
-# ***********************************************************
+# XXX
 # GLOBAL $TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
-# ***********************************************************
+# XXX
 
 # Parsing command line options with Bash is easy until we have to dealt
 # with values that have spaces, e.g. --option="hello world".  This is
@@ -39,21 +39,21 @@
 # because it's a line from a file, not a command line where Bash will
 # interpret the quotes and return a single value in the code. So...
 
-# ***************************************************
+# XXX
 # BE CAREFUL MAKING CHANGES TO THIS LIB AND MAKE SURE
 # t/lib/bash/parse_options.sh STILL PASSES!
-# ***************************************************
+# XXX
 
 set -u
 
 # Global variables.  These must be global because declare inside a
 # sub will be scoped locally.
-ARGV=""              # Non-option args (probably input files)
-EXT_ARGV=""          # Everything after -- (args for an external command)
-HAVE_EXT_ARGV=""     # Got --, everything else is put into EXT_ARGV
-OPT_ERRS=0           # How many command line option errors
-OPT_VERSION="no"     # If --version was specified
-OPT_HELP="no"        # If --help was specified
+ARGV=""           # Non-option args (probably input files)
+EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
+OPT_ERRS=0        # How many command line option errors
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
 PO_DIR="$TMPDIR/po"  # Directory with program option spec files
 
 # Sub: usage
@@ -80,13 +80,13 @@ usage() {
 usage_or_errors() {
    local file="$1"
 
-   if [ "$OPT_VERSION" = "yes" ]; then
+   if [ "$OPT_VERSION" ]; then
       local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
 
-   if [ "$OPT_HELP" = "yes" ]; then
+   if [ "$OPT_HELP" ]; then
       usage "$file"
       echo
       echo "Command line options:"
@@ -127,15 +127,18 @@ parse_options() {
    local file="$1"
    shift
 
-   # Reset the globals (mostly for testing).
+   # XXX
+   # Reset all globals else t/lib/bash/parse_options.sh will fail.
+   # XXX
    ARGV=""
    EXT_ARGV=""
    HAVE_EXT_ARGV=""
    OPT_ERRS=0
-   OPT_VERSION="no"
-   OPT_HELP="no"
+   OPT_VERSION=""
+   OPT_HELP=""
    PO_DIR="$TMPDIR/po"
 
+   # Ready the directory for the program option (po) spec files.
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
       if [ $? -ne 0 ]; then
@@ -150,9 +153,26 @@ parse_options() {
       exit 1
    fi
 
-   _parse_pod "$file"
-   _eval_po
-   _parse_config_files
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   # If the first option is --config FILES, then remove it and use
+   # those files instead of the default config files.
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
+      local user_config_files="$1"
+      shift  # that ^
+      local old_ifs="$IFS"
+      IFS=","
+      for user_config_file in $user_config_files; do
+         _parse_config_files "$user_config_file"
+      done
+      IFS="$old_ifs"
+   else
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+   fi
+
+   # Finally, parse the command line.
    _parse_command_line "$@"
 }
 
@@ -251,8 +271,8 @@ _eval_po() {
 }
 
 _parse_config_files() {
-   for config_file in "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
-   do
+
+   for config_file in "$@"; do
       # Next config file if this one doesn't exist.
       test -f "$config_file" || continue
 
@@ -270,6 +290,9 @@ _parse_config_files() {
          # and end-of-line # comments.
          config_opt="$(echo "$config_opt" | sed -e 's/^[ ]*//' -e 's/[ ]*\$//' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
 
+         # Skip blank lines.
+         [ "$config_opt" = "" ] && continue
+
          # Options in a config file are not prefixed with --,
          # but command line options are, so one or the other has
          # to add or remove the -- prefix.  We add it for config
@@ -278,9 +301,11 @@ _parse_config_files() {
          if ! [ "$HAVE_EXT_ARGV" ]; then
             config_opt="--$config_opt"
          fi
+
          _parse_command_line "$config_opt"
+
       done < "$config_file"
-      
+
       HAVE_EXT_ARGV=""  # reset for each file
 
    done
