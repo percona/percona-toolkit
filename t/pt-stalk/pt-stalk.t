@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(sleep);
 
 use PerconaTest;
 use DSNParser;
@@ -23,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 15;
+   plan tests => 17;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -167,6 +168,34 @@ like(
    qr/pt-stalk ran with --function=status --variable=Uptime --threshold=$threshold/,
    "Trigger file logs how pt-stalk was ran"
 );
+
+
+# #############################################################################
+# --config
+# #############################################################################
+
+diag(`cp $ENV{HOME}/.pt-stalk.conf $ENV{HOME}/.pt-stalk.conf.original 2>/dev/null`);
+diag(`cp $trunk/t/pt-stalk/samples/config001.conf $ENV{HOME}/.pt-stalk.conf`);
+
+system "$trunk/bin/pt-stalk --dest $dest --pid $pid_file >$log_file 2>&1 &";
+sleep 1;
+chomp($pid = `cat $pid_file`);
+$retval = system("kill $pid 2>/dev/null");
+is(
+   $retval >> 0,
+   0,
+   "Killed pt-stalk"
+);
+
+$output = `cat $log_file`;
+like(
+   $output,
+   qr/Check results: Aborted_connects=|variable=Aborted_connects/,
+   "Read default config file"
+);
+
+diag(`rm $ENV{HOME}/.pt-stalk.conf`);
+diag(`cp $ENV{HOME}/.pt-stalk.conf.original $ENV{HOME}/.pt-stalk.conf 2>/dev/null`);
 
 # #############################################################################
 # Done.
