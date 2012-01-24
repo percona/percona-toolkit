@@ -222,13 +222,13 @@ _eval_po() {
    # Evaluate the program options into existence as global variables
    # transformed like --my-op == $OPT_MY_OP.  If an option has a default
    # value, it's assigned that value.  Else, it's value is an empty string.
-   for opt_spec in $(ls "$PO_DIR"); do
+   local old_ifs="$IFS"
+   IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
       local opt=""
       local default_val=""
       local neg=0
-      while read line; do
-         local key=$(echo $line | cut -d ':' -f 1)
-         local val=$(echo $line | cut -d ':' -f 2)
+      while read key val; do
          case "$key" in
             long)
                opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
@@ -248,13 +248,13 @@ _eval_po() {
                fi
                ;;
             *)
-               echo "Invalid attribute in $PO_DIR/$opt_spec: $line" >&2
+               echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
          esac 
-      done < "$PO_DIR/$opt_spec"
+      done < "$opt_spec"
 
       if [ -z "$opt" ]; then
-         echo "No long attribute in option spec $PO_DIR/$opt_spec" >&2
+         echo "No long attribute in option spec $opt_spec" >&2
          exit 1
       fi
 
@@ -268,6 +268,8 @@ _eval_po() {
       # Eval the option into existence as a global variable.
       eval "OPT_${opt}"="$default_val"
    done
+
+   IFS="$old_ifs"
 }
 
 _parse_config_files() {
