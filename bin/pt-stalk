@@ -301,7 +301,7 @@ _parse_command_line() {
 
          real_opt="$opt"
 
-         if $(echo $opt | grep -q '^--no-'); then
+         if $(echo $opt | grep '^--no-' >/dev/null); then
             opt_is_negated=1
             opt=$(echo $opt | sed 's/^--no-//')
          else
