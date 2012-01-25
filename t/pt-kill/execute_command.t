@@ -29,7 +29,7 @@ my $out = "/tmp/mk-kill-test.txt";
 # #############################################################################
 diag(`rm $out 2>/dev/null`);
 
-$output = `$cmd $trunk/t/lib/samples/pl/recset001.txt --match-command Query --execute-command 'echo hello > $out'`;
+$output = `$cmd --test-matching $trunk/t/lib/samples/pl/recset001.txt --match-command Query --execute-command 'echo hello > $out'`;
 is(
    $output, 
    '',
