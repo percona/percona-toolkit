@@ -3458,14 +3458,9 @@ sub main {
          unless $o->got('interval');
    }
 
-   if ( !-t STDIN ) {
-      PTDEBUG && _d("STDIN is piped");
-      @ARGV = ('-');
-   }
-
    # Disable opts that don't make sense when reading proclist
    # from a file (or STDIN).
-   if ( @ARGV ) {
+   if ( $o->get('test-matching') ) {
       $o->set('run-time',    0);
       $o->set('interval',    0);
       $o->set('ignore-self', 0);
@@ -3502,13 +3497,14 @@ sub main {
    my $dbh;
    my $kill_sth;
    my $get_proclist;
-   if ( @ARGV ) {
-      PTDEBUG && _d('Getting processlist from files:', @ARGV);
+   my $files;
+   if ( $files = $o->get('test-matching') ) {
+      PTDEBUG && _d('Getting processlist from files:', @$files);
       my $trp = new TextResultSetParser();
       my $fh;
       $get_proclist = sub {
          if ( !$fh ) {
-            my $file = shift @ARGV;
+            my $file = shift @$files;
             die 'No more files' unless $file;
             if ( $file eq '-' ) {
                $fh = *STDIN;
@@ -3570,7 +3566,7 @@ sub main {
    # ########################################################################
    msg("$PROGRAM_NAME starting");
    msg($dbh ? "Connected to host " . $dp->as_string($dsn)
-            : "Reading files @ARGV");
+            : "Test matching files @$files");
 
    # Class-based match criteria.
    my $query_count    = $o->get('query-count');
@@ -3874,7 +3870,7 @@ pt-kill - Kill MySQL queries that match certain criteria.
 
 =head1 SYNOPSIS
 
-Usage: pt-kill [OPTION]... [FILE...]
+Usage: pt-kill [OPTIONS]
 
 pt-kill kills MySQL connections.  pt-kill connects to MySQL and gets queries
 from SHOW PROCESSLIST if no FILE is given.  Else, it reads queries from one
@@ -3899,7 +3895,8 @@ Print all login processes:
 
 See which queries in the processlist right now would match:
 
-   mysql -e "SHOW PROCESSLIST" | pt-kill --busy-time 60 --print
+   mysql -e "SHOW PROCESSLIST" > proclist.txt
+   pt-kill --test-matching proclist.txt --busy-time 60 --print
 
 =head1 RISKS
 
@@ -4012,8 +4009,7 @@ L<"--any-busy-time"> and L<"--each-busy-time"> are mutually exclusive.
 
 L<"--kill"> and L<"--kill-query"> are mutually exclusive.
 
-This tool accepts additional command-line arguments.  Refer to the
-L<"SYNOPSIS"> and usage information for details.
+L<"--daemonize"> and L<"--test-matching"> are mutually exclusive.
 
 =over
 
@@ -4417,6 +4413,17 @@ Allow matching and killing replication threads.
 By default, matches do not apply to replication threads; i.e. replication
 threads are completely ignored.  Specifying this option allows matches to
 match (and potentially kill) replication threads on masters and slaves.
+
+=item --test-matching
+
+type: array; group: Query Matches
+
+Files with processlist snapshots to test matching options against.  Since
+the matching options can be complex, you can save snapshots of processlist
+in files, then test matching options against queries in those files.
+
+This option disables L<"--run-time">, L<"--interval">,
+and L<"--[no]ignore-self">.
 
 =back
 
