@@ -5,6 +5,7 @@ TESTS=19
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
+TOOL="pt-stalk"
 
 mkdir "$TMPDIR/collect" 2>/dev/null
 
@@ -14,7 +15,7 @@ source "$LIB_DIR/safeguards.sh"
 source "$LIB_DIR/alt_cmds.sh"
 source "$LIB_DIR/collect.sh"
 
-parse_options "$T_LIB_DIR/samples/bash/po002.sh" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
+parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 # Prefix (with path) for the collect files.
 local p="$TMPDIR/collect/2011_12_05"
@@ -111,7 +112,7 @@ is "$iters" "1" "1 iteration/1s run time"
 # Try longer run time.
 # ###########################################################################
 
-parse_options "$T_LIB_DIR/samples/bash/po002.sh" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
+parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 rm $TMPDIR/collect/*
 

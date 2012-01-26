@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(sleep);
 
 use PerconaTest;
 use DSNParser;
@@ -23,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 15;
+   plan tests => 20;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -167,6 +168,67 @@ like(
    qr/pt-stalk ran with --function=status --variable=Uptime --threshold=$threshold/,
    "Trigger file logs how pt-stalk was ran"
 );
+
+# ###########################################################################
+# Triggered but --no-collect.
+# ###########################################################################
+diag(`rm $pid_file 2>/dev/null`);
+diag(`rm $log_file 2>/dev/null`);
+diag(`rm $dest/*   2>/dev/null`);
+
+(undef, $uptime) = $dbh->selectrow_array("SHOW STATUS LIKE 'Uptime'");
+$threshold = $uptime + 2;
+
+$retval = system("$trunk/bin/pt-stalk --no-collect --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 1 --run-time 1 --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
+
+sleep 2;
+
+$output = `cat $log_file`;
+like(
+   $output,
+   qr/Collect triggered/,
+   "Collect triggered"
+);
+
+ok(
+   ! -f "$dest/*",
+   "No files collected"
+);
+
+$output = `ps x | grep -v grep | grep 'pt-stalk pt-stalk --iterations 1 --dest $dest'`;
+is(
+   $output,
+   "",
+   "pt-stalk is not running"
+);
+
+# #############################################################################
+# --config
+# #############################################################################
+
+diag(`cp $ENV{HOME}/.pt-stalk.conf $ENV{HOME}/.pt-stalk.conf.original 2>/dev/null`);
+diag(`cp $trunk/t/pt-stalk/samples/config001.conf $ENV{HOME}/.pt-stalk.conf`);
+
+system "$trunk/bin/pt-stalk --dest $dest --pid $pid_file >$log_file 2>&1 &";
+PerconaTest::wait_for_files($pid_file);
+sleep 1;
+chomp($pid = `cat $pid_file`);
+$retval = system("kill $pid 2>/dev/null");
+is(
+   $retval >> 0,
+   0,
+   "Killed pt-stalk"
+);
+
+$output = `cat $log_file`;
+like(
+   $output,
+   qr/Check results: Aborted_connects=|variable=Aborted_connects/,
+   "Read default config file"
+);
+
+diag(`rm $ENV{HOME}/.pt-stalk.conf`);
+diag(`cp $ENV{HOME}/.pt-stalk.conf.original $ENV{HOME}/.pt-stalk.conf 2>/dev/null`);
 
 # #############################################################################
 # Done.

@@ -49,48 +49,83 @@ die() {
 # ###########################################################################
 
 
+
+
+
 set -u
 
 ARGV=""           # Non-option args (probably input files)
 EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
 OPT_ERRS=0        # How many command line option errors
-OPT_VERSION="no"  # If --version was specified
-OPT_HELP="no"     # If --help was specified
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
+PO_DIR="$TMPDIR/po"  # Directory with program option spec files
 
 usage() {
    local file="$1"
 
    local usage=$(grep '^Usage: ' "$file")
-   echo $usage >&2
-   echo >&2
-   echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
+   echo $usage
+   echo
+   echo "For more information, 'man $TOOL' or 'perldoc $file'."
 }
 
 usage_or_errors() {
    local file="$1"
 
-   if [ "$OPT_VERSION" = "yes" ]; then
+   if [ "$OPT_VERSION" ]; then
       local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
 
-   if [ "$OPT_HELP" = "yes" ]; then
+   if [ "$OPT_HELP" ]; then
       usage "$file"
-      echo >&2
-      echo "Command line options:" >&2
-      echo >&2
-      for opt in $(ls $TMPDIR/po/); do
-         local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
-         echo "--$opt" >&2
-         echo "  $desc" >&2
-         echo >&2
+      echo
+      echo "Command line options:"
+      echo
+      perl -e '
+         use strict;
+         use warnings FATAL => qw(all);
+         my $lcol = 20;         # Allow this much space for option names.
+         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
+         my $name;
+         while ( <> ) {
+            my $line = $_;
+            chomp $line;
+            if ( $line =~ s/^long:/  --/ ) {
+               $name = $line;
+            }
+            elsif ( $line =~ s/^desc:// ) {
+               $line =~ s/ +$//mg;
+               my @lines = grep { $_      }
+                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
+               if ( length($name) >= $lcol ) {
+                  print $name, "\n", (q{ } x $lcol);
+               }
+               else {
+                  printf "%-${lcol}s", $name;
+               }
+               print join("\n" . (q{ } x $lcol), @lines);
+               print "\n";
+            }
+         }
+      ' "$PO_DIR"/*
+      echo
+      echo "Options and values after processing arguments:"
+      echo
+      for opt in $(ls "$PO_DIR"); do
+         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+         local varvalue="${!varname}"
+         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+         echo
       done
       return 1
    fi
 
    if [ $OPT_ERRS -gt 0 ]; then
-      echo >&2
+      echo
       usage "$file"
       return 1
    fi
@@ -102,60 +137,88 @@ parse_options() {
    local file="$1"
    shift
 
-   if [ ! -d "$TMPDIR/po/" ]; then
-      mkdir "$TMPDIR/po/"
+   ARGV=""
+   EXT_ARGV=""
+   HAVE_EXT_ARGV=""
+   OPT_ERRS=0
+   OPT_VERSION=""
+   OPT_HELP=""
+   PO_DIR="$TMPDIR/po"
+
+   if [ ! -d "$PO_DIR" ]; then
+      mkdir "$PO_DIR"
       if [ $? -ne 0 ]; then
-         echo "Cannot mkdir $TMPDIR/po/" >&2
+         echo "Cannot mkdir $PO_DIR" >&2
          exit 1
       fi
    fi
 
-   rm -rf "$TMPDIR"/po/*
+   rm -rf "$PO_DIR"/*
    if [ $? -ne 0 ]; then
-      echo "Cannot rm -rf $TMPDIR/po/*" >&2
+      echo "Cannot rm -rf $PO_DIR/*" >&2
       exit 1
    fi
-   
-   (
-      export PO_DIR="$TMPDIR/po"
-      cat "$file" | perl -ne '
-         BEGIN { $/ = ""; }
-         next unless $_ =~ m/^=head1 OPTIONS/;
-         while ( defined(my $para = <>) ) {
-            last if $para =~ m/^=head1/;
+
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
+      local user_config_files="$1"
+      shift  # that ^
+      local IFS=","
+      for user_config_file in $user_config_files; do
+         _parse_config_files "$user_config_file"
+      done
+   else
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+   fi
+
+   _parse_command_line "$@"
+}
+
+_parse_pod() {
+   local file="$1"
+
+   cat "$file" | PO_DIR="$PO_DIR" perl -ne '
+      BEGIN { $/ = ""; }
+      next unless $_ =~ m/^=head1 OPTIONS/;
+      while ( defined(my $para = <>) ) {
+         last if $para =~ m/^=head1/;
+         chomp;
+         if ( $para =~ m/^=item --(\S+)/ ) {
+            my $opt  = $1;
+            my $file = "$ENV{PO_DIR}/$opt";
+            open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+            print $opt_fh "long:$opt\n";
+            $para = <>;
             chomp;
-            if ( $para =~ m/^=item --(\S+)/ ) {
-               my $opt  = $1;
-               my $file = "$ENV{PO_DIR}/$opt";
-               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
-               print $opt_fh "long:$opt\n";
+            if ( $para =~ m/^[a-z ]+:/ ) {
+               map {
+                  chomp;
+                  my ($attrib, $val) = split(/: /, $_);
+                  print $opt_fh "$attrib:$val\n";
+               } split(/; /, $para);
                $para = <>;
                chomp;
-               if ( $para =~ m/^[a-z ]+:/ ) {
-                  map {
-                     chomp;
-                     my ($attrib, $val) = split(/: /, $_);
-                     print $opt_fh "$attrib:$val\n";
-                  } split(/; /, $para);
-                  $para = <>;
-                  chomp;
-               }
-               my ($desc) = $para =~ m/^([^?.]+)/;
-               print $opt_fh "desc:$desc.\n";
-               close $opt_fh;
             }
+            my ($desc) = $para =~ m/^([^?.]+)/;
+            print $opt_fh "desc:$desc.\n";
+            close $opt_fh;
          }
-         last;
-      '
-   )
+      }
+      last;
+   '
+}
 
-   for opt_spec in $(ls "$TMPDIR/po/"); do
+_eval_po() {
+   local IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
       local opt=""
       local default_val=""
       local neg=0
-      while read line; do
-         local key=$(echo $line | cut -d ':' -f 1)
-         local val=$(echo $line | cut -d ':' -f 2)
+      local size=0
+      while read key val; do
          case "$key" in
             long)
                opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
@@ -166,6 +229,7 @@ parse_options() {
             "short form")
                ;;
             type)
+               [ "$val" = "size" ] && size=1
                ;;
             desc)
                ;;
@@ -175,13 +239,13 @@ parse_options() {
                fi
                ;;
             *)
-               echo "Invalid attribute in $TMPDIR/po/$opt_spec: $line" >&2
+               echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
          esac 
-      done < "$TMPDIR/po/$opt_spec"
+      done < "$opt_spec"
 
       if [ -z "$opt" ]; then
-         echo "No long attribute in option spec $TMPDIR/po/$opt_spec" >&2
+         echo "No long attribute in option spec $opt_spec" >&2
          exit 1
       fi
 
@@ -192,72 +256,155 @@ parse_options() {
          fi
       fi
 
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
+      fi
+
       eval "OPT_${opt}"="$default_val"
    done
+}
 
-   for opt; do
-      if [ $# -eq 0 ]; then
-         break  # no more opts
+_parse_config_files() {
+
+   for config_file in "$@"; do
+      test -f "$config_file" || continue
+
+      while read config_opt; do
+
+         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
+         config_opt="$(echo "$config_opt" | sed -e 's/^[ ]*//' -e 's/[ ]*\$//' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+
+         [ "$config_opt" = "" ] && continue
+
+         if ! [ "$HAVE_EXT_ARGV" ]; then
+            config_opt="--$config_opt"
+         fi
+
+         _parse_command_line "$config_opt"
+
+      done < "$config_file"
+
+      HAVE_EXT_ARGV=""  # reset for each file
+
+   done
+}
+
+_parse_command_line() {
+   local opt=""
+   local val=""
+   local next_opt_is_val=""
+   local opt_is_ok=""
+   local opt_is_negated=""
+   local real_opt=""
+   local required_arg=""
+   local spec=""
+
+   for opt in "$@"; do
+      if [ "$opt" = "--" -o "$opt" = "----" ]; then
+         HAVE_EXT_ARGV=1
+         continue
       fi
-      opt=$1
-      if [ "$opt" = "--" ]; then
-         shift
-         EXT_ARGV="$@"
-         break
-      fi
-      shift 
-      if [ $(expr "$opt" : "-") -eq 0 ]; then
-         if [ -z "$ARGV" ]; then
-            ARGV="$opt"
+      if [ "$HAVE_EXT_ARGV" ]; then
+         if [ "$EXT_ARGV" ]; then
+            EXT_ARGV="$EXT_ARGV $opt"
          else
-            ARGV="$ARGV $opt"
+            EXT_ARGV="$opt"
          fi
          continue
       fi
 
-      local real_opt="$opt"
-
-      if $(echo $opt | grep -q '^--no-'); then
-         neg=1
-         opt=$(echo $opt | sed 's/^--no-//')
-      else
-         neg=0
-         opt=$(echo $opt | sed 's/^-*//')
-      fi
-
-      if [ -f "$TMPDIR/po/$opt" ]; then
-         spec="$TMPDIR/po/$opt"
-      else
-         spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
-         if [ -z "$spec"  ]; then
-            OPT_ERRS=$(($OPT_ERRS + 1))
-            echo "Unknown option: $real_opt" >&2
-            continue
-         fi
-      fi
-
-      local required_arg=$(cat $spec | awk -F: '/^type:/{print $2}')
-      if [ -n "$required_arg" ]; then
-         if [ $# -eq 0 ]; then
+      if [ "$next_opt_is_val" ]; then
+         next_opt_is_val=""
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
             OPT_ERRS=$(($OPT_ERRS + 1))
             echo "$real_opt requires a $required_arg argument" >&2
             continue
-         else
-            val="$1"
-            shift
          fi
+         val="$opt"
+         opt_is_ok=1
       else
-         if [ $neg -eq 0 ]; then
-            val="yes"
+         if [ $(expr "$opt" : "-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
+            continue
+         fi
+
+         real_opt="$opt"
+
+         if $(echo $opt | grep '^--no-' >/dev/null); then
+            opt_is_negated=1
+            opt=$(echo $opt | sed 's/^--no-//')
          else
-            val="no"
+            opt_is_negated=""
+            opt=$(echo $opt | sed 's/^-*//')
+         fi
+
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+            val="$(echo $opt | awk -F= '{print $2}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
+         fi
+
+         if [ -f "$TMPDIR/po/$opt" ]; then
+            spec="$TMPDIR/po/$opt"
+         else
+            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               OPT_ERRS=$(($OPT_ERRS + 1))
+               echo "Unknown option: $real_opt" >&2
+               continue
+            fi
+         fi
+
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
+         if [ "$required_arg" ]; then
+            if [ "$val" ]; then
+               opt_is_ok=1
+            else
+               next_opt_is_val=1
+            fi
+         else
+            if [ "$val" ]; then
+               OPT_ERRS=$(($OPT_ERRS + 1))
+               echo "Option $real_opt does not take a value" >&2
+               continue
+            fi 
+            if [ "$opt_is_negated" ]; then
+               val=""
+            else
+               val="yes"
+            fi
+            opt_is_ok=1
          fi
       fi
 
-      opt=$(cat $spec | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+      if [ "$opt_is_ok" ]; then
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
 
-      eval "OPT_$opt"="$val"
+         if grep "^type:size" "$spec" >/dev/null; then
+            val=$(size_to_bytes $val)
+         fi
+
+         eval "OPT_$opt"="'$val'"
+
+         opt=""
+         val=""
+         next_opt_is_val=""
+         opt_is_ok=""
+         opt_is_negated=""
+         real_opt=""
+         required_arg=""
+         spec=""
+      fi
    done
+}
+
+size_to_bytes() {
+   local size="$1"
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
 }
 
 # ###########################################################################
@@ -345,33 +492,37 @@ disk_space() {
 
 check_disk_space() {
    local file="$1"
-   local mb="${2:-0}"
-   local pc="${3:-0}"
-   local mb_margin="${4:-0}"
+   local min_free_bytes="${2:-0}"
+   local min_free_pct="${3:-0}"
+   local bytes_margin="${4:-0}"
 
-   local kb=$(($mb * 1024))
-   local kb_margin=$(($mb_margin * 1024))
+   local used_bytes=$(cat "$file" | awk '/^\//{print $3 * 1024}');
+   local free_bytes=$(cat "$file" | awk '/^\//{print $4 * 1024}');
+   local pct_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
+   local pct_free=$((100 - $pct_used))
 
-   local kb_used=$(cat "$file" | awk '/^\//{print $3}');
-   local kb_free=$(cat "$file" | awk '/^\//{print $4}');
-   local pc_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
+   local real_free_bytes=$free_bytes
+   local real_pct_free=$pct_free
 
-   if [ "$kb_margin" -gt "0" ]; then
-      local kb_total=$(($kb_used + $kb_free))
+   if [ $bytes_margin -gt 0 ]; then
+      used_bytes=$(($used_bytes + $bytes_margin))
+      free_bytes=$(($free_bytes - $bytes_margin))
+      pct_used=$(awk "BEGIN { printf(\"%d\", ($used_bytes/($used_bytes + $free_bytes)) * 100) }")
 
-      kb_used=$(($kb_used + $kb_margin))
-      kb_free=$(($kb_free - $kb_margin))
-      pc_used=$(awk "BEGIN { printf(\"%d\", $kb_used/$kb_total * 100) }")
+      pct_free=$((100 - $pct_used))
    fi
 
-   local pc_free=$((100 - $pc_used))
+   if [ $free_bytes -lt $min_free_bytes -o $pct_free -lt $min_free_pct ]; then
+      warn "Not enough free disk space:
+    Limit: ${min_free_pct}% free, ${min_free_bytes} bytes free
+   Actual: ${real_pct_free}% free, ${real_free_bytes} bytes free (- $bytes_margin bytes margin)
+"
+      cat "$file" >&2
 
-   if [ "$kb_free" -le "$kb" -o "$pc_free" -le "$pc" ]; then
-      warn "Not enough free disk space: ${pc_free}% free, ${kb_free} KB free; wanted more than ${pc}% free or ${kb} KB free"
-      return 1
+      return 1  # not enough disk space
    fi
 
-   return 0
+   return 0  # disk space is OK
 }
 
 # ###########################################################################
@@ -471,7 +622,7 @@ collect() {
       fi
    fi
 
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" = "yes" -a "$mysqld_pid" ]; then
+   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
       $CMD_GDB                     \
          -ex "set pagination 0"    \
          -ex "thread apply all bt" \
@@ -510,7 +661,7 @@ collect() {
    open_tables                         >> "$d/$p-opentables1"   2>&1 &
 
    local tcpdump_pid=""
-   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" = "yes" ]; then
+   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
       local port=$(awk '/^port/{print $2}' "$d/$p-variables")
       if [ "$port" ]; then
          $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
@@ -519,12 +670,12 @@ collect() {
    fi
 
    local have_oprofile="no"
-   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" = "yes" ]; then
+   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
          have_oprofile="yes"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
       local strace_pid=$!
    fi
@@ -561,8 +712,8 @@ collect() {
       disk_space $d > $d/$p-disk-space
       check_disk_space          \
          $d/$p-disk-space       \
-         "$OPT_DISK_BYTE_LIMIT" \
-         "$OPT_DISK_PCT_LIMIT"  \
+         "$OPT_DISK_BYTES_FREE" \
+         "$OPT_DISK_PCT_FREE"   \
          || break
 
       sleep $(date +%s.%N | awk '{print 1 - ($1 % 1)}')
@@ -623,7 +774,7 @@ collect() {
               "/path/to/mysqld'"                                              \
             > "$d/$p-opreport"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       kill -s 2 $strace_pid
       sleep 1
       kill -s 15 $strace_pid
@@ -770,11 +921,6 @@ trg_processlist() {
    return
 }
 
-trg_magic() {
-   echo "TODO"
-   return
-}
-
 oktorun() {
    if [ $OKTORUN -eq 0 ]; then
       EXIT_REASON="OKTORUN is false"
@@ -828,7 +974,7 @@ sigtrap() {
 
 stalk() {
    local cycles_true=0   # increment each time check is true, else set to 0
-   local matched="no"    # set to "yes" when check is true
+   local matched=""      # set to "yes" when check is true
    local last_prefix=""  # prefix of last collection
 
    while oktorun; do
@@ -841,61 +987,65 @@ stalk() {
       if [ -z "$value" ]; then
          # No value.  Maybe we failed to connect to MySQL?
          warn "Detected value is empty; something failed?  Trigger exit status: $trg_exit_status"
-         matched="no"
+         matched=""
          cycles_true=0
       elif [ $value -gt $OPT_THRESHOLD ]; then
          matched="yes"
          cycles_true=$(($cycles_true + 1))
       else
-         matched="no"
+         matched=""
          cycles_true=0
       fi
 
-      local msg="Check results: $OPT_VARIABLE=$value, matched=$matched, cycles_true=$cycles_true"
+      local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
       log "$msg"
 
-      if [ "$matched" = "yes" -a $cycles_true -ge $OPT_CYCLES ]; then 
+      if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then 
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
-         local prefix="${OPT_PREFIX:-$(date +%F-%T | tr :- _)}"
          log "Collect triggered"
 
-         # Check if we'll have enough disk space to collect.  Disk space
-         # is also checked every interval while collecting.
-         local margin="20"  # default 20M margin, unless:
-         if [ -n "$last_prefix" ]; then
-            margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
-         fi 
-         disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
-         check_disk_space                  \
-            "$OPT_DEST/$prefix-disk-space" \
-            "$OPT_DISK_BYTE_LIMIT"         \
-            "$OPT_DISK_PCT_LIMIT"          \
-            "$margin"  # real used MB + margin MB
-         if [ $? -eq 0 ]; then
-            # There should be enough disk space, so collect.
-            log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
-            log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
-            last_prefix="$prefix"
+         # Send email to whomever that collect has been triggered.
+         if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
+            echo "$msg on $(hostname)" \
+            | mail -s "Collect triggered on $(hostname)" \
+              "$OPT_NOTIFY_BY_EMAIL"
+         fi
 
-            # Send email to whomever that collect has been triggered.
-            if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
-               echo "$msg on $(hostname)" \
-               | mail -s "Collect triggered on $(hostname)" \
-                 "$OPT_NOTIFY_BY_EMAIL"
+         if [ "$OPT_COLLECT" ]; then
+            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr :- _)}"
+
+            # Check if we'll have enough disk space to collect.  Disk space
+            # is also checked every interval while collecting.
+            local margin="20971520"  # default 20M margin, unless:
+            if [ -n "$last_prefix" ]; then
+               margin=$(du -mc "$OPT_DEST"/"$last_prefix"-* | tail -n 1 | awk '{print $1'})
+            fi 
+            disk_space "$OPT_DEST" > "$OPT_DEST/$prefix-disk-space"
+            check_disk_space                  \
+               "$OPT_DEST/$prefix-disk-space" \
+               "$OPT_DISK_BYTES_FREE"         \
+               "$OPT_DISK_PCT_FREE"           \
+               "$margin"
+            if [ $? -eq 0 ]; then
+               # There should be enough disk space, so collect.
+               log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
+               log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
+               last_prefix="$prefix"
+
+
+               # Fork and background the collect subroutine which will
+               # run for --run-time seconds.  We (the parent) sleep
+               # while its collecting (hopefully --sleep is longer than
+               # --run-time).
+               (
+                  collect "$OPT_DEST" "$prefix"
+               ) >> "$OPT_DEST/$prefix-output" 2>&1 &
+            else 
+               # There will not be enough disk space, so do not collect.
+               warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
             fi
-
-            # Fork and background the collect subroutine which will
-            # run for --run-time seconds.  We (the parent) sleep
-            # while its collecting (hopefully --sleep is longer than
-            # --run-time).
-            (
-               collect "$OPT_DEST" "$prefix"
-            ) >> "$OPT_DEST/$prefix-output" 2>&1 &
-         else 
-            # There will not be enough disk space, so do not collect.
-            warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
          fi
 
          # ##################################################################
@@ -909,7 +1059,9 @@ stalk() {
       fi
 
       # Purge old collect file between checks.
-      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+      if [ -d "$OPT_DEST" ]; then
+         purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+      fi
    done
 }
 
@@ -924,23 +1076,8 @@ main() {
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
    # we don't know our own PID.  See the usage of $! below.
    RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID"
-   log "Starting $0 $RAN_WITH"
 
-   # Make sure the collection dir exists.
-   if [ ! -d "$OPT_DEST" ]; then
-      mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
-   fi
-   # Check access to the --dest dir.  By setting -x in the subshell,
-   # if either command fails, the subshell will exit immediately and
-   # $? will be non-zero.
-   (
-      set -e
-      touch "$OPT_DEST/test"
-      rm "$OPT_DEST/test"
-   )
-   if [ $? -ne 0 ]; then
-      die "Cannot read and write files to --dest $OPT_DEST"
-   fi
+   log "Starting $0 $RAN_WITH"
 
    # Test if we have root; warn if not, but it isn't critical.
    if [ "$(id -u)" != "0" ]; then
@@ -986,7 +1123,8 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    po_status=$?
    rm_tmpdir
    if [ $po_status -ne 0 ]; then
-      exit $po_status
+      [ $OPT_ERRS -gt 0 ] && exit 1
+      exit 0
    fi
 
    # Now that we have the cmd line opts, check that we can actually
@@ -994,15 +1132,28 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
       || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
 
-   if [ "$OPT_DAEMONIZE" = "yes" ]; then
-      # Check access to the --log file.
+   # Check existence and access to the --dest dir if we're collecting.
+   if [ "$OPT_COLLECT" ]; then
+      if [ ! -d "$OPT_DEST" ]; then
+         mkdir -p "$OPT_DEST" || die "Cannot make --dest $OPT_DEST"
+      fi
+
+      # Check access to the --dest dir.  By setting -x in the subshell,
+      # if either command fails, the subshell will exit immediately and
+      # $? will be non-zero.
       (
          set -e
-         touch "$OPT_LOG"
+         touch "$OPT_DEST/test"
+         rm "$OPT_DEST/test"
       )
       if [ $? -ne 0 ]; then
-         die "Cannot write to --log $OPT_LOG"
+         die "Cannot read and write files to --dest $OPT_DEST"
       fi
+   fi
+
+   if [ "$OPT_DAEMONIZE" ]; then
+      # Check access to the --log file.
+      touch "$OPT_LOG" || die "Cannot write to --log $OPT_LOG"
 
       # The PID file will at first have our (parent) PID.
       # This is fine for ensuring that only one of us is
@@ -1173,6 +1324,13 @@ interfaces for the port on which MySQL is listening.  You can later use
 pt-query-digest to decode the MySQL protocol and extract a log of query traffic
 from it.
 
+=item --config
+
+type: string
+
+Read this comma-separated list of config files.  If specified, this must be the
+first option on the command line.
+
 =item --cycles
 
 type: int; default: 5
@@ -1188,34 +1346,39 @@ its output as specified in --log.
 
 =item --dest
 
-type: string; default: ${HOME}/collected
+type: string; default: /var/lib/pt-stalk
 
 Where to store the diagnostic data.  Each time the tool collects data, it writes
 to a new set of files, which are named with the current system timestamp.
 
-=item --disk-byte-limit
+=item --disk-bytes-free
 
-type: int; default: 100
+type: size; default: 100M
 
-Don't collect data unless the destination disk has this much free space. This
-prevents the tool from filling up the disk with diagnostic data.
+Don't collect data if the disk has less than this much free space.
+This prevents the tool from filling up the disk with diagnostic data.
 
-If the destination directory contains a previously captured sample of data, the
-tool will measure its size and use that as an estimate of how much data is
+If the L<"--dest"> directory contains a previously captured sample of data,
+the tool will measure its size and use that as an estimate of how much data is
 likely to be gathered this time, too.  It will then be even more pessimistic,
 and will refuse to collect data unless the disk has enough free space to hold
 the sample and still have the desired amount of free space.  For example, if
 you'd like 100MB of free space and the previous diagnostic sample consumed
 100MB, the tool won't collect any data unless the disk has 200MB free.
 
-=item --disk-pct-limit
+Valid size value suffixes are k, M, G, and T.
+
+=item --disk-pct-free
 
 type: int; default: 5
 
-Don't collect data unless the disk has at least this percent free space. This
-option works similarly to --disk-byte-limit, but specifies a percentage margin
-of safety instead of a byte margin of safety.  The tool honors both options, and
-will not collect any data unless both margins are satisfied.
+Don't collect data if the disk has less than this percent free space.
+This prevents the tool from filling up the disk with diagnostic data.
+
+This option works similarly to L<"--disk-bytes-free"> but specifies a
+percentage margin of safety instead of a bytes margin of safety.
+The tool honors both options, and will not collect any data unless both
+margins are satisfied.
 
 =item --function
 
@@ -1270,8 +1433,6 @@ MySQL options mentioned in the L<"SYNOPSIS"> above.
 
 The plugin should not alter the tool's existing global variables.  Prefix any
 plugin-specific global variables with "PLUGIN_" or make them local.
-
-=back
 
 =item --help
 
