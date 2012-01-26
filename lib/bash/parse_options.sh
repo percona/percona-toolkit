@@ -236,6 +236,7 @@ _eval_po() {
       local opt=""
       local default_val=""
       local neg=0
+      local size=0
       while read key val; do
          case "$key" in
             long)
@@ -247,6 +248,7 @@ _eval_po() {
             "short form")
                ;;
             type)
+               [ "$val" = "size" ] && size=1
                ;;
             desc)
                ;;
@@ -271,6 +273,11 @@ _eval_po() {
             echo "Option $opt_spec is negatable but not default: yes" >&2
             exit 1
          fi
+      fi
+
+      # Convert sizes.
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
       fi
 
       # Eval the option into existence as a global variable.
@@ -339,6 +346,7 @@ _parse_command_line() {
    local opt_is_negated=""
    local real_opt=""
    local required_arg=""
+   local spec=""
 
    for opt in "$@"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
@@ -438,6 +446,11 @@ _parse_command_line() {
          # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
          opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
 
+         # Convert sizes.
+         if grep "^type:size" "$spec" >/dev/null; then
+            val=$(size_to_bytes $val)
+         fi
+
          # Re-eval the option to update its global variable value.
          eval "OPT_$opt"="'$val'"
 
@@ -448,8 +461,14 @@ _parse_command_line() {
          opt_is_negated=""
          real_opt=""
          required_arg=""
+         spec=""
       fi
    done
+}
+
+size_to_bytes() {
+   local size="$1"
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
 }
 
 # ###########################################################################

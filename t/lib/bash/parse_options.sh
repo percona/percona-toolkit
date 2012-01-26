@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=64
+TESTS=72
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -182,6 +182,34 @@ parse_options "$T_LIB_DIR/samples/bash/po001.sh" --string-opt "hello world"
 is "$OPT_STRING_OPT" "hello world" "Option value with space (cmd line)"
 is "$ARGV" "" "ARGV (cmd line)"
 is "$EXT_ARGV" "" "External ARGV (cmd line)"
+
+# ############################################################################
+# Size options.
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 1T
+is "$OPT_DISK_BYTES_FREE" "1099511627776" "Size: 1T"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 1G
+is "$OPT_DISK_BYTES_FREE" "1073741824" "Size: 1G"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 1M
+is "$OPT_DISK_BYTES_FREE" "1048576" "Size: 1M"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 1K
+is "$OPT_DISK_BYTES_FREE" "1024" "Size: 1K"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 1k
+is "$OPT_DISK_BYTES_FREE" "1024" "Size: 1k"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 1
+is "$OPT_DISK_BYTES_FREE" "1" "Size: 1"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh" --disk-bytes-free 100M
+is "$OPT_DISK_BYTES_FREE" "104857600" "Size: 100M"
+
+parse_options "$T_LIB_DIR/samples/bash/po004.sh"
+is "$OPT_DISK_BYTES_FREE" "104857600" "Size: 100M default"
 
 # ############################################################################
 # Done
