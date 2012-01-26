@@ -1191,10 +1191,10 @@ pt-stalk - Gather forensic data about MySQL when a problem occurs.
 Usage: pt-stalk [OPTIONS] [-- MYSQL OPTIONS]
 
 pt-stalk watches for a trigger condition to become true, and then collects data
-to help in diagnosing problems. It is designed to run as a daemon so that you
-can diagnose intermittent problems that you cannot observe directly. You can
-also use it to execute a custom command, or to gather the data on demand without
-waiting for the trigger to happen.
+to help in diagnosing problems. It is designed to run as a daemon with root
+privileges, so that you can diagnose intermittent problems that you cannot
+observe directly. You can also use it to execute a custom command, or to gather
+the data on demand without waiting for the trigger to happen.
 
 =head1 RISKS
 
@@ -1276,7 +1276,19 @@ tool doesn't cause the server to run out of disk space.
 
 =head1 CONFIGURING
 
-TODO
+You can use standard Percona Toolkit configuration files to set commandline
+options.
+
+You will probably want to run the tool as a daemon and customize at least the
+diagnostic threshold.  Here's a sample configuration file for triggering when
+there are more than 20 queries running at once:
+
+  daemonize
+  threshold=20
+
+If you're not running the tool as it's designed (as a root user, daemonized)
+then you'll need to set several options, such as L<"--dest">, to locations that
+are writable by non-root users.
 
 =head1 OPTIONS
 
