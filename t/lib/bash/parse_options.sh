@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=72
+TESTS=73
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -104,6 +104,10 @@ usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
 cmd_ok \
    "grep -q \"For more information, 'man pt-stalk' or 'perldoc\" $TMPFILE" \
    "--help"
+
+cmd_ok \
+   "grep -q '  --string-opt2[ ]*String option with a default.' $TMPFILE" \
+   "Command line options"
 
 cmd_ok \
    "grep -q '\-\-string-opt[ ]*(No value)' $TMPFILE" \
