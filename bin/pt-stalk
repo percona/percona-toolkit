@@ -166,12 +166,10 @@ parse_options() {
       shift  # --config
       local user_config_files="$1"
       shift  # that ^
-      local old_ifs="$IFS"
-      IFS=","
+      local IFS=","
       for user_config_file in $user_config_files; do
          _parse_config_files "$user_config_file"
       done
-      IFS="$old_ifs"
    else
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
@@ -214,8 +212,7 @@ _parse_pod() {
 }
 
 _eval_po() {
-   local old_ifs="$IFS"
-   IFS=":"
+   local IFS=":"
    for opt_spec in "$PO_DIR"/*; do
       local opt=""
       local default_val=""
@@ -265,8 +262,6 @@ _eval_po() {
 
       eval "OPT_${opt}"="$default_val"
    done
-
-   IFS="$old_ifs"
 }
 
 _parse_config_files() {

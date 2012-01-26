@@ -192,12 +192,10 @@ parse_options() {
       shift  # --config
       local user_config_files="$1"
       shift  # that ^
-      local old_ifs="$IFS"
-      IFS=","
+      local IFS=","
       for user_config_file in $user_config_files; do
          _parse_config_files "$user_config_file"
       done
-      IFS="$old_ifs"
    else
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
@@ -252,8 +250,7 @@ _eval_po() {
    # Evaluate the program options into existence as global variables
    # transformed like --my-op == $OPT_MY_OP.  If an option has a default
    # value, it's assigned that value.  Else, it's value is an empty string.
-   local old_ifs="$IFS"
-   IFS=":"
+   local IFS=":"
    for opt_spec in "$PO_DIR"/*; do
       local opt=""
       local default_val=""
@@ -305,8 +302,6 @@ _eval_po() {
       # Eval the option into existence as a global variable.
       eval "OPT_${opt}"="$default_val"
    done
-
-   IFS="$old_ifs"
 }
 
 _parse_config_files() {
