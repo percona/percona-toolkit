@@ -61,7 +61,7 @@ collect() {
 
    # Getting a GDB stacktrace can be an intensive operation,
    # so do this only if necessary (and possible).
-   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" = "yes" -a "$mysqld_pid" ]; then
+   if [ "$CMD_GDB" -a "$OPT_COLLECT_GDB" -a "$mysqld_pid" ]; then
       $CMD_GDB                     \
          -ex "set pagination 0"    \
          -ex "thread apply all bt" \
@@ -112,7 +112,7 @@ collect() {
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
-   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" = "yes" ]; then
+   if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
       local port=$(awk '/^port/{print $2}' "$d/$p-variables")
       if [ "$port" ]; then
          $CMD_TCPDUMP -i any -s 4096 -w "$d/$p-tcpdump" port ${port} &
@@ -123,12 +123,12 @@ collect() {
    # Next, start oprofile gathering data during the whole rest of this process.
    # The --init should be a no-op if it has already been init-ed.
    local have_oprofile="no"
-   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" = "yes" ]; then
+   if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
          have_oprofile="yes"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       # Don't run oprofile and strace at the same time.
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
       local strace_pid=$!
@@ -178,8 +178,8 @@ collect() {
       disk_space $d > $d/$p-disk-space
       check_disk_space          \
          $d/$p-disk-space       \
-         "$OPT_DISK_BYTE_LIMIT" \
-         "$OPT_DISK_PCT_LIMIT"  \
+         "$OPT_DISK_BYTES_FREE" \
+         "$OPT_DISK_PCT_FREE"   \
          || break
 
       # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
@@ -244,7 +244,7 @@ collect() {
               "/path/to/mysqld'"                                              \
             > "$d/$p-opreport"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" = "yes" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       kill -s 2 $strace_pid
       sleep 1
       kill -s 15 $strace_pid

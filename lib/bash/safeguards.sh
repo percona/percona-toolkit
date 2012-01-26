@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -33,46 +33,53 @@ disk_space() {
 # Sub: check_disk_space
 #   Check if there is or will be enough disk space.  Input is a file
 #   with output from <disk_space()>, i.e. `df -P -k`.  The df output
-#   must use 1k blocks, but the mb arg from the user is in MB.
+#   must use 1k blocks, which should be POSIX standard.
 #
 # Arguments:
-#   file      - File with output from <disk_space()>.
-#   mb        - Minimum MB free.
-#   pc        - Minimum percent free.
-#   mb_margin - Add this many MB to the real MB used.
+#   file           - File with output from <disk_space()>.
+#   min_free_bytes - Minimum free bytes.
+#   min_free_pct   - Minimum free percentage.
+#   bytes_margin   - Add this many bytes to the real bytes used.
 #
 # Returns:
 #   0 if there is/will be enough disk space, else 1.
 check_disk_space() {
    local file="$1"
-   local mb="${2:-0}"
-   local pc="${3:-0}"
-   local mb_margin="${4:-0}"
+   local min_free_bytes="${2:-0}"
+   local min_free_pct="${3:-0}"
+   local bytes_margin="${4:-0}"
 
-   # Convert MB to KB because the df output should be in 1k blocks.
-   local kb=$(($mb * 1024))
-   local kb_margin=$(($mb_margin * 1024))
+   # Real/actual bytes used and bytes free.
+   local used_bytes=$(cat "$file" | awk '/^\//{print $3 * 1024}');
+   local free_bytes=$(cat "$file" | awk '/^\//{print $4 * 1024}');
+   local pct_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
+   local pct_free=$((100 - $pct_used))
 
-   local kb_used=$(cat "$file" | awk '/^\//{print $3}');
-   local kb_free=$(cat "$file" | awk '/^\//{print $4}');
-   local pc_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
+   # Report the real values to the user.
+   local real_free_bytes=$free_bytes
+   local real_pct_free=$pct_free
 
-   if [ "$kb_margin" -gt "0" ]; then
-      local kb_total=$(($kb_used + $kb_free))
+   # If there's a margin, we need to adjust the real values.
+   if [ $bytes_margin -gt 0 ]; then
+      used_bytes=$(($used_bytes + $bytes_margin))
+      free_bytes=$(($free_bytes - $bytes_margin))
+      pct_used=$(awk "BEGIN { printf(\"%d\", ($used_bytes/($used_bytes + $free_bytes)) * 100) }")
 
-      kb_used=$(($kb_used + $kb_margin))
-      kb_free=$(($kb_free - $kb_margin))
-      pc_used=$(awk "BEGIN { printf(\"%d\", $kb_used/$kb_total * 100) }")
+      pct_free=$((100 - $pct_used))
    fi
 
-   local pc_free=$((100 - $pc_used))
+   if [ $free_bytes -lt $min_free_bytes -o $pct_free -lt $min_free_pct ]; then
+      warn "Not enough free disk space:
+    Limit: ${min_free_pct}% free, ${min_free_bytes} bytes free
+   Actual: ${real_pct_free}% free, ${real_free_bytes} bytes free (- $bytes_margin bytes margin)
+"
+      # Print the df that we used.
+      cat "$file" >&2
 
-   if [ "$kb_free" -le "$kb" -o "$pc_free" -le "$pc" ]; then
-      warn "Not enough free disk space: ${pc_free}% free, ${kb_free} KB free; wanted more than ${pc}% free or ${kb} KB free"
-      return 1
+      return 1  # not enough disk space
    fi
 
-   return 0
+   return 0  # disk space is OK
 }
 
 # ###########################################################################
