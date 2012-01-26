@@ -178,8 +178,8 @@ collect() {
       disk_space $d > $d/$p-disk-space
       check_disk_space          \
          $d/$p-disk-space       \
-         "$OPT_DISK_BYTE_LIMIT" \
-         "$OPT_DISK_PCT_LIMIT"  \
+         "$OPT_DISK_BYTES_FREE" \
+         "$OPT_DISK_PCT_FREE"   \
          || break
 
       # Synchronize ourselves onto the clock tick, so the sleeps are 1-second
