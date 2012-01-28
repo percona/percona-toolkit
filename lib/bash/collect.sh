@@ -26,6 +26,7 @@ set -u
 # Global variables.
 CMD_GDB="$(which gdb)"
 CMD_IOSTAT="$(which iostat)"
+CMD_LSOF="$(which lsof)"
 CMD_MPSTAT="$(which mpstat)"
 CMD_MYSQL="$(which mysql)"
 CMD_MYSQLADMIN="$(which mysqladmin)"
@@ -33,21 +34,19 @@ CMD_OPCONTROL="$(which opcontrol)"
 CMD_OPREPORT="$(which opreport)"
 CMD_PMAP="$(which pmap)"
 CMD_STRACE="$(which strace)"
+CMD_SYSCTL="$(which sysctl)"
 CMD_TCPDUMP="$(which tcpdump)"
 CMD_VMSTAT="$(which vmstat)"
+
+# Try to find command manually.
+[ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
 collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   # Get pidof mysqld; pidof doesn't exist on some systems.  We try our best...
-   local mysqld_pid=$(pidof -s mysqld);
-   if [ -z "$mysqld_pid" ]; then
-      mysqld_pid=$(pgrep -o -x mysqld);
-   fi
-   if [ -z "$mysqld_pid" ]; then
-      mysqld_pid=$(ps -eaf | grep 'mysql[d]' | grep -v mysqld_safe | awk '{print $2}' | head -n1);
-   fi
+   # Get pidof mysqld.
+   local mysqld_pid=$(_pidof mysqld mysql[d]);
 
    # Get memory allocation info before anything else.
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
@@ -72,7 +71,7 @@ collect() {
    # Get MySQL's variables if possible.  Then sleep long enough that we probably
    # complete SHOW VARIABLES if all's well.  (We don't want to run mysql in the
    # foreground, because it could hang.)
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" 2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
    sleep .2
 
    # Get the major.minor version number.  Version 3.23 doesn't matter for our
@@ -89,13 +88,14 @@ collect() {
    local tail_error_log_pid=""
    if [ "$mysql_error_log" ]; then
       echo "The MySQL error log seems to be ${mysql_error_log}"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" 2>&1 &
+      tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
+
       # Send a mysqladmin debug to the server so we can potentially learn about
       # locking etc.
       $CMD_MYSQLADMIN $EXT_ARGV debug
    else
-      echo "Could not find the MySQL error log"
+      echo "Could not find the MySQL error log" >&2
    fi
 
    # Get a sample of these right away, so we can get these without interaction
@@ -106,9 +106,9 @@ collect() {
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" 2>&1 &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" 2>&1 &
-   open_tables                         >> "$d/$p-opentables1"   2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" &
+   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" &
+   open_tables                         >> "$d/$p-opentables1"   &
 
    # If TCP dumping is specified, start that on the server's port.
    local tcpdump_pid=""
@@ -130,27 +130,32 @@ collect() {
       fi
    elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
       # Don't run oprofile and strace at the same time.
-      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
+      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" &
       local strace_pid=$!
    fi
 
    # Grab a few general things first.  Background all of these so we can start
    # them all up as quickly as possible.  
-   ps -eaf                     >> "$d/$p-ps"     2>&1 &
-   sysctl -a                   >> "$d/$p-sysctl" 2>&1 &
-   top -bn1                    >> "$d/$p-top"    2>&1 &
-   lsof -nP -p $mysqld_pid -bw >> "$d/$p-lsof"   2>&1 &
+   ps -eaf  >> "$d/$p-ps"  &
+   top -bn1 >> "$d/$p-top" &
+
+   if [ "$CMD_LSOF" ]; then
+      $CMD_LSOF -nP -p $mysqld_pid -bw >> "$d/$p-lsof" &
+   fi  
+   if [ "$CMD_SYSCTL" ]; then
+      $CMD_SYSCTL -a >> "$d/$p-sysctl" &
+   fi
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         2>&1 &
-      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" 2>&1 &
+      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         2>&1 &
-      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" 2>&1 &
+      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         2>&1 &
-      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" 2>&1 &
+      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" &
    fi
 
    # Collect multiple snapshots of the status variables.  We use
@@ -159,7 +164,7 @@ collect() {
    # get and keep a connection to the database; in troubled times
    # the database tends to exceed max_connections, so reconnecting
    # in the loop tends not to work very well.
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" 2>&1 &
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
 
    local have_lock_waits_table=0
@@ -186,36 +191,41 @@ collect() {
       sleep $(date +%s.%N | awk '{print 1 - ($1 % 1)}')
       local ts="$(date +"TS %s.%N %F %T")"
 
-      # Collect the stuff for this cycle
+      # #####################################################################
+      # Collect data for this cycle.
+      # #####################################################################
+
       if [ -d "/proc" ]; then
          if [ -f "/proc/diskstats" ]; then
-            (cat /proc/diskstats 2>&1; echo $ts) >> "$d/$p-diskstats" &
+            (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
          fi
          if [ -f "/proc/stat" ]; then
-            (cat /proc/stat 2>&1; echo $ts) >> "$d/$p-procstat" &
+            (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
          fi
          if [ -f "/proc/vmstat" ]; then
-            (cat /proc/vmstat 2>&1; echo $ts) >> "$d/$p-procvmstat" &
+            (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
          fi
          if [ -f "/proc/meminfo" ]; then
-            (cat /proc/meminfo 2>&1; echo $ts) >> "$d/$p-meminfo" &
+            (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
          fi
          if [ -f "/proc/slabinfo" ]; then
-            (cat /proc/slabinfo 2>&1; echo $ts) >> "$d/$p-slabinfo" &
+            (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
          fi
          if [ -f "/proc/interrupts" ]; then
-            (cat /proc/interrupts 2>&1; echo $ts) >> "$d/$p-interrupts" &
+            (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
          fi
       fi
-      (df -h          2>&1; echo $ts) >> "$d/$p-df"          &
-      (netstat -antp  2>&1; echo $ts) >> "$d/$p-netstat"     &
-      (netstat -s     2>&1; echo $ts) >> "$d/$p-netstat_s"   &
 
-      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
-         >> "$d/$p-processlist"
+      (echo $ts; df -h) >> "$d/$p-df" &
+
+      (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
+      (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+         >> "$d/$p-processlist" &
 
       if [ $have_lock_waits_table -eq 1 ]; then
-         (lock_waits 2>&1; echo $ts) >>"$d/$p-lock-waits"
+         (echo $ts; lock_waits) >>"$d/$p-lock-waits" &
       fi
    done
    echo "Loop end: $(date +'TS %s.%N %F %T')"
@@ -252,23 +262,35 @@ collect() {
       kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" 2>&1 &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" 2>&1 &
-   open_tables                         >> "$d/$p-opentables2"   2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" &
+   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" &
+   open_tables                         >> "$d/$p-opentables2"   &
 
    # Kill backgrounded tasks.
    kill $mysqladmin_pid
    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
-   [ "$tcpdump_pid" ] && kill $tcpdump_pid
+   [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
    # Finally, record what system we collected this data from.
    hostname > "$d/$p-hostname"
+
+   # Remove "empty" files, i.e. ones that are truly empty or
+   # just contain timestamp lines.  When a command above fails,
+   # it may leave an empty file.
+   for file in "$d/$p-"*; do
+      # If there's not at least 1 line that's not a TS,
+      # then the file is empty.
+      if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
+         log "Removing empty file $file";
+         rm "$file"
+      fi
+   done
 }
 
 open_tables() {
    local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
-      $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' 2>&1 &
+      $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
       echo "Too many open tables: $open_tables"
    fi
