@@ -23,10 +23,29 @@
 
 set -u
 
+# Global variables.
+CMD_PIDOF="$(which pidof)"
+CMD_PGREP="$(which pgrep)"
+
 # seq N, return 1, ..., 5
 _seq() {
    local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local proc="$1"       # process name
+   local pat="${2:-""}"  # pattern in case we must grep for proc
+   
+   local pid=""
+
+   [ "$CMD_PIDOF" ] && pid=$(pidof -s "$proc");
+
+   [ -z "$pid" ] && [ "$CMD_PGREP" ] && pid=$(pgrep -o -x "$proc");
+
+   [ -z "$pid" ] && pid=$(ps -eaf | grep "$pat" | grep -v mysqld_safe | awk '{print $2}' | head -n1)
+
+   echo $pid
 }
 
 # ###########################################################################
