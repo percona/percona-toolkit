@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=73
+TESTS=78
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -165,6 +165,15 @@ is "$OPT_TYPELESS_OPTION" "yes" "Two --config typeless option"
 is "$OPT_INT_OPT" "100" "Two --config int option"
 is "$ARGV" "" "Two --config ARGV"
 is "$EXT_ARGV" "--host=127.1 --user=daniel" "Two--config External ARGV"
+
+# Spaces before and after the option[=value] lines.
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --config $T_LIB_DIR/samples/bash/config004.conf
+
+is "$OPT_STRING_OPT" "foo" "Default string option (spacey)"
+is "$OPT_TYPELESS_OPTION" "yes" "Default typeless option (spacey)"
+is "$OPT_INT_OPT" "123" "Default int option (spacey)"
+is "$ARGV" "" "ARGV (spacey)"
+is "$EXT_ARGV" "" "External ARGV (spacey)"
 
 # ############################################################################
 # Option values with spaces.
