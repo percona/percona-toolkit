@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 22;
+use Test::More tests => 25;
 
 use File::Temp ();
 
@@ -22,7 +22,9 @@ require "$trunk/bin/pt-diskstats";
 # so that we can fake sending pt-diskstats menu commands via STDIN.
 # All we do is send 'q', the command to quit.  See the note in the bottom
 # of this file about *DATA. Please don't close it.
+my $called_seek_on_handle = 0;
 {
+$TestInteractive::first = 1;
 sub TestInteractive::TIEHANDLE {
    my ($class, @cmds) = @_;
    push @cmds, "q";
@@ -36,9 +38,32 @@ sub TestInteractive::FILENO {
 sub TestInteractive::READLINE {
    my ($self) = @_;
    my $cmd = shift @$self;
-   print $cmd if $cmd =~ /\n/;
+   return unless $cmd;
+   print $cmd if $cmd =~ /\n/ && !-t STDOUT;
+   if ($cmd =~ /^TS/) {
+      if ( $TestInteractive::first ) {
+         $TestInteractive::first = 0;
+      }
+      else {
+         splice @$self, 1, 0, (undef) x 50;
+      }
+   }
    return $cmd;
 }
+
+sub TestInteractive::EOF {
+   my ($self) = @_;
+   return @$self ? undef : 1;
+}
+
+sub TestInteractive::CLOSE { 1 }
+
+sub TestInteractive::TELL {}
+
+sub TestInteractive::SEEK {
+   $called_seek_on_handle++;
+}
+
 }
 
 sub test_diskstats_file {
@@ -50,6 +75,13 @@ sub test_diskstats_file {
                            ( my $x = $_ ) =~ s/\n/\\n/g;
                            $x
                         } @commands;
+   my @options    = $args{options}
+                  ? @{ $args{options} }
+                  : (
+                        '--show-inactive',
+                        '--no-automatic-headers',
+                        '--columns-regex','cnc|rt|mb|busy|prg',
+                    );
    die "$file does not exist" unless -f $file;
    foreach my $groupby ( qw(all disk sample) ) {
       ok(
@@ -57,10 +89,8 @@ sub test_diskstats_file {
             sub {
                tie local *STDIN, TestInteractive => @commands;
                pt_diskstats::main(
-                  '--show-inactive',
-                  '--no-automatic-headers',
+                  @options,
                   '--group-by', $groupby,
-                  '--columns-regex','cnc|rt|mb|busy|prg',
                   $file);
             },
             "t/pt-diskstats/expected/${groupby}_int_$args{file}",
@@ -83,6 +113,11 @@ test_diskstats_file(
 test_diskstats_file(
    file     => "commands.txt",
    commands => [ "i", "/", "cciss\n", "q" ]
+);
+
+test_diskstats_file(
+   file     => "small.txt",
+   options  => [ '--no-automatic-headers', '--columns-regex','time', ],
 );
 
 # ###########################################################################

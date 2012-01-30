@@ -73,8 +73,6 @@ sub group_by {
                      },
                      rows_callback   => $args{rows_callback},
                   );
-
-                  $self->{_iterations} = -1;
                   return;
                }
             }
@@ -93,11 +91,6 @@ sub group_by {
       # where we started, so subsequent attempts (i.e. when
       # the file has more data) have greater chances of succeeding,
       # and no data goes unreported.
-      if ($self->{_iterations} != -1 && defined($original_offset)
-            && eof($args{filehandle} || $args{data}) ) {
-         $self->clear_state;
-         seek( ($args{filehandle} || $args{data}), $original_offset, 0);
-      }
       return $lines_read;
    }
 

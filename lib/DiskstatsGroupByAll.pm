@@ -33,41 +33,25 @@ use base qw( Diskstats );
 sub group_by {
    my ($self, %args) = @_;
 
-   $self->clear_state();
+   $self->clear_state() unless $self->interactive();
 
-   if (!$self->interactive()) {
-      $self->parse_from(
-         filehandle      => $args{filehandle},
-         filename        => $args{filename},
-         data            => $args{data},
-         sample_callback => sub {
-               $self->print_deltas(
-                  header_callback => $args{header_callback},
-                  rows_callback   => $args{rows_callback},
-               );
+   my $header_callback = $args{header_callback}
+                         || sub {
+                                 my ($self, @args) = @_;
+                                 $self->print_header(@args);
+                                 $self->{_print_header} = 0;
+                              };
+   $self->parse_from(
+      filehandle      => $args{filehandle},
+      filename        => $args{filename},
+      data            => $args{data},
+      sample_callback => sub {
+            $self->print_deltas(
+               header_callback => $header_callback,
+               rows_callback   => $args{rows_callback},
+            );
          },
-      );
-   }
-   else {
-      my $orig = tell $args{filehandle} if $args{filehandle};
-      my $header_callback =  $args{header_callback} || sub {
-                           my ($self, @args) = @_;
-                           $self->print_header(@args) if $self->{_print_header};
-                           $self->{_print_header} = 0;
-                         };
-      $self->parse_from(
-         filehandle      => $args{filehandle},
-         filename        => $args{filename},
-         data            => $args{data},
-         sample_callback => sub {
-               $self->print_deltas(
-                  header_callback => $header_callback,
-                  rows_callback   => $args{rows_callback},
-               );
-            },
-      );
-      seek $args{filehandle}, $orig, 0 unless $self->prev_ts();
-   }
+   );
 
    return;
 }
