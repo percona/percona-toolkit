@@ -105,6 +105,10 @@ sub new {
             WRITTEN_KBS
             MS_SPENT_DOING_IO
             MS_WEIGHTED
+            READ_KBS
+            WRITTEN_KBS
+            IOS_REQUESTED
+            IOS_IN_BYTES
          )
       ],
       _stats_for         => {},
@@ -118,6 +122,11 @@ sub new {
       _save_curr_as_prev => 1,
    };
 
+   return bless $self, $class;
+}
+
+sub new_from_object {
+   my ($self, $class) = @_;
    return bless $self, $class;
 }
 
@@ -137,7 +146,6 @@ sub clear_active_devices {
    my ( $self ) = @_;
    return $self->{_active_devices} = {};
 }
-
 
 sub automatic_headers {
    my ($self) = @_;
@@ -284,11 +292,13 @@ sub set_force_header {
 }
 
 sub clear_state {
-   my ($self) = @_;
+   my ($self, %args) = @_;
    $self->set_force_header(1);
    $self->clear_curr_stats();
-   $self->clear_prev_stats();
-   $self->clear_first_stats();
+   if ( $args{force} || !$self->interactive() ) {
+      $self->clear_first_stats();
+      $self->clear_prev_stats();
+   }
    $self->clear_ts();
    $self->clear_ordered_devs();
 }
@@ -318,6 +328,11 @@ sub _clear_stats_common {
 
 sub clear_curr_stats {
    my ( $self, @args ) = @_;
+
+   if ( $self->has_stats() ) {
+      $self->_save_curr_as_prev();
+   }
+
    $self->_clear_stats_common( "_stats_for", @args );
 }
 
@@ -392,7 +407,6 @@ sub _save_curr_as_first {
          map { $_ => [@{$curr->{$_}}] } keys %$curr
       };
       $self->set_first_ts($self->curr_ts());
-      $self->{_first} = undef;
    }
 }
 
@@ -537,7 +551,7 @@ sub parse_from {
    elsif ( $args{data} ) {
       open( my $fh, "<", ref($args{data}) ? $args{data} : \$args{data} )
          or die "Couldn't parse data: $OS_ERROR";
-      my $lines_read = $self->_parse_from_filehandle(
+      $lines_read = $self->_parse_from_filehandle(
                         $fh, $args{sample_callback}
                      );
       close $fh or warn "Cannot close: $OS_ERROR";
@@ -730,7 +744,7 @@ sub _calc_misc_stats {
       * $delta_for->{ms_spent_doing_io}
       / ( 1000 * $elapsed * $devs_in_group ); # Highlighting failure: /
 
-   my $number_of_ios        = $stats->{ios_requested};
+   my $number_of_ios        = $delta_for->{ios_requested};
    my $total_ms_spent_on_io = $delta_for->{ms_spent_reading}
                             + $delta_for->{ms_spent_writing};
 
@@ -814,7 +828,7 @@ sub _mark_if_active {
    return unless $curr && $first;
 
  # read 'any' instead of 'first'
-   if ( first { $curr->[$_] != $first->[$_] } READS..MS_WEIGHTED ) {
+   if ( first { $curr->[$_] != $first->[$_] } READS..IOS_IN_BYTES ) {
       # It's different from the first one. Mark as active and return.
       $self->set_active_device($dev, 1);
       return $dev;
@@ -890,9 +904,9 @@ sub _calc_deltas {
 sub force_print_header {
    my ($self, @args) = @_;
    my $orig = $self->force_header();
-   $self->force_header(1);
+   $self->set_force_header(1);
    $self->print_header(@args);
-   $self->force_header($orig);
+   $self->set_force_header($orig);
    return;
 }
 
@@ -952,7 +966,9 @@ sub print_deltas {
          if ( $self->automatic_headers()
                && !$self->isa("DiskstatsGroupByAll") )
          {
-            local $self->{force_header} = 1;
+            $header_method = ref($header_method)
+                           ? $header_method
+                           : "force_print_header";
             $self->$header_method( $header, "#ts", "device" );
          }
       }

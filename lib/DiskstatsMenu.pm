@@ -92,39 +92,63 @@ sub run_interactive {
    # Here's a big crux of the program. If we have a filename, we don't
    # need to fork and create a child, just read from it.
    if ( $filename = $args{filename} ) {
-      open $tmp_fh, "<", $filename
-         or die "Cannot open $filename: $OS_ERROR";
+      # INTERNAL: For testing.
+      if ( ref $filename ) {
+         $tmp_fh = $filename;
+         undef $args{filename};
+      }
+      else {
+         open $tmp_fh, "<", $filename
+            or die "Cannot open $filename: $OS_ERROR";
+      }
    }
    else {
-      ($tmp_fh, $filename) = file_to_use( $o->get('save-samples') );
+      $filename = $o->get('save-samples');
+
+      if ( $filename ) {
+         unlink $filename;
+         open my $tmp_fh, "+>", $filename
+            or die "Cannot open $filename: $OS_ERROR";
+      }
 
       # fork(), but future-proofing it in case we ever need to speak to
       # the child
-      $child_pid = open $child_fh, "|-";
+      $child_pid = open $child_fh, "-|";
    
       die "Cannot fork: $OS_ERROR" unless defined $child_pid;
       
       if ( !$child_pid ) {
          # Child
-   
+         STDOUT->autoflush(1);
          # Bit of helpful magic: Changes how the program's name is displayed,
          # so it's easier to track in things like ps.
          local $PROGRAM_NAME = "$PROGRAM_NAME (data-gathering daemon)";
    
-         close $tmp_fh;
+         close $tmp_fh if $tmp_fh;
    
+         PTDEBUG && _d("Child is [$PROGRAM_NAME] in ps aux and similar");
+
          gather_samples(
                gather_while      => sub { getppid() },
                samples_to_gather => $o->get('iterations'),
                filename          => $filename,
          );
-   
-         unlink $filename unless $o->get('save-samples');
+         if ( $filename ) {
+            unlink $filename unless $o->get('save-samples');
+         }
          exit(0);
+      }
+      else {
+         PTDEBUG && _d("Forked, child is", $child_pid);
+         $tmp_fh = $child_fh;
+         $tmp_fh->blocking(0);
       }
    }
 
-   PTDEBUG && _d("Using filename", $filename);
+   PTDEBUG && _d(
+         $filename
+         ? ("Using file", $filename)
+         : "Not using a file to store samples");
 
    # I don't think either of these are needed actually, since piped opens
    # are supposed to deal with children on their own, but it doesn't hurt.
@@ -147,18 +171,25 @@ sub run_interactive {
    my $header_callback = $o->get("current_group_by_obj")
                            ->can("print_header");
 
+   my $redraw = 0;
+
    if ( $args{filename} ) {
+      PTDEBUG && _d("Passed a file from the command line,",
+                    "rendering from scratch before looping");
+      $redraw = 1;
       group_by(
          header_callback => $header_callback,
          select_obj      => $sel,
          OptionParser    => $o,
          filehandle      => $tmp_fh,
          input           => substr(ucfirst($group_by), 0, 1),
+         redraw_all      => $redraw,
       );
       if ( !-t STDOUT && !tied *STDIN ) {
           # If we were passed down a file but aren't tied to a tty,
           # -and- STDIN isn't tied (so we aren't in testing mode),
           # then this is the end of the program.
+          PTDEBUG && _d("Not connected to a tty and not in testing. Quitting");
           return 0
       }
    }
@@ -169,15 +200,17 @@ sub run_interactive {
    while ($run) {
       my $refresh_interval = $o->get('refresh-interval');
       my $time  = scalar Time::HiRes::gettimeofday();
-      my $sleep = $refresh_interval - fmod( $time, ($refresh_interval + 0.5) );
+      my $sleep = $refresh_interval - fmod( $time, $refresh_interval );
 
-      if ( my $input = read_command_timeout($sel, $sleep ) ) {
+      if ( my $input = read_command_timeout( $sel, $sleep ) ) {
          if ($actions{$input}) {
+            PTDEBUG && _d("Got [$input] and have an action for it");
             my $ret = $actions{$input}->(
                               select_obj   => $sel,
                               OptionParser => $o,
                               input        => $input,
                               filehandle   => $tmp_fh,
+                              redraw_all   => $redraw,
                            ) || '';
             last MAIN_LOOP if $ret eq 'last';
 
@@ -187,11 +220,14 @@ sub run_interactive {
             if ( $args{filename}
                   && !grep { $input eq $_ } qw( A S D ), ' ', "\n" )
             {
+               PTDEBUG && _d("Got a file from the command line, redrawing",
+                             "from the beginning after getting an option");
                my $obj = $o->get("current_group_by_obj");
                # Force it to print the header
-               $obj->clear_state();
+               $obj->clear_state( force => 1 );
                local $obj->{force_header} = 1;
                group_by(
+                  redraw_all      => 1,
                   select_obj      => $sel,
                   OptionParser    => $o,
                   input           => substr(ref($obj), 16, 1),
@@ -217,6 +253,9 @@ sub run_interactive {
       # When that happens, we are also done.
       if ( !$args{filename} && $o->get('iterations')
             && waitpid($child_pid, WNOHANG) != 0 ) {
+         PTDEBUG && _d("Child quit as expected after",
+                       $o->get("iterations"),
+                       "iterations. Quitting.");
          $run = 0;
       }
    }
@@ -224,13 +263,15 @@ sub run_interactive {
 
    # If we don't have a filename, the daemon might still be running.
    # If it is, ask it nicely to end, then wait.
-   if ( !$args{filename} && !defined $o->get('iterations')
+   if ( $child_pid && !$args{filename} && !defined $o->get('iterations')
             && kill 0, $child_pid ) {
-      $child_fh->printflush("End\n");
+      #$child_fh->printflush("End\n");
+      # TODO
+      kill 9, $child_pid;
       waitpid $child_pid, 0;
    }
 
-   close $tmp_fh or die "Cannot close: $OS_ERROR";
+   #close $tmp_fh or die "Cannot close: $OS_ERROR";
    return 0; # Exit status
 }
 
@@ -245,21 +286,23 @@ sub read_command_timeout {
 sub gather_samples {
    my (%args)  = @_;
    my $samples = 0;
+   my $fh;
 
-   STDIN->blocking(0);
-   my $sel      = IO::Select->new(\*STDIN);
-   my $filename = $args{filename};
+   if ( my $filename = $args{filename} ) {
+      open $fh, ">>", $filename
+         or die "Cannot open $filename for appending: $OS_ERROR";
+   }
+   else {
+      $fh = \*STDOUT;
+   }
 
-   open my $fh, ">>", $filename
-      or die "Cannot open $filename for appending: $OS_ERROR";
+   $fh->autoflush(1);
 
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
-      my $time  = scalar Time::HiRes::gettimeofday();
-      my $sleep = 1 - fmod( $time, 1 );
-      if ( read_command_timeout( $sel, $sleep ) ) {
-         last GATHER_DATA;
-      }
+      my $sleep = 1 - fmod( scalar(Time::HiRes::gettimeofday()), 1 );
+      Time::HiRes::sleep($sleep);
+
       open my $diskstats_fh, "<", "/proc/diskstats"
          or die "Cannot open /proc/diskstats: $OS_ERROR";
 
@@ -268,7 +311,7 @@ sub gather_samples {
 
       # Lovely little method from IO::Handle: turns on autoflush,
       # prints, and then restores the original autoflush state.
-      $fh->printflush(@to_print);
+      print { $fh } @to_print;
       close $diskstats_fh or die $OS_ERROR;
 
       $samples++;
@@ -303,56 +346,58 @@ sub group_by {
    }
    my ($o, $input) = @args{@required_args};
 
+   my $old_obj = $o->get("current_group_by_obj");
+
    if ( ref( $o->get("current_group_by_obj") ) ne $input_to_object{$input} ) {
       # Particularly important! Otherwise we would depend on the
       # object's ->new being smart about discarding unrecognized
       # values.
       $o->set("current_group_by_obj", undef);
-      # This would fail on a stricter constructor, so it probably
-      # needs fixing.
-      $o->set("current_group_by_obj",
-               $input_to_object{$input}->new(
-                                 OptionParser => $o,
-                                 interactive  => 1,
-                              )
-             );
+      #my $new_obj = $old_obj->new_from_object($input_to_object{$input});
+      $o->set( "current_group_by_obj", $input_to_object{$input}->new(OptionParser=>$o, interactive => 1) );
+      if ( !$args{redraw_all} ) {
+         print_header(%args);
+      }
    }
-   seek $args{filehandle}, 0, 0;
 
    # Just aliasing this for a bit.
    for my $obj ( $o->get("current_group_by_obj") ) {
-      if ( $obj->isa("DiskstatsGroupBySample") ) {
-         $obj->set_interactive(1);
+      if ( $args{redraw_all} ) {
+         seek $args{filehandle}, 0, 0;
+         if ( $obj->isa("DiskstatsGroupBySample") ) {
+            $obj->set_interactive(1);
+         }
+         else {
+            $obj->set_interactive(0);
+         }
+   
+         my $print_header;
+         my $header_callback = $args{header_callback} || sub {
+                                 my ($self, @args) = @_;
+                                 $self->print_header(@args) unless $print_header++
+                              };
+   
+         $obj->group_by(
+                  filehandle      => $args{filehandle},
+                  # Only print the header once, as if in interactive.
+                  header_callback => $header_callback,
+               );
       }
-      else {
-         $obj->set_interactive(0);
-      }
-
-      my $print_header;
-      my $header_callback = $args{header_callback} || sub {
-                              my ($self, @args) = @_;
-                              $self->print_header(@args) unless $print_header++
-                           };
-
-      $obj->group_by(
-               filehandle      => $args{filehandle},
-               # Only print the header once, as if in interactive.
-               header_callback => $header_callback,
-            );
       $obj->set_interactive(1);
       $obj->set_force_header(0);
    }
+
 }
 
 sub help {
-   my (%args)      = @_;
-   my $obj         = $args{OptionParser}->get("current_group_by_obj");
-   my $mode        = substr ref($obj), 16, 1;
-   my $column_re   = $args{OptionParser}->get('columns-regex');
-   my $device_re   = $args{OptionParser}->get('devices-regex');
-   my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{OptionParser}->get('refresh-interval');
-   my $inact_disk  = $obj->show_inactive() ? 'no' : 'yes';
+   my (%args)     = @_;
+   my $obj        = $args{OptionParser}->get("current_group_by_obj");
+   my $mode       = substr ref($obj), 16, 1;
+   my $column_re  = $args{OptionParser}->get('columns-regex');
+   my $device_re  = $args{OptionParser}->get('devices-regex');
+   my $interval   = $obj->sample_time() || '(none)';
+   my $disp_int   = $args{OptionParser}->get('refresh-interval');
+   my $inact_disk = $obj->show_inactive() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
@@ -374,40 +419,6 @@ HELP
 
    pause(%args);
    return;
-}
-
-sub file_to_use {
-   my ( $filename ) = @_;
-
-   if ( !$filename ) {
-      PTDEBUG && _d('No explicit filename passed in,',
-                    'trying to get one from mktemp');
-      chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
-   }
-
-   if ( $filename ) {
-      unlink $filename;
-      open my $fh, "+>", $filename
-         or die "Cannot open $filename: $OS_ERROR";
-      return $fh, $filename;
-   }
-   else {
-      PTDEBUG && _d("mktemp didn't return a filename,",
-                    "trying to use File::Temp");
-      local $EVAL_ERROR;
-      if ( !eval { require File::Temp } ) {
-         die "Can't call mktemp nor load File::Temp.",
-             " Install either of those, or pass in an explicit",
-             " filename through --save-samples.";
-      }
-      my $dir = File::Temp::tempdir( CLEANUP => 1 );
-      return File::Temp::tempfile(
-                     "pt-diskstats.$PID.XXXXXXXX",
-                     DIR      => $dir,
-                     UNLINK   => 1,
-                     OPEN     => 1,
-                  );
-   }
 }
 
 sub get_blocking_input {
