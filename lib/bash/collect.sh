@@ -26,7 +26,6 @@ set -u
 # Global variables.
 CMD_GDB="$(which gdb)"
 CMD_IOSTAT="$(which iostat)"
-CMD_LSOF="$(which lsof)"
 CMD_MPSTAT="$(which mpstat)"
 CMD_MYSQL="$(which mysql)"
 CMD_MYSQLADMIN="$(which mysqladmin)"
@@ -46,7 +45,7 @@ collect() {
    local p="$2"  # prefix for each result file
 
    # Get pidof mysqld.
-   local mysqld_pid=$(_pidof mysqld mysql[d]);
+   local mysqld_pid=$(_pidof mysqld | head -n1)
 
    # Get memory allocation info before anything else.
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
@@ -87,7 +86,7 @@ collect() {
 
    local tail_error_log_pid=""
    if [ "$mysql_error_log" ]; then
-      echo "The MySQL error log seems to be ${mysql_error_log}"
+      log "The MySQL error log seems to be $mysql_error_log"
       tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
 
@@ -95,7 +94,7 @@ collect() {
       # locking etc.
       $CMD_MYSQLADMIN $EXT_ARGV debug
    else
-      echo "Could not find the MySQL error log" >&2
+      log "Could not find the MySQL error log"
    fi
 
    # Get a sample of these right away, so we can get these without interaction
@@ -122,13 +121,13 @@ collect() {
 
    # Next, start oprofile gathering data during the whole rest of this process.
    # The --init should be a no-op if it has already been init-ed.
-   local have_oprofile="no"
+   local have_oprofile=""
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
          have_oprofile="yes"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
       # Don't run oprofile and strace at the same time.
       $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" &
       local strace_pid=$!
@@ -139,9 +138,8 @@ collect() {
    ps -eaf  >> "$d/$p-ps"  &
    top -bn1 >> "$d/$p-top" &
 
-   if [ "$CMD_LSOF" ]; then
-      $CMD_LSOF -nP -p $mysqld_pid -bw >> "$d/$p-lsof" &
-   fi  
+   [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
+
    if [ "$CMD_SYSCTL" ]; then
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
@@ -167,16 +165,16 @@ collect() {
    $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
 
-   local have_lock_waits_table=0
+   local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
    if [ $? -eq 0 ]; then
-      have_lock_waits_table=1
+      have_lock_waits_table="yes"
    fi
 
    # This loop gathers data for the rest of the duration, and defines the time
    # of the whole job.
-   echo "Loop start: $(date +'TS %s.%N %F %T')"
+   log "Loop start: $(date +'TS %s.%N %F %T')"
    for loopno in $(_seq $OPT_RUN_TIME); do
       # We check the disk, but don't exit, because we need to stop jobs if we
       # need to exit.
@@ -224,16 +222,23 @@ collect() {
       (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
          >> "$d/$p-processlist" &
 
-      if [ $have_lock_waits_table -eq 1 ]; then
+      if [ "$have_lock_waits_table" ]; then
          (echo $ts; lock_waits) >>"$d/$p-lock-waits" &
       fi
    done
-   echo "Loop end: $(date +'TS %s.%N %F %T')"
+   log "Loop end: $(date +'TS %s.%N %F %T')"
 
-   if [ "$have_oprofile" = "yes" ]; then
+   if [ "$have_oprofile" ]; then
       $CMD_OPCONTROL --stop
       $CMD_OPCONTROL --dump
-      kill $(pidof oprofiled);  # TODO: what if system doesn't have pidof?
+
+      local oprofiled_pid=$(_pidof oprofiled)
+      if [ "$oprofiled_pid" ]; then
+         kill $oprofiled_pid
+      else
+         warn "Cannot kill oprofiled because its PID cannot be determined"
+      fi
+
       $CMD_OPCONTROL --save=pt_collect_$p
 
       # Attempt to generate a report; if this fails, then just tell the user
@@ -248,7 +253,7 @@ collect() {
             "$mysqld_path"        \
             > "$d/$p-opreport"
       else
-         echo "oprofile data saved to pt_collect_$p; you should be able"      \
+         log "oprofile data saved to pt_collect_$p; you should be able"       \
               "to get a report by running something like 'opreport"           \
               "--demangle=smart --symbols --merge tgid session:pt_collect_$p" \
               "/path/to/mysqld'"                                              \
@@ -259,7 +264,7 @@ collect() {
       sleep 1
       kill -s 15 $strace_pid
       # Sometimes strace leaves threads/processes in T status.
-      kill -s 18 $mysqld_pid
+      [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
    $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" &
@@ -292,7 +297,7 @@ open_tables() {
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
       $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
-      echo "Too many open tables: $open_tables"
+      log "Too many open tables: $open_tables"
    fi
 }
 

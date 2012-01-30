@@ -34,18 +34,17 @@ _seq() {
 }
 
 _pidof() {
-   local proc="$1"       # process name
-   local pat="${2:-""}"  # pattern in case we must grep for proc
-   
-   local pid=""
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
 
-   [ "$CMD_PIDOF" ] && pid=$(pidof -s "$proc");
-
-   [ -z "$pid" ] && [ "$CMD_PGREP" ] && pid=$(pgrep -o -x "$proc");
-
-   [ -z "$pid" ] && pid=$(ps -eaf | grep "$pat" | grep -v mysqld_safe | awk '{print $2}' | head -n1)
-
-   echo $pid
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
 }
 
 # ###########################################################################
