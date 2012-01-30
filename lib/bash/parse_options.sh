@@ -54,7 +54,7 @@ HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
 OPT_ERRS=0        # How many command line option errors
 OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
-PO_DIR="$TMPDIR/po"  # Directory with program option spec files
+PO_DIR=""         # Directory with program option spec files
 
 # Sub: usage
 #   Print usage (--help) and list the program's options.
