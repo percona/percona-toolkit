@@ -65,9 +65,6 @@ PO_DIR="$TMPDIR/po"  # Directory with program option spec files
 # Required Global Variables:
 #   TIMDIR  - Temp directory set by <set_TMPDIR()>.
 #   TOOL    - Tool's name.
-#
-# Optional Global Variables:
-#   OPT_ERR - Command line option error message.
 usage() {
    local file="$1"
 
@@ -138,6 +135,12 @@ usage_or_errors() {
 
    # No --help, --version, or errors.
    return 0
+}
+
+option_error() {
+   local err="$1"
+   OPT_ERRS=$(($OPT_ERRS + 1))
+   echo "$err" >&2
 }
 
 # Sub: parse_options
@@ -384,8 +387,7 @@ _parse_command_line() {
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
          if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
-            OPT_ERRS=$(($OPT_ERRS + 1))
-            echo "$real_opt requires a $required_arg argument" >&2
+            option_error "$real_opt requires a $required_arg argument"
             continue
          fi
          val="$opt"
@@ -425,8 +427,7 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               OPT_ERRS=$(($OPT_ERRS + 1))
-               echo "Unknown option: $real_opt" >&2
+               option_error "Unknown option: $real_opt"
                continue
             fi
          fi
@@ -446,8 +447,7 @@ _parse_command_line() {
          else
             # Option does not take a value.
             if [ "$val" ]; then
-               OPT_ERRS=$(($OPT_ERRS + 1))
-               echo "Option $real_opt does not take a value" >&2
+               option_error "Option $real_opt does not take a value"
                continue
             fi 
             if [ "$opt_is_negated" ]; then
