@@ -60,7 +60,7 @@ HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
 OPT_ERRS=0        # How many command line option errors
 OPT_VERSION=""    # If --version was specified
 OPT_HELP=""       # If --help was specified
-PO_DIR="$TMPDIR/po"  # Directory with program option spec files
+PO_DIR=""         # Directory with program option spec files
 
 usage() {
    local file="$1"
@@ -131,6 +131,12 @@ usage_or_errors() {
    fi
 
    return 0
+}
+
+option_error() {
+   local err="$1"
+   OPT_ERRS=$(($OPT_ERRS + 1))
+   echo "$err" >&2
 }
 
 parse_options() {
@@ -273,7 +279,7 @@ _parse_config_files() {
 
          echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
 
-         config_opt="$(echo "$config_opt" | sed -e 's/^[ ]*//' -e 's/[ ]*\$//' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
 
          [ "$config_opt" = "" ] && continue
 
@@ -317,8 +323,7 @@ _parse_command_line() {
       if [ "$next_opt_is_val" ]; then
          next_opt_is_val=""
          if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
-            OPT_ERRS=$(($OPT_ERRS + 1))
-            echo "$real_opt requires a $required_arg argument" >&2
+            option_error "$real_opt requires a $required_arg argument"
             continue
          fi
          val="$opt"
@@ -353,8 +358,7 @@ _parse_command_line() {
          else
             spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
-               OPT_ERRS=$(($OPT_ERRS + 1))
-               echo "Unknown option: $real_opt" >&2
+               option_error "Unknown option: $real_opt"
                continue
             fi
          fi
@@ -368,8 +372,7 @@ _parse_command_line() {
             fi
          else
             if [ "$val" ]; then
-               OPT_ERRS=$(($OPT_ERRS + 1))
-               echo "Option $real_opt does not take a value" >&2
+               option_error "Option $real_opt does not take a value"
                continue
             fi 
             if [ "$opt_is_negated" ]; then
@@ -464,9 +467,26 @@ rm_tmpdir() {
 
 set -u
 
+CMD_PIDOF="$(which pidof)"
+CMD_PGREP="$(which pgrep)"
+
 _seq() {
    local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
 }
 
 # ###########################################################################
@@ -599,20 +619,17 @@ CMD_OPCONTROL="$(which opcontrol)"
 CMD_OPREPORT="$(which opreport)"
 CMD_PMAP="$(which pmap)"
 CMD_STRACE="$(which strace)"
+CMD_SYSCTL="$(which sysctl)"
 CMD_TCPDUMP="$(which tcpdump)"
 CMD_VMSTAT="$(which vmstat)"
+
+[ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
 collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=$(pidof -s mysqld);
-   if [ -z "$mysqld_pid" ]; then
-      mysqld_pid=$(pgrep -o -x mysqld);
-   fi
-   if [ -z "$mysqld_pid" ]; then
-      mysqld_pid=$(ps -eaf | grep 'mysql[d]' | grep -v mysqld_safe | awk '{print $2}' | head -n1);
-   fi
+   local mysqld_pid=$(_pidof mysqld | head -n1)
 
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
@@ -630,7 +647,7 @@ collect() {
          >> "$d/$p-stacktrace"
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" 2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e 'SHOW GLOBAL VARIABLES' >> "$d/$p-variables" &
    sleep .2
 
    local mysql_version="$(awk '/^version[^_]/{print substr($2,1,3)}' "$d/$p-variables")"
@@ -642,12 +659,13 @@ collect() {
 
    local tail_error_log_pid=""
    if [ "$mysql_error_log" ]; then
-      echo "The MySQL error log seems to be ${mysql_error_log}"
-      tail -f "$mysql_error_log" >"$d/$p-log_error" 2>&1 &
+      log "The MySQL error log seems to be $mysql_error_log"
+      tail -f "$mysql_error_log" >"$d/$p-log_error" &
       tail_error_log_pid=$!
+
       $CMD_MYSQLADMIN $EXT_ARGV debug
    else
-      echo "Could not find the MySQL error log"
+      log "Could not find the MySQL error log"
    fi
 
    local innostat="SHOW /*!40100 ENGINE*/ INNODB STATUS\G"
@@ -656,9 +674,9 @@ collect() {
    else
       local mutex="SHOW MUTEX STATUS"
    fi
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" 2>&1 &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" 2>&1 &
-   open_tables                         >> "$d/$p-opentables1"   2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus1" &
+   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status1" &
+   open_tables                         >> "$d/$p-opentables1"   &
 
    local tcpdump_pid=""
    if [ "$CMD_TCPDUMP" -a  "$OPT_COLLECT_TCPDUMP" ]; then
@@ -669,45 +687,49 @@ collect() {
       fi
    fi
 
-   local have_oprofile="no"
+   local have_oprofile=""
    if [ "$CMD_OPCONTROL" -a "$OPT_COLLECT_OPROFILE" ]; then
       if $CMD_OPCONTROL --init; then
          $CMD_OPCONTROL --start --no-vmlinux
          have_oprofile="yes"
       fi
-   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" ]; then
-      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" 2>&1 &
+   elif [ "$CMD_STRACE" -a "$OPT_COLLECT_STRACE" -a "$mysqld_pid" ]; then
+      $CMD_STRACE -T -s 0 -f -p $mysqld_pid > "${DEST}/$d-strace" &
       local strace_pid=$!
    fi
 
-   ps -eaf                     >> "$d/$p-ps"     2>&1 &
-   sysctl -a                   >> "$d/$p-sysctl" 2>&1 &
-   top -bn1                    >> "$d/$p-top"    2>&1 &
-   lsof -nP -p $mysqld_pid -bw >> "$d/$p-lsof"   2>&1 &
+   ps -eaf  >> "$d/$p-ps"  &
+   top -bn1 >> "$d/$p-top" &
+
+   [ "$mysqld_pid" ] && _lsof $mysqld_pid >> "$d/$p-lsof" &
+
+   if [ "$CMD_SYSCTL" ]; then
+      $CMD_SYSCTL -a >> "$d/$p-sysctl" &
+   fi
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         2>&1 &
-      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" 2>&1 &
+      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         2>&1 &
-      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" 2>&1 &
+      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         2>&1 &
-      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" 2>&1 &
+      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" &
    fi
 
-   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" 2>&1 &
+   $CMD_MYSQLADMIN $EXT_ARGV ext -i1 -c$OPT_RUN_TIME >>"$d/$p-mysqladmin" &
    local mysqladmin_pid=$!
 
-   local have_lock_waits_table=0
+   local have_lock_waits_table=""
    $CMD_MYSQL $EXT_ARGV -e "SHOW TABLES FROM INFORMATION_SCHEMA" \
       | grep -i "INNODB_LOCK_WAITS" >/dev/null 2>&1
    if [ $? -eq 0 ]; then
-      have_lock_waits_table=1
+      have_lock_waits_table="yes"
    fi
 
-   echo "Loop start: $(date +'TS %s.%N %F %T')"
+   log "Loop start: $(date +'TS %s.%N %F %T')"
    for loopno in $(_seq $OPT_RUN_TIME); do
       disk_space $d > $d/$p-disk-space
       check_disk_space          \
@@ -719,43 +741,53 @@ collect() {
       sleep $(date +%s.%N | awk '{print 1 - ($1 % 1)}')
       local ts="$(date +"TS %s.%N %F %T")"
 
+
       if [ -d "/proc" ]; then
          if [ -f "/proc/diskstats" ]; then
-            (cat /proc/diskstats 2>&1; echo $ts) >> "$d/$p-diskstats" &
+            (echo $ts; cat /proc/diskstats) >> "$d/$p-diskstats" &
          fi
          if [ -f "/proc/stat" ]; then
-            (cat /proc/stat 2>&1; echo $ts) >> "$d/$p-procstat" &
+            (echo $ts; cat /proc/stat) >> "$d/$p-procstat" &
          fi
          if [ -f "/proc/vmstat" ]; then
-            (cat /proc/vmstat 2>&1; echo $ts) >> "$d/$p-procvmstat" &
+            (echo $ts; cat /proc/vmstat) >> "$d/$p-procvmstat" &
          fi
          if [ -f "/proc/meminfo" ]; then
-            (cat /proc/meminfo 2>&1; echo $ts) >> "$d/$p-meminfo" &
+            (echo $ts; cat /proc/meminfo) >> "$d/$p-meminfo" &
          fi
          if [ -f "/proc/slabinfo" ]; then
-            (cat /proc/slabinfo 2>&1; echo $ts) >> "$d/$p-slabinfo" &
+            (echo $ts; cat /proc/slabinfo) >> "$d/$p-slabinfo" &
          fi
          if [ -f "/proc/interrupts" ]; then
-            (cat /proc/interrupts 2>&1; echo $ts) >> "$d/$p-interrupts" &
+            (echo $ts; cat /proc/interrupts) >> "$d/$p-interrupts" &
          fi
       fi
-      (df -h          2>&1; echo $ts) >> "$d/$p-df"          &
-      (netstat -antp  2>&1; echo $ts) >> "$d/$p-netstat"     &
-      (netstat -s     2>&1; echo $ts) >> "$d/$p-netstat_s"   &
 
-      ($CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G" 2>&1; echo $ts) \
-         >> "$d/$p-processlist"
+      (echo $ts; df -h) >> "$d/$p-df" &
 
-      if [ $have_lock_waits_table -eq 1 ]; then
-         (lock_waits 2>&1; echo $ts) >>"$d/$p-lock-waits"
+      (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
+      (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &
+
+      (echo $ts; $CMD_MYSQL $EXT_ARGV -e "SHOW FULL PROCESSLIST\G") \
+         >> "$d/$p-processlist" &
+
+      if [ "$have_lock_waits_table" ]; then
+         (echo $ts; lock_waits) >>"$d/$p-lock-waits" &
       fi
    done
-   echo "Loop end: $(date +'TS %s.%N %F %T')"
+   log "Loop end: $(date +'TS %s.%N %F %T')"
 
-   if [ "$have_oprofile" = "yes" ]; then
+   if [ "$have_oprofile" ]; then
       $CMD_OPCONTROL --stop
       $CMD_OPCONTROL --dump
-      kill $(pidof oprofiled);  # TODO: what if system doesn't have pidof?
+
+      local oprofiled_pid=$(_pidof oprofiled)
+      if [ "$oprofiled_pid" ]; then
+         kill $oprofiled_pid
+      else
+         warn "Cannot kill oprofiled because its PID cannot be determined"
+      fi
+
       $CMD_OPCONTROL --save=pt_collect_$p
 
       local mysqld_path=$(which mysqld);
@@ -768,7 +800,7 @@ collect() {
             "$mysqld_path"        \
             > "$d/$p-opreport"
       else
-         echo "oprofile data saved to pt_collect_$p; you should be able"      \
+         log "oprofile data saved to pt_collect_$p; you should be able"       \
               "to get a report by running something like 'opreport"           \
               "--demangle=smart --symbols --merge tgid session:pt_collect_$p" \
               "/path/to/mysqld'"                                              \
@@ -778,26 +810,33 @@ collect() {
       kill -s 2 $strace_pid
       sleep 1
       kill -s 15 $strace_pid
-      kill -s 18 $mysqld_pid
+      [ "$mysqld_pid" ] && kill -s 18 $mysqld_pid
    fi
 
-   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" 2>&1 &
-   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" 2>&1 &
-   open_tables                         >> "$d/$p-opentables2"   2>&1 &
+   $CMD_MYSQL $EXT_ARGV -e "$innostat" >> "$d/$p-innodbstatus2" &
+   $CMD_MYSQL $EXT_ARGV -e "$mutex"    >> "$d/$p-mutex-status2" &
+   open_tables                         >> "$d/$p-opentables2"   &
 
    kill $mysqladmin_pid
    [ "$tail_error_log_pid" ] && kill $tail_error_log_pid
-   [ "$tcpdump_pid" ] && kill $tcpdump_pid
+   [ "$tcpdump_pid" ]        && kill $tcpdump_pid
 
    hostname > "$d/$p-hostname"
+
+   for file in "$d/$p-"*; do
+      if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
+         log "Removing empty file $file";
+         rm "$file"
+      fi
+   done
 }
 
 open_tables() {
    local open_tables=$($CMD_MYSQLADMIN $EXT_ARGV ext | grep "Open_tables" | awk '{print $4}')
    if [ -n "$open_tables" -a $open_tables -le 1000 ]; then
-      $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' 2>&1 &
+      $CMD_MYSQL $EXT_ARGV -e 'SHOW OPEN TABLES' &
    else
-      echo "Too many open tables: $open_tables"
+      log "Too many open tables: $open_tables"
    fi
 }
 
@@ -841,9 +880,10 @@ lock_waits() {
 # ###########################################################################
 # Global variables
 # ###########################################################################
+TRIGGER_FUNCTION=""
 RAN_WITH=""
 EXIT_REASON=""
-TOOL=$(basename $0)
+TOOL="pt-stalk"
 OKTORUN=1
 ITER=1
 
@@ -896,12 +936,21 @@ grep_processlist() {
 }
 
 set_trg_func() {
-   if [ -f "$OPT_FUNCTION" ]; then
-      source $OPT_FUNCTION
+   local func="$1"
+   if [ -f "$func" ]; then
+      # Trigger function is a file with Bash code; source it.
+      . "$func"
       TRIGGER_FUNCTION="trg_plugin"
+      return 0  # success
    else
-      TRIGGER_FUNCTION="trg_$OPT_FUNCTION"
+      # Trigger function is name of a built-in function.
+      func=$(echo "$func" | tr [:upper:] [:lower:])
+      if [ "$func" = "status" -o "$func" = "processlist" ]; then
+         TRIGGER_FUNCTION="trg_$func"
+         return 0  # success
+      fi
    fi
+   return 1  # error
 }
 
 trg_status() {
@@ -958,7 +1007,7 @@ purge_samples() {
       # "pt_collect_" here needs to match $CMD_OPCONTROL --save=pt_collect_$p
       # in collect().  TODO: fix this
       find "$oprofile_dir" -type d -name 'pt_collect_*' \
-         -depth -mtime +$retention_time -exec rm -f '{}' \;
+         -depth -mtime +$retention_time -exec rm -rf '{}' \;
    fi
 }
 
@@ -1042,6 +1091,7 @@ stalk() {
                (
                   collect "$OPT_DEST" "$prefix"
                ) >> "$OPT_DEST/$prefix-output" 2>&1 &
+               log "Collector PID $!"
             else 
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
@@ -1087,9 +1137,6 @@ main() {
    # Make a secure tmpdir.
    mk_tmpdir
 
-   # Set TRIGGER_FUNCTION based on --function.
-   set_trg_func
-
    # Stalk while oktorun.
    stalk
 
@@ -1104,8 +1151,8 @@ main() {
 
 # Execute the program if it was not included from another file.
 # This makes it possible to include without executing, and thus test.
-if    [ "$(basename "$0")" = "pt-stalk" ] \
-   || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+if    [ "${0##*/}" = "$TOOL" ] \
+   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
 
    # Check that mysql and mysqladmin are in PATH.  If not, we're
    # already dead in the water, so don't bother with cmd line opts,
@@ -1115,10 +1162,17 @@ if    [ "$(basename "$0")" = "pt-stalk" ] \
    [ -n "$(mysqladmin --help)" ] \
       || die "Cannot execute mysqladmin.  Check that it is in PATH."
 
+
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
    mk_tmpdir
    parse_options "$0" "$@"
+
+   # Verify and set TRIGGER_FUNCTION based on --function.
+   if ! set_trg_func "$OPT_FUNCTION"; then
+      option_error "Invalid --function value: $OPT_FUNCTION"
+   fi
+
    usage_or_errors "$0"
    po_status=$?
    rm_tmpdir
