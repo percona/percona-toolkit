@@ -41,7 +41,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 22;
+   plan tests => 30;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -331,6 +331,67 @@ is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "No host in DSN, 0 errors"
+);
+
+# #############################################################################
+# Test --where.
+# #############################################################################
+$sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
+$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      qw(-t test.t --chunk-size 20 --explain --explain),
+      "--where", "id>=100 AND id<=200"); },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/^REPLACE INTO.+?id>=100 AND id<=200.+?checksum chunk/m,
+   "--where in checksum chunk query"
+);
+
+like(
+   $output,
+   qr/^REPLACE INTO.+?id>=100 AND id<=200.+?past lower chunk/m,
+   "--where in past lower chunk query"
+);
+
+like(
+   $output,
+   qr/^REPLACE INTO.+?id>=100 AND id<=200.+?past upper chunk/m,
+   "--where in past upper chunk query"
+);
+
+like(
+   $output,
+   qr/^SELECT.+?id>=100 AND id<=200.+?next chunk boundary/m,
+   "--where in next chunk boundary query"
+);
+
+like(
+   $output,
+   qr/^1\s+100\s+119/m,
+   "--where for first chunk"
+);
+
+like(
+   $output,
+   qr/^6\s+200\s+200/m,
+   "--where for last chunk"
+);
+
+like(
+   $output,
+   qr/^7\s+100$/m,
+   "--where for lower oob chunk"
+);
+
+like(
+   $output,
+   qr/^8\s+200\s+$/m,
+   "--where for upper oob chunk"
 );
 
 # #############################################################################
