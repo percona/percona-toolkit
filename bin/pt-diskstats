@@ -3223,7 +3223,6 @@ sub help {
    q) Quit the program
    ------------------- Press any key to continue -----------------------
 HELP
-
    pause(%args);
    return;
 }
@@ -3409,14 +3408,14 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-diskstats - Aggregate and summarize F</proc/diskstats>.
+pt-diskstats - An interactive I/O monitoring tool for GNU/Linux.
 
 =head1 SYNOPSIS
 
 Usage: pt-diskstats [OPTION...] [FILES]
 
-pt-diskstats reads F</proc/diskstats> periodically, or files with the
-contents of F</proc/diskstats>, aggregates the data, and prints it nicely.
+pt-diskstats prints disk I/O statistics for GNU/Linux.  It is somewhat similar
+to iostat, but it is interactive and more detailed.
 
 =head1 RISKS
 
@@ -3425,7 +3424,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-diskstats is a read-only tool.  It should be very low-risk.
+pt-diskstats simply reads /proc/diskstats.  It should be very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
@@ -3439,43 +3438,56 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-diskstats tool is similar to iostat, but has some advantages. It separates
-reads and writes, for example, and computes some things that iostat does in
-either incorrect or confusing ways.  It is also menu-driven and interactive
-with several different ways to aggregate the data, and integrates well with
-the L<pt-collect> tool. These properties make it very convenient for quickly
-drilling down into I/O performance at the desired level of granularity.
+The pt-diskstats tool is similar to iostat, but has some advantages. It prints
+read and write statistics separately, and has more columns. It is menu-driven
+and interactive, with several different ways to aggregate the data. It
+integrates well with the L<pt-stalk> tool. It also does the "right thing" by
+default, such as hiding disks that are idle.  These properties make it very
+convenient for quickly drilling down into I/O performance and inspecting disk
+behavior.
 
-This program works in two main modes. One way is to process a file with saved
-disk statistics, which you specify on the command line.  The other way is to
-start a background process gathering samples at intervals and saving them into
-a file, and process this file in the foreground.  In both cases, the tool is
-interactively controlled by keystrokes, so you can redisplay and slice the
-data flexibly and easily.  If the tool is not attached to a terminal, it
-doesn't run interactively; it just processes and prints its output, then exits.
-Otherwise it loops until you exit with the 'q' key.
+This program works in two modes. The default is to collect samples of
+/proc/diskstats and print out the formatted statistics at intervals. The other
+mode is to process a file that contains saved samples of /proc/diskstats; there
+is a shell script later in this documentation that shows how to collect such a
+file.
 
-If you press the '?' key, you will bring up the interactive help menu that
-shows which keys control the program.
+In both cases, the tool is interactively controlled by keystrokes, so you can
+redisplay and slice the data flexibly and easily.  It loops forever, until you
+exit with the 'q' key.  If you press the '?' key, you will bring up the
+interactive help menu that shows which keys control the program.
 
-Files should have this format:
+When the program is gathering samples of /proc/diskstats and refreshing its
+display, it prints information about the newest sample each time it refreshes.
+When it is operating on a file of saved samples, it redraws the entire file's
+contents every time you change an option.
 
-   TS <timestamp>  <-- must start with a TS line.
-   <contents of /proc/diskstats>
-   TS <timestamp>
-   <contents of /proc/diskstats>
-   ... et cetera
-
-Note that previously the format was backwards -- It would put the timestamp
-at the bottom of each sample, not the top. This was doubly troublesome:
-It was inconsistent with how the rest of the Toolkit deals with timestamps,
-and allowed malformed data to sit in the bottom of the file and give incorrect
-results.
-
-See L<http://aspersa.googlecode.com/svn/html/diskstats.html> for a detailed
-example of using the tool.
+The program doesn't print information about every disk device on the system. It
+hides devices that it has never observed to have any activity.  You can enable
+and disable this by pressing the 'i' key.
 
 =head1 OUTPUT
+
+The program's output looks like the following sample, which is too wide for this
+manual page, so we have formatted it as several samples with continuations:
+
+  #ts device rd_s rd_avkb rd_mb_s rd_io_s rd_mrg rd_cnc rd_rt ...
+ {10} sda     0.5     4.0     0.0     0.1     0%    0.0  15.6 ...
+ {10} sdb     0.0     0.0     0.0     0.0     0%    0.0   0.0 ...
+ {10} dm-0    0.0     0.0     0.0     0.0     0%    0.0   0.0 ...
+ {10} dm-1    0.5     4.0     0.0     0.1     0%    0.0  15.6 ...
+
+  #ts device ... wr_s wr_avkb wr_mb_s wr_io_s wr_mrg wr_cnc wr_rt ...
+ {10} sda    ... 30.6     6.7     0.2     6.5    40%    0.7  22.8 ...
+ {10} sdb    ...  1.7    17.8     0.0     0.0    77%    0.0   0.8 ...
+ {10} dm-0   ...  2.5     4.0     0.0     0.1     0%    0.0   2.6 ...
+ {10} dm-1   ... 38.2     4.0     0.1     7.6     0%    0.8  21.2 ...
+
+  #ts device ... busy in_prg io_s qtime stime
+ {10} sda    ...   2%      0  6.6   0.0   0.0
+ {10} sdb    ...   0%      0  0.0   0.0   0.0
+ {10} dm-0   ...   0%      0  0.1   0.0   0.0
+ {10} dm-1   ...   2%      0  7.7   0.0   0.0
 
 The columns are as follows:
 
@@ -3483,43 +3495,76 @@ The columns are as follows:
 
 =item #ts
 
-The number of seconds of samples in the line.  If there is only one, then
-the timestamp itself is shown, without the {curly braces}.
+This column's contents vary depending on the tool's aggregation mode.  In the
+default mode, when each line contains information about a single disk but
+possibly aggregates across several samples from that disk, this column shows the
+number of samples that were included into the line of output, in {curly braces}.
+In the example shown, each line of output aggregates {10} samples of
+/proc/diskstats.
+
+In the "all" group-by mode, this column shows timestamp offsets, relative to the
+time the tool began aggregating or the timestamp of the previous lines printed,
+depending on the mode.  The output can be confusing to explain, but it's rather
+intuitive when you see the lines appearing on your screen periodically.
+
+Similarly, in "sample" group-by mode, the number indicates the total time span
+that is grouped into each sample.
 
 =item device
 
 The device name.  If there is more than one device, then instead the number
 of devices aggregated into the line is shown, in {curly braces}.
 
+=item rd_s
+
+The average number of reads per second.  This is the number of I/O requests that
+were sent to the block device. However, the requests may be merged by the I/O
+scheduler, so they might be sent to the physical device differently.
+
+=item rd_avkb
+
+The average size of the reads, in kilobytes.
+
+=item rd_mb_s
+
+The average number of megabytes read per second.
+
 =item rd_io_s
 
-The number of IO reads per second, average, during the sampled interval.
+The average number of IO reads per second.  This is the number that is actually
+sent to the physical device after merging adjacent requests and any other
+processing in the queue.
+
+=item rd_mrg
+
+The percentage of read requests that were merged together in the disk
+scheduler before reaching the physical device.
 
 =item rd_cnc
 
-The average concurrency of the read operations, as computed by Little's Law
-(a.k.a. queueing theory).
+The average concurrency of the read operations, as computed by Little's Law.
+This is the end-to-end concurrency, including time spent in the queue.
 
 =item rd_rt
 
-The average response time of the read operations, in milliseconds.
+The average response time of the read operations, in milliseconds.  This is the
+end-to-end response time, including time spent in the queue.  It is the response
+time that the application making I/O requests sees.
 
-=item wr_mb_s
+=item wr_s, wr_avkb, wr_mb_s, wr_io_s, wr_mrg, wr_cnc, wr_rt
 
-IO writes per second, average.
-
-=item wr_cnc
-
-Write concurrency, similar to read concurrency.
-
-=item wr_rt
-
-Write response time, similar to read response time.
+These columns show write activity, and they match the corresponding columns for
+read activity.
 
 =item busy
 
 The fraction of time that the device had at least one request in progress;
-this is what iostat calls %util (which is a misleading name).
+this is what iostat calls %util.  It cannot exceed 100% unless there is a
+rounding error, but it is a common mistake to think that a device that's busy
+all the time is saturated.  A device such as a RAID volume should support
+concurrency higher than 1, and solid-state drives can support very high
+concurrency.  Concurrency can grow without bound, and is a more reliable
+indicator of how loaded the device really is.
 
 =item in_prg
 
@@ -3528,37 +3573,57 @@ concurrencies, which are averages that are generated from reliable numbers,
 this number is an instantaneous sample, and you can see that it might
 represent a spike of requests, rather than the true long-term average.
 
-=back
+=item ios_s
 
-In addition to the above columns, there are a few columns that are hidden by
-default. If you press the 'c' key, and then press Enter, you will blank out
-the regular expression pattern that selects columns to display, and you will
-then see the extra columns:
+The average throughput of the physical device, in I/O operations per second.
+This column can be used to help you understand how much activity the underlying
+device is actually doing.
 
-=over
+=item qtime
 
-=item rd_s
+The average queue time; that is, time a request spends in the device scheduler
+queue before being sent to the physical device.  This is an average over reads
+and writes.
 
-The number of reads per second.
+=item stime
 
-=item rd_avkb
+The average service time; that is, the time elapsed while the physical device
+processes the request, after the request leaves the queue.  This is an average
+over reads and writes.
 
-The average size of the reads, in kilobytes.
-
-=item rd_mrg
-
-The percentage of read requests that were merged together in the disk
-scheduler before reaching the device.
-
-=item rd_mb_s
-
-The number of megabytes read per second, average, during the sampled interval.
-
-=item wr_s, wr_avgkb, and wr_mrg, wr_mb_s
-
-These are analogous to their C<rd_*> cousins.
+You can compare the stime and qtime columns to see whether the response time for
+reads and writes is spent in the queue or on the physical device.  However, you
+cannot see the difference between reads and writes.  Changing the block device
+scheduler algorithm might improve queue time greatly.  The default algorithm,
+cfq, is very bad for servers, and should only be used on laptops and
+workstations that perform tasks such as working with spreadsheets and surfing
+the Internet.
 
 =back
+
+=head1 COLLECTING DATA
+
+It is straightforward to gather a sample of data for this tool.  Files should
+have this format:
+
+   TS <timestamp>  <-- must start with a TS line.
+   <contents of /proc/diskstats>
+   TS <timestamp>
+   <contents of /proc/diskstats>
+   ... et cetera
+
+You can simply use pt-diskstats with L<"--save-samples"> to collect this data
+for you.  If you wish to capture samples as part of some other tool, and use
+pt-diskstats to analyze them, you can include a snippet of shell script such as
+the following:
+
+   INTERVAL=1
+   while true; do
+      sleep=$(date +%s.%N | awk "{print $INTERVAL - (\$1 % $INTERVAL)}")
+      sleep $sleep
+      date +"TS %s.%N %F %T" >> diskstats-samples.txt
+      cat /proc/diskstats >> diskstats-samples.txt
+   done
 
 =head1 OPTIONS
 
@@ -3576,31 +3641,30 @@ first option on the command line.
 
 =item --columns-regex
 
-type: string; default: cnc|rt|busy|prg|time|io_s
+type: string; default: .
 
-Perl regex of which columns to include.
+Print columns that match this Perl regex.
 
 =item --devices-regex
 
 type: string
 
-Perl regex of which devices to include.
+Print devices that match this Perl regex.
 
 =item --group-by
 
 type: string; default: disk
 
-Group-by mode (default disk); specify one of the following:
-
-   disk   - Each line of output shows one disk device.
-   sample - Each line of output shows one sample of statistics.
-   all    - Each line of output shows one sample and one disk device.
+Group-by mode: disk, sample, or all.  In B<disk> mode, each line of output shows
+one disk device.  In B<sample> mode, each line of output shows one sample of
+statistics.  In B<all> mode, each line of output shows one sample and one disk
+device.
 
 =item --sample-time
 
 type: int; default: 1
 
-In --group-by sample mode, include INTERVAL seconds of samples per group.
+In --group-by sample mode, include N seconds of samples per group.
 
 =item --save-samples
 
@@ -3612,7 +3676,7 @@ File to save diskstats samples in; these can be used for later analysis.
 
 type: int
 
-When in interactive mode, stop after N samples.
+When in interactive mode, stop after N samples.  Run forever by default.
 
 =item --refresh-interval
 
@@ -3628,7 +3692,8 @@ Show inactive devices.
 
 default: yes
 
-Print the headers as often as needed to prevent it from scrolling out of view.
+Print the headers as often as needed to prevent them from scrolling out of view.
+You can press the space bar to reprint headers at will.
 
 =item --help
 
@@ -3710,4 +3775,21 @@ This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, WITHOUT LIMITATION, TH
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+systems, you can issue `man perlgpl' or `man perlartistic' to read these
+licenses.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+Place, Suite 330, Boston, MA  02111-1307  USA.
+
+=head1 VERSION
+
+pt-diskstats 1.0.1
+
+=cut
