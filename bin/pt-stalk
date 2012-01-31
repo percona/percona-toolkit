@@ -1007,7 +1007,7 @@ purge_samples() {
       # "pt_collect_" here needs to match $CMD_OPCONTROL --save=pt_collect_$p
       # in collect().  TODO: fix this
       find "$oprofile_dir" -type d -name 'pt_collect_*' \
-         -depth -mtime +$retention_time -exec rm -f '{}' \;
+         -depth -mtime +$retention_time -exec rm -rf '{}' \;
    fi
 }
 
