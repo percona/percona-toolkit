@@ -201,7 +201,15 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-pmp is a read-only tool.  It should be very low-risk.
+pt-pmp is a read-only tool.  However, collecting GDB stacktraces is achieved by
+attaching GDB to the program and printing stack traces from all threads. This
+will freeze the program for some period of time, ranging from a second or so to
+much longer on very busy systems with a lot of memory and many threads in the
+program.  In the tool's default usage as a MySQL profiling tool, this means that
+MySQL will be unresponsive while the tool runs, although if you are using the
+tool to diagnose an unresponsive server, there is really no reason not to do
+this.  In addition to freezing the server, there is also some risk of the server
+crashing or performing badly after GDB detaches from it.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
