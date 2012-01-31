@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 20;
+   plan tests => 21;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -167,6 +167,13 @@ like(
    $output,
    qr/pt-stalk ran with --function=status --variable=Uptime --threshold=$threshold/,
    "Trigger file logs how pt-stalk was ran"
+);
+
+chomp($output = `cat $log_file | grep 'Collector PID'`);
+like(
+   $output,
+   qr/Collector PID \d+/,
+   "Collector PID logged"
 );
 
 # ###########################################################################

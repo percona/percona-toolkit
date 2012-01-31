@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=19
+TESTS=20
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
@@ -107,6 +107,20 @@ cmd_ok \
 
 local iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "1" "1 iteration/1s run time"
+
+empty_files=0
+for file in $p-*; do
+   if ! [ -s $file ]; then
+      empty_files=1
+      break
+   fi
+   if [ -z "$(grep -v '^TS ' --max-count 1 $file)" ]; then
+      empty_files=1
+      break
+   fi
+done
+
+is "$empty_files" "0" "No empty files"
 
 # ###########################################################################
 # Try longer run time.
