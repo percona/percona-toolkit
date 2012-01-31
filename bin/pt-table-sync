@@ -2950,7 +2950,7 @@ $Data::Dumper::Quotekeys = 0;
 
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter MySQLDump) ) {
+   foreach my $arg ( qw(Quoter TableParser) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
@@ -3227,7 +3227,7 @@ sub _chunk_numeric {
 
 sub _chunk_char {
    my ( $self, %args ) = @_;
-   my @required_args = qw(dbh db tbl tbl_struct chunk_col rows_in_range chunk_size);
+   my @required_args = qw(dbh db tbl tbl_struct chunk_col min max rows_in_range chunk_size);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
@@ -3238,12 +3238,7 @@ sub _chunk_char {
    my $row;
    my $sql;
 
-   $sql = "SELECT MIN($chunk_col), MAX($chunk_col) FROM $db_tbl "
-        . "ORDER BY `$chunk_col`";
-   PTDEBUG && _d($dbh, $sql);
-   $row = $dbh->selectrow_arrayref($sql);
-   my ($min_col, $max_col) = ($row->[0], $row->[1]);
-
+   my ($min_col, $max_col) = @{args}{qw(min max)};
    $sql = "SELECT ORD(?) AS min_col_ord, ORD(?) AS max_col_ord";
    PTDEBUG && _d($dbh, $sql);
    my $ord_sth = $dbh->prepare($sql);  # avoid quoting issues
@@ -3290,7 +3285,7 @@ sub _chunk_char {
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
-      $sql = "INSERT INTO $tmp_db_tbl VALUE (CHAR(?))";
+      $sql = "INSERT INTO $tmp_db_tbl VALUES (CHAR(?))";
       PTDEBUG && _d($dbh, $sql);
       my $ins_char_sth = $dbh->prepare($sql);  # avoid quoting issues
       for my $char_code ( $min_col_ord..$max_col_ord ) {
@@ -3314,7 +3309,9 @@ sub _chunk_char {
    PTDEBUG && _d("Base", $base, "chars:", @chars);
 
 
-   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl ORDER BY `$chunk_col`";
+   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl "
+        . ($args{where} ? "WHERE $args{where} " : "") 
+        . "ORDER BY `$chunk_col`";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
    my $max_col_len = $row->[0];
@@ -3411,7 +3408,7 @@ sub size_to_rows {
    }
    my ($dbh, $db, $tbl, $chunk_size) = @args{@required_args};
    my $q  = $self->{Quoter};
-   my $du = $self->{MySQLDump};
+   my $tp = $self->{TableParser};
 
    my ($n_rows, $avg_row_length);
 
@@ -3430,7 +3427,7 @@ sub size_to_rows {
    }
 
    if ( $suffix || $args{avg_row_length} ) {
-      my ($status) = $du->get_table_status($dbh, $q, $db, $tbl);
+      my ($status) = $tp->get_table_status($dbh, $db, $tbl);
       $avg_row_length = $status->{avg_row_length};
       if ( !defined $n_rows ) {
          $n_rows = $avg_row_length ? ceil($chunk_size / $avg_row_length) : undef;
@@ -7507,7 +7504,7 @@ sub main {
    my $ms        = new MasterSlave(VersionParser => $vp);
    my $du        = new MySQLDump( cache => 0 );
    my $rt        = new Retry();
-   my $chunker   = new TableChunker( Quoter => $q, MySQLDump => $du );
+   my $chunker   = new TableChunker( Quoter => $q, TableParser => $tp );
    my $nibbler   = new TableNibbler( Quoter => $q, TableParser => $tp );
    my $checksum  = new TableChecksum( Quoter => $q, VersionParser => $vp );
    my $syncer    = new TableSyncer(
