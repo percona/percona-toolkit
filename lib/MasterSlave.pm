@@ -47,7 +47,7 @@ sub get_slaves {
    my $slaves = [];
    my $method = $o->get('recursion-method');
    PTDEBUG && _d('Slave recursion method:', $method);
-   if ( !$method || $method =~ m/proocesslist|hosts/i ) {
+   if ( !$method || $method =~ m/processlist|hosts/i ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
          die "I need a $arg argument" unless $args{$arg};
@@ -77,7 +77,7 @@ sub get_slaves {
       );
    }
    else {
-      die "Invalid --recusion-method: $method.  Valid values are: "
+      die "Invalid --recursion-method: $method.  Valid values are: "
         . "dsn=DSN, hosts, or processlist.\n";
    }
 
