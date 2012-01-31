@@ -1154,15 +1154,6 @@ main() {
 if    [ "${0##*/}" = "$TOOL" ] \
    || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
 
-   # Check that mysql and mysqladmin are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
-   [ -n "$(mysql --help)" ] \
-      || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqladmin --help)" ] \
-      || die "Cannot execute mysqladmin.  Check that it is in PATH."
-
-
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
    mk_tmpdir
@@ -1180,6 +1171,14 @@ if    [ "${0##*/}" = "$TOOL" ] \
       [ $OPT_ERRS -gt 0 ] && exit 1
       exit 0
    fi
+
+   # Check that mysql and mysqladmin are in PATH.  If not, we're
+   # already dead in the water, so don't bother with cmd line opts,
+   # just error and exit.
+   [ -n "$(mysql --help)" ] \
+      || die "Cannot execute mysql.  Check that it is in PATH."
+   [ -n "$(mysqladmin --help)" ] \
+      || die "Cannot execute mysqladmin.  Check that it is in PATH."
 
    # Now that we have the cmd line opts, check that we can actually
    # connect to MySQL.
