@@ -54,7 +54,7 @@ package Schema;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -145,7 +145,7 @@ sub find_column {
    my ($col, $tbl, $db);
    if ( my $col_name = $args{col_name} ) {
       ($col, $tbl, $db) = reverse map { s/`//g; $_ } split /[.]/, $col_name;
-      MKDEBUG && _d('Column', $col_name, 'has db', $db, 'tbl', $tbl,
+      PTDEBUG && _d('Column', $col_name, 'has db', $db, 'tbl', $tbl,
          'col', $col);
    }
    else {
@@ -157,18 +157,18 @@ sub find_column {
    $col = lc $col;
 
    if ( !$col ) {
-      MKDEBUG && _d('No column specified or parsed');
+      PTDEBUG && _d('No column specified or parsed');
       return;
    }
-   MKDEBUG && _d('Finding column', $col, 'in', $db, $tbl);
+   PTDEBUG && _d('Finding column', $col, 'in', $db, $tbl);
 
    if ( $db && !$schema->{$db} ) {
-      MKDEBUG && _d('Database', $db, 'does not exist');
+      PTDEBUG && _d('Database', $db, 'does not exist');
       return;
    }
 
    if ( $db && $tbl && !$schema->{$db}->{$tbl} ) {
-      MKDEBUG && _d('Table', $tbl, 'does not exist in database', $db);
+      PTDEBUG && _d('Table', $tbl, 'does not exist in database', $db);
       return;
    }
 
@@ -185,13 +185,13 @@ sub find_column {
          if ( $ignore
               && grep { $_->{db} eq $search_db && $_->{tbl} eq $search_tbl }
                  @$ignore ) {
-            MKDEBUG && _d('Ignoring', $search_db, $search_tbl, $col);
+            PTDEBUG && _d('Ignoring', $search_db, $search_tbl, $col);
             next TABLE;
          }
 
          my $tbl = $schema->{$search_db}->{$search_tbl};
          if ( $tbl->{tbl_struct}->{is_col}->{$col} ) {
-            MKDEBUG && _d('Column', $col, 'exists in', $tbl->{db}, $tbl->{tbl});
+            PTDEBUG && _d('Column', $col, 'exists in', $tbl->{db}, $tbl->{tbl});
             push @tbls, $tbl;
          }
       }
@@ -208,7 +208,7 @@ sub find_table {
    my ($tbl, $db);
    if ( my $tbl_name = $args{tbl_name} ) {
       ($tbl, $db) = reverse map { s/`//g; $_ } split /[.]/, $tbl_name;
-      MKDEBUG && _d('Table', $tbl_name, 'has db', $db, 'tbl', $tbl);
+      PTDEBUG && _d('Table', $tbl_name, 'has db', $db, 'tbl', $tbl);
    }
    else {
       ($tbl, $db) = @args{qw(tbl db)};
@@ -218,18 +218,18 @@ sub find_table {
    $tbl = lc $tbl;
 
    if ( !$tbl ) {
-      MKDEBUG && _d('No table specified or parsed');
+      PTDEBUG && _d('No table specified or parsed');
       return;
    }
-   MKDEBUG && _d('Finding table', $tbl, 'in', $db);
+   PTDEBUG && _d('Finding table', $tbl, 'in', $db);
 
    if ( $db && !$schema->{$db} ) {
-      MKDEBUG && _d('Database', $db, 'does not exist');
+      PTDEBUG && _d('Database', $db, 'does not exist');
       return;
    }
 
    if ( $db && $tbl && !$schema->{$db}->{$tbl} ) {
-      MKDEBUG && _d('Table', $tbl, 'does not exist in database', $db);
+      PTDEBUG && _d('Table', $tbl, 'does not exist in database', $db);
       return;
    }
 
@@ -238,12 +238,12 @@ sub find_table {
    DATABASE:
    foreach my $search_db ( @search_dbs ) {
       if ( $ignore && grep { $_->{db} eq $search_db } @$ignore ) {
-         MKDEBUG && _d('Ignoring', $search_db);
+         PTDEBUG && _d('Ignoring', $search_db);
          next DATABASE;
       }
 
       if ( exists $schema->{$search_db}->{$tbl} ) {
-         MKDEBUG && _d('Table', $tbl, 'exists in', $search_db);
+         PTDEBUG && _d('Table', $tbl, 'exists in', $search_db);
          push @dbs, $search_db;
       }
    }

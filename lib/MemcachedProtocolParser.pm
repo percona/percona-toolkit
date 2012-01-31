@@ -31,7 +31,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -60,7 +60,7 @@ sub parse_event {
    # client's session.
    # TODO: It seems we don't handle FIN here?  So I moved this code block here.
    if ( $packet->{data_len} == 0 ) {
-      MKDEBUG && _d('No TCP data');
+      PTDEBUG && _d('No TCP data');
       $args{stats}->{no_tcp_data}++ if $args{stats};
       return;
    }
@@ -71,7 +71,7 @@ sub parse_event {
    if ( my $server = $self->{server} ) {  # Watch only the given server.
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
-         MKDEBUG && _d('Packet is not to or from', $server);
+         PTDEBUG && _d('Packet is not to or from', $server);
          $args{stats}->{not_watched_server}++ if $args{stats};
          return;
       }
@@ -92,12 +92,12 @@ sub parse_event {
       warn 'Packet is not to or from memcached server: ', Dumper($packet);
       return;
    }
-   MKDEBUG && _d('Client:', $client);
+   PTDEBUG && _d('Client:', $client);
 
    # Get the client's session info or create a new session if the
    # client hasn't been seen before.
    if ( !exists $self->{sessions}->{$client} ) {
-      MKDEBUG && _d('New session');
+      PTDEBUG && _d('New session');
       $self->{sessions}->{$client} = {
          client      => $client,
          state       => undef,
@@ -125,7 +125,7 @@ sub parse_event {
       die 'Packet origin unknown';
    }
 
-   MKDEBUG && _d('Done with packet; event:', Dumper($event));
+   PTDEBUG && _d('Done with packet; event:', Dumper($event));
    $args{stats}->{events_parsed}++ if $args{stats};
    return $event;
 }
@@ -137,14 +137,14 @@ sub _packet_from_server {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   MKDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
 
    my $data = $packet->{data};
 
    # If there's no session state, then we're catching a server response
    # mid-stream.
    if ( !$session->{state} ) {
-      MKDEBUG && _d('Ignoring mid-stream server response');
+      PTDEBUG && _d('Ignoring mid-stream server response');
       $args{stats}->{ignored_midstream_server_response}++ if $args{stats};
       return;
    }
@@ -152,7 +152,7 @@ sub _packet_from_server {
    # Assume that the server is returning only one value.  TODO: make it
    # handle multi-gets.
    if ( $session->{state} eq 'awaiting reply' ) {
-      MKDEBUG && _d('State is awaiting reply');
+      PTDEBUG && _d('State is awaiting reply');
       # \r\n == 0d0a
       my ($line1, $rest) = $packet->{data} =~ m/\A(.*?)\r\n(.*)?/s;
       if ( !$line1 ) {
@@ -163,18 +163,18 @@ sub _packet_from_server {
       # Split up the first line into its parts.
       my @vals = $line1 =~ m/(\S+)/g;
       $session->{res} = shift @vals;
-      MKDEBUG && _d('Result of last', $session->{cmd}, 'cmd:', $session->{res});
+      PTDEBUG && _d('Result of last', $session->{cmd}, 'cmd:', $session->{res});
 
       if ( $session->{cmd} eq 'incr' || $session->{cmd} eq 'decr' ) {
-         MKDEBUG && _d('It is an incr or decr');
+         PTDEBUG && _d('It is an incr or decr');
          if ( $session->{res} !~ m/\D/ ) { # It's an integer, not an error
-            MKDEBUG && _d('Got a value for the incr/decr');
+            PTDEBUG && _d('Got a value for the incr/decr');
             $session->{val} = $session->{res};
             $session->{res} = '';
          }
       }
       elsif ( $session->{res} eq 'VALUE' ) {
-         MKDEBUG && _d('It is the result of a "get"');
+         PTDEBUG && _d('It is the result of a "get"');
          my ($key, $flags, $bytes) = @vals;
          defined $session->{flags} or $session->{flags} = $flags;
          defined $session->{bytes} or $session->{bytes} = $bytes;
@@ -182,13 +182,13 @@ sub _packet_from_server {
          # Get the value from the $rest.
          # TODO: there might be multiple responses
          if ( $rest && $bytes ) {
-            MKDEBUG && _d('There is a value');
+            PTDEBUG && _d('There is a value');
             if ( length($rest) > $bytes ) {
-               MKDEBUG && _d('Got complete response');
+               PTDEBUG && _d('Got complete response');
                $session->{val} = substr($rest, 0, $bytes);
             }
             else {
-               MKDEBUG && _d('Got partial response, saving for later');
+               PTDEBUG && _d('Got partial response, saving for later');
                push @{$session->{partial}}, [ $packet->{seq}, $rest ];
                $session->{gathered} += length($rest);
                $session->{state} = 'partial recv';
@@ -199,26 +199,26 @@ sub _packet_from_server {
       elsif ( $session->{res} eq 'END' ) {
          # Technically NOT_FOUND is an error, and this isn't an error it's just
          # a NULL, but what it really means is the value isn't found.
-         MKDEBUG && _d('Got an END without any data, firing NOT_FOUND');
+         PTDEBUG && _d('Got an END without any data, firing NOT_FOUND');
          $session->{res} = 'NOT_FOUND';
       }
       elsif ( $session->{res} !~ m/STORED|DELETED|NOT_FOUND/ ) {
          # Not really sure what else would get us here... want to make a note
          # and not have an uncaught condition.
-         MKDEBUG && _d('Unknown result');
+         PTDEBUG && _d('Unknown result');
       }
       else {
          $args{stats}->{unknown_server_response}++ if $args{stats};
       }
    }
    else { # Should be 'partial recv'
-      MKDEBUG && _d('Session state: ', $session->{state});
+      PTDEBUG && _d('Session state: ', $session->{state});
       push @{$session->{partial}}, [ $packet->{seq}, $data ];
       $session->{gathered} += length($data);
-      MKDEBUG && _d('Gathered', $session->{gathered}, 'bytes in',
+      PTDEBUG && _d('Gathered', $session->{gathered}, 'bytes in',
          scalar(@{$session->{partial}}), 'packets from server');
       if ( $session->{gathered} >= $session->{bytes} + 2 ) { # Done.
-         MKDEBUG && _d('End of partial response, preparing event');
+         PTDEBUG && _d('End of partial response, preparing event');
          my $val = join('',
             map  { $_->[1] }
             # Sort in proper sequence because TCP might reorder them.
@@ -227,12 +227,12 @@ sub _packet_from_server {
          $session->{val} = substr($val, 0, $session->{bytes});
       }
       else {
-         MKDEBUG && _d('Partial response continues, no action');
+         PTDEBUG && _d('Partial response continues, no action');
          return; # Prevent firing event.
       }
    }
 
-   MKDEBUG && _d('Creating event, deleting session');
+   PTDEBUG && _d('Creating event, deleting session');
    my $event = make_event($session, $packet);
    delete $self->{sessions}->{$session->{client}}; # memcached is stateless!
    $session->{raw_packets} = []; # Avoid keeping forever
@@ -245,13 +245,13 @@ sub _packet_from_client {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   MKDEBUG && _d('Packet is from client; state:', $session->{state});
+   PTDEBUG && _d('Packet is from client; state:', $session->{state});
 
    my $event;
    if ( ($session->{state} || '') =~m/awaiting reply|partial recv/ ) {
       # Whoa, we expected something from the server, not the client.  Fire an
       # INTERRUPTED with what we've got, and create a new session.
-      MKDEBUG && _d("Expected data from the client, looks like interrupted");
+      PTDEBUG && _d("Expected data from the client, looks like interrupted");
       $session->{res} = 'INTERRUPTED';
       $event = make_event($session, $packet);
       my $client = $session->{client};
@@ -263,11 +263,11 @@ sub _packet_from_client {
    my ($cmd, $key, $flags, $exptime, $bytes);
    
    if ( !$session->{state} ) {
-      MKDEBUG && _d('Session state: ', $session->{state});
+      PTDEBUG && _d('Session state: ', $session->{state});
       # Split up the first line into its parts.
       ($line1, $val) = $packet->{data} =~ m/\A(.*?)\r\n(.+)?/s;
       if ( !$line1 ) {
-         MKDEBUG && _d('Unknown memcached data from client, skipping packet');
+         PTDEBUG && _d('Unknown memcached data from client, skipping packet');
          $args{stats}->{unknown_client_data}++ if $args{stats};
          return;
       }
@@ -275,7 +275,7 @@ sub _packet_from_client {
       # TODO: handle <cas unique> and [noreply]
       my @vals = $line1 =~ m/(\S+)/g;
       $cmd = lc shift @vals;
-      MKDEBUG && _d('$cmd is a ', $cmd);
+      PTDEBUG && _d('$cmd is a ', $cmd);
       if ( $cmd eq 'set' || $cmd eq 'add' || $cmd eq 'replace' ) {
          ($key, $flags, $exptime, $bytes) = @vals;
          $session->{bytes} = $bytes;
@@ -283,14 +283,14 @@ sub _packet_from_client {
       elsif ( $cmd eq 'get' ) {
          ($key) = @vals;
          if ( $val ) {
-            MKDEBUG && _d('Multiple cmds:', $val);
+            PTDEBUG && _d('Multiple cmds:', $val);
             $val = undef;
          }
       }
       elsif ( $cmd eq 'delete' ) {
          ($key) = @vals; # TODO: handle the <queue_time>
          if ( $val ) {
-            MKDEBUG && _d('Multiple cmds:', $val);
+            PTDEBUG && _d('Multiple cmds:', $val);
             $val = undef;
          }
       }
@@ -298,7 +298,7 @@ sub _packet_from_client {
          ($key) = @vals;
       }
       else {
-         MKDEBUG && _d("Don't know how to handle", $cmd, "command");
+         PTDEBUG && _d("Don't know how to handle", $cmd, "command");
          $args{stats}->{unknown_client_command}++ if $args{stats};
          return;
       }
@@ -310,7 +310,7 @@ sub _packet_from_client {
       $session->{ts}         = $packet->{ts};
    }
    else {
-      MKDEBUG && _d('Session state: ', $session->{state});
+      PTDEBUG && _d('Session state: ', $session->{state});
       $val = $packet->{data};
    }
 
@@ -320,19 +320,19 @@ sub _packet_from_client {
    $session->{state} = 'awaiting reply'; # Assume we got the whole packet
    if ( $val ) {
       if ( $session->{bytes} + 2 == length($val) ) { # +2 for the \r\n
-         MKDEBUG && _d('Complete send');
+         PTDEBUG && _d('Complete send');
          $val =~ s/\r\n\Z//; # We got the whole thing.
          $session->{val} = $val;
       }
       else { # We apparently did NOT get the whole thing.
-         MKDEBUG && _d('Partial send, saving for later');
+         PTDEBUG && _d('Partial send, saving for later');
          push @{$session->{partial}},
             [ $packet->{seq}, $val ];
          $session->{gathered} += length($val);
-         MKDEBUG && _d('Gathered', $session->{gathered}, 'bytes in',
+         PTDEBUG && _d('Gathered', $session->{gathered}, 'bytes in',
             scalar(@{$session->{partial}}), 'packets from client');
          if ( $session->{gathered} >= $session->{bytes} + 2 ) { # Done.
-            MKDEBUG && _d('Message looks complete now, saving value');
+            PTDEBUG && _d('Message looks complete now, saving value');
             $val = join('',
                map  { $_->[1] }
                # Sort in proper sequence because TCP might reorder them.
@@ -342,7 +342,7 @@ sub _packet_from_client {
             $session->{val} = $val;
          }
          else {
-            MKDEBUG && _d('Message not complete');
+            PTDEBUG && _d('Message not complete');
             $val = '[INCOMPLETE]';
             $session->{state} = 'partial send';
          }
@@ -382,7 +382,7 @@ sub _get_errors_fh {
    my $o = $self->{o};
    if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
       my $errors_file = $o->get('tcpdump-errors');
-      MKDEBUG && _d('tcpdump-errors file:', $errors_file);
+      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
       open $errors_fh, '>>', $errors_file
          or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
    }

@@ -38,7 +38,7 @@ package MySQLConfig;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my %can_be_duplicate = (
    replicate_wild_do_table     => 1,
@@ -112,7 +112,7 @@ sub _parse_config {
    elsif ( my $dbh = $args{dbh} ) {
       $config_data{format} = $args{format} || 'show_variables';
       my $sql = "SHOW /*!40103 GLOBAL*/ VARIABLES";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       my $rows = $dbh->selectall_arrayref($sql);
       $config_data{vars} = { map { @$_ } @$rows };
       $config_data{mysql_version} = _get_version($dbh);
@@ -131,7 +131,7 @@ sub _parse_config_output {
       die "I need a $arg arugment" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
-   MKDEBUG && _d("Parsing config output");
+   PTDEBUG && _d("Parsing config output");
 
    my $format = $args{format} || detect_config_output_format(%args);
    if ( !$format ) {
@@ -189,22 +189,22 @@ sub detect_config_output_format {
         || $output =~ m/Variable_name:\s+\w+/
         || $output =~ m/Variable_name\s+Value$/m )
    {
-      MKDEBUG && _d('show variables format');
+      PTDEBUG && _d('show variables format');
       $format = 'show_variables';
    }
    elsif (    $output =~ m/Starts the MySQL database server/
            || $output =~ m/Default options are read from /
            || $output =~ m/^help\s+TRUE /m )
    {
-      MKDEBUG && _d('mysqld format');
+      PTDEBUG && _d('mysqld format');
       $format = 'mysqld';
    }
    elsif ( $output =~ m/^--\w+/m ) {
-      MKDEBUG && _d('my_print_defaults format');
+      PTDEBUG && _d('my_print_defaults format');
       $format = 'my_print_defaults';
    }
    elsif ( $output =~ m/^\s*\[[a-zA-Z]+\]\s*$/m ) {
-      MKDEBUG && _d('option file format');
+      PTDEBUG && _d('option file format');
       $format = 'option_file',
    }
 
@@ -246,10 +246,10 @@ sub parse_mysqld {
       my ($opt_files) = $output =~ m/\G^(.+)\n/m;
       my %seen;
       my @opt_files = grep { !$seen{$_} } split(' ', $opt_files);
-      MKDEBUG && _d('Option files:', @opt_files);
+      PTDEBUG && _d('Option files:', @opt_files);
    }
    else {
-      MKDEBUG && _d("mysqld help output doesn't list option files");
+      PTDEBUG && _d("mysqld help output doesn't list option files");
    }
 
    # The list of sys vars and their default vals begins like:
@@ -260,7 +260,7 @@ sub parse_mysqld {
    #   abort-slave-event-count           0
    # So we search for that line of hypens.
    if ( $output !~ m/^-+ -+$/mg ) {
-      MKDEBUG && _d("mysqld help output doesn't list vars and vals");
+      PTDEBUG && _d("mysqld help output doesn't list vars and vals");
       return;
    }
 
@@ -356,14 +356,14 @@ sub _parse_varvals {
          # be duplicated.  We don't have its value yet (next loop iter),
          # so we set a flag to indicate that we should save the duplicate value.
          if ( exists $config{$var} && !$can_be_duplicate{$var} ) {
-            MKDEBUG && _d("Duplicate var:", $var);
+            PTDEBUG && _d("Duplicate var:", $var);
             $duplicate_var = 1;  # flag on, save all the var's values
          }
       }
       else {
          # $var is set so this item should be its value.
          my $val = $item;
-         MKDEBUG && _d("Var:", $var, "val:", $val);
+         PTDEBUG && _d("Var:", $var, "val:", $val);
 
          # Avoid crashing on undef comparison.  Also, SHOW VARIABLES uses
          # blank strings, not NULL/undef.
@@ -451,7 +451,7 @@ sub _mimic_show_variables {
 sub _slurp_file {
    my ( $file ) = @_;
    die "I need a file argument" unless $file;
-   MKDEBUG && _d("Reading", $file);
+   PTDEBUG && _d("Reading", $file);
    open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
@@ -463,7 +463,7 @@ sub _get_version {
    return unless $dbh;
    my $version = $dbh->selectrow_arrayref('SELECT VERSION()')->[0];
    $version =~ s/(\d\.\d{1,2}.\d{1,2})/$1/;
-   MKDEBUG && _d('MySQL version', $version);
+   PTDEBUG && _d('MySQL version', $version);
    return $version;
 }
 

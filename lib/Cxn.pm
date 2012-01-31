@@ -35,7 +35,7 @@ package Cxn;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Hostnames make testing less accurate.  Tests need to see
 # that such-and-such happened on specific slave hosts, but
@@ -124,7 +124,7 @@ sub connect {
       }
       $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
    }
-   MKDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
 
    return $self->set_dbh($dbh);
 }
@@ -140,11 +140,11 @@ sub set_dbh {
    # MasterSlave makes dbhs when finding slaves, but it doesn't set
    # anything.
    if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
-      MKDEBUG && _d($dbh, 'Already set dbh');
+      PTDEBUG && _d($dbh, 'Already set dbh');
       return $dbh;
    }
 
-   MKDEBUG && _d($dbh, 'Setting dbh');
+   PTDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
    $dbh->{FetchHashKeyName} = 'NAME_lc';
@@ -152,9 +152,9 @@ sub set_dbh {
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
    my $sql = 'SELECT @@hostname, @@server_id';
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my ($hostname, $server_id) = $dbh->selectrow_array($sql);
-   MKDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
    if ( $hostname ) {
       $self->{hostname} = $hostname;
    }
@@ -194,7 +194,7 @@ sub name {
 sub DESTROY {
    my ($self) = @_;
    if ( $self->{dbh} ) {
-      MKDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
    return;

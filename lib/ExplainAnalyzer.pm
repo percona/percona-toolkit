@@ -28,7 +28,7 @@ package ExplainAnalyzer;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -60,14 +60,14 @@ sub explain_query {
    my ($query, $dbh) = @args{qw(query dbh)};
    $query = $self->{QueryRewriter}->convert_to_select($query);
    if ( $query !~ m/^\s*select/i ) {
-      MKDEBUG && _d("Cannot EXPLAIN non-SELECT query:",
+      PTDEBUG && _d("Cannot EXPLAIN non-SELECT query:",
          (length $query <= 100 ? $query : substr($query, 0, 100) . "..."));
       return;
    }
    my $sql = "EXPLAIN $query";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my $explain = $dbh->selectall_arrayref($sql, { Slice => {} });
-   MKDEBUG && _d("Result of EXPLAIN:", Dumper($explain));
+   PTDEBUG && _d("Result of EXPLAIN:", Dumper($explain));
    return $explain;
 }
 
@@ -167,7 +167,7 @@ sub get_index_usage {
       };
    }
 
-   MKDEBUG && _d("Index usage for",
+   PTDEBUG && _d("Index usage for",
       (length $query <= 100 ? $query : substr($query, 0, 100) . "..."),
       ":", Dumper(\@result));
    return \@result;
@@ -191,7 +191,7 @@ sub get_usage_for {
    {
       $usage = $self->{usage}->{$db}->{$checksum};
    }
-   MKDEBUG && _d("Usage for",
+   PTDEBUG && _d("Usage for",
       (length $checksum <= 100 ? $checksum : substr($checksum, 0, 100) . "..."),
       "on", $db, ":", Dumper($usage));
    return $usage;
@@ -263,7 +263,7 @@ sub sparkline {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($explain) = @args{@required_args};
-   MKDEBUG && _d("Making sparkline for", Dumper($explain));
+   PTDEBUG && _d("Making sparkline for", Dumper($explain));
 
    my $access_code = {
       'ALL'             => 'a',
@@ -307,7 +307,7 @@ sub sparkline {
       }
    }
 
-   MKDEBUG && _d("sparkline:", $sparkline);
+   PTDEBUG && _d("sparkline:", $sparkline);
    return $sparkline;
 }
 

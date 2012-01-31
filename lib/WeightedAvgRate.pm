@@ -25,7 +25,7 @@ package WeightedAvgRate;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -67,23 +67,23 @@ sub new {
 #   n adjust to meet target_t based on weighted decaying avg rate
 sub update {
    my ($self, $n, $t) = @_;
-   MKDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
+   PTDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
 
    if ( $self->{avg_n} && $self->{avg_t} ) {
       $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
       $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
       $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
-      MKDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
+      PTDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
    }
    else {
       $self->{avg_n}    = $n;
       $self->{avg_t}    = $t;
       $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
-      MKDEBUG && _d('Initial avg rate:', $self->{avg_rate}, 'n/s');
+      PTDEBUG && _d('Initial avg rate:', $self->{avg_rate}, 'n/s');
    }
 
    my $new_n = int($self->{avg_rate} * $self->{target_t});
-   MKDEBUG && _d('Adjust n to', $new_n);
+   PTDEBUG && _d('Adjust n to', $new_n);
    return $new_n;
 }
 

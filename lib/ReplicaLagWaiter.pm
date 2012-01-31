@@ -25,7 +25,7 @@ package ReplicaLagWaiter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::HiRes qw(sleep time);
 use Data::Dumper;
@@ -112,10 +112,10 @@ sub wait {
    # First check all slaves.
    my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
    while ( $oktorun->() && @lagged_slaves ) {
-      MKDEBUG && _d('Checking slave lag');
+      PTDEBUG && _d('Checking slave lag');
       for my $i ( 0..$#lagged_slaves ) {
          my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
-         MKDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
+         PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
             'slave lag:', $lag);
          if ( !defined $lag || $lag > $max_lag ) {
             $lagged_slaves[$i]->{lag} = $lag;
@@ -135,7 +135,7 @@ sub wait {
             :                                           1;
          } @lagged_slaves;
          $worst = $lagged_slaves[0];
-         MKDEBUG && _d(scalar @lagged_slaves, 'slaves are lagging, worst:',
+         PTDEBUG && _d(scalar @lagged_slaves, 'slaves are lagging, worst:',
             $worst->{lag}, 'on', Dumper($worst->{cxn}->dsn()));
 
          if ( $pr ) {
@@ -149,12 +149,12 @@ sub wait {
             );
          }
 
-         MKDEBUG && _d('Calling sleep callback');
+         PTDEBUG && _d('Calling sleep callback');
          $sleep->($worst->{cxn}, $worst->{lag});
       }
    }
 
-   MKDEBUG && _d('All slaves caught up');
+   PTDEBUG && _d('All slaves caught up');
    return;
 }
 

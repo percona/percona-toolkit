@@ -26,7 +26,7 @@ use base 'ProtocolParser';
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # server is the "host:port" of the sever being watched.  It's auto-guessed if
 # not specified.
@@ -46,12 +46,12 @@ sub _packet_from_server {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   MKDEBUG && _d('Packet is from server; client state:', $session->{state}); 
+   PTDEBUG && _d('Packet is from server; client state:', $session->{state}); 
 
    # If there's no session state, then we're catching a server response
    # mid-stream.
    if ( !$session->{state} ) {
-      MKDEBUG && _d('Ignoring mid-stream server response');
+      PTDEBUG && _d('Ignoring mid-stream server response');
       return;
    }
 
@@ -67,7 +67,7 @@ sub _packet_from_server {
       if ( $line1 ) {
          $session->{have_header} = 1;
          $packet->{content_len}  = length $content;
-         MKDEBUG && _d('Got out of order header with',
+         PTDEBUG && _d('Got out of order header with',
             $packet->{content_len}, 'bytes of content');
       }
       my $have_len = $packet->{content_len} || $packet->{data_len};
@@ -76,7 +76,7 @@ sub _packet_from_server {
       $session->{have_all_packets}
          = 1 if $session->{attribs}->{bytes}
                 && $have_len >= $session->{attribs}->{bytes};
-      MKDEBUG && _d('Have', $have_len, 'of', $session->{attribs}->{bytes});
+      PTDEBUG && _d('Have', $have_len, 'of', $session->{attribs}->{bytes});
       return;
    }
 
@@ -106,17 +106,17 @@ sub _packet_from_server {
       # E.g.:                 HTTP/1.1  200 OK
       my ($version, $code, $phrase) = $line1 =~ m/(\S+)/g;
       $session->{attribs}->{Status_code} = $code;
-      MKDEBUG && _d('Status code for last', $session->{attribs}->{arg},
+      PTDEBUG && _d('Status code for last', $session->{attribs}->{arg},
          'request:', $session->{attribs}->{Status_code});
 
       my $content_len = $content ? length $content : 0;
-      MKDEBUG && _d('Got', $content_len, 'bytes of content');
+      PTDEBUG && _d('Got', $content_len, 'bytes of content');
       if ( $session->{attribs}->{bytes}
            && $content_len < $session->{attribs}->{bytes} ) {
          $session->{data_len}  = $session->{attribs}->{bytes};
          $session->{buff}      = $content;
          $session->{buff_left} = $session->{attribs}->{bytes} - $content_len;
-         MKDEBUG && _d('Contents not complete,', $session->{buff_left},
+         PTDEBUG && _d('Contents not complete,', $session->{buff_left},
             'bytes left');
          $session->{state} = 'recving content';
          return;
@@ -124,11 +124,11 @@ sub _packet_from_server {
    }
    elsif ( $session->{state} eq 'recving content' ) {
       if ( $session->{buff} ) {
-         MKDEBUG && _d('Receiving content,', $session->{buff_left},
+         PTDEBUG && _d('Receiving content,', $session->{buff_left},
             'bytes left');
          return;
       }
-      MKDEBUG && _d('Contents received');
+      PTDEBUG && _d('Contents received');
    }
    else {
       # TODO:
@@ -136,7 +136,7 @@ sub _packet_from_server {
       return;
    }
 
-   MKDEBUG && _d('Creating event, deleting session');
+   PTDEBUG && _d('Creating event, deleting session');
    $session->{end_reply} = $session->{ts_max} || $packet->{ts};
    my $event = $self->make_event($session, $packet);
    delete $self->{sessions}->{$session->{client}}; # http is stateless!
@@ -149,11 +149,11 @@ sub _packet_from_client {
    die "I need a packet"  unless $packet;
    die "I need a session" unless $session;
 
-   MKDEBUG && _d('Packet is from client; state:', $session->{state});
+   PTDEBUG && _d('Packet is from client; state:', $session->{state});
 
    my $event;
    if ( ($session->{state} || '') =~ m/awaiting / ) {
-      MKDEBUG && _d('More client headers:', $packet->{data});
+      PTDEBUG && _d('More client headers:', $packet->{data});
       return;
    }
 
@@ -164,19 +164,19 @@ sub _packet_from_client {
       # E.g.:                 GET     /foo.html HTTP/1.1
       my ($request, $page, $version) = $line1 =~ m/(\S+)/g;
       if ( !$request || !$page ) {
-         MKDEBUG && _d("Didn't get a request or page:", $request, $page);
+         PTDEBUG && _d("Didn't get a request or page:", $request, $page);
          return;
       }
       $request = lc $request;
       my $vh   = $session->{attribs}->{Virtual_host} || '';
       my $arg = "$request $vh$page";
-      MKDEBUG && _d('arg:', $arg);
+      PTDEBUG && _d('arg:', $arg);
 
       if ( $request eq 'get' || $request eq 'post' ) {
          @{$session->{attribs}}{qw(arg)} = ($arg);
       }
       else {
-         MKDEBUG && _d("Don't know how to handle a", $request, "request");
+         PTDEBUG && _d("Don't know how to handle a", $request, "request");
          return;
       }
 
@@ -198,30 +198,30 @@ sub _parse_header {
    die "I need data" unless $data;
    my ($header, $content)    = split(/\r\n\r\n/, $data);
    my ($line1, $header_vals) = $header  =~ m/\A(\S+ \S+ .+?)\r\n(.+)?/s;
-   MKDEBUG && _d('HTTP header:', $line1);
+   PTDEBUG && _d('HTTP header:', $line1);
    return unless $line1;
 
    if ( !$header_vals ) {
-      MKDEBUG && _d('No header vals');
+      PTDEBUG && _d('No header vals');
       return $line1, undef;
    }
    my @headers;
    foreach my $val ( split(/\r\n/, $header_vals) ) {
       last unless $val;
       # Capture and save any useful header values.
-      MKDEBUG && _d('HTTP header:', $val);
+      PTDEBUG && _d('HTTP header:', $val);
       if ( $val =~ m/^Content-Length/i ) {
          ($session->{attribs}->{bytes}) = $val =~ /: (\d+)/;
-         MKDEBUG && _d('Saved Content-Length:', $session->{attribs}->{bytes});
+         PTDEBUG && _d('Saved Content-Length:', $session->{attribs}->{bytes});
       }
       if ( $val =~ m/Content-Encoding/i ) {
          ($session->{compressed}) = $val =~ /: (\w+)/;
-         MKDEBUG && _d('Saved Content-Encoding:', $session->{compressed});
+         PTDEBUG && _d('Saved Content-Encoding:', $session->{compressed});
       }
       if ( $val =~ m/^Host/i ) {
          # The "host" attribute is already taken, so we call this "domain".
          ($session->{attribs}->{Virtual_host}) = $val =~ /: (\S+)/;
-         MKDEBUG && _d('Saved Host:', ($session->{attribs}->{Virtual_host}));
+         PTDEBUG && _d('Saved Host:', ($session->{attribs}->{Virtual_host}));
       }
    }
    return $line1, $content;

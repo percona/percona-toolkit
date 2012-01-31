@@ -32,7 +32,7 @@ package TableSyncChunk;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -96,7 +96,7 @@ sub can_sync {
    # columns found above.
    my $colno;
    if ( $args{chunk_col} || $args{chunk_index} ) {
-      MKDEBUG && _d('Checking requested col', $args{chunk_col},
+      PTDEBUG && _d('Checking requested col', $args{chunk_col},
          'and/or index', $args{chunk_index});
       for my $i ( 0..$#chunkable_cols ) {
          if ( $args{chunk_col} ) {
@@ -110,7 +110,7 @@ sub can_sync {
       }
 
       if ( !$colno ) {
-         MKDEBUG && _d('Cannot chunk on column', $args{chunk_col},
+         PTDEBUG && _d('Cannot chunk on column', $args{chunk_col},
             'and/or using index', $args{chunk_index});
          return;
       }
@@ -119,7 +119,7 @@ sub can_sync {
       $colno = 0;  # First, best chunkable column/index.
    }
 
-   MKDEBUG && _d('Can chunk on column', $chunkable_cols[$colno]->{column},
+   PTDEBUG && _d('Can chunk on column', $chunkable_cols[$colno]->{column},
       'using index', $chunkable_cols[$colno]->{index});
    return (
       1,
@@ -156,7 +156,7 @@ sub prepare_to_sync {
       @chunks = $chunker->calculate_chunks(%args, %range_params);
    }
    else {
-      MKDEBUG && _d('No range statistics; using single chunk 1=1');
+      PTDEBUG && _d('No range statistics; using single chunk 1=1');
       @chunks = '1=1';
    }
 
@@ -183,7 +183,7 @@ sub set_checksum_queries {
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
    my $sql = 'SET @crc := "", @cnt := 0';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;
 }
@@ -242,8 +242,8 @@ sub same_row {
    }
    elsif ( $lr->{cnt} != $rr->{cnt} || $lr->{crc} ne $rr->{crc} ) {
       # checksumming a chunk of rows
-      MKDEBUG && _d('Rows:', Dumper($lr, $rr));
-      MKDEBUG && _d('Will examine this chunk before moving to next');
+      PTDEBUG && _d('Rows:', Dumper($lr, $rr));
+      PTDEBUG && _d('Will examine this chunk before moving to next');
       $self->{state} = 1; # Must examine this chunk row-by-row
    }
 }
@@ -300,7 +300,7 @@ sub done_with_rows {
    if ( $self->{state} == 1 ) {
       # The chunk of rows differed, now checksum the rows.
       $self->{state} = 2;
-      MKDEBUG && _d('Setting state =', $self->{state});
+      PTDEBUG && _d('Setting state =', $self->{state});
    }
    else {
       # State might be 0 or 2.  If 0 then the chunk of rows was the same
@@ -309,7 +309,7 @@ sub done_with_rows {
       # next chunk.
       $self->{state} = 0;
       $self->{chunk_num}++;
-      MKDEBUG && _d('Setting state =', $self->{state},
+      PTDEBUG && _d('Setting state =', $self->{state},
          'chunk_num =', $self->{chunk_num});
    }
    return;
@@ -317,9 +317,9 @@ sub done_with_rows {
 
 sub done {
    my ( $self ) = @_;
-   MKDEBUG && _d('Done with', $self->{chunk_num}, 'of',
+   PTDEBUG && _d('Done with', $self->{chunk_num}, 'of',
       scalar(@{$self->{chunks}}), 'chunks');
-   MKDEBUG && $self->{state} && _d('Chunk differs; must examine rows');
+   PTDEBUG && $self->{state} && _d('Chunk differs; must examine rows');
    return $self->{state} == 0
       && $self->{chunk_num} >= scalar(@{$self->{chunks}})
 }
@@ -327,13 +327,13 @@ sub done {
 sub pending_changes {
    my ( $self ) = @_;
    if ( $self->{state} ) {
-      MKDEBUG && _d('There are pending changes');
+      PTDEBUG && _d('There are pending changes');
       # There are pending changes because in state 1 or 2 the chunk of rows
       # differs so there's at least 1 row that differs and needs to be changed.
       return 1;
    }
    else {
-      MKDEBUG && _d('No pending changes');
+      PTDEBUG && _d('No pending changes');
       return 0;
    }
 }
@@ -347,7 +347,7 @@ sub key_cols {
    else {
       @cols = $self->{chunk_col};
    }
-   MKDEBUG && _d('State', $self->{state},',', 'key cols', join(', ', @cols));
+   PTDEBUG && _d('State', $self->{state},',', 'key cols', join(', ', @cols));
    return \@cols;
 }
 
