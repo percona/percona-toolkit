@@ -31,7 +31,7 @@ package IndexUsage;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -181,7 +181,7 @@ sub add_index_usage {
 sub find_unused_indexes {
    my ( $self, $callback ) = @_;
    die "I need a callback" unless $callback;
-   MKDEBUG && _d("Finding unused indexes");
+   PTDEBUG && _d("Finding unused indexes");
 
    DATABASE:
    foreach my $db ( sort keys %{$self->{indexes_for}} ) {
@@ -233,9 +233,9 @@ sub save_results {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($dbh, $db) = @args{@required_args};
-   MKDEBUG && _d("Saving results to tables in database", $db);
+   PTDEBUG && _d("Saving results to tables in database", $db);
 
-   MKDEBUG && _d("Saving index data");
+   PTDEBUG && _d("Saving index data");
    my $insert_index_sth = $dbh->prepare(
       "INSERT INTO `$db`.`indexes` (db, tbl, idx, cnt) VALUES (?, ?, ?, ?) "
       . "ON DUPLICATE KEY UPDATE cnt = cnt + ?");
@@ -248,7 +248,7 @@ sub save_results {
       }
    }
 
-   MKDEBUG && _d("Saving table data");
+   PTDEBUG && _d("Saving table data");
    my $insert_tbl_sth = $dbh->prepare(
       "INSERT INTO `$db`.`tables` (db, tbl, cnt) VALUES (?, ?, ?) "
       . "ON DUPLICATE KEY UPDATE cnt = cnt + ?");
@@ -259,7 +259,7 @@ sub save_results {
       }
    }
 
-   MKDEBUG && _d("Save query data");
+   PTDEBUG && _d("Save query data");
    my $insert_query_sth = $dbh->prepare(
       "INSERT IGNORE INTO `$db`.`queries` (query_id, fingerprint, sample) "
       . " VALUES (CONV(?, 16, 10), ?, ?)");
@@ -269,7 +269,7 @@ sub save_results {
          $query_id, $query->{fingerprint}, $query->{sample});
    }
 
-   MKDEBUG && _d("Saving index usage data");
+   PTDEBUG && _d("Saving index usage data");
    my $insert_index_usage_sth = $dbh->prepare(
       "INSERT INTO `$db`.`index_usage` (query_id, db, tbl, idx, cnt) "
       . "VALUES (CONV(?, 16, 10), ?, ?, ?, ?) "
@@ -287,7 +287,7 @@ sub save_results {
       }
    }
 
-   MKDEBUG && _d("Saving alternate index usage data");
+   PTDEBUG && _d("Saving alternate index usage data");
    my $insert_index_alt_sth = $dbh->prepare(
       "INSERT INTO `$db`.`index_alternatives` "
       . "(query_id, db, tbl, idx, alt_idx, cnt) "

@@ -25,7 +25,7 @@ package TCPRequestAggregator;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(sum);
 use Data::Dumper;
@@ -76,21 +76,21 @@ sub parse_event {
 
    EVENT:
    while ( 1 ) {
-      MKDEBUG && _d("Beginning a loop at pos", $pos_in_log);
+      PTDEBUG && _d("Beginning a loop at pos", $pos_in_log);
       my ( $id, $start, $elapsed );
 
       my ($timestamp, $direction);
       if ( $self->{pending} ) {
          ( $id, $start, $elapsed ) = @{$self->{pending}};
-         MKDEBUG && _d("Pulled from pending", @{$self->{pending}});
+         PTDEBUG && _d("Pulled from pending", @{$self->{pending}});
       }
       elsif ( defined(my $line = $next_event->()) ) {
          # Split the line into ID, start, end, elapsed, and host:port
          my ($end, $host_port);
          ( $id, $start, $end, $elapsed, $host_port ) = $line =~ m/(\S+)/g;
          @$buffer = sort { $a <=> $b } ( @$buffer, $end );
-         MKDEBUG && _d("Read from the file", $id, $start, $end, $elapsed, $host_port);
-         MKDEBUG && _d("Buffer is now", @$buffer);
+         PTDEBUG && _d("Read from the file", $id, $start, $end, $elapsed, $host_port);
+         PTDEBUG && _d("Buffer is now", @$buffer);
       }
       if ( $start ) { # Test that we got a line; $id can be 0.
          # We have a line to work on.  The next event we need to process is the
@@ -101,33 +101,33 @@ sub parse_event {
             $timestamp       = shift @$buffer;
             $self->{pending} = [ $id, $start, $elapsed ];
             $id = $start = $elapsed = undef;
-            MKDEBUG && _d("Completion: using buffered end value", $timestamp);
-            MKDEBUG && _d("Saving line to pending", @{$self->{pending}});
+            PTDEBUG && _d("Completion: using buffered end value", $timestamp);
+            PTDEBUG && _d("Saving line to pending", @{$self->{pending}});
          }
          else {
             $direction       = 'A'; # Arrival
             $timestamp       = $start;
             $self->{pending} = undef;
-            MKDEBUG && _d("Deleting pending line");
-            MKDEBUG && _d("Arrival: using the line");
+            PTDEBUG && _d("Deleting pending line");
+            PTDEBUG && _d("Arrival: using the line");
          }
       }
       elsif ( @$buffer ) {
          $direction = 'C';
          $timestamp = shift @$buffer;
-         MKDEBUG && _d("No more lines, reading from buffer", $timestamp);
+         PTDEBUG && _d("No more lines, reading from buffer", $timestamp);
       }
       else { # We hit EOF.
-         MKDEBUG && _d("No more lines, no more buffered end times");
+         PTDEBUG && _d("No more lines, no more buffered end times");
          if ( $self->{in_prg} ) {
             die "Error: no more lines, but in_prg = $self->{in_prg}";
          }
          if ( $self->{t_start} < $self->{current_ts} ) {
-            MKDEBUG && _d("Returning event based on what's been seen");
+            PTDEBUG && _d("Returning event based on what's been seen");
             return $self->make_event($self->{t_start}, $self->{current_ts});
          }
          else {
-            MKDEBUG && _d("No further events to make");
+            PTDEBUG && _d("No further events to make");
             return;
          }
       }
@@ -137,19 +137,19 @@ sub parse_event {
       # $interval precision.
       my $t_start = int($timestamp / $self->{interval}) * $self->{interval};
       $self->{t_start} ||= $timestamp; # Not $t_start; that'd skew 1st interval.
-      MKDEBUG && _d("Timestamp", $timestamp, "interval start time", $t_start);
+      PTDEBUG && _d("Timestamp", $timestamp, "interval start time", $t_start);
 
       # If $timestamp is not within the current interval, then we need to save
       # everything for later, compute stats for the rest of this interval, and
       # return an event.  The next time we are called, we'll begin the next
       # interval.  
       if ( $t_start > $self->{t_start} ) {
-         MKDEBUG && _d("Timestamp doesn't belong to this interval");
+         PTDEBUG && _d("Timestamp doesn't belong to this interval");
          # We need to compute how much time is left in this interval, and add
          # that much busy_time and weighted_time to the running totals, but only
          # if there is some request in progress.
          if ( $self->{in_prg} ) {
-            MKDEBUG && _d("Computing from", $self->{current_ts}, "to", $t_start);
+            PTDEBUG && _d("Computing from", $self->{current_ts}, "to", $t_start);
             $self->{busy_time}     += $t_start - $self->{current_ts};
             $self->{weighted_time} += ($t_start - $self->{current_ts}) * $self->{in_prg};
          }
@@ -179,20 +179,20 @@ sub parse_event {
             # skew this computation.  But $self->{in_prg} will be 0 also, and
             # $self->{current_ts} will get set immediately after this, so
             # anytime this if() block runs, it'll be OK.
-            MKDEBUG && _d("Computing from", $self->{current_ts}, "to", $timestamp);
+            PTDEBUG && _d("Computing from", $self->{current_ts}, "to", $timestamp);
             $self->{busy_time}     += $timestamp - $self->{current_ts};
             $self->{weighted_time} += ($timestamp - $self->{current_ts}) * $self->{in_prg};
          }
          $self->{current_ts} = $timestamp;
          if ( $direction eq 'A' ) {
-            MKDEBUG && _d("Direction A", $timestamp);
+            PTDEBUG && _d("Direction A", $timestamp);
             ++$self->{in_prg};
             if ( defined $elapsed ) {
                push @{$self->{response_times}}, $elapsed;
             }
          }
          else {
-            MKDEBUG && _d("Direction C", $timestamp);
+            PTDEBUG && _d("Direction C", $timestamp);
             --$self->{in_prg};
             ++$self->{completions};
          }
@@ -264,7 +264,7 @@ sub make_event {
    $self->{last_completions}   = $self->{completions};
    $self->{response_times}     = [];
 
-   MKDEBUG && _d("Event is", Dumper($event));
+   PTDEBUG && _d("Event is", Dumper($event));
    return $event;
 }
 

@@ -33,7 +33,7 @@ package TableSyncNibble;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -73,19 +73,19 @@ sub can_sync {
    # so it is an indication that the nibble algorithm will work.
    my $nibble_index = $self->{TableParser}->find_best_index($args{tbl_struct});
    if ( $nibble_index ) {
-      MKDEBUG && _d('Best nibble index:', Dumper($nibble_index));
+      PTDEBUG && _d('Best nibble index:', Dumper($nibble_index));
       if ( !$args{tbl_struct}->{keys}->{$nibble_index}->{is_unique} ) {
-         MKDEBUG && _d('Best nibble index is not unique');
+         PTDEBUG && _d('Best nibble index is not unique');
          return;
       }
       if ( $args{chunk_index} && $args{chunk_index} ne $nibble_index ) {
-         MKDEBUG && _d('Best nibble index is not requested index',
+         PTDEBUG && _d('Best nibble index is not requested index',
             $args{chunk_index});
          return;
       }
    }
    else {
-      MKDEBUG && _d('No best nibble index returned');
+      PTDEBUG && _d('No best nibble index returned');
       return;
    }
 
@@ -102,10 +102,10 @@ sub can_sync {
       eval {
          my $sql = "SHOW TABLE STATUS FROM `$db` LIKE "
                  . $self->{Quoter}->literal_like($tbl);
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $table_status = $dbh->selectrow_hashref($sql);
       };
-      MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
       if ( $table_status ) {
          my $n_rows   = defined $table_status->{Rows} ? $table_status->{Rows}
                       : defined $table_status->{rows} ? $table_status->{rows}
@@ -113,9 +113,9 @@ sub can_sync {
          $small_table = 1 if defined $n_rows && $n_rows <= 100;
       }
    }
-   MKDEBUG && _d('Small table:', $small_table);
+   PTDEBUG && _d('Small table:', $small_table);
 
-   MKDEBUG && _d('Can nibble using index', $nibble_index);
+   PTDEBUG && _d('Can nibble using index', $nibble_index);
    return (
       1,
       chunk_index => $nibble_index,
@@ -183,7 +183,7 @@ sub set_checksum_queries {
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
    my $sql = 'SET @crc := "", @cnt := 0';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;
 }
@@ -245,7 +245,7 @@ sub __get_boundaries {
    my $row;  # Next upper boundary row or cached_row
 
    if ( $self->{cached_boundaries} ) {
-      MKDEBUG && _d('Using cached boundaries');
+      PTDEBUG && _d('Using cached boundaries');
       return $self->{cached_boundaries};
    }
 
@@ -255,11 +255,11 @@ sub __get_boundaries {
       # boundaries so that instead of advancing to the next nibble we'll look
       # at the row in this nibble (get_sql() will return its SELECT
       # /*rows in nibble*/ query).
-      MKDEBUG && _d('Using cached row for boundaries');
+      PTDEBUG && _d('Using cached row for boundaries');
       $row = $self->{cached_row};
    }
    else {
-      MKDEBUG && _d('Getting next upper boundary row');
+      PTDEBUG && _d('Getting next upper boundary row');
       my $sql;
       ($sql, $lb) = $self->__make_boundary_sql(%args);  # $lb from outer scope!
 
@@ -277,7 +277,7 @@ sub __get_boundaries {
       }
 
       $row = $self->{dbh}->selectrow_hashref($sql);
-      MKDEBUG && _d($row ? 'Got a row' : "Didn't get a row");
+      PTDEBUG && _d($row ? 'Got a row' : "Didn't get a row");
    }
 
    if ( $row ) {
@@ -291,7 +291,7 @@ sub __get_boundaries {
    else {
       # This usually happens at the end of the table, after we've nibbled
       # all the rows.
-      MKDEBUG && _d('No upper boundary');
+      PTDEBUG && _d('No upper boundary');
       $ub = '1=1';
    }
 
@@ -304,7 +304,7 @@ sub __get_boundaries {
    $self->{cached_nibble}     = $self->{nibble};
    $self->{cached_boundaries} = $where;
 
-   MKDEBUG && _d('WHERE clause:', $where);
+   PTDEBUG && _d('WHERE clause:', $where);
    return $where;
 }
 
@@ -336,8 +336,8 @@ sub __make_boundary_sql {
    }
    $sql .= " ORDER BY " . join(',', map { $q->quote($_) } @{$self->{key_cols}})
          . ' LIMIT ' . ($self->{chunk_size} - 1) . ', 1';
-   MKDEBUG && _d('Lower boundary:', $lb);
-   MKDEBUG && _d('Next boundary sql:', $sql);
+   PTDEBUG && _d('Lower boundary:', $lb);
+   PTDEBUG && _d('Next boundary sql:', $sql);
    return $sql, $lb;
 }
 
@@ -350,10 +350,10 @@ sub __get_explain_index {
       $explain = $self->{dbh}->selectall_arrayref("EXPLAIN $sql",{Slice => {}});
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       return;
    }
-   MKDEBUG && _d('EXPLAIN key:', $explain->[0]->{key}); 
+   PTDEBUG && _d('EXPLAIN key:', $explain->[0]->{key}); 
    return $explain->[0]->{key};
 }
 
@@ -366,8 +366,8 @@ sub same_row {
       }
    }
    elsif ( $lr->{cnt} != $rr->{cnt} || $lr->{crc} ne $rr->{crc} ) {
-      MKDEBUG && _d('Rows:', Dumper($lr, $rr));
-      MKDEBUG && _d('Will examine this nibble before moving to next');
+      PTDEBUG && _d('Rows:', Dumper($lr, $rr));
+      PTDEBUG && _d('Will examine this nibble before moving to next');
       $self->{state} = 1; # Must examine this nibble row-by-row
    }
 }
@@ -391,32 +391,32 @@ sub done_with_rows {
    my ( $self ) = @_;
    if ( $self->{state} == 1 ) {
       $self->{state} = 2;
-      MKDEBUG && _d('Setting state =', $self->{state});
+      PTDEBUG && _d('Setting state =', $self->{state});
    }
    else {
       $self->{state} = 0;
       $self->{nibble}++;
       delete $self->{cached_boundaries};
-      MKDEBUG && _d('Setting state =', $self->{state},
+      PTDEBUG && _d('Setting state =', $self->{state},
          ', nibble =', $self->{nibble});
    }
 }
 
 sub done {
    my ( $self ) = @_;
-   MKDEBUG && _d('Done with nibble', $self->{nibble});
-   MKDEBUG && $self->{state} && _d('Nibble differs; must examine rows');
+   PTDEBUG && _d('Done with nibble', $self->{nibble});
+   PTDEBUG && $self->{state} && _d('Nibble differs; must examine rows');
    return $self->{state} == 0 && $self->{nibble} && !$self->{cached_row};
 }
 
 sub pending_changes {
    my ( $self ) = @_;
    if ( $self->{state} ) {
-      MKDEBUG && _d('There are pending changes');
+      PTDEBUG && _d('There are pending changes');
       return 1;
    }
    else {
-      MKDEBUG && _d('No pending changes');
+      PTDEBUG && _d('No pending changes');
       return 0;
    }
 }
@@ -430,7 +430,7 @@ sub key_cols {
    else {
       @cols = @{$self->{key_cols}};
    }
-   MKDEBUG && _d('State', $self->{state},',', 'key cols', join(', ', @cols));
+   PTDEBUG && _d('State', $self->{state},',', 'key cols', join(', ', @cols));
    return \@cols;
 }
 

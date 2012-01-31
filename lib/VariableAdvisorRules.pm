@@ -26,13 +26,13 @@ use base 'AdvisorRules';
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
    my $self = $class->SUPER::new(%args);
    @{$self->{rules}} = $self->get_rules();
-   MKDEBUG && _d(scalar @{$self->{rules}}, "rules");
+   PTDEBUG && _d(scalar @{$self->{rules}}, "rules");
    return $self;
 }
 

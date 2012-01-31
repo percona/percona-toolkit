@@ -25,7 +25,7 @@ package GeneralLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -73,10 +73,10 @@ sub parse_event {
          defined($line = shift @$pending)
       or defined($line = $next_event->())
    ) {
-      MKDEBUG && _d($line);
+      PTDEBUG && _d($line);
       my ($ts, $thread_id, $cmd, $arg) = $line =~ m/$genlog_line_1/;
       if ( !($thread_id && $cmd) ) {
-         MKDEBUG && _d('Not start of general log event');
+         PTDEBUG && _d('Not start of general log event');
          next;
       }
       # Don't save cmd or arg yet, we may need to modify them later.
@@ -97,17 +97,17 @@ sub parse_event {
                my (undef, $next_thread_id, $next_cmd)
                   = $line =~ m/$genlog_line_1/;
                if ( $next_thread_id && $next_cmd ) {
-                  MKDEBUG && _d('Event done');
+                  PTDEBUG && _d('Event done');
                   $done = 1;
                   push @$pending, $line;
                }
                else {
-                  MKDEBUG && _d('More arg:', $line);
+                  PTDEBUG && _d('More arg:', $line);
                   $arg .= $line;
                }
             }
             else {
-               MKDEBUG && _d('No more lines');
+               PTDEBUG && _d('No more lines');
                $done = 1;
             }
          } until ( $done );
@@ -132,7 +132,7 @@ sub parse_event {
                my ($user, undef, $db) = $arg =~ /(\S+)/g;
                my $host;
                ($user, $host) = split(/@/, $user);
-               MKDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
+               PTDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
 
                push @properties, 'user', $user if $user;
                push @properties, 'host', $host if $host;
@@ -146,7 +146,7 @@ sub parse_event {
             $cmd = 'Init DB';
             $arg =~ s/^DB\s+//;
             my ($db) = $arg =~ /(\S+)/;
-            MKDEBUG && _d('Init DB:', $db);
+            PTDEBUG && _d('Init DB:', $db);
             push @properties, 'db',   $db   if $db;
             $db_for->{$thread_id} = $db;
          }
@@ -162,7 +162,7 @@ sub parse_event {
       # Don't dump $event; want to see full dump of all properties,
       # and after it's been cast into a hash, duplicated keys will
       # be gone.
-      MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
       if ( $args{stats} ) {
          $args{stats}->{events_read}++;

@@ -25,7 +25,7 @@ package Progress;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # This module encapsulates a progress report.  To create a new object, pass in
 # the following:

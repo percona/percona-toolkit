@@ -25,7 +25,7 @@ package TableSyncer;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -59,16 +59,16 @@ sub get_best_plugin {
    foreach my $arg ( qw(plugins tbl_struct) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   MKDEBUG && _d('Getting best plugin');
+   PTDEBUG && _d('Getting best plugin');
    foreach my $plugin ( @{$args{plugins}} ) {
-      MKDEBUG && _d('Trying plugin', $plugin->name);
+      PTDEBUG && _d('Trying plugin', $plugin->name);
       my ($can_sync, %plugin_args) = $plugin->can_sync(%args);
       if ( $can_sync ) {
-        MKDEBUG && _d('Can sync with', $plugin->name, Dumper(\%plugin_args));
+        PTDEBUG && _d('Can sync with', $plugin->name, Dumper(\%plugin_args));
         return $plugin, %plugin_args;
       }
    }
-   MKDEBUG && _d('No plugin can sync the table');
+   PTDEBUG && _d('No plugin can sync the table');
    return;
 }
 
@@ -106,7 +106,7 @@ sub sync_table {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   MKDEBUG && _d('Syncing table with args:',
+   PTDEBUG && _d('Syncing table with args:',
       map { "$_: " . Dumper($args{$_}) }
       qw(plugins src dst tbl_struct cols chunk_size));
 
@@ -140,7 +140,7 @@ sub sync_table {
    while ( $tbl_struct->{is_col}->{$crc_col} ) {
       $crc_col = "_$crc_col"; # Prepend more _ until not a column.
    }
-   MKDEBUG && _d('CRC column:', $crc_col);
+   PTDEBUG && _d('CRC column:', $crc_col);
 
    # Make an index hint for either the explicitly given chunk_index
    # or the chunk_index chosen by the plugin if index_hint is true.
@@ -149,14 +149,14 @@ sub sync_table {
                && $vp->version_ge($dst->{dbh}, '4.0.9') ? 'FORCE' : 'USE')
             . ' INDEX';
    if ( $args{chunk_index} ) {
-      MKDEBUG && _d('Using given chunk index for index hint');
+      PTDEBUG && _d('Using given chunk index for index hint');
       $index_hint = "$hint (" . $q->quote($args{chunk_index}) . ")";
    }
    elsif ( $plugin_args{chunk_index} && $args{index_hint} ) {
-      MKDEBUG && _d('Using chunk index chosen by plugin for index hint');
+      PTDEBUG && _d('Using chunk index chosen by plugin for index hint');
       $index_hint = "$hint (" . $q->quote($plugin_args{chunk_index}) . ")";
    }
-   MKDEBUG && _d('Index hint:', $index_hint);
+   PTDEBUG && _d('Index hint:', $index_hint);
 
    eval {
       $plugin->prepare_to_sync(
@@ -216,8 +216,8 @@ sub sync_table {
    # changes are made or rows are fetched.  This identifies the dbhs,
    # then you can search for each one by its address like
    # "dbh DBI::db=HASH(0x1028b38)".
-   MKDEBUG && _d('left dbh', $src->{dbh});
-   MKDEBUG && _d('right dbh', $dst->{dbh});
+   PTDEBUG && _d('left dbh', $src->{dbh});
+   PTDEBUG && _d('right dbh', $dst->{dbh});
 
    chomp(my $hostname = `hostname`);
    my $trace_msg
@@ -231,7 +231,7 @@ sub sync_table {
          . ($ENV{USER} ? "user:$ENV{USER} " : "")
          . ($hostname  ? "host:$hostname"   : "")
       :                "";
-   MKDEBUG && _d("Binlog trace message:", $trace_msg);
+   PTDEBUG && _d("Binlog trace message:", $trace_msg);
 
    $self->lock_and_wait(%args, lock_level => 2);  # per-table lock
 
@@ -241,7 +241,7 @@ sub sync_table {
 
       # Do as much of the work as possible before opening a transaction or
       # locking the tables.
-      MKDEBUG && _d('Beginning sync cycle', $cycle);
+      PTDEBUG && _d('Beginning sync cycle', $cycle);
       my $src_sql = $plugin->get_sql(
          database => $src->{db},
          table    => $src->{tbl},
@@ -270,8 +270,8 @@ sub sync_table {
             $dst_sql .= ' FOR UPDATE';
          }
       }
-      MKDEBUG && _d('src:', $src_sql);
-      MKDEBUG && _d('dst:', $dst_sql);
+      PTDEBUG && _d('src:', $src_sql);
+      PTDEBUG && _d('dst:', $dst_sql);
 
       # Give callback a chance to do something with the SQL statements.
       $callback->($src_sql, $dst_sql) if $callback;
@@ -320,7 +320,7 @@ sub sync_table {
       # ...changes may be queued and executed now.
       $ch->process_rows(1, $trace_msg);
 
-      MKDEBUG && _d('Finished sync cycle', $cycle);
+      PTDEBUG && _d('Finished sync cycle', $cycle);
       $cycle++;
    }
 
@@ -360,7 +360,7 @@ sub make_checksum_queries {
       die "Source and destination checksum algorithms are different: ",
          "$src_algo on source, $dst_algo on destination"
    }
-   MKDEBUG && _d('Chosen algo:', $src_algo);
+   PTDEBUG && _d('Chosen algo:', $src_algo);
 
    my $src_func = $checksum->choose_hash_func(dbh => $src->{dbh}, %args);
    my $dst_func = $checksum->choose_hash_func(dbh => $dst->{dbh}, %args);
@@ -368,7 +368,7 @@ sub make_checksum_queries {
       die "Source and destination hash functions are different: ",
       "$src_func on source, $dst_func on destination";
    }
-   MKDEBUG && _d('Chosen hash func:', $src_func);
+   PTDEBUG && _d('Chosen hash func:', $src_func);
 
    # Since the checksum algo and hash func are the same on src and dst
    # it doesn't matter if we use src_algo/func or dst_algo/func.
@@ -394,21 +394,21 @@ sub make_checksum_queries {
       opt_slice => $opt_slice,
       replicate => undef, # replicate means something different to this sub
    );                     # than what we use it for; do not pass it!
-   MKDEBUG && _d('Chunk sql:', $chunk_sql);
+   PTDEBUG && _d('Chunk sql:', $chunk_sql);
    my $row_sql = $checksum->make_row_checksum(
       %args,
       function => $src_func,
    );
-   MKDEBUG && _d('Row sql:', $row_sql);
+   PTDEBUG && _d('Row sql:', $row_sql);
    return $chunk_sql, $row_sql;
 }
 
 sub lock_table {
    my ( $self, $dbh, $where, $db_tbl, $mode ) = @_;
    my $query = "LOCK TABLES $db_tbl $mode";
-   MKDEBUG && _d($query);
+   PTDEBUG && _d($query);
    $dbh->do($query);
-   MKDEBUG && _d('Acquired table lock on', $where, 'in', $mode, 'mode');
+   PTDEBUG && _d('Acquired table lock on', $where, 'in', $mode, 'mode');
 }
 
 # Doesn't work quite the same way as lock_and_wait. It will unlock any LOWER
@@ -427,12 +427,12 @@ sub unlock {
    # First, unlock/commit.
    foreach my $dbh ( $src->{dbh}, $dst->{dbh} ) {
       if ( $args{transaction} ) {
-         MKDEBUG && _d('Committing', $dbh);
+         PTDEBUG && _d('Committing', $dbh);
          $dbh->commit();
       }
       else {
          my $sql = 'UNLOCK TABLES';
-         MKDEBUG && _d($dbh, $sql);
+         PTDEBUG && _d($dbh, $sql);
          $dbh->do($sql);
       }
    }
@@ -467,17 +467,17 @@ sub lock_and_wait {
    my $dst = $args{dst};
 
    return unless $args{lock} && $args{lock} == $args{lock_level};
-   MKDEBUG && _d('lock and wait, lock level', $args{lock});
+   PTDEBUG && _d('lock and wait, lock level', $args{lock});
 
    # First, commit/unlock the previous transaction/lock.
    foreach my $dbh ( $src->{dbh}, $dst->{dbh} ) {
       if ( $args{transaction} ) {
-         MKDEBUG && _d('Committing', $dbh);
+         PTDEBUG && _d('Committing', $dbh);
          $dbh->commit();
       }
       else {
          my $sql = 'UNLOCK TABLES';
-         MKDEBUG && _d($dbh, $sql);
+         PTDEBUG && _d($dbh, $sql);
          $dbh->do($sql);
       }
    }
@@ -486,7 +486,7 @@ sub lock_and_wait {
    # might have to wait for the slave to catch up before locking on the dest.
    if ( $args{lock} == 3 ) {
       my $sql = 'FLUSH TABLES WITH READ LOCK';
-      MKDEBUG && _d($src->{dbh}, $sql);
+      PTDEBUG && _d($src->{dbh}, $sql);
       $src->{dbh}->do($sql);
    }
    else {
@@ -495,10 +495,10 @@ sub lock_and_wait {
          if ( $args{src_sth} ) {
             # Execute the $src_sth on the source, so LOCK IN SHARE MODE/FOR
             # UPDATE will lock the rows examined.
-            MKDEBUG && _d('Executing statement on source to lock rows');
+            PTDEBUG && _d('Executing statement on source to lock rows');
 
             my $sql = "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */";
-            MKDEBUG && _d($src->{dbh}, $sql);
+            PTDEBUG && _d($src->{dbh}, $sql);
             $src->{dbh}->do($sql);
 
             $args{src_sth}->execute();
@@ -588,13 +588,13 @@ sub lock_and_wait {
       # (for sync-to-master and sync via replicate) else the destination
       # won't be apply to make the changes.
       if ( $args{changing_src} ) {
-         MKDEBUG && _d('Not locking destination because changing source ',
+         PTDEBUG && _d('Not locking destination because changing source ',
             '(syncing via replication or sync-to-master)');
       }
       else {
          if ( $args{lock} == 3 ) {
             my $sql = 'FLUSH TABLES WITH READ LOCK';
-            MKDEBUG && _d($dst->{dbh}, ',', $sql);
+            PTDEBUG && _d($dst->{dbh}, ',', $sql);
             $dst->{dbh}->do($sql);
          }
          elsif ( !$args{transaction} ) {
@@ -612,7 +612,7 @@ sub lock_and_wait {
       }
       foreach my $dbh ( $src->{dbh}, $dst->{dbh}, $src->{misc_dbh} ) {
          next unless $dbh;
-         MKDEBUG && _d('Caught error, unlocking/committing on', $dbh);
+         PTDEBUG && _d('Caught error, unlocking/committing on', $dbh);
          $dbh->do('UNLOCK TABLES');
          $dbh->commit() unless $dbh->{AutoCommit};
       }
@@ -631,23 +631,23 @@ sub have_all_privs {
    my ( $self, $dbh, $db, $tbl ) = @_;
    my $db_tbl = $self->{Quoter}->quote($db, $tbl);
    my $sql    = "SHOW FULL COLUMNS FROM $db_tbl";
-   MKDEBUG && _d('Permissions check:', $sql);
+   PTDEBUG && _d('Permissions check:', $sql);
    my $cols       = $dbh->selectall_arrayref($sql, {Slice => {}});
    my ($hdr_name) = grep { m/privileges/i } keys %{$cols->[0]};
    my $privs      = $cols->[0]->{$hdr_name};
    $sql = "DELETE FROM $db_tbl LIMIT 0"; # FULL COLUMNS doesn't show all privs
-   MKDEBUG && _d('Permissions check:', $sql);
+   PTDEBUG && _d('Permissions check:', $sql);
    eval { $dbh->do($sql); };
    my $can_delete = $EVAL_ERROR ? 0 : 1;
 
-   MKDEBUG && _d('User privs on', $db_tbl, ':', $privs,
+   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
       ($can_delete ? 'delete' : ''));
    if ( $privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/ 
         && $can_delete ) {
-      MKDEBUG && _d('User has all privs');
+      PTDEBUG && _d('User has all privs');
       return 1;
    }
-   MKDEBUG && _d('User does not have all privs');
+   PTDEBUG && _d('User does not have all privs');
    return 0;
 }
 

@@ -25,7 +25,7 @@ package ProtocolParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 eval {
    require IO::Uncompress::Inflate;
@@ -65,11 +65,11 @@ sub parse_event {
       if ( $packet->{data_len} ) {
          if ( $packet_from eq 'client' ) {
             push @{$session->{client_packets}}, $packet;
-            MKDEBUG && _d('Saved client packet');
+            PTDEBUG && _d('Saved client packet');
          }
          else {
             push @{$session->{server_packets}}, $packet;
-            MKDEBUG && _d('Saved server packet');
+            PTDEBUG && _d('Saved server packet');
          }
       }
 
@@ -97,7 +97,7 @@ sub parse_event {
       # Return early if there's no TCP data.  These are usually ACK packets, but
       # they could also be FINs in which case, we should close and delete the
       # client's session.
-      MKDEBUG && _d('No TCP data');
+      PTDEBUG && _d('No TCP data');
       return;
    }
 
@@ -112,7 +112,7 @@ sub _parse_packet {
    my ( $self, $packet, $misc ) = @_;
 
    my ($packet_from, $session) = $self->_get_session($packet);
-   MKDEBUG && _d('State:', $session->{state});
+   PTDEBUG && _d('State:', $session->{state});
 
    # Save raw packets to dump later in case something fails.
    push @{$session->{raw_packets}}, $packet->{raw_packet}
@@ -123,12 +123,12 @@ sub _parse_packet {
       # to what we've been buffering.
       $session->{buff_left} -= $packet->{data_len};
       if ( $session->{buff_left} > 0 ) {
-         MKDEBUG && _d('Added data to buff; expecting', $session->{buff_left},
+         PTDEBUG && _d('Added data to buff; expecting', $session->{buff_left},
             'more bytes');
          return;
       }
 
-      MKDEBUG && _d('Got all data; buff left:', $session->{buff_left});
+      PTDEBUG && _d('Got all data; buff left:', $session->{buff_left});
       $packet->{data}       = $session->{buff} . $packet->{data};
       $packet->{data_len}  += length $session->{buff};
       $session->{buff}      = '';
@@ -148,17 +148,17 @@ sub _parse_packet {
       # Should not get here.
       die 'Packet origin unknown';
    }
-   MKDEBUG && _d('State:', $session->{state});
+   PTDEBUG && _d('State:', $session->{state});
 
    if ( $session->{out_of_order} ) {
-      MKDEBUG && _d('Session packets are out of order');
+      PTDEBUG && _d('Session packets are out of order');
       push @{$session->{packets}}, $packet;
       $session->{ts_min}
          = $packet->{ts} if $packet->{ts} lt ($session->{ts_min} || '');
       $session->{ts_max}
          = $packet->{ts} if $packet->{ts} gt ($session->{ts_max} || '');
       if ( $session->{have_all_packets} ) {
-         MKDEBUG && _d('Have all packets; ordering and processing');
+         PTDEBUG && _d('Have all packets; ordering and processing');
          delete $session->{out_of_order};
          delete $session->{have_all_packets};
          map {
@@ -167,7 +167,7 @@ sub _parse_packet {
       }
    }
 
-   MKDEBUG && _d('Done with packet; event:', Dumper($event));
+   PTDEBUG && _d('Done with packet; event:', Dumper($event));
    return $event;
 }
 
@@ -180,7 +180,7 @@ sub _get_session {
    if ( my $server = $self->{server} ) {  # Watch only the given server.
       $server .= ":$self->{port}";
       if ( $src_host ne $server && $dst_host ne $server ) {
-         MKDEBUG && _d('Packet is not to or from', $server);
+         PTDEBUG && _d('Packet is not to or from', $server);
          return;
       }
    }
@@ -200,12 +200,12 @@ sub _get_session {
       warn 'Packet is not to or from server: ', Dumper($packet);
       return;
    }
-   MKDEBUG && _d('Client:', $client);
+   PTDEBUG && _d('Client:', $client);
 
    # Get the client's session info or create a new session if the
    # client hasn't been seen before.
    if ( !exists $self->{sessions}->{$client} ) {
-      MKDEBUG && _d('New session');
+      PTDEBUG && _d('New session');
       $self->{sessions}->{$client} = {
          client      => $client,
          state       => undef,
@@ -233,7 +233,7 @@ sub make_event {
    my $start_request = $session->{start_request} || 0;
    my $start_reply   = $session->{start_reply}   || 0;
    my $end_reply     = $session->{end_reply}     || 0;
-   MKDEBUG && _d('Request start:', $start_request,
+   PTDEBUG && _d('Request start:', $start_request,
       'reply start:', $start_reply, 'reply end:', $end_reply);
    my $event = {
       Query_time    => $self->timestamp_diff($start_request, $start_reply),
@@ -252,7 +252,7 @@ sub _get_errors_fh {
    my $o = $self->{o};
    if ( $o && $o->has('tcpdump-errors') && $o->got('tcpdump-errors') ) {
       my $errors_file = $o->get('tcpdump-errors');
-      MKDEBUG && _d('tcpdump-errors file:', $errors_file);
+      PTDEBUG && _d('tcpdump-errors file:', $errors_file);
       open $errors_fh, '>>', $errors_file
          or die "Cannot open tcpdump-errors file $errors_file: $OS_ERROR";
    }
@@ -276,7 +276,7 @@ sub fail_session {
          print $errors_fh "\n";
       }
    }
-   MKDEBUG && _d('Failed session', $session->{client}, 'because', $reason);
+   PTDEBUG && _d('Failed session', $session->{client}, 'because', $reason);
    delete $self->{sessions}->{$session->{client}};
    return;
 }
@@ -307,7 +307,7 @@ sub uncompress_data {
    die "I need data" unless $data;
    die "I need a len argument" unless $len;
    die "I need a scalar reference to data" unless ref $data eq 'SCALAR';
-   MKDEBUG && _d('Uncompressing data');
+   PTDEBUG && _d('Uncompressing data');
    our $InflateError;
 
    # Pack hex string into compressed binary data.

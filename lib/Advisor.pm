@@ -25,7 +25,7 @@ package Advisor;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -63,7 +63,7 @@ sub new {
 sub load_rules {
    my ( $self, $advisor ) = @_;
    return unless $advisor;
-   MKDEBUG && _d('Loading rules from', ref $advisor);
+   PTDEBUG && _d('Loading rules from', ref $advisor);
 
    # Starting index value in rules arrayref for these rules.
    # This is >0 if rules from other advisor modules have
@@ -74,7 +74,7 @@ sub load_rules {
    foreach my $rule ( $advisor->get_rules() ) {
       my $id = $rule->{id};
       if ( $self->{ignore_rules}->{"$id"} ) {
-         MKDEBUG && _d("Ignoring rule", $id);
+         PTDEBUG && _d("Ignoring rule", $id);
          next RULE;
       }
       die "Rule $id already exists and cannot be redefined"
@@ -95,7 +95,7 @@ sub load_rules {
 sub load_rule_info {
    my ( $self, $advisor ) = @_;
    return unless $advisor;
-   MKDEBUG && _d('Loading rule info from', ref $advisor);
+   PTDEBUG && _d('Loading rule info from', ref $advisor);
    my $rules = $self->{rules};
    foreach my $rule ( @$rules ) {
       my $id = $rule->{id};
@@ -134,14 +134,14 @@ sub run_rules {
          my $match = $rule->{code}->(%args);
          if ( $match_type eq 'pos' ) {
             if ( defined $match ) {
-               MKDEBUG && _d('Matches rule', $rule->{id}, 'near pos', $match);
+               PTDEBUG && _d('Matches rule', $rule->{id}, 'near pos', $match);
                push @matched_rules, $rule->{id};
                push @matched_pos,   $match;
             }
          }
          elsif ( $match_type eq 'bool' ) {
             if ( $match ) {
-               MKDEBUG && _d("Matches rule", $rule->{id});
+               PTDEBUG && _d("Matches rule", $rule->{id});
                push @matched_rules, $rule->{id};
             }
          }
