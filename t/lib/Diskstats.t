@@ -379,6 +379,8 @@ is_deeply(
       writes_merged => 270,
       written_kbs => 1229,
       written_sectors => 2458,
+      ios_in_bytes   => 1262080,
+      ios_requested  => 57,
    },
    "_calc_delta_for works"
 );
@@ -441,9 +443,9 @@ is_deeply(
    {
       busy => '0.6',
       line_ts => '  0.0',
-      qtime => 0,
+      qtime => '0.929824561403509',
       s_spent_doing_io => '0.053',
-      stime => 0,
+      stime => '0.210526315789474',
    },
    "_calc_misc_stats works"
 );

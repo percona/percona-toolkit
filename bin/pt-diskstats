@@ -1602,6 +1602,10 @@ sub new {
             WRITTEN_KBS
             MS_SPENT_DOING_IO
             MS_WEIGHTED
+            READ_KBS
+            WRITTEN_KBS
+            IOS_REQUESTED
+            IOS_IN_BYTES
          )
       ],
       _stats_for         => {},
@@ -1614,6 +1618,11 @@ sub new {
       _save_curr_as_prev => 1,
    };
 
+   return bless $self, $class;
+}
+
+sub new_from_object {
+   my ($self, $class) = @_;
    return bless $self, $class;
 }
 
@@ -1632,7 +1641,6 @@ sub clear_active_devices {
    my ( $self ) = @_;
    return $self->{_active_devices} = {};
 }
-
 
 sub automatic_headers {
    my ($self) = @_;
@@ -1774,11 +1782,13 @@ sub set_force_header {
 }
 
 sub clear_state {
-   my ($self) = @_;
+   my ($self, %args) = @_;
    $self->set_force_header(1);
    $self->clear_curr_stats();
-   $self->clear_prev_stats();
-   $self->clear_first_stats();
+   if ( $args{force} || !$self->interactive() ) {
+      $self->clear_first_stats();
+      $self->clear_prev_stats();
+   }
    $self->clear_ts();
    $self->clear_ordered_devs();
 }
@@ -1808,6 +1818,11 @@ sub _clear_stats_common {
 
 sub clear_curr_stats {
    my ( $self, @args ) = @_;
+
+   if ( $self->has_stats() ) {
+      $self->_save_curr_as_prev();
+   }
+
    $self->_clear_stats_common( "_stats_for", @args );
 }
 
@@ -1882,7 +1897,6 @@ sub _save_curr_as_first {
          map { $_ => [@{$curr->{$_}}] } keys %$curr
       };
       $self->set_first_ts($self->curr_ts());
-      $self->{_first} = undef;
    }
 }
 
@@ -1995,7 +2009,7 @@ sub parse_from {
    elsif ( $args{data} ) {
       open( my $fh, "<", ref($args{data}) ? $args{data} : \$args{data} )
          or die "Couldn't parse data: $OS_ERROR";
-      my $lines_read = $self->_parse_from_filehandle(
+      $lines_read = $self->_parse_from_filehandle(
                         $fh, $args{sample_callback}
                      );
       close $fh or warn "Cannot close: $OS_ERROR";
@@ -2161,7 +2175,7 @@ sub _calc_misc_stats {
       * $delta_for->{ms_spent_doing_io}
       / ( 1000 * $elapsed * $devs_in_group ); # Highlighting failure: /
 
-   my $number_of_ios        = $stats->{ios_requested};
+   my $number_of_ios        = $delta_for->{ios_requested};
    my $total_ms_spent_on_io = $delta_for->{ms_spent_reading}
                             + $delta_for->{ms_spent_writing};
 
@@ -2229,7 +2243,7 @@ sub _mark_if_active {
 
    return unless $curr && $first;
 
-   if ( first { $curr->[$_] != $first->[$_] } READS..MS_WEIGHTED ) {
+   if ( first { $curr->[$_] != $first->[$_] } READS..IOS_IN_BYTES ) {
       $self->set_active_device($dev, 1);
       return $dev;
    }
@@ -2301,9 +2315,9 @@ sub _calc_deltas {
 sub force_print_header {
    my ($self, @args) = @_;
    my $orig = $self->force_header();
-   $self->force_header(1);
+   $self->set_force_header(1);
    $self->print_header(@args);
-   $self->force_header($orig);
+   $self->set_force_header($orig);
    return;
 }
 
@@ -2356,7 +2370,9 @@ sub print_deltas {
          if ( $self->automatic_headers()
                && !$self->isa("DiskstatsGroupByAll") )
          {
-            local $self->{force_header} = 1;
+            $header_method = ref($header_method)
+                           ? $header_method
+                           : "force_print_header";
             $self->$header_method( $header, "#ts", "device" );
          }
       }
@@ -2443,41 +2459,25 @@ use base qw( Diskstats );
 sub group_by {
    my ($self, %args) = @_;
 
-   $self->clear_state();
+   $self->clear_state() unless $self->interactive();
 
-   if (!$self->interactive()) {
-      $self->parse_from(
-         filehandle      => $args{filehandle},
-         filename        => $args{filename},
-         data            => $args{data},
-         sample_callback => sub {
-               $self->print_deltas(
-                  header_callback => $args{header_callback},
-                  rows_callback   => $args{rows_callback},
-               );
+   my $header_callback = $args{header_callback}
+                         || sub {
+                                 my ($self, @args) = @_;
+                                 $self->print_header(@args);
+                                 $self->{_print_header} = 0;
+                              };
+   $self->parse_from(
+      filehandle      => $args{filehandle},
+      filename        => $args{filename},
+      data            => $args{data},
+      sample_callback => sub {
+            $self->print_deltas(
+               header_callback => $header_callback,
+               rows_callback   => $args{rows_callback},
+            );
          },
-      );
-   }
-   else {
-      my $orig = tell $args{filehandle} if $args{filehandle};
-      my $header_callback =  $args{header_callback} || sub {
-                           my ($self, @args) = @_;
-                           $self->print_header(@args) if $self->{_print_header};
-                           $self->{_print_header} = 0;
-                         };
-      $self->parse_from(
-         filehandle      => $args{filehandle},
-         filename        => $args{filename},
-         data            => $args{data},
-         sample_callback => sub {
-               $self->print_deltas(
-                  header_callback => $header_callback,
-                  rows_callback   => $args{rows_callback},
-               );
-            },
-      );
-      seek $args{filehandle}, $orig, 0 unless $self->prev_ts();
-   }
+   );
 
    return;
 }
@@ -2583,8 +2583,6 @@ sub group_by {
                      },
                      rows_callback   => $args{rows_callback},
                   );
-
-                  $self->{_iterations} = -1;
                   return;
                }
             }
@@ -2596,11 +2594,6 @@ sub group_by {
    );
 
    if ($self->interactive()) {
-      if ($self->{_iterations} != -1 && defined($original_offset)
-            && eof($args{filehandle} || $args{data}) ) {
-         $self->clear_state;
-         seek( ($args{filehandle} || $args{data}), $original_offset, 0);
-      }
       return $lines_read;
    }
 
@@ -2707,7 +2700,6 @@ sub group_by {
       data            => $args{data},
    );
 
-   $self->clear_state() unless $self->interactive();
    return;
 }
 
@@ -2781,7 +2773,7 @@ sub compute_dev {
    $devs ||= $self->compute_devs_in_group();
    return $devs > 1
      ? "{" . $devs . "}"
-     : $self->{ordered_devs}->[0];
+     : $self->{_ordered_devs}->[0];
 }
 
 sub _calc_stats_for_deltas {
@@ -2912,11 +2904,8 @@ my %actions = (
                        "Enter a disk/device pattern: " ),
    'q'  => sub { return 'last' },
    'p'  => sub {
-            my (@args) = @_;
             print "Paused - press any key to continue\n";
-            pause(@args);
-            $Diskstats::printed_lines--;
-            print_header(@args) unless $Diskstats::printed_lines;
+            pause(@_);
             return;
          },
    ' '  => \&print_header,
@@ -2947,34 +2936,57 @@ sub run_interactive {
    my ($tmp_fh, $filename, $child_pid, $child_fh);
 
    if ( $filename = $args{filename} ) {
-      open $tmp_fh, "<", $filename
-         or die "Cannot open $filename: $OS_ERROR";
+      if ( ref $filename ) {
+         $tmp_fh = $filename;
+         undef $args{filename};
+      }
+      else {
+         open $tmp_fh, "<", $filename
+            or die "Cannot open $filename: $OS_ERROR";
+      }
    }
    else {
-      ($tmp_fh, $filename) = file_to_use( $o->get('save-samples') );
+      $filename = $o->get('save-samples');
 
-      $child_pid = open $child_fh, "|-";
+      if ( $filename ) {
+         unlink $filename;
+         open my $tmp_fh, "+>", $filename
+            or die "Cannot open $filename: $OS_ERROR";
+      }
+
+      $child_pid = open $child_fh, "-|";
    
       die "Cannot fork: $OS_ERROR" unless defined $child_pid;
       
       if ( !$child_pid ) {
-   
+         STDOUT->autoflush(1);
          local $PROGRAM_NAME = "$PROGRAM_NAME (data-gathering daemon)";
    
-         close $tmp_fh;
+         close $tmp_fh if $tmp_fh;
    
+         PTDEBUG && _d("Child is [$PROGRAM_NAME] in ps aux and similar");
+
          gather_samples(
                gather_while      => sub { getppid() },
                samples_to_gather => $o->get('iterations'),
                filename          => $filename,
          );
-   
-         unlink $filename unless $o->get('save-samples');
+         if ( $filename ) {
+            unlink $filename unless $o->get('save-samples');
+         }
          exit(0);
+      }
+      else {
+         PTDEBUG && _d("Forked, child is", $child_pid);
+         $tmp_fh = $child_fh;
+         $tmp_fh->blocking(0);
       }
    }
 
-   PTDEBUG && _d("Using filename", $filename);
+   PTDEBUG && _d(
+         $filename
+         ? ("Using file", $filename)
+         : "Not using a file to store samples");
 
    local $SIG{CHLD} = 'IGNORE';
    local $SIG{PIPE} = 'IGNORE';
@@ -2995,15 +3007,22 @@ sub run_interactive {
    my $header_callback = $o->get("current_group_by_obj")
                            ->can("print_header");
 
+   my $redraw = 0;
+
    if ( $args{filename} ) {
+      PTDEBUG && _d("Passed a file from the command line,",
+                    "rendering from scratch before looping");
+      $redraw = 1;
       group_by(
          header_callback => $header_callback,
          select_obj      => $sel,
          OptionParser    => $o,
          filehandle      => $tmp_fh,
          input           => substr(ucfirst($group_by), 0, 1),
+         redraw_all      => $redraw,
       );
       if ( !-t STDOUT && !tied *STDIN ) {
+          PTDEBUG && _d("Not connected to a tty and not in testing. Quitting");
           return 0
       }
    }
@@ -3014,25 +3033,30 @@ sub run_interactive {
    while ($run) {
       my $refresh_interval = $o->get('refresh-interval');
       my $time  = scalar Time::HiRes::gettimeofday();
-      my $sleep = $refresh_interval - fmod( $time, ($refresh_interval + 0.5) );
+      my $sleep = $refresh_interval - fmod( $time, $refresh_interval );
 
-      if ( my $input = read_command_timeout($sel, $sleep ) ) {
+      if ( my $input = read_command_timeout( $sel, $sleep ) ) {
          if ($actions{$input}) {
+            PTDEBUG && _d("Got [$input] and have an action for it");
             my $ret = $actions{$input}->(
                               select_obj   => $sel,
                               OptionParser => $o,
                               input        => $input,
                               filehandle   => $tmp_fh,
+                              redraw_all   => $redraw,
                            ) || '';
             last MAIN_LOOP if $ret eq 'last';
 
             if ( $args{filename}
                   && !grep { $input eq $_ } qw( A S D ), ' ', "\n" )
             {
+               PTDEBUG && _d("Got a file from the command line, redrawing",
+                             "from the beginning after getting an option");
                my $obj = $o->get("current_group_by_obj");
-               $obj->clear_state();
+               $obj->clear_state( force => 1 );
                local $obj->{force_header} = 1;
                group_by(
+                  redraw_all      => 1,
                   select_obj      => $sel,
                   OptionParser    => $o,
                   input           => substr(ref($obj), 16, 1),
@@ -3049,18 +3073,20 @@ sub run_interactive {
       }
       if ( !$args{filename} && $o->get('iterations')
             && waitpid($child_pid, WNOHANG) != 0 ) {
+         PTDEBUG && _d("Child quit as expected after",
+                       $o->get("iterations"),
+                       "iterations. Quitting.");
          $run = 0;
       }
    }
    ReadKeyMini::cooked();
 
-   if ( !$args{filename} && !defined $o->get('iterations')
+   if ( $child_pid && !$args{filename} && !defined $o->get('iterations')
             && kill 0, $child_pid ) {
-      $child_fh->printflush("End\n");
+      kill 9, $child_pid;
       waitpid $child_pid, 0;
    }
 
-   close $tmp_fh or die "Cannot close: $OS_ERROR";
    return 0; # Exit status
 }
 
@@ -3075,28 +3101,30 @@ sub read_command_timeout {
 sub gather_samples {
    my (%args)  = @_;
    my $samples = 0;
+   my $fh;
 
-   STDIN->blocking(0);
-   my $sel      = IO::Select->new(\*STDIN);
-   my $filename = $args{filename};
+   if ( my $filename = $args{filename} ) {
+      open $fh, ">>", $filename
+         or die "Cannot open $filename for appending: $OS_ERROR";
+   }
+   else {
+      $fh = \*STDOUT;
+   }
 
-   open my $fh, ">>", $filename
-      or die "Cannot open $filename for appending: $OS_ERROR";
+   $fh->autoflush(1);
 
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
-      my $time  = scalar Time::HiRes::gettimeofday();
-      my $sleep = 1 - fmod( $time, 1 );
-      if ( read_command_timeout( $sel, $sleep ) ) {
-         last GATHER_DATA;
-      }
+      my $sleep = 1 - fmod( scalar(Time::HiRes::gettimeofday()), 1 );
+      Time::HiRes::sleep($sleep);
+
       open my $diskstats_fh, "<", "/proc/diskstats"
          or die "Cannot open /proc/diskstats: $OS_ERROR";
 
       my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
 
-      $fh->printflush(@to_print);
+      print { $fh } @to_print;
       close $diskstats_fh or die $OS_ERROR;
 
       $samples++;
@@ -3131,55 +3159,58 @@ sub group_by {
    }
    my ($o, $input) = @args{@required_args};
 
+   my $old_obj = $o->get("current_group_by_obj");
+
    if ( ref( $o->get("current_group_by_obj") ) ne $input_to_object{$input} ) {
       $o->set("current_group_by_obj", undef);
-      $o->set("current_group_by_obj",
-               $input_to_object{$input}->new(
-                                 OptionParser => $o,
-                                 interactive  => 1,
-                              )
-             );
+      $o->set( "current_group_by_obj", $input_to_object{$input}->new(OptionParser=>$o, interactive => 1) );
+      if ( !$args{redraw_all} ) {
+         print_header(%args);
+      }
    }
-   seek $args{filehandle}, 0, 0;
 
    for my $obj ( $o->get("current_group_by_obj") ) {
-      if ( $obj->isa("DiskstatsGroupBySample") ) {
-         $obj->set_interactive(1);
+      if ( $args{redraw_all} ) {
+         seek $args{filehandle}, 0, 0;
+         if ( $obj->isa("DiskstatsGroupBySample") ) {
+            $obj->set_interactive(1);
+         }
+         else {
+            $obj->set_interactive(0);
+         }
+   
+         my $print_header;
+         my $header_callback = $args{header_callback} || sub {
+                                 my ($self, @args) = @_;
+                                 $self->print_header(@args) unless $print_header++
+                              };
+   
+         $obj->group_by(
+                  filehandle      => $args{filehandle},
+                  header_callback => $header_callback,
+               );
       }
-      else {
-         $obj->set_interactive(0);
-      }
-
-      my $print_header;
-      my $header_callback = $args{header_callback} || sub {
-                              my ($self, @args) = @_;
-                              $self->print_header(@args) unless $print_header++
-                           };
-
-      $obj->group_by(
-               filehandle      => $args{filehandle},
-               header_callback => $header_callback,
-            );
       $obj->set_interactive(1);
       $obj->set_force_header(0);
    }
+
 }
 
 sub help {
-   my (%args)      = @_;
-   my $obj         = $args{OptionParser}->get("current_group_by_obj");
-   my $mode        = substr ref($obj), 16, 1;
-   my $column_re   = $args{OptionParser}->get('columns-regex');
-   my $device_re   = $args{OptionParser}->get('devices-regex');
-   my $interval    = $obj->sample_time() || '(none)';
-   my $disp_int    = $args{OptionParser}->get('refresh-interval');
-   my $inact_disk  = $obj->show_inactive() ? 'no' : 'yes';
+   my (%args)     = @_;
+   my $obj        = $args{OptionParser}->get("current_group_by_obj");
+   my $mode       = substr ref($obj), 16, 1;
+   my $column_re  = $args{OptionParser}->get('columns-regex');
+   my $device_re  = $args{OptionParser}->get('devices-regex');
+   my $interval   = $obj->sample_time() || '(none)';
+   my $disp_int   = $args{OptionParser}->get('refresh-interval');
+   my $inact_disk = $obj->show_inactive() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
       $re ||= '(none)';
    }
 
-   my $help = <<"HELP";
+   print <<"HELP";
    You can control this program by key presses:
    ------------------- Key ------------------- ---- Current Setting ----
    A, D, S) Set the group-by mode              $mode
@@ -3192,43 +3223,8 @@ sub help {
    q) Quit the program
    ------------------- Press any key to continue -----------------------
 HELP
-   print $help;
    pause(%args);
    return;
-}
-
-sub file_to_use {
-   my ( $filename ) = @_;
-
-   if ( !$filename ) {
-      PTDEBUG && _d('No explicit filename passed in,',
-                    'trying to get one from mktemp');
-      chomp($filename = `mktemp -t pt-diskstats.$PID.XXXXXXXX`);
-   }
-
-   if ( $filename ) {
-      unlink $filename;
-      open my $fh, "+>", $filename
-         or die "Cannot open $filename: $OS_ERROR";
-      return $fh, $filename;
-   }
-   else {
-      PTDEBUG && _d("mktemp didn't return a filename,",
-                    "trying to use File::Temp");
-      local $EVAL_ERROR;
-      if ( !eval { require File::Temp } ) {
-         die "Can't call mktemp nor load File::Temp.",
-             " Install either of those, or pass in an explicit",
-             " filename through --save-samples.";
-      }
-      my $dir = File::Temp::tempdir( CLEANUP => 1 );
-      return File::Temp::tempfile(
-                     "pt-diskstats.$PID.XXXXXXXX",
-                     DIR      => $dir,
-                     UNLINK   => 1,
-                     OPEN     => 1,
-                  );
-   }
 }
 
 sub get_blocking_input {
