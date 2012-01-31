@@ -58,7 +58,6 @@ sub group_by {
       data            => $args{data},
    );
 
-   $self->clear_state() unless $self->interactive();
    return;
 }
 
@@ -138,7 +137,7 @@ sub compute_dev {
    $devs ||= $self->compute_devs_in_group();
    return $devs > 1
      ? "{" . $devs . "}"
-     : $self->{ordered_devs}->[0];
+     : $self->{_ordered_devs}->[0];
 }
 
 # Terrible breach of encapsulation, but it'll have to do for the moment.
