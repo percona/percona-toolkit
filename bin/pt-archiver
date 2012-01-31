@@ -3953,15 +3953,10 @@ sub main {
    # Open the file and print the header to it. 
    if ( $archive_file ) { 
       my $need_hdr = $o->get('header') && !-f $archive_file; 
-      my $charset  = lc $o->get('charset'); 
-      if ( $charset ) { 
-          $archive_fh = IO::File->new($archive_file, ">>:$charset") 
-             or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
-      } 
-      else { 
-          $archive_fh = IO::File->new($archive_file, ">>") 
-             or die "Cannot open $archive_file: $OS_ERROR\n"; 
-      } 
+      my $charset  = $o->get('charset'); 
+      $charset     = $charset ?  ":" . Encode::resolve_alias($charset) : '';
+      $archive_fh = IO::File->new($archive_file, ">>$charset") 
+         or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
       $archive_fh->autoflush(1) unless $o->get('buffer'); 
       if ( $need_hdr ) { 
          print $archive_fh '', escape(\@sel_cols), "\n" 
