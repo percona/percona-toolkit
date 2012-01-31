@@ -6297,7 +6297,7 @@ sub main {
                   my ($n_rows) = NibbleIterator::get_row_estimate(
                      Cxn          => $slave,
                      tbl          => $tbl,
-                     where        => "1=1",
+                     where        => $o->get('where') || "1=1",
                      OptionParser => $o,
                      TableParser  => $tp,
                      Quoter       => $q,
