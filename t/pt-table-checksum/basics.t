@@ -41,7 +41,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 20;
+   plan tests => 22;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -306,6 +306,31 @@ is(
    PerconaTest::count_checksum_results($output, 'rows'),
    52,
    "52 rows checksummed"
+);
+
+# #############################################################################
+# Crash if no host in DSN.
+# https://bugs.launchpad.net/percona-toolkit/+bug/819450
+# http://code.google.com/p/maatkit/issues/detail?id=1332
+# #############################################################################
+
+$output = output(
+   sub { $exit_status =  pt_table_checksum::main(
+   qw(--user msandbox --pass msandbox),
+   qw(-S /tmp/12345/mysql_sandbox12345.sock --lock-wait-timeout 3)) },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "No host in DSN, zero exit status"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "No host in DSN, 0 errors"
 );
 
 # #############################################################################
