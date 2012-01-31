@@ -1257,7 +1257,8 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-stalk is a read-only tool.  It should be very low-risk.  Some of the options
+pt-stalk is a read-write tool; it collects data from the system and writes it
+into a series of files.  It should be very low-risk.  Some of the options
 can cause intrusive data collection to be performed, however, so if you enable
 any non-default options, you should read their documentation carefully.
 
@@ -1326,7 +1327,10 @@ resulting samples of data.
 
 Although this sounds simple enough, in practice there are a number of
 subtleties, such as detecting when the disk is beginning to fill up so that the
-tool doesn't cause the server to run out of disk space.
+tool doesn't cause the server to run out of disk space.  This tool handles these
+types of potential problems, so it's a good idea to use this tool instead of
+writing something from scratch and possibly experiencing some of the hazards
+this tool is designed to prevent.
 
 =head1 CONFIGURING
 
@@ -1402,8 +1406,8 @@ first option on the command line.
 type: int; default: 5
 
 The number of times the trigger condition must be true before collecting data.
-This helps prevent false positives and make the trigger condition less
-susceptible to firing when the condition recovers quickly.
+This helps prevent false positives, and makes the trigger condition less likely
+to fire when the problem recovers quickly.
 
 =item --daemonize
 
@@ -1473,7 +1477,8 @@ L<"--variable"> column matches the L<"--match"> option.  For example, to trigger
 when more than 10 processes are in the "statistics" state, use the following
 options:
 
-  --trigger processlist --variable State --match statistics --threshold 10
+  --trigger processlist --variable State \
+    --match statistics --threshold 10
 
 =back
 
@@ -1489,7 +1494,8 @@ simply sources the file and executes the function.  For example, the function
 might look like the following:
 
    trg_plugin() {
-      mysql $EXT_ARGV -e "SHOW ENGINE INNODB STATUS" | grep -c "has waited at"
+      mysql $EXT_ARGV -e "SHOW ENGINE INNODB STATUS" \
+        | grep -c "has waited at"
    }
 
 This snippet will count the number of mutex waits inside of InnoDB. It
@@ -1597,7 +1603,7 @@ Print tool's version and exit.
 
 =head1 ENVIRONMENT
 
-No env vars used.
+This tool does not use any environment variables for configuration.
 
 =head1 SYSTEM REQUIREMENTS
 
