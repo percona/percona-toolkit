@@ -303,7 +303,7 @@ sub calculate_chunks {
       # from the beginning of the last chunk to infinity, or to the max col
       # value if chunk_range is openclosed.  If the chunk column is nullable,
       # do NULL separately.
-      my $chunk_range = lc $args{chunk_range} || 'open';
+      my $chunk_range = lc($args{chunk_range} || 'open');
       my $nullable    = $args{tbl_struct}->{is_nullable}->{$args{chunk_col}};
       pop @chunks;
       if ( @chunks ) {
