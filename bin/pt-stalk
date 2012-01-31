@@ -433,11 +433,11 @@ mk_tmpdir() {
 
    if [ -n "$dir" ]; then
       if [ ! -d "$dir" ]; then
-         mkdir $dir || die "Cannot make tmpdir $dir"
+         mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
       TMPDIR="$dir"
    else
-      local tool=`basename $0`
+      local tool="${0##*/}"
       local pid="$$"
       TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
          || die "Cannot make secure tmpdir"
