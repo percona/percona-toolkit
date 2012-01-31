@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 46;
+use Test::More tests => 47;
 
 use MasterSlave;
 use DSNParser;
@@ -27,6 +27,13 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
+     
+my $master_dsn = {
+   h => '127.1',
+   P => '12345',
+   u => 'msandbox',
+   p => 'msandbox',
+};
 
 # ############################################################################
 # get_slaves() wrapper around recurse_to_slaves()
@@ -42,12 +49,7 @@ SKIP: {
 
    my $slaves = $ms->get_slaves(
       dbh          => $master_dbh,
-      dsn          => {
-         h => '127.1',
-         P => '12345',
-         u => 'msandbox',
-         p => 'msandbox',
-      },
+      dsn          => $master_dsn,
       OptionParser => $o,
       DSNParser    => $dp,
       Quoter       => $q,
@@ -85,6 +87,37 @@ SKIP: {
       $id,
       '12346',
       'dbh created from get_slaves()'
+   );
+
+   # This doesn't actually work because the master and slave are both
+   # localhost/127.1 so it will connect agian to the master, detect this,
+   # and ignore it.  This tests nonetheless that "processlist" isn't
+   # misspelled, which would cause the sub to die.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/921802
+   @ARGV = ('--recursion-method', 'processlist');
+   $o->get_opts();
+
+   $slaves = $ms->get_slaves(
+      OptionParser => $o,
+      DSNParser    => $dp,
+      Quoter       => $q,
+      dbh          => $master_dbh,
+      dsn          => $master_dsn,
+      make_cxn     => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
+   );
+
+   is_deeply(
+      $slaves,
+      [],
+      "get_slaves() by processlist"
    );
 }
 
