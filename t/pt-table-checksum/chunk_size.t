@@ -20,12 +20,13 @@ require "$trunk/bin/pt-table-checksum";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
+my $slave_dbh  = $sb->get_dbh_for('slave1');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 5;
+   plan tests => 7;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -36,6 +37,7 @@ my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '');
 
 my $row;
 my $output;
+my $exit_status;
 
 # --chunk-size is dynamic; it varies according to --chunk-time and
 # however fast the server happens to be.  So test this is difficult
@@ -103,6 +105,36 @@ unlike(
    $output,
    qr/Cannot checksum table/,
    "Very small --chunk-time doesn't cause zero --chunk-size"
+);
+
+# #############################################################################
+# Bug 921700: pt-table-checksum doesn't add --where to chunk-oversize test
+# on replicas
+# #############################################################################
+$sb->load_file('master', 't/pt-table-checksum/samples/600cities.sql');
+$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600cities.data' INTO TABLE test.t");
+$master_dbh->do("SET SQL_LOG_BIN=0");
+$master_dbh->do("DELETE FROM test.t WHERE id > 100");
+$master_dbh->do("SET SQL_LOG_BIN=1");
+PerconaTest::wait_for_table($slave_dbh, "test.t", "id=600");
+
+# Now there are 100 rows on the master and 600 on the slave.
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      qw(-t test.t --chunk-size 100 --where id<=100)); },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "Zero exit status (bug 185734)"
+);
+
+like(
+   $output,
+   qr/test.t$/,
+   "Checksummed table (bug 185734)"
 );
 
 # #############################################################################
