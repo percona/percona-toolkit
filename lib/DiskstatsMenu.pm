@@ -46,8 +46,6 @@ my %actions = (
    'D'  => \&group_by,
    'S'  => \&group_by,
    'i'  => \&hide_inactive_disks,
-   'd'  => get_new_value_for( "refresh_interval",
-                       "Enter a new refresh interval in seconds: " ),
    'z'  => get_new_value_for( "sample_time",
                        "Enter a new interval between samples in seconds: " ),
    'c'  => get_new_regex_for( "columns_regex",
@@ -132,6 +130,7 @@ sub run_interactive {
                gather_while      => sub { getppid() },
                samples_to_gather => $o->get('iterations'),
                filename          => $filename,
+               sample_interval   => $o->get('interval'),
          );
          if ( $filename ) {
             unlink $filename unless $o->get('save-samples');
@@ -198,7 +197,7 @@ sub run_interactive {
    my $run = 1;
    MAIN_LOOP:
    while ($run) {
-      my $refresh_interval = $o->get('refresh-interval');
+      my $refresh_interval = $o->get('interval');
       my $time  = scalar Time::HiRes::gettimeofday();
       my $sleep = $refresh_interval - fmod( $time, $refresh_interval );
 
@@ -286,21 +285,31 @@ sub read_command_timeout {
 sub gather_samples {
    my (%args)  = @_;
    my $samples = 0;
-   my $fh;
+   my $sample_interval = $args{sample_interval};
+   my @fhs;
 
    if ( my $filename = $args{filename} ) {
-      open $fh, ">>", $filename
+      open my $fh, ">>", $filename
          or die "Cannot open $filename for appending: $OS_ERROR";
-   }
-   else {
-      $fh = \*STDOUT;
+      push @fhs, $fh;
    }
 
-   $fh->autoflush(1);
+   push @fhs, \*STDOUT;
+
+   for my $fh ( @fhs ) {
+      $fh->autoflush(1);
+   }
+
+   # Wait until the next tick of the clock
+   Time::HiRes::sleep( $sample_interval
+                     - fmod( scalar(Time::HiRes::gettimeofday()),
+                             $sample_interval));
 
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
-      my $sleep = 1 - fmod( scalar(Time::HiRes::gettimeofday()), 1 );
+      my $time_of_day = scalar(Time::HiRes::gettimeofday());
+      my $sleep = $sample_interval
+                - fmod( $time_of_day, $sample_interval );
       Time::HiRes::sleep($sleep);
 
       open my $diskstats_fh, "<", "/proc/diskstats"
@@ -309,9 +318,11 @@ sub gather_samples {
       my @to_print = timestamp();
       push @to_print, <$diskstats_fh>;
 
-      # Lovely little method from IO::Handle: turns on autoflush,
-      # prints, and then restores the original autoflush state.
-      print { $fh } @to_print;
+      for my $fh ( @fhs ) {
+         # Lovely little method from IO::Handle: turns on autoflush,
+         # prints, and then restores the original autoflush state.
+         print { $fh } @to_print;
+      }
       close $diskstats_fh or die $OS_ERROR;
 
       $samples++;
@@ -320,7 +331,10 @@ sub gather_samples {
          last GATHER_DATA;
       }
    }
-   close $fh or die $OS_ERROR;
+   pop @fhs; # STDOUT
+   for my $fh ( @fhs ) {
+      close $fh or die $OS_ERROR;
+   }
    return;
 }
 
@@ -396,7 +410,7 @@ sub help {
    my $column_re  = $args{OptionParser}->get('columns-regex');
    my $device_re  = $args{OptionParser}->get('devices-regex');
    my $interval   = $obj->sample_time() || '(none)';
-   my $disp_int   = $args{OptionParser}->get('refresh-interval');
+   my $disp_int   = $args{OptionParser}->get('interval');
    my $inact_disk = $obj->show_inactive() ? 'no' : 'yes';
 
    for my $re ( $column_re, $device_re ) {
@@ -520,9 +534,8 @@ sub pause {
 
 sub timestamp {
    # TS timestamp.nanoseconds ISO8601-timestamp
-   my ( $seconds, $microseconds ) = Time::HiRes::gettimeofday();
-   return sprintf( "TS %d.%d %s\n", $seconds,
-                     $microseconds*1000, Transformers::ts($seconds) );
+   my ($s, $m) = Time::HiRes::gettimeofday();
+   return sprintf( "TS %d.%09d %s\n", $s, $m*1000, Transformers::ts( $s ) );
 }
 
 sub _d {
