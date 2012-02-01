@@ -932,7 +932,7 @@ grep_processlist() {
             exit 0
          exit 1
       }
-   " $file
+   " "$file"
 }
 
 set_trg_func() {
@@ -963,11 +963,10 @@ trg_status() {
 trg_processlist() {
    local var="$1"
    local tmpfile="$TMPDIR/processlist"
-   mysqladmin $EXT_ARGV processlist                > $tmpfile-1
-   grep_processlist $tmpfile-1 $var $OPT_MATCH 0 0 > $tmpfile-2
-   wc -l $tmpfile-2 | awk '{print $1}'
-   rm -rf $tmpfile*
-   return
+   mysqladmin $EXT_ARGV processlist                      > "$tmpfile-1"
+   grep_processlist "$tmpfile-1" "$var" "$OPT_MATCH" 0 0 > "$tmpfile-2"
+   wc -l "$tmpfile-2" | awk '{print $1}'
+   rm -f "$tmpfile"*
 }
 
 oktorun() {
