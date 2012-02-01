@@ -32,6 +32,9 @@ else {
 
 my $output;
 my $cmd;
+my $pid_file = "/tmp/pt-query-digest-mirror-test.pid";
+
+diag(`rm $pid_file 2>/dev/null`);
 
 # ##########################################################################
 # Tests for swapping --processlist and --execute
@@ -41,12 +44,7 @@ $dbh2->do('set global read_only=1');
 $cmd  = "$trunk/bin/pt-query-digest "
          . "--processlist h=127.1,P=12345,u=msandbox,p=msandbox "
          . "--execute h=127.1,P=12346,u=msandbox,p=msandbox --mirror 1 "
-         . "--pid foobar";
-# --pid actually does nothing because the script is not daemonizing.
-# I include it for the identifier (foobar) so that we can more easily
-# grep the PID below. Otherwise, a ps | grep mk-query-digest will
-# match this test script and any vi mk-query-digest[.t] that may happen
-# to be running.
+         . "--pid $pid_file";
 
 $ENV{PTDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
@@ -58,15 +56,12 @@ $dbh1->do('set global read_only=1');
 $dbh2->do('set global read_only=0');
 $dbh1->do('select sleep(1)');
 sleep 2;
-$output = `ps -eaf | grep mk-query-diges[t] | grep foobar | awk '{print \$2}'`;
-kill 15, $output =~ m/(\d+)/g;
+chomp($output = `cat $pid_file`);
+kill 15, $output;
 sleep 1;
 # Verify that it's dead...
-$output = `ps -eaf | grep mk-query-diges[t] | grep foobar`;
-if ( $output =~ m/digest/ ) {
-   $output = `ps -eaf | grep mk-query-diges[t] | grep foobar`;
-}
-unlike($output, qr/mk-query-digest/, 'It is stopped now'); 
+$output = `ps -p $output`;
+unlike($output, qr/pt-query-digest/, 'It is stopped now'); 
 
 $dbh1->do('set global read_only=0');
 $dbh2->do('set global read_only=1');
@@ -95,6 +90,7 @@ diag(`rm -rf /tmp/read_only.txt`);
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`rm $pid_file 2>/dev/null`);
 $dbh1->do('set global read_only=0');
 $dbh2->do('set global read_only=1');
 $sb->wipe_clean($dbh1);
