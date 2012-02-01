@@ -23,10 +23,6 @@
 
 set -u
 
-# Global variables.
-CMD_PIDOF="$(which pidof)"
-CMD_PGREP="$(which pgrep)"
-
 # seq N, return 1, ..., 5
 _seq() {
    local i="$1"
