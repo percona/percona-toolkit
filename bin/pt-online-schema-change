@@ -4140,7 +4140,7 @@ sub main {
       }
    }
 
-   my $rename_fk_method = lc $o->get('update-foreign-keys-method');
+   my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
    if ( ($rename_fk_method || '') eq 'drop_old_table' ) {
       $o->set('rename-tables',  0);
       $o->set('drop-old-table', 0),
@@ -4325,7 +4325,7 @@ sub main {
       if ( lc $child_tables eq 'auto_detect' ) {
          msg("Auto-detecting child tables of $tbl");
          @child_tables = get_child_tables(%plugin_args);
-         msg("Child tables of $tables{old_table}: "
+         msg("Child tables of $tables{old_tbl}: "
             .  (@child_tables ? join(', ', @child_tables) : "(none)"));
       }
       else {
