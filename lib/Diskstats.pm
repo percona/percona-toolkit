@@ -966,10 +966,7 @@ sub print_deltas {
          if ( $self->automatic_headers()
                && !$self->isa("DiskstatsGroupByAll") )
          {
-            $header_method = ref($header_method)
-                           ? $header_method
-                           : "force_print_header";
-            $self->$header_method( $header, "#ts", "device" );
+            $self->force_print_header( $header, "#ts", "device" );
          }
       }
    }
