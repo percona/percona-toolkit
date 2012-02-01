@@ -30,6 +30,8 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 
+use POSIX qw( ceil );
+
 sub new {
    my ( $class, %args ) = @_;
    my $self = $class->SUPER::new(%args);
@@ -72,7 +74,7 @@ sub _sample_callback {
    my $elapsed = ($self->curr_ts() || 0)
                - ($self->prev_ts() || 0);
 
-   if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
+   if ( $ts > 0 && ceil($elapsed) >= $self->sample_time() ) {
 
       $self->print_deltas(
          # When grouping by samples, we don't usually show the device names,

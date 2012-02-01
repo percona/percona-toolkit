@@ -141,6 +141,7 @@ sub run_interactive {
          PTDEBUG && _d("Forked, child is", $child_pid);
          $tmp_fh = $child_fh;
          $tmp_fh->blocking(0);
+         Time::HiRes::sleep(0.5);
       }
    }
 
@@ -199,7 +200,7 @@ sub run_interactive {
    while ($run) {
       my $refresh_interval = $o->get('interval');
       my $time  = scalar Time::HiRes::gettimeofday();
-      my $sleep = $refresh_interval - fmod( $time, $refresh_interval );
+      my $sleep = ($refresh_interval - fmod( $time, $refresh_interval ))+0.5;
 
       if ( my $input = read_command_timeout( $sel, $sleep ) ) {
          if ($actions{$input}) {
@@ -264,13 +265,11 @@ sub run_interactive {
    # If it is, ask it nicely to end, then wait.
    if ( $child_pid && !$args{filename} && !defined $o->get('iterations')
             && kill 0, $child_pid ) {
-      #$child_fh->printflush("End\n");
       # TODO
       kill 9, $child_pid;
       waitpid $child_pid, 0;
    }
 
-   #close $tmp_fh or die "Cannot close: $OS_ERROR";
    return 0; # Exit status
 }
 
@@ -294,22 +293,42 @@ sub gather_samples {
       push @fhs, $fh;
    }
 
+   STDOUT->autoflush(1);
    push @fhs, \*STDOUT;
 
    for my $fh ( @fhs ) {
       $fh->autoflush(1);
    }
 
-   # Wait until the next tick of the clock
-   Time::HiRes::sleep( $sample_interval
-                     - fmod( scalar(Time::HiRes::gettimeofday()),
-                             $sample_interval));
+   {
+      # If the next %10 is less than 20% of --interval, away,
+      # wait till %10 then sample.
+      # Otherwise, sample right away.
+      my $time  = scalar(Time::HiRes::gettimeofday());
+      my $sleep = $sample_interval - fmod( $time,
+                              $sample_interval);
+      PTDEBUG && _d("Child: Starting at [$time] "
+                    . ($sleep < ($sample_interval * 0.2) ? '' : 'not ')
+                    . "going to sleep");
+      Time::HiRes::sleep($sleep) if $sleep < ($sample_interval * 0.2);
+
+      open my $diskstats_fh, "<", "/proc/diskstats"
+         or die "Cannot open /proc/diskstats: $OS_ERROR";
+
+      my @to_print = timestamp();
+      push @to_print, <$diskstats_fh>;
+   
+      for my $fh ( @fhs ) {
+         print { $fh } @to_print;
+      }
+      close $diskstats_fh or die $OS_ERROR;
+   }
 
    GATHER_DATA:
    while ( $args{gather_while}->() ) {
       my $time_of_day = scalar(Time::HiRes::gettimeofday());
       my $sleep = $sample_interval
-                - fmod( $time_of_day, $sample_interval );
+             - fmod( $time_of_day, $sample_interval );
       Time::HiRes::sleep($sleep);
 
       open my $diskstats_fh, "<", "/proc/diskstats"
@@ -425,9 +444,9 @@ sub help {
    /) Enter a Perl regex to match disk names   $device_re
    z) Set the sample size in seconds           $interval
    i) Hide inactive disks                      $inact_disk
-   d) Set the refresh interval in seconds      $disp_int
    p) Pause the program
    q) Quit the program
+   space) Print headers
    ------------------- Press any key to continue -----------------------
 HELP
 
