@@ -93,7 +93,7 @@ run_test() {
 # Print a TAP-style test result.
 result() {
    local result=$1
-   local test_name=$2
+   local test_name=${2:-""}
    if [ $result -eq 0 ]; then
       echo "ok $testno - $TEST_FILE $test_name"
    else
@@ -115,7 +115,7 @@ result() {
 no_diff() {
    local got=$1
    local expected=$2
-   local test_name=$3
+   local test_name=${3:-""}
    test_command="diff $got $expected"
    eval $test_command > $TEST_TMPDIR/failed_result 2>&1
    result $? "$test_name"
@@ -124,7 +124,7 @@ no_diff() {
 is() {
    local got=$1
    local expected=$2
-   local test_name=$3
+   local test_name=${3:-""}
    test_command="\"$got\" == \"$expected\""
    test "$got" = "$expected"
    result $? "$test_name"
@@ -132,7 +132,7 @@ is() {
 
 cmd_ok() {
    local test_command=$1
-   local test_name=$2
+   local test_name=${2:-""}
    eval $test_command
    result $? "$test_name"
 }
