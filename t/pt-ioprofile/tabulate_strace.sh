@@ -3,8 +3,8 @@
 TESTS=2
 
 source "$BIN_DIR/pt-ioprofile"
-
 SAMPLES="$T_DIR/samples"
+TMPDIR=$TEST_TMPDIR
 
 tabulate_strace $SAMPLES/003-samples.txt > $TEST_TMPDIR/got
 no_diff \
