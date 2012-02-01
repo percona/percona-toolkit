@@ -79,7 +79,7 @@ sub test_diskstats_file {
                   ? @{ $args{options} }
                   : (
                         '--show-inactive',
-                        '--no-automatic-headers',
+                        '--headers', '',
                         '--columns-regex','cnc|rt|mb|busy|prg',
                     );
    die "$file does not exist" unless -f $file;
@@ -117,7 +117,7 @@ test_diskstats_file(
 
 test_diskstats_file(
    file     => "small.txt",
-   options  => [ '--no-automatic-headers', '--columns-regex','time', ],
+   options  => [ '--headers', '', '--columns-regex','time', ],
 );
 
 # ###########################################################################
@@ -145,9 +145,8 @@ while (my $line = <$samples_fh>) {
    $count++ if $line =~ /^TS/;
 }
 
-is(
-   $count,
-   $iterations,
+ok(
+   ($count == $iterations) || ($count == $iterations+1),
    "--save-samples and --iterations work"
 );
 

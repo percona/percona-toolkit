@@ -118,7 +118,12 @@ sub clear_state {
 
 sub compute_line_ts {
    my ($self, %args) = @_;
-   return "{" . ($self->{_iterations} - 1) . "}";
+   if ( $self->show_timestamps() ) {
+      return $self->SUPER::compute_line_ts(%args);
+   }
+   else {
+      return "{" . ($self->{_iterations} - 1) . "}";
+   }
 }
 
 sub delta_against {
