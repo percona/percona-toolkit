@@ -30,7 +30,7 @@ my $vp      = new VersionParser();
 my $q       = new Quoter();
 my $tp      = new TableParser(Quoter => $q);
 my $du      = new MySQLDump();
-my $chunker = new TableChunker(Quoter => $q, MySQLDump => $du);
+my $chunker = new TableChunker(Quoter => $q, TableParser => $tp);
 my $o       = new OptionParser();
 
 $o->get_specs("$trunk/bin/pt-online-schema-change");
