@@ -3,8 +3,8 @@
 TESTS=2
 
 source "$BIN_DIR/pt-ioprofile"
-
 SAMPLES="$T_DIR/samples"
+TMPDIR=$TEST_TMPDIR
 
 # ###########################################################################
 # summarize_strace sum times filename
