@@ -203,6 +203,14 @@ sub _calc_stats_for_deltas {
    return \%stats;
 }
 
+sub compute_line_ts {
+   my ($self, %args) = @_;
+   if ( $self->show_timestamps() ) {
+      @args{ qw( first_ts curr_ts ) } = @args{ qw( curr_ts first_ts ) }
+   }
+   return $self->SUPER::compute_line_ts(%args);
+}
+
 1;
 
 }

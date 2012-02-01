@@ -1328,26 +1328,9 @@ sub _d {
 # End Transformers package
 # ###########################################################################
 
-# This program is copyright 2010-2011 Percona Inc.
-# Feedback and improvements are welcome.
-#
-# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
-# systems, you can issue `man perlgpl' or `man perlartistic' to read these
-# licenses.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # ReadKeyMini
 # ###########################################################################
-{
 BEGIN {
 
 package ReadKeyMini;
@@ -1379,7 +1362,18 @@ BEGIN {
    my $have_readkey = eval { require Term::ReadKey };
 
    if ($have_readkey) {
-      Term::ReadKey->import(@EXPORT_OK);
+      *ReadMode = sub {
+         eval { return Term::ReadKey::ReadMode( @_ ) };
+         if ( $@ ) {
+            return _ReadMode(@_);
+         }
+      };
+      *GetTerminalSize = sub {
+         eval { return Term::ReadKey::GetTerminalSize( @_ ) };
+         if ( $@ ) {
+            return _GetTerminalSize(@_);
+         }
+      };
    }
    else {
       # If we don't have Term::ReadKey, fake it. We clobber our own glob,
@@ -1466,11 +1460,8 @@ sub readkey {
 
 # As per perlfaq8:
 
-sub _GetTerminalSize {
-   if ( @_ ) {
-      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
-   }
-   eval { require 'sys/ioctl.ph' };
+BEGIN {
+   eval { no warnings; local $^W; require 'sys/ioctl.ph' };
    if ( !defined &TIOCGWINSZ ) {
       *TIOCGWINSZ = sub () {
             # Very few systems actually have ioctl.ph, thus it comes to this.
@@ -1481,17 +1472,41 @@ sub _GetTerminalSize {
             :                    0x40087468;
       };
    }
-   open( TTY, "+<", "/dev/tty" ) or die "No tty: $OS_ERROR";
-   my $winsize = '';
-   unless ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
-      die sprintf "$0: ioctl TIOCGWINSZ (%08x: $OS_ERROR)\n", &TIOCGWINSZ;
+}
+
+sub _GetTerminalSize {
+   if ( @_ ) {
+      die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
    }
-   my ( $row, $col, $xpixel, $ypixel ) = unpack( 'S4', $winsize );
-   return ( $col, $row, $xpixel, $ypixel );
+
+   my ( $rows, $cols );
+
+   if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
+      my $winsize = '';
+      if ( ioctl( TTY, &TIOCGWINSZ, $winsize ) ) {
+         ( $rows, $cols, my ( $xpixel, $ypixel ) ) = unpack( 'S4', $winsize );
+         return ( $cols, $rows, $xpixel, $ypixel );
+      }
+   }
+
+   if ( $rows = `tput lines` ) {
+      chomp($rows);
+      chomp($cols = `tput cols`);
+   }
+   elsif ( my $stty = `stty -a` ) {
+      ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
+   }
+   else {
+      ($cols, $rows) = @ENV{qw( COLUMNS LINES )};
+      $cols ||= 80;
+      $rows ||= 24;
+   }
+
+   return ( $cols, $rows );
 }
 
 }
-}
+
 1;
 # ###########################################################################
 # End ReadKeyMini package
@@ -1535,7 +1550,8 @@ use List::Util qw( max first );
 
 use ReadKeyMini qw( GetTerminalSize );
 
-my (undef, $max_lines) = GetTerminalSize;
+my (undef, $max_lines)    = GetTerminalSize();
+$Diskstats::printed_lines = $max_lines;
 
 my $diskstat_colno_for;
 BEGIN {
@@ -1575,12 +1591,16 @@ sub new {
    my $columns = $o->get('columns-regex');
    my $devices = $o->get('devices-regex');
 
+   my $headers = $o->get('headers');
+
    my $self = {
       filename           => '/proc/diskstats',
       block_size         => 512,
       show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
-      automatic_headers  => $o->get('automatic-headers'),
+      automatic_headers  => $headers->{'scroll'},
+      space_samples      => $headers->{'group'},
+      show_timestamps    => $o->get('show-timestamps'),
       columns_regex      => qr/$columns/,
       devices_regex      => $devices ? qr/$devices/ : undef,
       interactive        => 0,
@@ -1615,17 +1635,40 @@ sub new {
       _first_stats_for   => {},
       _nochange_skips    => [],
 
+      _length_ts_column  => 5,
+
       _save_curr_as_prev => 1,
    };
 
+   if ( $self->{show_timestamps} ) {
+      $self->{_length_ts_column} = 8;
+   }
+
+   $Diskstats::last_was_header = 0;
+
    return bless $self, $class;
 }
 
-sub new_from_object {
-   my ($self, $class) = @_;
-   return bless $self, $class;
+
+sub show_line_between_samples {
+   my ($self) = @_;
+   return $self->{space_samples};
 }
 
+sub set_show_line_between_samples {
+   my ($self, $new_val) = @_;
+   return $self->{space_samples} = $new_val;
+}
+
+sub show_timestamps {
+   my ($self) = @_;
+   return $self->{show_timestamps};
+}
+
+sub set_show_timestamps {
+   my ($self, $new_val) = @_;
+   return $self->{show_timestamps} = $new_val;
+}
 
 sub active_device {
    my ( $self, $dev ) = @_;
@@ -1964,7 +2007,7 @@ sub design_print_formats {
    $dev_length ||= max 6, map length, $self->ordered_devs();
    my ( $header, $format );
 
-   $header = $format = qq{%5s %-${dev_length}s };
+   $header = $format = qq{%+*s %-${dev_length}s };
 
    if ( !$columns ) {
       @$columns = grep { $self->col_ok($_) } map { $_->[0] } @columns_in_order;
@@ -2189,7 +2232,6 @@ sub _calc_misc_stats {
    }
 
    $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
-
    $extra_stats{line_ts} = $self->compute_line_ts(
       first_ts   => $self->first_ts(),
       curr_ts    => $self->curr_ts(),
@@ -2324,9 +2366,10 @@ sub force_print_header {
 sub print_header {
    my ($self, $header, @args) = @_;
    if ( $self->force_header() ) {
-      printf $header . "\n", @args;
+      printf $header . "\n", $self->{_length_ts_column}, @args;
       $Diskstats::printed_lines--;
       $Diskstats::printed_lines ||= $max_lines;
+      $Diskstats::last_was_header = 1;
    }
    return;
 }
@@ -2334,8 +2377,9 @@ sub print_header {
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
 
-   printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
+   printf $format . "\n", $self->{_length_ts_column}, @{ $stat }{ qw( line_ts dev ), @$cols };
    $Diskstats::printed_lines--;
+   $Diskstats::last_was_header = 0;
 }
 
 sub print_deltas {
@@ -2352,35 +2396,45 @@ sub print_deltas {
 
    my $header_method = $args{header_callback} || "print_header";
    my $rows_method   = $args{rows_callback}   || "print_rows";
-   
-   $Diskstats::printed_lines ||= $max_lines;
-
-   $self->$header_method( $header, "#ts", "device" );
 
    my @stats = $self->_calc_deltas();
 
-   while ( my @stats_chunk = splice @stats, 0, $Diskstats::printed_lines ) {
-      foreach my $stat ( @stats_chunk ) {
-         $self->$rows_method( $format, $cols, $stat );
-      }
-
-      if ( $Diskstats::printed_lines == 0 ) {
-         $Diskstats::printed_lines ||= $max_lines;
-
-         if ( $self->automatic_headers()
-               && !$self->isa("DiskstatsGroupByAll") )
-         {
-            $self->force_print_header( $header, "#ts", "device" );
-         }
-      }
+   if ( $self->{space_samples} && @stats && @stats > 1
+         && !$Diskstats::last_was_header ) {
+      print "\n";
+      $Diskstats::printed_lines--;
    }
+
+   if ( $self->automatic_headers()
+         && $Diskstats::printed_lines <= @stats
+         && !$self->isa("DiskstatsGroupByAll") ) {
+      $self->force_print_header( $header, "#ts", "device" );
+   }
+   else {
+      $self->$header_method( $header, "#ts", "device" );
+   }
+
+   foreach my $stat ( @stats ) {
+      $self->$rows_method( $format, $cols, $stat );
+   }
+   $Diskstats::printed_lines = $Diskstats::printed_lines <= 0
+                             ? $max_lines
+                             : $Diskstats::printed_lines;
 }
 
 sub compute_line_ts {
    my ( $self, %args ) = @_;
-   return sprintf( "%5.1f", $args{first_ts} > 0
-                            ? $args{curr_ts} - $args{first_ts}
-                            : 0 );
+   my $line_ts;
+   if ( $self->show_timestamps() ) {
+      $line_ts = scalar localtime($args{curr_ts});
+      $line_ts =~ s/.*(\d\d:\d\d:\d\d).*/$1/;
+   }
+   else {
+      $line_ts = sprintf( "%5.1f", $args{first_ts} > 0
+                              ? $args{curr_ts} - $args{first_ts}
+                              : 0 );
+   }
+   return $line_ts;
 }
 
 sub compute_in_progress {
@@ -2618,7 +2672,12 @@ sub clear_state {
 
 sub compute_line_ts {
    my ($self, %args) = @_;
-   return "{" . ($self->{_iterations} - 1) . "}";
+   if ( $self->show_timestamps() ) {
+      return $self->SUPER::compute_line_ts(%args);
+   }
+   else {
+      return "{" . ($self->{_iterations} - 1) . "}";
+   }
 }
 
 sub delta_against {
@@ -2835,6 +2894,14 @@ sub _calc_stats_for_deltas {
    }
 
    return \%stats;
+}
+
+sub compute_line_ts {
+   my ($self, %args) = @_;
+   if ( $self->show_timestamps() ) {
+      @args{ qw( first_ts curr_ts ) } = @args{ qw( curr_ts first_ts ) }
+   }
+   return $self->SUPER::compute_line_ts(%args);
 }
 
 1;
@@ -3124,8 +3191,8 @@ sub gather_samples {
                               $sample_interval);
       PTDEBUG && _d("Child: Starting at [$time] "
                     . ($sleep < ($sample_interval * 0.2) ? '' : 'not ')
-                    . "going to sleep [$sleep]");
-      Time::HiRes::sleep($sleep) if $sleep < ($sample_interval * 0.8);
+                    . "going to sleep");
+      Time::HiRes::sleep($sleep) if $sleep < ($sample_interval * 0.2);
 
       open my $diskstats_fh, "<", "/proc/diskstats"
          or die "Cannot open /proc/diskstats: $OS_ERROR";
@@ -3196,10 +3263,19 @@ sub group_by {
 
    if ( ref( $o->get("current_group_by_obj") ) ne $input_to_object{$input} ) {
       $o->set("current_group_by_obj", undef);
-      $o->set( "current_group_by_obj", $input_to_object{$input}->new(OptionParser=>$o, interactive => 1) );
-      if ( !$args{redraw_all} ) {
-         print_header(%args);
-      }
+      my $new_obj = $input_to_object{$input}->new(OptionParser=>$o, interactive => 1);
+      $o->set( "current_group_by_obj", $new_obj );
+
+      $new_obj->{_stats_for}  = $old_obj->{_stats_for};
+      $new_obj->set_curr_ts($old_obj->curr_ts());
+
+      $new_obj->{_prev_stats_for}  = $old_obj->{_prev_stats_for};
+      $new_obj->set_prev_ts($old_obj->prev_ts());
+
+      $new_obj->{_first_stats_for} = $old_obj->{_first_stats_for};
+      $new_obj->set_first_ts($old_obj->first_ts());
+
+      print_header(%args) unless $args{redraw_all};
    }
 
    for my $obj ( $o->get("current_group_by_obj") ) {
@@ -3693,6 +3769,16 @@ one disk device.  In B<sample> mode, each line of output shows one sample of
 statistics.  In B<all> mode, each line of output shows one sample and one disk
 device.
 
+=item --headers
+
+type: Hash; default: group,scroll
+
+If 'group' is present, a blank line will be printed sepparating samples,
+as long as there is more than one sample to show.
+If 'scroll' is present, the tool will print the headers as often as needed
+to prevent them from scrolling out of view; Note that you can press the
+space bar, or the enter key, to reprint headers at will.
+
 =item --sample-time
 
 type: int; default: 1
@@ -3722,12 +3808,9 @@ Also, how often the tool should sample /proc/diskstats.
 
 Show inactive devices.
 
-=item --[no]automatic-headers
+=item --show-timestamps
 
-default: yes
-
-Print the headers as often as needed to prevent them from scrolling out of view.
-You can press the space bar to reprint headers at will.
+Show a timestamp in the form of 'HH:MM:SS' as the #ts line.
 
 =item --help
 

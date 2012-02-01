@@ -34,7 +34,8 @@ use List::Util qw( max first );
 
 use ReadKeyMini qw( GetTerminalSize );
 
-my (undef, $max_lines) = GetTerminalSize;
+my (undef, $max_lines)    = GetTerminalSize();
+$Diskstats::printed_lines = $max_lines;
 
 my $diskstat_colno_for;
 BEGIN {
@@ -77,13 +78,18 @@ sub new {
    my $columns = $o->get('columns-regex');
    my $devices = $o->get('devices-regex');
 
+   # Header magic and so on.
+   my $headers = $o->get('headers');
+
    my $self = {
       # Defaults
       filename           => '/proc/diskstats',
       block_size         => 512,
       show_inactive      => $o->get('show-inactive'),
       sample_time        => $o->get('sample-time') || 0,
-      automatic_headers  => $o->get('automatic-headers'),
+      automatic_headers  => $headers->{'scroll'},
+      space_samples      => $headers->{'group'},
+      show_timestamps    => $o->get('show-timestamps'),
       columns_regex      => qr/$columns/,
       devices_regex      => $devices ? qr/$devices/ : undef,
       interactive        => 0,
@@ -118,19 +124,42 @@ sub new {
       _first_stats_for   => {},
       _nochange_skips    => [],
 
+      _length_ts_column  => 5,
+
       # Internal for now, but might need APIfying.
       _save_curr_as_prev => 1,
    };
 
-   return bless $self, $class;
-}
+   if ( $self->{show_timestamps} ) {
+      $self->{_length_ts_column} = 8;
+   }
 
-sub new_from_object {
-   my ($self, $class) = @_;
+   $Diskstats::last_was_header = 0;
+
    return bless $self, $class;
 }
 
 # The next lot are accessors, plus some convenience functions.
+
+sub show_line_between_samples {
+   my ($self) = @_;
+   return $self->{space_samples};
+}
+
+sub set_show_line_between_samples {
+   my ($self, $new_val) = @_;
+   return $self->{space_samples} = $new_val;
+}
+
+sub show_timestamps {
+   my ($self) = @_;
+   return $self->{show_timestamps};
+}
+
+sub set_show_timestamps {
+   my ($self, $new_val) = @_;
+   return $self->{show_timestamps} = $new_val;
+}
 
 sub active_device {
    my ( $self, $dev ) = @_;
@@ -490,7 +519,7 @@ sub design_print_formats {
 
    # For each device, print out the following: The timestamp offset and
    # device name.
-   $header = $format = qq{%5s %-${dev_length}s };
+   $header = $format = qq{%+*s %-${dev_length}s };
 
    if ( !$columns ) {
       @$columns = grep { $self->col_ok($_) } map { $_->[0] } @columns_in_order;
@@ -758,7 +787,6 @@ sub _calc_misc_stats {
    }
 
    $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
-
    $extra_stats{line_ts} = $self->compute_line_ts(
       first_ts   => $self->first_ts(),
       curr_ts    => $self->curr_ts(),
@@ -913,9 +941,10 @@ sub force_print_header {
 sub print_header {
    my ($self, $header, @args) = @_;
    if ( $self->force_header() ) {
-      printf $header . "\n", @args;
+      printf $header . "\n", $self->{_length_ts_column}, @args;
       $Diskstats::printed_lines--;
       $Diskstats::printed_lines ||= $max_lines;
+      $Diskstats::last_was_header = 1;
    }
    return;
 }
@@ -923,8 +952,9 @@ sub print_header {
 sub print_rows {
    my ($self, $format, $cols, $stat) = @_;
 
-   printf $format . "\n", @{ $stat }{ qw( line_ts dev ), @$cols };
+   printf $format . "\n", $self->{_length_ts_column}, @{ $stat }{ qw( line_ts dev ), @$cols };
    $Diskstats::printed_lines--;
+   $Diskstats::last_was_header = 0;
 }
 
 sub print_deltas {
@@ -942,41 +972,48 @@ sub print_deltas {
 
    my $header_method = $args{header_callback} || "print_header";
    my $rows_method   = $args{rows_callback}   || "print_rows";
-   
-   $Diskstats::printed_lines ||= $max_lines;
-
-   $self->$header_method( $header, "#ts", "device" );
 
    my @stats = $self->_calc_deltas();
 
-   # Split the stats in chunks no greater than how many lines
-   # we have left until printing the next header.
-   while ( my @stats_chunk = splice @stats, 0, $Diskstats::printed_lines ) {
-      # Print the stats
-      foreach my $stat ( @stats_chunk ) {
-         $self->$rows_method( $format, $cols, $stat );
-      }
-
-      if ( $Diskstats::printed_lines == 0 ) {
-         # If zero, reset the counter
-         $Diskstats::printed_lines ||= $max_lines;
-
-         # If we are automagically printing headers and aren't in
-         # --group-by all,
-         if ( $self->automatic_headers()
-               && !$self->isa("DiskstatsGroupByAll") )
-         {
-            $self->force_print_header( $header, "#ts", "device" );
-         }
-      }
+   if ( $self->{space_samples} && @stats && @stats > 1
+         && !$Diskstats::last_was_header ) {
+      # Print an empty line before the rows if we have more
+      # than one thing to print.
+      print "\n";
+      $Diskstats::printed_lines--;
    }
+
+   if ( $self->automatic_headers()
+         && $Diskstats::printed_lines <= @stats
+         && !$self->isa("DiskstatsGroupByAll") ) {
+      $self->force_print_header( $header, "#ts", "device" );
+   }
+   else {
+      $self->$header_method( $header, "#ts", "device" );
+   }
+
+   # Print all of the rows
+   foreach my $stat ( @stats ) {
+      $self->$rows_method( $format, $cols, $stat );
+   }
+   $Diskstats::printed_lines = $Diskstats::printed_lines <= 0
+                             ? $max_lines
+                             : $Diskstats::printed_lines;
 }
 
 sub compute_line_ts {
    my ( $self, %args ) = @_;
-   return sprintf( "%5.1f", $args{first_ts} > 0
-                            ? $args{curr_ts} - $args{first_ts}
-                            : 0 );
+   my $line_ts;
+   if ( $self->show_timestamps() ) {
+      $line_ts = scalar localtime($args{curr_ts});
+      $line_ts =~ s/.*(\d\d:\d\d:\d\d).*/$1/;
+   }
+   else {
+      $line_ts = sprintf( "%5.1f", $args{first_ts} > 0
+                              ? $args{curr_ts} - $args{first_ts}
+                              : 0 );
+   }
+   return $line_ts;
 }
 
 sub compute_in_progress {
