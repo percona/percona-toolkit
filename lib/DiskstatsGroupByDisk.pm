@@ -30,6 +30,8 @@ use constant MKDEBUG => $ENV{MKDEBUG} || 0;
 
 use base qw( Diskstats );
 
+use POSIX qw( ceil );
+
 sub new {
    my ($class, %args) = @_;
    my $self = $class->SUPER::new(%args);
@@ -59,7 +61,7 @@ sub group_by {
             if ($self->interactive() && $self->{_iterations} >= 2) {
                my $elapsed = ( $self->curr_ts()  || 0 )
                            - ( $self->first_ts() || 0 );
-               if ( $ts > 0 && $elapsed >= $self->sample_time() ) {
+               if ( $ts > 0 && ceil($elapsed) >= $self->sample_time() ) {
                   $self->print_deltas(
                      header_callback => sub {
                         my ($self, @args) = @_;
