@@ -26,9 +26,6 @@ fi
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-# pt-mext isn't ready for this yet
-#set -u
-
 TMPDIR=""
 
 mk_tmpdir() {
@@ -60,10 +57,9 @@ rm_tmpdir() {
 
 mk_tmpdir
 
-FILE=`mktemp -p $TMPDIR mext_temp_file.XXXXXX`;
+FILE="$TMPDIR/mext_temp_file";
 NUM=0;
 REL=0;
-rm -f $FILE*;
 
 # Command-line parsing.
 args=`getopt -u -n mext r "$@"`;
@@ -88,15 +84,15 @@ $@ | grep -v '+' | grep -v Variable_name | sed 's/|//g' \
    | while read line; do
    if [ "$line" = "" ]; then
       NUM=`expr $NUM + 1`;
-      echo "" > $FILE$NUM;
+      echo "" > "$FILE$NUM"
    fi
-   echo "$line" >> $FILE$NUM;
+   echo "$line" >> "$FILE$NUM"
 done
 
 # Count how many files there are and prepare to format the output
 SPEC="%-33s %13d"
 AWKS=""
-NUM=`ls $FILE* | wc -l`;
+NUM=`ls "$FILE"* | wc -l`;
 # The last file will be empty...
 NUM=`expr $NUM - 3`;
 
@@ -106,19 +102,19 @@ for i in `seq 0 $NUM`; do
    NEXTFILE=`expr $i + 1`;
 
    # Sort each file and eliminate empty lines, so 'join' doesn't complain.
-   sort $FILE$i | grep . > $FILE$i.tmp;
-   mv $FILE$i.tmp $FILE$i;
-   sort $FILE${NEXTFILE} | grep . > $FILE${NEXTFILE}.tmp;
-   mv $FILE${NEXTFILE}.tmp $FILE${NEXTFILE};
+   sort "$FILE$i" | grep . > "$FILE$i.tmp"
+   mv "$FILE$i.tmp" "$FILE$i"
+   sort "$FILE${NEXTFILE}" | grep . > "$FILE${NEXTFILE}.tmp"
+   mv "$FILE${NEXTFILE}.tmp" "$FILE${NEXTFILE}"
 
    # Join the files together.  This gets slow O(n^2) as we add more files, but
    # this really shouldn't be performance critical.
-   join $FILE$i $FILE${NEXTFILE} | grep . > $FILE;
+   join "$FILE$i" "$FILE${NEXTFILE}" | grep . > "$FILE"
 
    # Find the max length of the [numeric only] values in the file so we know how
    # wide to make the columns
-   MAXLEN=`awk '{print $2}' $FILE${NEXTFILE} | grep -v '[^0-9]' | awk '{print length($1)}' | sort -rn | head -n1`
-   mv $FILE $FILE${NEXTFILE};
+   MAXLEN=`awk '{print $2}' "$FILE${NEXTFILE}" | grep -v '[^0-9]' | awk '{print length($1)}' | sort -rn | head -n1`
+   mv "$FILE" "$FILE${NEXTFILE}"
    SPEC="$SPEC %${MAXLEN}d";
    if [ "$REL" = "1" ]; then
       AWKS="$AWKS, \$`expr $i + 3` - \$`expr $i + 2`";
@@ -129,10 +125,12 @@ done
 
 # Print output
 AWKCMD="printf(\"$SPEC\n\", \$1, \$2$AWKS);";
-awk "{$AWKCMD}" $FILE`expr $NUM + 1`;
+awk "{$AWKCMD}" "$FILE`expr $NUM + 1`"
 
-# Remove all temporary files.
-rm -f $FILE*;
+# Remove all temporary files and the tmp dir.
+rm_tmpdir
+
+exit 0
 
 # ############################################################################
 # Documentation
