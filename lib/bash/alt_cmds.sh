@@ -25,8 +25,22 @@ set -u
 
 # seq N, return 1, ..., 5
 _seq() {
-   local i=$1
+   local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
 }
 
 # ###########################################################################

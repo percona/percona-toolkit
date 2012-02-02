@@ -1,4 +1,4 @@
-# This program is copyright 2011 Percona Inc.
+# This program is copyright 2011-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -22,15 +22,39 @@
 # parse_options parses Perl POD options from Bash tools and creates
 # global variables for each option.
 
+# XXX
+# GLOBAL $TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
+# XXX
+
+# Parsing command line options with Bash is easy until we have to dealt
+# with values that have spaces, e.g. --option="hello world".  This is
+# further complicated by command line vs. config file.  From the command
+# line, <--option "hello world"> is put into $@ as "--option", "hello world",
+# i.e. 2 args.  From a config file, <option=hello world> is either 2 args
+# split on the space, or 1 arg as a whole line.  It needs to be 2 args
+# split on the = but this isn't possible; see the note before while read
+# in _parse_config_files().  Perl tool config files do not work when the
+# value is quoted, so we can't quote it either.  And in any case, that
+# wouldn't work because then the value would include the literal quotes
+# because it's a line from a file, not a command line where Bash will
+# interpret the quotes and return a single value in the code. So...
+
+# XXX
+# BE CAREFUL MAKING CHANGES TO THIS LIB AND MAKE SURE
+# t/lib/bash/parse_options.sh STILL PASSES!
+# XXX
+
 set -u
 
 # Global variables.  These must be global because declare inside a
 # sub will be scoped locally.
 ARGV=""           # Non-option args (probably input files)
 EXT_ARGV=""       # Everything after -- (args for an external command)
+HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
 OPT_ERRS=0        # How many command line option errors
-OPT_VERSION="no"  # If --version was specified
-OPT_HELP="no"     # If --help was specified
+OPT_VERSION=""    # If --version was specified
+OPT_HELP=""       # If --help was specified
+PO_DIR=""         # Directory with program option spec files
 
 # Sub: usage
 #   Print usage (--help) and list the program's options.
@@ -41,49 +65,82 @@ OPT_HELP="no"     # If --help was specified
 # Required Global Variables:
 #   TIMDIR  - Temp directory set by <set_TMPDIR()>.
 #   TOOL    - Tool's name.
-#
-# Optional Global Variables:
-#   OPT_ERR - Command line option error message.
 usage() {
-   local file=$1
+   local file="$1"
 
-   local usage=$(grep '^Usage: ' $file)
-   echo $usage >&2
-   echo >&2
-   echo "For more information, 'man $TOOL' or 'perldoc $file'." >&2
+   local usage=$(grep '^Usage: ' "$file")
+   echo $usage
+   echo
+   echo "For more information, 'man $TOOL' or 'perldoc $file'."
 }
 
 usage_or_errors() {
-   local file=$1
+   local file="$1"
 
-   if [ "$OPT_VERSION" = "yes" ]; then
-      local version=$(grep '^pt-[^ ]\+ [0-9]' $file)
+   if [ "$OPT_VERSION" ]; then
+      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
       echo "$version"
       return 1
    fi
 
-   if [ "$OPT_HELP" = "yes" ]; then
+   if [ "$OPT_HELP" ]; then
       usage "$file"
-      echo >&2
-      echo "Command line options:" >&2
-      echo >&2
-      for opt in $(ls $TMPDIR/po/); do
-         local desc=$(cat $TMPDIR/po/$opt | grep '^desc:' | sed -e 's/^desc://')
-         echo "--$opt" >&2
-         echo "  $desc" >&2
-         echo >&2
+      echo
+      echo "Command line options:"
+      echo
+      perl -e '
+         use strict;
+         use warnings FATAL => qw(all);
+         my $lcol = 20;         # Allow this much space for option names.
+         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
+         my $name;
+         while ( <> ) {
+            my $line = $_;
+            chomp $line;
+            if ( $line =~ s/^long:/  --/ ) {
+               $name = $line;
+            }
+            elsif ( $line =~ s/^desc:// ) {
+               $line =~ s/ +$//mg;
+               my @lines = grep { $_      }
+                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
+               if ( length($name) >= $lcol ) {
+                  print $name, "\n", (q{ } x $lcol);
+               }
+               else {
+                  printf "%-${lcol}s", $name;
+               }
+               print join("\n" . (q{ } x $lcol), @lines);
+               print "\n";
+            }
+         }
+      ' "$PO_DIR"/*
+      echo
+      echo "Options and values after processing arguments:"
+      echo
+      for opt in $(ls "$PO_DIR"); do
+         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+         local varvalue="${!varname}"
+         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+         echo
       done
       return 1
    fi
 
    if [ $OPT_ERRS -gt 0 ]; then
-      echo >&2
-      usage $file
+      echo
+      usage "$file"
       return 1
    fi
 
    # No --help, --version, or errors.
    return 0
+}
+
+option_error() {
+   local err="$1"
+   OPT_ERRS=$(($OPT_ERRS + 1))
+   echo "$err" >&2
 }
 
 # Sub: parse_options
@@ -100,8 +157,58 @@ usage_or_errors() {
 #   option, removing the option's leading --, changing all - to _, and
 #   prefixing with "OPT_".  E.g. --foo-bar becomes OPT_FOO_BAR.
 parse_options() {
-   local file=$1
+   local file="$1"
    shift
+
+   # XXX
+   # Reset all globals else t/lib/bash/parse_options.sh will fail.
+   # XXX
+   ARGV=""
+   EXT_ARGV=""
+   HAVE_EXT_ARGV=""
+   OPT_ERRS=0
+   OPT_VERSION=""
+   OPT_HELP=""
+   PO_DIR="$TMPDIR/po"
+
+   # Ready the directory for the program option (po) spec files.
+   if [ ! -d "$PO_DIR" ]; then
+      mkdir "$PO_DIR"
+      if [ $? -ne 0 ]; then
+         echo "Cannot mkdir $PO_DIR" >&2
+         exit 1
+      fi
+   fi
+
+   rm -rf "$PO_DIR"/*
+   if [ $? -ne 0 ]; then
+      echo "Cannot rm -rf $PO_DIR/*" >&2
+      exit 1
+   fi
+
+   _parse_pod "$file"  # Parse POD into program option (po) spec files
+   _eval_po            # Eval po into existence with default values
+
+   # If the first option is --config FILES, then remove it and use
+   # those files instead of the default config files.
+   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
+      shift  # --config
+      local user_config_files="$1"
+      shift  # that ^
+      local IFS=","
+      for user_config_file in $user_config_files; do
+         _parse_config_files "$user_config_file"
+      done
+   else
+      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
+   fi
+
+   # Finally, parse the command line.
+   _parse_command_line "$@"
+}
+
+_parse_pod() {
+   local file="$1"
 
    # Parse the program options (po) from the POD.  Each option has
    # a spec file like:
@@ -111,51 +218,48 @@ parse_options() {
    #   default=foo
    # That's the spec for --string-opt2.  Each line is a key:value pair
    # from the option's POD line like "type: string; default: foo".
-   mkdir $TMPDIR/po/ 2>/dev/null
-   rm -rf $TMPDIR/po/*
-   (
-      export PO_DIR="$TMPDIR/po"
-      cat $file | perl -ne '
-         BEGIN { $/ = ""; }
-         next unless $_ =~ m/^=head1 OPTIONS/;
-         while ( defined(my $para = <>) ) {
-            last if $para =~ m/^=head1/;
+   cat "$file" | PO_DIR="$PO_DIR" perl -ne '
+      BEGIN { $/ = ""; }
+      next unless $_ =~ m/^=head1 OPTIONS/;
+      while ( defined(my $para = <>) ) {
+         last if $para =~ m/^=head1/;
+         chomp;
+         if ( $para =~ m/^=item --(\S+)/ ) {
+            my $opt  = $1;
+            my $file = "$ENV{PO_DIR}/$opt";
+            open my $opt_fh, ">", $file or die "Cannot open $file: $!";
+            print $opt_fh "long:$opt\n";
+            $para = <>;
             chomp;
-            if ( $para =~ m/^=item --(\S+)/ ) {
-               my $opt  = $1;
-               my $file = "$ENV{PO_DIR}/$opt";
-               open my $opt_fh, ">", $file or die "Cannot open $file: $!";
-               printf $opt_fh "long:$opt\n";
+            if ( $para =~ m/^[a-z ]+:/ ) {
+               map {
+                  chomp;
+                  my ($attrib, $val) = split(/: /, $_);
+                  print $opt_fh "$attrib:$val\n";
+               } split(/; /, $para);
                $para = <>;
                chomp;
-               if ( $para =~ m/^[a-z ]+:/ ) {
-                  map {
-                     chomp;
-                     my ($attrib, $val) = split(/: /, $_);
-                     printf $opt_fh "$attrib:$val\n";
-                  } split(/; /, $para);
-                  $para = <>;
-                  chomp;
-               }
-               my ($desc) = $para =~ m/^([^?.]+)/;
-               printf $opt_fh "desc:$desc.\n";
-               close $opt_fh;
             }
+            my ($desc) = $para =~ m/^([^?.]+)/;
+            print $opt_fh "desc:$desc.\n";
+            close $opt_fh;
          }
-         last;
-      '
-   )
+      }
+      last;
+   '
+}
 
+_eval_po() {
    # Evaluate the program options into existence as global variables
    # transformed like --my-op == $OPT_MY_OP.  If an option has a default
    # value, it's assigned that value.  Else, it's value is an empty string.
-   for opt_spec in $(ls $TMPDIR/po/); do
+   local IFS=":"
+   for opt_spec in "$PO_DIR"/*; do
       local opt=""
       local default_val=""
       local neg=0
-      while read line; do
-         local key=`echo $line | cut -d ':' -f 1`
-         local val=`echo $line | cut -d ':' -f 2`
+      local size=0
+      while read key val; do
          case "$key" in
             long)
                opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
@@ -166,6 +270,7 @@ parse_options() {
             "short form")
                ;;
             type)
+               [ "$val" = "size" ] && size=1
                ;;
             desc)
                ;;
@@ -175,13 +280,13 @@ parse_options() {
                fi
                ;;
             *)
-               echo "Invalid attribute in $TMPDIR/po/$opt_spec: $line" >&2
+               echo "Invalid attribute in $opt_spec: $line" >&2
                exit 1
          esac 
-      done < $TMPDIR/po/$opt_spec
+      done < "$opt_spec"
 
       if [ -z "$opt" ]; then
-         echo "No long attribute in option spec $TMPDIR/po/$opt_spec" >&2
+         echo "No long attribute in option spec $opt_spec" >&2
          exit 1
       fi
 
@@ -192,9 +297,58 @@ parse_options() {
          fi
       fi
 
+      # Convert sizes.
+      if [ $size -eq 1 -a -n "$default_val" ]; then
+         default_val=$(size_to_bytes $default_val)
+      fi
+
+      # Eval the option into existence as a global variable.
       eval "OPT_${opt}"="$default_val"
    done
+}
 
+_parse_config_files() {
+
+   for config_file in "$@"; do
+      # Next config file if this one doesn't exist.
+      test -f "$config_file" || continue
+
+      # We must use while read because values can contain spaces.
+      # Else, if we for $(grep ...) then a line like "op=hello world"
+      # will return 2 values: "op=hello" and "world".  If we quote
+      # the command like for "$(grep ...)" then the entire config
+      # file is returned as 1 value like "opt=hello world\nop2=42".
+      while read config_opt; do
+
+         # Skip the line if it begins with a # or is blank.
+         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
+
+         # Strip leading and trailing spaces, and spaces around the first =,
+         # and end-of-line # comments.
+         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
+
+         # Skip blank lines.
+         [ "$config_opt" = "" ] && continue
+
+         # Options in a config file are not prefixed with --,
+         # but command line options are, so one or the other has
+         # to add or remove the -- prefix.  We add it for config
+         # files rather than trying to strip it from command line
+         # options because it's a simpler operation here.
+         if ! [ "$HAVE_EXT_ARGV" ]; then
+            config_opt="--$config_opt"
+         fi
+
+         _parse_command_line "$config_opt"
+
+      done < "$config_file"
+
+      HAVE_EXT_ARGV=""  # reset for each file
+
+   done
+}
+
+_parse_command_line() {
    # Parse the command line options.  Anything after -- is put into
    # EXT_ARGV.  Options must begin with one or two hyphens (--help or -h),
    # else the item is put into ARGV (it's probably a filename, directory,
@@ -205,80 +359,133 @@ parse_options() {
    # a default value 100, then $OPT_FOO=100 already, but if --foo=500 is
    # specified on the command line, then we re-eval $OPT_FOO=500 to update
    # $OPT_FOO.
-   for opt; do
-      if [ $# -eq 0 ]; then
-         break  # no more opts
+   local opt=""
+   local val=""
+   local next_opt_is_val=""
+   local opt_is_ok=""
+   local opt_is_negated=""
+   local real_opt=""
+   local required_arg=""
+   local spec=""
+
+   for opt in "$@"; do
+      if [ "$opt" = "--" -o "$opt" = "----" ]; then
+         HAVE_EXT_ARGV=1
+         continue
       fi
-      opt=$1
-      if [ "$opt" = "--" ]; then
-         shift
-         EXT_ARGV="$@"
-         break
-      fi
-      shift 
-      if [ $(expr "$opt" : "-") -eq 0 ]; then
-         # Option does not begin with a hyphen (-), so treat it as
-         # a filename, directory, etc.
-         if [ -z "$ARGV" ]; then
-            ARGV="$opt"
+      if [ "$HAVE_EXT_ARGV" ]; then
+         # Previous line was -- so this and subsequent options are
+         # really external argvs.
+         if [ "$EXT_ARGV" ]; then
+            EXT_ARGV="$EXT_ARGV $opt"
          else
-            ARGV="$ARGV $opt"
+            EXT_ARGV="$opt"
          fi
          continue
       fi
 
-      # Save real opt from cmd line for error messages.
-      local real_opt="$opt"
-
-      # Strip leading -- or --no- from option.
-      if $(echo $opt | grep -q '^--no-'); then
-         neg=1
-         opt=$(echo $opt | sed 's/^--no-//')
-      else
-         neg=0
-         opt=$(echo $opt | sed 's/^-*//')
-      fi
-
-      # Find the option's spec file.
-      if [ -f "$TMPDIR/po/$opt" ]; then
-         spec="$TMPDIR/po/$opt"
-      else
-         spec=$(grep "^short form:-$opt\$" $TMPDIR/po/* | cut -d ':' -f 1)
-         if [ -z "$spec"  ]; then
-            OPT_ERRS=$(($OPT_ERRS + 1))
-            echo "Unknown option: $real_opt" >&2
+      if [ "$next_opt_is_val" ]; then
+         next_opt_is_val=""
+         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
+            option_error "$real_opt requires a $required_arg argument"
             continue
          fi
-      fi
-
-      # Get the value specified for the option, if any.  If the opt's spec
-      # says it has a type, then it requires a value and that value should
-      # be the next item ($1).  Else, typeless options (like --version) are
-      # either "yes" if specified, else "no" if negatable and --no-opt.
-      required_arg=$(cat $spec | grep '^type:' | cut -d':' -f2)
-      if [ -n "$required_arg" ]; then
-         if [ $# -eq 0 ]; then
-            OPT_ERRS=$(($OPT_ERRS + 1))
-            echo "$real_opt requires a $required_arg argument" >&2
-            continue
-         else
-            val="$1"
-            shift
-         fi
+         val="$opt"
+         opt_is_ok=1
       else
-         if [ $neg -eq 0 ]; then
-            val="yes"
+         # If option does not begin with a hyphen (-), it's a filename, etc.
+         if [ $(expr "$opt" : "-") -eq 0 ]; then
+            if [ -z "$ARGV" ]; then
+               ARGV="$opt"
+            else
+               ARGV="$ARGV $opt"
+            fi
+            continue
+         fi
+
+         # Save real opt from cmd line for error messages.
+         real_opt="$opt"
+
+         # Strip leading -- or --no- from option.
+         if $(echo $opt | grep '^--no-' >/dev/null); then
+            opt_is_negated=1
+            opt=$(echo $opt | sed 's/^--no-//')
          else
-            val="no"
+            opt_is_negated=""
+            opt=$(echo $opt | sed 's/^-*//')
+         fi
+
+         # Split opt=val pair.
+         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
+            val="$(echo $opt | awk -F= '{print $2}')"
+            opt="$(echo $opt | awk -F= '{print $1}')"
+         fi
+
+         # Find the option's spec file.
+         if [ -f "$TMPDIR/po/$opt" ]; then
+            spec="$TMPDIR/po/$opt"
+         else
+            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            if [ -z "$spec"  ]; then
+               option_error "Unknown option: $real_opt"
+               continue
+            fi
+         fi
+
+         # Get the value specified for the option, if any.  If the opt's spec
+         # says it has a type, then it requires a value and that value should
+         # be the next item ($1).  Else, typeless options (like --version) are
+         # either "yes" if specified, else "no" if negatable and --no-opt.
+         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
+         if [ "$required_arg" ]; then
+            # Option takes a value.
+            if [ "$val" ]; then
+               opt_is_ok=1
+            else
+               next_opt_is_val=1
+            fi
+         else
+            # Option does not take a value.
+            if [ "$val" ]; then
+               option_error "Option $real_opt does not take a value"
+               continue
+            fi 
+            if [ "$opt_is_negated" ]; then
+               val=""
+            else
+               val="yes"
+            fi
+            opt_is_ok=1
          fi
       fi
 
-      # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
-      opt=$(cat $spec | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+      if [ "$opt_is_ok" ]; then
+         # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
 
-      # Re-eval the option to update its global variable value.
-      eval "OPT_$opt"="$val"
+         # Convert sizes.
+         if grep "^type:size" "$spec" >/dev/null; then
+            val=$(size_to_bytes $val)
+         fi
+
+         # Re-eval the option to update its global variable value.
+         eval "OPT_$opt"="'$val'"
+
+         opt=""
+         val=""
+         next_opt_is_val=""
+         opt_is_ok=""
+         opt_is_negated=""
+         real_opt=""
+         required_arg=""
+         spec=""
+      fi
    done
+}
+
+size_to_bytes() {
+   local size="$1"
+   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
 }
 
 # ###########################################################################

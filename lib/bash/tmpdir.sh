@@ -35,15 +35,15 @@ TMPDIR=""
 # Set Global Variables:
 #   TMPDIR - Absolute path of secure temp directory.
 mk_tmpdir() {
-   local dir=${1:-""}
+   local dir="${1:-""}"
 
    if [ -n "$dir" ]; then
       if [ ! -d "$dir" ]; then
-         mkdir $dir || die "Cannot make tmpdir $dir"
+         mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
       TMPDIR="$dir"
    else
-      local tool=`basename $0`
+      local tool="${0##*/}"
       local pid="$$"
       TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
          || die "Cannot make secure tmpdir"
@@ -60,7 +60,7 @@ mk_tmpdir() {
 #   TMPDIR - Set to "".
 rm_tmpdir() {
    if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf $TMPDIR
+      rm -rf "$TMPDIR"
    fi
    TMPDIR=""
 }
