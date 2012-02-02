@@ -15,9 +15,10 @@ use PerconaTest;
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 push @ARGV, "$trunk/t/lib/bash/*.sh" unless @ARGV;
 
-$ENV{BIN_DIR}   = "$trunk/bin";
-$ENV{LIB_DIR}   = "$trunk/lib/bash";
-$ENV{T_LIB_DIR} = "$trunk/t/lib";
+$ENV{BIN_DIR}         = "$trunk/bin";
+$ENV{LIB_DIR}         = "$trunk/lib/bash";
+$ENV{T_LIB_DIR}       = "$trunk/t/lib";
+$ENV{SANDBOX_VERSION} = "$sandbox_version";
 
 system("$trunk/util/test-bash-functions $trunk/t/lib/samples/bash/dummy.sh @ARGV");
 

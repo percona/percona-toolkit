@@ -45,7 +45,7 @@ collect() {
    local p="$2"  # prefix for each result file
 
    # Get pidof mysqld.
-   local mysqld_pid=$(_pidof mysqld | head -n1)
+   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
 
    # Get memory allocation info before anything else.
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then

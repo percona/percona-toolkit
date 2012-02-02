@@ -83,11 +83,12 @@ test_var_val(
    test => 'Default wait_timeout',
 );
 
+my $set_calls = 0;
 my $cxn = make_cxn(
    dsn_string => 'h=127.1,P=12345,u=msandbox,p=msandbox',
    set        => sub {
       my ($dbh) = @_;
-      $dbh->do("SET unique_checks=0");
+      $set_calls++;
       $dbh->do("SET \@a := \@a + 1");
    },
 );
@@ -122,11 +123,10 @@ test_var_val(
    test => 'Sets --set-vars',
 );
 
-test_var_val(
-   $cxn->dbh(),
-   'unique_checks',
-   'OFF',
-   test => 'Calls set callback',
+is(
+   $set_calls,
+   1,
+   'Calls set callback'
 );
 
 $cxn->dbh()->do("SET \@a := 1");
@@ -172,11 +172,10 @@ test_var_val(
    test => 'Reconnect sets --set-vars',
 );
 
-test_var_val(
-   $cxn->dbh(),
-   'unique_checks',
-   'OFF',
-   test => 'Reconnect calls set callback',
+is(
+   $set_calls,
+   2,
+   'Reconnect calls set callback'
 );
 
 test_var_val(
