@@ -647,13 +647,13 @@ fi
 
 =head1 NAME
 
-pt-iostats - Watch process IO and print a table of file and I/O activity.
+pt-ioprofile - Watch process IO and print a table of file and I/O activity.
 
 =head1 SYNOPSIS
 
-Usage: pt-iostats [OPTIONS] [FILE]
+Usage: pt-ioprofile [OPTIONS] [FILE]
 
-pt-iostats does two things: 1) get lsof+strace for -s seconds, 2) aggregate
+pt-ioprofile does two things: 1) get lsof+strace for -s seconds, 2) aggregate
 the result. If you specify a FILE, then step 1) is not performed.
 
 =head1 RISKS
@@ -663,7 +663,14 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-iostats is a read-only tool.  It should be very low-risk.
+pt-ioprofile is a read-only tool, so your data is not at risk. However, it works
+by attaching C<strace> to the process using C<ptrace()>, which will make it run
+very slowly until C<strace> detaches.  In addition to freezing the server, there
+is also some risk of the process crashing or performing badly after C<strace>
+detaches from it, or indeed of C<strace> not detaching cleanly and leaving the
+process in a sleeping state.  As a result, this should be considered an
+intrusive tool, and should not be used on production servers unless you are
+comfortable with that.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
@@ -671,13 +678,13 @@ to users.
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-iostats>.
+L<http://www.percona.com/bugs/pt-ioprofile>.
 
 See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-iostats uses strace and lsof to watch a process's IO and print out
+pt-ioprofile uses C<strace> and C<lsof> to watch a process's IO and print out
 a table of files and I/O activity.  By default, it watches the mysqld
 process for 30 seconds.  The output is like:
 
@@ -773,7 +780,7 @@ This tool requires the Bourne shell (F</bin/sh>).
 
 =head1 BUGS
 
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-iostats>.
+For a list of known bugs, see L<http://www.percona.com/bugs/pt-ioprofile>.
 
 Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
 Include the following information in your bug report:
