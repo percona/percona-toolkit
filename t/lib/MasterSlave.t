@@ -609,4 +609,7 @@ is(
 # Done.
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
+diag(`/tmp/12346/use -e "set global read_only=1"`);
+diag(`/tmp/12347/use -e "set global read_only=1"`);
+diag(`$trunk/sandbox/test-env reset`);
 exit;
