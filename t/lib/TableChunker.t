@@ -26,7 +26,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 90;
+   plan tests => 91;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -1200,6 +1200,23 @@ is(
    4079,
    "test.world_city.name chunks select exactly 4,079 rows"
 );
+
+# #############################################################################
+# Issue Bug #897758: TableChunker dies from an uninit value
+# #############################################################################
+
+@chunks = $c->calculate_chunks(
+   dbh           => $dbh,
+   db            => 'test',
+   tbl           => 'world_city',
+   tbl_struct    => $t,
+   chunk_col     => 'name',
+   chunk_size    => 500,
+   %params,
+   chunk_range   => undef,
+);
+
+ok( @chunks, "calculate_chunks picks a sane default for chunk_range" );
 
 # #############################################################################
 # Issue 1182: mk-table-checksum not respecting chunk size

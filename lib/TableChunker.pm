@@ -303,7 +303,7 @@ sub calculate_chunks {
       # from the beginning of the last chunk to infinity, or to the max col
       # value if chunk_range is openclosed.  If the chunk column is nullable,
       # do NULL separately.
-      my $chunk_range = lc $args{chunk_range} || 'open';
+      my $chunk_range = lc($args{chunk_range} || 'open');
       my $nullable    = $args{tbl_struct}->{is_nullable}->{$args{chunk_col}};
       pop @chunks;
       if ( @chunks ) {
@@ -596,7 +596,7 @@ sub _chunk_char {
 
       # Populate the temp table with all the characters between the min and max
       # max character codes.  This is our character-to-number map.
-      $sql = "INSERT INTO $tmp_db_tbl VALUE (CHAR(?))";
+      $sql = "INSERT INTO $tmp_db_tbl VALUES (CHAR(?))";
       PTDEBUG && _d($dbh, $sql);
       my $ins_char_sth = $dbh->prepare($sql);  # avoid quoting issues
       for my $char_code ( $min_col_ord..$max_col_ord ) {

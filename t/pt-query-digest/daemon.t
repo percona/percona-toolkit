@@ -41,7 +41,7 @@ SKIP: {
 
    my $cmd = "$trunk/bin/pt-query-digest --daemonize --pid /tmp/pt-query-digest.pid --processlist h=127.1,P=12345,u=msandbox,p=msandbox --log /dev/null";
    `$cmd`;
-   $output = `ps -eaf | grep -v grep | grep pt-query-digest`;
+   $output = `ps x | grep 'pt-query-digest --daemonize --pid' | grep -v grep`;
    like($output, qr/$cmd/, 'It is running');
    ok(-f '/tmp/pt-query-digest.pid', 'PID file created');
 
