@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 TESTS=4
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="ps-mysqld-001.txt"
 res=$(find_my_cnf_file samples/ps-mysqld-001.txt)

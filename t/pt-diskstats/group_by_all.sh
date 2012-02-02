@@ -3,6 +3,7 @@
 # This test file must be ran by util/test-bash-functions.
 
 TESTS=1
+TMPDIR=$TEST_TMPDIR
 
 cat <<EOF > $TMPDIR/expected
   #ts device          rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt    wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt busy in_prg

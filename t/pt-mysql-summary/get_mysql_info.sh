@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=3
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="get_mysql_timezone"
 cp samples/mysql-variables-001.txt $TMPDIR/percona-toolkit-mysql-variables

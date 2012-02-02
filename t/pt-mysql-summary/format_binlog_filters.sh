@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TEST=1
+TMPDIR=$TEST_TMPDIR
 
 cat <<EOF > $TMPDIR/expected
         binlog_do_db | foo

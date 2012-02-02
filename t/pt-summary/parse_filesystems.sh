@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=4
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="df-mount-003.txt Linux"
 cat <<EOF > $TMPDIR/expected
