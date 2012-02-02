@@ -53,8 +53,6 @@ fuzz () {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-set -u
-
 TMPDIR=""
 
 mk_tmpdir() {
