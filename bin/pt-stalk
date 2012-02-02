@@ -517,8 +517,8 @@ check_disk_space() {
    local min_free_pct="${3:-0}"
    local bytes_margin="${4:-0}"
 
-   local used_bytes=$(cat "$file" | awk '/^\//{print $3 * 1024}');
-   local free_bytes=$(cat "$file" | awk '/^\//{print $4 * 1024}');
+   local used_bytes=$(cat "$file" | awk '/^\//{printf("%d",$3 * 1024)}');
+   local free_bytes=$(cat "$file" | awk '/^\//{printf("%d",$4 * 1024)}');
    local pct_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
    local pct_free=$((100 - $pct_used))
 
