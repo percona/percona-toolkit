@@ -486,6 +486,10 @@ _lsof() {
    fi
 }
 
+_which() {
+   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+}
+
 # ###########################################################################
 # End alt_cmds package
 # ###########################################################################
@@ -605,20 +609,21 @@ remove_pid_file() {
 # ###########################################################################
 
 
+
 set -u
 
-CMD_GDB="$(which gdb)"
-CMD_IOSTAT="$(which iostat)"
-CMD_MPSTAT="$(which mpstat)"
-CMD_MYSQL="$(which mysql)"
-CMD_MYSQLADMIN="$(which mysqladmin)"
-CMD_OPCONTROL="$(which opcontrol)"
-CMD_OPREPORT="$(which opreport)"
-CMD_PMAP="$(which pmap)"
-CMD_STRACE="$(which strace)"
-CMD_SYSCTL="$(which sysctl)"
-CMD_TCPDUMP="$(which tcpdump)"
-CMD_VMSTAT="$(which vmstat)"
+CMD_GDB="$(_which gdb)"
+CMD_IOSTAT="$(_which iostat)"
+CMD_MPSTAT="$(_which mpstat)"
+CMD_MYSQL="$(_which mysql)"
+CMD_MYSQLADMIN="$(_which mysqladmin)"
+CMD_OPCONTROL="$(_which opcontrol)"
+CMD_OPREPORT="$(_which opreport)"
+CMD_PMAP="$(_which pmap)"
+CMD_STRACE="$(_which strace)"
+CMD_SYSCTL="$(_which sysctl)"
+CMD_TCPDUMP="$(_which tcpdump)"
+CMD_VMSTAT="$(_which vmstat)"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
@@ -626,7 +631,7 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   local mysqld_pid=$(_pidof mysqld | head -n1)
 
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
@@ -787,7 +792,7 @@ collect() {
 
       $CMD_OPCONTROL --save=pt_collect_$p
 
-      local mysqld_path=$(which mysqld);
+      local mysqld_path=$(_which mysqld);
       if [ "$mysqld_path" -a -f "$mysqld_path" ]; then
          $CMD_OPREPORT            \
             --demangle=smart      \

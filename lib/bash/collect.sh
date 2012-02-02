@@ -21,21 +21,25 @@
 # Package: collect
 # collect collects system information.
 
+# XXX
+# THIS LIB REQUIRES log_warn_die.sh, safeguards.sh, and alt_cmds.sh!
+# XXX
+
 set -u
 
 # Global variables.
-CMD_GDB="$(which gdb)"
-CMD_IOSTAT="$(which iostat)"
-CMD_MPSTAT="$(which mpstat)"
-CMD_MYSQL="$(which mysql)"
-CMD_MYSQLADMIN="$(which mysqladmin)"
-CMD_OPCONTROL="$(which opcontrol)"
-CMD_OPREPORT="$(which opreport)"
-CMD_PMAP="$(which pmap)"
-CMD_STRACE="$(which strace)"
-CMD_SYSCTL="$(which sysctl)"
-CMD_TCPDUMP="$(which tcpdump)"
-CMD_VMSTAT="$(which vmstat)"
+CMD_GDB="$(_which gdb)"
+CMD_IOSTAT="$(_which iostat)"
+CMD_MPSTAT="$(_which mpstat)"
+CMD_MYSQL="$(_which mysql)"
+CMD_MYSQLADMIN="$(_which mysqladmin)"
+CMD_OPCONTROL="$(_which opcontrol)"
+CMD_OPREPORT="$(_which opreport)"
+CMD_PMAP="$(_which pmap)"
+CMD_STRACE="$(_which strace)"
+CMD_SYSCTL="$(_which sysctl)"
+CMD_TCPDUMP="$(_which tcpdump)"
+CMD_VMSTAT="$(_which vmstat)"
 
 # Try to find command manually.
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
@@ -45,7 +49,7 @@ collect() {
    local p="$2"  # prefix for each result file
 
    # Get pidof mysqld.
-   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
+   local mysqld_pid=$(_pidof mysqld | head -n1)
 
    # Get memory allocation info before anything else.
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
@@ -243,7 +247,7 @@ collect() {
 
       # Attempt to generate a report; if this fails, then just tell the user
       # how to generate the report.
-      local mysqld_path=$(which mysqld);
+      local mysqld_path=$(_which mysqld);
       if [ "$mysqld_path" -a -f "$mysqld_path" ]; then
          $CMD_OPREPORT            \
             --demangle=smart      \

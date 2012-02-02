@@ -43,6 +43,12 @@ _lsof() {
    fi
 }
 
+_which() {
+   # which on CentOS is aliased to a cmd that prints extra stuff.
+   # Also, if the cmd isn't found, a msg is printed to stderr.
+   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+}
+
 # ###########################################################################
 # End alt_cmds package
 # ###########################################################################
