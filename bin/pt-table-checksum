@@ -5882,9 +5882,33 @@ sub main {
 
       return if $o->get('explain');
 
-      my $sql = '/*!50108 SET @@binlog_format := "STATEMENT"*/';
+      # https://bugs.launchpad.net/percona-toolkit/+bug/919352
+      # The tool shouldn't blindly attempt to change binlog_format;
+      # instead, it should check if it's already set to STATEMENT.
+      # This is becase starting with MySQL 5.1.29, changing the format
+      # requires a SUPER user.
+      my $sql = 'SELECT @@binlog_format';
       PTDEBUG && _d($dbh, $sql);
-      $dbh->do($sql);
+      my ($original_binlog_format) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Original original_binlog_format:', $original_binlog_format);
+
+      if ( $original_binlog_format !~ /STATEMENT/i ) {
+         $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
+         eval {
+            PTDEBUG && _d($dbh, $sql);
+            $dbh->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            die "Failed to $sql: $EVAL_ERROR\n"
+               . "This tool expects to work with binlog_format=STATEMENT, "
+               . "however, it appears to be set to $original_binlog_format, "
+               . "and there was an error while attempting to change it. "
+               . "It's possible that you are running a version of MySQL "
+               . "that requires SUPER user privileges to change "
+               . "binlog_format. In that case, you will need to manually "
+               . "set the format to STATEMENT before running the tool.\n";
+         }
+      }
 
       # Set transaction isolation level. We set binlog_format to STATEMENT,
       # but if the transaction isolation level is set to READ COMMITTED and the
