@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-TESTS=18
+TESTS=20
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
+TOOL="pt-stalk"
 
 mkdir "$TMPDIR/collect" 2>/dev/null
 
@@ -14,7 +15,7 @@ source "$LIB_DIR/safeguards.sh"
 source "$LIB_DIR/alt_cmds.sh"
 source "$LIB_DIR/collect.sh"
 
-parse_options "$T_LIB_DIR/samples/bash/po002.sh" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
+parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 # Prefix (with path) for the collect files.
 local p="$TMPDIR/collect/2011_12_05"
@@ -23,12 +24,23 @@ local p="$TMPDIR/collect/2011_12_05"
 collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
 # Even if this system doesn't have all the cmds, collect should still
-# create all the default files.
+# have created some files for cmds that (hopefully) all systems have.
 ls -1 $TMPDIR/collect | sort > $TMPDIR/collect-files
-no_diff \
-   $TMPDIR/collect-files \
-   $T_LIB_DIR/samples/bash/collect001.txt \
-   "Default collect files"
+
+# If this system has /proc, then some files should be collected.
+# Else, those files should not exist.
+if [ -f /proc/diskstats ]; then
+   cmd_ok \
+      "grep -q '[0-9]' $TMPDIR/collect/2011_12_05-diskstats" \
+      "/proc/diskstats"
+else
+   test -f $TMPDIR/collect/2011_12_05-diskstats
+   is "$?" "1" "No /proc/diskstats"
+fi
+
+cmd_ok \
+   "grep -q '\-hostname\$' $TMPDIR/collect-files" \
+   "Collected hostname"
 
 cmd_ok \
    "grep -q 'Avail' $p-df" \
@@ -96,11 +108,25 @@ cmd_ok \
 local iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "1" "1 iteration/1s run time"
 
+empty_files=0
+for file in $p-*; do
+   if ! [ -s $file ]; then
+      empty_files=1
+      break
+   fi
+   if [ -z "$(grep -v '^TS ' --max-count 1 $file)" ]; then
+      empty_files=1
+      break
+   fi
+done
+
+is "$empty_files" "0" "No empty files"
+
 # ###########################################################################
 # Try longer run time.
 # ###########################################################################
 
-parse_options "$T_LIB_DIR/samples/bash/po002.sh" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
+parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 rm $TMPDIR/collect/*
 

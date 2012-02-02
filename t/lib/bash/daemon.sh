@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=7
+TESTS=9
 
 TMPDIR="$TEST_TMPDIR"
 local file="$TMPDIR/pid-file"
@@ -59,6 +59,22 @@ is \
 
 rm $file
 rm $TMPDIR/output
+
+# ###########################################################################
+# Die if pid file can't be created.
+# ###########################################################################
+(
+   make_pid_file "/root/pid" $$ >$TMPDIR/output 2>&1
+)
+
+is \
+   "$?" \
+   "1" \
+   "Exit 1 if PID file can't be created"
+
+cmd_ok \
+   "grep -q 'Cannot create or write PID file /root/pid' $TMPDIR/output" \
+   "Error that PID file can't be created"
 
 # ###########################################################################
 # Done.
