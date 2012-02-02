@@ -34,8 +34,11 @@ use List::Util qw( max first );
 
 use ReadKeyMini qw( GetTerminalSize );
 
-my (undef, $max_lines)    = GetTerminalSize();
-$Diskstats::printed_lines = $max_lines;
+my $max_lines;
+BEGIN {
+   (undef, $max_lines)       = GetTerminalSize();
+   $Diskstats::printed_lines = $max_lines;
+}
 
 my $diskstat_colno_for;
 BEGIN {
@@ -974,6 +977,9 @@ sub print_deltas {
    my $rows_method   = $args{rows_callback}   || "print_rows";
 
    my @stats = $self->_calc_deltas();
+
+   $Diskstats::printed_lines = $max_lines
+      unless defined $Diskstats::printed_lines;
 
    if ( $self->{space_samples} && @stats && @stats > 1
          && !$Diskstats::last_was_header ) {
