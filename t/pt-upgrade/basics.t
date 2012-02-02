@@ -139,6 +139,7 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`rm /tmp/left-outfile.txt /tmp/right-outfile.txt 2>/dev/null`);
 $sb->wipe_clean($dbh1);
 $sb->wipe_clean($dbh2);
 exit;
