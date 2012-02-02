@@ -3866,11 +3866,10 @@ device.
 
 type: Hash; default: group,scroll
 
-If 'group' is present, a blank line will be printed sepparating samples,
-as long as there is more than one sample to show.
-If 'scroll' is present, the tool will print the headers as often as needed
-to prevent them from scrolling out of view; Note that you can press the
-space bar, or the enter key, to reprint headers at will.
+If C<group> is present, each sample will be separated by a blank line, unless
+the sample is only one line.  If C<scroll> is present, the tool will print the
+headers as often as needed to prevent them from scrolling out of view. Note that
+you can press the space bar, or the enter key, to reprint headers at will.
 
 =item --help
 
@@ -3907,7 +3906,7 @@ Show inactive devices.
 
 =item --show-timestamps
 
-Show a timestamp in the form of 'HH:MM:SS' as the #ts line.
+Show a 'HH:MM:SS' timestamp in the C<#ts> column.
 
 =item --version
 
