@@ -76,7 +76,8 @@ diag(`rm $outfile >/dev/null 2>&1`);
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
-      "$sample/default-results-5.1.txt",
+      $sandbox_version gt "5.0 " ? "$sample/default-results-5.1.txt"
+                                 : "$sample/default-results-5.0.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
    ),
    "Default checksum"
@@ -88,7 +89,7 @@ ok(
 # other than to ensure that there's at one for each table.
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 cmp_ok(
-   $row->[0], '>=', 37,
+   $row->[0], '>=', ($sandbox_version gt "5.0" ? 37 : 33),
    'At least 37 checksums'
 );
 
@@ -99,7 +100,8 @@ cmp_ok(
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
-      "$sample/static-chunk-size-results-5.1.txt",
+      $sandbox_version gt "5.0" ? "$sample/static-chunk-size-results-5.1.txt"
+                                : "$sample/static-chunk-size-results-5.0.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),
    "Static chunk size (--chunk-time 0)"
@@ -108,14 +110,14 @@ ok(
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   86,
+   ($sandbox_version gt "5.0" ? 86 : 82),
    '86 checksums on master'
 );
 
 $row = $slave_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   86,
+   ($sandbox_version gt "5.0" ? 86 : 82),
    '86 checksums on slave'
 );
 

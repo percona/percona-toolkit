@@ -48,6 +48,7 @@ is(
 
 $output = output(
    sub { pt_slave_delay::main(@args, qw(--interval 1 --run-time 1)) },
+   stderr => 1,
 );
 like(
    $output,
