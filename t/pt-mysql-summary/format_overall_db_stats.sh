@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=2
+TMPDIR=$TEST_TMPDIR
 
 cat <<EOF > $TMPDIR/expected
 

@@ -3,6 +3,7 @@
 # This test file must be ran by util/test-bash-functions.
 
 TESTS=5
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="diskstats-001.txt"
 cat <<EOF > $TMPDIR/expected

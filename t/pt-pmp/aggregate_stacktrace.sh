@@ -3,6 +3,7 @@
 # This test file must be ran by util/test-bash-functions.
 
 TESTS=6
+TMPDIR=$TEST_TMPDIR
 
 # ############################################################################
 TEST_NAME="stacktrace-001.txt"
