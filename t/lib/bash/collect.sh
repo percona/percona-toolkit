@@ -62,12 +62,16 @@ cmd_ok \
    "innodbstatus2"
 
 cmd_ok \
-   "grep -q 'error log seems to be /tmp/12345/data/mysqld.log' $p-output" \
+   "grep -q 'error log seems to be .*/mysqld.log' $p-output" \
    "Finds MySQL error log"
 
-cmd_ok \
-   "grep -q 'Status information:' $p-log_error" \
-   "debug"
+if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
+   cmd_ok \
+      "grep -q 'Status information:' $p-log_error" \
+      "debug"
+else
+   is "1" "1" "SKIP Can't determine MySQL 5.0 error log"
+fi
 
 cmd_ok \
    "grep -q 'COMMAND[ ]\+PID[ ]\+USER' $p-lsof" \

@@ -41,7 +41,8 @@ SKIP: {
    ok(
       no_diff(
          $tp->get_create_table($dbh, 'sakila', 'actor'),
-         "$sample/sakila.actor",
+         $sandbox_version ge '5.1' ? "$sample/sakila.actor"
+                                   : "$sample/sakila.actor-5.0",
          cmd_output => 1,
       ),
       "get_create_table(sakila.actor)"

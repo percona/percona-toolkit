@@ -467,9 +467,6 @@ rm_tmpdir() {
 
 set -u
 
-CMD_PIDOF="$(which pidof)"
-CMD_PGREP="$(which pgrep)"
-
 _seq() {
    local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
@@ -629,7 +626,7 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=$(_pidof mysqld | head -n1)
+   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
 
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
