@@ -386,11 +386,25 @@ sub group_by {
       # object's ->new being smart about discarding unrecognized
       # values.
       $o->set("current_group_by_obj", undef);
-      #my $new_obj = $old_obj->new_from_object($input_to_object{$input});
-      $o->set( "current_group_by_obj", $input_to_object{$input}->new(OptionParser=>$o, interactive => 1) );
-      if ( !$args{redraw_all} ) {
-         print_header(%args);
-      }
+      my $new_obj = $input_to_object{$input}->new(OptionParser=>$o, interactive => 1);
+      $o->set( "current_group_by_obj", $new_obj );
+
+      # Data shared between all the objects.
+      # Current
+      $new_obj->{_stats_for}  = $old_obj->{_stats_for};
+      $new_obj->set_curr_ts($old_obj->curr_ts());
+
+      # Previous
+      $new_obj->{_prev_stats_for}  = $old_obj->{_prev_stats_for};
+      $new_obj->set_prev_ts($old_obj->prev_ts());
+
+      # First
+      $new_obj->{_first_stats_for} = $old_obj->{_first_stats_for};
+      $new_obj->set_first_ts($old_obj->first_ts());
+
+      # If we can't redraw the entire file, because there isn't a file,
+      # just settle for reprinting the header.
+      print_header(%args) unless $args{redraw_all};
    }
 
    # Just aliasing this for a bit.

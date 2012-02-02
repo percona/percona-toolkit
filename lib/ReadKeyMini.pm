@@ -48,7 +48,18 @@ BEGIN {
    my $have_readkey = eval { require Term::ReadKey };
 
    if ($have_readkey) {
-      Term::ReadKey->import(@EXPORT_OK);
+      *ReadMode = sub {
+         eval { return Term::ReadKey::ReadMode( @_ ) };
+         if ( $@ ) {
+            return _ReadMode(@_);
+         }
+      };
+      *GetTerminalSize = sub {
+         eval { return Term::ReadKey::GetTerminalSize( @_ ) };
+         if ( $@ ) {
+            return _GetTerminalSize(@_);
+         }
+      };
    }
    else {
       # If we don't have Term::ReadKey, fake it. We clobber our own glob,

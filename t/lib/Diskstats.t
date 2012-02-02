@@ -172,13 +172,13 @@ $obj->set_columns_regex(qr/cnc|rt|busy|prg|[mk]b|[dr]_s|mrg/);
 ($header, $rows, $cols) = $obj->design_print_formats();
 is(
    $header,
-   join(" ", q{%5s %-6s}, grep { $_ =~ $obj->columns_regex() } map { $_->[0] } @columns_in_order),
+   join(" ", q{%+*s %-6s}, grep { $_ =~ $obj->columns_regex() } map { $_->[0] } @columns_in_order),
    "design_print_formats: sanity check for defaults"
 );
 
 $obj->set_columns_regex(qr/./);
 ($header, $rows, $cols) = $obj->design_print_formats(max_device_length => 10);
-my $all_columns_format = join(" ", q{%5s %-10s}, map { $_->[0] } @columns_in_order);
+my $all_columns_format = join(" ", q{%+*s %-10s}, map { $_->[0] } @columns_in_order);
 is(
    $header,
    $all_columns_format,
@@ -189,7 +189,7 @@ $obj->set_columns_regex(qr/(?!)/); # Will never match
 ($header, $rows, $cols) = $obj->design_print_formats(max_device_length => 10);
 is(
    $header,
-   q{%5s %-10s },
+   q{%+*s %-10s },
    "design_print_formats respects columns_regex"
 );
 
@@ -200,7 +200,7 @@ $obj->set_columns_regex(qr/./);
                                  );
 is(
    $header,
-   q{%5s %-10s },
+   q{%+*s %-10s },
    "...unless we pass an explicit column array"
 );
 
@@ -211,7 +211,7 @@ $obj->set_columns_regex(qr/./);
                            );
 is(
    $header,
-   q{%5s %-10s busy},
+   q{%+*s %-10s busy},
    "Header"
 );
 
@@ -317,7 +317,7 @@ for my $method ( qw( delta_against delta_against_ts group_by ) ) {
 }
 
 is(
-   Diskstats->compute_line_ts( first_ts => 0 ),
+   $obj->compute_line_ts( first_ts => 0 ),
    sprintf( "%5.1f", 0 ),
    "compute_line_ts has a sane default",
 );
@@ -474,7 +474,9 @@ for my $test (
 
    $obj->set_columns_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
    $obj->set_show_inactive(1);
+   $obj->set_show_timestamps(0);
    $obj->set_automatic_headers(0);
+   $obj->set_show_line_between_samples(0);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
