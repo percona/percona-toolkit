@@ -22,8 +22,6 @@ usage() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-set -u
-
 TMPDIR=""
 
 mk_tmpdir() {
@@ -1318,10 +1316,11 @@ main() {
    fi
 
    temp_files "rm"
-   rm_tmpdir
 
    # Make sure that we signal the end of the tool's output.
    section The_End
+
+   rm_tmpdir
 }
 
 # Execute the program if it was not included from another file.  This makes it
