@@ -16,9 +16,7 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-heartbeat";
 
-diag(`$trunk/sandbox/test-env reset`);  # don't repl sakila db to 12347
-diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 12347 12346 >/dev/null`);
+diag(`$trunk/sandbox/test-env reset`);
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -225,6 +223,7 @@ $output = output(
    sub { pt_heartbeat::main(qw(-h 127.1 -P 12347 -u msandbox -p msandbox),
       qw(-D test --check --print-master-server-id --master-server-id 42),
       qw(--no-insert-heartbeat-row)) },
+   stderr => 1,
 );
 
 like(
@@ -246,11 +245,9 @@ foreach my $port (@ports) {
    );
 }
 
-diag(`rm -rf /tmp/mk-heartbeat-sentinel >/dev/null`);
-diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
-
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`rm -rf /tmp/pt-heartbeat-sentinel >/dev/null`);
 $sb->wipe_clean($master_dbh);
 exit;
