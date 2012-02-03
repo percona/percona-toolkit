@@ -103,6 +103,7 @@ sub _sample_callback {
    if ( $self->{_iterations} == 1 || $printed_a_line == 1 ) {
       $self->{_save_curr_as_prev} = 1;
       $self->_save_curr_as_prev( $self->stats_for() );
+      $self->set_prev_ts_line( $self->curr_ts_line() );
       $self->{_save_curr_as_prev} = 0;
    }
    return;
@@ -111,6 +112,11 @@ sub _sample_callback {
 sub delta_against {
    my ( $self, $dev ) = @_;
    return $self->prev_stats_for($dev);
+}
+
+sub ts_line_for_timestamp {
+   my ($self) = @_;
+   return $self->prev_ts_line();
 }
 
 sub delta_against_ts {
