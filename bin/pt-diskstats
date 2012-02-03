@@ -1629,6 +1629,7 @@ sub new {
             WRITTEN_KBS
             IOS_REQUESTED
             IOS_IN_BYTES
+            IOS_IN_PROGRESS
          )
       ],
       _stats_for         => {},
@@ -1963,14 +1964,12 @@ our @columns_in_order = (
    [ "   rd_s" => "%7.1f",   "reads_sec", ],
    [ "rd_avkb" => "%7.1f",   "avg_read_sz", ],
    [ "rd_mb_s" => "%7.1f",   "mbytes_read_sec", ],
-   [ "rd_io_s" => "%7.1f",   "ios_read_sec", ],
    [ "rd_mrg"  => "%5.0f%%", "read_merge_pct", ],
    [ "rd_cnc"  => "%6.1f",   "read_conc", ],
    [ "  rd_rt" => "%7.1f",   "read_rtime", ],
    [ "   wr_s" => "%7.1f",   "writes_sec", ],
    [ "wr_avkb" => "%7.1f",   "avg_write_sz", ],
    [ "wr_mb_s" => "%7.1f",   "mbytes_written_sec", ],
-   [ "wr_io_s" => "%7.1f",   "ios_written_sec", ],
    [ "wr_mrg"  => "%5.0f%%", "write_merge_pct", ],
    [ "wr_cnc"  => "%6.1f",   "write_conc", ],
    [ "  wr_rt" => "%7.1f",   "write_rtime", ],
@@ -2037,7 +2036,9 @@ sub parse_diskstats_line {
    $dev_stats[READ_KBS]      = $read_bytes    / 1024;
    $dev_stats[WRITTEN_KBS]   = $written_bytes / 1024;
    $dev_stats[IOS_IN_BYTES]  = $read_bytes + $written_bytes;
-   $dev_stats[IOS_REQUESTED] = $dev_stats[READS] + $dev_stats[WRITES];
+   $dev_stats[IOS_REQUESTED]
+      = $dev_stats[READS] + $dev_stats[WRITES]
+      + $dev_stats[READS_MERGED] +$dev_stats[WRITES_MERGED];
 
    return $dev_stats[DEVICE], \@dev_stats;
 }
@@ -2146,11 +2147,9 @@ sub _calc_read_stats {
                            $elapsed / 1000 / $devs_in_group,
    );
 
-   $read_stats{ios_read_sec} = 0; # TODO
-
    if ( $delta_for->{reads} > 0 ) {
       $read_stats{read_rtime} =
-        $delta_for->{ms_spent_reading} / $delta_for->{reads};
+        $delta_for->{ms_spent_reading} / $read_stats{read_requests};
       $read_stats{avg_read_sz} =
         $delta_for->{read_kbs} / $delta_for->{reads};
    }
@@ -2185,11 +2184,9 @@ sub _calc_write_stats {
         $devs_in_group,
    );
 
-   $write_stats{ios_written_sec} = 0; # TODO
-
    if ( $delta_for->{writes} > 0 ) {
       $write_stats{write_rtime} =
-        $delta_for->{ms_spent_writing} / $delta_for->{writes};
+        $delta_for->{ms_spent_writing} / $write_stats{write_requests};
       $write_stats{avg_write_sz} =
         $delta_for->{written_kbs} / $delta_for->{writes};
    }
@@ -2218,25 +2215,31 @@ sub _calc_misc_stats {
    my ($delta_for, $elapsed, $devs_in_group, $stats) = @args{ @required_args };
    my %extra_stats;
 
+
    $extra_stats{busy}
       = 100
       * $delta_for->{ms_spent_doing_io}
       / ( 1000 * $elapsed * $devs_in_group ); # Highlighting failure: /
 
-   my $number_of_ios        = $delta_for->{ios_requested};
+   my $number_of_ios        = $delta_for->{ios_requested}; # sum(delta[field1, 2, 5, 6])
    my $total_ms_spent_on_io = $delta_for->{ms_spent_reading}
                             + $delta_for->{ms_spent_writing};
 
    if ( $number_of_ios ) {
-      $extra_stats{qtime} = $total_ms_spent_on_io / $number_of_ios;
-      $extra_stats{stime} = $delta_for->{ms_spent_doing_io} / $number_of_ios;
+      $extra_stats{qtime} =
+         $delta_for->{ms_weighted} / ($number_of_ios + $delta_for->{ios_in_progress})
+            - ($delta_for->{ms_spent_doing_io} / $elapsed) / $number_of_ios;
+      $extra_stats{stime}
+         = $delta_for->{ms_spent_doing_io} / $elapsed / $number_of_ios;
    }
    else {
       $extra_stats{qtime} = 0;
       $extra_stats{stime} = 0;
    }
 
-   $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
+   $extra_stats{s_spent_doing_io}
+      = $stats->{reads_sec} + $stats->{writes_sec};
+
    $extra_stats{line_ts} = $self->compute_line_ts(
       first_ts   => $self->first_ts(),
       curr_ts    => $self->curr_ts(),
@@ -3579,11 +3582,20 @@ display, it prints information about the newest sample each time it refreshes.
 When it is operating on a file of saved samples, it redraws the entire file's
 contents every time you change an option.
 
-The program doesn't print information about every disk device on the system. It
+The program doesn't print information about every block device on the system. It
 hides devices that it has never observed to have any activity.  You can enable
 and disable this by pressing the 'i' key.
 
 =head1 OUTPUT
+
+In the rest of this documentation, we will try to clarify the distinction
+between block devices (/dev/sda1, for example), which the kernel presents to the
+application via a filesystem, versus the (usually) physical device underneath
+the block device, which could be a disk, a RAID controller, and so on.  We will
+sometimes refer to logical I/O operations, which occur at the block device,
+versus physical I/Os which are performed on the underlying device.  When we
+refer to the queue, we are speaking of the queue associated with the block
+device, which holds requests until they're issued to the physical device.
 
 The program's output looks like the following sample, which is too wide for this
 manual page, so we have formatted it as several samples with continuations:
@@ -3617,7 +3629,7 @@ default mode, when each line contains information about a single disk but
 possibly aggregates across several samples from that disk, this column shows the
 number of samples that were included into the line of output, in {curly braces}.
 In the example shown, each line of output aggregates {10} samples of
-/proc/diskstats.
+F</proc/diskstats>.
 
 In the "all" group-by mode, this column shows timestamp offsets, relative to the
 time the tool began aggregating or the timestamp of the previous lines printed,
@@ -3627,6 +3639,10 @@ intuitive when you see the lines appearing on your screen periodically.
 Similarly, in "sample" group-by mode, the number indicates the total time span
 that is grouped into each sample.
 
+If you specify L<"--show-timestamps">, this field instead shows the timestamp at
+which the sample was taken; if multiple timestamps are present in a single line
+of output, then the first timestamp is used.
+
 =item device
 
 The device name.  If there is more than one device, then instead the number
@@ -3635,38 +3651,52 @@ of devices aggregated into the line is shown, in {curly braces}.
 =item rd_s
 
 The average number of reads per second.  This is the number of I/O requests that
-were sent to the block device. However, the requests may be merged by the I/O
-scheduler, so they might be sent to the physical device differently.
+were sent to the underlying device.  This usually is a smaller number than the
+number of logical IO requests made by applications.  More requests might have
+been queued to the block device, but some of them usually are merged before
+being sent to the disk.
+
+This field is computed from the contents of F</proc/diskstats> as follows.  See
+L<"KERNEL DOCUMENTATION"> below for the meaning of the field numbers:
+
+   delta[field1] / delta[time]
 
 =item rd_avkb
 
-The average size of the reads, in kilobytes.
+The average size of the reads, in kilobytes.  This field is computed as follows:
+
+   2 * delta[field3] / delta[field1]
 
 =item rd_mb_s
 
-The average number of megabytes read per second.
+The average number of megabytes read per second.  Computed as follows:
 
-=item rd_io_s
-
-The average number of IO reads per second.  This is the number that is actually
-sent to the physical device after merging adjacent requests and any other
-processing in the queue.
+   2 * delta[field3] / delta[time]
 
 =item rd_mrg
 
-The percentage of read requests that were merged together in the disk
-scheduler before reaching the physical device.
+The percentage of read requests that were merged together in the queue scheduler
+before being sent to the physical device.  The field is computed as follows:
+
+   100 * delta[field2] / (delta[field2] + delta[field1])
 
 =item rd_cnc
 
 The average concurrency of the read operations, as computed by Little's Law.
-This is the end-to-end concurrency, including time spent in the queue.
+This is the end-to-end concurrency on the block device, not the underlying
+disk's concurrency. It includes time spent in the queue.  The field is computed
+as follows:
+
+   delta[field4] / delta[time] / 1000 / devices-in-group
 
 =item rd_rt
 
 The average response time of the read operations, in milliseconds.  This is the
 end-to-end response time, including time spent in the queue.  It is the response
-time that the application making I/O requests sees.
+time that the application making I/O requests sees, not the response time of the
+physical disk underlying the block device.  It is computed as follows:
+
+   delta[field4] / (delta[field1] + delta[field2])
 
 =item wr_s, wr_avkb, wr_mb_s, wr_io_s, wr_mrg, wr_cnc, wr_rt
 
@@ -3675,26 +3705,36 @@ read activity.
 
 =item busy
 
-The fraction of time that the device had at least one request in progress;
-this is what iostat calls %util.  It cannot exceed 100% unless there is a
-rounding error, but it is a common mistake to think that a device that's busy
-all the time is saturated.  A device such as a RAID volume should support
-concurrency higher than 1, and solid-state drives can support very high
-concurrency.  Concurrency can grow without bound, and is a more reliable
-indicator of how loaded the device really is.
+The fraction of wall-clock time that the device had at least one request in
+progress; this is what iostat calls %util, and indeed it is utilization,
+depending on how you define utilization, but that is sometimes ambiguous in
+common parlance.  It is computed as follows:
+
+   100 * delta[field10] / (1000 * delta[time])
+
+This field cannot exceed 100% unless there is a rounding error, but it is a
+common mistake to think that a device that's busy all the time is saturated.  A
+device such as a RAID volume should support concurrency higher than 1, and
+solid-state drives can support very high concurrency.  Concurrency can grow
+without bound, and is a more reliable indicator of how loaded the device really
+is.
 
 =item in_prg
 
 The number of requests that were in progress.  Unlike the read and write
-concurrencies, which are averages that are generated from reliable numbers,
-this number is an instantaneous sample, and you can see that it might
-represent a spike of requests, rather than the true long-term average.
+concurrencies, which are averages that are generated from reliable numbers, this
+number is an instantaneous sample, and you can see that it might represent a
+spike of requests, rather than the true long-term average.  If this number is
+large, it essentially means that the device is heavily loaded.  It is computed
+as follows:
+
+   field9
 
 =item ios_s
 
-The average throughput of the physical device, in I/O operations per second.
-This column can be used to help you understand how much activity the underlying
-device is actually doing.
+The average throughput of the physical device, in I/O operations per second
+(IOPS).  This column shows the total IOPS the underlying device is handling.  It
+is the sum of rd_s and wr_s.
 
 =item qtime
 
@@ -3702,11 +3742,30 @@ The average queue time; that is, time a request spends in the device scheduler
 queue before being sent to the physical device.  This is an average over reads
 and writes.
 
+It is computed in a slightly complex way: the total average response time seen
+by the application, minus the average service time (see the description of the
+next column).  This is derived from the queueing theory formula for service
+time, R = W + S: response time = queue time + service time.  This is solved for
+W, of course, to give W = R - S.  The computation follows:
+
+   delta[field11] / (delta[field1, 2, 5, 6] + delta[field9])
+      - (delta[field10] / delta[time]) / (delta[field1, 2, 5, 6])
+
+See the description for C<stime> for more details and cautions.
+
 =item stime
 
 The average service time; that is, the time elapsed while the physical device
 processes the request, after the request leaves the queue.  This is an average
-over reads and writes.
+over reads and writes.  It is computed from the queueing theory utilization
+formula, U = SX, solved for S.  This means that utilization (busy time) divided
+by throughput gives service time:
+
+   (delta[field10] / delta[time]) / (delta[field1, 2, 5, 6])
+
+Note, however, that there can be some kernel bugs that cause field 9 in
+F</proc/diskstats> to become negative, and this will cause field 10 to be wrong,
+thus making the service time computation not wholly trustworthy.
 
 You can compare the stime and qtime columns to see whether the response time for
 reads and writes is spent in the queue or on the physical device.  However, you
@@ -3718,12 +3777,101 @@ the Internet.
 
 =back
 
+If you are used to using iostat, you might wonder where you can find the same
+information in pt-diskstats.  Here are two samples of output from both tools on
+the same machine at the same time, for F</dev/sda>, wrapped to fit:
+
+     #ts device rd_s rd_avkb rd_mb_s rd_io_s rd_mrg rd_cnc rd_rt
+   450.0 sda     1.0     4.0     0.0     0.2     0%    0.0  16.7
+   460.0 sda     0.0     0.0     0.0     0.0     0%    0.0   0.0
+   470.0 sda     0.4     4.0     0.0     0.1     0%    0.0  15.5
+   480.0 sda     2.1     4.4     0.0     0.4     0%    0.0  21.1
+   490.0 sda     2.4     4.0     0.0     0.4     0%    0.0  15.4
+   500.0 sda     0.1     4.0     0.0     0.0     0%    0.0  33.0
+   510.0 sda     0.3     4.0     0.0     0.0     0%    0.0  14.3
+                wr_s wr_avkb wr_mb_s wr_io_s wr_mrg wr_cnc wr_rt
+                57.0     7.5     0.4    16.7    46%    1.7  29.4
+                 7.7    25.5     0.2     0.2    84%    0.0   2.0
+                49.6     6.8     0.3    24.3    41%    2.4  49.0
+               210.1     5.6     1.1    74.0    28%    7.4  35.2
+               297.1     5.4     1.6   113.6    26%   11.4  38.2
+                11.9    11.7     0.1     1.7    66%    0.2  14.5
+                21.9    11.0     0.2     5.4    64%    0.5  24.5
+                                busy in_prg    io_s  qtime stime
+                                  4%      0    16.9   29.1   0.7
+                                  1%      0     0.2    2.0   1.2
+                                  6%      0    24.4   48.8   1.2
+                                 12%      0    74.5   35.1   0.6
+                                 16%      0   114.0   38.1   0.5
+                                  1%      0     1.8   14.7   0.9
+                                  2%      0     5.4   24.3   0.7
+
+   Device: rrqm/s   wrqm/s   r/s    w/s    rMB/s    wMB/s
+   sda       0.00    48.60  1.00  57.00     0.00     0.41
+   sda       0.00    41.40  0.00   7.70     0.00     0.19
+   sda       0.00    34.70  0.40  49.60     0.00     0.33
+   sda       0.00    83.30  2.10 210.10     0.01     1.15
+   sda       0.00   105.10  2.40 297.90     0.01     1.58
+   sda       0.00    22.50  0.10  11.10     0.00     0.13
+   sda       0.00    38.36  0.30  21.88     0.00     0.24
+                  avgrq-sz avgqu-sz   await  svctm  %util
+                     14.79     1.69   29.15   0.65   3.78
+                     51.01     0.02    2.04   1.25   0.96
+                     13.55     2.44   48.76   1.16   5.79
+                     11.15     7.45   35.10   0.55  11.76
+                     10.81    11.40   37.96   0.53  15.97
+                     24.07     0.17   15.60   0.87   0.97
+                     21.84     0.54   24.34   0.73   1.63
+
+The correspondence between the columns is not one-to-one.  In particular:
+
+=over
+
+=item rrqm/s, wrqm/s
+
+These columns in iostat are replaced by rd_mrg and wr_mrg in pt-diskstats.  You
+can also look at the difference between rd_s and rd_io_s, for example, to see
+how many reads were issued to the block device versus how many were issued to
+the underlying disk.
+
+=item avgrq-sz
+
+This column is in sectors in iostat, and is a combination of reads and writes.
+The pt-diskstats output breaks these out separately and shows them in kB.  You
+can derive it via a weighted average of rd_avkb and wr_avkb in pt-diskstats, and
+then multiply by 2 to get sectors (each sector is 512 bytes).
+
+=item avgqu-sz
+
+This column really represents concurrency at the block device scheduler.  The
+pt-diskstats output breaks this into concurrency for reads and writes
+separately: rd_cnc and wr_cnc.
+
+=item await
+
+This column is the average response time from the beginning to the end of a
+request to the block device, including queue time and service time, and is not
+shown in pt-diskstats.  Instead, pt-diskstats shows individual response times at
+the disk level for reads and writes (rd_rt and wr_rt), as well as queue time
+versus service time for reads and writes in aggregate.
+
+=item svctm
+
+This column is the average service time at the disk, and is shown as stime in
+pt-diskstats.
+
+=item %util
+
+This column is called busy in pt-diskstats.
+
+=back
+
 =head1 COLLECTING DATA
 
 It is straightforward to gather a sample of data for this tool.  Files should
-have this format:
+have this format, with a timestamp line preceding each sample of statistics:
 
-   TS <timestamp>  <-- must start with a TS line.
+   TS <timestamp>
    <contents of /proc/diskstats>
    TS <timestamp>
    <contents of /proc/diskstats>
@@ -3742,6 +3890,91 @@ the following:
       cat /proc/diskstats >> diskstats-samples.txt
    done
 
+=head1 KERNEL DOCUMENTATION
+
+This documentation supplements L<the official
+documentation|http://www.kernel.org/doc/Documentation/iostats.txt> on the
+contents of F</proc/diskstats>.  That documentation can sometimes be difficult
+to understand for those who are not familiar with Linux kernel internals.  The
+contents of F</proc/diskstats> are generated by the C<diskstats_show()> function
+in the kernel source file F<block/genhd.c>.
+
+Here is a sample of F</proc/diskstats> on a recent kernel.
+
+   8 1 sda1 426 243 3386 2056 3 0 18 87 0 2135 2142
+
+The fields in this sample are as follows.  The first three fields are the major
+and minor device numbers (8, 1), and the device name (sda1). They are followed
+by 11 fields of statistics:
+
+=over
+
+=item 1.
+
+The number of reads completed.  This is the number of physical reads done by the
+underlying disk, not the number of reads that applications made from the block
+device.  This means that 426 actual reads have completed successfully to the
+disk on which F</dev/sda1> resides.  Reads are not counted until they complete.
+
+=item 2.
+
+The number of reads merged because they were adjacent.  In the sample, 243 reads
+were merged. This means that F</dev/sda1> actually received 869 logical reads,
+but sent only 426 physical reads to the underlying physical device.
+
+=item 3.
+
+The number of sectors read successfully.  The 426 physical reads to the disk
+read 3386 sectors.  Sectors are 512 bytes, so a total of about 1.65MB have been
+read from F</dev/sda1>.
+
+=item 4.
+
+The number of milliseconds spent reading.  This counts only reads that have
+completed, not reads that are in progress.  It counts the time spent from when
+requests are placed on the queue until they complete, not the time that the
+underlying disk spends servicing the requests. That is, it measures the total
+response time seen by applications, not disk response times.
+
+=item 5.
+
+Ditto for field 1, but for writes.
+
+=item 6.
+
+Ditto for field 2, but for writes.
+
+=item 7.
+
+Ditto for field 3, but for writes.
+
+=item 8.
+
+Ditto for field 4, but for writes.
+
+=item 9.
+
+The number of I/Os currently in progress, that is, they've been scheduled by the
+queue scheduler and issued to the disk (submitted to the underlying disk's
+queue), but not yet completed.  There are bugs in some kernels that cause this
+number, and thus fields 10 and 11, to be wrong sometimes.
+
+=item 10.
+
+The total number of milliseconds spent doing I/Os.  This is B<not> the total
+response time seen by the applications; it is the total amount of time during
+which at least one I/O was in progress.  If one I/O is issued at time 100,
+another comes in at 101, and both of them complete at 102, then this field
+increments by 2, not 3.
+
+=item 11.
+
+This field counts the total response time of all I/Os.  In contrast to field 10,
+it counts double when two I/Os overlap.  In our previous example, this field
+would increment by 3, not 2.
+
+=back
+
 =head1 OPTIONS
 
 This tool accepts additional command-line arguments.  Refer to the
@@ -3749,18 +3982,25 @@ L<"SYNOPSIS"> and usage information for details.
 
 =over
 
-=item --config
+=item --[no]automatic-headers
 
-type: Array
+default: yes
 
-Read this comma-separated list of config files; if specified, this must be the
-first option on the command line.
+Print the headers as often as needed to prevent them from scrolling out of view.
+You can press the space bar to reprint headers at will.
 
 =item --columns-regex
 
 type: string; default: .
 
 Print columns that match this Perl regex.
+
+=item --config
+
+type: Array
+
+Read this comma-separated list of config files; if specified, this must be the
+first option on the command line.
 
 =item --devices-regex
 
@@ -3781,11 +4021,27 @@ device.
 
 type: Hash; default: group,scroll
 
-If 'group' is present, a blank line will be printed sepparating samples,
-as long as there is more than one sample to show.
-If 'scroll' is present, the tool will print the headers as often as needed
-to prevent them from scrolling out of view; Note that you can press the
-space bar, or the enter key, to reprint headers at will.
+If C<group> is present, each sample will be separated by a blank line, unless
+the sample is only one line.  If C<scroll> is present, the tool will print the
+headers as often as needed to prevent them from scrolling out of view. Note that
+you can press the space bar, or the enter key, to reprint headers at will.
+
+=item --help
+
+Show help and exit.
+
+=item --interval
+
+type: int; default: 1
+
+When in interactive mode, wait N seconds before printing to the screen.
+Also, how often the tool should sample /proc/diskstats.
+
+=item --iterations
+
+type: int
+
+When in interactive mode, stop after N samples.  Run forever by default.
 
 =item --sample-time
 
@@ -3799,30 +4055,13 @@ type: string
 
 File to save diskstats samples in; these can be used for later analysis.
 
-=item --iterations
-
-type: int
-
-When in interactive mode, stop after N samples.  Run forever by default.
-
-=item --interval
-
-type: int; default: 1
-
-When in interactive mode, wait N seconds before printing to the screen.
-Also, how often the tool should sample /proc/diskstats.
-
 =item --show-inactive
 
 Show inactive devices.
 
 =item --show-timestamps
 
-Show a timestamp in the form of 'HH:MM:SS' as the #ts line.
-
-=item --help
-
-Show help and exit.
+Show a 'HH:MM:SS' timestamp in the C<#ts> column.
 
 =item --version
 

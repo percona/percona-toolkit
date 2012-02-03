@@ -118,6 +118,7 @@ sub new {
             WRITTEN_KBS
             IOS_REQUESTED
             IOS_IN_BYTES
+            IOS_IN_PROGRESS
          )
       ],
       _stats_for         => {},
@@ -460,14 +461,12 @@ our @columns_in_order = (
    [ "   rd_s" => "%7.1f",   "reads_sec", ],
    [ "rd_avkb" => "%7.1f",   "avg_read_sz", ],
    [ "rd_mb_s" => "%7.1f",   "mbytes_read_sec", ],
-   [ "rd_io_s" => "%7.1f",   "ios_read_sec", ],
    [ "rd_mrg"  => "%5.0f%%", "read_merge_pct", ],
    [ "rd_cnc"  => "%6.1f",   "read_conc", ],
    [ "  rd_rt" => "%7.1f",   "read_rtime", ],
    [ "   wr_s" => "%7.1f",   "writes_sec", ],
    [ "wr_avkb" => "%7.1f",   "avg_write_sz", ],
    [ "wr_mb_s" => "%7.1f",   "mbytes_written_sec", ],
-   [ "wr_io_s" => "%7.1f",   "ios_written_sec", ],
    [ "wr_mrg"  => "%5.0f%%", "write_merge_pct", ],
    [ "wr_cnc"  => "%6.1f",   "write_conc", ],
    [ "  wr_rt" => "%7.1f",   "write_rtime", ],
@@ -550,7 +549,9 @@ sub parse_diskstats_line {
    $dev_stats[READ_KBS]      = $read_bytes    / 1024;
    $dev_stats[WRITTEN_KBS]   = $written_bytes / 1024;
    $dev_stats[IOS_IN_BYTES]  = $read_bytes + $written_bytes;
-   $dev_stats[IOS_REQUESTED] = $dev_stats[READS] + $dev_stats[WRITES];
+   $dev_stats[IOS_REQUESTED]
+      = $dev_stats[READS] + $dev_stats[WRITES]
+      + $dev_stats[READS_MERGED] +$dev_stats[WRITES_MERGED];
 
    return $dev_stats[DEVICE], \@dev_stats;
 }
@@ -697,11 +698,9 @@ sub _calc_read_stats {
                            $elapsed / 1000 / $devs_in_group,
    );
 
-   $read_stats{ios_read_sec} = 0; # TODO
-
    if ( $delta_for->{reads} > 0 ) {
       $read_stats{read_rtime} =
-        $delta_for->{ms_spent_reading} / $delta_for->{reads};
+        $delta_for->{ms_spent_reading} / $read_stats{read_requests};
       $read_stats{avg_read_sz} =
         $delta_for->{read_kbs} / $delta_for->{reads};
    }
@@ -736,11 +735,9 @@ sub _calc_write_stats {
         $devs_in_group,
    );
 
-   $write_stats{ios_written_sec} = 0; # TODO
-
    if ( $delta_for->{writes} > 0 ) {
       $write_stats{write_rtime} =
-        $delta_for->{ms_spent_writing} / $delta_for->{writes};
+        $delta_for->{ms_spent_writing} / $write_stats{write_requests};
       $write_stats{avg_write_sz} =
         $delta_for->{written_kbs} / $delta_for->{writes};
    }
@@ -771,6 +768,8 @@ sub _calc_misc_stats {
    my ($delta_for, $elapsed, $devs_in_group, $stats) = @args{ @required_args };
    my %extra_stats;
 
+#   [ " qtime"  => "%6.1f",   "qtime", ],
+
    # Busy is what iostat calls %util.  This is the percent of
    # wall-clock time during which the device has I/O happening.
    $extra_stats{busy}
@@ -778,20 +777,25 @@ sub _calc_misc_stats {
       * $delta_for->{ms_spent_doing_io}
       / ( 1000 * $elapsed * $devs_in_group ); # Highlighting failure: /
 
-   my $number_of_ios        = $delta_for->{ios_requested};
+   my $number_of_ios        = $delta_for->{ios_requested}; # sum(delta[field1, 2, 5, 6])
    my $total_ms_spent_on_io = $delta_for->{ms_spent_reading}
                             + $delta_for->{ms_spent_writing};
 
    if ( $number_of_ios ) {
-      $extra_stats{qtime} = $total_ms_spent_on_io / $number_of_ios;
-      $extra_stats{stime} = $delta_for->{ms_spent_doing_io} / $number_of_ios;
+      $extra_stats{qtime} =
+         $delta_for->{ms_weighted} / ($number_of_ios + $delta_for->{ios_in_progress})
+            - ($delta_for->{ms_spent_doing_io} / $elapsed) / $number_of_ios;
+      $extra_stats{stime}
+         = $delta_for->{ms_spent_doing_io} / $elapsed / $number_of_ios;
    }
    else {
       $extra_stats{qtime} = 0;
       $extra_stats{stime} = 0;
    }
 
-   $extra_stats{s_spent_doing_io} = $total_ms_spent_on_io / 1000;
+   $extra_stats{s_spent_doing_io}
+      = $stats->{reads_sec} + $stats->{writes_sec};
+
    $extra_stats{line_ts} = $self->compute_line_ts(
       first_ts   => $self->first_ts(),
       curr_ts    => $self->curr_ts(),
