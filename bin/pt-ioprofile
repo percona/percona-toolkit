@@ -443,9 +443,13 @@ rm_tmpdir() {
 
 # ###########################################################################
 # alt_cmds package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/alt_cmds.sh
+#   t/lib/bash/alt_cmds.sh
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
-# seq N, return 1, ..., 5
 _seq() {
    local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
@@ -466,8 +470,6 @@ _lsof() {
 }
 
 _which() {
-   # which on CentOS is aliased to a cmd that prints extra stuff.
-   # Also, if the cmd isn't found, a msg is printed to stderr.
    [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
 }
 
