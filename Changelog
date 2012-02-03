@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
   * Completely redesigned pt-diskstats
   * Completely redesigned pt-stalk
+  * Removed pt-collect and put its functionality in pt-stalk
   * Fixed bug 871438: Bash tools are insecure
   * Fixed bug 897758: Failed to prepare TableSyncChunk plugin: Use of uninitialized value $args{"chunk_range"} in lc at pt-table-sync line 3055
   * Fixed bug 919819: pt-kill --execute-command creates zombies
