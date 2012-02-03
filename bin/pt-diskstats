@@ -4075,6 +4075,26 @@ type: int; default: 1
 When in interactive mode, wait N seconds before printing to the screen.
 Also, how often the tool should sample F</proc/diskstats>.
 
+The tool attempts to gather statistics exactly on even intervals of clock time.
+That is, if you specify a 5-second interval, it will try to capture samples at
+12:00:00, 12:00:05, and so on; it will not gather at 12:00:01, 12:00:06 and so
+forth.
+
+This can lead to slightly odd delays in some circumstances, because the tool
+waits one full cycle before printing out the first set of lines. (Unlike iostat
+and vmstat, pt-diskstats does not start with a line representing the averages
+since the computer was booted.)  Therefore, the rule has an exception to avoid
+very long delays.  Suppose you specify a 10-second interval, but you start the
+tool at 12:00:00.01.  The tool might wait until 12:00:20 to print its first
+lines of output, and in the intervening 19.99 seconds, it would appear to do
+nothing.
+
+To alleviate this, the tool waits until the next even interval of time to
+gather, unless more than 20% of that interval remains.  This means the tool will
+never wait more than 120% of the sampling interval to produce output, e.g if you
+start the tool at 12:00:53 with a 10-second sampling interval, then the first
+sample will be only 7 seconds long, not 10 seconds.
+
 =item --iterations
 
 type: int
@@ -4099,15 +4119,14 @@ Show inactive devices.
 
 =item --show-timestamps
 
-Show a 'HH:MM:SS' timestamp in the C<#ts> column.
+Show a 'HH:MM:SS' timestamp in the C<#ts> column.  If multiple timestamps are
+aggregated into one line, the first timestamp is shown.
 
 =item --version
 
 Show version and exit.
 
 =back
-
-=head1 ENVIRONMENT
 
 This tool does not use any environment variables.
 
