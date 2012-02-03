@@ -3535,7 +3535,8 @@ pt-diskstats - An interactive I/O monitoring tool for GNU/Linux.
 Usage: pt-diskstats [OPTION...] [FILES]
 
 pt-diskstats prints disk I/O statistics for GNU/Linux.  It is somewhat similar
-to iostat, but it is interactive and more detailed.
+to iostat, but it is interactive and more detailed.  It can analyze samples
+gathered from another machine.
 
 =head1 RISKS
 
@@ -3544,7 +3545,7 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-diskstats simply reads /proc/diskstats.  It should be very low-risk.
+pt-diskstats simply reads F</proc/diskstats>.  It should be very low-risk.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
@@ -3567,8 +3568,8 @@ convenient for quickly drilling down into I/O performance and inspecting disk
 behavior.
 
 This program works in two modes. The default is to collect samples of
-/proc/diskstats and print out the formatted statistics at intervals. The other
-mode is to process a file that contains saved samples of /proc/diskstats; there
+F</proc/diskstats> and print out the formatted statistics at intervals. The other
+mode is to process a file that contains saved samples of F</proc/diskstats>; there
 is a shell script later in this documentation that shows how to collect such a
 file.
 
@@ -3577,7 +3578,7 @@ redisplay and slice the data flexibly and easily.  It loops forever, until you
 exit with the 'q' key.  If you press the '?' key, you will bring up the
 interactive help menu that shows which keys control the program.
 
-When the program is gathering samples of /proc/diskstats and refreshing its
+When the program is gathering samples of F</proc/diskstats> and refreshing its
 display, it prints information about the newest sample each time it refreshes.
 When it is operating on a file of saved samples, it redraws the entire file's
 contents every time you change an option.
@@ -3598,25 +3599,25 @@ refer to the queue, we are speaking of the queue associated with the block
 device, which holds requests until they're issued to the physical device.
 
 The program's output looks like the following sample, which is too wide for this
-manual page, so we have formatted it as several samples with continuations:
+manual page, so we have formatted it as several samples with line breaks:
 
-  #ts device rd_s rd_avkb rd_mb_s rd_io_s rd_mrg rd_cnc rd_rt ...
- {10} sda     0.5     4.0     0.0     0.1     0%    0.0  15.6 ...
- {10} sdb     0.0     0.0     0.0     0.0     0%    0.0   0.0 ...
- {10} dm-0    0.0     0.0     0.0     0.0     0%    0.0   0.0 ...
- {10} dm-1    0.5     4.0     0.0     0.1     0%    0.0  15.6 ...
+  #ts device rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt
+  {6} sda     0.9     4.2     0.0     0%    0.0    17.9
+  {6} sdb     0.4     4.0     0.0     0%    0.0    26.1
+  {6} dm-0    0.0     4.0     0.0     0%    0.0    13.5
+  {6} dm-1    0.8     4.0     0.0     0%    0.0    16.0
 
-  #ts device ... wr_s wr_avkb wr_mb_s wr_io_s wr_mrg wr_cnc wr_rt ...
- {10} sda    ... 30.6     6.7     0.2     6.5    40%    0.7  22.8 ...
- {10} sdb    ...  1.7    17.8     0.0     0.0    77%    0.0   0.8 ...
- {10} dm-0   ...  2.5     4.0     0.0     0.1     0%    0.0   2.6 ...
- {10} dm-1   ... 38.2     4.0     0.1     7.6     0%    0.8  21.2 ...
+      ...    wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt
+      ...    99.7     6.2     0.6    35%    3.7    23.7
+      ...    14.5    15.8     0.2    75%    0.5     9.2
+      ...     1.0     4.0     0.0     0%    0.0     2.3
+      ...   117.7     4.0     0.5     0%    4.1    35.1
 
-  #ts device ... busy in_prg io_s qtime stime
- {10} sda    ...   2%      0  6.6   0.0   0.0
- {10} sdb    ...   0%      0  0.0   0.0   0.0
- {10} dm-0   ...   0%      0  0.1   0.0   0.0
- {10} dm-1   ...   2%      0  7.7   0.0   0.0
+      ...              busy in_prg    io_s  qtime stime
+      ...                6%      0   100.6   23.3   0.4
+      ...                4%      0    14.9    8.6   0.6
+      ...                0%      0     1.1    1.5   1.2
+      ...                5%      0   118.5   34.5   0.4
 
 The columns are as follows:
 
@@ -3698,7 +3699,7 @@ physical disk underlying the block device.  It is computed as follows:
 
    delta[field4] / (delta[field1] + delta[field2])
 
-=item wr_s, wr_avkb, wr_mb_s, wr_io_s, wr_mrg, wr_cnc, wr_rt
+=item wr_s, wr_avkb, wr_mb_s, wr_mrg, wr_cnc, wr_rt
 
 These columns show write activity, and they match the corresponding columns for
 read activity.
@@ -3708,7 +3709,9 @@ read activity.
 The fraction of wall-clock time that the device had at least one request in
 progress; this is what iostat calls %util, and indeed it is utilization,
 depending on how you define utilization, but that is sometimes ambiguous in
-common parlance.  It is computed as follows:
+common parlance.  It may also be called the residence time; the time during
+which at least one request was resident in the system.  It is computed as
+follows:
 
    100 * delta[field10] / (1000 * delta[time])
 
@@ -3742,30 +3745,33 @@ The average queue time; that is, time a request spends in the device scheduler
 queue before being sent to the physical device.  This is an average over reads
 and writes.
 
-It is computed in a slightly complex way: the total average response time seen
-by the application, minus the average service time (see the description of the
-next column).  This is derived from the queueing theory formula for service
-time, R = W + S: response time = queue time + service time.  This is solved for
-W, of course, to give W = R - S.  The computation follows:
+It is computed in a slightly complex way: the average response time seen by the
+application, minus the average service time (see the description of the next
+column).  This is derived from the queueing theory formula for response time, R
+= W + S: response time = queue time + service time.  This is solved for W, of
+course, to give W = R - S.  The computation follows:
 
    delta[field11] / (delta[field1, 2, 5, 6] + delta[field9])
-      - (delta[field10] / delta[time]) / (delta[field1, 2, 5, 6])
+      - delta[field10] / delta[field1, 2, 5, 6]
 
 See the description for C<stime> for more details and cautions.
 
 =item stime
 
 The average service time; that is, the time elapsed while the physical device
-processes the request, after the request leaves the queue.  This is an average
-over reads and writes.  It is computed from the queueing theory utilization
-formula, U = SX, solved for S.  This means that utilization (busy time) divided
+processes the request, after the request finishes waiting in the queue.  This is
+an average over reads and writes.  It is computed from the queueing theory
+utilization formula, U = SX, solved for S.  This means that utilization divided
 by throughput gives service time:
 
-   (delta[field10] / delta[time]) / (delta[field1, 2, 5, 6])
+   delta[field10] / (delta[field1, 2, 5, 6])
 
 Note, however, that there can be some kernel bugs that cause field 9 in
-F</proc/diskstats> to become negative, and this will cause field 10 to be wrong,
+F</proc/diskstats> to become negative, and this can cause field 10 to be wrong,
 thus making the service time computation not wholly trustworthy.
+
+Note that in the above formula we use utilization very specifically. It is a
+duration, not a percentage.
 
 You can compare the stime and qtime columns to see whether the response time for
 reads and writes is spent in the queue or on the physical device.  However, you
@@ -3781,47 +3787,40 @@ If you are used to using iostat, you might wonder where you can find the same
 information in pt-diskstats.  Here are two samples of output from both tools on
 the same machine at the same time, for F</dev/sda>, wrapped to fit:
 
-     #ts device rd_s rd_avkb rd_mb_s rd_io_s rd_mrg rd_cnc rd_rt
-   450.0 sda     1.0     4.0     0.0     0.2     0%    0.0  16.7
-   460.0 sda     0.0     0.0     0.0     0.0     0%    0.0   0.0
-   470.0 sda     0.4     4.0     0.0     0.1     0%    0.0  15.5
-   480.0 sda     2.1     4.4     0.0     0.4     0%    0.0  21.1
-   490.0 sda     2.4     4.0     0.0     0.4     0%    0.0  15.4
-   500.0 sda     0.1     4.0     0.0     0.0     0%    0.0  33.0
-   510.0 sda     0.3     4.0     0.0     0.0     0%    0.0  14.3
-                wr_s wr_avkb wr_mb_s wr_io_s wr_mrg wr_cnc wr_rt
-                57.0     7.5     0.4    16.7    46%    1.7  29.4
-                 7.7    25.5     0.2     0.2    84%    0.0   2.0
-                49.6     6.8     0.3    24.3    41%    2.4  49.0
-               210.1     5.6     1.1    74.0    28%    7.4  35.2
-               297.1     5.4     1.6   113.6    26%   11.4  38.2
-                11.9    11.7     0.1     1.7    66%    0.2  14.5
-                21.9    11.0     0.2     5.4    64%    0.5  24.5
-                                busy in_prg    io_s  qtime stime
-                                  4%      0    16.9   29.1   0.7
-                                  1%      0     0.2    2.0   1.2
-                                  6%      0    24.4   48.8   1.2
-                                 12%      0    74.5   35.1   0.6
-                                 16%      0   114.0   38.1   0.5
-                                  1%      0     1.8   14.7   0.9
-                                  2%      0     5.4   24.3   0.7
+        #ts dev rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt
+   08:50:10 sda  0.0     0.0     0.0     0%    0.0     0.0
+   08:50:20 sda  0.4     4.0     0.0     0%    0.0    15.5
+   08:50:30 sda  2.1     4.4     0.0     0%    0.0    21.1
+   08:50:40 sda  2.4     4.0     0.0     0%    0.0    15.4
+   08:50:50 sda  0.1     4.0     0.0     0%    0.0    33.0
 
-   Device: rrqm/s   wrqm/s   r/s    w/s    rMB/s    wMB/s
-   sda       0.00    48.60  1.00  57.00     0.00     0.41
-   sda       0.00    41.40  0.00   7.70     0.00     0.19
-   sda       0.00    34.70  0.40  49.60     0.00     0.33
-   sda       0.00    83.30  2.10 210.10     0.01     1.15
-   sda       0.00   105.10  2.40 297.90     0.01     1.58
-   sda       0.00    22.50  0.10  11.10     0.00     0.13
-   sda       0.00    38.36  0.30  21.88     0.00     0.24
-                  avgrq-sz avgqu-sz   await  svctm  %util
-                     14.79     1.69   29.15   0.65   3.78
-                     51.01     0.02    2.04   1.25   0.96
-                     13.55     2.44   48.76   1.16   5.79
-                     11.15     7.45   35.10   0.55  11.76
-                     10.81    11.40   37.96   0.53  15.97
-                     24.07     0.17   15.60   0.87   0.97
-                     21.84     0.54   24.34   0.73   1.63
+                wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt
+                 7.7    25.5     0.2    84%    0.0     0.3
+                49.6     6.8     0.3    41%    2.4    28.8
+               210.1     5.6     1.1    28%    7.4    25.2
+               297.1     5.4     1.6    26%   11.4    28.3
+                11.9    11.7     0.1    66%    0.2     4.9
+
+                        busy  in_prg   io_s  qtime   stime
+                          1%       0    7.7    0.1     0.2
+                          6%       0   50.0   28.1     0.7
+                         12%       0  212.2   24.8     0.4
+                         16%       0  299.5   27.8     0.4
+                          1%       0   12.0    4.7     0.3
+
+            Dev rrqm/s  wrqm/s   r/s    w/s  rMB/s  wMB/s
+   08:50:10 sda   0.00   41.40  0.00   7.70   0.00   0.19
+   08:50:20 sda   0.00   34.70  0.40  49.60   0.00   0.33
+   08:50:30 sda   0.00   83.30  2.10 210.10   0.01   1.15
+   08:50:40 sda   0.00  105.10  2.40 297.90   0.01   1.58
+   08:50:50 sda   0.00   22.50  0.10  11.10   0.00   0.13
+
+                   avgrq-sz avgqu-sz  await  svctm  %util
+                      51.01     0.02   2.04   1.25   0.96
+                      13.55     2.44  48.76   1.16   5.79
+                      11.15     7.45  35.10   0.55  11.76
+                      10.81    11.40  37.96   0.53  15.97
+                      24.07     0.17  15.60   0.87   0.97
 
 The correspondence between the columns is not one-to-one.  In particular:
 
@@ -3829,10 +3828,7 @@ The correspondence between the columns is not one-to-one.  In particular:
 
 =item rrqm/s, wrqm/s
 
-These columns in iostat are replaced by rd_mrg and wr_mrg in pt-diskstats.  You
-can also look at the difference between rd_s and rd_io_s, for example, to see
-how many reads were issued to the block device versus how many were issued to
-the underlying disk.
+These columns in iostat are replaced by rd_mrg and wr_mrg in pt-diskstats.
 
 =item avgrq-sz
 
@@ -3844,8 +3840,8 @@ then multiply by 2 to get sectors (each sector is 512 bytes).
 =item avgqu-sz
 
 This column really represents concurrency at the block device scheduler.  The
-pt-diskstats output breaks this into concurrency for reads and writes
-separately: rd_cnc and wr_cnc.
+pt-diskstats output shows concurrency for reads and writes separately: rd_cnc
+and wr_cnc.
 
 =item await
 
@@ -3862,7 +3858,9 @@ pt-diskstats.
 
 =item %util
 
-This column is called busy in pt-diskstats.
+This column is called busy in pt-diskstats.  Utilization is usually defined as
+the portion of time during which there was at least one active request, not as a
+percentage, which is why we chose to avoid this confusing term.
 
 =back
 
@@ -4035,7 +4033,7 @@ Show help and exit.
 type: int; default: 1
 
 When in interactive mode, wait N seconds before printing to the screen.
-Also, how often the tool should sample /proc/diskstats.
+Also, how often the tool should sample F</proc/diskstats>.
 
 =item --iterations
 
