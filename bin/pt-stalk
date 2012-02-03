@@ -631,7 +631,7 @@ collect() {
    local d="$1"  # directory to save results in
    local p="$2"  # prefix for each result file
 
-   local mysqld_pid=$(_pidof mysqld | head -n1)
+   local mysqld_pid=$(_pidof mysqld | awk '{print $1; exit;}')
 
    if [ "$CMD_PMAP" -a "$mysqld_pid" ]; then
       if $CMD_PMAP --help 2>&1 | grep -- -x >/dev/null 2>&1 ; then
@@ -783,7 +783,7 @@ collect() {
       $CMD_OPCONTROL --stop
       $CMD_OPCONTROL --dump
 
-      local oprofiled_pid=$(_pidof oprofiled)
+      local oprofiled_pid=$(_pidof oprofiled | awk '{print $1; exit;}')
       if [ "$oprofiled_pid" ]; then
          kill $oprofiled_pid
       else
