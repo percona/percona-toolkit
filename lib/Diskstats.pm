@@ -34,8 +34,11 @@ use List::Util qw( max first );
 
 use ReadKeyMini qw( GetTerminalSize );
 
-my (undef, $max_lines)    = GetTerminalSize();
-$Diskstats::printed_lines = $max_lines;
+my $max_lines;
+BEGIN {
+   (undef, $max_lines)       = GetTerminalSize();
+   $Diskstats::printed_lines = $max_lines;
+}
 
 my $diskstat_colno_for;
 BEGIN {
@@ -690,10 +693,11 @@ sub _calc_read_stats {
       reads_sec       => $delta_for->{reads} / $elapsed,
       read_requests   => $delta_for->{reads_merged} + $delta_for->{reads},
       mbytes_read_sec => $delta_for->{read_kbs} / $elapsed / 1024,
-      ios_read_sec    => $delta_for->{ms_spent_reading} / 1000,
       read_conc       => $delta_for->{ms_spent_reading} /
                            $elapsed / 1000 / $devs_in_group,
    );
+
+   $read_stats{ios_read_sec} = 0; # TODO
 
    if ( $delta_for->{reads} > 0 ) {
       $read_stats{read_rtime} =
@@ -724,14 +728,15 @@ sub _calc_write_stats {
    my ($delta_for, $elapsed, $devs_in_group) = @args{ @required_args };
 
    my %write_stats = (
-      writes_sec     => $delta_for->{writes} / $elapsed,
-      write_requests => $delta_for->{writes_merged} + $delta_for->{writes},
-      mbytes_written_sec  => $delta_for->{written_kbs} / $elapsed / 1024,
-      ios_written_sec    => $delta_for->{ms_spent_writing} / 1000,
+      writes_sec         => $delta_for->{writes} / $elapsed,
+      write_requests     => $delta_for->{writes_merged} + $delta_for->{writes},
+      mbytes_written_sec => $delta_for->{written_kbs} / $elapsed / 1024,
       write_conc         => $delta_for->{ms_spent_writing} /
         $elapsed / 1000 /
         $devs_in_group,
    );
+
+   $write_stats{ios_written_sec} = 0; # TODO
 
    if ( $delta_for->{writes} > 0 ) {
       $write_stats{write_rtime} =
@@ -975,6 +980,9 @@ sub print_deltas {
 
    my @stats = $self->_calc_deltas();
 
+   $Diskstats::printed_lines = $max_lines
+      unless defined $Diskstats::printed_lines;
+
    if ( $self->{space_samples} && @stats && @stats > 1
          && !$Diskstats::last_was_header ) {
       # Print an empty line before the rows if we have more
@@ -996,9 +1004,9 @@ sub print_deltas {
    foreach my $stat ( @stats ) {
       $self->$rows_method( $format, $cols, $stat );
    }
-   $Diskstats::printed_lines = $Diskstats::printed_lines <= 0
-                             ? $max_lines
-                             : $Diskstats::printed_lines;
+
+   $Diskstats::printed_lines = $max_lines
+      if $Diskstats::printed_lines <= 0;
 }
 
 sub compute_line_ts {
