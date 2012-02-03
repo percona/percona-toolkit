@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 6;
+   plan tests => 10;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -102,6 +102,43 @@ ok(
       "$out/chunkidx005.txt",
    ),
    "Explicit --chunk-index overrides MySQL's index for --where"
+);
+
+# #############################################################################
+# Bug 925855: pt-table-checksum index check is case-sensitive
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/all-uc-table.sql");
+my $exit_status = 0;
+$output = output(sub {
+   $exit_status = pt_table_checksum::main(
+      $master_dsn, '--max-load', '',
+      qw(--lock-wait-timeout 3 --chunk-size 5 -t ALL_UC.T)
+   ) },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "Zero exit status (bug 925855)"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   0,
+   "0 skipped (bug 925855)"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "0 errors (bug 925855)"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   13,
+   "14 rows checksummed (bug 925855)"
 );
 
 # #############################################################################
