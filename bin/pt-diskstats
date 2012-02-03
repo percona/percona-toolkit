@@ -1358,31 +1358,9 @@ use POSIX qw( :termios_h );
 use base  qw( Exporter );
 
 BEGIN {
-   our @EXPORT_OK = qw( ReadMode GetTerminalSize );
-   my $have_readkey = eval { require Term::ReadKey };
-
-   if ($have_readkey) {
-      *ReadMode = sub {
-         eval { return Term::ReadKey::ReadMode( @_ ) };
-         if ( $@ ) {
-            return _ReadMode(@_);
-         }
-      };
-      *GetTerminalSize = sub {
-         eval { return Term::ReadKey::GetTerminalSize( @_ ) };
-         if ( $@ ) {
-            return _GetTerminalSize(@_);
-         }
-      };
-   }
-   else {
-      # If we don't have Term::ReadKey, fake it. We clobber our own glob,
-      # ReadKeyMini::Function, and the Term::ReadKey glob, so callers can
-      # both import it if requested, or even use the fully-qualified name
-      # without issues.
-      *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
-      *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
-   }
+   our @EXPORT_OK = qw( GetTerminalSize ReadMode );
+   *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
+   *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
 }
 
 my %modes = (
@@ -1553,6 +1531,7 @@ use ReadKeyMini qw( GetTerminalSize );
 my $max_lines;
 BEGIN {
    (undef, $max_lines)       = GetTerminalSize();
+   $max_lines              ||= 24;
    $Diskstats::printed_lines = $max_lines;
 }
 
@@ -1654,6 +1633,36 @@ sub new {
 }
 
 
+sub first_ts_line {
+   my ($self) = @_;
+   return $self->{_ts}->{first}->{line};
+}
+
+sub set_first_ts_line {
+   my ($self, $new_val) = @_;
+   return $self->{_ts}->{first}->{line} = $new_val;
+}
+
+sub prev_ts_line {
+   my ($self) = @_;
+   return $self->{_ts}->{prev}->{line};
+}
+
+sub set_prev_ts_line {
+   my ($self, $new_val) = @_;
+   return $self->{_ts}->{prev}->{line} = $new_val;
+}
+
+sub curr_ts_line {
+   my ($self) = @_;
+   return $self->{_ts}->{curr}->{line};
+}
+
+sub set_curr_ts_line {
+   my ($self, $new_val) = @_;
+   return $self->{_ts}->{curr}->{line} = $new_val;
+}
+
 sub show_line_between_samples {
    my ($self) = @_;
    return $self->{space_samples};
@@ -1701,32 +1710,32 @@ sub set_automatic_headers {
 
 sub curr_ts {
    my ($self) = @_;
-   return $self->{_ts}->{curr} || 0;
+   return $self->{_ts}->{curr}->{ts} || 0;
 }
 
 sub set_curr_ts {
    my ($self, $val) = @_;
-   $self->{_ts}->{curr} = $val || 0;
+   $self->{_ts}->{curr}->{ts} = $val || 0;
 }
 
 sub prev_ts {
    my ($self) = @_;
-   return $self->{_ts}->{prev} || 0;
+   return $self->{_ts}->{prev}->{ts} || 0;
 }
 
 sub set_prev_ts {
    my ($self, $val) = @_;
-   $self->{_ts}->{prev} = $val || 0;
+   $self->{_ts}->{prev}->{ts} = $val || 0;
 }
 
 sub first_ts {
    my ($self) = @_;
-   return $self->{_ts}->{first} || 0;
+   return $self->{_ts}->{first}->{ts} || 0;
 }
 
 sub set_first_ts {
    my ($self, $val) = @_;
-   $self->{_ts}->{first} = $val || 0;
+   $self->{_ts}->{first}->{ts} = $val || 0;
 }
 
 sub show_inactive {
@@ -1842,7 +1851,7 @@ sub clear_state {
 
 sub clear_ts {
    my ($self) = @_;
-   $self->{_ts} = {};
+   undef($_->{ts}) for @{ $self->{_ts} }{ qw( curr prev first ) };
 }
 
 sub clear_ordered_devs {
@@ -2087,6 +2096,7 @@ sub _parse_and_load_diskstats {
    my $block_size = $self->block_size();
    my $current_ts = 0;
    my $new_cur    = {};
+   my $last_ts_line;
 
    while ( my $line = <$fh> ) {
       if ( my ( $dev, $dev_stats )
@@ -2098,10 +2108,11 @@ sub _parse_and_load_diskstats {
       elsif ( my ($new_ts) = $line =~ /^TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
          PTDEBUG && _d("Timestamp:", $line);
          if ( $current_ts && %$new_cur ) {
-            $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
+            $self->_handle_ts_line($current_ts, $new_cur, $line, $sample_callback);
             $new_cur = {};
          }
          $current_ts = $new_ts;
+         $last_ts_line = $line;
       }
       else {
          PTDEBUG && _d("Ignoring unknown diskstats line:", $line);
@@ -2109,7 +2120,7 @@ sub _parse_and_load_diskstats {
    }
 
    if ( $current_ts && %{$new_cur} ) {
-      $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
+      $self->_handle_ts_line($current_ts, $new_cur, $last_ts_line, $sample_callback);
       $new_cur = {};
    }
 
@@ -2117,7 +2128,11 @@ sub _parse_and_load_diskstats {
 }
 
 sub _handle_ts_line {
-   my ($self, $current_ts, $new_cur, $sample_callback) = @_;
+   my ($self, $current_ts, $new_cur, $line, $sample_callback) = @_;
+
+   $self->set_first_ts_line( $line ) unless $self->first_ts_line();
+   $self->set_prev_ts_line( $self->curr_ts_line() );
+   $self->set_curr_ts_line( $line );
 
    $self->_save_curr_as_prev( $self->stats_for() );
    $self->{_stats_for} = $new_cur;
@@ -2215,7 +2230,6 @@ sub _calc_misc_stats {
    my ($delta_for, $elapsed, $devs_in_group, $stats) = @args{ @required_args };
    my %extra_stats;
 
-
    $extra_stats{busy}
       = 100
       * $delta_for->{ms_spent_doing_io}
@@ -2228,9 +2242,9 @@ sub _calc_misc_stats {
    if ( $number_of_ios ) {
       $extra_stats{qtime} =
          $delta_for->{ms_weighted} / ($number_of_ios + $delta_for->{ios_in_progress})
-            - ($delta_for->{ms_spent_doing_io} / $elapsed) / $number_of_ios;
+            - $delta_for->{ms_spent_doing_io} / $number_of_ios;
       $extra_stats{stime}
-         = $delta_for->{ms_spent_doing_io} / $elapsed / $number_of_ios;
+         = $delta_for->{ms_spent_doing_io} / $number_of_ios;
    }
    else {
       $extra_stats{qtime} = 0;
@@ -2437,8 +2451,14 @@ sub compute_line_ts {
    my ( $self, %args ) = @_;
    my $line_ts;
    if ( $self->show_timestamps() ) {
-      $line_ts = scalar localtime($args{curr_ts});
-      $line_ts =~ s/.*(\d\d:\d\d:\d\d).*/$1/;
+      $line_ts = $self->ts_line_for_timestamp();
+      if ( $line_ts && $line_ts =~ /([0-9]{2}:[0-9]{2}:[0-9]{2})/ ) {
+         $line_ts = $1;
+      }
+      else {
+         $line_ts = scalar localtime($args{curr_ts});
+         $line_ts =~ s/.*(\d\d:\d\d:\d\d).*/$1/;
+      }
    }
    else {
       $line_ts = sprintf( "%5.1f", $args{first_ts} > 0
@@ -2455,6 +2475,10 @@ sub compute_in_progress {
 
 sub compute_devs_in_group {
    return 1;
+}
+
+sub ts_line_for_timestamp {
+   die 'You must override ts_line_for_timestamp() in a subclass';
 }
 
 sub delta_against {
@@ -2548,6 +2572,11 @@ sub group_by {
 sub delta_against {
    my ($self, $dev) = @_;
    return $self->prev_stats_for($dev);
+}
+
+sub ts_line_for_timestamp {
+   my ($self) = @_;
+   return $self->prev_ts_line();
 }
 
 sub delta_against_ts {
@@ -2696,6 +2725,11 @@ sub delta_against {
    return $self->first_stats_for($dev);
 }
 
+sub ts_line_for_timestamp {
+   my ($self) = @_;
+   return $self->prev_ts_line();
+}
+
 sub delta_against_ts {
    my ($self) = @_;
    return $self->first_ts();
@@ -2809,6 +2843,7 @@ sub _sample_callback {
    if ( $self->{_iterations} == 1 || $printed_a_line == 1 ) {
       $self->{_save_curr_as_prev} = 1;
       $self->_save_curr_as_prev( $self->stats_for() );
+      $self->set_prev_ts_line( $self->curr_ts_line() );
       $self->{_save_curr_as_prev} = 0;
    }
    return;
@@ -2817,6 +2852,11 @@ sub _sample_callback {
 sub delta_against {
    my ( $self, $dev ) = @_;
    return $self->prev_stats_for($dev);
+}
+
+sub ts_line_for_timestamp {
+   my ($self) = @_;
+   return $self->prev_ts_line();
 }
 
 sub delta_against_ts {
@@ -3742,29 +3782,29 @@ The average queue time; that is, time a request spends in the device scheduler
 queue before being sent to the physical device.  This is an average over reads
 and writes.
 
-It is computed in a slightly complex way: the total average response time seen
-by the application, minus the average service time (see the description of the
-next column).  This is derived from the queueing theory formula for service
-time, R = W + S: response time = queue time + service time.  This is solved for
-W, of course, to give W = R - S.  The computation follows:
+It is computed in a slightly complex way: the average response time seen by the
+application, minus the average service time (see the description of the next
+column).  This is derived from the queueing theory formula for response time, R
+= W + S: response time = queue time + service time.  This is solved for W, of
+course, to give W = R - S.  The computation follows:
 
    delta[field11] / (delta[field1, 2, 5, 6] + delta[field9])
-      - (delta[field10] / delta[time]) / (delta[field1, 2, 5, 6])
+      - delta[field10] / delta[field1, 2, 5, 6]
 
 See the description for C<stime> for more details and cautions.
 
 =item stime
 
 The average service time; that is, the time elapsed while the physical device
-processes the request, after the request leaves the queue.  This is an average
-over reads and writes.  It is computed from the queueing theory utilization
-formula, U = SX, solved for S.  This means that utilization (busy time) divided
-by throughput gives service time:
+processes the request, after the request finishes waiting in the queue.  This is
+an average over reads and writes.  It is computed from the queueing theory
+utilization formula, U = SX, solved for S.  This means that utilization (busy
+time) divided by throughput gives service time:
 
-   (delta[field10] / delta[time]) / (delta[field1, 2, 5, 6])
+   delta[field10] / (delta[field1, 2, 5, 6])
 
 Note, however, that there can be some kernel bugs that cause field 9 in
-F</proc/diskstats> to become negative, and this will cause field 10 to be wrong,
+F</proc/diskstats> to become negative, and this can cause field 10 to be wrong,
 thus making the service time computation not wholly trustworthy.
 
 You can compare the stime and qtime columns to see whether the response time for

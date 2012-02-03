@@ -37,6 +37,7 @@ use ReadKeyMini qw( GetTerminalSize );
 my $max_lines;
 BEGIN {
    (undef, $max_lines)       = GetTerminalSize();
+   $max_lines              ||= 24;
    $Diskstats::printed_lines = $max_lines;
 }
 
@@ -145,6 +146,36 @@ sub new {
 
 # The next lot are accessors, plus some convenience functions.
 
+sub first_ts_line {
+   my ($self) = @_;
+   return $self->{_ts}->{first}->{line};
+}
+
+sub set_first_ts_line {
+   my ($self, $new_val) = @_;
+   return $self->{_ts}->{first}->{line} = $new_val;
+}
+
+sub prev_ts_line {
+   my ($self) = @_;
+   return $self->{_ts}->{prev}->{line};
+}
+
+sub set_prev_ts_line {
+   my ($self, $new_val) = @_;
+   return $self->{_ts}->{prev}->{line} = $new_val;
+}
+
+sub curr_ts_line {
+   my ($self) = @_;
+   return $self->{_ts}->{curr}->{line};
+}
+
+sub set_curr_ts_line {
+   my ($self, $new_val) = @_;
+   return $self->{_ts}->{curr}->{line} = $new_val;
+}
+
 sub show_line_between_samples {
    my ($self) = @_;
    return $self->{space_samples};
@@ -192,32 +223,32 @@ sub set_automatic_headers {
 
 sub curr_ts {
    my ($self) = @_;
-   return $self->{_ts}->{curr} || 0;
+   return $self->{_ts}->{curr}->{ts} || 0;
 }
 
 sub set_curr_ts {
    my ($self, $val) = @_;
-   $self->{_ts}->{curr} = $val || 0;
+   $self->{_ts}->{curr}->{ts} = $val || 0;
 }
 
 sub prev_ts {
    my ($self) = @_;
-   return $self->{_ts}->{prev} || 0;
+   return $self->{_ts}->{prev}->{ts} || 0;
 }
 
 sub set_prev_ts {
    my ($self, $val) = @_;
-   $self->{_ts}->{prev} = $val || 0;
+   $self->{_ts}->{prev}->{ts} = $val || 0;
 }
 
 sub first_ts {
    my ($self) = @_;
-   return $self->{_ts}->{first} || 0;
+   return $self->{_ts}->{first}->{ts} || 0;
 }
 
 sub set_first_ts {
    my ($self, $val) = @_;
-   $self->{_ts}->{first} = $val || 0;
+   $self->{_ts}->{first}->{ts} = $val || 0;
 }
 
 sub show_inactive {
@@ -338,7 +369,7 @@ sub clear_state {
 
 sub clear_ts {
    my ($self) = @_;
-   $self->{_ts} = {};
+   undef($_->{ts}) for @{ $self->{_ts} }{ qw( curr prev first ) };
 }
 
 sub clear_ordered_devs {
@@ -362,6 +393,7 @@ sub _clear_stats_common {
 sub clear_curr_stats {
    my ( $self, @args ) = @_;
 
+# TODO: Is this a bug?
    if ( $self->has_stats() ) {
       $self->_save_curr_as_prev();
    }
@@ -631,6 +663,7 @@ sub _parse_and_load_diskstats {
    my $block_size = $self->block_size();
    my $current_ts = 0;
    my $new_cur    = {};
+   my $last_ts_line;
 
    while ( my $line = <$fh> ) {
       # The order of parsing here is intentionally backwards -- While the
@@ -649,10 +682,11 @@ sub _parse_and_load_diskstats {
       elsif ( my ($new_ts) = $line =~ /^TS\s+([0-9]+(?:\.[0-9]+)?)/ ) {
          PTDEBUG && _d("Timestamp:", $line);
          if ( $current_ts && %$new_cur ) {
-            $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
+            $self->_handle_ts_line($current_ts, $new_cur, $line, $sample_callback);
             $new_cur = {};
          }
          $current_ts = $new_ts;
+         $last_ts_line = $line;
       }
       else {
          PTDEBUG && _d("Ignoring unknown diskstats line:", $line);
@@ -660,7 +694,7 @@ sub _parse_and_load_diskstats {
    }
 
    if ( $current_ts && %{$new_cur} ) {
-      $self->_handle_ts_line($current_ts, $new_cur, $sample_callback);
+      $self->_handle_ts_line($current_ts, $new_cur, $last_ts_line, $sample_callback);
       $new_cur = {};
    }
 
@@ -668,7 +702,11 @@ sub _parse_and_load_diskstats {
 }
 
 sub _handle_ts_line {
-   my ($self, $current_ts, $new_cur, $sample_callback) = @_;
+   my ($self, $current_ts, $new_cur, $line, $sample_callback) = @_;
+
+   $self->set_first_ts_line( $line ) unless $self->first_ts_line();
+   $self->set_prev_ts_line( $self->curr_ts_line() );
+   $self->set_curr_ts_line( $line );
 
    $self->_save_curr_as_prev( $self->stats_for() );
    $self->{_stats_for} = $new_cur;
@@ -768,8 +806,6 @@ sub _calc_misc_stats {
    my ($delta_for, $elapsed, $devs_in_group, $stats) = @args{ @required_args };
    my %extra_stats;
 
-#   [ " qtime"  => "%6.1f",   "qtime", ],
-
    # Busy is what iostat calls %util.  This is the percent of
    # wall-clock time during which the device has I/O happening.
    $extra_stats{busy}
@@ -784,9 +820,9 @@ sub _calc_misc_stats {
    if ( $number_of_ios ) {
       $extra_stats{qtime} =
          $delta_for->{ms_weighted} / ($number_of_ios + $delta_for->{ios_in_progress})
-            - ($delta_for->{ms_spent_doing_io} / $elapsed) / $number_of_ios;
+            - $delta_for->{ms_spent_doing_io} / $number_of_ios;
       $extra_stats{stime}
-         = $delta_for->{ms_spent_doing_io} / $elapsed / $number_of_ios;
+         = $delta_for->{ms_spent_doing_io} / $number_of_ios;
    }
    else {
       $extra_stats{qtime} = 0;
@@ -1017,8 +1053,14 @@ sub compute_line_ts {
    my ( $self, %args ) = @_;
    my $line_ts;
    if ( $self->show_timestamps() ) {
-      $line_ts = scalar localtime($args{curr_ts});
-      $line_ts =~ s/.*(\d\d:\d\d:\d\d).*/$1/;
+      $line_ts = $self->ts_line_for_timestamp();
+      if ( $line_ts && $line_ts =~ /([0-9]{2}:[0-9]{2}:[0-9]{2})/ ) {
+         $line_ts = $1;
+      }
+      else {
+         $line_ts = scalar localtime($args{curr_ts});
+         $line_ts =~ s/.*(\d\d:\d\d:\d\d).*/$1/;
+      }
    }
    else {
       $line_ts = sprintf( "%5.1f", $args{first_ts} > 0
@@ -1035,6 +1077,10 @@ sub compute_in_progress {
 
 sub compute_devs_in_group {
    return 1;
+}
+
+sub ts_line_for_timestamp {
+   die 'You must override ts_line_for_timestamp() in a subclass';
 }
 
 sub delta_against {
