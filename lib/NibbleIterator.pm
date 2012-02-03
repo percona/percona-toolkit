@@ -347,7 +347,7 @@ sub set_nibble_number {
 
 sub nibble_index {
    my ($self) = @_;
-   return $self->{index};
+   return lc($self->{index});
 }
 
 sub statements {
