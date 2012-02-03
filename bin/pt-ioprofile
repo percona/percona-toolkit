@@ -442,9 +442,43 @@ rm_tmpdir() {
 # ###########################################################################
 
 # ###########################################################################
+# alt_cmds package
+# ###########################################################################
+
+# seq N, return 1, ..., 5
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+_pidof() {
+   local cmd="$1"
+   if ! pidof "$cmd" 2>/dev/null; then
+      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
+   fi
+}
+
+_lsof() {
+   local pid="$1"
+   if ! lsof -p $pid 2>/dev/null; then
+      /bin/ls -l /proc/$pid/fd 2>/dev/null
+   fi
+}
+
+_which() {
+   # which on CentOS is aliased to a cmd that prints extra stuff.
+   # Also, if the cmd isn't found, a msg is printed to stderr.
+   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+}
+
+# ###########################################################################
+# End alt_cmds package
+# ###########################################################################
+
+# ###########################################################################
 # Global variables
 # ###########################################################################
-TOOL=`basename $0`
+TOOL="pt-ioprofile"
 
 # ###########################################################################
 # Subroutines
@@ -454,8 +488,6 @@ TOOL=`basename $0`
 # pid function fd_no size timing filename
 # The arguments are the files to summarize.
 tabulate_strace() {
-   local file="$1"
-
    cat > $TMPDIR/tabulate_strace.awk <<EOF
    BEGIN {
       # These are function names, or partial function names, that we care about.
@@ -553,7 +585,7 @@ tabulate_strace() {
       }
    }
 EOF
-   awk -f $TMPDIR/tabulate_strace.awk "$file"
+   awk -f $TMPDIR/tabulate_strace.awk "$@"
 }
 
 # Takes as input the output from tabulate_strace.  Arguments are just a subset
@@ -565,7 +597,7 @@ summarize_strace() {
    local group_by="$3"
    local file="$4"
 
-   cat > $TMPDIR/summarize_strace.awk <<EOF
+   cat > "$TMPDIR/summarize_strace.awk" <<EOF
    BEGIN {
       # These are function names, or partial function names, that we care about.
       # Later we will ignore any function whose name doesn't look like these.
@@ -687,7 +719,10 @@ EOF
 }
 
 main() {
-   if [ $# -eq 0 ]; then
+   if [ $# -gt 0 ]; then
+      # Summarize the files the user passed in.
+      tabulate_strace "$@" > $TMPDIR/tabulated_samples
+   else
       # There's no file to analyze, so we'll make one.
       if which strace > /dev/null 2>&1; then
 
@@ -697,13 +732,7 @@ main() {
          # gave us it explicitly with --profile-pid.
          local proc_pid="$OPT_PROFILE_PID"
          if [ -z "$proc_pid" ]; then
-            proc_pid=$(pidof -s "$OPT_PROFILE_PROCESS" 2>/dev/null);
-            if [ -z "$proc_pid" ]; then
-               proc_pid=$(pgrep -o -x "$OPT_PROFILE_PROCESS" 2>/dev/null)
-            fi
-            if [ -z "$proc_pid" ]; then
-               proc_pid=$(ps -eaf | grep "$OPT_PROFILE_PROCESS" | grep -v grep | awk '{print $2}' | head -n1);
-            fi
+            proc_pid=$(_pidof "$OPT_PROFILE_PROCESS" | awk '{print $1; exit;'})
          fi
 
          date
@@ -711,7 +740,7 @@ main() {
          if [ "$proc_pid" ]; then
             echo "Tracing process ID $proc_pid"
 
-            lsof -n -P -s -p "$proc_pid" > "$samples" 2>&1
+            _lsof "$proc_pid" > "$samples" 2>&1
             if [ "$?" -ne "0" ]; then
                echo "Error: could not execute lsof, error code $?"
                exit 1
@@ -756,32 +785,36 @@ main() {
          echo "strace is not in PATH" >&2
          exit 1
       fi
-   else
-      # Summarize the files the user passed in.
-      tabulate_strace "$@" > $TMPDIR/tabulated_samples
    fi
 
    summarize_strace  \
       $OPT_AGGREGATE \
       $OPT_CELL      \
       $OPT_GROUP_BY  \
-      $TMPDIR/tabulated_samples
+      "$TMPDIR/tabulated_samples"
 }
 
 # Execute the program if it was not included from another file.
 # This makes it possible to include without executing, and thus test.
-if    [ "$(basename "$0")" = "pt-ioprofile" ] \
-   || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
+if    [ "${0##*/}" = "$TOOL" ] \
+   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
 
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
    mk_tmpdir
-   parse_options $0 "$@"
-   usage_or_errors $0
-   EXIT_STATUS=$?
-   if [ $EXIT_STATUS -eq 0 ]; then
-      # No errors parsing command line options, run the program.
-      main "$EXT_ARGV"
+   parse_options "$0" "$@"
+   usage_or_errors "$0"
+   po_status=$?
+   if [ $po_status -eq 0 ]; then
+      # XXX
+      # TODO: This should be quoted but because the way parse_options()
+      # currently works, it flattens files in $@ (i.e. given on the cmd
+      # line) into the string $ARGV.  So if we pass "$ARGV" then other
+      # functions will see 1 file named "file1 file2" instead of "file1"
+      # "file2".
+      main $ARGV
+   else
+      [ $OPT_ERRS -gt 0 ] && EXIT_STATUS=1
    fi
    rm_tmpdir
    exit $EXIT_STATUS
