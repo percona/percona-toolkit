@@ -44,31 +44,13 @@ use POSIX qw( :termios_h );
 use base  qw( Exporter );
 
 BEGIN {
-   our @EXPORT_OK = qw( ReadMode GetTerminalSize );
-   my $have_readkey = eval { require Term::ReadKey };
-
-   if ($have_readkey) {
-      *ReadMode = sub {
-         eval { return Term::ReadKey::ReadMode( @_ ) };
-         if ( $@ ) {
-            return _ReadMode(@_);
-         }
-      };
-      *GetTerminalSize = sub {
-         eval { return Term::ReadKey::GetTerminalSize( @_ ) };
-         if ( $@ ) {
-            return _GetTerminalSize(@_);
-         }
-      };
-   }
-   else {
-      # If we don't have Term::ReadKey, fake it. We clobber our own glob,
-      # ReadKeyMini::Function, and the Term::ReadKey glob, so callers can
-      # both import it if requested, or even use the fully-qualified name
-      # without issues.
-      *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
-      *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
-   }
+   # Fake Term::ReadKey. We clobber our own glob,
+   # ReadKeyMini::Function, and the Term::ReadKey glob, so callers can
+   # both import it if requested, or even use the fully-qualified name
+   # without issues.
+   our @EXPORT_OK = qw( GetTerminalSize ReadMode );
+   *ReadMode        = *Term::ReadKey::ReadMode        = \&_ReadMode;
+   *GetTerminalSize = *Term::ReadKey::GetTerminalSize = \&_GetTerminalSize;
 }
 
 my %modes = (
