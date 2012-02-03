@@ -89,7 +89,7 @@ for my $test (
       
          18680735.5,  # read_kbs
          405700170,   # written_kbs
-         20139567,    # ios_requested
+         103727665,    # ios_requested
          434566047232,# ios_in_bytes
       ],
       "parse_diskstats_line works"
@@ -100,7 +100,7 @@ for my $test (
           '8', '33', 'sdc1', 1572537676, '2369344', 3687151364,
           '1575056414', 2541895139, '1708184481', 3991989096,
           '121136333', '1', '982122453', '1798311795', '1843575682',
-          '1995994548', 4114432815, '3931719915520'
+          '1995994548', 5824986640, '3931719915520'
       ],
       "parse_diskstats_line works"
    ],
@@ -111,7 +111,7 @@ for my $test (
           '1575056414', 2541895139, '1708184481', 3991989096,
           '121136333', '1', '982122453', '1798311795',
           '1843575682',
-          '1995994548', 4114432815, '3931719915520'
+          '1995994548', 5824986640, '3931719915520'
       ],
       "parse_diskstats_line ignores a trailing newline"
    ],
@@ -380,7 +380,8 @@ is_deeply(
       written_kbs => 1229,
       written_sectors => 2458,
       ios_in_bytes   => 1262080,
-      ios_requested  => 57,
+      ios_requested  => 329,
+      ios_in_progress => 3,
    },
    "_calc_delta_for works"
 );
@@ -399,12 +400,11 @@ is_deeply(
    \%read_stats,
    {
       avg_read_sz => '3.5',
-      ios_read_sec => '0.003',
       mbytes_read_sec => '0.001708984375',
       read_conc => '0.0015',
       read_merge_pct => '66.6666666666667',
       read_requests => 3,
-      read_rtime => '3',
+      read_rtime => 1,
       reads_sec => '0.5'
    },
    "_calc_read_stats works"
@@ -420,12 +420,11 @@ is_deeply(
    \%write_stats,
    {
       avg_write_sz => '21.9464285714286',
-      ios_written_sec => '0.05',
       mbytes_written_sec => '0.60009765625',
       write_conc => '0.025',
       write_merge_pct => '82.8220858895706',
       write_requests => 326,
-      write_rtime => '0.892857142857143',
+      write_rtime => '0.153374233128834',
       writes_sec => '28',
    },
    "_calc_write_stats works"
@@ -443,9 +442,9 @@ is_deeply(
    {
       busy => '0.6',
       line_ts => '  0.0',
-      qtime => '0.929824561403509',
-      s_spent_doing_io => '0.053',
-      stime => '0.210526315789474',
+      qtime => '0.114128245504816',
+      s_spent_doing_io => '28.5',
+      stime => '0.0364741641337386',
    },
    "_calc_misc_stats works"
 );
@@ -472,7 +471,7 @@ for my $test (
    my $obj    = $test->{class}->new(OptionParser => $o, show_inactive => 1);
    my $prefix = $test->{results_file_prefix};
 
-   $obj->set_columns_regex(qr/ \A (?!.*io_s$|\s*[qs]time$) /x);
+   $obj->set_columns_regex(qr/./);
    $obj->set_show_inactive(1);
    $obj->set_show_timestamps(0);
    $obj->set_automatic_headers(0);
