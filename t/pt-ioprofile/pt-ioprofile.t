@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to master sandbox";
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
 my $output = "";
@@ -55,6 +55,16 @@ cmp_ok(
    '<',
    5,
    "Runs for --run-time"
+);
+
+# #############################################################################
+# Short options.
+# #############################################################################
+$output = `$trunk/bin/pt-ioprofile --run-time 2 --b theprocname 2>&1`;
+like(
+   $output,
+   qr/Cannot determine PID of theprocname process/,
+   "Short option -b (--profile-process)"
 );
 
 # #############################################################################
