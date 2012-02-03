@@ -1,3 +1,31 @@
+percona-toolkit (2.0.3) unstable; urgency=low
+
+  * Completely redesigned pt-diskstats
+  * Completely redesigned pt-stalk
+  * Removed pt-collect and put its functionality in pt-stalk
+  * Fixed bug 871438: Bash tools are insecure
+  * Fixed bug 897758: Failed to prepare TableSyncChunk plugin: Use of uninitialized value $args{"chunk_range"} in lc at pt-table-sync line 3055
+  * Fixed bug 919819: pt-kill --execute-command creates zombies
+  * Fixed bug 894255: pt-kill: when --daemonize is given, should not check that stdin is a tty
+  * Fixed bug 925778: pt-ioprofile doesn't run without a file
+  * Fixed bug 925477: pt-ioprofile docs refer to pt-iostats
+  * Fixed bug 857091: pt-sift downloads http://percona.com/get/pt-pmp, which does not work
+  * Fixed bug 857104: pt-sift tries to invoke mext, should be pt-mext
+  * Fixed bug 872699: pt-diskstats: rd_avkb & wr_avkb derived incorrectly
+  * Fixed bug 882918: pt-stalk spams warning if oprofile isn't installed
+  * Fixed bug 884504: pt-stalk doesn't check pt-collect
+  * Fixed bug 897483: pt-online-schema-change "uninitialized value" due to update-foreign-keys-method
+  * Fixed bug 925007: pt-online-schema-change Use of uninitialized value $tables{"old_table"} in concatenation (.) or string at line 4330
+  * Fixed bug 915598: pt-config-diff ignores --ask-pass option
+  * Fixed bug 919352: pt-table-checksum changes binlog_format even if already set to statement
+  * Fixed bug 921700: pt-table-checksum doesn't add --where to chunk size test on replicas
+  * Fixed bug 921802: pt-table-checksum does not recognize --recursion-method=processlist
+  * Fixed bug 925855: pt-table-checksum index check is case-sensitive
+  * Fixed bug 821709: pt-show-grants --revoke and --separate don't work together
+  * Fixed bug 918247: Some tools use VALUE instead of VALUES
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 03 Feb 2012 23:22:54 +0000
+
 percona-toolkit (2.0.2) unstable; urgency=low
 
   * Fixed bug 911996: pt-table-sync --replicate causes "Unknown column" error

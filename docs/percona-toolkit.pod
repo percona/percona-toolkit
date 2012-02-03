@@ -34,10 +34,6 @@ Align output from other tools to columns.
 
 Archive rows from a MySQL table into another table or a file.
 
-=item pt-collect
-
-Collect information from a server for some period of time.
-
 =item pt-config-diff
 
 Diff MySQL configuration files and server variables.
@@ -48,7 +44,7 @@ Extract and log MySQL deadlock information.
 
 =item pt-diskstats
 
-Aggregate and summarize F</proc/diskstats>.
+An interactive I/O monitoring tool for GNU/Linux.
 
 =item pt-duplicate-key-checker
 
@@ -132,7 +128,7 @@ Watch and restart MySQL replication after errors.
 
 =item pt-stalk
 
-Wait for a condition to occur then begin collecting data.
+Gather forensic data about MySQL when a problem occurs.
 
 =item pt-summary
 
@@ -492,6 +488,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.0.2 released 2012-01-05
+Percona Toolkit v2.0.3 released 2012-02-03
 
 =cut
