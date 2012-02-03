@@ -1,6 +1,61 @@
 Release Notes
 *************
 
+v2.0.3 released 2012-02-03
+==========================
+
+Percona Toolkit 2.0.3 has been released.  The development team was very
+busy last month making this release significant: two completely
+redesigned and improved tools, pt-diskstats and pt-stalk, and 20 bug fixes.
+
+Both pt-diskstats and pt-stalk were redesigned and rewritten from the ground
+up.  This allowed us to greatly improve these tools' functionality and
+increase testing for them.  The accuracy and output of pt-diskstats was
+enhanced, and the tool was rewritten in Perl.  pt-collect was removed and
+its functionality was put into a new, enhanced pt-stalk.  pt-stalk is now
+designed to be a stable, long-running daemon on a variety of common platforms.
+It is worth re-reading the documentation for each of these tools.
+
+The 20 bug fixes cover a wide range of problems.  The most important are
+fixes to pt-table-checksum, pt-iostats, and pt-kill.  Apart from pt-diskstats,
+pt-stalk, and pt-collect (which was removed), no other tools were changed
+in backwards-incompatible ways, so it is worth reviewing the full changelog
+for this release and upgrading if you use any tools which had bug fixes.
+
+Thank you to the many people who reported bugs and submitted patches.
+
+Download the latest release of Percona Toolkit 2.0 from
+http://www.percona.com/software/percona-toolkit/
+or the Percona Software Repositories
+(http://www.percona.com/docs/wiki/repositories:start).
+
+Changelog
+---------
+
+* Completely redesigned pt-diskstats
+* Completely redesigned pt-stalk
+* Removed pt-collect and put its functionality in pt-stalk
+* Fixed bug 871438: Bash tools are insecure
+* Fixed bug 897758: Failed to prepare TableSyncChunk plugin: Use of uninitialized value $args{"chunk_range"} in lc at pt-table-sync line 3055
+* Fixed bug 919819: pt-kill --execute-command creates zombies
+* Fixed bug 894255: pt-kill: when --daemonize is given, should not check that stdin is a tty
+* Fixed bug 925778: pt-ioprofile doesn't run without a file
+* Fixed bug 925477: pt-ioprofile docs refer to pt-iostats
+* Fixed bug 857091: pt-sift downloads http://percona.com/get/pt-pmp, which does not work
+* Fixed bug 857104: pt-sift tries to invoke mext, should be pt-mext
+* Fixed bug 872699: pt-diskstats: rd_avkb & wr_avkb derived incorrectly
+* Fixed bug 882918: pt-stalk spams warning if oprofile isn't installed
+* Fixed bug 884504: pt-stalk doesn't check pt-collect
+* Fixed bug 897483: pt-online-schema-change "uninitialized value" due to update-foreign-keys-method
+* Fixed bug 925007: pt-online-schema-change Use of uninitialized value $tables{"old_table"} in concatenation (.) or string at line 4330
+* Fixed bug 915598: pt-config-diff ignores --ask-pass option
+* Fixed bug 919352: pt-table-checksum changes binlog_format even if already set to statement
+* Fixed bug 921700: pt-table-checksum doesn't add --where to chunk size test on replicas
+* Fixed bug 921802: pt-table-checksum does not recognize --recursion-method=processlist
+* Fixed bug 925855: pt-table-checksum index check is case-sensitive
+* Fixed bug 821709: pt-show-grants --revoke and --separate don't work together
+* Fixed bug 918247: Some tools use VALUE instead of VALUES
+
 v2.0.2 released 2012-01-05
 ==========================
 

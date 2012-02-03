@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.0.3 released 2012-02-03
+
   * Completely redesigned pt-diskstats
   * Completely redesigned pt-stalk
   * Removed pt-collect and put its functionality in pt-stalk

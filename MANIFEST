@@ -6,7 +6,6 @@ MANIFEST
 README
 bin/pt-align
 bin/pt-archiver
-bin/pt-collect
 bin/pt-config-diff
 bin/pt-deadlock-logger
 bin/pt-diskstats
