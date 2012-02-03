@@ -9,16 +9,53 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use Test::More;
+use Time::HiRes qw(time);
 
 use PerconaTest;
+use DSNParser;
+use Sandbox;
 
-my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
-push @ARGV, "$trunk/t/$tool/*.sh" unless @ARGV;
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('master');
 
-$ENV{BIN_DIR} = "$trunk/bin";
-$ENV{T_DIR}   = "$trunk/t/$tool";
+if ( !$dbh ) {
+   plan skip_all => "Cannot connect to master sandbox";
+}
+else {
+   plan tests => 3;
+}
 
-system("$trunk/util/test-bash-functions $trunk/t/lib/samples/bash/dummy.sh @ARGV");
+my $output = "";
+
+$output = `$trunk/bin/pt-ioprofile --help 2>&1`;
+like(
+   $output,
+   qr/--version/,
+   "--help"
+);
+
+
+my $t0 = time;
+$output = `$trunk/bin/pt-ioprofile --run-time 3 2>&1`;
+my $t1 = time;
+
+like(
+   $output,
+   qr/Tracing process ID \d+/,
+   "Runs without a file (bug 925778)"
+);
+
+# If the system is really slow, it may take a second to process the files
+# and then clean up all the temp stuff.  In any case, the default run-time
+# is 30s so it should be way less than that.
+cmp_ok(
+   $t1 - $t0,
+   '<',
+   5,
+   "Runs for --run-time"
+);
 
 # #############################################################################
 # Done.
