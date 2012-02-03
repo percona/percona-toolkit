@@ -131,6 +131,11 @@ sub delta_against {
    return $self->first_stats_for($dev);
 }
 
+sub ts_line_for_timestamp {
+   my ($self) = @_;
+   return $self->prev_ts_line();
+}
+
 sub delta_against_ts {
    my ($self) = @_;
    return $self->first_ts();
