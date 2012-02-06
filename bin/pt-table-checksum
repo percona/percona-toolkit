@@ -5887,11 +5887,12 @@ sub main {
       # instead, it should check if it's already set to STATEMENT.
       # This is becase starting with MySQL 5.1.29, changing the format
       # requires a SUPER user.
-      my $sql = 'SELECT @@binlog_format';
+      my $sql = '/*!50108 SELECT @@binlog_format */';
       PTDEBUG && _d($dbh, $sql);
       my ($original_binlog_format) = $dbh->selectrow_array($sql);
       PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
-      if ( $original_binlog_format !~ /STATEMENT/i ) {
+      if ( $original_binlog_format
+           && $original_binlog_format !~ /STATEMENT/i ) {
          $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
          eval {
             PTDEBUG && _d($dbh, $sql);
