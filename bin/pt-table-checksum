@@ -3778,7 +3778,7 @@ sub set_nibble_number {
 
 sub nibble_index {
    my ($self) = @_;
-   return lc($self->{index});
+   return $self->{index};
 }
 
 sub statements {
@@ -6399,7 +6399,8 @@ sub main {
             sth  => $sth->{explain_upper_boundary},
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
-         if ( lc($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
+         if (   lc($expl->{key} || '')
+             ne lc($nibble_iter->nibble_index() || '') ) {
             PTDEBUG && _d('Cannot nibble next chunk, aborting table');
             if ( $o->get('quiet') < 2 ) {
                my $msg
@@ -6467,7 +6468,8 @@ sub main {
                :          0;
 
             # Ensure that MySQL is using the chunk index.
-            if ( lc($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
+            if (   lc($expl->{key} || '')
+                ne lc($nibble_iter->nibble_index() || '') ) {
                PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                   "$tbl->{db}.$tbl->{tbl} not using chunk index, skipping");
                return 0;  # next boundary
@@ -7266,7 +7268,7 @@ sub have_more_chunks {
 
    # The previous chunk index must match the current chunk index,
    # else we don't know what to do.
-   my $chunk_index = $nibble_iter->nibble_index() || '';
+   my $chunk_index = lc($nibble_iter->nibble_index() || '');
    if (lc($last_chunk->{chunk_index}   || '') ne $chunk_index) {
       warn ts("Cannot resume from table $tbl->{db}.$tbl->{tbl} chunk "
          . "$last_chunk->{chunk} because the chunk indexes are different: "
