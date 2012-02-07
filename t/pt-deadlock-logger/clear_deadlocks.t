@@ -39,7 +39,7 @@ $sb->create_dbs($dbh1, ['test']);
 
 # The clear-deadlocks table comes and goes quickly so we can really
 # only search the debug output for evidence that it was created.
-$output = `MKDEBUG=1 $trunk/bin/pt-deadlock-logger F=$cnf,D=test --clear-deadlocks test.make_deadlock 2>&1`;
+$output = `PTDEBUG=1 $trunk/bin/pt-deadlock-logger F=$cnf,D=test --clear-deadlocks test.make_deadlock 2>&1`;
 like(
    $output,
    qr/INSERT INTO test.make_deadlock/,
@@ -55,7 +55,7 @@ like(
 # #############################################################################
 # Issue 942: mk-deadlock-logger --clear-deadlocks doesn't work with --interval
 # #############################################################################
-$output = `MKDEBUG=1 $trunk/bin/pt-deadlock-logger F=$cnf,D=test --clear-deadlocks test.make_deadlock2 --interval 1 --run-time 1 2>&1`;
+$output = `PTDEBUG=1 $trunk/bin/pt-deadlock-logger F=$cnf,D=test --clear-deadlocks test.make_deadlock2 --interval 1 --run-time 1 2>&1`;
 like(
    $output,
    qr/CREATE TABLE test.make_deadlock2/,

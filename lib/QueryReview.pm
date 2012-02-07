@@ -28,7 +28,7 @@ package QueryReview;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 Transformers->import(qw(make_checksum parse_timestamp));
 
@@ -82,7 +82,7 @@ sub new {
             COALESCE(?, $now),
             GREATEST(last_seen, COALESCE(?, $now)))
       SQL
-   MKDEBUG && _d('SQL to insert into review table:', $sql);
+   PTDEBUG && _d('SQL to insert into review table:', $sql);
    my $insert_sth = $args{dbh}->prepare($sql);
 
    # The SELECT statement does not need to get the fingerprint, sample or
@@ -92,7 +92,7 @@ sub new {
         . join(', ', map { $args{quoter}->quote($_) } @review_cols)
         . ", CONV(checksum, 10, 16) AS checksum_conv FROM $args{db_tbl}"
         . " WHERE checksum=CONV(?, 16, 10)";
-   MKDEBUG && _d('SQL to select from review table:', $sql);
+   PTDEBUG && _d('SQL to select from review table:', $sql);
    my $select_sth = $args{dbh}->prepare($sql);
 
    my $self = {
@@ -155,7 +155,7 @@ sub set_history_options {
             ? "COALESCE(?, $self->{ts_default})"
             : '?'
         } @cols) . ')';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
 
    $self->{history_sth}     = $args{dbh}->prepare($sql);
    $self->{history_metrics} = \@metrics;

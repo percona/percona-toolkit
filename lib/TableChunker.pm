@@ -46,7 +46,7 @@ package TableChunker;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(floor ceil);
 use List::Util qw(min max);
@@ -62,11 +62,11 @@ $Data::Dumper::Quotekeys = 0;
 #   %args  - Arguments
 #
 # Required Arguments:
-#   Quoter    - <Quoter> object
-#   MySQLDump - <MySQLDump> object
+#   Quoter      - <Quoter> object
+#   TableParser - <TableParser> object
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter MySQLDump) ) {
+   foreach my $arg ( qw(Quoter TableParser) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
@@ -129,7 +129,7 @@ sub find_chunk_columns {
 
       push @possible_indexes, $index;
    }
-   MKDEBUG && _d('Possible chunk indexes in order:',
+   PTDEBUG && _d('Possible chunk indexes in order:',
       join(', ', map { $_->{name} } @possible_indexes));
 
    # Build list of candidate chunk columns.   
@@ -150,7 +150,7 @@ sub find_chunk_columns {
 
    $can_chunk_exact = 1 if $args{exact} && scalar @candidate_cols;
 
-   if ( MKDEBUG ) {
+   if ( PTDEBUG ) {
       my $chunk_type = $args{exact} ? 'Exact' : 'Inexact';
       _d($chunk_type, 'chunkable:',
          join(', ', map { "$_->{column} on $_->{index}" } @candidate_cols));
@@ -159,7 +159,7 @@ sub find_chunk_columns {
    # Order the candidates by their original column order.
    # Put the PK's first column first, if it's a candidate.
    my @result;
-   MKDEBUG && _d('Ordering columns by order in tbl, PK first');
+   PTDEBUG && _d('Ordering columns by order in tbl, PK first');
    if ( $tbl_struct->{keys}->{PRIMARY} ) {
       my $pk_first_col = $tbl_struct->{keys}->{PRIMARY}->{cols}->[0];
       @result          = grep { $_->{column} eq $pk_first_col } @candidate_cols;
@@ -170,7 +170,7 @@ sub find_chunk_columns {
    push @result, sort { $col_pos{$a->{column}} <=> $col_pos{$b->{column}} }
                     @candidate_cols;
 
-   if ( MKDEBUG ) {
+   if ( PTDEBUG ) {
       _d('Chunkable columns:',
          join(', ', map { "$_->{column} on $_->{index}" } @result));
       _d('Can chunk exactly:', $can_chunk_exact);
@@ -222,19 +222,19 @@ sub calculate_chunks {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   MKDEBUG && _d('Calculate chunks for',
+   PTDEBUG && _d('Calculate chunks for',
       join(", ", map {"$_=".(defined $args{$_} ? $args{$_} : "undef")}
          qw(db tbl chunk_col min max rows_in_range chunk_size zero_chunk exact)
       ));
 
    if ( !$args{rows_in_range} ) {
-      MKDEBUG && _d("Empty table");
+      PTDEBUG && _d("Empty table");
       return '1=1';
    }
 
    # http://code.google.com/p/maatkit/issues/detail?id=1084
    if ( $args{rows_in_range} < $args{chunk_size} ) {
-      MKDEBUG && _d("Chunk size larger than rows in range");
+      PTDEBUG && _d("Chunk size larger than rows in range");
       return '1=1';
    }
 
@@ -243,7 +243,7 @@ sub calculate_chunks {
    my $chunk_col  = $args{chunk_col};
    my $tbl_struct = $args{tbl_struct};
    my $col_type   = $tbl_struct->{type_for}->{$chunk_col};
-   MKDEBUG && _d('chunk col type:', $col_type);
+   PTDEBUG && _d('chunk col type:', $col_type);
 
    # Get chunker info for the column type.  Numeric cols are chunked
    # differently than char cols.
@@ -257,7 +257,7 @@ sub calculate_chunks {
    else {
       die "Cannot chunk $col_type columns";
    }
-   MKDEBUG && _d("Chunker:", Dumper(\%chunker));
+   PTDEBUG && _d("Chunker:", Dumper(\%chunker));
    my ($col, $start_point, $end_point, $interval, $range_func)
       = @chunker{qw(col start_point end_point interval range_func)};
 
@@ -303,7 +303,7 @@ sub calculate_chunks {
       # from the beginning of the last chunk to infinity, or to the max col
       # value if chunk_range is openclosed.  If the chunk column is nullable,
       # do NULL separately.
-      my $chunk_range = lc $args{chunk_range} || 'open';
+      my $chunk_range = lc($args{chunk_range} || 'open');
       my $nullable    = $args{tbl_struct}->{is_nullable}->{$args{chunk_col}};
       pop @chunks;
       if ( @chunks ) {
@@ -320,7 +320,7 @@ sub calculate_chunks {
    }
    else {
       # There are no chunks; just do the whole table in one chunk.
-      MKDEBUG && _d('No chunks; using single chunk 1=1');
+      PTDEBUG && _d('No chunks; using single chunk 1=1');
       push @chunks, '1=1';
    }
 
@@ -423,14 +423,14 @@ sub _chunk_numeric {
    # is make NULL end points zero to make the code below work and any NULL
    # values will be handled by the special "IS NULL" chunk.
    if ( !defined $start_point ) {
-      MKDEBUG && _d('Start point is undefined');
+      PTDEBUG && _d('Start point is undefined');
       $start_point = 0;
    }
    if ( !defined $end_point || $end_point < $start_point ) {
-      MKDEBUG && _d('End point is undefined or before start point');
+      PTDEBUG && _d('End point is undefined or before start point');
       $end_point = 0;
    }
-   MKDEBUG && _d("Actual chunk range:", $start_point, "to", $end_point);
+   PTDEBUG && _d("Actual chunk range:", $start_point, "to", $end_point);
 
    # Determine if we can include a zero chunk (col = 0).  If yes, then
    # make sure the start point is non-zero.  $start_point and $end_point
@@ -443,7 +443,7 @@ sub _chunk_numeric {
    my $have_zero_chunk = 0;
    if ( $args{zero_chunk} ) {
       if ( $start_point != $end_point && $start_point >= 0 ) {
-         MKDEBUG && _d('Zero chunking');
+         PTDEBUG && _d('Zero chunking');
          my $nonzero_val = $self->get_nonzero_value(
             %args,
             db_tbl   => $db_tbl,
@@ -462,10 +462,10 @@ sub _chunk_numeric {
          $have_zero_chunk = 1;
       }
       else {
-         MKDEBUG && _d("Cannot zero chunk");
+         PTDEBUG && _d("Cannot zero chunk");
       }
    }
-   MKDEBUG && _d("Using chunk range:", $start_point, "to", $end_point);
+   PTDEBUG && _d("Using chunk range:", $start_point, "to", $end_point);
 
    # Calculate the chunk size in terms of "distance between endpoints"
    # that will give approximately the right number of rows between the
@@ -481,7 +481,7 @@ sub _chunk_numeric {
    if ( $args{exact} ) {
       $interval = $args{chunk_size};
    }
-   MKDEBUG && _d('Chunk interval:', $interval, 'units');
+   PTDEBUG && _d('Chunk interval:', $interval, 'units');
 
    return (
       col             => $q->quote($args{chunk_col}),
@@ -540,18 +540,18 @@ sub _chunk_char {
    # Get the character codes between the min and max column values.
    my ($min_col, $max_col) = @{args}{qw(min max)};
    $sql = "SELECT ORD(?) AS min_col_ord, ORD(?) AS max_col_ord";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my $ord_sth = $dbh->prepare($sql);  # avoid quoting issues
    $ord_sth->execute($min_col, $max_col);
    $row = $ord_sth->fetchrow_arrayref();
    my ($min_col_ord, $max_col_ord) = ($row->[0], $row->[1]);
-   MKDEBUG && _d("Min/max col char code:", $min_col_ord, $max_col_ord);
+   PTDEBUG && _d("Min/max col char code:", $min_col_ord, $max_col_ord);
 
    # Create a sorted chacater-to-number map of the unique characters in
    # the column ranging from the min character code to the max.
    my $base;
    my @chars;
-   MKDEBUG && _d("Table charset:", $args{tbl_struct}->{charset});
+   PTDEBUG && _d("Table charset:", $args{tbl_struct}->{charset});
    if ( ($args{tbl_struct}->{charset} || "") eq "latin1" ) {
       # These are the unique, sorted latin1 character codes according to
       # MySQL.  You'll notice that many are missing.  That's because MySQL
@@ -586,18 +586,18 @@ sub _chunk_char {
       my $tmp_tbl    = '__maatkit_char_chunking_map';
       my $tmp_db_tbl = $q->quote($args{db}, $tmp_tbl);
       $sql = "DROP TABLE IF EXISTS $tmp_db_tbl";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
       my $col_def = $args{tbl_struct}->{defs}->{$chunk_col};
       $sql        = "CREATE TEMPORARY TABLE $tmp_db_tbl ($col_def) "
                   . "ENGINE=MEMORY";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
 
       # Populate the temp table with all the characters between the min and max
       # max character codes.  This is our character-to-number map.
-      $sql = "INSERT INTO $tmp_db_tbl VALUE (CHAR(?))";
-      MKDEBUG && _d($dbh, $sql);
+      $sql = "INSERT INTO $tmp_db_tbl VALUES (CHAR(?))";
+      PTDEBUG && _d($dbh, $sql);
       my $ins_char_sth = $dbh->prepare($sql);  # avoid quoting issues
       for my $char_code ( $min_col_ord..$max_col_ord ) {
          $ins_char_sth->execute($char_code);
@@ -613,7 +613,7 @@ sub _chunk_char {
       $sql = "SELECT `$chunk_col` FROM $tmp_db_tbl "
            . "WHERE `$chunk_col` BETWEEN ? AND ? "
            . "ORDER BY `$chunk_col`";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       my $sel_char_sth = $dbh->prepare($sql);
       $sel_char_sth->execute($min_col, $max_col);
 
@@ -621,10 +621,10 @@ sub _chunk_char {
       $base  = scalar @chars;
 
       $sql = "DROP TABLE $tmp_db_tbl";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
-   MKDEBUG && _d("Base", $base, "chars:", @chars);
+   PTDEBUG && _d("Base", $base, "chars:", @chars);
 
    # Now we begin calculating how to chunk the char column.  This is
    # completely different from _chunk_numeric because we're not dealing
@@ -642,15 +642,15 @@ sub _chunk_char {
    $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl "
         . ($args{where} ? "WHERE $args{where} " : "") 
         . "ORDER BY `$chunk_col`";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
    my $max_col_len = $row->[0];
-   MKDEBUG && _d("Max column value:", $max_col, $max_col_len);
+   PTDEBUG && _d("Max column value:", $max_col, $max_col_len);
    my $n_values;
    for my $n_chars ( 1..$max_col_len ) {
       $n_values = $base**$n_chars;
       if ( $n_values >= $args{chunk_size} ) {
-         MKDEBUG && _d($n_chars, "chars in base", $base, "expresses",
+         PTDEBUG && _d($n_chars, "chars in base", $base, "expresses",
             $n_values, "values");
          last;
       }
@@ -729,7 +729,7 @@ sub get_first_chunkable_column {
    # they want, though, if it results in a sane col/index pair.
    my $wanted_col = $args{chunk_column};
    my $wanted_idx = $args{chunk_index};
-   MKDEBUG && _d("Preferred chunk col/idx:", $wanted_col, $wanted_idx);
+   PTDEBUG && _d("Preferred chunk col/idx:", $wanted_col, $wanted_idx);
 
    if ( $wanted_col && $wanted_idx ) {
       # Preferred column and index: check that the pair is sane.
@@ -771,7 +771,7 @@ sub get_first_chunkable_column {
       }
    }
 
-   MKDEBUG && _d('First chunkable col/index:', $col, $idx);
+   PTDEBUG && _d('First chunkable col/index:', $col, $idx);
    return $col, $idx;
 }
 
@@ -800,7 +800,7 @@ sub size_to_rows {
    }
    my ($dbh, $db, $tbl, $chunk_size) = @args{@required_args};
    my $q  = $self->{Quoter};
-   my $du = $self->{MySQLDump};
+   my $tp = $self->{TableParser};
 
    my ($n_rows, $avg_row_length);
 
@@ -819,7 +819,7 @@ sub size_to_rows {
    }
 
    if ( $suffix || $args{avg_row_length} ) {
-      my ($status) = $du->get_table_status($dbh, $q, $db, $tbl);
+      my ($status) = $tp->get_table_status($dbh, $db, $tbl);
       $avg_row_length = $status->{avg_row_length};
       if ( !defined $n_rows ) {
          $n_rows = $avg_row_length ? ceil($chunk_size / $avg_row_length) : undef;
@@ -873,9 +873,9 @@ sub get_range_statistics {
       my $sql = "SELECT MIN($col), MAX($col) FROM $db_tbl"
               . ($args{index_hint} ? " $args{index_hint}" : "")
               . ($where ? " WHERE ($where)" : '');
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       ($min, $max) = $dbh->selectrow_array($sql);
-      MKDEBUG && _d("Actual end points:", $min, $max);
+      PTDEBUG && _d("Actual end points:", $min, $max);
 
       # Now, for two reasons, get the valid end points.  For one, an
       # end point may be 0 or some zero-equivalent and the user doesn't
@@ -890,7 +890,7 @@ sub get_range_statistics {
          min      => $min,
          max      => $max,
       );
-      MKDEBUG && _d("Valid end points:", $min, $max);
+      PTDEBUG && _d("Valid end points:", $min, $max);
    };
    if ( $EVAL_ERROR ) {
       die "Error getting min and max values for table $db_tbl "
@@ -902,7 +902,7 @@ sub get_range_statistics {
    my $sql = "EXPLAIN SELECT * FROM $db_tbl"
            . ($args{index_hint} ? " $args{index_hint}" : "")
            . ($where ? " WHERE $where" : '');
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
 
    return (
@@ -937,7 +937,7 @@ sub inject_chunks {
    foreach my $arg ( qw(database table chunks chunk_num query) ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   MKDEBUG && _d('Injecting chunk', $args{chunk_num});
+   PTDEBUG && _d('Injecting chunk', $args{chunk_num});
    my $query   = $args{query};
    my $comment = sprintf("/*%s.%s:%d/%d*/",
       $args{database}, $args{table},
@@ -952,7 +952,7 @@ sub inject_chunks {
    my $db_tbl     = $self->{Quoter}->quote(@args{qw(database table)});
    my $index_hint = $args{index_hint} || '';
 
-   MKDEBUG && _d('Parameters:',
+   PTDEBUG && _d('Parameters:',
       Dumper({WHERE => $where, DB_TBL => $db_tbl, INDEX_HINT => $index_hint}));
    $query =~ s!/\*WHERE\*/! $where!;
    $query =~ s!/\*DB_TBL\*/!$db_tbl!;
@@ -981,7 +981,7 @@ sub value_to_number {
    }
    my $val = $args{value};
    my ($col_type, $dbh) = @args{@required_args};
-   MKDEBUG && _d('Converting MySQL', $col_type, $val);
+   PTDEBUG && _d('Converting MySQL', $col_type, $val);
 
    return unless defined $val;  # value is NULL
 
@@ -1006,7 +1006,7 @@ sub value_to_number {
       # These are temporal values.  Convert them using a MySQL func.
       my $func = $mysql_conv_func_for{$col_type};
       my $sql = "SELECT $func(?)";
-      MKDEBUG && _d($dbh, $sql, $val);
+      PTDEBUG && _d($dbh, $sql, $val);
       my $sth = $dbh->prepare($sql);
       $sth->execute($val);
       ($num) = $sth->fetchrow_array();
@@ -1020,7 +1020,7 @@ sub value_to_number {
    else {
       die "I don't know how to chunk $col_type\n";
    }
-   MKDEBUG && _d('Converts to', $num);
+   PTDEBUG && _d('Converts to', $num);
    return $num;
 }
 
@@ -1053,14 +1053,14 @@ sub range_num {
 sub range_time {
    my ( $self, $dbh, $start, $interval, $max ) = @_;
    my $sql = "SELECT SEC_TO_TIME($start), SEC_TO_TIME(LEAST($max, $start + $interval))";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    return $dbh->selectrow_array($sql);
 }
 
 sub range_date {
    my ( $self, $dbh, $start, $interval, $max ) = @_;
    my $sql = "SELECT FROM_DAYS($start), FROM_DAYS(LEAST($max, $start + $interval))";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    return $dbh->selectrow_array($sql);
 }
 
@@ -1068,14 +1068,14 @@ sub range_datetime {
    my ( $self, $dbh, $start, $interval, $max ) = @_;
    my $sql = "SELECT DATE_ADD('$self->{EPOCH}', INTERVAL $start SECOND), "
        . "DATE_ADD('$self->{EPOCH}', INTERVAL LEAST($max, $start + $interval) SECOND)";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    return $dbh->selectrow_array($sql);
 }
 
 sub range_timestamp {
    my ( $self, $dbh, $start, $interval, $max ) = @_;
    my $sql = "SELECT FROM_UNIXTIME($start), FROM_UNIXTIME(LEAST($max, $start + $interval))";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    return $dbh->selectrow_array($sql);
 }
 
@@ -1090,10 +1090,10 @@ sub timestampdiff {
    my ( $self, $dbh, $time ) = @_;
    my $sql = "SELECT (COALESCE(TO_DAYS('$time'), 0) * 86400 + TIME_TO_SEC('$time')) "
       . "- TO_DAYS('$self->{EPOCH} 00:00:00') * 86400";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my ( $diff ) = $dbh->selectrow_array($sql);
    $sql = "SELECT DATE_ADD('$self->{EPOCH}', INTERVAL $diff SECOND)";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my ( $check ) = $dbh->selectrow_array($sql);
    die <<"   EOF"
    Incorrect datetime math: given $time, calculated $diff but checked to $check.
@@ -1153,7 +1153,7 @@ sub get_valid_end_points {
    my $valid_min = $real_min;
    if ( defined $valid_min ) {
       # Get a valid min end point.
-      MKDEBUG && _d("Validating min end point:", $real_min);
+      PTDEBUG && _d("Validating min end point:", $real_min);
       $valid_min = $self->_get_valid_end_point(
          %args,
          val      => $real_min,
@@ -1169,7 +1169,7 @@ sub get_valid_end_points {
    if ( defined $valid_max ) {
       # Get a valid max end point.  So far I've not found a case where
       # the actual max val is invalid, but check anyway just in case.
-      MKDEBUG && _d("Validating max end point:", $real_min);
+      PTDEBUG && _d("Validating max end point:", $real_min);
       $valid_max = $self->_get_valid_end_point(
          %args,
          val      => $real_max,
@@ -1205,7 +1205,7 @@ sub _get_valid_end_point {
 
    # If we cannot validate the value, assume it's valid.
    if ( !$validate ) {
-      MKDEBUG && _d("No validator for", $col_type, "values");
+      PTDEBUG && _d("No validator for", $col_type, "values");
       return $val;
    }
 
@@ -1213,7 +1213,7 @@ sub _get_valid_end_point {
    return $val if defined $validate->($dbh, $val);
 
    # The value is not valid so find the first one in the table that is.
-   MKDEBUG && _d("Value is invalid, getting first valid value");
+   PTDEBUG && _d("Value is invalid, getting first valid value");
    $val = $self->get_first_valid_value(
       %args,
       val      => $val,
@@ -1260,7 +1260,7 @@ sub get_first_valid_value {
            . "WHERE $col $cmp ? AND $col IS NOT NULL "
            . ($args{where} ? "AND ($args{where}) " : "")
            . "ORDER BY $col LIMIT 1";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my $sth = $dbh->prepare($sql);
 
    # Fetch the next col val from the db.tbl until we find a valid one
@@ -1269,13 +1269,13 @@ sub get_first_valid_value {
    while ( $tries-- ) {
       $sth->execute($last_val);
       my ($next_val) = $sth->fetchrow_array();
-      MKDEBUG && _d('Next value:', $next_val, '; tries left:', $tries);
+      PTDEBUG && _d('Next value:', $next_val, '; tries left:', $tries);
       if ( !defined $next_val ) {
-         MKDEBUG && _d('No more rows in table');
+         PTDEBUG && _d('No more rows in table');
          last;
       }
       if ( defined $validate->($dbh, $next_val) ) {
-         MKDEBUG && _d('First valid value:', $next_val);
+         PTDEBUG && _d('First valid value:', $next_val);
          $sth->finish();
          return $next_val;
       }
@@ -1295,14 +1295,14 @@ sub _validate_temporal_value {
    my $sql = "SELECT IF(TIME_FORMAT(?,'%H:%i:%s')=?, TIME_TO_SEC(?), TO_DAYS(?))";
    my $res;
    eval {
-      MKDEBUG && _d($dbh, $sql, $val);
+      PTDEBUG && _d($dbh, $sql, $val);
       my $sth = $dbh->prepare($sql);
       $sth->execute($val, $val, $val, $val);
       ($res) = $sth->fetchrow_array();
       $sth->finish();
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
    }
    return $res;
 }
@@ -1324,13 +1324,13 @@ sub get_nonzero_value {
                   :                             sub { return $_[1]; };
 
    if ( !$is_nonzero->($dbh, $val) ) {  # quasi-double-negative, sorry
-      MKDEBUG && _d('Discarding zero value:', $val);
+      PTDEBUG && _d('Discarding zero value:', $val);
       my $sql = "SELECT $col FROM $db_tbl "
               . ($args{index_hint} ? "$args{index_hint} " : "")
               . "WHERE $col > ? AND $col IS NOT NULL "
               . ($args{where} ? "AND ($args{where}) " : '')
               . "ORDER BY $col LIMIT 1";
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       my $sth = $dbh->prepare($sql);
 
       my $last_val = $val;
@@ -1338,7 +1338,7 @@ sub get_nonzero_value {
          $sth->execute($last_val);
          my ($next_val) = $sth->fetchrow_array();
          if ( $is_nonzero->($dbh, $next_val) ) {
-            MKDEBUG && _d('First non-zero value:', $next_val);
+            PTDEBUG && _d('First non-zero value:', $next_val);
             $sth->finish();
             return $next_val;
          }

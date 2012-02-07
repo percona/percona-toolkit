@@ -59,7 +59,7 @@ package ReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(min max);
 use POSIX qw(ceil);
@@ -104,7 +104,7 @@ sub new {
          . "is not installed" unless $have_term;
       ($self->{line_width}) = GetTerminalSize();
    }
-   MKDEBUG && _d('Line width:', $self->{line_width});
+   PTDEBUG && _d('Line width:', $self->{line_width});
 
    return bless $self, $class;
 }
@@ -140,7 +140,7 @@ sub set_columns {
 
       if ( $col->{width} ) {
          $col->{width_pct} = ceil(($col->{width} * 100) / $self->{line_width});
-         MKDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
+         PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
             $col->{width_pct}, '%');
       }
 
@@ -150,7 +150,7 @@ sub set_columns {
       else {
          # Auto-width columns get an equal share of whatever amount
          # of line width remains.  Later, they can be adjusted again.
-         MKDEBUG && _d('Auto width col:', $col_name);
+         PTDEBUG && _d('Auto width col:', $col_name);
          $col->{auto_width} = 1;
          push @auto_width_cols, $i;
       }
@@ -184,16 +184,16 @@ sub set_columns {
    # Divide remain line width (in %) among auto-width columns.
    if ( @auto_width_cols ) {
       my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
-      MKDEBUG && _d('Line width left:', (100-$used_width), '%;',
+      PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
          'each auto width col:', $wid_per_col, '%');
       map { $self->{cols}->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
    }
 
    # Add to the minimum possible header width the spacing between columns.
    $min_hdr_wid += ($self->{n_cols} - 1) * length $self->{column_spacing};
-   MKDEBUG && _d('min header width:', $min_hdr_wid);
+   PTDEBUG && _d('min header width:', $min_hdr_wid);
    if ( $min_hdr_wid > $self->{line_width} ) {
-      MKDEBUG && _d('Will truncate headers because min header width',
+      PTDEBUG && _d('Will truncate headers because min header width',
          $min_hdr_wid, '> line width', $self->{line_width});
       $self->{truncate_headers} = 1;
    }
@@ -238,7 +238,7 @@ sub get_report {
    my @col_fmts = $self->_make_column_formats();
    my $fmt      = ($self->{line_prefix} || '')
                 . join($self->{column_spacing}, @col_fmts);
-   MKDEBUG && _d('Format:', $fmt);
+   PTDEBUG && _d('Format:', $fmt);
 
    # Make the printf line format for the header and ensure that its labels
    # are always left justified.
@@ -293,7 +293,7 @@ sub truncate_value {
       $val = $mark . substr($val, -1 * $width + length $mark);
    }
    else {
-      MKDEBUG && _d("I don't know how to", $side, "truncate values");
+      PTDEBUG && _d("I don't know how to", $side, "truncate values");
    }
    return $val;
 }
@@ -305,34 +305,34 @@ sub _calculate_column_widths {
    foreach my $col ( @{$self->{cols}} ) {
       my $print_width = int($self->{line_width} * ($col->{width_pct} / 100));
 
-      MKDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
+      PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
          'char width:', $print_width,
          'min val:', $col->{min_val}, 'max val:', $col->{max_val});
 
       if ( $col->{auto_width} ) {
          if ( $col->{min_val} && $print_width < $col->{min_val} ) {
-            MKDEBUG && _d('Increased to min val width:', $col->{min_val});
+            PTDEBUG && _d('Increased to min val width:', $col->{min_val});
             $print_width = $col->{min_val};
          }
          elsif ( $col->{max_val} &&  $print_width > $col->{max_val} ) {
-            MKDEBUG && _d('Reduced to max val width:', $col->{max_val});
+            PTDEBUG && _d('Reduced to max val width:', $col->{max_val});
             $extra_space += $print_width - $col->{max_val};
             $print_width  = $col->{max_val};
          }
       }
 
       $col->{print_width} = $print_width;
-      MKDEBUG && _d('print width:', $col->{print_width});
+      PTDEBUG && _d('print width:', $col->{print_width});
    }
 
-   MKDEBUG && _d('Extra space:', $extra_space);
+   PTDEBUG && _d('Extra space:', $extra_space);
    while ( $extra_space-- ) {
       foreach my $col ( @{$self->{cols}} ) {
          if (    $col->{auto_width}
               && (    $col->{print_width} < $col->{max_val}
                    || $col->{print_width} < $col->{header_width})
          ) {
-            # MKDEBUG && _d('Increased', $col->{name}, 'width');
+            # PTDEBUG && _d('Increased', $col->{name}, 'width');
             $col->{print_width}++;
          }
       }
@@ -349,7 +349,7 @@ sub _truncate_headers {
       my $print_width = $col->{print_width};
       next if length $col_name <= $print_width;
       $col->{name}  = $self->truncate_value($col, $col_name, $print_width, $side);
-      MKDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
+      PTDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
          'max width:', $print_width);
    }
    return;
@@ -377,7 +377,7 @@ sub _truncate_line_values {
             my $print_width = $col->{print_width};
             $val = $callback ? $callback->($col, $val, $print_width)
                  :             $self->truncate_value($col, $val, $print_width);
-            MKDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
+            PTDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
                '; max width:', $print_width);
             $vals->[$i] = $val;
          }

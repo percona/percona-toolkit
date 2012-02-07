@@ -1,5 +1,8 @@
 #!/bin/bash
 
+TESTS=1
+TMPDIR=$TEST_TMPDIR
+
 cat <<EOF > $TMPDIR/expected
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================

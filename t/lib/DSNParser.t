@@ -137,7 +137,7 @@ is (
 
 is (
    $dp->as_string({ h=>'localhost', P=>'3306',p=>'omg'}, [qw(h P)]),
-   'P=3306,h=localhost',
+   'h=localhost,P=3306',
    'DSN stringifies only requested parts'
 );
 
@@ -252,7 +252,7 @@ SKIP: {
    # mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/ ? 1 : 0),
    # in get_dbh().  That line is part of a hashref declaration so we
    # have no access to it here.  I keep this this test because it allows
-   # me to look manually via MKDEBUG and see that  mysql_enable_utf8=>1
+   # me to look manually via PTDEBUG and see that  mysql_enable_utf8=>1
    # even if A=UTF8.
    $d = $dp->parse('h=127.0.0.1,P=12345,A=UTF8,u=msandbox,p=msandbox');
    eval {

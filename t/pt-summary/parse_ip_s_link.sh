@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=2
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="ip-s-link-001.txt"
 cat <<EOF > $TMPDIR/expected

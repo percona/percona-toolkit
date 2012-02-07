@@ -1,6 +1,6 @@
 config/NaturalDocs/Data
 docs/dev/*
-docs/user/html
+docs/user/*
 docs/test-coverage/db
 docs/test-coverage/html
 release

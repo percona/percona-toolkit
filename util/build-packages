@@ -9,15 +9,19 @@
 # a leading 'v', just `build-packages 1.0.8' for example.
 #
 # These environment variables control what the script does:
-#   CHECK=0|1     - Do (not) check the branch, version, etc.
-#   UPDATE=0|1    - Do (not) update changelogs, versions, etc.
-#   BUILD=0|1     - Do (not) build any packages
-#   BUILD_TAR=0|1 - Do (not) build the .tar.gz package
-#   BUILD_RPM=0|1 - Do (not) build the .rpm package
-#   BUILD_DEB=0|1 - Do (not) build the .deb package
+#   CHECK=0|1       - Do (not) check the branch, version, etc.
+#   UPDATE=0|1      - Do (not) update changelogs, versions, etc.
+#   BUILD=0|1       - Do (not) build any packages
+#   BUILD_TAR=0|1   - Do (not) build the .tar.gz package
+#   BUILD_RPM=0|1   - Do (not) build the .rpm package
+#   BUILD_DEB=0|1   - Do (not) build the .deb package
 # All of these env vars are true by default.  If, for example, you just want
 # to build the branch as-is: CHECK=0 UPDATE=0 build-packages VERSION
 # Otherwise, this script is pretty strict and tries to ensure a good build.
+#
+# These environment variables are for special builds:
+#   UPDATE_DOCS=0|1 - Do (not) update docs
+#   BETA=1          - UPDATE_DOCS=0 BUILD_RPM=0 BUILD_DEB=0
 #
 # A few more things you should know:
 #  * You'll need rpmbuild and dpkg-buildpackage to build the rpm and deb pkgs
@@ -125,7 +129,7 @@ update_version() {
    echo -n "Updating version in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9]\.[0-9][0-9]*/$tool_file $VERSION/" $tool_file
+      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $VERSION/" $tool_file
       if [ $? -ne 0 ]; then
          die "Error updating version in $tool_file"
       fi
@@ -439,6 +443,13 @@ tmpdir="/tmp/build-percona-toolkit-$VERSION"
 rm -rf $tmpdir >/dev/null 2>&1
 mkdir $tmpdir
 
+BETA=${BETA:-0}
+if [ $BETA -eq 1 ]; then
+   UPDATE_DOCS=0
+   BUILD_RPM=0
+   BUILD_DEB=0
+fi
+
 # This script does not check that you've done pre-release tasks like running
 # the test suite, updating Changelog entries, etc.  You're responsible for
 # that.  These checks are for the sanity of package building.
@@ -456,10 +467,14 @@ if [ $UPDATE -eq 1 ]; then
    update_version
    update_copyright_year
    update_manifest
-   update_percona_toolkit_pod
-   update_changelog
-   update_rel_notes
-   update_user_docs 
+
+   UPDATE_DOCS=${UPDATE_DOCS:-1}
+   if [ $UPDATE_DOCS -eq 1 ]; then
+      update_percona_toolkit_pod
+      update_changelog
+      update_rel_notes
+      update_user_docs 
+   fi
 fi
 
 # Now that those ^ items are updated, you need to commit and push one more

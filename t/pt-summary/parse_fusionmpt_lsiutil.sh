@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=3
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="lsiutil-001.txt"
 cat <<EOF > $TMPDIR/expected

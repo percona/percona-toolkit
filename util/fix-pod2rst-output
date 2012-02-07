@@ -1,0 +1,68 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+my $file = shift @ARGV;
+die "I need a file" unless $file;
+die "$file is not a file" unless -f $file;
+open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+
+my $tool = shift @ARGV;
+die "I need a tool" unless $tool;
+
+print ".. program:: $tool\n\n",
+      ('=' x (length($tool) + 11)), "\n",
+      ":program:`$tool`\n",
+      ('=' x (length($tool) + 11)), "\n\n";
+
+$INPUT_RECORD_SEPARATOR = '';
+
+my $in_code_block = 0;
+my $section       = '';
+
+while (my $para = <$fh>) {
+   next if $para =~ m/^\.\. highlight:: perl/;
+
+   $in_code_block = $para =~ m/^\s{2,}/ ? 1 : 0;
+
+   if ($para =~ m/^\*{2,}\n([\w\s,-]+)\n\*{2,}$/m) {
+      print "$1\n",
+            ('=' x length $1),
+            "\n\n";
+      $section = $1;
+   }
+   elsif ($para =~ m/^Usage: /) {
+      $para =~ s/^Usage: //;
+      print "Usage\n",
+            "-----\n\n",
+            "::\n\n",
+            "  $para";
+   }
+   elsif ($para =~ m/^Examples:/) {
+      print "Examples\n",
+            "--------\n\n";
+   }
+   else {
+      $para =~ s/\.\. code-block:: perl/.. code-block:: bash/mg;
+      $para =~ s/`+$tool`+/$tool/g;
+      $para =~ s/([^\/])$tool/$1:program:`$tool`/g unless $in_code_block;
+      $para =~ s/^$tool/:program:`$tool`/gm;
+      $para =~ s/^--(\S+)$/.. option:: --$1/mg;
+      $para =~ s/"--(\S+)"/:option:`--$1`/g;
+      $para =~ s/\\\*/*/g;
+      $para =~ s/\\ //g;
+      $para =~ s/^[ ]+$//mg;
+      $para =~ s/^\n\n/\n/mg;
+      $para =~ s/code-block:: bash(\s+)CREATE/code-block:: sql$1CREATE/sg;
+      if ( ($section || '') eq 'OUTPUT' ) {
+         $para =~ s/^([A-Z_]+)\n\n/$1\n/;
+      }
+      print $para;
+   }
+}
+
+close $fh;
+exit;

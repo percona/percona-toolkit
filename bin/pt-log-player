@@ -6,7 +6,7 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # ###########################################################################
 # OptionParser package
@@ -22,7 +22,7 @@ package OptionParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
@@ -106,7 +106,7 @@ sub get_specs {
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    if ( $contents =~ m/^=head1 DSN OPTIONS/m ) {
-      MKDEBUG && _d('Parsing DSN OPTIONS');
+      PTDEBUG && _d('Parsing DSN OPTIONS');
       my $dsn_attribs = {
          dsn  => 1,
          copy => 1,
@@ -150,7 +150,7 @@ sub get_specs {
 
    if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
       $self->{version} = $1;
-      MKDEBUG && _d($self->{version});
+      PTDEBUG && _d($self->{version});
    }
 
    return;
@@ -187,7 +187,7 @@ sub _pod_to_specs {
       chomp $para;
       $para =~ s/\s+/ /g;
       $para =~ s/$POD_link_re/$1/go;
-      MKDEBUG && _d('Option rule:', $para);
+      PTDEBUG && _d('Option rule:', $para);
       push @rules, $para;
    }
 
@@ -196,7 +196,7 @@ sub _pod_to_specs {
    do {
       if ( my ($option) = $para =~ m/^=item $self->{item}/ ) {
          chomp $para;
-         MKDEBUG && _d($para);
+         PTDEBUG && _d($para);
          my %attribs;
 
          $para = <$fh>; # read next paragraph, possibly attributes
@@ -215,7 +215,7 @@ sub _pod_to_specs {
             $para = <$fh>; # read next paragraph, probably short help desc
          }
          else {
-            MKDEBUG && _d('Option has no attributes');
+            PTDEBUG && _d('Option has no attributes');
          }
 
          $para =~ s/\s+\Z//g;
@@ -223,7 +223,7 @@ sub _pod_to_specs {
          $para =~ s/$POD_link_re/$1/go;
 
          $para =~ s/\.(?:\n.*| [A-Z].*|\Z)//s;
-         MKDEBUG && _d('Short help:', $para);
+         PTDEBUG && _d('Short help:', $para);
 
          die "No description after option spec $option" if $para =~ m/^=item/;
 
@@ -261,7 +261,7 @@ sub _parse_specs {
 
    foreach my $opt ( @specs ) {
       if ( ref $opt ) { # It's an option spec, not a rule.
-         MKDEBUG && _d('Parsing opt spec:',
+         PTDEBUG && _d('Parsing opt spec:',
             map { ($_, '=>', $opt->{$_}) } keys %$opt);
 
          my ( $long, $short ) = $opt->{spec} =~ m/^([\w-]+)(?:\|([^!+=]*))?/;
@@ -274,7 +274,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
 
          if ( length $long == 1 ) {
-            MKDEBUG && _d('Long opt', $long, 'looks like short opt');
+            PTDEBUG && _d('Long opt', $long, 'looks like short opt');
             $self->{short_opts}->{$long} = $long;
          }
 
@@ -300,14 +300,14 @@ sub _parse_specs {
 
          my ( $type ) = $opt->{spec} =~ m/=(.)/;
          $opt->{type} = $type;
-         MKDEBUG && _d($long, 'type:', $type);
+         PTDEBUG && _d($long, 'type:', $type);
 
 
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
             $self->{defaults}->{$long} = defined $def ? $def : 1;
-            MKDEBUG && _d($long, 'default:', $def);
+            PTDEBUG && _d($long, 'default:', $def);
          }
 
          if ( $long eq 'config' ) {
@@ -316,13 +316,13 @@ sub _parse_specs {
 
          if ( (my ($dis) = $opt->{desc} =~ m/(disables .*)/) ) {
             $disables{$long} = $dis;
-            MKDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
+            PTDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
          }
 
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         MKDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt); 
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -330,17 +330,17 @@ sub _parse_specs {
          if ( $opt =~ m/mutually exclusive|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{mutex}}, \@participants;
-            MKDEBUG && _d(@participants, 'are mutually exclusive');
+            PTDEBUG && _d(@participants, 'are mutually exclusive');
          }
          if ( $opt =~ m/at least one|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{atleast1}}, \@participants;
-            MKDEBUG && _d(@participants, 'require at least one');
+            PTDEBUG && _d(@participants, 'require at least one');
          }
          if ( $opt =~ m/default to/ ) {
             $rule_ok = 1;
             $self->{defaults_to}->{$participants[0]} = $participants[1];
-            MKDEBUG && _d($participants[0], 'defaults to', $participants[1]);
+            PTDEBUG && _d($participants[0], 'defaults to', $participants[1]);
          }
          if ( $opt =~ m/restricted to option groups/ ) {
             $rule_ok = 1;
@@ -354,7 +354,7 @@ sub _parse_specs {
          if( $opt =~ m/accepts additional command-line arguments/ ) {
             $rule_ok = 1;
             $self->{strict} = 0;
-            MKDEBUG && _d("Strict mode disabled by rule");
+            PTDEBUG && _d("Strict mode disabled by rule");
          }
 
          die "Unrecognized option rule: $opt" unless $rule_ok;
@@ -364,7 +364,7 @@ sub _parse_specs {
    foreach my $long ( keys %disables ) {
       my @participants = $self->_get_participants($disables{$long});
       $self->{disables}->{$long} = \@participants;
-      MKDEBUG && _d('Option', $long, 'disables', @participants);
+      PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
    return; 
@@ -378,7 +378,7 @@ sub _get_participants {
          unless exists $self->{opts}->{$long};
       push @participants, $long;
    }
-   MKDEBUG && _d('Participants for', $str, ':', @participants);
+   PTDEBUG && _d('Participants for', $str, ':', @participants);
    return @participants;
 }
 
@@ -401,7 +401,7 @@ sub set_defaults {
       die "Cannot set default for nonexistent option $long"
          unless exists $self->{opts}->{$long};
       $self->{defaults}->{$long} = $defaults{$long};
-      MKDEBUG && _d('Default val for', $long, ':', $defaults{$long});
+      PTDEBUG && _d('Default val for', $long, ':', $defaults{$long});
    }
    return;
 }
@@ -430,7 +430,7 @@ sub _set_option {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
-   MKDEBUG && _d('Got option', $long, '=', $val);
+   PTDEBUG && _d('Got option', $long, '=', $val);
 }
 
 sub get_opts {
@@ -461,7 +461,7 @@ sub get_opts {
             if ( $self->got('config') ) {
                die $EVAL_ERROR;
             }
-            elsif ( MKDEBUG ) {
+            elsif ( PTDEBUG ) {
                _d($EVAL_ERROR);
             }
          }
@@ -528,7 +528,7 @@ sub _check_opts {
             if ( exists $self->{disables}->{$long} ) {
                my @disable_opts = @{$self->{disables}->{$long}};
                map { $self->{opts}->{$_}->{value} = undef; } @disable_opts;
-               MKDEBUG && _d('Unset options', @disable_opts,
+               PTDEBUG && _d('Unset options', @disable_opts,
                   'because', $long,'disables them');
             }
 
@@ -577,7 +577,7 @@ sub _check_opts {
             delete $long[$i];
          }
          else {
-            MKDEBUG && _d('Temporarily failed to parse', $long);
+            PTDEBUG && _d('Temporarily failed to parse', $long);
          }
       }
 
@@ -601,12 +601,12 @@ sub _validate_type {
    my $val = $opt->{value};
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
       my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
          $suffix = $s || 's';
-         MKDEBUG && _d('No suffix given; using', $suffix, 'for',
+         PTDEBUG && _d('No suffix given; using', $suffix, 'for',
             $opt->{long}, '(value:', $val, ')');
       }
       if ( $suffix =~ m/[smhd]/ ) {
@@ -615,23 +615,23 @@ sub _validate_type {
               : $suffix eq 'h' ? $num * 3600     # Hours
               :                  $num * 86400;   # Days
          $opt->{value} = ($prefix || '') . $val;
-         MKDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
+         PTDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
       }
       else {
          $self->save_error("Invalid time suffix for --$opt->{long}");
       }
    }
    elsif ( $val && $opt->{type} eq 'd' ) {  # type DSN
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
       my $prev = {};
       my $from_key = $self->{defaults_to}->{ $opt->{long} };
       if ( $from_key ) {
-         MKDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
+         PTDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
          if ( $self->{opts}->{$from_key}->{parsed} ) {
             $prev = $self->{opts}->{$from_key}->{value};
          }
          else {
-            MKDEBUG && _d('Cannot parse', $opt->{long}, 'until',
+            PTDEBUG && _d('Cannot parse', $opt->{long}, 'until',
                $from_key, 'parsed');
             return;
          }
@@ -640,7 +640,7 @@ sub _validate_type {
       $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
       $self->_parse_size($opt, $val);
    }
    elsif ( $opt->{type} eq 'H' || (defined $val && $opt->{type} eq 'h') ) {
@@ -650,7 +650,7 @@ sub _validate_type {
       $opt->{value} = [ split(/(?<!\\),\s*/, ($val || '')) ];
    }
    else {
-      MKDEBUG && _d('Nothing to validate for option',
+      PTDEBUG && _d('Nothing to validate for option',
          $opt->{long}, 'type', $opt->{type}, 'value', $val);
    }
 
@@ -724,11 +724,11 @@ sub usage_or_errors {
    $file ||= $self->{file} || __FILE__;
 
    if ( !$self->{description} || !$self->{usage} ) {
-      MKDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
+      PTDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
       my %synop = $self->_parse_synopsis($file);
       $self->{description} ||= $synop{description};
       $self->{usage}       ||= $synop{usage};
-      MKDEBUG && _d("Description:", $self->{description},
+      PTDEBUG && _d("Description:", $self->{description},
          "\nUsage:", $self->{usage});
    }
 
@@ -943,7 +943,7 @@ sub _parse_size {
    my ( $self, $opt, $val ) = @_;
 
    if ( lc($val || '') eq 'null' ) {
-      MKDEBUG && _d('NULL size for', $opt->{long});
+      PTDEBUG && _d('NULL size for', $opt->{long});
       $opt->{value} = 'null';
       return;
    }
@@ -953,7 +953,7 @@ sub _parse_size {
    if ( defined $num ) {
       if ( $factor ) {
          $num *= $factor_for{$factor};
-         MKDEBUG && _d('Setting option', $opt->{y},
+         PTDEBUG && _d('Setting option', $opt->{y},
             'to num', $num, '* factor', $factor);
       }
       $opt->{value} = ($pre || '') . $num;
@@ -977,7 +977,7 @@ sub _parse_attribs {
 sub _parse_synopsis {
    my ( $self, $file ) = @_;
    $file ||= $self->{file} || __FILE__;
-   MKDEBUG && _d("Parsing SYNOPSIS in", $file);
+   PTDEBUG && _d("Parsing SYNOPSIS in", $file);
 
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -990,7 +990,7 @@ sub _parse_synopsis {
       push @synop, $para;
    }
    close $fh;
-   MKDEBUG && _d("Raw SYNOPSIS text:", @synop);
+   PTDEBUG && _d("Raw SYNOPSIS text:", @synop);
    my ($usage, $desc) = @synop;
    die "The SYNOPSIS section in $file is not formatted properly"
       unless $usage && $desc;
@@ -1017,7 +1017,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-if ( MKDEBUG ) {
+if ( PTDEBUG ) {
    print '# ', $^X, ' ', $], "\n";
    if ( my $uname = `uname -a` ) {
       $uname =~ s/\s+/ /g;
@@ -1047,7 +1047,7 @@ package SlowLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1099,7 +1099,7 @@ sub parse_event {
       if ( $stmt =~ s/$slow_log_hd_line//go ){ # Throw away header lines in log
          my @chunks = split(/$INPUT_RECORD_SEPARATOR/o, $stmt);
          if ( @chunks > 1 ) {
-            MKDEBUG && _d("Found multiple chunks");
+            PTDEBUG && _d("Found multiple chunks");
             $stmt = shift @chunks;
             unshift @$pending, @chunks;
          }
@@ -1117,18 +1117,18 @@ sub parse_event {
       while ( $stmt =~ m/^(.*)$/mg ) { # /g is important, requires scalar match.
          $pos     = pos($stmt);  # Be careful not to mess this up!
          my $line = $1;          # Necessary for /g and pos() to work.
-         MKDEBUG && _d($line);
+         PTDEBUG && _d($line);
 
          if ($line =~ m/^(?:#|use |SET (?:last_insert_id|insert_id|timestamp))/o) {
 
             if ( !$got_ts && (my ( $time ) = $line =~ m/$slow_log_ts_line/o)) {
-               MKDEBUG && _d("Got ts", $time);
+               PTDEBUG && _d("Got ts", $time);
                push @properties, 'ts', $time;
                ++$got_ts;
                if ( !$got_uh
                   && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
                ) {
-                  MKDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   ++$got_uh;
                }
@@ -1137,13 +1137,13 @@ sub parse_event {
             elsif ( !$got_uh
                   && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               MKDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                ++$got_uh;
             }
 
             elsif (!$got_ac && $line =~ m/^# (?:administrator command:.*)$/) {
-               MKDEBUG && _d("Got admin command");
+               PTDEBUG && _d("Got admin command");
                $line =~ s/^#\s+//;  # string leading "# ".
                push @properties, 'cmd', 'Admin', 'arg', $line;
                push @properties, 'bytes', length($properties[-1]);
@@ -1152,12 +1152,12 @@ sub parse_event {
             }
 
             elsif ( $line =~ m/^# +[A-Z][A-Za-z_]+: \S+/ ) { # Make the test cheap!
-               MKDEBUG && _d("Got some line with properties");
+               PTDEBUG && _d("Got some line with properties");
 
                if ( $line =~ m/Schema:\s+\w+: / ) {
-                  MKDEBUG && _d('Removing empty Schema attrib');
+                  PTDEBUG && _d('Removing empty Schema attrib');
                   $line =~ s/Schema:\s+//;
-                  MKDEBUG && _d($line);
+                  PTDEBUG && _d($line);
                }
 
                my @temp = $line =~ m/(\w+):\s+(\S+|\Z)/g;
@@ -1165,36 +1165,36 @@ sub parse_event {
             }
 
             elsif ( !$got_db && (my ( $db ) = $line =~ m/^use ([^;]+)/ ) ) {
-               MKDEBUG && _d("Got a default database:", $db);
+               PTDEBUG && _d("Got a default database:", $db);
                push @properties, 'db', $db;
                ++$got_db;
             }
 
             elsif (!$got_set && (my ($setting) = $line =~ m/^SET\s+([^;]*)/)) {
-               MKDEBUG && _d("Got some setting:", $setting);
+               PTDEBUG && _d("Got some setting:", $setting);
                push @properties, split(/,|\s*=\s*/, $setting);
                ++$got_set;
             }
 
             if ( !$found_arg && $pos == $len ) {
-               MKDEBUG && _d("Did not find arg, looking for special cases");
+               PTDEBUG && _d("Did not find arg, looking for special cases");
                local $INPUT_RECORD_SEPARATOR = ";\n";
                if ( defined(my $l = $next_event->()) ) {
                   chomp $l;
                   $l =~ s/^\s+//;
-                  MKDEBUG && _d("Found admin statement", $l);
+                  PTDEBUG && _d("Found admin statement", $l);
                   push @properties, 'cmd', 'Admin', 'arg', $l;
                   push @properties, 'bytes', length($properties[-1]);
                   $found_arg++;
                }
                else {
-                  MKDEBUG && _d("I can't figure out what to do with this line");
+                  PTDEBUG && _d("I can't figure out what to do with this line");
                   next EVENT;
                }
             }
          }
          else {
-            MKDEBUG && _d("Got the query/arg line");
+            PTDEBUG && _d("Got the query/arg line");
             my $arg = substr($stmt, $pos - length($line));
             push @properties, 'arg', $arg, 'bytes', length($arg);
             if ( $args{misc} && $args{misc}->{embed}
@@ -1206,7 +1206,7 @@ sub parse_event {
          }
       }
 
-      MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
       if ( $args{stats} ) {
          $args{stats}->{events_read}++;
@@ -1248,7 +1248,7 @@ package BinaryLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1298,10 +1298,10 @@ sub parse_event {
          $pos     = pos($stmt);  # Be careful not to mess this up!
          my $line = $1;          # Necessary for /g and pos() to work.
          $line    =~ s/$delim// if $delim;
-         MKDEBUG && _d($line);
+         PTDEBUG && _d($line);
 
          if ( $line =~ m/^\/\*.+\*\/;/ ) {
-            MKDEBUG && _d('Comment line');
+            PTDEBUG && _d('Comment line');
             next LINE;
          }
  
@@ -1310,10 +1310,10 @@ sub parse_event {
             if ( $del ) {
                $self->{delim_len} = $delim_len = length $del;
                $self->{delim}     = $delim     = quotemeta $del;
-               MKDEBUG && _d('delimiter:', $delim);
+               PTDEBUG && _d('delimiter:', $delim);
             }
             else {
-               MKDEBUG && _d('Delimiter reset to ;');
+               PTDEBUG && _d('Delimiter reset to ;');
                $self->{delim}     = $delim     = undef;
                $self->{delim_len} = $delim_len = 0;
             }
@@ -1323,14 +1323,14 @@ sub parse_event {
          next LINE if $line =~ m/End of log file/;
 
          if ( !$got_offset && (my ( $offset ) = $line =~ m/$binlog_line_1/m) ) {
-            MKDEBUG && _d('Got the at offset line');
+            PTDEBUG && _d('Got the at offset line');
             push @properties, 'offset', $offset;
             $got_offset++;
          }
 
          elsif ( !$got_hdr && $line =~ m/^#(\d{6}\s+\d{1,2}:\d\d:\d\d)/ ) {
             ($ts, $sid, $end, $type, $rest) = $line =~ m/$binlog_line_2/m;
-            MKDEBUG && _d('Got the header line; type:', $type, 'rest:', $rest);
+            PTDEBUG && _d('Got the header line; type:', $type, 'rest:', $rest);
             push @properties, 'cmd', 'Query', 'ts', $ts, 'server_id', $sid,
                'end_log_pos', $end;
             $got_hdr++;
@@ -1339,18 +1339,18 @@ sub parse_event {
          elsif ( $line =~ m/^(?:#|use |SET)/i ) {
 
             if ( my ( $db ) = $line =~ m/^use ([^;]+)/ ) {
-               MKDEBUG && _d("Got a default database:", $db);
+               PTDEBUG && _d("Got a default database:", $db);
                push @properties, 'db', $db;
             }
 
             elsif ( my ($setting) = $line =~ m/^SET\s+([^;]*)/ ) {
-               MKDEBUG && _d("Got some setting:", $setting);
+               PTDEBUG && _d("Got some setting:", $setting);
                push @properties, map { s/\s+//; lc } split(/,|\s*=\s*/, $setting);
             }
 
          }
          else {
-            MKDEBUG && _d("Got the query/arg line at pos", $pos);
+            PTDEBUG && _d("Got the query/arg line at pos", $pos);
             $found_arg++;
             if ( $got_offset && $got_hdr ) {
                if ( $type eq 'Xid' ) {
@@ -1363,15 +1363,15 @@ sub parse_event {
                                     'error_code', $c;
                }
                elsif ( $type eq 'Start:' ) {
-                  MKDEBUG && _d("Binlog start");
+                  PTDEBUG && _d("Binlog start");
                }
                else {
-                  MKDEBUG && _d('Unknown event type:', $type);
+                  PTDEBUG && _d('Unknown event type:', $type);
                   next EVENT;
                }
             }
             else {
-               MKDEBUG && _d("It's not a query/arg, it's just some SQL fluff");
+               PTDEBUG && _d("It's not a query/arg, it's just some SQL fluff");
                push @properties, 'cmd', 'Query', 'ts', undef;
             }
 
@@ -1385,10 +1385,10 @@ sub parse_event {
                if ( $del ) {
                   $self->{delim_len} = $delim_len = length $del;
                   $self->{delim}     = $delim     = quotemeta $del;
-                  MKDEBUG && _d('delimiter:', $delim);
+                  PTDEBUG && _d('delimiter:', $delim);
                }
                else {
-                  MKDEBUG && _d('Delimiter reset to ;');
+                  PTDEBUG && _d('Delimiter reset to ;');
                   $del       = ';';
                   $self->{delim}     = $delim     = undef;
                   $self->{delim_len} = $delim_len = 0;
@@ -1406,7 +1406,7 @@ sub parse_event {
       } # LINE
 
       if ( $found_arg ) {
-         MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+         PTDEBUG && _d('Properties of event:', Dumper(\@properties));
          my $event = { @properties };
          if ( $args{stats} ) {
             $args{stats}->{events_read}++;
@@ -1415,7 +1415,7 @@ sub parse_event {
          return $event;
       }
       else {
-         MKDEBUG && _d('Event had no arg');
+         PTDEBUG && _d('Event had no arg');
       }
    } # EVENT
 
@@ -1451,7 +1451,7 @@ package GeneralLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1496,10 +1496,10 @@ sub parse_event {
          defined($line = shift @$pending)
       or defined($line = $next_event->())
    ) {
-      MKDEBUG && _d($line);
+      PTDEBUG && _d($line);
       my ($ts, $thread_id, $cmd, $arg) = $line =~ m/$genlog_line_1/;
       if ( !($thread_id && $cmd) ) {
-         MKDEBUG && _d('Not start of general log event');
+         PTDEBUG && _d('Not start of general log event');
          next;
       }
       my @properties = ('pos_in_log', $pos_in_log, 'ts', $ts,
@@ -1516,17 +1516,17 @@ sub parse_event {
                my (undef, $next_thread_id, $next_cmd)
                   = $line =~ m/$genlog_line_1/;
                if ( $next_thread_id && $next_cmd ) {
-                  MKDEBUG && _d('Event done');
+                  PTDEBUG && _d('Event done');
                   $done = 1;
                   push @$pending, $line;
                }
                else {
-                  MKDEBUG && _d('More arg:', $line);
+                  PTDEBUG && _d('More arg:', $line);
                   $arg .= $line;
                }
             }
             else {
-               MKDEBUG && _d('No more lines');
+               PTDEBUG && _d('No more lines');
                $done = 1;
             }
          } until ( $done );
@@ -1547,7 +1547,7 @@ sub parse_event {
                my ($user, undef, $db) = $arg =~ /(\S+)/g;
                my $host;
                ($user, $host) = split(/@/, $user);
-               MKDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
+               PTDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
 
                push @properties, 'user', $user if $user;
                push @properties, 'host', $host if $host;
@@ -1559,7 +1559,7 @@ sub parse_event {
             $cmd = 'Init DB';
             $arg =~ s/^DB\s+//;
             my ($db) = $arg =~ /(\S+)/;
-            MKDEBUG && _d('Init DB:', $db);
+            PTDEBUG && _d('Init DB:', $db);
             push @properties, 'db',   $db   if $db;
             $db_for->{$thread_id} = $db;
          }
@@ -1570,7 +1570,7 @@ sub parse_event {
 
       push @properties, 'Query_time', 0;
 
-      MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
       if ( $args{stats} ) {
          $args{stats}->{events_read}++;
@@ -1612,7 +1612,7 @@ package LogSplitter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1630,7 +1630,7 @@ sub new {
    $args{base_dir} .= '/' if substr($args{base_dir}, -1, 1) ne '/';
 
    if ( $args{split_random} ) {
-      MKDEBUG && _d('Split random');
+      PTDEBUG && _d('Split random');
       $args{attribute} = '_sessionno';  # set round-robin 1..session_files
    }
 
@@ -1659,7 +1659,7 @@ sub new {
       created_dirs       => [],
    };
 
-   MKDEBUG && _d('new LogSplitter final args:', Dumper($self));
+   PTDEBUG && _d('new LogSplitter final args:', Dumper($self));
    return bless $self, $class;
 }
 
@@ -1675,7 +1675,7 @@ sub split {
    }
 
    if ( @logs == 0 ) {
-      MKDEBUG && _d('Implicitly reading STDIN because no logs were given');
+      PTDEBUG && _d('Implicitly reading STDIN because no logs were given');
       push @logs, '-';
    }
 
@@ -1700,7 +1700,7 @@ sub split {
          }
       }
 
-      MKDEBUG && _d('Splitting', $log);
+      PTDEBUG && _d('Splitting', $log);
       my $event           = {};
       my $more_events     = 1;
       my $more_events_sub = sub { $more_events = $_[0]; };
@@ -1725,7 +1725,7 @@ sub split {
             $self->_save_event($event) if $event;
          }
          if ( !$more_events ) {
-            MKDEBUG && _d('Done parsing', $log);
+            PTDEBUG && _d('Done parsing', $log);
             close $fh;
             next LOG;
          }
@@ -1751,13 +1751,13 @@ sub _save_event {
 
    if ( !defined $session->{fh} ) {
       $self->{n_sessions_saved}++;
-      MKDEBUG && _d('New session:', $session_id, ',',
+      PTDEBUG && _d('New session:', $session_id, ',',
          $self->{n_sessions_saved}, 'of', $self->{max_sessions});
 
       my $session_file = $self->_get_next_session_file();
       if ( !$session_file ) {
          $oktorun = 0;
-         MKDEBUG && _d('Not oktorun because no _get_next_session_file');
+         PTDEBUG && _d('Not oktorun because no _get_next_session_file');
          return;
       }
 
@@ -1775,7 +1775,7 @@ sub _save_event {
 
       push @{$self->{session_fhs}}, { fh => $fh, session_id => $session_id };
 
-      MKDEBUG && _d('Created', $session_file, 'for session',
+      PTDEBUG && _d('Created', $session_file, 'for session',
          $self->{attribute}, '=', $session_id);
 
       print $fh "-- START SESSION $session_id\n\n";
@@ -1793,11 +1793,11 @@ sub _save_event {
        $session->{active} = 1;
        $self->{n_open_fhs}++;
 
-       MKDEBUG && _d('Reopend', $session->{session_file}, 'for session',
+       PTDEBUG && _d('Reopend', $session->{session_file}, 'for session',
          $self->{attribute}, '=', $session_id);
    }
    else {
-      MKDEBUG && _d('Event belongs to active session', $session_id);
+      PTDEBUG && _d('Event belongs to active session', $session_id);
    }
 
    my $session_fh = $session->{fh};
@@ -1819,7 +1819,7 @@ sub _get_session_ds {
 
    my $attrib = $self->{attribute};
    if ( !$event->{ $attrib } ) {
-      MKDEBUG && _d('No attribute', $attrib, 'in event:', Dumper($event));
+      PTDEBUG && _d('No attribute', $attrib, 'in event:', Dumper($event));
       return;
    }
 
@@ -1838,7 +1838,7 @@ sub _get_session_ds {
    }
    else {
       $self->{n_sessions_skipped} += 1;
-      MKDEBUG && _d('Skipping new session', $session_id,
+      PTDEBUG && _d('Skipping new session', $session_id,
          'because max_sessions is reached');
    }
 
@@ -1851,7 +1851,7 @@ sub _close_lru_session {
    my $lru_n       = $self->{n_sessions_saved} - $self->{max_open_files} - 1;
    my $close_to_n  = $lru_n + $self->{close_lru_files} - 1;
 
-   MKDEBUG && _d('Closing session fhs', $lru_n, '..', $close_to_n,
+   PTDEBUG && _d('Closing session fhs', $lru_n, '..', $close_to_n,
       '(',$self->{n_sessions}, 'sessions', $self->{n_open_fhs}, 'open fhs)');
 
    foreach my $session ( @$session_fhs[ $lru_n..$close_to_n ] ) {
@@ -1877,15 +1877,15 @@ sub _get_next_session_file {
          if ( ($retval >> 8) != 0 ) {
             die "Cannot create new directory $new_dir: $OS_ERROR";
          }
-         MKDEBUG && _d('Created new base_dir', $new_dir);
+         PTDEBUG && _d('Created new base_dir', $new_dir);
          push @{$self->{created_dirs}}, $new_dir;
       }
-      elsif ( MKDEBUG ) {
+      elsif ( PTDEBUG ) {
          _d($new_dir, 'already exists');
       }
    }
    else {
-      MKDEBUG && _d('No dir created; n_files_this_dir:',
+      PTDEBUG && _d('No dir created; n_files_this_dir:',
          $self->{n_files_this_dir}, 'n_files_total:',
          $self->{n_files_total});
    }
@@ -1897,7 +1897,7 @@ sub _get_next_session_file {
    my $session_file = $self->{base_dir}
                     . $dir_n
                     . $self->{base_file_name}."-$session_n.txt";
-   MKDEBUG && _d('Next session file', $session_file);
+   PTDEBUG && _d('Next session file', $session_file);
    return $session_file;
 }
 
@@ -2002,7 +2002,7 @@ package DSNParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 0;
@@ -2025,7 +2025,7 @@ sub new {
       if ( !$opt->{key} || !$opt->{desc} ) {
          die "Invalid DSN option: ", Dumper($opt);
       }
-      MKDEBUG && _d('DSN option:',
+      PTDEBUG && _d('DSN option:',
          join(', ',
             map { "$_=" . (defined $opt->{$_} ? ($opt->{$_} || '') : 'undef') }
                keys %$opt
@@ -2043,7 +2043,7 @@ sub new {
 sub prop {
    my ( $self, $prop, $value ) = @_;
    if ( @_ > 2 ) {
-      MKDEBUG && _d('Setting', $prop, 'property');
+      PTDEBUG && _d('Setting', $prop, 'property');
       $self->{$prop} = $value;
    }
    return $self->{$prop};
@@ -2052,10 +2052,10 @@ sub prop {
 sub parse {
    my ( $self, $dsn, $prev, $defaults ) = @_;
    if ( !$dsn ) {
-      MKDEBUG && _d('No DSN to parse');
+      PTDEBUG && _d('No DSN to parse');
       return;
    }
-   MKDEBUG && _d('Parsing', $dsn);
+   PTDEBUG && _d('Parsing', $dsn);
    $prev     ||= {};
    $defaults ||= {};
    my %given_props;
@@ -2067,23 +2067,23 @@ sub parse {
          $given_props{$prop_key} = $prop_val;
       }
       else {
-         MKDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
+         PTDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
          $given_props{h} = $dsn_part;
       }
    }
 
    foreach my $key ( keys %$opts ) {
-      MKDEBUG && _d('Finding value for', $key);
+      PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
       if (   !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from previous DSN');
+         PTDEBUG && _d('Copying value for', $key, 'from previous DSN');
       }
       if ( !defined $final_props{$key} ) {
          $final_props{$key} = $defaults->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from defaults');
+         PTDEBUG && _d('Copying value for', $key, 'from defaults');
       }
    }
 
@@ -2114,7 +2114,7 @@ sub parse_options {
           grep { $o->has($_) && $o->get($_) }
           keys %{$self->{opts}}
         );
-   MKDEBUG && _d('DSN string made from options:', $dsn_string);
+   PTDEBUG && _d('DSN string made from options:', $dsn_string);
    return $self->parse($dsn_string);
 }
 
@@ -2164,7 +2164,7 @@ sub get_cxn_params {
                      qw(F h P S A))
          . ';mysql_read_default_group=client';
    }
-   MKDEBUG && _d($dsn);
+   PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
 }
 
@@ -2209,7 +2209,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
@@ -2219,21 +2219,21 @@ sub get_dbh {
             my $sql;
 
             $sql = 'SELECT @@SQL_MODE';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             my ($sql_mode) = $dbh->selectrow_array($sql);
 
             $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
                  . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
                  . ($sql_mode ? ",$sql_mode" : '')
                  . '\'*/';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             $dbh->do($sql);
 
             if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
                $sql = "/*!40101 SET NAMES $charset*/";
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
-               MKDEBUG && _d('Enabling charset for STDOUT');
+               PTDEBUG && _d('Enabling charset for STDOUT');
                if ( $charset eq 'utf8' ) {
                   binmode(STDOUT, ':utf8')
                      or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
@@ -2245,15 +2245,15 @@ sub get_dbh {
 
             if ( $self->prop('set-vars') ) {
                $sql = "SET " . $self->prop('set-vars');
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
             }
          }
       };
       if ( !$dbh && $EVAL_ERROR ) {
-         MKDEBUG && _d($EVAL_ERROR);
+         PTDEBUG && _d($EVAL_ERROR);
          if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            MKDEBUG && _d('Going to try again without utf8 support');
+            PTDEBUG && _d('Going to try again without utf8 support');
             delete $defaults->{mysql_enable_utf8};
          }
          elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
@@ -2271,7 +2271,7 @@ sub get_dbh {
       }
    }
 
-   MKDEBUG && _d('DBH info: ',
+   PTDEBUG && _d('DBH info: ',
       $dbh,
       Dumper($dbh->selectrow_hashref(
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
@@ -2297,7 +2297,7 @@ sub get_hostname {
 
 sub disconnect {
    my ( $self, $dbh ) = @_;
-   MKDEBUG && $self->print_active_handles($dbh);
+   PTDEBUG && $self->print_active_handles($dbh);
    $dbh->disconnect;
 }
 
@@ -2358,7 +2358,7 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
 
@@ -2376,17 +2376,17 @@ sub new {
 
    check_PID_file(undef, $self->{PID_file});
 
-   MKDEBUG && _d('Daemonized child will log to', $self->{log_file});
+   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
 sub daemonize {
    my ( $self ) = @_;
 
-   MKDEBUG && _d('About to fork and daemonize');
+   PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      MKDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('I am the parent and now I die');
       exit;
    }
 
@@ -2428,19 +2428,19 @@ sub daemonize {
       }
    }
 
-   MKDEBUG && _d('I am the child and now I live daemonized');
+   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
 sub check_PID_file {
    my ( $self, $file ) = @_;
    my $PID_file = $self ? $self->{PID_file} : $file;
-   MKDEBUG && _d('Checking PID file', $PID_file);
+   PTDEBUG && _d('Checking PID file', $PID_file);
    if ( $PID_file && -f $PID_file ) {
       my $pid;
       eval { chomp($pid = `cat $PID_file`); };
       die "Cannot cat $PID_file: $OS_ERROR" if $EVAL_ERROR;
-      MKDEBUG && _d('PID file exists; it contains PID', $pid);
+      PTDEBUG && _d('PID file exists; it contains PID', $pid);
       if ( $pid ) {
          my $pid_is_alive = kill 0, $pid;
          if ( $pid_is_alive ) {
@@ -2458,7 +2458,7 @@ sub check_PID_file {
       }
    }
    else {
-      MKDEBUG && _d('No PID file');
+      PTDEBUG && _d('No PID file');
    }
    return;
 }
@@ -2478,7 +2478,7 @@ sub _make_PID_file {
 
    my $PID_file = $self->{PID_file};
    if ( !$PID_file ) {
-      MKDEBUG && _d('No PID file to create');
+      PTDEBUG && _d('No PID file to create');
       return;
    }
 
@@ -2491,7 +2491,7 @@ sub _make_PID_file {
    close $PID_FH
       or die "Cannot close PID file $PID_file: $OS_ERROR";
 
-   MKDEBUG && _d('Created PID file:', $self->{PID_file});
+   PTDEBUG && _d('Created PID file:', $self->{PID_file});
    return;
 }
 
@@ -2500,10 +2500,10 @@ sub _remove_PID_file {
    if ( $self->{PID_file} && -f $self->{PID_file} ) {
       unlink $self->{PID_file}
          or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
-      MKDEBUG && _d('Removed PID file');
+      PTDEBUG && _d('Removed PID file');
    }
    else {
-      MKDEBUG && _d('No PID to remove');
+      PTDEBUG && _d('No PID to remove');
    }
    return;
 }
@@ -2553,7 +2553,7 @@ $Data::Dumper::Quotekeys = 0;
 
 use English qw(-no_match_vars);
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # These are global so the --play threads can access them.
 my $o;
@@ -2632,7 +2632,7 @@ sub main {
       if ( $o->get('filter') ) {
          my $filter = $o->get('filter');
          if ( -f $filter && -r $filter ) {
-            MKDEBUG && _d('Reading file', $filter, 'for --filter code');
+            PTDEBUG && _d('Reading file', $filter, 'for --filter code');
             open my $fh, "<", $filter or die "Cannot open $filter: $OS_ERROR";
             $filter = do { local $/ = undef; <$fh> };
             close $fh;
@@ -2640,8 +2640,8 @@ sub main {
          else {
             $filter = "( $filter )";  # issue 565
          }
-         my $code   = "sub { MKDEBUG && _d('callback: filter');  my(\$event) = shift; $filter && return \$event; };";
-         MKDEBUG && _d('--filter code:', $code);
+         my $code   = "sub { PTDEBUG && _d('callback: filter');  my(\$event) = shift; $filter && return \$event; };";
+         PTDEBUG && _d('--filter code:', $code);
          my $sub = eval $code
             or die "Error compiling --filter code: $code\n$EVAL_ERROR";
          push @callbacks, $sub;
@@ -2677,7 +2677,7 @@ sub main {
       # The session "file" might actually be a dir, in which case we
       # read ALL files in that dir.
       if ( -d $session_file ) {
-         MKDEBUG && _d('Reading all session log files in', $session_file);
+         PTDEBUG && _d('Reading all session log files in', $session_file);
          opendir my $dir, $session_file
             or die "Cannot open directory $session_file: $OS_ERROR";
          push @session_files,
@@ -2696,7 +2696,7 @@ sub main {
       }
    }
 
-   MKDEBUG && _d('Session files:', @session_files);
+   PTDEBUG && _d('Session files:', @session_files);
 
    if ( @session_files == 0 ) {
       warn 'No valid session files';
@@ -2774,9 +2774,9 @@ sub main {
       }
       else {                     # I'm the child.
          $SIG{CHLD} = 'DEFAULT'; # See bug #1886444
-         MKDEBUG && _d('Child PID', $PID, 'started');
+         PTDEBUG && _d('Child PID', $PID, 'started');
          play_session($dsn, ($childno + 1), $child_tasks);
-         MKDEBUG && _d('Child PID', $PID, 'finished');
+         PTDEBUG && _d('Child PID', $PID, 'finished');
          return 0;
       }
    } 
@@ -2792,7 +2792,7 @@ sub main {
          print "Process ", $children{$pid}, " finished with exit status ",
             $exited_children{$pid}->{exit_status}, ".\n"
             unless $o->get('quiet');
-         MKDEBUG && _d('Reaped child PID', $pid);
+         PTDEBUG && _d('Reaped child PID', $pid);
          delete $children{$pid};
          delete $exited_children{$pid};
       }
@@ -2801,10 +2801,10 @@ sub main {
          # Don't busy-wait.  But don't wait forever either, as a child may exit
          # and signal while we're not sleeping, so if we sleep forever we may
          # not get the signal.
-         MKDEBUG && _d('Sleeping to wait for children');
+         PTDEBUG && _d('Sleeping to wait for children');
          sleep 1;
       }
-      MKDEBUG && _d(scalar keys %children, 'children are still working');
+      PTDEBUG && _d(scalar keys %children, 'children are still working');
 
    } while ( keys %children );
 
@@ -2836,17 +2836,17 @@ sub play_session {
    if ( $results || $print ) {
       open $output_fh, '>', $output_file
          or die "Cannot open $output_file for writing: $OS_ERROR";
-      MKDEBUG && _d('Proc', $childno, 'writing to', $output_file);
+      PTDEBUG && _d('Proc', $childno, 'writing to', $output_file);
    }
    else {
-      MKDEBUG && _d('Proc', $childno, 'not writing results');
+      PTDEBUG && _d('Proc', $childno, 'not writing results');
    }
 
    local $INPUT_RECORD_SEPARATOR = '';
 
    ITERATION:
    for my $iteration_n ( 1..$o->get('iterations') ) {
-      MKDEBUG && _d('Proc', $childno, 'starting iteration', $iteration_n);
+      PTDEBUG && _d('Proc', $childno, 'starting iteration', $iteration_n);
 
       SESSION_FILE:
       foreach my $session_file ( @$session_files ) {
@@ -2874,7 +2874,7 @@ sub play_session {
                # Remove leading /* comments */ (issue 903)
                $query =~ s!^/\*.*?\*/\s*!!;
                if ( $query !~ m/^(?:SELECT|USE) /i ) {
-                  MKDEBUG && _d('Skipping query for --only-select:', $query);
+                  PTDEBUG && _d('Skipping query for --only-select:', $query);
                   next QUERY;
                }
             }
@@ -2905,7 +2905,7 @@ sub play_session {
             }
          } # QUERY
 
-         MKDEBUG && _d('No more sessions in', $session_file);
+         PTDEBUG && _d('No more sessions in', $session_file);
          close $session_fh;
       } # SESSION_FILE
    } # ITERATION
@@ -2963,10 +2963,10 @@ sub get_number_of_cpus {
    if ( $sys_info || (open $cpuinfo, "<", "/proc/cpuinfo") ) {
       local $INPUT_RECORD_SEPARATOR = undef;
       my $contents = $sys_info || <$cpuinfo>;
-      MKDEBUG && _d('sys info:', $contents);
+      PTDEBUG && _d('sys info:', $contents);
       close $cpuinfo if $cpuinfo;
       $n_cpus = scalar( map { $_ } $contents =~ m/(processor)/g );
-      MKDEBUG && _d('Got', $n_cpus, 'cpus from /proc/cpuinfo');
+      PTDEBUG && _d('Got', $n_cpus, 'cpus from /proc/cpuinfo');
       return $n_cpus if $n_cpus;
    }
 
@@ -2975,9 +2975,9 @@ sub get_number_of_cpus {
    # FreeBSD and Mac OS X
    if ( $sys_info || ($OSNAME =~ m/freebsd/i) || ($OSNAME =~ m/darwin/i) ) { 
       my $contents = $sys_info || `sysctl hw.ncpu`;
-      MKDEBUG && _d('sys info:', $contents);
+      PTDEBUG && _d('sys info:', $contents);
       ($n_cpus) = $contents =~ m/(\d)/ if $contents;
-      MKDEBUG && _d('Got', $n_cpus, 'cpus from sysctl hw.ncpu');
+      PTDEBUG && _d('Got', $n_cpus, 'cpus from sysctl hw.ncpu');
       return $n_cpus if $n_cpus;
    } 
 
@@ -3183,7 +3183,7 @@ If you supply your code on the command line, it is injected into the following
 subroutine where C<$filter> is your code:
 
    sub {
-      MKDEBUG && _d('callback: filter');
+      PTDEBUG && _d('callback: filter');
       my( $event ) = shift;
       ( $filter ) && return $event;
    }
@@ -3206,7 +3206,7 @@ name as the value to L<"--filter">.  The file should not contain a shebang
 the following subroutine:
 
    sub {
-      MKDEBUG && _d('callback: filter');
+      PTDEBUG && _d('callback: filter');
       my( $event ) = shift;
       $filter && return $event;
    }
@@ -3231,7 +3231,7 @@ becomes:
 
 If your code doesn't compile, the tool will die with an error.  Even if your
 code compiles, it may crash to tool during runtime if, for example, it tries
-a pattern match an undefined value.  No safeguards of any kind of provided so
+a pattern match an undefined value.  No safeguards of any kind are provided so
 code carefully!
 
 =item --help
@@ -3581,7 +3581,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2008-2011 Percona Inc.
+This program is copyright 2008-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -3600,6 +3600,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-log-player 1.0.1
+pt-log-player 2.0.3
 
 =cut

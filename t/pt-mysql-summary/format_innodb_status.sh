@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 TESTS=4
+TMPDIR=$TEST_TMPDIR
 
 # ############################################################################
 TEST_NAME="innodb-status.001.txt"

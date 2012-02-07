@@ -31,7 +31,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
 
@@ -41,6 +41,8 @@ my %port_for = (
    slave2  => 12347,
    master1 => 12348, # master-master
    master2 => 12349, # master-master
+   master3 => 2900,
+   master4 => 2901,
 );
 
 sub new {
@@ -61,7 +63,7 @@ sub use {
    _check_server($server);
    return if !defined $cmd || !$cmd;
    my $use = $self->_use_for($server) . " $cmd";
-   MKDEBUG && _d('"Executing', $use, 'on', $server);
+   PTDEBUG && _d('"Executing', $use, 'on', $server);
    eval {
       `$use`;
    };
@@ -102,13 +104,13 @@ sub get_dbh_for {
    my ( $self, $server, $cxn_ops ) = @_;
    _check_server($server);
    $cxn_ops ||= { AutoCommit => 1 };
-   MKDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
+   PTDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
    my $dp = $self->{DSNParser};
    my $dsn = $dp->parse('h=127.0.0.1,u=msandbox,p=msandbox,P=' . $port_for{$server});
    my $dbh;
    eval { $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), $cxn_ops) };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d('Failed to get dbh for', $server, ':', $EVAL_ERROR);
+      PTDEBUG && _d('Failed to get dbh for', $server, ':', $EVAL_ERROR);
       return 0;
    }
    $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
@@ -127,7 +129,7 @@ sub load_file {
    my $d = $use_db ? "-D $use_db" : '';
 
    my $use = $self->_use_for($server) . " $d < $file";
-   MKDEBUG && _d('Loading', $file, 'on', $server, ':', $use);
+   PTDEBUG && _d('Loading', $file, 'on', $server, ':', $use);
    eval { `$use` };
    if ( $EVAL_ERROR ) {
       die "Failed to execute $file on $server: $EVAL_ERROR";

@@ -25,7 +25,7 @@ package FileIterator;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -71,14 +71,14 @@ sub get_file_itr {
    # If the list of files is empty, read from STDIN.
    if ( !@filenames ) {
       push @final_filenames, '-';
-      MKDEBUG && _d('Auto-adding "-" to the list of filenames');
+      PTDEBUG && _d('Auto-adding "-" to the list of filenames');
    }
 
-   MKDEBUG && _d('Final filenames:', @final_filenames);
+   PTDEBUG && _d('Final filenames:', @final_filenames);
    return sub {
       while ( @final_filenames ) {
          my $fn = shift @final_filenames;
-         MKDEBUG && _d('Filename:', $fn);
+         PTDEBUG && _d('Filename:', $fn);
          if ( $fn eq '-' ) { # Magical STDIN filename.
             return (*STDIN, undef, undef);
          }

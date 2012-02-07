@@ -25,7 +25,7 @@ package EventAggregator;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(min max);
 use Data::Dumper;
@@ -154,7 +154,7 @@ sub aggregate {
    return unless defined $group_by;
 
    $self->{n_events}++;
-   MKDEBUG && _d('Event', $self->{n_events});
+   PTDEBUG && _d('Event', $self->{n_events});
 
    # Run only unrolled loops if available.
    return $self->{unrolled_loops}->($self, $event, $group_by)
@@ -175,9 +175,9 @@ sub aggregate {
          # one does, then we leave attrib alone because the handler sub will
          # also check alternates.
          if ( !exists $event->{$attrib} ) {
-            MKDEBUG && _d("attrib doesn't exist in event:", $attrib);
+            PTDEBUG && _d("attrib doesn't exist in event:", $attrib);
             my $alt_attrib = $self->{alt_attribs}->{$attrib}->($event);
-            MKDEBUG && _d('alt attrib:', $alt_attrib);
+            PTDEBUG && _d('alt attrib:', $alt_attrib);
             next ATTRIB unless $alt_attrib;
          }
 
@@ -255,7 +255,7 @@ sub _make_unrolled_loops {
 
    # Make the subroutine.
    my $code = join("\n", @lines);
-   MKDEBUG && _d('Unrolled subroutine:', @lines);
+   PTDEBUG && _d('Unrolled subroutine:', @lines);
    my $sub = eval $code;
    die $EVAL_ERROR if $EVAL_ERROR;
    $self->{unrolled_loops} = $sub;
@@ -338,7 +338,7 @@ sub make_handler {
    my $val;
    eval { $val= $self->_get_value(%args); };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d("Cannot make", $attrib, "handler:", $EVAL_ERROR);
+      PTDEBUG && _d("Cannot make", $attrib, "handler:", $EVAL_ERROR);
       return;
    }
    return unless defined $val; # can't determine type if it's undef
@@ -350,7 +350,7 @@ sub make_handler {
             : $val    =~ m/^(?:\d+|$float_re)$/o ? 'num'
             : $val    =~ m/^(?:Yes|No)$/         ? 'bool'
             :                                      'string';
-   MKDEBUG && _d('Type for', $attrib, 'is', $type, '(sample:', $val, ')');
+   PTDEBUG && _d('Type for', $attrib, 'is', $type, '(sample:', $val, ')');
    $self->{type_for}->{$attrib} = $type;
 
    # ########################################################################
@@ -486,7 +486,7 @@ sub make_handler {
       '}',
    );
    $self->{code_for}->{$attrib} = join("\n", @code);
-   MKDEBUG && _d($attrib, 'handler code:', $self->{code_for}->{$attrib});
+   PTDEBUG && _d($attrib, 'handler code:', $self->{code_for}->{$attrib});
    my $sub = eval $self->{code_for}->{$attrib};
    if ( $EVAL_ERROR ) {
       die "Failed to compile $attrib handler code: $EVAL_ERROR";
@@ -577,7 +577,7 @@ sub bucket_value {
       # base 1.05 bucket in which the base 10 bucket's range falls.
       for my $base10_bucket ( 0..($#base10_starts-1) ) {
          my $next_bucket = bucket_idx( $base10_starts[$base10_bucket+1] );
-         MKDEBUG && _d('Base 10 bucket', $base10_bucket, 'maps to',
+         PTDEBUG && _d('Base 10 bucket', $base10_bucket, 'maps to',
             'base 1.05 buckets', $start_bucket, '..', $next_bucket-1);
          for my $base1_05_bucket ($start_bucket..($next_bucket-1)) {
             $buck_tens[$base1_05_bucket] = $base10_bucket;
@@ -602,7 +602,7 @@ sub calculate_statistical_metrics {
    my $globals        = $self->{result_globals};
    my $class_metrics  = $self->{class_metrics};
    my $global_metrics = $self->{global_metrics};
-   MKDEBUG && _d('Calculating statistical_metrics');
+   PTDEBUG && _d('Calculating statistical_metrics');
    foreach my $attrib ( keys %$globals ) {
       if ( exists $globals->{$attrib}->{all} ) {
          $global_metrics->{$attrib}
@@ -707,7 +707,7 @@ sub _calc_metrics {
    my $prev       = NUM_BUCK-1; # Used for getting median when $cutoff is odd
    my $bucket_95  = 0; # top bucket in 95th
 
-   MKDEBUG && _d('total vals:', $total_left, 'top vals:', $top_vals, 'mid:', $mid);
+   PTDEBUG && _d('total vals:', $total_left, 'top vals:', $top_vals, 'mid:', $mid);
 
    # In ancient times we kept an array of 1k buckets for each numeric
    # attrib.  Each such array cost 32_300 bytes of memory (that's not
@@ -745,7 +745,7 @@ sub _calc_metrics {
    my $maxstdev = (($args->{max} || 0) - ($args->{min} || 0)) / 2;
    $stddev      = $stddev > $maxstdev ? $maxstdev : $stddev;
 
-   MKDEBUG && _d('sum:', $sum, 'sumsq:', $sumsq, 'stddev:', $stddev,
+   PTDEBUG && _d('sum:', $sum, 'sumsq:', $sumsq, 'stddev:', $stddev,
       'median:', $median, 'prev bucket:', $prev,
       'total left:', $total_left, 'sum excl', $sum_excl,
       'bucket 95:', $bucket_95, $buck_vals[$bucket_95]);
@@ -860,7 +860,7 @@ sub add_new_attributes {
       $self->{attributes}->{$attrib}  = [$attrib];
       $self->{alt_attribs}->{$attrib} = make_alt_attrib($attrib);
       push @{$self->{all_attribs}}, $attrib;
-      MKDEBUG && _d('Added new attribute:', $attrib);
+      PTDEBUG && _d('Added new attribute:', $attrib);
    }
    grep {
       $_ ne $self->{groupby}
@@ -897,7 +897,7 @@ sub make_alt_attrib {
          . "&& exists \$event->{'$_'};"
       } @attribs;
    push @lines, 'return $alt_attrib; }';
-   MKDEBUG && _d('alt attrib sub for', $attrib, ':', @lines);
+   PTDEBUG && _d('alt attrib sub for', $attrib, ':', @lines);
    my $sub = eval join("\n", @lines);
    die if $EVAL_ERROR;
    return $sub;
@@ -907,7 +907,7 @@ sub make_alt_attrib {
 # Returns a new EventAggregator obj.
 sub merge {
    my ( @ea_objs ) = @_;
-   MKDEBUG && _d('Merging', scalar @ea_objs, 'ea');
+   PTDEBUG && _d('Merging', scalar @ea_objs, 'ea');
    return unless scalar @ea_objs;
 
    # If all the ea don't have the same groupby and worst then adding
@@ -955,7 +955,7 @@ sub merge {
    # Then, merge/add the other eas.  r1* is the eventual return val.
    # r2* is the current ea being merged/added into r1*.
    for my $i ( 0..$#ea_objs ) {
-      MKDEBUG && _d('Merging ea obj', ($i + 1));
+      PTDEBUG && _d('Merging ea obj', ($i + 1));
       my $r2 = $ea_objs[$i]->results;
 
       # Descend into each class (e.g. unique query/fingerprint), each
@@ -973,12 +973,12 @@ sub merge {
                # Class exists in both results.  Add/merge all their attributes.
                CLASS_ATTRIB:
                foreach my $attrib ( keys %$r2_class ) {
-                  MKDEBUG && _d('merge', $attrib);
+                  PTDEBUG && _d('merge', $attrib);
                   if ( $r1_class->{$attrib} && $r2_class->{$attrib} ) {
                      _add_attrib_vals($r1_class->{$attrib}, $r2_class->{$attrib});
                   }
                   elsif ( !$r1_class->{$attrib} ) {
-                  MKDEBUG && _d('copy', $attrib);
+                  PTDEBUG && _d('copy', $attrib);
                      $r1_class->{$attrib} =
                         _deep_copy_attrib_vals($r2_class->{$attrib})
                   }
@@ -986,7 +986,7 @@ sub merge {
             }
             elsif ( !$r1_class ) {
                # Class is missing in r1; deep copy it from r2.
-               MKDEBUG && _d('copy class');
+               PTDEBUG && _d('copy class');
                $r_merged->{classes}->{$class} = _deep_copy_attribs($r2_class);
             }
 
@@ -1005,7 +1005,7 @@ sub merge {
             # Events don't have references to other data structs
             # so we don't have to worry about doing a deep copy.
             if ( $new_worst_sample ) {
-               MKDEBUG && _d('New worst sample:', $worst, '=',
+               PTDEBUG && _d('New worst sample:', $worst, '=',
                   $new_worst_sample->{$worst}, 'item:', substr($class, 0, 100));
                my %new_sample;
                @new_sample{keys %$new_worst_sample}
@@ -1021,19 +1021,19 @@ sub merge {
       # Same as above but for the global attribs/vals.
       eval {
          GLOBAL_ATTRIB:
-         MKDEBUG && _d('Merging global attributes');
+         PTDEBUG && _d('Merging global attributes');
          foreach my $attrib ( keys %{$r2->{globals}} ) {
             my $r1_global = $r_merged->{globals}->{$attrib};
             my $r2_global = $r2->{globals}->{$attrib};
 
             if ( $r1_global && $r2_global ) {
                # Global attrib exists in both results.  Add/merge all its values.
-               MKDEBUG && _d('merge', $attrib);
+               PTDEBUG && _d('merge', $attrib);
                _add_attrib_vals($r1_global, $r2_global);
             }
             elsif ( !$r1_global ) {
                # Global attrib is missing in r1; deep cpoy it from r2 global.
-               MKDEBUG && _d('copy', $attrib);
+               PTDEBUG && _d('copy', $attrib);
                $r_merged->{globals}->{$attrib}
                   = _deep_copy_attrib_vals($r2_global);
             }
@@ -1110,8 +1110,8 @@ sub _add_attrib_vals {
       }
       else {
          # This shouldn't happen.
-         MKDEBUG && _d('vals1:', Dumper($vals1));
-         MKDEBUG && _d('vals2:', Dumper($vals2));
+         PTDEBUG && _d('vals1:', Dumper($vals1));
+         PTDEBUG && _d('vals2:', Dumper($vals2));
          die "$val type mismatch";
       }
    }
@@ -1191,7 +1191,7 @@ sub calculate_apdex {
    }
 
    my $f = 4 * $t;
-   MKDEBUG && _d("Apdex T =", $t, "F =", $f);
+   PTDEBUG && _d("Apdex T =", $t, "F =", $f);
 
    my $satisfied  = 0;
    my $tolerating = 0;
@@ -1221,7 +1221,7 @@ sub calculate_apdex {
    }
 
    my $apdex = sprintf('%.2f', ($satisfied + ($tolerating / 2)) / $n_samples);
-   MKDEBUG && _d($n_samples, "samples,", $satisfied, "satisfied,",
+   PTDEBUG && _d($n_samples, "samples,", $satisfied, "satisfied,",
       $tolerating, "tolerating,", $frustrated, "frustrated, Apdex score:",
       $apdex);
 

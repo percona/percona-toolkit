@@ -17,14 +17,12 @@ use MockSth;
 use Sandbox;
 use DSNParser;
 use TableParser;
-use MySQLDump;
 use Quoter;
 use PerconaTest;
 
 my ($d, $s);
 
 my $q  = new Quoter();
-my $du = new MySQLDump();
 my $tp = new TableParser(Quoter => $q);
 my $dp = new DSNParser(opts=>$dsn_opts);
 
@@ -463,7 +461,7 @@ SKIP: {
    );
 
    my $tbl = $tp->parse(
-      $du->get_create_table($master_dbh, $q, 'test', 'issue_11'));
+      $tp->get_create_table($master_dbh, 'test', 'issue_11'));
 
    my $left_sth  = $master_dbh->prepare('SELECT * FROM test.issue_11');
    my $right_sth = $slave_dbh->prepare('SELECT * FROM test.issue_11');

@@ -13,7 +13,6 @@ use Test::More;
 
 use TableParser;
 use TableChunker;
-use MySQLDump;
 use Quoter;
 use DSNParser;
 use Sandbox;
@@ -27,18 +26,17 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 90;
+   plan tests => 91;
 }
 
 $sb->create_dbs($dbh, ['test']);
 
 my $q  = new Quoter();
-my $p  = new TableParser(Quoter => $q);
-my $du = new MySQLDump();
-my $c  = new TableChunker(Quoter => $q, MySQLDump => $du);
+my $tp = new TableParser(Quoter => $q);
+my $c  = new TableChunker(Quoter => $q, TableParser => $tp);
 my $t;
 
-$t = $p->parse( load_file('t/lib/samples/sakila.film.sql') );
+$t = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );
 is_deeply(
    [ $c->find_chunk_columns(tbl_struct=>$t) ],
    [ 0,
@@ -74,7 +72,7 @@ is_deeply(
 #   'Found preferred chunkable columns on sakila.film',
 #);
 
-$t = $p->parse( load_file('t/lib/samples/pk_not_first.sql') );
+$t = $tp->parse( load_file('t/lib/samples/pk_not_first.sql') );
 is_deeply(
    [ $c->find_chunk_columns(tbl_struct=>$t) ],
    [ 0,
@@ -217,7 +215,7 @@ SKIP: {
       'Nullable column adds IS NULL chunk',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/daycol.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/daycol.sql') );
 
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
@@ -242,7 +240,7 @@ SKIP: {
       'Date column chunks OK',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/date.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/date.sql') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -285,7 +283,7 @@ SKIP: {
       'Date column where min date is 0000-00-00',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/datetime.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/datetime.sql') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -328,7 +326,7 @@ SKIP: {
       'Datetime where min is 0000-00-00 00:00:00',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/timecol.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/timecol.sql') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -350,7 +348,7 @@ SKIP: {
       'Time column chunks OK',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/doublecol.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/doublecol.sql') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -411,7 +409,7 @@ SKIP: {
       'Throws OK when too many chunks',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/floatcol.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/floatcol.sql') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -433,7 +431,7 @@ SKIP: {
       'Float column chunks OK',
    );
 
-   $t = $p->parse( load_file('t/lib/samples/decimalcol.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/decimalcol.sql') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'a',
@@ -532,7 +530,7 @@ SKIP: {
    # #########################################################################
    # Issue 1084: Don't try to chunk small tables
    # #########################################################################
-   $t = $p->parse( $du->get_create_table($dbh, $q, 'sakila', 'country') );
+   $t = $tp->parse( $tp->get_create_table($dbh, 'sakila', 'country') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'country_id',
@@ -555,7 +553,7 @@ SKIP: {
 # Issue 47: TableChunker::range_num broken for very large bigint
 # #############################################################################
 $sb->load_file('master', 't/lib/samples/issue_47.sql');
-$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'issue_47') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'issue_47') );
 my %params = $c->get_range_statistics(
    dbh        => $dbh,
    db         => 'test',
@@ -596,7 +594,7 @@ is(
 );
 
 $sb->load_file('master', 't/lib/samples/issue_8.sql');
-$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'issue_8') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'issue_8') );
 my @candidates = $c->find_chunk_columns(tbl_struct=>$t);
 is_deeply(
    \@candidates,
@@ -637,7 +635,7 @@ $sb->load_file('master', 't/lib/samples/issue_941.sql');
 sub test_zero_row {
    my ( $tbl, $range, $chunks, $zero_chunk ) = @_;
    $zero_chunk = 1 unless defined $zero_chunk;
-   $t = $p->parse( $du->get_create_table($dbh, $q, 'issue_941', $tbl) );
+   $t = $tp->parse( $tp->get_create_table($dbh, 'issue_941', $tbl) );
    %params = $c->get_range_statistics(
       dbh        => $dbh,
       db         => 'issue_941',
@@ -763,7 +761,7 @@ test_zero_row(
 # Issue 602: mk-table-checksum issue with invalid dates
 # #############################################################################
 $sb->load_file('master', 't/pt-table-checksum/samples/issue_602.sql');
-$t = $p->parse( $du->get_create_table($dbh, $q, 'issue_602', 't') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'issue_602', 't') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
    db         => 'issue_602',
@@ -802,7 +800,7 @@ throws_ok(
 );
 
 # Like the test above but t2 has nothing but invalid rows.
-$t = $p->parse( $du->get_create_table($dbh, $q, 'issue_602', 't2') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'issue_602', 't2') );
 throws_ok(
    sub {
       $c->get_range_statistics(
@@ -923,7 +921,7 @@ foreach my $t ( @valid_t ) {
 # #############################################################################
 # Test get_first_chunkable_column().
 # #############################################################################
-$t = $p->parse( load_file('t/lib/samples/sakila.film.sql') );
+$t = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );
 
 is_deeply(
    [ $c->get_first_chunkable_column(tbl_struct=>$t) ],
@@ -970,7 +968,7 @@ is_deeply(
 );
 
 $sb->load_file('master', "t/lib/samples/t1.sql", 'test');
-$t = $p->parse( load_file('t/lib/samples/t1.sql') );
+$t = $tp->parse( load_file('t/lib/samples/t1.sql') );
 
 is_deeply(
    [ $c->get_first_chunkable_column(tbl_struct=>$t) ],
@@ -980,7 +978,7 @@ is_deeply(
 
 # char chunking ###############################################################
 $sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
-$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'ascii') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'ascii') );
 
 is_deeply(
    [ $c->find_chunk_columns(tbl_struct=>$t) ],
@@ -1055,7 +1053,7 @@ sub chunk_it {
 
 $dbh->do("alter table test.t1 add unique index (a)");
 my (undef,$output) = $dbh->selectrow_array("show create table test.t1");
-$t = $p->parse($output);
+$t = $tp->parse($output);
 is_deeply(
    [ $c->get_first_chunkable_column(tbl_struct=>$t) ],
    [qw(a a)],
@@ -1120,7 +1118,7 @@ SKIP: {
 
    my @chunks;
 
-   $t = $p->parse( $du->get_create_table($dbh, $q, 'sakila', 'city') );
+   $t = $tp->parse( $tp->get_create_table($dbh, 'sakila', 'city') );
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
       chunk_col     => 'city',
@@ -1173,7 +1171,7 @@ SKIP: {
 }
 
 $sb->load_file('master', "t/lib/samples/char-chunking/world-city.sql", 'test');
-$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'world_city') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'world_city') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
    db         => 'test',
@@ -1204,6 +1202,23 @@ is(
 );
 
 # #############################################################################
+# Issue Bug #897758: TableChunker dies from an uninit value
+# #############################################################################
+
+@chunks = $c->calculate_chunks(
+   dbh           => $dbh,
+   db            => 'test',
+   tbl           => 'world_city',
+   tbl_struct    => $t,
+   chunk_col     => 'name',
+   chunk_size    => 500,
+   %params,
+   chunk_range   => undef,
+);
+
+ok( @chunks, "calculate_chunks picks a sane default for chunk_range" );
+
+# #############################################################################
 # Issue 1182: mk-table-checksum not respecting chunk size
 # #############################################################################
 SKIP: {
@@ -1211,7 +1226,7 @@ SKIP: {
       unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
 
    my @chunks;
-   $t = $p->parse( load_file('t/lib/samples/sakila.film.sql') );
+   $t = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );
 
    @chunks = $c->calculate_chunks(
       tbl_struct    => $t,
@@ -1241,7 +1256,7 @@ SKIP: {
 # Bug 821673: pt-table-checksum doesn't included --where in min max queries
 # ############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/where01.sql");
-$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'checksum_test') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'checksum_test') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
    db         => 'test',
@@ -1263,7 +1278,7 @@ is(
 
 # char chunking
 $sb->load_file('master', "t/pt-table-checksum/samples/where02.sql");
-$t = $p->parse( $du->get_create_table($dbh, $q, 'test', 'checksum_test') );
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'checksum_test') );
 %params = $c->get_range_statistics(
    dbh        => $dbh,
    db         => 'test',

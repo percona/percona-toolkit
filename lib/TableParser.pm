@@ -23,9 +23,6 @@
 #
 # Several subs in this module require either a $ddl or $tbl param.
 #
-# $ddl is the return value from MySQLDump::get_create_table() (which returns
-# the output of SHOW CREATE TALBE).
-#
 # $tbl is the return value from the sub below, parse().
 #
 # And some subs have an optional $opts param which is a hashref of options.
@@ -37,7 +34,7 @@ package TableParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -54,6 +51,55 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+           . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+           . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+           . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+   PTDEBUG && _d($sql);
+   eval { $dbh->do($sql); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   # Must USE the tbl's db because some bug with SHOW CREATE TABLE on a
+   # view when the current db isn't the view's db causes MySQL to crash.
+   $sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $sql);
+   $dbh->do($sql);
+
+   $sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
+   }
+
+   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+        . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   PTDEBUG && _d($sql);
+   $dbh->do($sql);
+
+   my ($key) = grep { m/create table/i } keys %$href;
+   if ( $key ) {
+      PTDEBUG && _d('This table is a base table');
+      $href->{$key}  =~ s/\b[ ]{2,}/ /g;
+      $href->{$key} .= "\n";
+   }
+   else {
+      PTDEBUG && _d('This table is a view');
+      ($key) = grep { m/create view/i } keys %$href;
+   }
+
+   return $href->{$key};
+}
+
 # Sub: parse
 #   Parse SHOW CREATE TABLE.
 #
@@ -62,16 +108,6 @@ sub new {
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -89,7 +125,7 @@ sub parse {
 
    my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
-   MKDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
+   PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
    # Save the column definitions *exactly*
    my %def_for;
@@ -159,7 +195,7 @@ sub sort_indexes {
       }
       sort keys %{$tbl->{keys}};
 
-   MKDEBUG && _d('Indexes sorted best-first:', join(', ', @indexes));
+   PTDEBUG && _d('Indexes sorted best-first:', join(', ', @indexes));
    return @indexes;
 }
 
@@ -182,7 +218,7 @@ sub find_best_index {
          ($best) = $self->sort_indexes($tbl);
       }
    }
-   MKDEBUG && _d('Best index found is', $best);
+   PTDEBUG && _d('Best index found is', $best);
    return $best;
 }
 
@@ -196,26 +232,26 @@ sub find_possible_keys {
    return () unless $where;
    my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
    # Normalize columns to lowercase
    $expl = { map { lc($_) => $expl->{$_} } keys %$expl };
    if ( $expl->{possible_keys} ) {
-      MKDEBUG && _d('possible_keys =', $expl->{possible_keys});
+      PTDEBUG && _d('possible_keys =', $expl->{possible_keys});
       my @candidates = split(',', $expl->{possible_keys});
       my %possible   = map { $_ => 1 } @candidates;
       if ( $expl->{key} ) {
-         MKDEBUG && _d('MySQL chose', $expl->{key});
+         PTDEBUG && _d('MySQL chose', $expl->{key});
          unshift @candidates, grep { $possible{$_} } split(',', $expl->{key});
-         MKDEBUG && _d('Before deduping:', join(', ', @candidates));
+         PTDEBUG && _d('Before deduping:', join(', ', @candidates));
          my %seen;
          @candidates = grep { !$seen{$_}++ } @candidates;
       }
-      MKDEBUG && _d('Final list:', join(', ', @candidates));
+      PTDEBUG && _d('Final list:', join(', ', @candidates));
       return @candidates;
    }
    else {
-      MKDEBUG && _d('No keys in possible_keys');
+      PTDEBUG && _d('No keys in possible_keys');
       return ();
    }
 }
@@ -242,75 +278,75 @@ sub check_table {
    my ($dbh, $db, $tbl) = @args{@required_args};
    my $q      = $self->{Quoter};
    my $db_tbl = $q->quote($db, $tbl);
-   MKDEBUG && _d('Checking', $db_tbl);
+   PTDEBUG && _d('Checking', $db_tbl);
 
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $row;
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
-      MKDEBUG && _d('Table does not exist');
+      PTDEBUG && _d('Table does not exist');
       return 0;
    }
 
    # Table exists, return true unless we have privs to check.
-   MKDEBUG && _d('Table exists; no privs to check');
+   PTDEBUG && _d('Table exists; no privs to check');
    return 1 unless $args{all_privs};
 
    # Get privs select,insert,update.
    $sql = "SHOW FULL COLUMNS FROM $db_tbl";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    eval {
       $row = $dbh->selectrow_hashref($sql);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       return 0;
    }
    if ( !scalar keys %$row ) {
       # This should never happen.
-      MKDEBUG && _d('Table has no columns:', Dumper($row));
+      PTDEBUG && _d('Table has no columns:', Dumper($row));
       return 0;
    }
    my $privs = $row->{privileges} || $row->{Privileges};
 
    # Get delete priv since FULL COLUMNS doesn't show it.   
    $sql = "DELETE FROM $db_tbl LIMIT 0";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    eval {
       $dbh->do($sql);
    };
    my $can_delete = $EVAL_ERROR ? 0 : 1;
 
-   MKDEBUG && _d('User privs on', $db_tbl, ':', $privs,
+   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
       ($can_delete ? 'delete' : ''));
 
    # Check that we have all privs.
    if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
           && $can_delete) ) {
-      MKDEBUG && _d('User does not have all privs');
+      PTDEBUG && _d('User does not have all privs');
       return 0;
    }
 
-   MKDEBUG && _d('User has all privs');
+   PTDEBUG && _d('User has all privs');
    return 1;
 }
 
 sub get_engine {
    my ( $self, $ddl, $opts ) = @_;
    my ( $engine ) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;
-   MKDEBUG && _d('Storage engine:', $engine);
+   PTDEBUG && _d('Storage engine:', $engine);
    return $engine || undef;
 }
 
-# $ddl is a SHOW CREATE TABLE returned from MySQLDumper::get_create_table().
+# $ddl is a SHOW CREATE TABLE returned from get_create_table().
 # The general format of a key is
 # [FOREIGN|UNIQUE|PRIMARY|FULLTEXT|SPATIAL] KEY `name` [USING BTREE|HASH] (`cols`).
 # Returns a hashref of keys and their properties and the clustered key (if
@@ -344,7 +380,7 @@ sub get_keys {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
-      MKDEBUG && _d('Parsed key:', $key_ddl);
+      PTDEBUG && _d('Parsed key:', $key_ddl);
 
       # Make allowances for HASH bugs in SHOW CREATE TABLE.  A non-MEMORY table
       # will report its index as USING HASH even when this is not supported.
@@ -377,7 +413,7 @@ sub get_keys {
       }
       $name =~ s/`//g;
 
-      MKDEBUG && _d( $name, 'key cols:', join(', ', map { "`$_`" } @cols));
+      PTDEBUG && _d( $name, 'key cols:', join(', ', map { "`$_`" } @cols));
 
       $keys->{$name} = {
          name         => $name,
@@ -400,7 +436,7 @@ sub get_keys {
          elsif ( $this_key->{is_unique} && !$this_key->{is_nullable} ) {
             $clustered_key = $this_key->{name};
          }
-         MKDEBUG && $clustered_key && _d('This key is the clustered key');
+         PTDEBUG && $clustered_key && _d('This key is the clustered key');
       }
    }
 
@@ -452,52 +488,31 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         # Remove key from CREATE TABLE ddl.
-         my $key_def = $_->{ddl};
-         # Escape ( ) in the key def so Perl treats them literally.
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         # Last key in table won't have trailing comma, but since
-         # we're iterating through a hash the last key may not be
-         # the last in the list we're creating.
-         # http://code.google.com/p/maatkit/issues/detail?id=833
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      MKDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      # Remove trailing comma on last key.  Cases like:
-      #   PK,
-      #   KEY,
-      # ) ENGINE=...
-      # will leave a trailing comma on PK.
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      MKDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {

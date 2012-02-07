@@ -19,13 +19,13 @@
 # ###########################################################################
 {
 # Package: Retry
-# Retry retries code until a condition succeeds.
+# Retry retries code that may die and handles those deaths nicely.
 package Retry;
 
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -35,64 +35,58 @@ sub new {
    return bless $self, $class;
 }
 
-# Required arguments:
-#   * try          coderef: code to try; return true on success
-#   * wait         coderef: code that waits in between tries
+# Sub: retry
+#   Retry a code block that may die several times.
+#
+# Required Arguments:
+#   try        - Callback to try.
+#   fail       - Callback when try dies.
+#   final_fail - Callback when try dies for the last time.
+#
 # Optional arguments:
-#   * tries        scalar: number of retries to attempt (default 3)
-#   * retry_on_die bool: retry try code if it dies (default no)
-#   * on_success   coderef: code to call if try is successful
-#   * on_failure   coderef: code to call if try does not succeed
-# Retries the try code until either it returns true or we exhaust
-# the number of retry attempts.  The args are passed to the coderefs
-# (try, wait, on_success, on_failure).  If the try code dies, that's
-# a final failure (no more retries) unless retry_on_die is true.
-# Returns either whatever the try code returned or undef on failure.
+#   tries  - Number of try attempts (default 3)
+#   wait   - Callback after fail if tries remain (default sleep 1s)
+#
+# Returns:
+#   Return value of try code when it doesn't die.
 sub retry {
    my ( $self, %args ) = @_;
-   my @required_args = qw(try wait);
+   my @required_args = qw(try fail final_fail);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
-   my ($try, $wait) = @args{@required_args};
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
    my $tries = $args{tries} || 3;
 
+   my $last_error;
    my $tryno = 0;
+   TRY:
    while ( ++$tryno <= $tries ) {
-      MKDEBUG && _d("Retry", $tryno, "of", $tries);
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
       my $result;
       eval {
          $result = $try->(tryno=>$tryno);
       };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
 
-      if ( defined $result ) {
-         MKDEBUG && _d("Try code succeeded");
-         if ( my $on_success = $args{on_success} ) {
-            MKDEBUG && _d("Calling on_success code");
-            $on_success->(tryno=>$tryno, result=>$result);
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
          }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
          return $result;
       }
-
-      if ( $EVAL_ERROR ) {
-         MKDEBUG && _d("Try code died:", $EVAL_ERROR);
-         die $EVAL_ERROR unless $args{retry_on_die};
-      }
-
-      # Wait if there's more retries, else end immediately.
-      if ( $tryno < $tries ) {
-         MKDEBUG && _d("Try code failed, calling wait code");
-         $wait->(tryno=>$tryno);
-      }
    }
 
-   MKDEBUG && _d("Try code did not succeed");
-   if ( my $on_failure = $args{on_failure} ) {
-      MKDEBUG && _d("Calling on_failure code");
-      $on_failure->();
-   }
-
-   return;
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
 }
 
 sub _d {

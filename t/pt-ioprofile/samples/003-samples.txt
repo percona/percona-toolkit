@@ -1,0 +1,21 @@
+COMMAND     PID      USER   FD      TYPE             DEVICE        SIZE       NODE NAME
+mysqld     6562     baron  cwd       DIR               253,0       4096    2621555 /data/data/abd_2dia
+mysqld     2362     mysql 7792uW     REG               8,33 28189917184  255188681 /data/data/abd_2dia/aia_227_223.ibd
+mysqld     2362     mysql  586uW     REG               8,33 18270388224  255182733 /data/data/abd_2dia/aia_227_228.ibd
+Process 2362 attached with 81 threads - interrupt to quit
+[pid 20974] pread(7792, ""..., 16384, 24540512256) = 16384 <0.000369>
+[pid 22782] pread(586,  <unfinished ...>
+[pid 22782] <... pread resumed> ""..., 16384, 12687884288) = 16384 <0.006348>
+[pid  6594] open("./", O_RDONLY|O_NONBLOCK|O_LARGEFILE|O_DIRECTORY|O_CLOEXEC) = 30 <0.000096>
+[pid  6594] getdents64(30, /* 9 entries */, 32768) = 264 <0.000164>
+[pid  6594] getdents64(30, /* 0 entries */, 32768) = 0 <0.000146>
+[pid  6594] close(30)                   = 0 <0.000098>
+[pid  6594] open("./test/db.opt", O_RDONLY|O_LARGEFILE) = 30 <0.000054>
+[pid  6594] _llseek(30, 0, [0], SEEK_CUR) = 0 <0.000043>
+[pid  6594] _llseek(30, 0, [65], SEEK_END) = 0 <0.000041>
+[pid  6594] _llseek(30, 0, [0], SEEK_SET) = 0 <0.000043>
+[pid  6594] read(30, ""..., 65)         = 65 <0.000062>
+[pid  6594] close(30)                   = 0 <0.000045>
+[pid  6594] pread64(32, ""..., 13, 4339) = 13 <0.000017>
+[pid  6576] select(0, NULL, NULL, NULL, {1, 0} <unfinished ...>
+[pid  6575] <... select resumed> )      = 0 (Timeout) <1.001175>

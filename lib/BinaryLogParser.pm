@@ -25,7 +25,7 @@ package BinaryLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -102,10 +102,10 @@ sub parse_event {
          $pos     = pos($stmt);  # Be careful not to mess this up!
          my $line = $1;          # Necessary for /g and pos() to work.
          $line    =~ s/$delim// if $delim;
-         MKDEBUG && _d($line);
+         PTDEBUG && _d($line);
 
          if ( $line =~ m/^\/\*.+\*\/;/ ) {
-            MKDEBUG && _d('Comment line');
+            PTDEBUG && _d('Comment line');
             next LINE;
          }
  
@@ -114,13 +114,13 @@ sub parse_event {
             if ( $del ) {
                $self->{delim_len} = $delim_len = length $del;
                $self->{delim}     = $delim     = quotemeta $del;
-               MKDEBUG && _d('delimiter:', $delim);
+               PTDEBUG && _d('delimiter:', $delim);
             }
             else {
                # Because of the line $stmt =~ s/;\n#?\Z//; above, setting
                # the delimiter back to normal like "DELIMITER ;" appear as
                # "DELIMITER ".
-               MKDEBUG && _d('Delimiter reset to ;');
+               PTDEBUG && _d('Delimiter reset to ;');
                $self->{delim}     = $delim     = undef;
                $self->{delim_len} = $delim_len = 0;
             }
@@ -131,7 +131,7 @@ sub parse_event {
 
          # Match the beginning of an event in the binary log.
          if ( !$got_offset && (my ( $offset ) = $line =~ m/$binlog_line_1/m) ) {
-            MKDEBUG && _d('Got the at offset line');
+            PTDEBUG && _d('Got the at offset line');
             push @properties, 'offset', $offset;
             $got_offset++;
          }
@@ -139,7 +139,7 @@ sub parse_event {
          # Match the 2nd line of binary log header, after "# at OFFSET".
          elsif ( !$got_hdr && $line =~ m/^#(\d{6}\s+\d{1,2}:\d\d:\d\d)/ ) {
             ($ts, $sid, $end, $type, $rest) = $line =~ m/$binlog_line_2/m;
-            MKDEBUG && _d('Got the header line; type:', $type, 'rest:', $rest);
+            PTDEBUG && _d('Got the header line; type:', $type, 'rest:', $rest);
             push @properties, 'cmd', 'Query', 'ts', $ts, 'server_id', $sid,
                'end_log_pos', $end;
             $got_hdr++;
@@ -151,7 +151,7 @@ sub parse_event {
             # Include the current default database given by 'use <db>;'  Again
             # as per the code in sql/log.cc this is case-sensitive.
             if ( my ( $db ) = $line =~ m/^use ([^;]+)/ ) {
-               MKDEBUG && _d("Got a default database:", $db);
+               PTDEBUG && _d("Got a default database:", $db);
                push @properties, 'db', $db;
             }
 
@@ -162,7 +162,7 @@ sub parse_event {
             # SET timestamp=foo,insert_id=123;
             # SET insert_id=123;
             elsif ( my ($setting) = $line =~ m/^SET\s+([^;]*)/ ) {
-               MKDEBUG && _d("Got some setting:", $setting);
+               PTDEBUG && _d("Got some setting:", $setting);
                push @properties, map { s/\s+//; lc } split(/,|\s*=\s*/, $setting);
             }
 
@@ -174,7 +174,7 @@ sub parse_event {
             # Note that if this line really IS the query but we skip in
             # the 'if' above because it looks like meta-data, later
             # we'll remedy that.
-            MKDEBUG && _d("Got the query/arg line at pos", $pos);
+            PTDEBUG && _d("Got the query/arg line at pos", $pos);
             $found_arg++;
             if ( $got_offset && $got_hdr ) {
                if ( $type eq 'Xid' ) {
@@ -192,15 +192,15 @@ sub parse_event {
                   # created 090722  7:21:41 at startup".  They may or may
                   # not have a statement after them (ROLLBACK can follow
                   # this line), so we do not want to skip these types.
-                  MKDEBUG && _d("Binlog start");
+                  PTDEBUG && _d("Binlog start");
                }
                else {
-                  MKDEBUG && _d('Unknown event type:', $type);
+                  PTDEBUG && _d('Unknown event type:', $type);
                   next EVENT;
                }
             }
             else {
-               MKDEBUG && _d("It's not a query/arg, it's just some SQL fluff");
+               PTDEBUG && _d("It's not a query/arg, it's just some SQL fluff");
                push @properties, 'cmd', 'Query', 'ts', undef;
             }
 
@@ -226,10 +226,10 @@ sub parse_event {
                if ( $del ) {
                   $self->{delim_len} = $delim_len = length $del;
                   $self->{delim}     = $delim     = quotemeta $del;
-                  MKDEBUG && _d('delimiter:', $delim);
+                  PTDEBUG && _d('delimiter:', $delim);
                }
                else {
-                  MKDEBUG && _d('Delimiter reset to ;');
+                  PTDEBUG && _d('Delimiter reset to ;');
                   $del       = ';';
                   $self->{delim}     = $delim     = undef;
                   $self->{delim_len} = $delim_len = 0;
@@ -249,7 +249,7 @@ sub parse_event {
       if ( $found_arg ) {
          # Don't dump $event; want to see full dump of all properties, and after
          # it's been cast into a hash, duplicated keys will be gone.
-         MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+         PTDEBUG && _d('Properties of event:', Dumper(\@properties));
          my $event = { @properties };
          if ( $args{stats} ) {
             $args{stats}->{events_read}++;
@@ -258,7 +258,7 @@ sub parse_event {
          return $event;
       }
       else {
-         MKDEBUG && _d('Event had no arg');
+         PTDEBUG && _d('Event had no arg');
       }
    } # EVENT
 

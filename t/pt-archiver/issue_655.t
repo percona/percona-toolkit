@@ -39,6 +39,7 @@ $sb->create_dbs($dbh, ['test']);
 $dbh->do('CREATE TABLE test.t (i int)');
 $output = output(
    sub { pt_archiver::main(qw(--where 1=1), "--source", "F=$cnf,D=test,t=t", qw(--purge --primary-key-only)) },
+   stderr => 1,
 );
 unlike(
    $output,
