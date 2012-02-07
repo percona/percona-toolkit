@@ -16,7 +16,6 @@ my @modules = qw(
    Data::Dumper
    DBD::mysql
    DBI
-   Digest::Crc32
    Digest::MD5
    File::Basename
    File::Find
