@@ -28,7 +28,7 @@ package QueryParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 our $tbl_ident = qr/(?:`[^`]+`|\w+)(?:\.(?:`[^`]+`|\w+))?/;
 # This regex finds things that look like database.table identifiers, based on
@@ -72,27 +72,27 @@ sub new {
 sub get_tables {
    my ( $self, $query ) = @_;
    return unless $query;
-   MKDEBUG && _d('Getting tables for', $query);
+   PTDEBUG && _d('Getting tables for', $query);
 
    # Handle CREATE, ALTER, TRUNCATE and DROP TABLE.
    my ( $ddl_stmt ) = $query =~ m/^\s*($data_def_stmts)\b/i;
    if ( $ddl_stmt ) {
-      MKDEBUG && _d('Special table type:', $ddl_stmt);
+      PTDEBUG && _d('Special table type:', $ddl_stmt);
       $query =~ s/IF\s+(?:NOT\s+)?EXISTS//i;
       if ( $query =~ m/$ddl_stmt DATABASE\b/i ) {
          # Handles CREATE DATABASE, not to be confused with CREATE TABLE.
-         MKDEBUG && _d('Query alters a database, not a table');
+         PTDEBUG && _d('Query alters a database, not a table');
          return ();
       }
       if ( $ddl_stmt =~ m/CREATE/i && $query =~ m/$ddl_stmt\b.+?\bSELECT\b/i ) {
          # Handle CREATE TABLE ... SELECT.  In this case, the real tables
          # come from the SELECT, not the CREATE.
          my ($select) = $query =~ m/\b(SELECT\b.+)/is;
-         MKDEBUG && _d('CREATE TABLE ... SELECT:', $select);
+         PTDEBUG && _d('CREATE TABLE ... SELECT:', $select);
          return $self->get_tables($select);
       }
       my ($tbl) = $query =~ m/TABLE\s+($tbl_ident)(\s+.*)?/i;
-      MKDEBUG && _d('Matches table:', $tbl);
+      PTDEBUG && _d('Matches table:', $tbl);
       return ($tbl);
    }
 
@@ -104,10 +104,10 @@ sub get_tables {
    # We strip the LOCK TABLES stuff and append "FROM" to fake a SELECT
    # statement and allow $tbl_regex to match below.
    if ( $query =~ /^\s*LOCK TABLES/i ) {
-      MKDEBUG && _d('Special table type: LOCK TABLES');
+      PTDEBUG && _d('Special table type: LOCK TABLES');
       $query =~ s/^(\s*LOCK TABLES\s+)//;
       $query =~ s/\s+(?:READ|WRITE|LOCAL)+\s*//g;
-      MKDEBUG && _d('Locked tables:', $query);
+      PTDEBUG && _d('Locked tables:', $query);
       $query = "FROM $query";
    }
 
@@ -117,7 +117,7 @@ sub get_tables {
 
    my @tables;
    foreach my $tbls ( $query =~ m/$tbl_regex/gio ) {
-      MKDEBUG && _d('Match tables:', $tbls);
+      PTDEBUG && _d('Match tables:', $tbls);
 
       # Some queries coming from certain ORM systems will have superfluous
       # parens around table names, like SELECT * FROM (`mytable`);  We match
@@ -136,7 +136,7 @@ sub get_tables {
          # and the regex matches junk.  Instead of complex regex to
          # match around these rarities, this simple check will save us.
          if ( $tbl !~ m/[a-zA-Z]/ ) {
-            MKDEBUG && _d('Skipping suspicious table name:', $tbl);
+            PTDEBUG && _d('Skipping suspicious table name:', $tbl);
             next;
          }
 
@@ -152,7 +152,7 @@ sub has_derived_table {
    my ( $self, $query ) = @_;
    # See the $tbl_regex regex above.
    my $match = $query =~ m/$has_derived/;
-   MKDEBUG && _d($query, 'has ' . ($match ? 'a' : 'no') . ' derived table');
+   PTDEBUG && _d($query, 'has ' . ($match ? 'a' : 'no') . ' derived table');
    return $match;
 }
 
@@ -202,7 +202,7 @@ sub get_aliases {
          $tbl_refs =~ s/\([^\)]+\)\s*//;
       }
 
-      MKDEBUG && _d('tbl refs:', $tbl_refs);
+      PTDEBUG && _d('tbl refs:', $tbl_refs);
 
       # These keywords precede a table ref. They signal the start of a table
       # ref, but to know where the table ref ends we need the after tbl ref
@@ -230,7 +230,7 @@ sub get_aliases {
          }xgio )
       {
          my ( $tbl_ref, $db_tbl, $alias ) = ($1, $2, $3);
-         MKDEBUG && _d('Match table:', $tbl_ref);
+         PTDEBUG && _d('Match table:', $tbl_ref);
          push @tbl_refs, $tbl_ref;
          $alias = $self->trim_identifier($alias);
 
@@ -242,7 +242,7 @@ sub get_aliases {
             # FROM clause must have a name."
             # So if the tbl ref begins with 'AS', then we probably have a
             # subquery.
-            MKDEBUG && _d('Subquery', $tbl_ref);
+            PTDEBUG && _d('Subquery', $tbl_ref);
             $result->{TABLE}->{$alias} = undef;
             next;
          }
@@ -255,7 +255,7 @@ sub get_aliases {
       }
    }
    else {
-      MKDEBUG && _d("No tables ref in", $query);
+      PTDEBUG && _d("No tables ref in", $query);
    }
 
    if ( $list ) {
@@ -276,7 +276,7 @@ sub split {
    my ( $self, $query ) = @_;
    return unless $query;
    $query = $self->clean_query($query);
-   MKDEBUG && _d('Splitting', $query);
+   PTDEBUG && _d('Splitting', $query);
 
    my $verbs = qr{SELECT|INSERT|UPDATE|DELETE|REPLACE|UNION|CREATE}i;
 
@@ -309,7 +309,7 @@ sub split {
    }
 
    # Wrap stmts in <> to make it more clear where each one begins/ends.
-   MKDEBUG && _d('statements:', map { $_ ? "<$_>" : 'none' } @statements);
+   PTDEBUG && _d('statements:', map { $_ ? "<$_>" : 'none' } @statements);
    return @statements;
 }
 
@@ -335,12 +335,12 @@ sub split_subquery {
    while ( $query =~ m/(\S+)(?:\s+|\Z)/g ) {
       $pos = pos($query);
       my $word = $1;
-      MKDEBUG && _d($word, $sqno);
+      PTDEBUG && _d($word, $sqno);
       if ( $word =~ m/^\(?SELECT\b/i ) {
          my $start_pos = $pos - length($word) - 1;
          if ( $start_pos ) {
             $sqno++;
-            MKDEBUG && _d('Subquery', $sqno, 'starts at', $start_pos);
+            PTDEBUG && _d('Subquery', $sqno, 'starts at', $start_pos);
             $subqueries[$sqno] = {
                start_pos => $start_pos,
                end_pos   => 0,
@@ -352,25 +352,25 @@ sub split_subquery {
             };
          }
          else {
-            MKDEBUG && _d('Main SELECT at pos 0');
+            PTDEBUG && _d('Main SELECT at pos 0');
          }
       }
       else {
          next unless $sqno;  # next unless we're in a subquery
-         MKDEBUG && _d('In subquery', $sqno);
+         PTDEBUG && _d('In subquery', $sqno);
          my $sq = $subqueries[$sqno];
          if ( $sq->{done} ) {
-            MKDEBUG && _d('This subquery is done; SQL is for',
+            PTDEBUG && _d('This subquery is done; SQL is for',
                ($sqno - 1 ? "subquery $sqno" : "the main SELECT"));
             next;
          }
          push @{$sq->{words}}, $word;
          my $lp = ($word =~ tr/\(//) || 0;
          my $rp = ($word =~ tr/\)//) || 0;
-         MKDEBUG && _d('parentheses left', $lp, 'right', $rp);
+         PTDEBUG && _d('parentheses left', $lp, 'right', $rp);
          if ( ($sq->{lp} + $lp) - ($sq->{rp} + $rp) == 0 ) {
             my $end_pos = $pos - 1;
-            MKDEBUG && _d('Subquery', $sqno, 'ends at', $end_pos);
+            PTDEBUG && _d('Subquery', $sqno, 'ends at', $end_pos);
             $sq->{end_pos} = $end_pos;
             $sq->{len}     = $end_pos - $sq->{start_pos};
          }
@@ -436,7 +436,7 @@ sub get_columns {
       ($cols_def) = $query =~ m/\(([^\)]+)\)\s*VALUE/i;
    }
 
-   MKDEBUG && _d('Columns:', $cols_def);
+   PTDEBUG && _d('Columns:', $cols_def);
    if ( $cols_def ) {
       @$cols = split(',', $cols_def);
       map {
@@ -489,7 +489,7 @@ sub extract_tables {
    my $default_db = $args{default_db};
    my $q          = $self->{Quoter} || $args{Quoter};
    return unless $query;
-   MKDEBUG && _d('Extracting tables');
+   PTDEBUG && _d('Extracting tables');
    my @tables;
    my %seen;
    foreach my $db_tbl ( $self->get_tables($query) ) {

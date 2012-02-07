@@ -33,7 +33,7 @@ else {
 my $output;
 my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
             qw(-d issue_375 --replicate issue_375.checksums --print));
-my $mk_table_checksum = "$trunk/bin/pt-table-checksum F=/tmp/12345/my.sandbox.cnf -d issue_375 --chunk-size 20 --chunk-size-limit 0";
+my $pt_table_checksum = "$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_375 --chunk-size 20 --chunk-size-limit 0 --lock-wait-time 3";
 
 # #############################################################################
 # Issue 996: might not chunk inside of mk-table-checksum's boundaries
@@ -65,13 +65,10 @@ wait_until(
 );
 
 # mk-table-checksum the table with 5 chunks of 20 rows.
-$output = `$mk_table_checksum --replicate issue_375.checksums --create-replicate-table`;
-sleep 1;
-
-$output = `$mk_table_checksum --replicate issue_375.checksums --replicate-check 1`;
-like(
-   $output,
-   qr/issue_375\s+t\s+2\s+0\s+1\s+`id` >= '21' AND `id` < '41'/,
+$output = `$pt_table_checksum --replicate issue_375.checksums`;
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   1,
    "Chunk checksum diff"
 );
 

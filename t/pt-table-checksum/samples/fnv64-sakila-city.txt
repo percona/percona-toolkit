@@ -1,0 +1,24 @@
+--
+-- sakila.city
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(FNV_64(`city_id`, `city`, `country_id`, `last_update` + 0) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `sakila`.`city` FORCE INDEX(`PRIMARY`) WHERE ((`city_id` >= ?)) AND ((`city_id` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `sakila`.`city` FORCE INDEX(`PRIMARY`) WHERE ((`city_id` < ?)) ORDER BY `city_id` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `sakila`.`city` FORCE INDEX(`PRIMARY`) WHERE ((`city_id` > ?)) ORDER BY `city_id` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `city_id` FROM `sakila`.`city` FORCE INDEX(`PRIMARY`) WHERE ((`city_id` >= ?)) ORDER BY `city_id` LIMIT ?, 2 /*next chunk boundary*/
+
+--
+-- sakila.film_actor
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(FNV_64(`actor_id`, `film_id`, `last_update` + 0) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` < ?)) ORDER BY `actor_id`, `film_id` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` > ?)) ORDER BY `actor_id`, `film_id` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `actor_id`, `actor_id`, `film_id` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) ORDER BY `actor_id`, `film_id` LIMIT ?, 2 /*next chunk boundary*/
+

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+TESTS=1
+TMPDIR=$TEST_TMPDIR
+
 cat <<EOF > $TMPDIR/expected
       logicaldrive 1 (136.7 GB, RAID 1, OK)
       physicaldrive 1I:1:1 (port 1I:box 1:bay 1, SAS, 146 GB, OK)

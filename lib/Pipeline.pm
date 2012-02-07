@@ -25,7 +25,7 @@ package Pipeline;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -74,7 +74,7 @@ sub add {
    if ( $self->{instrument} ) {
       $self->{instrumentation}->{$name} = { time => 0, calls => 0 };
    }
-   MKDEBUG && _d("Added pipeline process", $name);
+   PTDEBUG && _d("Added pipeline process", $name);
 
    return;
 }
@@ -119,7 +119,7 @@ sub execute {
 
    my $stats = $args{stats};  # optional
 
-   MKDEBUG && _d("Pipeline starting at", time);
+   PTDEBUG && _d("Pipeline starting at", time);
    my $instrument = $self->{instrument};
    my $processes  = $self->{procs};
    EVENT:
@@ -132,7 +132,7 @@ sub execute {
             my $call_start = $instrument ? time : 0;
 
             # Execute this pipeline process.
-            MKDEBUG && _d("Pipeline process", $self->{names}->[$procno]);
+            PTDEBUG && _d("Pipeline process", $self->{names}->[$procno]);
             $output = $processes->[$procno]->($pipeline_data);
 
             if ( $instrument ) {
@@ -144,7 +144,7 @@ sub execute {
                $self->{instrumentation}->{Pipeline}->{count}++;
             }
             if ( !$output ) {
-               MKDEBUG && _d("Pipeline restarting early after",
+               PTDEBUG && _d("Pipeline restarting early after",
                   $self->{names}->[$procno]);
                if ( $stats ) {
                   $stats->{"pipeline_restarted_after_"
@@ -163,7 +163,7 @@ sub execute {
       }
    }
 
-   MKDEBUG && _d("Pipeline stopped at", time);
+   PTDEBUG && _d("Pipeline stopped at", time);
    return;
 }
 

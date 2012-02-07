@@ -25,7 +25,7 @@ package PgLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -172,7 +172,7 @@ sub parse_event {
    # the header in it.  But, we only do this if we aren't in the middle of an
    # ongoing event, whose first line was pending.
    if ( !$was_pending && (!defined $line || $line !~ m/$log_line_regex/o) ) {
-      MKDEBUG && _d('Skipping lines until I find a header');
+      PTDEBUG && _d('Skipping lines until I find a header');
       my $found_header;
       LINE:
       while (
@@ -186,10 +186,10 @@ sub parse_event {
             last LINE;
          }
          else {
-            MKDEBUG && _d('Line was not a header, will fetch another');
+            PTDEBUG && _d('Line was not a header, will fetch another');
          }
       }
-      MKDEBUG && _d('Found a header line, now at pos_in_line', $pos_in_log);
+      PTDEBUG && _d('Found a header line, now at pos_in_line', $pos_in_log);
    }
 
    # We need to keep the line that begins the event we're parsing.
@@ -215,7 +215,7 @@ sub parse_event {
          # There's something in progress, so we abort the loop and let it be
          # handled specially.
          if ( @arg_lines ) {
-            MKDEBUG && _d('Found a non-LOG line, exiting loop');
+            PTDEBUG && _d('Found a non-LOG line, exiting loop');
             last LINE;
          }
 
@@ -227,20 +227,20 @@ sub parse_event {
             # Handle ERROR and STATEMENT lines...
             if ( my ($e) = $line =~ m/ERROR:\s+(\S.*)\Z/s ) {
                push @properties, 'Error_msg', $e;
-               MKDEBUG && _d('Found an error msg, saving and continuing');
+               PTDEBUG && _d('Found an error msg, saving and continuing');
                ($new_pos, $line) = $self->get_line();
                next LINE;
             }
 
             elsif ( my ($s) = $line =~ m/STATEMENT:\s+(\S.*)\Z/s ) {
                push @properties, 'arg', $s, 'cmd', 'Query';
-               MKDEBUG && _d('Found a statement, finishing up event');
+               PTDEBUG && _d('Found a statement, finishing up event');
                $done = 1;
                last LINE;
             }
 
             else {
-               MKDEBUG && _d("I don't know what to do with this line");
+               PTDEBUG && _d("I don't know what to do with this line");
             }
          }
 
@@ -274,7 +274,7 @@ sub parse_event {
          }x
       ) {
          # We get the next line to process and skip the rest of the loop.
-         MKDEBUG && _d('Skipping this line because it matches skip-pattern');
+         PTDEBUG && _d('Skipping this line because it matches skip-pattern');
          ($new_pos, $line) = $self->get_line();
          next LINE;
       }
@@ -296,7 +296,7 @@ sub parse_event {
 
          # Save the remainder.
          push @arg_lines, $line;
-         MKDEBUG && _d('This was a continuation line');
+         PTDEBUG && _d('This was a continuation line');
       }
 
       # Cases 1 and 3: These lines start with some optional meta-data, and then
@@ -310,14 +310,14 @@ sub parse_event {
          my ( $sev, $label, $rest )
             = $line =~ m/$log_line_regex(.+?):\s+(.*)\Z/so
       ) {
-         MKDEBUG && _d('Line is case 1 or case 3');
+         PTDEBUG && _d('Line is case 1 or case 3');
 
          # This is either a case 1 or case 3.  If there's previously gathered
          # data in @arg_lines, it doesn't matter which -- we have to create an
          # event (a Query event), and we're $done.  This is case 0xdeadbeef.
          if ( @arg_lines ) {
             $done = 1;
-            MKDEBUG && _d('There are saved @arg_lines, we are done');
+            PTDEBUG && _d('There are saved @arg_lines, we are done');
 
             # We shouldn't modify @properties based on $line, because $line
             # doesn't have anything to do with the stuff in @properties, which
@@ -330,23 +330,23 @@ sub parse_event {
             if ( $label eq 'duration' && $rest =~ m/[0-9.]+\s+\S+\Z/ ) {
                if ( $got_duration ) {
                   # Just discard the line.
-                  MKDEBUG && _d('Discarding line, duration already found');
+                  PTDEBUG && _d('Discarding line, duration already found');
                }
                else {
                   push @properties, 'Query_time', $self->duration_to_secs($rest);
-                  MKDEBUG && _d("Line's duration is for previous event:", $rest);
+                  PTDEBUG && _d("Line's duration is for previous event:", $rest);
                }
             }
             else {
                # We'll come back to this line later.
                $self->pending($new_pos, $line);
-               MKDEBUG && _d('Deferred line');
+               PTDEBUG && _d('Deferred line');
             }
          }
 
          # Here we test for case 1, lines that can start a multi-line event.
          elsif ( $label =~ m/\A(?:duration|statement|query)\Z/ ) {
-            MKDEBUG && _d('Case 1: start a multi-line event');
+            PTDEBUG && _d('Case 1: start a multi-line event');
 
             # If it's a duration, then there might be a statement later on the
             # same line and the duration applies to that.
@@ -362,7 +362,7 @@ sub parse_event {
                   push @properties, 'Query_time', $self->duration_to_secs($dur);
                   $got_duration = 1;
                   push @arg_lines, $stmt;
-                  MKDEBUG && _d('Duration + statement');
+                  PTDEBUG && _d('Duration + statement');
                }
 
                else {
@@ -372,7 +372,7 @@ sub parse_event {
                   # pos_in_log.  See t/samples/pg-log-002.txt for an example.
                   $first_line = undef;
                   ($pos_in_log, $line) = $self->get_line();
-                  MKDEBUG && _d('Line applies to event we never saw, discarding');
+                  PTDEBUG && _d('Line applies to event we never saw, discarding');
                   next LINE;
                }
             }
@@ -380,7 +380,7 @@ sub parse_event {
                # This isn't a duration line, it's a statement or query.  Put it
                # onto @arg_lines for later and keep going.
                push @arg_lines, $rest;
-               MKDEBUG && _d('Putting onto @arg_lines');
+               PTDEBUG && _d('Putting onto @arg_lines');
             }
          }
 
@@ -389,18 +389,18 @@ sub parse_event {
          # such, then we just create an event without the overhead of deferring.
          else {
             $done = 1;
-            MKDEBUG && _d('Line is case 3, event is done');
+            PTDEBUG && _d('Line is case 3, event is done');
 
             # Again, if there's previously gathered data in @arg_lines, we have
             # to defer the current line (not touching @properties) and revisit it.
             if ( @arg_lines ) {
                $self->pending($new_pos, $line);
-               MKDEBUG && _d('There was @arg_lines, putting line to pending');
+               PTDEBUG && _d('There was @arg_lines, putting line to pending');
             }
 
             # Otherwise we can parse the line and put it into @properties.
             else {
-               MKDEBUG && _d('No need to defer, process event from this line now');
+               PTDEBUG && _d('No need to defer, process event from this line now');
                push @properties, 'cmd', 'Admin', 'arg', $label;
 
                # For some kinds of log lines, we can grab extra meta-data out of
@@ -432,10 +432,10 @@ sub parse_event {
 
    # If we're at the end of the file, we finish and tell the caller we're done.
    if ( !defined $line ) {
-      MKDEBUG && _d('Line not defined, at EOF; calling oktorun(0) if exists');
+      PTDEBUG && _d('Line not defined, at EOF; calling oktorun(0) if exists');
       $args{oktorun}->(0) if $args{oktorun};
       if ( !@arg_lines ) {
-         MKDEBUG && _d('No saved @arg_lines either, we are all done');
+         PTDEBUG && _d('No saved @arg_lines either, we are all done');
          return undef;
       }
    }
@@ -443,7 +443,7 @@ sub parse_event {
    # If we got kicked out of the while loop because of a non-LOG line, we handle
    # that line here.
    if ( $line_type && $line_type ne 'LOG' ) {
-      MKDEBUG && _d('Line is not a LOG line');
+      PTDEBUG && _d('Line is not a LOG line');
 
       # ERROR lines come in a few flavors.  See t/samples/pg-log-006.txt,
       # t/samples/pg-syslog-002.txt, and t/samples/pg-syslog-007.txt for some
@@ -455,12 +455,12 @@ sub parse_event {
       # @arg_lines, then the ERROR actually starts a new event.  If the ERROR is
       # followed by another LOG event, then the ERROR also starts a new event.
       if ( $line_type eq 'ERROR' ) {
-         MKDEBUG && _d('Line is ERROR');
+         PTDEBUG && _d('Line is ERROR');
 
          # If there's already a statement in processing, then put aside the
          # current line, and peek ahead.
          if ( @arg_lines ) {
-            MKDEBUG && _d('There is @arg_lines, will peek ahead one line');
+            PTDEBUG && _d('There is @arg_lines, will peek ahead one line');
             my ( $temp_pos, $temp_line ) = $self->get_line();
             my ( $type, $msg );
             if (
@@ -470,27 +470,27 @@ sub parse_event {
             ) {
                # Looks like the whole thing is pertaining to the current event
                # in progress.  Add the error message to the event.
-               MKDEBUG && _d('Error/statement line pertain to current event');
+               PTDEBUG && _d('Error/statement line pertain to current event');
                push @properties, 'Error_msg', $line =~ m/ERROR:\s*(\S.*)\Z/s;
                if ( $type ne 'STATEMENT' ) {
-                  MKDEBUG && _d('Must save peeked line, it is a', $type);
+                  PTDEBUG && _d('Must save peeked line, it is a', $type);
                   $self->pending($temp_pos, $temp_line);
                }
             }
             elsif ( defined $temp_line && defined $type ) {
                # Looks like the current and next line are about a new event.
                # Put them into pending.
-               MKDEBUG && _d('Error/statement line are a new event');
+               PTDEBUG && _d('Error/statement line are a new event');
                $self->pending($new_pos, $line);
                $self->pending($temp_pos, $temp_line);
             }
             else {
-               MKDEBUG && _d("Unknown line", $line);
+               PTDEBUG && _d("Unknown line", $line);
             }
          }
       }
       else {
-         MKDEBUG && _d("Unknown line", $line);
+         PTDEBUG && _d("Unknown line", $line);
       }
    }
 
@@ -500,27 +500,27 @@ sub parse_event {
    # that signals the event was done.  In either case we return an event.  This
    # should be the only 'return' statement in this block of code.
    if ( $done || @arg_lines ) {
-      MKDEBUG && _d('Making event');
+      PTDEBUG && _d('Making event');
 
       # Finish building the event.
       push @properties, 'pos_in_log', $pos_in_log;
 
       # Statement/query lines will be in @arg_lines.
       if ( @arg_lines ) {
-         MKDEBUG && _d('Assembling @arg_lines: ', scalar @arg_lines);
+         PTDEBUG && _d('Assembling @arg_lines: ', scalar @arg_lines);
          push @properties, 'arg', join('', @arg_lines), 'cmd', 'Query';
       }
 
       if ( $first_line ) {
          # Handle some meta-data: a timestamp, with optional milliseconds.
          if ( my ($ts) = $first_line =~ m/([0-9-]{10} [0-9:.]{8,12})/ ) {
-            MKDEBUG && _d('Getting timestamp', $ts);
+            PTDEBUG && _d('Getting timestamp', $ts);
             push @properties, 'ts', $ts;
          }
 
          # Find meta-data embedded in the log line prefix, in name=value format.
          if ( my ($meta) = $first_line =~ m/(.*?)[A-Z]{3,}:  / ) {
-            MKDEBUG && _d('Found a meta-data chunk:', $meta);
+            PTDEBUG && _d('Found a meta-data chunk:', $meta);
             push @properties, $self->get_meta($meta);
          }
       }
@@ -528,7 +528,7 @@ sub parse_event {
       # Dump info about what we've found, but don't dump $event; want to see
       # full dump of all properties, and after it's been cast into a hash,
       # duplicated keys will be gone.
-      MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
       $event->{bytes} = length($event->{arg} || '');
       return $event;
@@ -550,11 +550,11 @@ sub get_meta {
             push @properties, $prop, $val;
          }
          else {
-            MKDEBUG && _d('Bad meta key', $set);
+            PTDEBUG && _d('Bad meta key', $set);
          }
       }
       else {
-         MKDEBUG && _d("Can't figure out meta from", $set);
+         PTDEBUG && _d("Can't figure out meta from", $set);
       }
    }
    return @properties;
@@ -568,18 +568,18 @@ sub get_line {
    my ( $self ) = @_;
    my ($pos, $line, $was_pending) = $self->pending;
    if ( ! defined $line ) {
-      MKDEBUG && _d('Got nothing from pending, trying the $fh');
+      PTDEBUG && _d('Got nothing from pending, trying the $fh');
       my ( $next_event, $tell) = @{$self}{qw(next_event tell)};
       eval {
          $pos  = $tell->();
          $line = $next_event->();
       };
-      if ( MKDEBUG && $EVAL_ERROR ) {
+      if ( PTDEBUG && $EVAL_ERROR ) {
          _d($EVAL_ERROR);
       }
    }
 
-   MKDEBUG && _d('Got pos/line:', $pos, $line);
+   PTDEBUG && _d('Got pos/line:', $pos, $line);
    return ($pos, $line);
 }
 
@@ -589,7 +589,7 @@ sub get_line {
 sub pending {
    my ( $self, $val, $pos_in_log ) = @_;
    my $was_pending;
-   MKDEBUG && _d('In sub pending, val:', $val);
+   PTDEBUG && _d('In sub pending, val:', $val);
    if ( $val ) {
       push @{$self->{pending}}, [$val, $pos_in_log];
    }
@@ -597,7 +597,7 @@ sub pending {
       ($val, $pos_in_log) = @{ shift @{$self->{pending}} };
       $was_pending = 1;
    }
-   MKDEBUG && _d('Return from pending:', $val, $pos_in_log);
+   PTDEBUG && _d('Return from pending:', $val, $pos_in_log);
    return ($val, $pos_in_log, $was_pending);
 }
 
@@ -613,7 +613,7 @@ sub generate_wrappers {
    # then they'll keep reading from old filehandles.  The sanity check is based
    # on the memory address of the closure!
    if ( ($self->{sanity} || '') ne "$args{next_event}" ){
-      MKDEBUG && _d("Clearing and recreating internal state");
+      PTDEBUG && _d("Clearing and recreating internal state");
       eval { require SysLogParser; }; # Required for tests to work.
       my $sl = new SysLogParser();
 
@@ -646,7 +646,7 @@ sub generate_wrappers {
 # 10.870 ms
 sub duration_to_secs {
    my ( $self, $str ) = @_;
-   MKDEBUG && _d('Duration:', $str);
+   PTDEBUG && _d('Duration:', $str);
    my ( $num, $suf ) = split(/\s+/, $str);
    my $factor = $suf eq 'ms'  ? 1000
               : $suf eq 'sec' ? 1

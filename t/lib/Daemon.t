@@ -80,7 +80,7 @@ ok(
    'PID file already exists'
 );
 
-$output = `MKDEBUG=1 $cmd 0 --daemonize --pid $pid_file 2>&1`;
+$output = `PTDEBUG=1 $cmd 0 --daemonize --pid $pid_file 2>&1`;
 like(
    $output,
    qr{The PID file $pid_file already exists},

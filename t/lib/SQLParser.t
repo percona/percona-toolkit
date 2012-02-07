@@ -2321,7 +2321,7 @@ my $schema_itr = new SchemaIterator(
    Schema       => $schema,
 );
 # Init schema.
-1 while ($schema_itr->next_schema_object());
+1 while ($schema_itr->next());
 
 # Notice how c3 and b aren't qualified.
 is_deeply(

@@ -31,7 +31,7 @@ package PerconaTest;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Test::More;
 use Time::HiRes qw(sleep);
@@ -163,6 +163,7 @@ sub output {
    close *output_fh;
    if ( $EVAL_ERROR ) {
       die $EVAL_ERROR if $die;
+      warn $EVAL_ERROR unless $args{stderr};
       return $EVAL_ERROR;
    }
 
@@ -224,11 +225,11 @@ sub wait_until {
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
-      return if $code->();
+      return 1 if $code->();
       sleep $t;
       $slept += $t;
    }
-   return;
+   return 0;
 }
 
 # Wait t seconds for code to return.
@@ -467,11 +468,16 @@ sub no_diff {
    die "I need a cmd argument" unless $cmd;
    die "I need an expected_output argument" unless $expected_output;
 
+   die "$expected_output does not exist" unless -f "$trunk/$expected_output";
    $expected_output = "$trunk/$expected_output";
-   die "$expected_output does not exist" unless -f $expected_output;
 
    my $tmp_file      = '/tmp/percona-toolkit-test-output.txt';
    my $tmp_file_orig = '/tmp/percona-toolkit-test-output-original.txt';
+
+   if ( my $sed_args = $args{sed_out} ) {
+      `cat $expected_output | sed $sed_args > /tmp/pt-test-outfile-trf`;
+      $expected_output = "/tmp/pt-test-outfile-trf";
+   }
 
    # Determine cmd type and run it.
    if ( ref $cmd eq 'CODE' ) {
@@ -491,6 +497,10 @@ sub no_diff {
    `cp $tmp_file $tmp_file_orig`;
    if ( my $trf = $args{trf} ) {
       `$trf $tmp_file_orig > $tmp_file`;
+   }
+   if ( my $post_pipe = $args{post_pipe} ) {
+      `cat $tmp_file | $post_pipe > $tmp_file-2`;
+       `mv $tmp_file-2 $tmp_file`;
    }
    if ( my $sed_args = $args{sed} ) {
       foreach my $sed_args ( @{$args{sed}} ) {
@@ -518,7 +528,7 @@ sub no_diff {
    }
 
    # Remove our tmp files.
-   `rm -f $tmp_file $tmp_file_orig`
+   `rm -f $tmp_file $tmp_file_orig /tmp/pt-test-outfile-trf >/dev/null 2>&1`
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
 
    return !$retval;
@@ -552,6 +562,59 @@ sub test_bash_tool {
    `$trunk/util/test-bash-tool $tool > $outfile`;
    print `cat $outfile`;
    return;
+}
+
+my %checksum_result_col = (
+   ts      => 0,
+   errors  => 1,
+   diffs   => 2,
+   rows    => 3,
+   chunks  => 4,
+   skipped => 5,
+   time    => 6,
+   table   => 7,
+);
+sub count_checksum_results {
+   my ($output, $column, $table) = @_;
+
+   my (@res) = map {
+      my $line = $_;
+      my (@cols) = $line =~ m/(\S+)/g;
+      \@cols;
+   }
+   grep {
+      my $line = $_;
+      if ( !$table ) {
+         $line;
+      }
+      else {
+         $line =~ m/$table$/m ? $line : '';
+      }
+   }
+   grep { m/^\d+\-\d+T\d\d:\d\d:\d\d\s+\d+/ } split /\n/, $output;
+   my $colno = $checksum_result_col{lc $column};
+   die "Invalid checksum result column: $column" unless defined $colno;
+   my $total = 0;
+   map { $total += $_->[$colno] } @res;
+   return $total;
+}
+
+sub normalize_checksum_results {
+   my ($output) = @_;
+   my $tmp_file = "/tmp/test-checksum-results-output";
+   open my $fh, ">", $tmp_file or die "Cannot open $tmp_file: $OS_ERROR";
+   printf $fh $output;
+   close $fh;
+   my $normal_output = `cat $tmp_file | awk '/^[0-9 ]/ {print \$2 " " \$3 " " \$4 " " \$5 " " \$6 " " \$8} /^[A-Z]/ {print \$0}'`;
+   `rm $tmp_file >/dev/null`;
+   return $normal_output;
+}
+
+sub get_master_binlog_pos {
+   my ($dbh) = @_;
+   my $sql = "SHOW MASTER STATUS";
+   my $ms  = $dbh->selectrow_hashref($sql);
+   return $ms->{position};
 }
 
 1;

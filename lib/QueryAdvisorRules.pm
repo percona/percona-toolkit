@@ -26,13 +26,13 @@ use base 'AdvisorRules';
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
    my $self = $class->SUPER::new(%args);
    @{$self->{rules}} = $self->get_rules();
-   MKDEBUG && _d(scalar @{$self->{rules}}, "rules");
+   PTDEBUG && _d(scalar @{$self->{rules}}, "rules");
    return $self;
 }
 
@@ -445,7 +445,7 @@ sub get_rules {
          # above, R.b=10 is this culprit.
          # http://code.google.com/p/maatkit/issues/detail?id=950
          my %outer_tbls = map { $_->{tbl} => 1 } get_outer_tables($tbls);
-         MKDEBUG && _d("Outer tables:", keys %outer_tbls);
+         PTDEBUG && _d("Outer tables:", keys %outer_tbls);
          return unless %outer_tbls;
 
          foreach my $pred ( @$where ) {
@@ -455,7 +455,7 @@ sub get_rules {
                # Only outer_tbl.col IS NULL is permissible.
                if ($pred->{operator} ne 'is' || $pred->{right_arg} !~ m/null/i)
                {
-                  MKDEBUG && _d("Predicate prevents OUTER JOIN:",
+                  PTDEBUG && _d("Predicate prevents OUTER JOIN:",
                      map { $pred->{$_} } qw(left_arg operator right_arg));
                   return 0;
                }
@@ -515,7 +515,7 @@ sub get_rules {
                   # Thus join conditions like tbl1.col<tbl2.col aren't handled.
                   push @join_cols, $pred->{left_arg}, $pred->{right_arg};
                }
-               MKDEBUG && _d("Join columns:", @join_cols);
+               PTDEBUG && _d("Join columns:", @join_cols);
                foreach my $join_col ( @join_cols ) {
                   my ($tbl, $col) = split /\./, $join_col;
                   if ( !$col ) {
@@ -526,7 +526,7 @@ sub get_rules {
                      );
                   }
                   if ( !$tbl ) {
-                     MKDEBUG && _d("Cannot determine the table for join column",
+                     PTDEBUG && _d("Cannot determine the table for join column",
                         $col);
                      push @unknown_join_cols, $col;
                   }
@@ -537,8 +537,8 @@ sub get_rules {
                }
             }
          }
-         MKDEBUG && _d("Outer table join columns:", keys %outer_tbl_join_cols);
-         MKDEBUG && _d("Unknown join columns:", @unknown_join_cols);
+         PTDEBUG && _d("Outer table join columns:", keys %outer_tbl_join_cols);
+         PTDEBUG && _d("Unknown join columns:", @unknown_join_cols);
 
          # Here's a problem query:
          #   select c from L left join R on L.a=R.b where L.a=5 and R.c is null
@@ -648,13 +648,13 @@ sub determine_table_for_column {
    foreach my $db ( keys %$tbl_structs ) {
       foreach my $tbl ( keys %{$tbl_structs->{$db}} ) {
          if ( $tbl_structs->{$db}->{$tbl}->{is_col}->{$col} ) {
-            MKDEBUG && _d($col, "column belongs to", $db, $tbl);
+            PTDEBUG && _d($col, "column belongs to", $db, $tbl);
             return $tbl;
          }
       }
    }
 
-   MKDEBUG && _d("Cannot determine table for column", $col);
+   PTDEBUG && _d("Cannot determine table for column", $col);
    return;
 }
 

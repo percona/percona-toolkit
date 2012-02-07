@@ -21,8 +21,8 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 
-diag(`$trunk/sandbox/start-sandbox master 12347 >/dev/null`);
-my $dbh2 = $sb->get_dbh_for('slave2');
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+my $dbh2 = $sb->get_dbh_for('master1');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -46,7 +46,7 @@ $dbh2->do('DROP DATABASE IF EXISTS d2');
 $dbh2->do('CREATE DATABASE d2');
 $dbh2->do('CREATE TABLE d2.test2 (a INT NOT NULL, b char(2) NOT NULL, PRIMARY KEY  (`a`,`b`) )');
 
-$output = `$trunk/bin/pt-table-sync --no-check-slave --execute h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test1  h=127.1,P=12347,D=d2,t=test2 2>&1`;
+$output = `$trunk/bin/pt-table-sync --no-check-slave --execute h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test1  h=127.1,P=12348,D=d2,t=test2 2>&1`;
 is(
    $output,
    '',
@@ -54,7 +54,7 @@ is(
 );
 
 $output     = `/tmp/12345/use -e 'SELECT * FROM test.test1'`;
-my $output2 = `/tmp/12347/use -e 'SELECT * FROM d2.test2'`;
+my $output2 = `/tmp/12348/use -e 'SELECT * FROM d2.test2'`;
 is(
    $output,
    $output2,
@@ -65,6 +65,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-diag(`/tmp/12347/stop >/dev/null`);
-diag(`rm -rf /tmp/12347 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 exit;

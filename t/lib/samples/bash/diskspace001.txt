@@ -1,0 +1,2 @@
+Filesystem   1024-blocks     Used Available Capacity  Mounted on
+/dev/disk0s2   118153176 94409664  23487512    81%    /

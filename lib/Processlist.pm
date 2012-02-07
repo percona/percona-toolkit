@@ -32,7 +32,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use constant {
    # 0-7 are the standard processlist columns.
    ID      => 0,  
@@ -165,7 +165,7 @@ sub parse_event {
    # between calls to us, in which case polling may be delayed by the
    # caller's slowness plus our interval sleep.
    if ( @{$self->{event_cache}} ) {
-      MKDEBUG && _d("Returning cached event");
+      PTDEBUG && _d("Returning cached event");
       return shift @{$self->{event_cache}};
    }
 
@@ -174,7 +174,7 @@ sub parse_event {
    # and is not really slow between calls.  By "really slow" I mean slower
    # than the interval time.
    if ( $self->{interval} && $self->{polls} ) {
-      MKDEBUG && _d("Sleeping between polls");
+      PTDEBUG && _d("Sleeping between polls");
       usleep($self->{interval});
    }
 
@@ -183,7 +183,7 @@ sub parse_event {
    # these values are given via %args (for testing).
    # $time is the time after the poll so that $time-TIME should equal
    # the query's real start time, but see $query_start below...
-   MKDEBUG && _d("Polling PROCESSLIST");
+   PTDEBUG && _d("Polling PROCESSLIST");
    my ($time, $etime) = @args{qw(time etime)};
    my $start          = $etime ? 0 : time;  # don't need start if etime given
    my $rows           = $code->();
@@ -194,7 +194,7 @@ sub parse_event {
    $time  = time           unless $time;
    $etime = $time - $start unless $etime;
    $self->{polls}++;
-   MKDEBUG && _d('Rows:', ($rows ? scalar @$rows : 0), 'in', $etime, 'seconds');
+   PTDEBUG && _d('Rows:', ($rows ? scalar @$rows : 0), 'in', $etime, 'seconds');
 
    my $active_cxn = $self->{active_cxn};
    my $curr_cxn   = {};
@@ -221,7 +221,7 @@ sub parse_event {
       my $query_start = $time - ($curr->[TIME] || 0);
 
       if ( $active_cxn->{$curr->[ID]} ) {
-         MKDEBUG && _d('Checking existing cxn', $curr->[ID]);
+         PTDEBUG && _d('Checking existing cxn', $curr->[ID]);
          my $prev      = $active_cxn->{$curr->[ID]}; # previous state of cxn
          my $new_query = 0;
          my $fudge     = ($curr->[TIME] || 0) =~ m/\D/ ? 0.001 : 1; # micro-t?
@@ -233,14 +233,14 @@ sub parse_event {
                # This is a new/different query because what's currently
                # executing is different from what the cxn was previously
                # executing.
-               MKDEBUG && _d('Info is different; new query');
+               PTDEBUG && _d('Info is different; new query');
                $new_query = 1;
             }
             elsif ( defined $curr->[TIME] && $curr->[TIME] < $prev->[TIME] ) {
                # This is a new/different query because the current exec
                # time is less than the previous exec time, so the previous
                # query ended and a new one began between polls.
-               MKDEBUG && _d('Time is less than previous; new query');
+               PTDEBUG && _d('Time is less than previous; new query');
                $new_query = 1;
             }
             elsif ( $curr->[INFO] && defined $curr->[TIME]
@@ -249,7 +249,7 @@ sub parse_event {
                # calculated start time is greater than the fudge factor, then
                # the query has restarted.  I.e. the new start time is after
                # the previous start time.
-               MKDEBUG && _d('Query restarted; new query',
+               PTDEBUG && _d('Query restarted; new query',
                   $query_start, $etime, $prev->[START], $fudge);
                $new_query = 1;
             }
@@ -268,11 +268,11 @@ sub parse_event {
          # or new.  In either case, we save it to recheck it next poll.
          if ( $curr->[INFO] ) {
             if ( $prev->[INFO] && !$new_query ) {
-               MKDEBUG && _d("Query on cxn", $curr->[ID], "hasn't changed");
+               PTDEBUG && _d("Query on cxn", $curr->[ID], "hasn't changed");
                $self->_update_profile($prev, $curr, $time);
             }
             else {
-               MKDEBUG && _d('Saving new query, state', $curr->[STATE]);
+               PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
                   @$curr,                   # proc info
                   int($query_start),        # START
@@ -284,10 +284,10 @@ sub parse_event {
          }
       } 
       else {
-         MKDEBUG && _d('New cxn', $curr->[ID]);
+         PTDEBUG && _d('New cxn', $curr->[ID]);
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             # But only save the new cxn if it's executing.
-            MKDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
+            PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
                @$curr,                   # proc info
                int($query_start),        # START
@@ -307,7 +307,7 @@ sub parse_event {
    PREVIOUSLY_ACTIVE_CXN:
    foreach my $prev ( values %$active_cxn ) {
       if ( !$curr_cxn->{$prev->[ID]} ) {
-         MKDEBUG && _d('cxn', $prev->[ID], 'ended');
+         PTDEBUG && _d('cxn', $prev->[ID], 'ended');
          push @{$self->{event_cache}},
             $self->make_event($prev, $time);
          delete $active_cxn->{$prev->[ID]};
@@ -315,7 +315,7 @@ sub parse_event {
       elsif (   ($curr_cxn->{$prev->[ID]}->[COMMAND] || "") eq 'Sleep' 
              || !$curr_cxn->{$prev->[ID]}->[STATE]
              || !$curr_cxn->{$prev->[ID]}->[INFO] ) {
-         MKDEBUG && _d('cxn', $prev->[ID], 'became idle');
+         PTDEBUG && _d('cxn', $prev->[ID], 'became idle');
          # We do not make an event in this case because it will have
          # already been made above because of the INFO change.  But
          # until we begin tracking cxn in their entirety, we do not
@@ -334,7 +334,7 @@ sub parse_event {
    # Return the first event in our cache, if any.  It may be an event
    # we just made, or an event from a previous call.
    my $event = shift @{$self->{event_cache}};
-   MKDEBUG && _d(scalar @{$self->{event_cache}}, "events in cache");
+   PTDEBUG && _d(scalar @{$self->{event_cache}}, "events in cache");
    return $event;
 }
 
@@ -375,13 +375,13 @@ sub make_event {
       Query_time => $Query_time,
       Lock_time  => $row->[PROFILE]->{Locked} || 0,
    };
-   MKDEBUG && _d('Properties of event:', Dumper($event));
+   PTDEBUG && _d('Properties of event:', Dumper($event));
    return $event;
 }
 
 sub _get_active_cxn {
    my ( $self ) = @_;
-   MKDEBUG && _d("Active cxn:", Dumper($self->{active_cxn}));
+   PTDEBUG && _d("Active cxn:", Dumper($self->{active_cxn}));
    return $self->{active_cxn};
 }
 
@@ -412,7 +412,7 @@ sub _update_profile {
    # Update only $prev because the caller should only be saving that arrayref.
 
    if ( ($prev->[STATE] || "") eq ($curr->[STATE] || "") ) {
-      MKDEBUG && _d("Query is still in", $curr->[STATE], "state");
+      PTDEBUG && _d("Query is still in", $curr->[STATE], "state");
       $prev->[PROFILE]->{$prev->[STATE] || ""} += $time_elapsed;
    }
    else {
@@ -420,7 +420,7 @@ sub _update_profile {
       # was it in its previous state, and how long has it been in
       # its current state?  We can't tell, so this is a compromise
       # re http://code.google.com/p/maatkit/issues/detail?id=1246
-      MKDEBUG && _d("Query changed from state", $prev->[STATE],
+      PTDEBUG && _d("Query changed from state", $prev->[STATE],
          "to", $curr->[STATE]);
       my $half_time = ($time_elapsed || 0) / 2;
 
@@ -452,39 +452,39 @@ sub _update_profile {
 #
 sub find {
    my ( $self, $proclist, %find_spec ) = @_;
-   MKDEBUG && _d('find specs:', Dumper(\%find_spec));
+   PTDEBUG && _d('find specs:', Dumper(\%find_spec));
    my $ms  = $self->{MasterSlave};
 
    my @matches;
    QUERY:
    foreach my $query ( @$proclist ) {
-      MKDEBUG && _d('Checking query', Dumper($query));
+      PTDEBUG && _d('Checking query', Dumper($query));
       my $matched = 0;
 
       # Don't allow matching replication threads.
       if (    !$find_spec{replication_threads}
            && $ms->is_replication_thread($query) ) {
-         MKDEBUG && _d('Skipping replication thread');
+         PTDEBUG && _d('Skipping replication thread');
          next QUERY;
       }
 
       # Match special busy_time.
       if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
          if ( $query->{Time} < $find_spec{busy_time} ) {
-            MKDEBUG && _d("Query isn't running long enough");
+            PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
          }
-         MKDEBUG && _d('Exceeds busy time');
+         PTDEBUG && _d('Exceeds busy time');
          $matched++;
       }
 
       # Match special idle_time.
       if ( $find_spec{idle_time} && ($query->{Command} || '') eq 'Sleep' ) {
          if ( $query->{Time} < $find_spec{idle_time} ) {
-            MKDEBUG && _d("Query isn't idle long enough");
+            PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;
          }
-         MKDEBUG && _d('Exceeds idle time');
+         PTDEBUG && _d('Exceeds idle time');
          $matched++;
       }
  
@@ -496,25 +496,25 @@ sub find {
          # and we can skip to the next proc (query).
          if ( defined $find_spec{ignore}->{$property}
               && $self->$filter($query, $find_spec{ignore}->{$property}) ) {
-            MKDEBUG && _d('Query matches ignore', $property, 'spec');
+            PTDEBUG && _d('Query matches ignore', $property, 'spec');
             next QUERY;
          }
          # If the proc's property value isn't ignored, then check if it matches.
          if ( defined $find_spec{match}->{$property} ) {
             if ( !$self->$filter($query, $find_spec{match}->{$property}) ) {
-               MKDEBUG && _d('Query does not match', $property, 'spec');
+               PTDEBUG && _d('Query does not match', $property, 'spec');
                next QUERY;
             }
-            MKDEBUG && _d('Query matches', $property, 'spec');
+            PTDEBUG && _d('Query matches', $property, 'spec');
             $matched++;
          }
       }
       if ( $matched || $find_spec{all} ) {
-         MKDEBUG && _d("Query matched one or more specs, adding");
+         PTDEBUG && _d("Query matched one or more specs, adding");
          push @matches, $query;
          next QUERY;
       }
-      MKDEBUG && _d('Query does not match any specs, ignoring');
+      PTDEBUG && _d('Query does not match any specs, ignoring');
    } # QUERY
 
    return @matches;

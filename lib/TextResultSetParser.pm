@@ -44,7 +44,7 @@ package TextResultSetParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -152,19 +152,19 @@ sub parse {
 
    # Detect text type: tabular, tab-separated, or vertical
    if ( $text =~ m/^\+---/m ) { # standard "tabular" output
-      MKDEBUG && _d('Result set text is standard tabular');
+      PTDEBUG && _d('Result set text is standard tabular');
       my $line_pattern  = qr/^(\| .*)[\r\n]+/m;
       $result_set
          = $self->parse_horizontal_row($text, $line_pattern, \&_parse_tabular);
    }
    elsif ( $text =~ m/^\w+\t\w+/m ) { # tab-separated
-      MKDEBUG && _d('Result set text is tab-separated');
+      PTDEBUG && _d('Result set text is tab-separated');
       my $line_pattern  = qr/^(.*?\t.*)[\r\n]+/m;
       $result_set
          = $self->parse_horizontal_row($text, $line_pattern, \&_parse_tab_sep);
    }
    elsif ( $text =~ m/\*\*\* \d+\. row/ ) { # "vertical" output
-      MKDEBUG && _d('Result set text is vertical (\G)');
+      PTDEBUG && _d('Result set text is vertical (\G)');
       foreach my $row ( split_vertical_rows($text) ) {
          push @$result_set, $self->parse_vertical_row($row);
       }

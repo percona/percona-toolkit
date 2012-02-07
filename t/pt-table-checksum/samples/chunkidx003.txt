@@ -1,0 +1,19 @@
+--
+-- issue_519.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` >= ?)) AND ((`y` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` < ?)) ORDER BY `y` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` > ?)) ORDER BY `y` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `y` FROM `issue_519`.`t` FORCE INDEX(`y`) WHERE ((`y` >= ?)) ORDER BY `y` LIMIT ?, 2 /*next chunk boundary*/
+
+1 2000 2002
+2 2003 2005
+3 2006 2008
+4 2009 2010
+5  2000
+6 2010 
+

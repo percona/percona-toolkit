@@ -1,6 +1,7 @@
 #!/bin/bash
 
-TEST=5
+TESTS=5
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="lspci-001.txt"
 cat <<EOF > $TMPDIR/expected

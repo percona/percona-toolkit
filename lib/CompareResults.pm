@@ -25,7 +25,7 @@ package CompareResults;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::HiRes qw(time);
 use Data::Dumper;
@@ -42,7 +42,7 @@ $Data::Dumper::Quotekeys = 0;
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(method base-dir plugins get_id
-                          QueryParser MySQLDump TableParser TableSyncer Quoter);
+                          QueryParser TableParser TableSyncer Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -84,11 +84,11 @@ sub before_execute {
       $tmp_tbl = $self->{Quoter}->quote($db, $tmp_tbl);
       eval {
          $sql = "DROP TABLE IF EXISTS $tmp_tbl";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $dbh->do($sql);
 
          $sql = "SET storage_engine=MyISAM";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $dbh->do($sql);
       };
       die "Failed to drop temporary table $tmp_tbl: $EVAL_ERROR"
@@ -101,7 +101,7 @@ sub before_execute {
       # put in tmp table.
       $event->{wrapped_query}
          = "CREATE TEMPORARY TABLE $tmp_tbl AS $event->{arg}";
-      MKDEBUG && _d('Wrapped query:', $event->{wrapped_query});
+      PTDEBUG && _d('Wrapped query:', $event->{wrapped_query});
    }
 
    return $event;
@@ -131,7 +131,7 @@ sub execute {
    # already exist.  This module requires special execution so we always
    # execute.
 
-   MKDEBUG && _d('Executing query');
+   PTDEBUG && _d('Executing query');
    $event->{Query_time} = 0;
    if ( $self->{method} eq 'rows' ) {
       my $query = $event->{arg};
@@ -287,31 +287,31 @@ sub _checksum_results {
       my $tmp_tbl = $event->{tmp_tbl};
       eval {
          $sql = "SELECT COUNT(*) FROM $tmp_tbl";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          ($n_rows) = @{ $dbh->selectcol_arrayref($sql) };
 
          $sql = "CHECKSUM TABLE $tmp_tbl";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $tbl_checksum = $dbh->selectrow_arrayref($sql)->[1];
       };
       die "Failed to checksum table: $EVAL_ERROR"
          if $EVAL_ERROR;
    
       $sql = "DROP TABLE IF EXISTS $tmp_tbl";
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
      eval {
          $dbh->do($sql);
       };
       # This isn't critical; we don't need to die.
-      MKDEBUG && $EVAL_ERROR && _d('Error:', $EVAL_ERROR);
+      PTDEBUG && $EVAL_ERROR && _d('Error:', $EVAL_ERROR);
    }
    else {
-      MKDEBUG && _d("Event doesn't have wrapped query or tmp tbl");
+      PTDEBUG && _d("Event doesn't have wrapped query or tmp tbl");
    }
 
    $event->{row_count} = $n_rows;
    $event->{checksum}  = $tbl_checksum;
-   MKDEBUG && _d('row count:', $n_rows, 'checksum:', $tbl_checksum);
+   PTDEBUG && _d('row count:', $n_rows, 'checksum:', $tbl_checksum);
 
    return $event;
 }
@@ -337,7 +337,7 @@ sub _compare_rows {
 
    if ( !$event0->{results_sth} ) {
       # This will happen if execute() or something fails.
-      MKDEBUG && _d("Event 0 doesn't have a results sth");
+      PTDEBUG && _d("Event 0 doesn't have a results sth");
       return (
          different_row_counts    => $different_row_counts,
          different_column_values => $different_column_values,
@@ -348,7 +348,7 @@ sub _compare_rows {
 
    my $res_struct = MockSyncStream::get_result_set_struct($dbh,
       $event0->{results_sth});
-   MKDEBUG && _d('Result set struct:', Dumper($res_struct));
+   PTDEBUG && _d('Result set struct:', Dumper($res_struct));
 
    # Use a mock sth so we don't have to re-execute event0 sth to compare
    # it to the 3rd and subsequent events.
@@ -408,7 +408,7 @@ sub _compare_rows {
          not_in_right => $not_in_right,
       );
 
-      MKDEBUG && _d('Comparing result sets with MockSyncStream');
+      PTDEBUG && _d('Comparing result sets with MockSyncStream');
       $rd->compare_sets(
          left_sth   => $left,
          right_sth  => $right,
@@ -421,7 +421,7 @@ sub _compare_rows {
       # still be correct in this case because we kept track of it in $same_row.
       $event->{row_count} += $n_rows || 0;
 
-      MKDEBUG && _d('Left has', $event0->{row_count}, 'rows, right has',
+      PTDEBUG && _d('Left has', $event0->{row_count}, 'rows, right has',
          $event->{row_count});
 
       # Save differences.
@@ -440,16 +440,16 @@ sub _compare_rows {
 
       # The result sets differ, so now we must begin the difficult
       # work: finding and determining the nature of those differences.
-      MKDEBUG && _d('Result sets are different');
+      PTDEBUG && _d('Result sets are different');
 
 
       # Make sure both outfiles are created, else diff_rows() will die.
       if ( !$left_outfile ) {
-         MKDEBUG && _d('Right has extra rows not in left');
+         PTDEBUG && _d('Right has extra rows not in left');
          (undef, $left_outfile) = $self->open_outfile(side => 'left');
       }
       if ( !$right_outfile ) {
-         MKDEBUG && _d('Left has extra rows not in right');
+         PTDEBUG && _d('Left has extra rows not in right');
          (undef, $right_outfile) = $self->open_outfile(side => 'right');
       }
 
@@ -533,7 +533,7 @@ sub diff_rows {
    $right_dbh->do("LOAD DATA LOCAL INFILE '$right_outfile' "
       . "INTO TABLE $right_tbl");
 
-   MKDEBUG && _d('Loaded', $left_outfile, 'into table', $left_tbl, 'and',
+   PTDEBUG && _d('Loaded', $left_outfile, 'into table', $left_tbl, 'and',
       $right_outfile, 'into table', $right_tbl);
 
    # Now we need to get all indexes from all tables used by the query
@@ -570,22 +570,22 @@ sub diff_rows {
       my ( %args ) = @_;
       my ($lr, $rr) = @args{qw(lr rr)};
       if ( $l_r[LEFT] && $l_r[RIGHT] ) {
-         MKDEBUG && _d('Saving different row');
+         PTDEBUG && _d('Saving different row');
          push @different_rows, $last_diff_col[$last_diff];
          $n_diff++;
       }
       elsif ( $l_r[LEFT] ) {
-         MKDEBUG && _d('Saving not in right row');
+         PTDEBUG && _d('Saving not in right row');
          # push @missing_rows, [$l_r[LEFT], undef];
          $n_diff++;
       }
       elsif ( $l_r[RIGHT] ) {
-         MKDEBUG && _d('Saving not in left row');
+         PTDEBUG && _d('Saving not in left row');
          # push @missing_rows, [undef, $l_r[RIGHT]];
          $n_diff++;
       }
       else {
-         MKDEBUG && _d('No missing or different rows in queue');
+         PTDEBUG && _d('No missing or different rows in queue');
       }
       @l_r           = (undef, undef);
       @last_diff_col = ();
@@ -611,9 +611,9 @@ sub diff_rows {
    my $done = sub {
       my ( %args ) = @_;
       my ($left, $right) = @args{qw(left_sth right_sth)};
-      MKDEBUG && _d('Found', $n_diff, 'of', $max_diff, 'max differences');
+      PTDEBUG && _d('Found', $n_diff, 'of', $max_diff, 'max differences');
       if ( $n_diff >= $max_diff ) {
-         MKDEBUG && _d('Done comparing rows, got --max-differences', $max_diff);
+         PTDEBUG && _d('Done comparing rows, got --max-differences', $max_diff);
          $left->finish();
          $right->finish();
          return 1;
@@ -628,7 +628,7 @@ sub diff_rows {
             unless $tbl->{type_for}->{$col} =~ m/(?:float|double|decimal)/;
          my $l_rounded = sprintf "%.${n}f", $l;
          my $r_rounded = sprintf "%.${n}f", $r;
-         MKDEBUG && _d('Rounded', $l, 'to', $l_rounded,
+         PTDEBUG && _d('Rounded', $l, 'to', $l_rounded,
             'and', $r, 'to', $r_rounded);
          return $l_rounded, $r_rounded;
       };
@@ -708,7 +708,7 @@ sub write_to_outfile {
    $outfile->write($fh, $remaining_rows);
 
    my $n_rows = 1 + @$remaining_rows;
-   MKDEBUG && _d('Wrote', $n_rows, 'rows');
+   PTDEBUG && _d('Wrote', $n_rows, 'rows');
 
    close $fh or warn "Cannot close $file: $OS_ERROR";
    return $file, $n_rows;
@@ -718,7 +718,7 @@ sub open_outfile {
    my ( $self, %args ) = @_;
    my $outfile = $self->{'base-dir'} . "/$args{side}-outfile.txt";
    open my $fh, '>', $outfile or die "Cannot open $outfile: $OS_ERROR";
-   MKDEBUG && _d('Opened outfile', $outfile);
+   PTDEBUG && _d('Opened outfile', $outfile);
    return $fh, $outfile;
 }
 
@@ -741,7 +741,7 @@ sub make_table_ddl {
            . ')';
    # The last column will be like "`i` integer,)" which is invalid.
    $sql =~ s/,\)$/\n)/;
-   MKDEBUG && _d('Table ddl:', $sql);
+   PTDEBUG && _d('Table ddl:', $sql);
    return $sql;
 }
 
@@ -767,7 +767,6 @@ sub add_indexes {
    my $qp = $self->{QueryParser};
    my $tp = $self->{TableParser};
    my $q  = $self->{Quoter};
-   my $du = $self->{MySQLDump};
 
    my @src_tbls = $qp->get_tables($query);
    my @keys;
@@ -777,11 +776,14 @@ sub add_indexes {
          my $tbl_struct;
          eval {
             $tbl_struct = $tp->parse(
-               $du->get_create_table($dsts->[0]->{dbh}, $q, $db, $tbl)
-            );
+               $tp->get_create_table(
+                  dbh => $dsts->[0]->{dbh},
+                  db  => $db,
+                  tbl => $tbl,
+               ));
          };
          if ( $EVAL_ERROR ) {
-            MKDEBUG && _d('Error parsing', $db, '.', $tbl, ':', $EVAL_ERROR);
+            PTDEBUG && _d('Error parsing', $db, '.', $tbl, ':', $EVAL_ERROR);
             next;
          }
          push @keys, map {
@@ -791,23 +793,23 @@ sub add_indexes {
          } grep { $_->{type} eq 'BTREE' } values %{$tbl_struct->{keys}};
       }
       else {
-         MKDEBUG && _d('Cannot get indexes from', $db_tbl, 'because its '
+         PTDEBUG && _d('Cannot get indexes from', $db_tbl, 'because its '
             . 'database is unknown');
       }
    }
-   MKDEBUG && _d('Source keys:', Dumper(\@keys));
+   PTDEBUG && _d('Source keys:', Dumper(\@keys));
    return unless @keys;
 
    for my $dst ( @$dsts ) {
       foreach my $key ( @keys ) {
          my $def = $key->[0];
          my $sql = "ALTER TABLE $dst->{tbl} ADD $key->[0]";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          eval {
             $dst->{dbh}->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            MKDEBUG && _d($EVAL_ERROR);
+            PTDEBUG && _d($EVAL_ERROR);
          }
          else {
             # TODO: $args{res_struct}->{keys}->{$key->[1]->{name}} = $key->[1];
@@ -974,14 +976,14 @@ sub _use_db {
    my ( $self, $dbh, $new_db ) = @_;
    return unless $new_db;
    my $sql = 'SELECT DATABASE()';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $curr = $dbh->selectrow_array($sql);
    if ( $curr && $new_db && $curr eq $new_db ) {
-      MKDEBUG && _d('Current and new DB are the same');
+      PTDEBUG && _d('Current and new DB are the same');
       return $curr;
    }
    $sql = "USE `$new_db`";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    $dbh->do($sql);
    return $curr;
 }

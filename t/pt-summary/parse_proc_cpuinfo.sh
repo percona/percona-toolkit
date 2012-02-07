@@ -1,5 +1,8 @@
 #!/bin/bash
 
+TESTS=1
+TMPDIR=$TEST_TMPDIR
+
 cat <<EOF > $TMPDIR/expected
   Processors | physical = 1, cores = 2, virtual = 2, hyperthreading = no
       Speeds | 2x1300.000

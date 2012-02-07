@@ -30,7 +30,7 @@ package Runtime;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -81,12 +81,12 @@ sub time_left {
    my ( $self, %args ) = @_;
 
    if ( $self->{stop} ) {
-      MKDEBUG && _d("No time left because stop was called");
+      PTDEBUG && _d("No time left because stop was called");
       return 0;
    }
 
    my $now = $self->{now}->(%args);
-   MKDEBUG && _d("Current time:", $now);
+   PTDEBUG && _d("Current time:", $now);
 
    # Don't !$var check stuff because since time may not be from a clock,
    # a time of 0 might be used and be valid.
@@ -107,13 +107,13 @@ sub time_left {
    # Set the end time once.
    if ( !$self->{end_time} ) {
       $self->{end_time} = $now + $runtime;
-      MKDEBUG && _d("End time:", $self->{end_time});
+      PTDEBUG && _d("End time:", $self->{end_time});
    }
 
    # Calculate and return the amount of time left in seconds.
    # This may be negative.  Use have_time() for a bool return.
    $self->{time_left} = $self->{end_time} - $now;
-   MKDEBUG && _d("Time left:", $self->{time_left});
+   PTDEBUG && _d("Time left:", $self->{time_left});
    return $self->{time_left};
 }
 
@@ -152,10 +152,10 @@ sub time_elapsed {
    return 0 unless $start_time;
 
    my $now = $self->{now}->(%args);
-   MKDEBUG && _d("Current time:", $now);
+   PTDEBUG && _d("Current time:", $now);
 
    my $time_elapsed = $now - $start_time;
-   MKDEBUG && _d("Time elapsed:", $time_elapsed);
+   PTDEBUG && _d("Time elapsed:", $time_elapsed);
    if ( $time_elapsed < 0 ) {
       warn "Current time $now is earlier than start time $start_time";
    }
@@ -173,7 +173,7 @@ sub reset {
    $self->{end_time}   = undef;
    $self->{time_left}  = undef;
    $self->{stop}       = 0;
-   MKDEBUG && _d("Reset runtime");
+   PTDEBUG && _d("Reset runtime");
    return;
 }
 

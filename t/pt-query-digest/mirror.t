@@ -33,6 +33,9 @@ else {
 
 my $output;
 my $cmd;
+my $pid_file = "/tmp/pt-query-digest-mirror-test.pid";
+
+diag(`rm $pid_file 2>/dev/null`);
 
 my $pid_file = '/tmp/pt-query-digest.test.pid';
 `rm -rf $pid_file >/dev/null`;
@@ -47,19 +50,23 @@ $cmd  = "$trunk/bin/pt-query-digest "
          . "--execute h=127.1,P=12346,u=msandbox,p=msandbox --mirror 1 "
          . "--pid $pid_file";
 
-$ENV{MKDEBUG}=1;
+$ENV{PTDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
+
 $ENV{MKDEBUG}=0;
 sleep 3;
+
 $dbh1->do('select sleep(1)');
 sleep 1;
 $dbh1->do('set global read_only=1');
 $dbh2->do('set global read_only=0');
 $dbh1->do('select sleep(1)');
+
 sleep 1;
 chomp(my $pid = `cat $pid_file`);
 kill 15, $pid;
 sleep 0.25;
+
 # Verify that it's dead...
 $output = `ps x | grep '^[ ]*$pid'`;
 is(
@@ -67,6 +74,10 @@ is(
    '',
    'It is stopped now'
 );
+=======
+$output = `ps -p $output`;
+unlike($output, qr/pt-query-digest/, 'It is stopped now'); 
+>>>>>>> MERGE-SOURCE
 
 $output = `grep read_only /tmp/read_only.txt`;
 # Sample output:
@@ -93,6 +104,7 @@ diag(`rm -rf /tmp/read_only.txt`);
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`rm $pid_file 2>/dev/null`);
 $dbh1->do('set global read_only=0');
 $dbh2->do('set global read_only=1');
 $sb->wipe_clean($dbh1);

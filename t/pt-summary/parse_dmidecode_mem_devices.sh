@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=5
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="dmidecode-001.txt"
 cat <<EOF > $TMPDIR/expected

@@ -25,7 +25,7 @@ package TableChecksum;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 
@@ -87,13 +87,13 @@ sub get_crc_type {
       $sth->execute();
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
-      MKDEBUG && _d($sql, $type, $length);
+      PTDEBUG && _d($sql, $type, $length);
       if ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
    $sth->finish;
-   MKDEBUG && _d('crc_type:', $type, 'length:', $length);
+   PTDEBUG && _d('crc_type:', $type, 'length:', $length);
    return ($type, $length);
 }
 
@@ -118,31 +118,31 @@ sub best_algorithm {
       || $args{replicate}                 # CHECKSUM can't do INSERT.. SELECT
       || !$vp->version_ge($dbh, '4.1.1')) # CHECKSUM doesn't exist
    {
-      MKDEBUG && _d('Cannot use CHECKSUM algorithm');
+      PTDEBUG && _d('Cannot use CHECKSUM algorithm');
       @choices = grep { $_ ne 'CHECKSUM' } @choices;
    }
 
    # BIT_XOR isn't available till 4.1.1 either
    if ( !$vp->version_ge($dbh, '4.1.1') ) {
-      MKDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
+      PTDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
       @choices = grep { $_ ne 'BIT_XOR' } @choices;
    }
 
    # Choose the best (fastest) among the remaining choices.
    if ( $alg && grep { $_ eq $alg } @choices ) {
       # Honor explicit choices.
-      MKDEBUG && _d('User requested', $alg, 'algorithm');
+      PTDEBUG && _d('User requested', $alg, 'algorithm');
       return $alg;
    }
 
    # If the user wants a count, prefer something other than CHECKSUM, because it
    # requires an extra query for the count.
    if ( $args{count} && grep { $_ ne 'CHECKSUM' } @choices ) {
-      MKDEBUG && _d('Not using CHECKSUM algorithm because COUNT desired');
+      PTDEBUG && _d('Not using CHECKSUM algorithm because COUNT desired');
       @choices = grep { $_ ne 'CHECKSUM' } @choices;
    }
 
-   MKDEBUG && _d('Algorithms, in order:', @choices);
+   PTDEBUG && _d('Algorithms, in order:', @choices);
    return $choices[0];
 }
 
@@ -167,18 +167,18 @@ sub choose_hash_func {
       eval {
          $func = shift(@funcs);
          my $sql = "SELECT $func('test-string')";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
          $result = $func;
       };
       if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
          $error .= qq{$func cannot be used because "$1"\n};
-         MKDEBUG && _d($func, 'cannot be used because', $1);
+         PTDEBUG && _d($func, 'cannot be used because', $1);
       }
    } while ( @funcs && !$result );
 
    die $error unless $result;
-   MKDEBUG && _d('Chosen hash func:', $result);
+   PTDEBUG && _d('Chosen hash func:', $result);
    return $result;
 }
 
@@ -203,7 +203,7 @@ sub optimize_xor {
    my $crc_wid   = length($unsliced) < 16 ? 16 : length($unsliced);
 
    do { # Try different positions till sliced result equals non-sliced.
-      MKDEBUG && _d('Trying slice', $opt_slice);
+      PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do('SET @crc := "", @cnt := 0');
       my $slices = $self->make_xor_slices(
          query     => "\@crc := $func('a')",
@@ -214,18 +214,18 @@ sub optimize_xor {
       my $sql = "SELECT CONCAT($slices) AS TEST FROM (SELECT NULL) AS x";
       $sliced = ($dbh->selectrow_array($sql))[0];
       if ( $sliced ne $unsliced ) {
-         MKDEBUG && _d('Slice', $opt_slice, 'does not work');
+         PTDEBUG && _d('Slice', $opt_slice, 'does not work');
          $start += 16;
          ++$opt_slice;
       }
    } while ( $start < $crc_wid && $sliced ne $unsliced );
 
    if ( $sliced eq $unsliced ) {
-      MKDEBUG && _d('Slice', $opt_slice, 'works');
+      PTDEBUG && _d('Slice', $opt_slice, 'works');
       return $opt_slice;
    }
    else {
-      MKDEBUG && _d('No slice works');
+      PTDEBUG && _d('No slice works');
       return undef;
    }
 }
@@ -470,20 +470,18 @@ sub make_checksum_query {
 sub find_replication_differences {
    my ( $self, $dbh, $table ) = @_;
 
-   (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
-         COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
-         COALESCE(
-            this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
-            0
-         ) AS crc_diff,
-         this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
-      WHERE master_cnt <> this_cnt OR master_crc <> this_crc
-      OR ISNULL(master_crc) <> ISNULL(this_crc)
-   EOF
+   my $sql
+      = "SELECT db, tbl, CONCAT(db, '.', tbl) AS `table`, "
+      . "chunk, chunk_index, lower_boundary, upper_boundary, "
+      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE("
+      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      . "FROM $table "
+      . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
+      . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
 
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
    return @$diffs;
 }

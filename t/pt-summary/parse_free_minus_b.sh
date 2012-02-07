@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=1
+TMPDIR=$TEST_TMPDIR
 
 cat <<EOF > $TMPDIR/expected
        Total | 3.89G
