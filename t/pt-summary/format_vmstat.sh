@@ -1,5 +1,8 @@
 #!/bin/bash
 
+TESTS=1
+TMPDIR=$TEST_TMPDIR
+
 cat <<EOF > $TMPDIR/in
 procs -----------memory---------- ---swap-- -----io---- --system-- -----cpu------
  r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st

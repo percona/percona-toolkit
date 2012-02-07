@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TESTS=4
+TMPDIR=$TEST_TMPDIR
 
 TEST_NAME="dmesg-001.txt"
 cat <<EOF > $TMPDIR/expected

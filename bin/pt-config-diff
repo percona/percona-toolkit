@@ -6,7 +6,7 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # ###########################################################################
 # OptionParser package
@@ -22,7 +22,7 @@ package OptionParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
@@ -106,7 +106,7 @@ sub get_specs {
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    if ( $contents =~ m/^=head1 DSN OPTIONS/m ) {
-      MKDEBUG && _d('Parsing DSN OPTIONS');
+      PTDEBUG && _d('Parsing DSN OPTIONS');
       my $dsn_attribs = {
          dsn  => 1,
          copy => 1,
@@ -148,9 +148,9 @@ sub get_specs {
       $self->{DSNParser} = DSNParser->new(opts => \@dsn_opts);
    }
 
-   if ( $contents =~ m/^(Percona Toolkit v.+)$/m ) {
+   if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
       $self->{version} = $1;
-      MKDEBUG && _d($self->{version});
+      PTDEBUG && _d($self->{version});
    }
 
    return;
@@ -187,7 +187,7 @@ sub _pod_to_specs {
       chomp $para;
       $para =~ s/\s+/ /g;
       $para =~ s/$POD_link_re/$1/go;
-      MKDEBUG && _d('Option rule:', $para);
+      PTDEBUG && _d('Option rule:', $para);
       push @rules, $para;
    }
 
@@ -196,7 +196,7 @@ sub _pod_to_specs {
    do {
       if ( my ($option) = $para =~ m/^=item $self->{item}/ ) {
          chomp $para;
-         MKDEBUG && _d($para);
+         PTDEBUG && _d($para);
          my %attribs;
 
          $para = <$fh>; # read next paragraph, possibly attributes
@@ -215,7 +215,7 @@ sub _pod_to_specs {
             $para = <$fh>; # read next paragraph, probably short help desc
          }
          else {
-            MKDEBUG && _d('Option has no attributes');
+            PTDEBUG && _d('Option has no attributes');
          }
 
          $para =~ s/\s+\Z//g;
@@ -223,7 +223,7 @@ sub _pod_to_specs {
          $para =~ s/$POD_link_re/$1/go;
 
          $para =~ s/\.(?:\n.*| [A-Z].*|\Z)//s;
-         MKDEBUG && _d('Short help:', $para);
+         PTDEBUG && _d('Short help:', $para);
 
          die "No description after option spec $option" if $para =~ m/^=item/;
 
@@ -261,7 +261,7 @@ sub _parse_specs {
 
    foreach my $opt ( @specs ) {
       if ( ref $opt ) { # It's an option spec, not a rule.
-         MKDEBUG && _d('Parsing opt spec:',
+         PTDEBUG && _d('Parsing opt spec:',
             map { ($_, '=>', $opt->{$_}) } keys %$opt);
 
          my ( $long, $short ) = $opt->{spec} =~ m/^([\w-]+)(?:\|([^!+=]*))?/;
@@ -274,7 +274,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
 
          if ( length $long == 1 ) {
-            MKDEBUG && _d('Long opt', $long, 'looks like short opt');
+            PTDEBUG && _d('Long opt', $long, 'looks like short opt');
             $self->{short_opts}->{$long} = $long;
          }
 
@@ -300,14 +300,14 @@ sub _parse_specs {
 
          my ( $type ) = $opt->{spec} =~ m/=(.)/;
          $opt->{type} = $type;
-         MKDEBUG && _d($long, 'type:', $type);
+         PTDEBUG && _d($long, 'type:', $type);
 
 
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
             $self->{defaults}->{$long} = defined $def ? $def : 1;
-            MKDEBUG && _d($long, 'default:', $def);
+            PTDEBUG && _d($long, 'default:', $def);
          }
 
          if ( $long eq 'config' ) {
@@ -316,13 +316,13 @@ sub _parse_specs {
 
          if ( (my ($dis) = $opt->{desc} =~ m/(disables .*)/) ) {
             $disables{$long} = $dis;
-            MKDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
+            PTDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
          }
 
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         MKDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt); 
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -330,17 +330,17 @@ sub _parse_specs {
          if ( $opt =~ m/mutually exclusive|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{mutex}}, \@participants;
-            MKDEBUG && _d(@participants, 'are mutually exclusive');
+            PTDEBUG && _d(@participants, 'are mutually exclusive');
          }
          if ( $opt =~ m/at least one|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{atleast1}}, \@participants;
-            MKDEBUG && _d(@participants, 'require at least one');
+            PTDEBUG && _d(@participants, 'require at least one');
          }
          if ( $opt =~ m/default to/ ) {
             $rule_ok = 1;
             $self->{defaults_to}->{$participants[0]} = $participants[1];
-            MKDEBUG && _d($participants[0], 'defaults to', $participants[1]);
+            PTDEBUG && _d($participants[0], 'defaults to', $participants[1]);
          }
          if ( $opt =~ m/restricted to option groups/ ) {
             $rule_ok = 1;
@@ -354,7 +354,7 @@ sub _parse_specs {
          if( $opt =~ m/accepts additional command-line arguments/ ) {
             $rule_ok = 1;
             $self->{strict} = 0;
-            MKDEBUG && _d("Strict mode disabled by rule");
+            PTDEBUG && _d("Strict mode disabled by rule");
          }
 
          die "Unrecognized option rule: $opt" unless $rule_ok;
@@ -364,7 +364,7 @@ sub _parse_specs {
    foreach my $long ( keys %disables ) {
       my @participants = $self->_get_participants($disables{$long});
       $self->{disables}->{$long} = \@participants;
-      MKDEBUG && _d('Option', $long, 'disables', @participants);
+      PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
    return; 
@@ -378,7 +378,7 @@ sub _get_participants {
          unless exists $self->{opts}->{$long};
       push @participants, $long;
    }
-   MKDEBUG && _d('Participants for', $str, ':', @participants);
+   PTDEBUG && _d('Participants for', $str, ':', @participants);
    return @participants;
 }
 
@@ -401,7 +401,7 @@ sub set_defaults {
       die "Cannot set default for nonexistent option $long"
          unless exists $self->{opts}->{$long};
       $self->{defaults}->{$long} = $defaults{$long};
-      MKDEBUG && _d('Default val for', $long, ':', $defaults{$long});
+      PTDEBUG && _d('Default val for', $long, ':', $defaults{$long});
    }
    return;
 }
@@ -430,7 +430,7 @@ sub _set_option {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
-   MKDEBUG && _d('Got option', $long, '=', $val);
+   PTDEBUG && _d('Got option', $long, '=', $val);
 }
 
 sub get_opts {
@@ -461,7 +461,7 @@ sub get_opts {
             if ( $self->got('config') ) {
                die $EVAL_ERROR;
             }
-            elsif ( MKDEBUG ) {
+            elsif ( PTDEBUG ) {
                _d($EVAL_ERROR);
             }
          }
@@ -528,7 +528,7 @@ sub _check_opts {
             if ( exists $self->{disables}->{$long} ) {
                my @disable_opts = @{$self->{disables}->{$long}};
                map { $self->{opts}->{$_}->{value} = undef; } @disable_opts;
-               MKDEBUG && _d('Unset options', @disable_opts,
+               PTDEBUG && _d('Unset options', @disable_opts,
                   'because', $long,'disables them');
             }
 
@@ -577,7 +577,7 @@ sub _check_opts {
             delete $long[$i];
          }
          else {
-            MKDEBUG && _d('Temporarily failed to parse', $long);
+            PTDEBUG && _d('Temporarily failed to parse', $long);
          }
       }
 
@@ -601,12 +601,12 @@ sub _validate_type {
    my $val = $opt->{value};
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
       my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
          $suffix = $s || 's';
-         MKDEBUG && _d('No suffix given; using', $suffix, 'for',
+         PTDEBUG && _d('No suffix given; using', $suffix, 'for',
             $opt->{long}, '(value:', $val, ')');
       }
       if ( $suffix =~ m/[smhd]/ ) {
@@ -615,23 +615,23 @@ sub _validate_type {
               : $suffix eq 'h' ? $num * 3600     # Hours
               :                  $num * 86400;   # Days
          $opt->{value} = ($prefix || '') . $val;
-         MKDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
+         PTDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
       }
       else {
          $self->save_error("Invalid time suffix for --$opt->{long}");
       }
    }
    elsif ( $val && $opt->{type} eq 'd' ) {  # type DSN
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
       my $prev = {};
       my $from_key = $self->{defaults_to}->{ $opt->{long} };
       if ( $from_key ) {
-         MKDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
+         PTDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
          if ( $self->{opts}->{$from_key}->{parsed} ) {
             $prev = $self->{opts}->{$from_key}->{value};
          }
          else {
-            MKDEBUG && _d('Cannot parse', $opt->{long}, 'until',
+            PTDEBUG && _d('Cannot parse', $opt->{long}, 'until',
                $from_key, 'parsed');
             return;
          }
@@ -640,7 +640,7 @@ sub _validate_type {
       $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
       $self->_parse_size($opt, $val);
    }
    elsif ( $opt->{type} eq 'H' || (defined $val && $opt->{type} eq 'h') ) {
@@ -650,7 +650,7 @@ sub _validate_type {
       $opt->{value} = [ split(/(?<!\\),\s*/, ($val || '')) ];
    }
    else {
-      MKDEBUG && _d('Nothing to validate for option',
+      PTDEBUG && _d('Nothing to validate for option',
          $opt->{long}, 'type', $opt->{type}, 'value', $val);
    }
 
@@ -724,11 +724,11 @@ sub usage_or_errors {
    $file ||= $self->{file} || __FILE__;
 
    if ( !$self->{description} || !$self->{usage} ) {
-      MKDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
+      PTDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
       my %synop = $self->_parse_synopsis($file);
       $self->{description} ||= $synop{description};
       $self->{usage}       ||= $synop{usage};
-      MKDEBUG && _d("Description:", $self->{description},
+      PTDEBUG && _d("Description:", $self->{description},
          "\nUsage:", $self->{usage});
    }
 
@@ -943,7 +943,7 @@ sub _parse_size {
    my ( $self, $opt, $val ) = @_;
 
    if ( lc($val || '') eq 'null' ) {
-      MKDEBUG && _d('NULL size for', $opt->{long});
+      PTDEBUG && _d('NULL size for', $opt->{long});
       $opt->{value} = 'null';
       return;
    }
@@ -953,13 +953,13 @@ sub _parse_size {
    if ( defined $num ) {
       if ( $factor ) {
          $num *= $factor_for{$factor};
-         MKDEBUG && _d('Setting option', $opt->{y},
+         PTDEBUG && _d('Setting option', $opt->{y},
             'to num', $num, '* factor', $factor);
       }
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -977,7 +977,7 @@ sub _parse_attribs {
 sub _parse_synopsis {
    my ( $self, $file ) = @_;
    $file ||= $self->{file} || __FILE__;
-   MKDEBUG && _d("Parsing SYNOPSIS in", $file);
+   PTDEBUG && _d("Parsing SYNOPSIS in", $file);
 
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -990,7 +990,7 @@ sub _parse_synopsis {
       push @synop, $para;
    }
    close $fh;
-   MKDEBUG && _d("Raw SYNOPSIS text:", @synop);
+   PTDEBUG && _d("Raw SYNOPSIS text:", @synop);
    my ($usage, $desc) = @synop;
    die "The SYNOPSIS section in $file is not formatted properly"
       unless $usage && $desc;
@@ -1017,7 +1017,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-if ( MKDEBUG ) {
+if ( PTDEBUG ) {
    print '# ', $^X, ' ', $], "\n";
    if ( my $uname = `uname -a` ) {
       $uname =~ s/\s+/ /g;
@@ -1047,7 +1047,7 @@ package DSNParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 0;
@@ -1070,7 +1070,7 @@ sub new {
       if ( !$opt->{key} || !$opt->{desc} ) {
          die "Invalid DSN option: ", Dumper($opt);
       }
-      MKDEBUG && _d('DSN option:',
+      PTDEBUG && _d('DSN option:',
          join(', ',
             map { "$_=" . (defined $opt->{$_} ? ($opt->{$_} || '') : 'undef') }
                keys %$opt
@@ -1088,7 +1088,7 @@ sub new {
 sub prop {
    my ( $self, $prop, $value ) = @_;
    if ( @_ > 2 ) {
-      MKDEBUG && _d('Setting', $prop, 'property');
+      PTDEBUG && _d('Setting', $prop, 'property');
       $self->{$prop} = $value;
    }
    return $self->{$prop};
@@ -1097,10 +1097,10 @@ sub prop {
 sub parse {
    my ( $self, $dsn, $prev, $defaults ) = @_;
    if ( !$dsn ) {
-      MKDEBUG && _d('No DSN to parse');
+      PTDEBUG && _d('No DSN to parse');
       return;
    }
-   MKDEBUG && _d('Parsing', $dsn);
+   PTDEBUG && _d('Parsing', $dsn);
    $prev     ||= {};
    $defaults ||= {};
    my %given_props;
@@ -1112,23 +1112,23 @@ sub parse {
          $given_props{$prop_key} = $prop_val;
       }
       else {
-         MKDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
+         PTDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
          $given_props{h} = $dsn_part;
       }
    }
 
    foreach my $key ( keys %$opts ) {
-      MKDEBUG && _d('Finding value for', $key);
+      PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
       if (   !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from previous DSN');
+         PTDEBUG && _d('Copying value for', $key, 'from previous DSN');
       }
       if ( !defined $final_props{$key} ) {
          $final_props{$key} = $defaults->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from defaults');
+         PTDEBUG && _d('Copying value for', $key, 'from defaults');
       }
    }
 
@@ -1159,19 +1159,21 @@ sub parse_options {
           grep { $o->has($_) && $o->get($_) }
           keys %{$self->{opts}}
         );
-   MKDEBUG && _d('DSN string made from options:', $dsn_string);
+   PTDEBUG && _d('DSN string made from options:', $dsn_string);
    return $self->parse($dsn_string);
 }
 
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -1209,7 +1211,7 @@ sub get_cxn_params {
                      qw(F h P S A))
          . ';mysql_read_default_group=client';
    }
-   MKDEBUG && _d($dsn);
+   PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
 }
 
@@ -1254,7 +1256,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
@@ -1264,21 +1266,21 @@ sub get_dbh {
             my $sql;
 
             $sql = 'SELECT @@SQL_MODE';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             my ($sql_mode) = $dbh->selectrow_array($sql);
 
             $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
                  . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
                  . ($sql_mode ? ",$sql_mode" : '')
                  . '\'*/';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             $dbh->do($sql);
 
             if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
                $sql = "/*!40101 SET NAMES $charset*/";
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
-               MKDEBUG && _d('Enabling charset for STDOUT');
+               PTDEBUG && _d('Enabling charset for STDOUT');
                if ( $charset eq 'utf8' ) {
                   binmode(STDOUT, ':utf8')
                      or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
@@ -1290,15 +1292,15 @@ sub get_dbh {
 
             if ( $self->prop('set-vars') ) {
                $sql = "SET " . $self->prop('set-vars');
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
             }
          }
       };
       if ( !$dbh && $EVAL_ERROR ) {
-         MKDEBUG && _d($EVAL_ERROR);
+         PTDEBUG && _d($EVAL_ERROR);
          if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            MKDEBUG && _d('Going to try again without utf8 support');
+            PTDEBUG && _d('Going to try again without utf8 support');
             delete $defaults->{mysql_enable_utf8};
          }
          elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
@@ -1316,7 +1318,7 @@ sub get_dbh {
       }
    }
 
-   MKDEBUG && _d('DBH info: ',
+   PTDEBUG && _d('DBH info: ',
       $dbh,
       Dumper($dbh->selectrow_hashref(
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
@@ -1342,7 +1344,7 @@ sub get_hostname {
 
 sub disconnect {
    my ( $self, $dbh ) = @_;
-   MKDEBUG && $self->print_active_handles($dbh);
+   PTDEBUG && $self->print_active_handles($dbh);
    $dbh->disconnect;
 }
 
@@ -1390,6 +1392,146 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Cxn package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Cxn.pm
+#   t/lib/Cxn.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Cxn;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(DSNParser OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
+   if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
+      $dsn = $dp->parse(
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+   }
+
+   my $self = {
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
+      set          => $args{set},
+      dbh_set      => 0,
+      OptionParser => $o,
+      DSNParser    => $dp,
+   };
+
+   return bless $self, $class;
+}
+
+sub connect {
+   my ( $self ) = @_;
+   my $dsn = $self->{dsn};
+   my $dp  = $self->{DSNParser};
+   my $o   = $self->{OptionParser};
+
+   my $dbh = $self->{dbh};
+   if ( !$dbh || !$dbh->ping() ) {
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
+      }
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+   }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+
+   return $self->set_dbh($dbh);
+}
+
+sub set_dbh {
+   my ($self, $dbh) = @_;
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   PTDEBUG && _d($dbh, 'Setting dbh');
+
+   $dbh->{FetchHashKeyName} = 'NAME_lc';
+   
+   my $sql = 'SELECT @@hostname, @@server_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
+
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
+   return $dbh;
+}
+
+sub dbh {
+   my ($self) = @_;
+   return $self->{dbh};
+}
+
+sub dsn {
+   my ($self) = @_;
+   return $self->{dsn};
+}
+
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   if ( $self->{dbh} ) {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      $self->{dbh}->disconnect();
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Cxn package
+# ###########################################################################
+
+# ###########################################################################
 # Daemon package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -1403,7 +1545,7 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
 
@@ -1421,17 +1563,17 @@ sub new {
 
    check_PID_file(undef, $self->{PID_file});
 
-   MKDEBUG && _d('Daemonized child will log to', $self->{log_file});
+   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
 sub daemonize {
    my ( $self ) = @_;
 
-   MKDEBUG && _d('About to fork and daemonize');
+   PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      MKDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('I am the parent and now I die');
       exit;
    }
 
@@ -1473,19 +1615,19 @@ sub daemonize {
       }
    }
 
-   MKDEBUG && _d('I am the child and now I live daemonized');
+   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
 sub check_PID_file {
    my ( $self, $file ) = @_;
    my $PID_file = $self ? $self->{PID_file} : $file;
-   MKDEBUG && _d('Checking PID file', $PID_file);
+   PTDEBUG && _d('Checking PID file', $PID_file);
    if ( $PID_file && -f $PID_file ) {
       my $pid;
       eval { chomp($pid = `cat $PID_file`); };
       die "Cannot cat $PID_file: $OS_ERROR" if $EVAL_ERROR;
-      MKDEBUG && _d('PID file exists; it contains PID', $pid);
+      PTDEBUG && _d('PID file exists; it contains PID', $pid);
       if ( $pid ) {
          my $pid_is_alive = kill 0, $pid;
          if ( $pid_is_alive ) {
@@ -1503,7 +1645,7 @@ sub check_PID_file {
       }
    }
    else {
-      MKDEBUG && _d('No PID file');
+      PTDEBUG && _d('No PID file');
    }
    return;
 }
@@ -1523,7 +1665,7 @@ sub _make_PID_file {
 
    my $PID_file = $self->{PID_file};
    if ( !$PID_file ) {
-      MKDEBUG && _d('No PID file to create');
+      PTDEBUG && _d('No PID file to create');
       return;
    }
 
@@ -1536,7 +1678,7 @@ sub _make_PID_file {
    close $PID_FH
       or die "Cannot close PID file $PID_file: $OS_ERROR";
 
-   MKDEBUG && _d('Created PID file:', $self->{PID_file});
+   PTDEBUG && _d('Created PID file:', $self->{PID_file});
    return;
 }
 
@@ -1545,10 +1687,10 @@ sub _remove_PID_file {
    if ( $self->{PID_file} && -f $self->{PID_file} ) {
       unlink $self->{PID_file}
          or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
-      MKDEBUG && _d('Removed PID file');
+      PTDEBUG && _d('Removed PID file');
    }
    else {
-      MKDEBUG && _d('No PID to remove');
+      PTDEBUG && _d('No PID to remove');
    }
    return;
 }
@@ -1589,7 +1731,7 @@ package TextResultSetParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1642,19 +1784,19 @@ sub parse {
    my $result_set;
 
    if ( $text =~ m/^\+---/m ) { # standard "tabular" output
-      MKDEBUG && _d('Result set text is standard tabular');
+      PTDEBUG && _d('Result set text is standard tabular');
       my $line_pattern  = qr/^(\| .*)[\r\n]+/m;
       $result_set
          = $self->parse_horizontal_row($text, $line_pattern, \&_parse_tabular);
    }
    elsif ( $text =~ m/^\w+\t\w+/m ) { # tab-separated
-      MKDEBUG && _d('Result set text is tab-separated');
+      PTDEBUG && _d('Result set text is tab-separated');
       my $line_pattern  = qr/^(.*?\t.*)[\r\n]+/m;
       $result_set
          = $self->parse_horizontal_row($text, $line_pattern, \&_parse_tab_sep);
    }
    elsif ( $text =~ m/\*\*\* \d+\. row/ ) { # "vertical" output
-      MKDEBUG && _d('Result set text is vertical (\G)');
+      PTDEBUG && _d('Result set text is vertical (\G)');
       foreach my $row ( split_vertical_rows($text) ) {
          push @$result_set, $self->parse_vertical_row($row);
       }
@@ -1733,7 +1875,7 @@ package MySQLConfig;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my %can_be_duplicate = (
    replicate_wild_do_table     => 1,
@@ -1791,7 +1933,7 @@ sub _parse_config {
    elsif ( my $dbh = $args{dbh} ) {
       $config_data{format} = $args{format} || 'show_variables';
       my $sql = "SHOW /*!40103 GLOBAL*/ VARIABLES";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       my $rows = $dbh->selectall_arrayref($sql);
       $config_data{vars} = { map { @$_ } @$rows };
       $config_data{mysql_version} = _get_version($dbh);
@@ -1810,7 +1952,7 @@ sub _parse_config_output {
       die "I need a $arg arugment" unless $args{$arg};
    }
    my ($output) = @args{@required_args};
-   MKDEBUG && _d("Parsing config output");
+   PTDEBUG && _d("Parsing config output");
 
    my $format = $args{format} || detect_config_output_format(%args);
    if ( !$format ) {
@@ -1868,22 +2010,22 @@ sub detect_config_output_format {
         || $output =~ m/Variable_name:\s+\w+/
         || $output =~ m/Variable_name\s+Value$/m )
    {
-      MKDEBUG && _d('show variables format');
+      PTDEBUG && _d('show variables format');
       $format = 'show_variables';
    }
    elsif (    $output =~ m/Starts the MySQL database server/
            || $output =~ m/Default options are read from /
            || $output =~ m/^help\s+TRUE /m )
    {
-      MKDEBUG && _d('mysqld format');
+      PTDEBUG && _d('mysqld format');
       $format = 'mysqld';
    }
    elsif ( $output =~ m/^--\w+/m ) {
-      MKDEBUG && _d('my_print_defaults format');
+      PTDEBUG && _d('my_print_defaults format');
       $format = 'my_print_defaults';
    }
    elsif ( $output =~ m/^\s*\[[a-zA-Z]+\]\s*$/m ) {
-      MKDEBUG && _d('option file format');
+      PTDEBUG && _d('option file format');
       $format = 'option_file',
    }
 
@@ -1918,14 +2060,14 @@ sub parse_mysqld {
       my ($opt_files) = $output =~ m/\G^(.+)\n/m;
       my %seen;
       my @opt_files = grep { !$seen{$_} } split(' ', $opt_files);
-      MKDEBUG && _d('Option files:', @opt_files);
+      PTDEBUG && _d('Option files:', @opt_files);
    }
    else {
-      MKDEBUG && _d("mysqld help output doesn't list option files");
+      PTDEBUG && _d("mysqld help output doesn't list option files");
    }
 
    if ( $output !~ m/^-+ -+$/mg ) {
-      MKDEBUG && _d("mysqld help output doesn't list vars and vals");
+      PTDEBUG && _d("mysqld help output doesn't list vars and vals");
       return;
    }
 
@@ -1996,13 +2138,13 @@ sub _parse_varvals {
          $var =~ s/-/_/g;
 
          if ( exists $config{$var} && !$can_be_duplicate{$var} ) {
-            MKDEBUG && _d("Duplicate var:", $var);
+            PTDEBUG && _d("Duplicate var:", $var);
             $duplicate_var = 1;  # flag on, save all the var's values
          }
       }
       else {
          my $val = $item;
-         MKDEBUG && _d("Var:", $var, "val:", $val);
+         PTDEBUG && _d("Var:", $var, "val:", $val);
 
          if ( !defined $val ) {
             $val = '';
@@ -2063,7 +2205,7 @@ sub _mimic_show_variables {
 sub _slurp_file {
    my ( $file ) = @_;
    die "I need a file argument" unless $file;
-   MKDEBUG && _d("Reading", $file);
+   PTDEBUG && _d("Reading", $file);
    open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
@@ -2075,7 +2217,7 @@ sub _get_version {
    return unless $dbh;
    my $version = $dbh->selectrow_arrayref('SELECT VERSION()')->[0];
    $version =~ s/(\d\.\d{1,2}.\d{1,2})/$1/;
-   MKDEBUG && _d('MySQL version', $version);
+   PTDEBUG && _d('MySQL version', $version);
    return $version;
 }
 
@@ -2149,7 +2291,7 @@ package MySQLConfigComparer;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my %alt_val_for = (
    ON    => 1,
@@ -2233,7 +2375,7 @@ sub diff {
    my ($configs) = @args{@required_args};
 
    if ( @$configs < 2 ) {
-      MKDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
+      PTDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
       return;
    }
 
@@ -2281,7 +2423,7 @@ sub diff {
                }
             }
 
-            MKDEBUG && _d("Different", $var, "values:", $val0, $valN);
+            PTDEBUG && _d("Different", $var, "values:", $val0, $valN);
             $diffs->{$var} = [ map { $_->value_of($var) } @$configs ];
             last CONFIG;
          }  # CONFIG
@@ -2308,7 +2450,7 @@ sub missing {
    my ($configs) = @args{@required_args};
 
    if ( @$configs < 2 ) {
-      MKDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
+      PTDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
       return;
    }
 
@@ -2387,7 +2529,7 @@ package ReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(min max);
 use POSIX qw(ceil);
@@ -2420,7 +2562,7 @@ sub new {
          . "is not installed" unless $have_term;
       ($self->{line_width}) = GetTerminalSize();
    }
-   MKDEBUG && _d('Line width:', $self->{line_width});
+   PTDEBUG && _d('Line width:', $self->{line_width});
 
    return bless $self, $class;
 }
@@ -2445,7 +2587,7 @@ sub set_columns {
 
       if ( $col->{width} ) {
          $col->{width_pct} = ceil(($col->{width} * 100) / $self->{line_width});
-         MKDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
+         PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
             $col->{width_pct}, '%');
       }
 
@@ -2453,7 +2595,7 @@ sub set_columns {
          $used_width += $col->{width_pct};
       }
       else {
-         MKDEBUG && _d('Auto width col:', $col_name);
+         PTDEBUG && _d('Auto width col:', $col_name);
          $col->{auto_width} = 1;
          push @auto_width_cols, $i;
       }
@@ -2482,15 +2624,15 @@ sub set_columns {
 
    if ( @auto_width_cols ) {
       my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
-      MKDEBUG && _d('Line width left:', (100-$used_width), '%;',
+      PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
          'each auto width col:', $wid_per_col, '%');
       map { $self->{cols}->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
    }
 
    $min_hdr_wid += ($self->{n_cols} - 1) * length $self->{column_spacing};
-   MKDEBUG && _d('min header width:', $min_hdr_wid);
+   PTDEBUG && _d('min header width:', $min_hdr_wid);
    if ( $min_hdr_wid > $self->{line_width} ) {
-      MKDEBUG && _d('Will truncate headers because min header width',
+      PTDEBUG && _d('Will truncate headers because min header width',
          $min_hdr_wid, '> line width', $self->{line_width});
       $self->{truncate_headers} = 1;
    }
@@ -2531,7 +2673,7 @@ sub get_report {
    my @col_fmts = $self->_make_column_formats();
    my $fmt      = ($self->{line_prefix} || '')
                 . join($self->{column_spacing}, @col_fmts);
-   MKDEBUG && _d('Format:', $fmt);
+   PTDEBUG && _d('Format:', $fmt);
 
    (my $hdr_fmt = $fmt) =~ s/%([^-])/%-$1/g;
 
@@ -2583,7 +2725,7 @@ sub truncate_value {
       $val = $mark . substr($val, -1 * $width + length $mark);
    }
    else {
-      MKDEBUG && _d("I don't know how to", $side, "truncate values");
+      PTDEBUG && _d("I don't know how to", $side, "truncate values");
    }
    return $val;
 }
@@ -2595,27 +2737,27 @@ sub _calculate_column_widths {
    foreach my $col ( @{$self->{cols}} ) {
       my $print_width = int($self->{line_width} * ($col->{width_pct} / 100));
 
-      MKDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
+      PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
          'char width:', $print_width,
          'min val:', $col->{min_val}, 'max val:', $col->{max_val});
 
       if ( $col->{auto_width} ) {
          if ( $col->{min_val} && $print_width < $col->{min_val} ) {
-            MKDEBUG && _d('Increased to min val width:', $col->{min_val});
+            PTDEBUG && _d('Increased to min val width:', $col->{min_val});
             $print_width = $col->{min_val};
          }
          elsif ( $col->{max_val} &&  $print_width > $col->{max_val} ) {
-            MKDEBUG && _d('Reduced to max val width:', $col->{max_val});
+            PTDEBUG && _d('Reduced to max val width:', $col->{max_val});
             $extra_space += $print_width - $col->{max_val};
             $print_width  = $col->{max_val};
          }
       }
 
       $col->{print_width} = $print_width;
-      MKDEBUG && _d('print width:', $col->{print_width});
+      PTDEBUG && _d('print width:', $col->{print_width});
    }
 
-   MKDEBUG && _d('Extra space:', $extra_space);
+   PTDEBUG && _d('Extra space:', $extra_space);
    while ( $extra_space-- ) {
       foreach my $col ( @{$self->{cols}} ) {
          if (    $col->{auto_width}
@@ -2638,7 +2780,7 @@ sub _truncate_headers {
       my $print_width = $col->{print_width};
       next if length $col_name <= $print_width;
       $col->{name}  = $self->truncate_value($col, $col_name, $print_width, $side);
-      MKDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
+      PTDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
          'max width:', $print_width);
    }
    return;
@@ -2663,7 +2805,7 @@ sub _truncate_line_values {
             my $print_width = $col->{print_width};
             $val = $callback ? $callback->($col, $val, $print_width)
                  :             $self->truncate_value($col, $val, $print_width);
-            MKDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
+            PTDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
                '; max width:', $print_width);
             $vals->[$i] = $val;
          }
@@ -2741,7 +2883,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -2787,7 +2929,7 @@ sub main {
    my @config_names;  # Human-readable names for those ^ objs
    foreach my $config_src ( @ARGV ) {
       if ( -f $config_src ) {
-         MKDEBUG && _d('Config source', $config_src, 'is a file');
+         PTDEBUG && _d('Config source', $config_src, 'is a file');
          push @configs, new MySQLConfig(
             file => $config_src,
             %common_modules,
@@ -2795,19 +2937,21 @@ sub main {
          push @config_names, $config_src;  # filename
       }
       else {
-         MKDEBUG && _d('Config source', $config_src, 'is a DSN');
-         my $dsn = $dp->parse($config_src, $last_dsn, $dsn_defaults);
-         my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => 1});
-         $dp->fill_in_dsn($dbh, $dsn);
-         $last_dsn = $dsn;
+         PTDEBUG && _d('Config source', $config_src, 'is a DSN');
+         my $cxn = new Cxn(
+            dsn_string   => $config_src,
+            prev_dsn     => $last_dsn,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         $last_dsn = $cxn->dsn();
 
          push @configs, new MySQLConfig(
-            dbh => $dbh,
+            dbh => $cxn->dbh(),
             %common_modules,
          );
-         my $config_name = ($dsn->{h} || $dsn->{S} || $dsn->{F})
-                         . ($dsn->{P} ? ":$dsn->{P}" : '');
-         push @config_names, $config_name;
+         push @config_names, $cxn->name();
       }
    }
 
@@ -2818,7 +2962,7 @@ sub main {
    if ( $o->get('daemonize') ) {
       $daemon = new Daemon(o=>$o);
       $daemon->daemonize();
-      MKDEBUG && _d('I am a daemon now');
+      PTDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
@@ -2850,10 +2994,10 @@ sub main {
       # };
    }
 
-   MKDEBUG && _d("Comparing", scalar @configs, "configs");
+   PTDEBUG && _d("Comparing", scalar @configs, "configs");
    my $diffs   = $config_cmp->diff(configs=>\@configs);
    my $n_diffs = scalar keys %$diffs;
-   MKDEBUG && _d($n_diffs, "differences found:", Dumper($diffs));
+   PTDEBUG && _d($n_diffs, "differences found:", Dumper($diffs));
    if ( $n_diffs ) {
       if ( $o->get('report') ) {
          foreach my $var ( sort keys %$diffs ) {
@@ -3238,7 +3382,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2011 Percona Inc.
+This program is copyright 2011-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -3257,6 +3401,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v0.9.5 released 2011-08-04
+pt-config-diff 2.0.3
 
 =cut

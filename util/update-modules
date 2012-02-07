@@ -49,7 +49,11 @@ file_is_modified() {
 
 pkgs_in_tool() {
    local tool=$1
-   pkgs=$(grep '^package [A-Za-z]*;' $tool | cut -d' ' -f2 | cut -d';' -f1)
+   if [ "$tool_lang" = "perl" ]; then
+      pkgs=$(grep '^package [A-Za-z]*;' $tool | cut -d' ' -f2 | cut -d';' -f1)
+   else
+      pkgs=$(grep '^# [a-z_]* package' $tool | awk '{print $2}')
+   fi
 }
 
 replace_pkg_in_tool() {
@@ -72,7 +76,8 @@ replace_pkg_in_tool() {
 
    head -n $pkg_start_line $tool_file > $tmp_file
 
-   echo "# $pkg package
+   if [ "$tool_lang" = "perl" ]; then
+      echo "# $pkg package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
 #   lib/$pkg.pm
@@ -80,11 +85,24 @@ replace_pkg_in_tool() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {" >> $tmp_file
+   else
+      echo "# $pkg package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/$pkg.sh
+#   t/lib/bash/$pkg.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+" >> $tmp_file
+   fi
 
    $BRANCH/util/extract-package $pkg $pkg_file | grep -v '^ *#' >> $tmp_file
 
-   echo "}
-# ###########################################################################
+   if [ "$tool_lang" = "perl" ]; then
+      echo "}" >> $tmp_file
+   fi
+
+echo "# ###########################################################################
 # End $pkg package" >> $tmp_file
 
    tail -n +$pkg_end_line  $tool_file >> $tmp_file
@@ -97,14 +115,19 @@ replace_pkg_in_tool() {
 # ############################################################################
 
 tool_file=$1
+
 if [ -z "$tool_file" ]; then
    die "Usage: $0 TOOL [MODULE...]"
 fi
+
 if [ ! -f $tool_file ]; then
    die "$tool_file does not exist"
 fi
-if [ -z "$(head -n 1 $tool_file | grep perl)" ]; then
-   die "$tool_file is not a Perl tool"
+
+if [ -n "$(head -n 1 $tool_file | grep perl)" ]; then
+   tool_lang="perl"
+else
+   tool_lang="bash"
 fi
 
 tool=$(basename $tool_file)
@@ -124,11 +147,17 @@ for pkg in $pkgs; do
       continue
    fi
 
-   pkg_file="$BRANCH/lib/$pkg.pm"
+   if [ "$tool_lang" = "perl" ]; then
+      pkg_file="$BRANCH/lib/$pkg.pm"
+   else
+      pkg_file="$BRANCH/lib/bash/$pkg.sh"
+   fi
+
    if [ ! -f $pkg_file ]; then
       warn "$pkg_file does not exist"
       continue
    fi
+
    if file_is_modified $pkg_file; then
       warn "$pkg_file has uncommitted changes"
       continue

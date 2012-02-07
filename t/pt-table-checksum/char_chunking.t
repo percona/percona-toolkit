@@ -13,31 +13,35 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
-my $vp  = new VersionParser();
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
 
-if ( !$dbh ) {
+if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 3;
+   plan tests => 5;
 }
 
-my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1', qw(-t test.ascii --chunk-column c));
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
 
-$sb->create_dbs($dbh, ['test']);
+$sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
 
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
-         qw(--chunk-size 20 --explain)) },
+         qw(--tables test.ascii --chunk-index c --chunk-size 20),
+         qw(--explain --explain)) },
       "t/pt-table-checksum/samples/char-chunk-ascii-explain.txt",
    ),
    "Char chunk ascii, explain"
@@ -46,23 +50,37 @@ ok(
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args,
-         qw(--chunk-size 20)) },
+         qw(--tables test.ascii --chunk-index c --chunk-size 20),
+         qw(--chunk-time 0)) },
       "t/pt-table-checksum/samples/char-chunk-ascii.txt",
+      post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),
    "Char chunk ascii, chunk size 20"
 );
 
-ok(
-   no_diff(
-      sub { pt_table_checksum::main(@args,
-         qw(--chunk-size 20 --chunk-size-limit 3)) },
-      "t/pt-table-checksum/samples/char-chunk-ascii-oversize.txt",
-   ),
-   "Char chunk ascii, chunk size 20, with oversize"
+my $row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=1");
+is_deeply(
+   $row,
+   [ '', 'burt' ],
+   "First boundaries"
+);
+
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=9");
+is_deeply(
+   $row,
+   [ undef, '' ],
+   "Lower oob boundary"
+);
+
+$row = $master_dbh->selectrow_arrayref("select lower_boundary, upper_boundary from percona.checksums where db='test' and tbl='ascii' and chunk=10");
+is_deeply(
+   $row,
+   [ 'ZESUS\!\!\!', undef ],
+   "Upper oob boundary"
 );
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh);
+$sb->wipe_clean($master_dbh);
 exit;

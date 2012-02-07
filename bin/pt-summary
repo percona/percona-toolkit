@@ -44,13 +44,51 @@ fuzz () {
    echo $1 | $AP_AWK "{fuzzy_var=\$1; ${fuzzy_formula} print fuzzy_var;}"
 }
 
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+TMPDIR=""
+
+mk_tmpdir() {
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
+      fi
+      TMPDIR="$dir"
+   else
+      local tool=`basename $0`
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf $TMPDIR
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
 # The temp files are for storing working results so we don't call commands many
 # times (gives inconsistent results, maybe adds load on things I don't want to
 # such as RAID controllers).  They must not exist -- if they did, someone would
 # symlink them to /etc/passwd and then run this program as root.  Call this
 # function with "rm" or "touch" as an argument.
 temp_files() {
-   for file in /tmp/percona-toolkit /tmp/percona-toolkit2; do
+   for file in $TMPDIR/percona-toolkit $TMPDIR/percona-toolkit2; do
       case "$1" in
       touch)
          if ! touch "${file}"; then
@@ -128,12 +166,12 @@ group_concat () {
 # Functions for parsing specific files and getting desired info from them.
 # These are called from within main() and are separated so they can be tested
 # easily.  The calling convention is that the data they need to run is prepared
-# first by putting it into /tmp/percona-toolkit.  Then code that's testing just needs to
-# put sample data into /tmp/percona-toolkit and call it.
+# first by putting it into $TMPDIR/percona-toolkit.  Then code that's testing
+# just needs to put sample data into $TMPDIR/percona-toolkit and call it.
 # ##############################################################################
    
 # ##############################################################################
-# Parse Linux's /proc/cpuinfo, which should be stored in /tmp/percona-toolkit.
+# Parse Linux's /proc/cpuinfo, which should be stored in $TMPDIR/percona-toolkit.
 # ##############################################################################
 parse_proc_cpuinfo () {
    local file=$1
@@ -189,8 +227,8 @@ parse_psrinfo_cpus() {
       start = index($0, " at ") + 4;
       end   = length($0) - start - 4
       print substr($0, start, end);
-   }' "$1" | sort | uniq -c > /tmp/percona-toolkit2
-   name_val "Speeds" "$(group_concat /tmp/percona-toolkit2)"
+   }' "$1" | sort | uniq -c > $TMPDIR/percona-toolkit2
+   name_val "Speeds" "$(group_concat $TMPDIR/percona-toolkit2)"
 }
 
 # ##############################################################################
@@ -292,7 +330,7 @@ parse_ip_s_link () {
 }
 
 # ##############################################################################
-# Parse the output of 'netstat -antp' which should be in /tmp/percona-toolkit.
+# Parse the output of 'netstat -antp' which should be in $TMPDIR/percona-toolkit.
 # ##############################################################################
 parse_netstat () {
    local file=$1
@@ -397,7 +435,7 @@ parse_filesystems () {
 }
 
 # ##############################################################################
-# Parse the output of fdisk -l, which should be in /tmp/percona-toolkit; there might be
+# Parse the output of fdisk -l, which should be in $TMPDIR/percona-toolkit; there might be
 # multiple fdisk -l outputs in the file.
 # ##############################################################################
 parse_fdisk () {
@@ -431,7 +469,7 @@ parse_fdisk () {
 }
 
 # ##############################################################################
-# Parse the output of dmesg, which should be in /tmp/percona-toolkit, and detect
+# Parse the output of dmesg, which should be in $TMPDIR/percona-toolkit, and detect
 # virtualization.
 # ##############################################################################
 parse_virtualization_dmesg () {
@@ -463,7 +501,7 @@ parse_virtualization_generic() {
 }
 
 # ##############################################################################
-# Parse the output of lspci, which should be in /tmp/percona-toolkit, and detect
+# Parse the output of lspci, which should be in $TMPDIR/percona-toolkit, and detect
 # Ethernet cards.
 # ##############################################################################
 parse_ethernet_controller_lspci () {
@@ -474,7 +512,7 @@ parse_ethernet_controller_lspci () {
 }
 
 # ##############################################################################
-# Parse the output of lspci, which should be in /tmp/percona-toolkit, and detect RAID
+# Parse the output of lspci, which should be in $TMPDIR/percona-toolkit, and detect RAID
 # controllers.
 # ##############################################################################
 parse_raid_controller_lspci () {
@@ -497,7 +535,7 @@ parse_raid_controller_lspci () {
 }
 
 # ##############################################################################
-# Parse the output of dmesg, which should be in /tmp/percona-toolkit, and detect RAID
+# Parse the output of dmesg, which should be in $TMPDIR/percona-toolkit, and detect RAID
 # controllers.
 # ##############################################################################
 parse_raid_controller_dmesg () {
@@ -516,7 +554,7 @@ parse_raid_controller_dmesg () {
 
 # ##############################################################################
 # Parse the output of "hpacucli ctrl all show config", which should be stored in
-# /tmp/percona-toolkit
+# $TMPDIR/percona-toolkit
 # ##############################################################################
 parse_hpacucli () {
    local file=$1
@@ -524,7 +562,7 @@ parse_hpacucli () {
 }
 
 # ##############################################################################
-# Parse the output of arcconf, which should be stored in /tmp/percona-toolkit
+# Parse the output of arcconf, which should be stored in $TMPDIR/percona-toolkit
 # ##############################################################################
 parse_arcconf () {
    local file=$1
@@ -634,7 +672,7 @@ parse_fusionmpt_lsiutil () {
 }
 
 # ##############################################################################
-# Parse the output of MegaCli64 -AdpAllInfo -aALL from /tmp/percona-toolkit.
+# Parse the output of MegaCli64 -AdpAllInfo -aALL from $TMPDIR/percona-toolkit.
 # ##############################################################################
 parse_lsi_megaraid_adapter_info () {
    local file=$1
@@ -653,7 +691,7 @@ parse_lsi_megaraid_adapter_info () {
 }
 
 # ##############################################################################
-# Parse the output (saved in /tmp/percona-toolkit) of
+# Parse the output (saved in $TMPDIR/percona-toolkit) of
 # /opt/MegaRAID/MegaCli/MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL
 # ##############################################################################
 parse_lsi_megaraid_bbu_status () {
@@ -665,7 +703,7 @@ parse_lsi_megaraid_bbu_status () {
 }
 
 # ##############################################################################
-# Parse physical devices from the output (saved in /tmp/percona-toolkit) of
+# Parse physical devices from the output (saved in $TMPDIR/percona-toolkit) of
 # /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
 # OR, it will also work with the output of
 # /opt/MegaRAID/MegaCli/MegaCli64 -PDList -aALL
@@ -694,7 +732,7 @@ parse_lsi_megaraid_devices () {
 }
 
 # ##############################################################################
-# Parse virtual devices from the output (saved in /tmp/percona-toolkit) of
+# Parse virtual devices from the output (saved in $TMPDIR/percona-toolkit) of
 # /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
 # OR, it will also work with the output of
 # /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -Lall -aAll
@@ -826,6 +864,7 @@ main () {
    export PATH="${PATH}:/usr/StorMan/:/opt/MegaRAID/MegaCli/";
 
    # Set up temporary files.
+   mk_tmpdir
    temp_files "rm"
    temp_files "touch"
    section Percona_Toolkit_System_Summary_Report
@@ -833,7 +872,7 @@ main () {
    # ########################################################################
    # Grab a bunch of stuff and put it into temp files for later.
    # ########################################################################
-   sysctl -a > /tmp/percona-toolkit.sysctl 2>/dev/null
+   sysctl -a > $TMPDIR/percona-toolkit.sysctl 2>/dev/null
 
    # ########################################################################
    # General date, time, load, etc
@@ -939,19 +978,19 @@ main () {
    # available to non-root users and usually has telltale signs.  It's most
    # reliable to look at /var/log/dmesg if possible.  There are a number of
    # other ways to find out if a system is virtualized.
-   cat /var/log/dmesg > /tmp/percona-toolkit 2>/dev/null
-   if [ ! -s /tmp/percona-toolkit ]; then
-      dmesg > /tmp/percona-toolkit 2>/dev/null
+   cat /var/log/dmesg > $TMPDIR/percona-toolkit 2>/dev/null
+   if [ ! -s $TMPDIR/percona-toolkit ]; then
+      dmesg > $TMPDIR/percona-toolkit 2>/dev/null
    fi
-   if [ -s /tmp/percona-toolkit ]; then
-      virt="$(parse_virtualization_dmesg /tmp/percona-toolkit)"
+   if [ -s $TMPDIR/percona-toolkit ]; then
+      virt="$(parse_virtualization_dmesg $TMPDIR/percona-toolkit)"
    fi
    if [ -z "${virt}" ]; then
       if which lspci >/dev/null 2>&1; then
-         lspci > /tmp/percona-toolkit 2>/dev/null
-         if grep -qi virtualbox /tmp/percona-toolkit; then
+         lspci > $TMPDIR/percona-toolkit 2>/dev/null
+         if grep -qi virtualbox $TMPDIR/percona-toolkit; then
             virt=VirtualBox
-         elif grep -qi vmware /tmp/percona-toolkit; then
+         elif grep -qi vmware $TMPDIR/percona-toolkit; then
             virt=VMWare
          elif [ -e /proc/user_beancounters ]; then
             virt="OpenVZ/Virtuozzo"
@@ -962,10 +1001,10 @@ main () {
          virt="FreeBSD Jail"
       fi
    elif [ "${platform}" = "SunOS" ]; then
-      if which prtdiag >/dev/null 2>&1 && prtdiag > /tmp/percona-toolkit.prtdiag 2>/dev/null; then
-         virt="$(parse_virtualization_generic /tmp/percona-toolkit.prtdiag)"
-      elif which smbios >/dev/null 2>&1 && smbios > /tmp/percona-toolkit.smbios 2>/dev/null; then
-         virt="$(parse_virtualization_generic /tmp/percona-toolkit.smbios)"
+      if which prtdiag >/dev/null 2>&1 && prtdiag > $TMPDIR/percona-toolkit.prtdiag 2>/dev/null; then
+         virt="$(parse_virtualization_generic $TMPDIR/percona-toolkit.prtdiag)"
+      elif which smbios >/dev/null 2>&1 && smbios > $TMPDIR/percona-toolkit.smbios 2>/dev/null; then
+         virt="$(parse_virtualization_generic $TMPDIR/percona-toolkit.smbios)"
       fi
    fi
    name_val Virtualized "${virt:-No virtualization detected}"
@@ -975,23 +1014,23 @@ main () {
    # ########################################################################
    section Processor
    if [ -f /proc/cpuinfo ]; then
-      cat /proc/cpuinfo > /tmp/percona-toolkit 2>/dev/null
-      parse_proc_cpuinfo /tmp/percona-toolkit
+      cat /proc/cpuinfo > $TMPDIR/percona-toolkit 2>/dev/null
+      parse_proc_cpuinfo $TMPDIR/percona-toolkit
    elif [ "${platform}" = "FreeBSD" ]; then
-      parse_sysctl_cpu_freebsd /tmp/percona-toolkit.sysctl
+      parse_sysctl_cpu_freebsd $TMPDIR/percona-toolkit.sysctl
    elif [ "${platform}" = "SunOS" ]; then
-      psrinfo -v > /tmp/percona-toolkit
-      parse_psrinfo_cpus /tmp/percona-toolkit
+      psrinfo -v > $TMPDIR/percona-toolkit
+      parse_psrinfo_cpus $TMPDIR/percona-toolkit
       # TODO: prtconf -v actually prints the CPU model name etc.
    fi
 
    section Memory
    if [ "${platform}" = "Linux" ]; then
-      free -b > /tmp/percona-toolkit
-      cat /proc/meminfo >> /tmp/percona-toolkit
-      parse_free_minus_b /tmp/percona-toolkit
+      free -b > $TMPDIR/percona-toolkit
+      cat /proc/meminfo >> $TMPDIR/percona-toolkit
+      parse_free_minus_b $TMPDIR/percona-toolkit
    elif [ "${platform}" = "FreeBSD" ]; then
-      parse_memory_sysctl_freebsd /tmp/percona-toolkit.sysctl
+      parse_memory_sysctl_freebsd $TMPDIR/percona-toolkit.sysctl
    elif [ "${platform}" = "SunOS" ]; then
       name_val Memory "$(prtconf | awk -F: '/Memory/{print $2}')"
    fi
@@ -1007,8 +1046,8 @@ main () {
       fi
    fi
 
-   if which dmidecode >/dev/null 2>&1 && dmidecode > /tmp/percona-toolkit 2>/dev/null; then
-      parse_dmidecode_mem_devices /tmp/percona-toolkit
+   if which dmidecode >/dev/null 2>&1 && dmidecode > $TMPDIR/percona-toolkit 2>/dev/null; then
+      parse_dmidecode_mem_devices $TMPDIR/percona-toolkit
    fi
 
    # ########################################################################
@@ -1023,25 +1062,25 @@ main () {
          if [ "${platform}" = "Linux" ]; then
             cmd="df -h -P"
          fi
-         $cmd | sort > /tmp/percona-toolkit2
-         mount | sort | join /tmp/percona-toolkit2 - > /tmp/percona-toolkit
-         parse_filesystems /tmp/percona-toolkit "${platform}"
+         $cmd | sort > $TMPDIR/percona-toolkit2
+         mount | sort | join $TMPDIR/percona-toolkit2 - > $TMPDIR/percona-toolkit
+         parse_filesystems $TMPDIR/percona-toolkit "${platform}"
       fi
    fi
 
    if [ "${platform}" = "Linux" ]; then
       section "Disk_Schedulers_And_Queue_Size"
-      echo "" > /tmp/percona-toolkit
+      echo "" > $TMPDIR/percona-toolkit
       for disk in $(ls /sys/block/ | grep -v -e ram -e loop -e 'fd[0-9]'); do
          if [ -e "/sys/block/${disk}/queue/scheduler" ]; then
             name_val "${disk}" "$(cat /sys/block/${disk}/queue/scheduler | grep -o '\[.*\]') $(cat /sys/block/${disk}/queue/nr_requests)"
-            fdisk -l "/dev/${disk}" >> /tmp/percona-toolkit 2>/dev/null
+            fdisk -l "/dev/${disk}" >> $TMPDIR/percona-toolkit 2>/dev/null
          fi
       done
 
-      # Relies on /tmp/percona-toolkit having data from the Disk Schedulers loop.
+      # Relies on $TMPDIR/percona-toolkit having data from the Disk Schedulers loop.
       section "Disk_Partioning"
-      parse_fdisk /tmp/percona-toolkit
+      parse_fdisk $TMPDIR/percona-toolkit
 
       section "Kernel_Inode_State"
       for file in dentry-state file-nr inode-nr; do
@@ -1064,15 +1103,15 @@ main () {
    # often available to non-root users.  It's most reliable to look at
    # /var/log/dmesg if possible.
    # ########################################################################
-   if which lspci >/dev/null 2>&1 && lspci > /tmp/percona-toolkit 2>/dev/null; then
-      controller="$(parse_raid_controller_lspci /tmp/percona-toolkit)"
+   if which lspci >/dev/null 2>&1 && lspci > $TMPDIR/percona-toolkit 2>/dev/null; then
+      controller="$(parse_raid_controller_lspci $TMPDIR/percona-toolkit)"
    fi
    if [ -z "${controller}" ]; then
-      cat /var/log/dmesg > /tmp/percona-toolkit 2>/dev/null
-      if [ ! -s /tmp/percona-toolkit ]; then
-         dmesg > /tmp/percona-toolkit 2>/dev/null
+      cat /var/log/dmesg > $TMPDIR/percona-toolkit 2>/dev/null
+      if [ ! -s $TMPDIR/percona-toolkit ]; then
+         dmesg > $TMPDIR/percona-toolkit 2>/dev/null
       fi
-      controller="$(parse_raid_controller_dmesg /tmp/percona-toolkit)"
+      controller="$(parse_raid_controller_dmesg $TMPDIR/percona-toolkit)"
    fi
 
    name_val Controller "${controller:-No RAID controller detected}"
@@ -1085,29 +1124,29 @@ main () {
    # ########################################################################
    notfound=""
    if [ "${controller}" = "AACRAID" ]; then
-      if arcconf getconfig 1 > /tmp/percona-toolkit 2>/dev/null; then
-         parse_arcconf /tmp/percona-toolkit
+      if arcconf getconfig 1 > $TMPDIR/percona-toolkit 2>/dev/null; then
+         parse_arcconf $TMPDIR/percona-toolkit
       elif ! which arcconf >/dev/null 2>&1; then
          notfound="e.g. http://www.adaptec.com/en-US/support/raid/scsi_raid/ASR-2120S/"
       fi
    elif [ "${controller}" = "HP Smart Array" ]; then
-      if hpacucli ctrl all show config > /tmp/percona-toolkit 2>/dev/null; then
-         parse_hpacucli /tmp/percona-toolkit
+      if hpacucli ctrl all show config > $TMPDIR/percona-toolkit 2>/dev/null; then
+         parse_hpacucli $TMPDIR/percona-toolkit
       elif ! which hpacucli >/dev/null 2>&1; then
          notfound="your package repository or the manufacturer's website"
       fi
    elif [ "${controller}" = "LSI Logic MegaRAID SAS" ]; then
-      if MegaCli64 -AdpAllInfo -aALL -NoLog > /tmp/percona-toolkit 2>/dev/null; then
-         parse_lsi_megaraid_adapter_info /tmp/percona-toolkit
+      if MegaCli64 -AdpAllInfo -aALL -NoLog > $TMPDIR/percona-toolkit 2>/dev/null; then
+         parse_lsi_megaraid_adapter_info $TMPDIR/percona-toolkit
       elif ! which MegaCli64 >/dev/null 2>&1; then
          notfound="your package repository or the manufacturer's website"
       fi
-      if MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL -NoLog > /tmp/percona-toolkit 2>/dev/null; then
-         parse_lsi_megaraid_bbu_status /tmp/percona-toolkit
+      if MegaCli64 -AdpBbuCmd -GetBbuStatus -aALL -NoLog > $TMPDIR/percona-toolkit 2>/dev/null; then
+         parse_lsi_megaraid_bbu_status $TMPDIR/percona-toolkit
       fi
-      if MegaCli64 -LdPdInfo -aALL -NoLog > /tmp/percona-toolkit 2>/dev/null; then
-         parse_lsi_megaraid_virtual_devices /tmp/percona-toolkit
-         parse_lsi_megaraid_devices /tmp/percona-toolkit
+      if MegaCli64 -LdPdInfo -aALL -NoLog > $TMPDIR/percona-toolkit 2>/dev/null; then
+         parse_lsi_megaraid_virtual_devices $TMPDIR/percona-toolkit
+         parse_lsi_megaraid_devices $TMPDIR/percona-toolkit
       fi
    fi
 
@@ -1122,8 +1161,8 @@ main () {
       # #####################################################################
       if [ "${platform}" = "Linux" ]; then
          section Network_Config
-         if which lspci > /dev/null 2>&1 && lspci > /tmp/percona-toolkit 2>/dev/null; then
-            parse_ethernet_controller_lspci /tmp/percona-toolkit
+         if which lspci > /dev/null 2>&1 && lspci > $TMPDIR/percona-toolkit 2>/dev/null; then
+            parse_ethernet_controller_lspci $TMPDIR/percona-toolkit
          fi
          if sysctl net.ipv4.tcp_fin_timeout > /dev/null 2>&1; then
             name_val "FIN Timeout" "$(sysctl net.ipv4.tcp_fin_timeout)"
@@ -1135,15 +1174,15 @@ main () {
       # /proc/sys/net/netfilter/nf_conntrack_max or /proc/sys/net/nf_conntrack_max
       # in new kernels like Fedora 12?
 
-      if which ip >/dev/null 2>&1 && ip -s link > /tmp/percona-toolkit 2>/dev/null; then
+      if which ip >/dev/null 2>&1 && ip -s link > $TMPDIR/percona-toolkit 2>/dev/null; then
          section Interface_Statistics
-         parse_ip_s_link /tmp/percona-toolkit
+         parse_ip_s_link $TMPDIR/percona-toolkit
       fi
 
       if [ "${platform}" = "Linux" ]; then
          section Network_Connections
-         if netstat -antp > /tmp/percona-toolkit 2>/dev/null; then
-            parse_netstat /tmp/percona-toolkit
+         if netstat -antp > $TMPDIR/percona-toolkit 2>/dev/null; then
+            parse_netstat $TMPDIR/percona-toolkit
          fi
       fi
    fi
@@ -1164,12 +1203,12 @@ main () {
       fi
       if which vmstat > /dev/null 2>&1 ; then
          section "Simplified_and_fuzzy_rounded_vmstat_(wait_please)"
-         vmstat 1 5 > /tmp/percona-toolkit
+         vmstat 1 5 > $TMPDIR/percona-toolkit
          if [ "${platform}" = "Linux" ]; then
-            format_vmstat /tmp/percona-toolkit
+            format_vmstat $TMPDIR/percona-toolkit
          else
             # TODO: simplify/format for other platforms
-            cat /tmp/percona-toolkit
+            cat $TMPDIR/percona-toolkit
          fi
       fi
    fi
@@ -1179,6 +1218,7 @@ main () {
    # ########################################################################
    temp_files "rm"
    temp_files "check"
+   rm_tmpdir
    section The_End
 }
 
@@ -1238,9 +1278,9 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 =head1 DESCRIPTION
 
 pt-summary runs a large variety of commands to inspect system status and
-configuration, saves the output into files in /tmp, and then runs Unix
-commands on these results to format them nicely.  It works best when
-executed as a privileged user, but will also work without privileges,
+configuration, saves the output into files in a temporary directory, and
+then runs Unix commands on these results to format them nicely.  It works
+best when executed as a privileged user, but will also work without privileges,
 although some output might not be possible to generate without root.
 
 =head1 OPTIONS
@@ -1317,7 +1357,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -1336,7 +1376,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v0.9.5 released 2011-08-04
+pt-summary 2.0.3
 
 =cut
 

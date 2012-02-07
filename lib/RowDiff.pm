@@ -25,7 +25,7 @@ package RowDiff;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Required args:
 #   * dbh           obj: dbh used for collation-specific string comparisons
@@ -88,36 +88,36 @@ sub compare_sets {
 
    do {
       if ( !$lr && !$left_done ) {
-         MKDEBUG && _d('Fetching row from left');
+         PTDEBUG && _d('Fetching row from left');
          eval { $lr = $left_sth->fetchrow_hashref(); };
-         MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+         PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
          $left_done = !$lr || $EVAL_ERROR ? 1 : 0;
       }
-      elsif ( MKDEBUG ) {
+      elsif ( PTDEBUG ) {
          _d('Left still has rows');
       }
 
       if ( !$rr && !$right_done ) {
-         MKDEBUG && _d('Fetching row from right');
+         PTDEBUG && _d('Fetching row from right');
          eval { $rr = $right_sth->fetchrow_hashref(); };
-         MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+         PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
          $right_done = !$rr || $EVAL_ERROR ? 1 : 0;
       }
-      elsif ( MKDEBUG ) {
+      elsif ( PTDEBUG ) {
          _d('Right still has rows');
       }
 
       my $cmp;
       if ( $lr && $rr ) {
          $cmp = $self->key_cmp(%args, lr => $lr, rr => $rr);
-         MKDEBUG && _d('Key comparison on left and right:', $cmp);
+         PTDEBUG && _d('Key comparison on left and right:', $cmp);
       }
       if ( $lr || $rr ) {
          # If the current row is the "same row" on both sides, meaning the two
          # rows have the same key, check the contents of the row to see if
          # they're the same.
          if ( $lr && $rr && defined $cmp && $cmp == 0 ) {
-            MKDEBUG && _d('Left and right have the same key');
+            PTDEBUG && _d('Left and right have the same key');
             $syncer->same_row(%args, lr => $lr, rr => $rr);
             $self->{same_row}->(%args, lr => $lr, rr => $rr)
                if $self->{same_row};
@@ -125,7 +125,7 @@ sub compare_sets {
          }
          # The row in the left doesn't exist in the right.
          elsif ( !$rr || ( defined $cmp && $cmp < 0 ) ) {
-            MKDEBUG && _d('Left is not in right');
+            PTDEBUG && _d('Left is not in right');
             $syncer->not_in_right(%args, lr => $lr, rr => $rr);
             $self->{not_in_right}->(%args, lr => $lr, rr => $rr)
                if $self->{not_in_right};
@@ -133,7 +133,7 @@ sub compare_sets {
          }
          # Symmetric to the above.
          else {
-            MKDEBUG && _d('Right is not in left');
+            PTDEBUG && _d('Right is not in left');
             $syncer->not_in_left(%args, lr => $lr, rr => $rr);
             $self->{not_in_left}->(%args, lr => $lr, rr => $rr)
                if $self->{not_in_left};
@@ -142,7 +142,7 @@ sub compare_sets {
       }
       $left_done = $right_done = 1 if $done && $done->(%args);
    } while ( !($left_done && $right_done) );
-   MKDEBUG && _d('No more rows');
+   PTDEBUG && _d('No more rows');
    $syncer->done_with_rows();
 }
 
@@ -168,7 +168,7 @@ sub key_cmp {
       die "I need a $arg argument" unless exists $args{$arg};
    }
    my ($lr, $rr, $key_cols, $tbl_struct) = @args{@required_args};
-   MKDEBUG && _d('Comparing keys using columns:', join(',', @$key_cols));
+   PTDEBUG && _d('Comparing keys using columns:', join(',', @$key_cols));
 
    # Optional callbacks.
    my $callback = $self->{key_cmp};
@@ -178,16 +178,16 @@ sub key_cmp {
       my $l = $lr->{$col};
       my $r = $rr->{$col};
       if ( !defined $l || !defined $r ) {
-         MKDEBUG && _d($col, 'is not defined in both rows');
+         PTDEBUG && _d($col, 'is not defined in both rows');
          return defined $l ? 1 : defined $r ? -1 : 0;
       }
       else {
          if ( $tbl_struct->{is_numeric}->{$col} ) {   # Numeric column
-            MKDEBUG && _d($col, 'is numeric');
+            PTDEBUG && _d($col, 'is numeric');
             ($l, $r) = $trf->($l, $r, $tbl_struct, $col) if $trf;
             my $cmp = $l <=> $r;
             if ( $cmp ) {
-               MKDEBUG && _d('Column', $col, 'differs:', $l, '!=', $r);
+               PTDEBUG && _d('Column', $col, 'differs:', $l, '!=', $r);
                $callback->($col, $l, $r) if $callback;
                return $cmp;
             }
@@ -200,15 +200,15 @@ sub key_cmp {
             if ( $coll && ( $coll ne 'latin1_swedish_ci'
                            || $l =~ m/[^\040-\177]/ || $r =~ m/[^\040-\177]/) )
             {
-               MKDEBUG && _d('Comparing', $col, 'via MySQL');
+               PTDEBUG && _d('Comparing', $col, 'via MySQL');
                $cmp = $self->db_cmp($coll, $l, $r);
             }
             else {
-               MKDEBUG && _d('Comparing', $col, 'in lowercase');
+               PTDEBUG && _d('Comparing', $col, 'in lowercase');
                $cmp = lc $l cmp lc $r;
             }
             if ( $cmp ) {
-               MKDEBUG && _d('Column', $col, 'differs:', $l, 'ne', $r);
+               PTDEBUG && _d('Column', $col, 'differs:', $l, 'ne', $r);
                $callback->($col, $l, $r) if $callback;
                return $cmp;
             }
@@ -222,7 +222,7 @@ sub db_cmp {
    my ( $self, $collation, $l, $r ) = @_;
    if ( !$self->{sth}->{$collation} ) {
       if ( !$self->{charset_for} ) {
-         MKDEBUG && _d('Fetching collations from MySQL');
+         PTDEBUG && _d('Fetching collations from MySQL');
          my @collations = @{$self->{dbh}->selectall_arrayref(
             'SHOW COLLATION', {Slice => { collation => 1, charset => 1 }})};
          foreach my $collation ( @collations ) {
@@ -232,7 +232,7 @@ sub db_cmp {
       }
       my $sql = "SELECT STRCMP(_$self->{charset_for}->{$collation}? COLLATE $collation, "
          . "_$self->{charset_for}->{$collation}? COLLATE $collation) AS res";
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       $self->{sth}->{$collation} = $self->{dbh}->prepare($sql);
    }
    my $sth = $self->{sth}->{$collation};

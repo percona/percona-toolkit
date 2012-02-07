@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 6;
+use Test::More tests => 7;
 
 use PerconaTest;
 
@@ -67,6 +67,18 @@ ok(
       "t/pt-query-digest/samples/tcpdump033.txt"
    ),
    'Analysis for tcpdump033 with prepared statements report'
+);
+
+# ############################################################################
+# Bug 887688: Prepared statements crash pt-query-digest
+# ############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'tcpdump041.txt',
+         '--report-format', 'header,query_report,profile,prepared') },
+      "t/pt-query-digest/samples/tcpdump041.txt",
+   ),
+   'Analysis for tcpdump041 (bug 887688)'
 );
 
 # #############################################################################

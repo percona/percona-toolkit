@@ -25,7 +25,7 @@ package VersionParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class ) = @_;
@@ -35,7 +35,7 @@ sub new {
 sub parse {
    my ( $self, $str ) = @_;
    my $result = sprintf('%03d%03d%03d', $str =~ m/(\d+)/g);
-   MKDEBUG && _d($str, 'parses to', $result);
+   PTDEBUG && _d($str, 'parses to', $result);
    return $result;
 }
 
@@ -48,7 +48,7 @@ sub version_ge {
          $dbh->selectrow_array('SELECT VERSION()'));
    }
    my $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
-   MKDEBUG && _d($self->{$dbh}, 'ge', $target, ':', $result);
+   PTDEBUG && _d($self->{$dbh}, 'ge', $target, ':', $result);
    return $result;
 }
 
@@ -70,7 +70,7 @@ sub innodb_version {
       }
       @{ $dbh->selectall_arrayref("SHOW ENGINES", {Slice=>{}}) };
    if ( $innodb ) {
-      MKDEBUG && _d("InnoDB support:", $innodb->{support});
+      PTDEBUG && _d("InnoDB support:", $innodb->{support});
       if ( $innodb->{support} =~ m/YES|DEFAULT/i ) {
          my $vars = $dbh->selectrow_hashref(
             "SHOW VARIABLES LIKE 'innodb_version'");
@@ -82,7 +82,7 @@ sub innodb_version {
       }
    }
 
-   MKDEBUG && _d("InnoDB version:", $innodb_version);
+   PTDEBUG && _d("InnoDB version:", $innodb_version);
    return $innodb_version;
 }
 

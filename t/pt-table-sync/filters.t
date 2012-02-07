@@ -36,8 +36,8 @@ else {
 # complain that it cannot connect to 12347 for checking repl filters
 # and such.  12347 isn't present but SHOW SLAVE HOSTS on 12346 hasn't
 # figured that out yet, so we restart 12346 to refresh this list.
-diag(`/tmp/12346/stop >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
+#diag(`/tmp/12346/stop >/dev/null`);
+#diag(`/tmp/12346/start >/dev/null`);
 $slave_dbh  = $sb->get_dbh_for('slave1');
 
 my $output;
@@ -64,23 +64,21 @@ is(
 # #############################################################################
 $master_dbh->do('DROP DATABASE IF EXISTS test');
 $master_dbh->do('CREATE DATABASE test');
-$sb->load_file('master', 't/pt-table-sync/samples/checksum_tbl.sql', 'test');
 
 $slave_dbh->do('insert into issue_806_1.t1 values (41)');
 $slave_dbh->do('insert into issue_806_2.t2 values (42)');
 
-my $mk_table_checksum = "$trunk/bin/pt-table-checksum";
+my $mk_table_checksum = "$trunk/bin/pt-table-checksum --lock-wait-time 3";
 
-`$mk_table_checksum -F $cnf --replicate test.checksum h=127.1,P=12345 -d issue_806_1,issue_806_2 --quiet`;
-`$mk_table_checksum -F $cnf --replicate test.checksum h=127.1,P=12345 -d issue_806_1,issue_806_2 --replicate-check 1 --quiet`;
+`$mk_table_checksum --replicate test.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d issue_806_1,issue_806_2 --quiet`;
 
 $output = `$cmd h=127.1,P=12345 --replicate test.checksum --dry-run | tail -n 2`;
 $output =~ s/$t/00:00:00/g;
 $output =~ s/[ ]{2,}/ /g;
 is(
    $output,
-"# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_2.t2
-# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_1.t1
+"# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_1.t1
+# 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_2.t2
 ",
    "--replicate with no filters"
 );

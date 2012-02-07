@@ -9,15 +9,19 @@
 # a leading 'v', just `build-packages 1.0.8' for example.
 #
 # These environment variables control what the script does:
-#   CHECK=0|1     - Do (not) check the branch, version, etc.
-#   UPDATE=0|1    - Do (not) update changelogs, versions, etc.
-#   BUILD=0|1     - Do (not) build any packages
-#   BUILD_TAR=0|1 - Do (not) build the .tar.gz package
-#   BUILD_RPM=0|1 - Do (not) build the .rpm package
-#   BUILD_DEB=0|1 - Do (not) build the .deb package
+#   CHECK=0|1       - Do (not) check the branch, version, etc.
+#   UPDATE=0|1      - Do (not) update changelogs, versions, etc.
+#   BUILD=0|1       - Do (not) build any packages
+#   BUILD_TAR=0|1   - Do (not) build the .tar.gz package
+#   BUILD_RPM=0|1   - Do (not) build the .rpm package
+#   BUILD_DEB=0|1   - Do (not) build the .deb package
 # All of these env vars are true by default.  If, for example, you just want
 # to build the branch as-is: CHECK=0 UPDATE=0 build-packages VERSION
 # Otherwise, this script is pretty strict and tries to ensure a good build.
+#
+# These environment variables are for special builds:
+#   UPDATE_DOCS=0|1 - Do (not) update docs
+#   BETA=1          - UPDATE_DOCS=0 BUILD_RPM=0 BUILD_DEB=0
 #
 # A few more things you should know:
 #  * You'll need rpmbuild and dpkg-buildpackage to build the rpm and deb pkgs
@@ -65,6 +69,7 @@ cd $cwd
 # ############################################################################
 
 DOCS_DIR=$BRANCH/docs
+SPHINX_CONFIG_DIR=$BRANCH/config/sphinx-build
 DEB_CONFIG_DIR=$BRANCH/config/deb
 RPM_CONFIG_DIR=$BRANCH/config/rpm
 RELEASE_DIR=$BRANCH/release
@@ -123,20 +128,17 @@ check_rel_notes() {
 update_version() {
    echo -n "Updating version in tools... "
    cd $BRANCH/bin
-
-   local new_version_str="Percona Toolkit v$VERSION released $DATE"
-
    for tool_file in *; do
-      sed -i'.bak' -e "s/^Percona Toolkit v.*/$new_version_str/" $tool_file
+      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $VERSION/" $tool_file
       if [ $? -ne 0 ]; then
          die "Error updating version in $tool_file"
       fi
       rm "$tool_file.bak"
    done
 
-   local new_versions=$(grep --no-filename '^Percona Toolkit v' * | sort -u)
-   if [ "$new_versions" != "$new_version_str" ]; then
-      die "The version in some tool did not update correctly"
+   local new_versions=$(grep --no-filename '^pt-[^ ]\+ [0-9]\.' * | cut -d' ' -f2 | sort -u)
+   if [ "$new_versions" != "$VERSION" ]; then
+      die "The version in some tools did not update correctly"
    fi
    echo "OK"
 
@@ -151,11 +153,27 @@ update_version() {
    
    echo -n "Updating version in percona-toolkit.pod... "
    cd $DOCS_DIR
-   sed -i'.bak' -e "s/^Percona Toolkit v.*/$new_version_str/" percona-toolkit.pod
+   sed -i'.bak' -e "s/^Percona Toolkit v.*/Percona Toolkit v$VERSION released $DATE/" percona-toolkit.pod
    if [ $? -ne 0 ]; then
       die "Error updating version in percona-toolkit.pod"
    fi
    rm "percona-toolkit.pod.bak"
+   echo "OK"   
+   
+   echo -n "Updating version in sphinx-build/conf.py... "
+   # What Sphinx calls verison, we call series; what it calls release we
+   # call version.
+   cd $SPHINX_CONFIG_DIR
+   sed -i'.bak' -e "s/^version = .*/version = '$SERIES'/" conf.py
+   if [ $? -ne 0 ]; then
+      die "Error updating version in conf.py"
+   fi
+   rm "conf.py.bak"
+   sed -i'.bak' -e "s/^release = .*/release = '$VERSION'/" conf.py
+   if [ $? -ne 0 ]; then
+      die "Error updating release in conf.py"
+   fi
+   rm "conf.py.bak"
    echo "OK"   
 }
 
@@ -414,6 +432,7 @@ fi
 # Setting LANG as such works for me; hopefully it works for you, too.
 LANG='en_US.UTF-8'
 
+SERIES=$(echo $VERSION | sed 's/\.[0-9][0-9]*$//')
 YEAR=$(date -u +'%Y')                      # for updating copyright year
 DATE=$(date -u +'%F')                      # for updating release date
 DEB_DATE=$(date -u +'%a, %d %b %Y %T %z')  # for updating deb/changelog
@@ -423,6 +442,13 @@ PKG="percona-toolkit-$VERSION"             # what we're building
 tmpdir="/tmp/build-percona-toolkit-$VERSION"
 rm -rf $tmpdir >/dev/null 2>&1
 mkdir $tmpdir
+
+BETA=${BETA:-0}
+if [ $BETA -eq 1 ]; then
+   UPDATE_DOCS=0
+   BUILD_RPM=0
+   BUILD_DEB=0
+fi
 
 # This script does not check that you've done pre-release tasks like running
 # the test suite, updating Changelog entries, etc.  You're responsible for
@@ -441,10 +467,14 @@ if [ $UPDATE -eq 1 ]; then
    update_version
    update_copyright_year
    update_manifest
-   update_percona_toolkit_pod
-   update_changelog
-   update_rel_notes
-   update_user_docs 
+
+   UPDATE_DOCS=${UPDATE_DOCS:-1}
+   if [ $UPDATE_DOCS -eq 1 ]; then
+      update_percona_toolkit_pod
+      update_changelog
+      update_rel_notes
+      update_user_docs 
+   fi
 fi
 
 # Now that those ^ items are updated, you need to commit and push one more

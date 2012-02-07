@@ -1,0 +1,22 @@
+DROP DATABASE IF EXISTS ALL_UC;
+CREATE DATABASE ALL_UC;
+USE ALL_UC;
+CREATE TABLE T (
+  ID  INT NOT NULL,
+  C   VARCHAR(8) NOT NULL,
+  UNIQUE INDEX (ID)
+) ENGINE=INNODB;
+INSERT INTO T VALUES
+  (1, 'AAA'),
+  (2, 'BBB'),
+  (3, 'CCC'),
+  (4, 'DDD'),  
+  (5, 'EEE'),
+  (6, 'FFF'),
+  (7, 'GGG'),
+  (8, 'HHH'),
+  (9, 'III'),
+  (10,'JJJ'),
+  (11,'KKK'),  
+  (12,'LLL'),
+  (13,'MMM');

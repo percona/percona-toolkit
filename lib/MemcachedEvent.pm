@@ -30,7 +30,7 @@ package MemcachedEvent;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -77,12 +77,12 @@ sub parse_event {
    return unless $event;
 
    if ( !$event->{cmd} || !$event->{key} ) {
-      MKDEBUG && _d('Event has no cmd or key:', Dumper($event));
+      PTDEBUG && _d('Event has no cmd or key:', Dumper($event));
       return;
    }
 
    if ( !$cmds{$event->{cmd}} ) {
-      MKDEBUG && _d("Don't know how to handle cmd:", $event->{cmd});
+      PTDEBUG && _d("Don't know how to handle cmd:", $event->{cmd});
       return;
    }
 
@@ -106,7 +106,7 @@ sub parse_event {
    }
    else {
       # This normally happens with incr and decr cmds.
-      MKDEBUG && _d('Event has no res:', Dumper($event));
+      PTDEBUG && _d('Event has no res:', Dumper($event));
    }
 
    # Handle special results, errors, etc.  The handler should return the
@@ -143,7 +143,7 @@ sub handle_storage_cmd {
 
    # There should be a result for any storage cmd.   
    if ( !$event->{res} ) {
-      MKDEBUG && _d('No result for event:', Dumper($event));
+      PTDEBUG && _d('No result for event:', Dumper($event));
       return;
    }
 
@@ -167,7 +167,7 @@ sub handle_retr_cmd {
 
    # There should be a result for any retr cmd.   
    if ( !$event->{res} ) {
-      MKDEBUG && _d('No result for event:', Dumper($event));
+      PTDEBUG && _d('No result for event:', Dumper($event));
       return;
    }
 

@@ -29,7 +29,7 @@ package TcpdumpParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -164,7 +164,7 @@ sub _parse_packet {
       data      => $data ? substr($data, 0, 10).(length $data > 10 ? '...' : '')
                          : '',
    };
-   MKDEBUG && _d('packet:', Dumper($pkt));
+   PTDEBUG && _d('packet:', Dumper($pkt));
    $pkt->{data} = $data;
    return $pkt;
 }

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 54;
+use Test::More tests => 38;
 
 use TableParser;
 use Quoter;
@@ -20,10 +20,34 @@ use PerconaTest;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+
 my $q   = new Quoter();
 my $tp  = new TableParser(Quoter=>$q);
+
 my $tbl;
 my $sample = "t/lib/samples/tables/";
+
+SKIP: {
+   skip "Cannot connect to sandbox master", 2 unless $dbh;
+   skip 'Sandbox master does not have the sakila database', 2
+      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+
+   is(
+      $tp->get_create_table($dbh, 'sakila', 'FOO'),
+      undef,
+      "get_create_table(nonexistent table)"
+   );
+
+   ok(
+      no_diff(
+         $tp->get_create_table($dbh, 'sakila', 'actor'),
+         $sandbox_version ge '5.1' ? "$sample/sakila.actor"
+                                   : "$sample/sakila.actor-5.0",
+         cmd_output => 1,
+      ),
+      "get_create_table(sakila.actor)"
+   );
+};
 
 eval {
    $tp->parse( load_file('t/lib/samples/noquotes.sql') );
@@ -575,161 +599,7 @@ is_deeply(
 );
 
 # #############################################################################
-# Test remove_secondary_indexes().
-# #############################################################################
-sub test_rsi {
-   my ( $file, $des, $new_ddl, $indexes ) = @_;
-   my $ddl = load_file($file);
-   my ($got_new_ddl, $got_indexes) = $tp->remove_secondary_indexes($ddl);
-   is(
-      $got_indexes,
-      $indexes,
-      "$des - secondary indexes $file"
-   );
-   is(
-      $got_new_ddl,
-      $new_ddl,
-      "$des - new ddl $file"
-   );
-   return;
-}
-
-test_rsi(
-   't/lib/samples/t1.sql',
-   'MyISAM table, no indexes',
-"CREATE TABLE `t1` (
-  `a` int(11) default NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1
-",
-   undef
-);
-
-test_rsi(
-   't/lib/samples/one_key.sql',
-   'MyISAM table, one pk',
-"CREATE TABLE `t2` (
-  `a` int(11) NOT NULL,
-  `b` char(50) default NULL,
-  PRIMARY KEY  (`a`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-",
-   undef
-);
-
-test_rsi(
-   't/lib/samples/date.sql',
-   'one pk',
-"CREATE TABLE `checksum_test_5` (
-  `a` date NOT NULL,
-  `b` int(11) default NULL,
-  PRIMARY KEY  (`a`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
-",
-   undef
-);
-
-test_rsi(
-   't/lib/samples/auto-increment-actor.sql',
-   'pk, key (no trailing comma)',
-"CREATE TABLE `actor` (
-  `actor_id` smallint(5) unsigned NOT NULL auto_increment,
-  `first_name` varchar(45) NOT NULL,
-  `last_name` varchar(45) NOT NULL,
-  `last_update` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-  PRIMARY KEY  (`actor_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8;
-",
-   'ADD KEY `idx_actor_last_name` (`last_name`)'
-);
-
-test_rsi(
-   't/lib/samples/one_fk.sql',
-   'key, fk, no clustered key',
-"CREATE TABLE `t1` (
-  `a` int(11) NOT NULL,
-  `b` char(50) default NULL,
-  CONSTRAINT `t1_ibfk_1` FOREIGN KEY (`a`) REFERENCES `t2` (`a`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
-",
-   'ADD KEY `a` (`a`)',
-);
-
-test_rsi(
-   't/lib/samples/sakila.film.sql',
-   'pk, keys and fks',
-"CREATE TABLE `film` (
-  `film_id` smallint(5) unsigned NOT NULL auto_increment,
-  `title` varchar(255) NOT NULL,
-  `description` text,
-  `release_year` year(4) default NULL,
-  `language_id` tinyint(3) unsigned NOT NULL,
-  `original_language_id` tinyint(3) unsigned default NULL,
-  `rental_duration` tinyint(3) unsigned NOT NULL default '3',
-  `rental_rate` decimal(4,2) NOT NULL default '4.99',
-  `length` smallint(5) unsigned default NULL,
-  `replacement_cost` decimal(5,2) NOT NULL default '19.99',
-  `rating` enum('G','PG','PG-13','R','NC-17') default 'G',
-  `special_features` set('Trailers','Commentaries','Deleted Scenes','Behind the Scenes') default NULL,
-  `last_update` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-  PRIMARY KEY  (`film_id`),
-  CONSTRAINT `fk_film_language` FOREIGN KEY (`language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_film_language_original` FOREIGN KEY (`original_language_id`) REFERENCES `language` (`language_id`) ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8
-",
-   'ADD KEY `idx_fk_original_language_id` (`original_language_id`), ADD KEY `idx_fk_language_id` (`language_id`), ADD KEY `idx_title` (`title`)'
-);
-
-test_rsi(
-   't/lib/samples/issue_729.sql',
-   'issue 729',
-"CREATE TABLE `posts` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `template_id` smallint(5) unsigned NOT NULL DEFAULT '0',
-  `other_id` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `date` int(10) unsigned NOT NULL DEFAULT '0',
-  `private` tinyint(3) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15417 DEFAULT CHARSET=latin1;
-",
-  'ADD KEY `other_id` (`other_id`)',
-);
-
-test_rsi(
-   't/lib/samples/00_geodb_coordinates.sql',
-   'issue 833',
-"CREATE TABLE `geodb_coordinates` (
-  `loc_id` int(11) NOT NULL default '0',
-  `lon` double default NULL,
-  `lat` double default NULL,
-  `sin_lon` double default NULL,
-  `sin_lat` double default NULL,
-  `cos_lon` double default NULL,
-  `cos_lat` double default NULL,
-  `coord_type` int(11) NOT NULL default '0',
-  `coord_subtype` int(11) default NULL,
-  `valid_since` date default NULL,
-  `date_type_since` int(11) default NULL,
-  `valid_until` date NOT NULL default '0000-00-00',
-  `date_type_until` int(11) NOT NULL default '0'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1",
-   'ADD KEY `coord_lon_idx` (`lon`), ADD KEY `coord_loc_id_idx` (`loc_id`), ADD KEY `coord_stype_idx` (`coord_subtype`), ADD KEY `coord_until_idx` (`valid_until`), ADD KEY `coord_lat_idx` (`lat`), ADD KEY `coord_slon_idx` (`sin_lon`), ADD KEY `coord_clon_idx` (`cos_lon`), ADD KEY `coord_slat_idx` (`sin_lat`), ADD KEY `coord_clat_idx` (`cos_lat`), ADD KEY `coord_type_idx` (`coord_type`), ADD KEY `coord_since_idx` (`valid_since`)',
-);
-
-# Column and index names are case-insensitive so remove_secondary_indexes()
-# returns "ADD KEY `foo_bar` (`i`,`j`)" for "KEY `Foo_Bar` (`i`,`J`)".
-test_rsi(
-   't/lib/samples/issue_956.sql',
-   'issue 956',
-"CREATE TABLE `t` (
-  `i` int(11) default NULL,
-  `J` int(11) default NULL
-) ENGINE=InnoDB
-",
-   'ADD KEY `foo_bar` (`i`,`j`)',
-);
-
-# #############################################################################
-# Sandbox tests
+# Sandbox test
 # #############################################################################
 SKIP: {
    skip 'Cannot connect to sandbox master', 8 unless $dbh;

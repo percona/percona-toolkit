@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings FATAL => 'all';
+use Time::HiRes qw(sleep time);
+
+if ( !@ARGV || @ARGV < 2 ) {
+   print STDERR "Usage: wait-to-exec WAIT EXEC [RUNTIME [INTERVAL]]\n",
+                "When the WAIT script exits 0, execute the EXEC script.\n";
+   exit 1;
+}
+
+my ($wait, $exec, $runtime, $interval) = @ARGV;
+$runtime  ||= 1.0;
+$interval ||= 0.1;
+
+#warn "wait: $wait\n";
+#warn "exec: $exec\n";
+
+my $t_start = time;
+while ( time - $t_start < $runtime ) {
+   if ( exit_status($wait) ) {
+      sleep $interval;
+   }
+   else {
+      # exec does not return; this script becomes the exec process.
+      exec($exec);
+   }
+}
+
+warn "Never observed wait condition";
+exit 1;
+
+sub exit_status {
+   my ($wait) = @_;
+   system($wait);
+   # Like grep, exit status 0 means "match found", so stop waiting.
+   my $exit_status = $? >> 8;
+   return $exit_status;
+}

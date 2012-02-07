@@ -26,7 +26,7 @@ package DSNParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 0;
@@ -60,7 +60,7 @@ sub new {
       if ( !$opt->{key} || !$opt->{desc} ) {
          die "Invalid DSN option: ", Dumper($opt);
       }
-      MKDEBUG && _d('DSN option:',
+      PTDEBUG && _d('DSN option:',
          join(', ',
             map { "$_=" . (defined $opt->{$_} ? ($opt->{$_} || '') : 'undef') }
                keys %$opt
@@ -82,7 +82,7 @@ sub new {
 sub prop {
    my ( $self, $prop, $value ) = @_;
    if ( @_ > 2 ) {
-      MKDEBUG && _d('Setting', $prop, 'property');
+      PTDEBUG && _d('Setting', $prop, 'property');
       $self->{$prop} = $value;
    }
    return $self->{$prop};
@@ -115,10 +115,10 @@ sub prop {
 sub parse {
    my ( $self, $dsn, $prev, $defaults ) = @_;
    if ( !$dsn ) {
-      MKDEBUG && _d('No DSN to parse');
+      PTDEBUG && _d('No DSN to parse');
       return;
    }
-   MKDEBUG && _d('Parsing', $dsn);
+   PTDEBUG && _d('Parsing', $dsn);
    $prev     ||= {};
    $defaults ||= {};
    my %given_props;
@@ -133,24 +133,24 @@ sub parse {
       }
       else {
          # Handle barewords
-         MKDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
+         PTDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
          $given_props{h} = $dsn_part;
       }
    }
 
    # Fill in final props from given, previous, and/or default props
    foreach my $key ( keys %$opts ) {
-      MKDEBUG && _d('Finding value for', $key);
+      PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
       if (   !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from previous DSN');
+         PTDEBUG && _d('Copying value for', $key, 'from previous DSN');
       }
       if ( !defined $final_props{$key} ) {
          $final_props{$key} = $defaults->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from defaults');
+         PTDEBUG && _d('Copying value for', $key, 'from defaults');
       }
    }
 
@@ -184,7 +184,7 @@ sub parse_options {
           grep { $o->has($_) && $o->get($_) }
           keys %{$self->{opts}}
         );
-   MKDEBUG && _d('DSN string made from options:', $dsn_string);
+   PTDEBUG && _d('DSN string made from options:', $dsn_string);
    return $self->parse($dsn_string);
 }
 
@@ -194,12 +194,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -239,7 +241,7 @@ sub get_cxn_params {
                      qw(F h P S A))
          . ';mysql_read_default_group=client';
    }
-   MKDEBUG && _d($dsn);
+   PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
 }
 
@@ -292,7 +294,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
@@ -307,22 +309,22 @@ sub get_dbh {
             # append our SQL mode to whatever is already set.
             # http://code.google.com/p/maatkit/issues/detail?id=801
             $sql = 'SELECT @@SQL_MODE';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             my ($sql_mode) = $dbh->selectrow_array($sql);
 
             $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
                  . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
                  . ($sql_mode ? ",$sql_mode" : '')
                  . '\'*/';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             $dbh->do($sql);
 
             # Set character set and binmode on STDOUT.
             if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
                $sql = "/*!40101 SET NAMES $charset*/";
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
-               MKDEBUG && _d('Enabling charset for STDOUT');
+               PTDEBUG && _d('Enabling charset for STDOUT');
                if ( $charset eq 'utf8' ) {
                   binmode(STDOUT, ':utf8')
                      or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
@@ -334,15 +336,15 @@ sub get_dbh {
 
             if ( $self->prop('set-vars') ) {
                $sql = "SET " . $self->prop('set-vars');
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
             }
          }
       };
       if ( !$dbh && $EVAL_ERROR ) {
-         MKDEBUG && _d($EVAL_ERROR);
+         PTDEBUG && _d($EVAL_ERROR);
          if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            MKDEBUG && _d('Going to try again without utf8 support');
+            PTDEBUG && _d('Going to try again without utf8 support');
             delete $defaults->{mysql_enable_utf8};
          }
          elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
@@ -360,7 +362,7 @@ sub get_dbh {
       }
    }
 
-   MKDEBUG && _d('DBH info: ',
+   PTDEBUG && _d('DBH info: ',
       $dbh,
       Dumper($dbh->selectrow_hashref(
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
@@ -389,7 +391,7 @@ sub get_hostname {
 # children.  These are usually $sth handles that haven't been finish()ed.
 sub disconnect {
    my ( $self, $dbh ) = @_;
-   MKDEBUG && $self->print_active_handles($dbh);
+   PTDEBUG && $self->print_active_handles($dbh);
    $dbh->disconnect;
 }
 

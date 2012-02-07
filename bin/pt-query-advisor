@@ -6,7 +6,7 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # ###########################################################################
 # DSNParser package
@@ -22,7 +22,7 @@ package DSNParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 0;
@@ -45,7 +45,7 @@ sub new {
       if ( !$opt->{key} || !$opt->{desc} ) {
          die "Invalid DSN option: ", Dumper($opt);
       }
-      MKDEBUG && _d('DSN option:',
+      PTDEBUG && _d('DSN option:',
          join(', ',
             map { "$_=" . (defined $opt->{$_} ? ($opt->{$_} || '') : 'undef') }
                keys %$opt
@@ -63,7 +63,7 @@ sub new {
 sub prop {
    my ( $self, $prop, $value ) = @_;
    if ( @_ > 2 ) {
-      MKDEBUG && _d('Setting', $prop, 'property');
+      PTDEBUG && _d('Setting', $prop, 'property');
       $self->{$prop} = $value;
    }
    return $self->{$prop};
@@ -72,10 +72,10 @@ sub prop {
 sub parse {
    my ( $self, $dsn, $prev, $defaults ) = @_;
    if ( !$dsn ) {
-      MKDEBUG && _d('No DSN to parse');
+      PTDEBUG && _d('No DSN to parse');
       return;
    }
-   MKDEBUG && _d('Parsing', $dsn);
+   PTDEBUG && _d('Parsing', $dsn);
    $prev     ||= {};
    $defaults ||= {};
    my %given_props;
@@ -87,23 +87,23 @@ sub parse {
          $given_props{$prop_key} = $prop_val;
       }
       else {
-         MKDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
+         PTDEBUG && _d('Interpreting', $dsn_part, 'as h=', $dsn_part);
          $given_props{h} = $dsn_part;
       }
    }
 
    foreach my $key ( keys %$opts ) {
-      MKDEBUG && _d('Finding value for', $key);
+      PTDEBUG && _d('Finding value for', $key);
       $final_props{$key} = $given_props{$key};
       if (   !defined $final_props{$key}
            && defined $prev->{$key} && $opts->{$key}->{copy} )
       {
          $final_props{$key} = $prev->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from previous DSN');
+         PTDEBUG && _d('Copying value for', $key, 'from previous DSN');
       }
       if ( !defined $final_props{$key} ) {
          $final_props{$key} = $defaults->{$key};
-         MKDEBUG && _d('Copying value for', $key, 'from defaults');
+         PTDEBUG && _d('Copying value for', $key, 'from defaults');
       }
    }
 
@@ -134,7 +134,7 @@ sub parse_options {
           grep { $o->has($_) && $o->get($_) }
           keys %{$self->{opts}}
         );
-   MKDEBUG && _d('DSN string made from options:', $dsn_string);
+   PTDEBUG && _d('DSN string made from options:', $dsn_string);
    return $self->parse($dsn_string);
 }
 
@@ -184,7 +184,7 @@ sub get_cxn_params {
                      qw(F h P S A))
          . ';mysql_read_default_group=client';
    }
-   MKDEBUG && _d($dsn);
+   PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
 }
 
@@ -229,7 +229,7 @@ sub get_dbh {
    my $dbh;
    my $tries = 2;
    while ( !$dbh && $tries-- ) {
-      MKDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
+      PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
       eval {
@@ -239,21 +239,21 @@ sub get_dbh {
             my $sql;
 
             $sql = 'SELECT @@SQL_MODE';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             my ($sql_mode) = $dbh->selectrow_array($sql);
 
             $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
                  . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
                  . ($sql_mode ? ",$sql_mode" : '')
                  . '\'*/';
-            MKDEBUG && _d($dbh, $sql);
+            PTDEBUG && _d($dbh, $sql);
             $dbh->do($sql);
 
             if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
                $sql = "/*!40101 SET NAMES $charset*/";
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
-               MKDEBUG && _d('Enabling charset for STDOUT');
+               PTDEBUG && _d('Enabling charset for STDOUT');
                if ( $charset eq 'utf8' ) {
                   binmode(STDOUT, ':utf8')
                      or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
@@ -265,15 +265,15 @@ sub get_dbh {
 
             if ( $self->prop('set-vars') ) {
                $sql = "SET " . $self->prop('set-vars');
-               MKDEBUG && _d($dbh, ':', $sql);
+               PTDEBUG && _d($dbh, ':', $sql);
                $dbh->do($sql);
             }
          }
       };
       if ( !$dbh && $EVAL_ERROR ) {
-         MKDEBUG && _d($EVAL_ERROR);
+         PTDEBUG && _d($EVAL_ERROR);
          if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            MKDEBUG && _d('Going to try again without utf8 support');
+            PTDEBUG && _d('Going to try again without utf8 support');
             delete $defaults->{mysql_enable_utf8};
          }
          elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
@@ -291,7 +291,7 @@ sub get_dbh {
       }
    }
 
-   MKDEBUG && _d('DBH info: ',
+   PTDEBUG && _d('DBH info: ',
       $dbh,
       Dumper($dbh->selectrow_hashref(
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
@@ -317,7 +317,7 @@ sub get_hostname {
 
 sub disconnect {
    my ( $self, $dbh ) = @_;
-   MKDEBUG && $self->print_active_handles($dbh);
+   PTDEBUG && $self->print_active_handles($dbh);
    $dbh->disconnect;
 }
 
@@ -378,7 +378,7 @@ package OptionParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
@@ -462,7 +462,7 @@ sub get_specs {
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    if ( $contents =~ m/^=head1 DSN OPTIONS/m ) {
-      MKDEBUG && _d('Parsing DSN OPTIONS');
+      PTDEBUG && _d('Parsing DSN OPTIONS');
       my $dsn_attribs = {
          dsn  => 1,
          copy => 1,
@@ -504,9 +504,9 @@ sub get_specs {
       $self->{DSNParser} = DSNParser->new(opts => \@dsn_opts);
    }
 
-   if ( $contents =~ m/^(Percona Toolkit v.+)$/m ) {
+   if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
       $self->{version} = $1;
-      MKDEBUG && _d($self->{version});
+      PTDEBUG && _d($self->{version});
    }
 
    return;
@@ -543,7 +543,7 @@ sub _pod_to_specs {
       chomp $para;
       $para =~ s/\s+/ /g;
       $para =~ s/$POD_link_re/$1/go;
-      MKDEBUG && _d('Option rule:', $para);
+      PTDEBUG && _d('Option rule:', $para);
       push @rules, $para;
    }
 
@@ -552,7 +552,7 @@ sub _pod_to_specs {
    do {
       if ( my ($option) = $para =~ m/^=item $self->{item}/ ) {
          chomp $para;
-         MKDEBUG && _d($para);
+         PTDEBUG && _d($para);
          my %attribs;
 
          $para = <$fh>; # read next paragraph, possibly attributes
@@ -571,7 +571,7 @@ sub _pod_to_specs {
             $para = <$fh>; # read next paragraph, probably short help desc
          }
          else {
-            MKDEBUG && _d('Option has no attributes');
+            PTDEBUG && _d('Option has no attributes');
          }
 
          $para =~ s/\s+\Z//g;
@@ -579,7 +579,7 @@ sub _pod_to_specs {
          $para =~ s/$POD_link_re/$1/go;
 
          $para =~ s/\.(?:\n.*| [A-Z].*|\Z)//s;
-         MKDEBUG && _d('Short help:', $para);
+         PTDEBUG && _d('Short help:', $para);
 
          die "No description after option spec $option" if $para =~ m/^=item/;
 
@@ -617,7 +617,7 @@ sub _parse_specs {
 
    foreach my $opt ( @specs ) {
       if ( ref $opt ) { # It's an option spec, not a rule.
-         MKDEBUG && _d('Parsing opt spec:',
+         PTDEBUG && _d('Parsing opt spec:',
             map { ($_, '=>', $opt->{$_}) } keys %$opt);
 
          my ( $long, $short ) = $opt->{spec} =~ m/^([\w-]+)(?:\|([^!+=]*))?/;
@@ -630,7 +630,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
 
          if ( length $long == 1 ) {
-            MKDEBUG && _d('Long opt', $long, 'looks like short opt');
+            PTDEBUG && _d('Long opt', $long, 'looks like short opt');
             $self->{short_opts}->{$long} = $long;
          }
 
@@ -656,14 +656,14 @@ sub _parse_specs {
 
          my ( $type ) = $opt->{spec} =~ m/=(.)/;
          $opt->{type} = $type;
-         MKDEBUG && _d($long, 'type:', $type);
+         PTDEBUG && _d($long, 'type:', $type);
 
 
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
             $self->{defaults}->{$long} = defined $def ? $def : 1;
-            MKDEBUG && _d($long, 'default:', $def);
+            PTDEBUG && _d($long, 'default:', $def);
          }
 
          if ( $long eq 'config' ) {
@@ -672,13 +672,13 @@ sub _parse_specs {
 
          if ( (my ($dis) = $opt->{desc} =~ m/(disables .*)/) ) {
             $disables{$long} = $dis;
-            MKDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
+            PTDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
          }
 
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         MKDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt); 
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -686,17 +686,17 @@ sub _parse_specs {
          if ( $opt =~ m/mutually exclusive|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{mutex}}, \@participants;
-            MKDEBUG && _d(@participants, 'are mutually exclusive');
+            PTDEBUG && _d(@participants, 'are mutually exclusive');
          }
          if ( $opt =~ m/at least one|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{atleast1}}, \@participants;
-            MKDEBUG && _d(@participants, 'require at least one');
+            PTDEBUG && _d(@participants, 'require at least one');
          }
          if ( $opt =~ m/default to/ ) {
             $rule_ok = 1;
             $self->{defaults_to}->{$participants[0]} = $participants[1];
-            MKDEBUG && _d($participants[0], 'defaults to', $participants[1]);
+            PTDEBUG && _d($participants[0], 'defaults to', $participants[1]);
          }
          if ( $opt =~ m/restricted to option groups/ ) {
             $rule_ok = 1;
@@ -710,7 +710,7 @@ sub _parse_specs {
          if( $opt =~ m/accepts additional command-line arguments/ ) {
             $rule_ok = 1;
             $self->{strict} = 0;
-            MKDEBUG && _d("Strict mode disabled by rule");
+            PTDEBUG && _d("Strict mode disabled by rule");
          }
 
          die "Unrecognized option rule: $opt" unless $rule_ok;
@@ -720,7 +720,7 @@ sub _parse_specs {
    foreach my $long ( keys %disables ) {
       my @participants = $self->_get_participants($disables{$long});
       $self->{disables}->{$long} = \@participants;
-      MKDEBUG && _d('Option', $long, 'disables', @participants);
+      PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
    return; 
@@ -734,7 +734,7 @@ sub _get_participants {
          unless exists $self->{opts}->{$long};
       push @participants, $long;
    }
-   MKDEBUG && _d('Participants for', $str, ':', @participants);
+   PTDEBUG && _d('Participants for', $str, ':', @participants);
    return @participants;
 }
 
@@ -757,7 +757,7 @@ sub set_defaults {
       die "Cannot set default for nonexistent option $long"
          unless exists $self->{opts}->{$long};
       $self->{defaults}->{$long} = $defaults{$long};
-      MKDEBUG && _d('Default val for', $long, ':', $defaults{$long});
+      PTDEBUG && _d('Default val for', $long, ':', $defaults{$long});
    }
    return;
 }
@@ -786,7 +786,7 @@ sub _set_option {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
-   MKDEBUG && _d('Got option', $long, '=', $val);
+   PTDEBUG && _d('Got option', $long, '=', $val);
 }
 
 sub get_opts {
@@ -817,7 +817,7 @@ sub get_opts {
             if ( $self->got('config') ) {
                die $EVAL_ERROR;
             }
-            elsif ( MKDEBUG ) {
+            elsif ( PTDEBUG ) {
                _d($EVAL_ERROR);
             }
          }
@@ -884,7 +884,7 @@ sub _check_opts {
             if ( exists $self->{disables}->{$long} ) {
                my @disable_opts = @{$self->{disables}->{$long}};
                map { $self->{opts}->{$_}->{value} = undef; } @disable_opts;
-               MKDEBUG && _d('Unset options', @disable_opts,
+               PTDEBUG && _d('Unset options', @disable_opts,
                   'because', $long,'disables them');
             }
 
@@ -933,7 +933,7 @@ sub _check_opts {
             delete $long[$i];
          }
          else {
-            MKDEBUG && _d('Temporarily failed to parse', $long);
+            PTDEBUG && _d('Temporarily failed to parse', $long);
          }
       }
 
@@ -957,12 +957,12 @@ sub _validate_type {
    my $val = $opt->{value};
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
       my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
          $suffix = $s || 's';
-         MKDEBUG && _d('No suffix given; using', $suffix, 'for',
+         PTDEBUG && _d('No suffix given; using', $suffix, 'for',
             $opt->{long}, '(value:', $val, ')');
       }
       if ( $suffix =~ m/[smhd]/ ) {
@@ -971,23 +971,23 @@ sub _validate_type {
               : $suffix eq 'h' ? $num * 3600     # Hours
               :                  $num * 86400;   # Days
          $opt->{value} = ($prefix || '') . $val;
-         MKDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
+         PTDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
       }
       else {
          $self->save_error("Invalid time suffix for --$opt->{long}");
       }
    }
    elsif ( $val && $opt->{type} eq 'd' ) {  # type DSN
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
       my $prev = {};
       my $from_key = $self->{defaults_to}->{ $opt->{long} };
       if ( $from_key ) {
-         MKDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
+         PTDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
          if ( $self->{opts}->{$from_key}->{parsed} ) {
             $prev = $self->{opts}->{$from_key}->{value};
          }
          else {
-            MKDEBUG && _d('Cannot parse', $opt->{long}, 'until',
+            PTDEBUG && _d('Cannot parse', $opt->{long}, 'until',
                $from_key, 'parsed');
             return;
          }
@@ -996,7 +996,7 @@ sub _validate_type {
       $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
       $self->_parse_size($opt, $val);
    }
    elsif ( $opt->{type} eq 'H' || (defined $val && $opt->{type} eq 'h') ) {
@@ -1006,7 +1006,7 @@ sub _validate_type {
       $opt->{value} = [ split(/(?<!\\),\s*/, ($val || '')) ];
    }
    else {
-      MKDEBUG && _d('Nothing to validate for option',
+      PTDEBUG && _d('Nothing to validate for option',
          $opt->{long}, 'type', $opt->{type}, 'value', $val);
    }
 
@@ -1080,11 +1080,11 @@ sub usage_or_errors {
    $file ||= $self->{file} || __FILE__;
 
    if ( !$self->{description} || !$self->{usage} ) {
-      MKDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
+      PTDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
       my %synop = $self->_parse_synopsis($file);
       $self->{description} ||= $synop{description};
       $self->{usage}       ||= $synop{usage};
-      MKDEBUG && _d("Description:", $self->{description},
+      PTDEBUG && _d("Description:", $self->{description},
          "\nUsage:", $self->{usage});
    }
 
@@ -1299,7 +1299,7 @@ sub _parse_size {
    my ( $self, $opt, $val ) = @_;
 
    if ( lc($val || '') eq 'null' ) {
-      MKDEBUG && _d('NULL size for', $opt->{long});
+      PTDEBUG && _d('NULL size for', $opt->{long});
       $opt->{value} = 'null';
       return;
    }
@@ -1309,7 +1309,7 @@ sub _parse_size {
    if ( defined $num ) {
       if ( $factor ) {
          $num *= $factor_for{$factor};
-         MKDEBUG && _d('Setting option', $opt->{y},
+         PTDEBUG && _d('Setting option', $opt->{y},
             'to num', $num, '* factor', $factor);
       }
       $opt->{value} = ($pre || '') . $num;
@@ -1333,7 +1333,7 @@ sub _parse_attribs {
 sub _parse_synopsis {
    my ( $self, $file ) = @_;
    $file ||= $self->{file} || __FILE__;
-   MKDEBUG && _d("Parsing SYNOPSIS in", $file);
+   PTDEBUG && _d("Parsing SYNOPSIS in", $file);
 
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -1346,7 +1346,7 @@ sub _parse_synopsis {
       push @synop, $para;
    }
    close $fh;
-   MKDEBUG && _d("Raw SYNOPSIS text:", @synop);
+   PTDEBUG && _d("Raw SYNOPSIS text:", @synop);
    my ($usage, $desc) = @synop;
    die "The SYNOPSIS section in $file is not formatted properly"
       unless $usage && $desc;
@@ -1373,7 +1373,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-if ( MKDEBUG ) {
+if ( PTDEBUG ) {
    print '# ', $^X, ' ', $], "\n";
    if ( my $uname = `uname -a` ) {
       $uname =~ s/\s+/ /g;
@@ -1403,7 +1403,7 @@ package Quoter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1480,7 +1480,7 @@ package SlowLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1532,7 +1532,7 @@ sub parse_event {
       if ( $stmt =~ s/$slow_log_hd_line//go ){ # Throw away header lines in log
          my @chunks = split(/$INPUT_RECORD_SEPARATOR/o, $stmt);
          if ( @chunks > 1 ) {
-            MKDEBUG && _d("Found multiple chunks");
+            PTDEBUG && _d("Found multiple chunks");
             $stmt = shift @chunks;
             unshift @$pending, @chunks;
          }
@@ -1550,18 +1550,18 @@ sub parse_event {
       while ( $stmt =~ m/^(.*)$/mg ) { # /g is important, requires scalar match.
          $pos     = pos($stmt);  # Be careful not to mess this up!
          my $line = $1;          # Necessary for /g and pos() to work.
-         MKDEBUG && _d($line);
+         PTDEBUG && _d($line);
 
          if ($line =~ m/^(?:#|use |SET (?:last_insert_id|insert_id|timestamp))/o) {
 
             if ( !$got_ts && (my ( $time ) = $line =~ m/$slow_log_ts_line/o)) {
-               MKDEBUG && _d("Got ts", $time);
+               PTDEBUG && _d("Got ts", $time);
                push @properties, 'ts', $time;
                ++$got_ts;
                if ( !$got_uh
                   && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
                ) {
-                  MKDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+                  PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                   push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                   ++$got_uh;
                }
@@ -1570,13 +1570,13 @@ sub parse_event {
             elsif ( !$got_uh
                   && ( my ( $user, $host, $ip ) = $line =~ m/$slow_log_uh_line/o )
             ) {
-               MKDEBUG && _d("Got user, host, ip", $user, $host, $ip);
+               PTDEBUG && _d("Got user, host, ip", $user, $host, $ip);
                push @properties, 'user', $user, 'host', $host, 'ip', $ip;
                ++$got_uh;
             }
 
             elsif (!$got_ac && $line =~ m/^# (?:administrator command:.*)$/) {
-               MKDEBUG && _d("Got admin command");
+               PTDEBUG && _d("Got admin command");
                $line =~ s/^#\s+//;  # string leading "# ".
                push @properties, 'cmd', 'Admin', 'arg', $line;
                push @properties, 'bytes', length($properties[-1]);
@@ -1585,12 +1585,12 @@ sub parse_event {
             }
 
             elsif ( $line =~ m/^# +[A-Z][A-Za-z_]+: \S+/ ) { # Make the test cheap!
-               MKDEBUG && _d("Got some line with properties");
+               PTDEBUG && _d("Got some line with properties");
 
                if ( $line =~ m/Schema:\s+\w+: / ) {
-                  MKDEBUG && _d('Removing empty Schema attrib');
+                  PTDEBUG && _d('Removing empty Schema attrib');
                   $line =~ s/Schema:\s+//;
-                  MKDEBUG && _d($line);
+                  PTDEBUG && _d($line);
                }
 
                my @temp = $line =~ m/(\w+):\s+(\S+|\Z)/g;
@@ -1598,36 +1598,36 @@ sub parse_event {
             }
 
             elsif ( !$got_db && (my ( $db ) = $line =~ m/^use ([^;]+)/ ) ) {
-               MKDEBUG && _d("Got a default database:", $db);
+               PTDEBUG && _d("Got a default database:", $db);
                push @properties, 'db', $db;
                ++$got_db;
             }
 
             elsif (!$got_set && (my ($setting) = $line =~ m/^SET\s+([^;]*)/)) {
-               MKDEBUG && _d("Got some setting:", $setting);
+               PTDEBUG && _d("Got some setting:", $setting);
                push @properties, split(/,|\s*=\s*/, $setting);
                ++$got_set;
             }
 
             if ( !$found_arg && $pos == $len ) {
-               MKDEBUG && _d("Did not find arg, looking for special cases");
+               PTDEBUG && _d("Did not find arg, looking for special cases");
                local $INPUT_RECORD_SEPARATOR = ";\n";
                if ( defined(my $l = $next_event->()) ) {
                   chomp $l;
                   $l =~ s/^\s+//;
-                  MKDEBUG && _d("Found admin statement", $l);
+                  PTDEBUG && _d("Found admin statement", $l);
                   push @properties, 'cmd', 'Admin', 'arg', $l;
                   push @properties, 'bytes', length($properties[-1]);
                   $found_arg++;
                }
                else {
-                  MKDEBUG && _d("I can't figure out what to do with this line");
+                  PTDEBUG && _d("I can't figure out what to do with this line");
                   next EVENT;
                }
             }
          }
          else {
-            MKDEBUG && _d("Got the query/arg line");
+            PTDEBUG && _d("Got the query/arg line");
             my $arg = substr($stmt, $pos - length($line));
             push @properties, 'arg', $arg, 'bytes', length($arg);
             if ( $args{misc} && $args{misc}->{embed}
@@ -1639,7 +1639,7 @@ sub parse_event {
          }
       }
 
-      MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
       if ( $args{stats} ) {
          $args{stats}->{events_read}++;
@@ -1681,7 +1681,7 @@ package GeneralLogParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -1726,10 +1726,10 @@ sub parse_event {
          defined($line = shift @$pending)
       or defined($line = $next_event->())
    ) {
-      MKDEBUG && _d($line);
+      PTDEBUG && _d($line);
       my ($ts, $thread_id, $cmd, $arg) = $line =~ m/$genlog_line_1/;
       if ( !($thread_id && $cmd) ) {
-         MKDEBUG && _d('Not start of general log event');
+         PTDEBUG && _d('Not start of general log event');
          next;
       }
       my @properties = ('pos_in_log', $pos_in_log, 'ts', $ts,
@@ -1746,17 +1746,17 @@ sub parse_event {
                my (undef, $next_thread_id, $next_cmd)
                   = $line =~ m/$genlog_line_1/;
                if ( $next_thread_id && $next_cmd ) {
-                  MKDEBUG && _d('Event done');
+                  PTDEBUG && _d('Event done');
                   $done = 1;
                   push @$pending, $line;
                }
                else {
-                  MKDEBUG && _d('More arg:', $line);
+                  PTDEBUG && _d('More arg:', $line);
                   $arg .= $line;
                }
             }
             else {
-               MKDEBUG && _d('No more lines');
+               PTDEBUG && _d('No more lines');
                $done = 1;
             }
          } until ( $done );
@@ -1777,7 +1777,7 @@ sub parse_event {
                my ($user, undef, $db) = $arg =~ /(\S+)/g;
                my $host;
                ($user, $host) = split(/@/, $user);
-               MKDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
+               PTDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
 
                push @properties, 'user', $user if $user;
                push @properties, 'host', $host if $host;
@@ -1789,7 +1789,7 @@ sub parse_event {
             $cmd = 'Init DB';
             $arg =~ s/^DB\s+//;
             my ($db) = $arg =~ /(\S+)/;
-            MKDEBUG && _d('Init DB:', $db);
+            PTDEBUG && _d('Init DB:', $db);
             push @properties, 'db',   $db   if $db;
             $db_for->{$thread_id} = $db;
          }
@@ -1800,7 +1800,7 @@ sub parse_event {
 
       push @properties, 'Query_time', 0;
 
-      MKDEBUG && _d('Properties of event:', Dumper(\@properties));
+      PTDEBUG && _d('Properties of event:', Dumper(\@properties));
       my $event = { @properties };
       if ( $args{stats} ) {
          $args{stats}->{events_read}++;
@@ -1842,7 +1842,7 @@ package QueryParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 our $tbl_ident = qr/(?:`[^`]+`|\w+)(?:\.(?:`[^`]+`|\w+))?/;
 our $tbl_regex = qr{
@@ -1870,33 +1870,33 @@ sub new {
 sub get_tables {
    my ( $self, $query ) = @_;
    return unless $query;
-   MKDEBUG && _d('Getting tables for', $query);
+   PTDEBUG && _d('Getting tables for', $query);
 
    my ( $ddl_stmt ) = $query =~ m/^\s*($data_def_stmts)\b/i;
    if ( $ddl_stmt ) {
-      MKDEBUG && _d('Special table type:', $ddl_stmt);
+      PTDEBUG && _d('Special table type:', $ddl_stmt);
       $query =~ s/IF\s+(?:NOT\s+)?EXISTS//i;
       if ( $query =~ m/$ddl_stmt DATABASE\b/i ) {
-         MKDEBUG && _d('Query alters a database, not a table');
+         PTDEBUG && _d('Query alters a database, not a table');
          return ();
       }
       if ( $ddl_stmt =~ m/CREATE/i && $query =~ m/$ddl_stmt\b.+?\bSELECT\b/i ) {
          my ($select) = $query =~ m/\b(SELECT\b.+)/is;
-         MKDEBUG && _d('CREATE TABLE ... SELECT:', $select);
+         PTDEBUG && _d('CREATE TABLE ... SELECT:', $select);
          return $self->get_tables($select);
       }
       my ($tbl) = $query =~ m/TABLE\s+($tbl_ident)(\s+.*)?/i;
-      MKDEBUG && _d('Matches table:', $tbl);
+      PTDEBUG && _d('Matches table:', $tbl);
       return ($tbl);
    }
 
    $query =~ s/ (?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN)//ig;
 
    if ( $query =~ /^\s*LOCK TABLES/i ) {
-      MKDEBUG && _d('Special table type: LOCK TABLES');
+      PTDEBUG && _d('Special table type: LOCK TABLES');
       $query =~ s/^(\s*LOCK TABLES\s+)//;
       $query =~ s/\s+(?:READ|WRITE|LOCAL)+\s*//g;
-      MKDEBUG && _d('Locked tables:', $query);
+      PTDEBUG && _d('Locked tables:', $query);
       $query = "FROM $query";
    }
 
@@ -1906,7 +1906,7 @@ sub get_tables {
 
    my @tables;
    foreach my $tbls ( $query =~ m/$tbl_regex/gio ) {
-      MKDEBUG && _d('Match tables:', $tbls);
+      PTDEBUG && _d('Match tables:', $tbls);
 
       next if $tbls =~ m/\ASELECT\b/i;
 
@@ -1914,7 +1914,7 @@ sub get_tables {
          $tbl =~ s/\s*($tbl_ident)(\s+.*)?/$1/gio;
 
          if ( $tbl !~ m/[a-zA-Z]/ ) {
-            MKDEBUG && _d('Skipping suspicious table name:', $tbl);
+            PTDEBUG && _d('Skipping suspicious table name:', $tbl);
             next;
          }
 
@@ -1927,7 +1927,7 @@ sub get_tables {
 sub has_derived_table {
    my ( $self, $query ) = @_;
    my $match = $query =~ m/$has_derived/;
-   MKDEBUG && _d($query, 'has ' . ($match ? 'a' : 'no') . ' derived table');
+   PTDEBUG && _d($query, 'has ' . ($match ? 'a' : 'no') . ' derived table');
    return $match;
 }
 
@@ -1960,7 +1960,7 @@ sub get_aliases {
          $tbl_refs =~ s/\([^\)]+\)\s*//;
       }
 
-      MKDEBUG && _d('tbl refs:', $tbl_refs);
+      PTDEBUG && _d('tbl refs:', $tbl_refs);
 
       my $before_tbl = qr/(?:,|JOIN|\s|$from)+/i;
 
@@ -1976,12 +1976,12 @@ sub get_aliases {
          }xgio )
       {
          my ( $tbl_ref, $db_tbl, $alias ) = ($1, $2, $3);
-         MKDEBUG && _d('Match table:', $tbl_ref);
+         PTDEBUG && _d('Match table:', $tbl_ref);
          push @tbl_refs, $tbl_ref;
          $alias = $self->trim_identifier($alias);
 
          if ( $tbl_ref =~ m/^AS\s+\w+/i ) {
-            MKDEBUG && _d('Subquery', $tbl_ref);
+            PTDEBUG && _d('Subquery', $tbl_ref);
             $result->{TABLE}->{$alias} = undef;
             next;
          }
@@ -1994,7 +1994,7 @@ sub get_aliases {
       }
    }
    else {
-      MKDEBUG && _d("No tables ref in", $query);
+      PTDEBUG && _d("No tables ref in", $query);
    }
 
    if ( $list ) {
@@ -2009,7 +2009,7 @@ sub split {
    my ( $self, $query ) = @_;
    return unless $query;
    $query = $self->clean_query($query);
-   MKDEBUG && _d('Splitting', $query);
+   PTDEBUG && _d('Splitting', $query);
 
    my $verbs = qr{SELECT|INSERT|UPDATE|DELETE|REPLACE|UNION|CREATE}i;
 
@@ -2029,7 +2029,7 @@ sub split {
       }
    }
 
-   MKDEBUG && _d('statements:', map { $_ ? "<$_>" : 'none' } @statements);
+   PTDEBUG && _d('statements:', map { $_ ? "<$_>" : 'none' } @statements);
    return @statements;
 }
 
@@ -2055,12 +2055,12 @@ sub split_subquery {
    while ( $query =~ m/(\S+)(?:\s+|\Z)/g ) {
       $pos = pos($query);
       my $word = $1;
-      MKDEBUG && _d($word, $sqno);
+      PTDEBUG && _d($word, $sqno);
       if ( $word =~ m/^\(?SELECT\b/i ) {
          my $start_pos = $pos - length($word) - 1;
          if ( $start_pos ) {
             $sqno++;
-            MKDEBUG && _d('Subquery', $sqno, 'starts at', $start_pos);
+            PTDEBUG && _d('Subquery', $sqno, 'starts at', $start_pos);
             $subqueries[$sqno] = {
                start_pos => $start_pos,
                end_pos   => 0,
@@ -2072,25 +2072,25 @@ sub split_subquery {
             };
          }
          else {
-            MKDEBUG && _d('Main SELECT at pos 0');
+            PTDEBUG && _d('Main SELECT at pos 0');
          }
       }
       else {
          next unless $sqno;  # next unless we're in a subquery
-         MKDEBUG && _d('In subquery', $sqno);
+         PTDEBUG && _d('In subquery', $sqno);
          my $sq = $subqueries[$sqno];
          if ( $sq->{done} ) {
-            MKDEBUG && _d('This subquery is done; SQL is for',
+            PTDEBUG && _d('This subquery is done; SQL is for',
                ($sqno - 1 ? "subquery $sqno" : "the main SELECT"));
             next;
          }
          push @{$sq->{words}}, $word;
          my $lp = ($word =~ tr/\(//) || 0;
          my $rp = ($word =~ tr/\)//) || 0;
-         MKDEBUG && _d('parentheses left', $lp, 'right', $rp);
+         PTDEBUG && _d('parentheses left', $lp, 'right', $rp);
          if ( ($sq->{lp} + $lp) - ($sq->{rp} + $rp) == 0 ) {
             my $end_pos = $pos - 1;
-            MKDEBUG && _d('Subquery', $sqno, 'ends at', $end_pos);
+            PTDEBUG && _d('Subquery', $sqno, 'ends at', $end_pos);
             $sq->{end_pos} = $end_pos;
             $sq->{len}     = $end_pos - $sq->{start_pos};
          }
@@ -2156,7 +2156,7 @@ sub get_columns {
       ($cols_def) = $query =~ m/\(([^\)]+)\)\s*VALUE/i;
    }
 
-   MKDEBUG && _d('Columns:', $cols_def);
+   PTDEBUG && _d('Columns:', $cols_def);
    if ( $cols_def ) {
       @$cols = split(',', $cols_def);
       map {
@@ -2197,7 +2197,7 @@ sub extract_tables {
    my $default_db = $args{default_db};
    my $q          = $self->{Quoter} || $args{Quoter};
    return unless $query;
-   MKDEBUG && _d('Extracting tables');
+   PTDEBUG && _d('Extracting tables');
    my @tables;
    my %seen;
    foreach my $db_tbl ( $self->get_tables($query) ) {
@@ -2246,7 +2246,7 @@ package QueryRewriter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 our $verbs   = qr{^SHOW|^FLUSH|^COMMIT|^ROLLBACK|^BEGIN|SELECT|INSERT
                   |UPDATE|DELETE|REPLACE|^SET|UNION|^START|^LOCK}xi;
@@ -2395,7 +2395,7 @@ sub distill_verbs {
    $query = $self->strip_comments($query);
 
    if ( $query =~ m/\A\s*SHOW\s+/i ) {
-      MKDEBUG && _d($query);
+      PTDEBUG && _d($query);
 
       $query = uc $query;
       $query =~ s/\s+(?:GLOBAL|SESSION|FULL|STORAGE|ENGINE)\b/ /g;
@@ -2405,7 +2405,7 @@ sub distill_verbs {
 
       $query =~ s/\A(SHOW(?:\s+\S+){1,2}).*\Z/$1/s;
       $query =~ s/\s+/ /g;
-      MKDEBUG && _d($query);
+      PTDEBUG && _d($query);
       return $query;
    }
 
@@ -2415,10 +2415,10 @@ sub distill_verbs {
    if ( $dds) {
       my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
       $obj = uc $obj if $obj;
-      MKDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
       my ($db_or_tbl)
          = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
-      MKDEBUG && _d('Matches db or table:', $db_or_tbl);
+      PTDEBUG && _d('Matches db or table:', $db_or_tbl);
       return uc($dds . ($obj ? " $obj" : '')), $db_or_tbl;
    }
 
@@ -2429,7 +2429,7 @@ sub distill_verbs {
    };
 
    if ( ($verbs[0] || '') eq 'SELECT' && @verbs > 1 ) {
-      MKDEBUG && _d("False-positive verbs after SELECT:", @verbs[1..$#verbs]);
+      PTDEBUG && _d("False-positive verbs after SELECT:", @verbs[1..$#verbs]);
       my $union = grep { $_ eq 'UNION' } @verbs;
       @verbs    = $union ? qw(SELECT UNION) : qw(SELECT);
    }
@@ -2556,12 +2556,12 @@ sub __delete_to_select {
 
 sub __insert_to_select {
    my ( $tbl, $cols, $vals ) = @_;
-   MKDEBUG && _d('Args:', @_);
+   PTDEBUG && _d('Args:', @_);
    my @cols = split(/,/, $cols);
-   MKDEBUG && _d('Cols:', @cols);
+   PTDEBUG && _d('Cols:', @cols);
    $vals =~ s/^\(|\)$//g; # Strip leading/trailing parens
    my @vals = $vals =~ m/($quote_re|[^,]*${bal}[^,]*|[^,]+)/g;
-   MKDEBUG && _d('Vals:', @vals);
+   PTDEBUG && _d('Vals:', @vals);
    if ( @cols == @vals ) {
       return "select * from $tbl where "
          . join(' and ', map { "$cols[$_]=$vals[$_]" } (0..$#cols));
@@ -2620,7 +2620,7 @@ package Transformers;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
@@ -2800,36 +2800,36 @@ sub any_unix_timestamp {
          : $suffix eq 'h' ? $n * 3600     # Hours
          : $suffix eq 'd' ? $n * 86400    # Days
          :                  $n;           # default: Seconds
-      MKDEBUG && _d('ts is now - N[shmd]:', $n);
+      PTDEBUG && _d('ts is now - N[shmd]:', $n);
       return time - $n;
    }
    elsif ( $val =~ m/^\d{9,}/ ) {
-      MKDEBUG && _d('ts is already a unix timestamp');
+      PTDEBUG && _d('ts is already a unix timestamp');
       return $val;
    }
    elsif ( my ($ymd, $hms) = $val =~ m/^(\d{6})(?:\s+(\d+:\d+:\d+))?/ ) {
-      MKDEBUG && _d('ts is MySQL slow log timestamp');
+      PTDEBUG && _d('ts is MySQL slow log timestamp');
       $val .= ' 00:00:00' unless $hms;
       return unix_timestamp(parse_timestamp($val));
    }
    elsif ( ($ymd, $hms) = $val =~ m/^(\d{4}-\d\d-\d\d)(?:[T ](\d+:\d+:\d+))?/) {
-      MKDEBUG && _d('ts is properly formatted timestamp');
+      PTDEBUG && _d('ts is properly formatted timestamp');
       $val .= ' 00:00:00' unless $hms;
       return unix_timestamp($val);
    }
    else {
-      MKDEBUG && _d('ts is MySQL expression');
+      PTDEBUG && _d('ts is MySQL expression');
       return $callback->($val) if $callback && ref $callback eq 'CODE';
    }
 
-   MKDEBUG && _d('Unknown ts type:', $val);
+   PTDEBUG && _d('Unknown ts type:', $val);
    return;
 }
 
 sub make_checksum {
    my ( $val ) = @_;
    my $checksum = uc substr(md5_hex($val), -16);
-   MKDEBUG && _d($checksum, 'checksum for', $val);
+   PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
 
@@ -2876,7 +2876,7 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
 
@@ -2894,17 +2894,17 @@ sub new {
 
    check_PID_file(undef, $self->{PID_file});
 
-   MKDEBUG && _d('Daemonized child will log to', $self->{log_file});
+   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
 sub daemonize {
    my ( $self ) = @_;
 
-   MKDEBUG && _d('About to fork and daemonize');
+   PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      MKDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('I am the parent and now I die');
       exit;
    }
 
@@ -2946,19 +2946,19 @@ sub daemonize {
       }
    }
 
-   MKDEBUG && _d('I am the child and now I live daemonized');
+   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
 sub check_PID_file {
    my ( $self, $file ) = @_;
    my $PID_file = $self ? $self->{PID_file} : $file;
-   MKDEBUG && _d('Checking PID file', $PID_file);
+   PTDEBUG && _d('Checking PID file', $PID_file);
    if ( $PID_file && -f $PID_file ) {
       my $pid;
       eval { chomp($pid = `cat $PID_file`); };
       die "Cannot cat $PID_file: $OS_ERROR" if $EVAL_ERROR;
-      MKDEBUG && _d('PID file exists; it contains PID', $pid);
+      PTDEBUG && _d('PID file exists; it contains PID', $pid);
       if ( $pid ) {
          my $pid_is_alive = kill 0, $pid;
          if ( $pid_is_alive ) {
@@ -2976,7 +2976,7 @@ sub check_PID_file {
       }
    }
    else {
-      MKDEBUG && _d('No PID file');
+      PTDEBUG && _d('No PID file');
    }
    return;
 }
@@ -2996,7 +2996,7 @@ sub _make_PID_file {
 
    my $PID_file = $self->{PID_file};
    if ( !$PID_file ) {
-      MKDEBUG && _d('No PID file to create');
+      PTDEBUG && _d('No PID file to create');
       return;
    }
 
@@ -3009,7 +3009,7 @@ sub _make_PID_file {
    close $PID_FH
       or die "Cannot close PID file $PID_file: $OS_ERROR";
 
-   MKDEBUG && _d('Created PID file:', $self->{PID_file});
+   PTDEBUG && _d('Created PID file:', $self->{PID_file});
    return;
 }
 
@@ -3018,10 +3018,10 @@ sub _remove_PID_file {
    if ( $self->{PID_file} && -f $self->{PID_file} ) {
       unlink $self->{PID_file}
          or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
-      MKDEBUG && _d('Removed PID file');
+      PTDEBUG && _d('Removed PID file');
    }
    else {
-      MKDEBUG && _d('No PID to remove');
+      PTDEBUG && _d('No PID to remove');
    }
    return;
 }
@@ -3062,7 +3062,7 @@ package Advisor;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -3083,7 +3083,7 @@ sub new {
 sub load_rules {
    my ( $self, $advisor ) = @_;
    return unless $advisor;
-   MKDEBUG && _d('Loading rules from', ref $advisor);
+   PTDEBUG && _d('Loading rules from', ref $advisor);
 
    my $i = scalar @{$self->{rules}};
 
@@ -3091,7 +3091,7 @@ sub load_rules {
    foreach my $rule ( $advisor->get_rules() ) {
       my $id = $rule->{id};
       if ( $self->{ignore_rules}->{"$id"} ) {
-         MKDEBUG && _d("Ignoring rule", $id);
+         PTDEBUG && _d("Ignoring rule", $id);
          next RULE;
       }
       die "Rule $id already exists and cannot be redefined"
@@ -3106,7 +3106,7 @@ sub load_rules {
 sub load_rule_info {
    my ( $self, $advisor ) = @_;
    return unless $advisor;
-   MKDEBUG && _d('Loading rule info from', ref $advisor);
+   PTDEBUG && _d('Loading rule info from', ref $advisor);
    my $rules = $self->{rules};
    foreach my $rule ( @$rules ) {
       my $id = $rule->{id};
@@ -3134,14 +3134,14 @@ sub run_rules {
          my $match = $rule->{code}->(%args);
          if ( $match_type eq 'pos' ) {
             if ( defined $match ) {
-               MKDEBUG && _d('Matches rule', $rule->{id}, 'near pos', $match);
+               PTDEBUG && _d('Matches rule', $rule->{id}, 'near pos', $match);
                push @matched_rules, $rule->{id};
                push @matched_pos,   $match;
             }
          }
          elsif ( $match_type eq 'bool' ) {
             if ( $match ) {
-               MKDEBUG && _d("Matches rule", $rule->{id});
+               PTDEBUG && _d("Matches rule", $rule->{id});
                push @matched_rules, $rule->{id};
             }
          }
@@ -3188,7 +3188,7 @@ package AdvisorRules;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -3276,13 +3276,13 @@ use base 'AdvisorRules';
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
    my $self = $class->SUPER::new(%args);
    @{$self->{rules}} = $self->get_rules();
-   MKDEBUG && _d(scalar @{$self->{rules}}, "rules");
+   PTDEBUG && _d(scalar @{$self->{rules}}, "rules");
    return $self;
 }
 
@@ -3660,7 +3660,7 @@ sub get_rules {
          return unless $where;
 
          my %outer_tbls = map { $_->{tbl} => 1 } get_outer_tables($tbls);
-         MKDEBUG && _d("Outer tables:", keys %outer_tbls);
+         PTDEBUG && _d("Outer tables:", keys %outer_tbls);
          return unless %outer_tbls;
 
          foreach my $pred ( @$where ) {
@@ -3669,7 +3669,7 @@ sub get_rules {
             if ( $tbl && $col && $outer_tbls{$tbl} ) {
                if ($pred->{operator} ne 'is' || $pred->{right_arg} !~ m/null/i)
                {
-                  MKDEBUG && _d("Predicate prevents OUTER JOIN:",
+                  PTDEBUG && _d("Predicate prevents OUTER JOIN:",
                      map { $pred->{$_} } qw(left_arg operator right_arg));
                   return 0;
                }
@@ -3720,7 +3720,7 @@ sub get_rules {
                   next unless $pred->{operator} eq '=';
                   push @join_cols, $pred->{left_arg}, $pred->{right_arg};
                }
-               MKDEBUG && _d("Join columns:", @join_cols);
+               PTDEBUG && _d("Join columns:", @join_cols);
                foreach my $join_col ( @join_cols ) {
                   my ($tbl, $col) = split /\./, $join_col;
                   if ( !$col ) {
@@ -3731,7 +3731,7 @@ sub get_rules {
                      );
                   }
                   if ( !$tbl ) {
-                     MKDEBUG && _d("Cannot determine the table for join column",
+                     PTDEBUG && _d("Cannot determine the table for join column",
                         $col);
                      push @unknown_join_cols, $col;
                   }
@@ -3742,8 +3742,8 @@ sub get_rules {
                }
             }
          }
-         MKDEBUG && _d("Outer table join columns:", keys %outer_tbl_join_cols);
-         MKDEBUG && _d("Unknown join columns:", @unknown_join_cols);
+         PTDEBUG && _d("Outer table join columns:", keys %outer_tbl_join_cols);
+         PTDEBUG && _d("Unknown join columns:", @unknown_join_cols);
 
          foreach my $pred ( @$where ) {
             next unless $pred->{left_arg}; # skip constants like 1 in "WHERE 1"
@@ -3802,13 +3802,13 @@ sub determine_table_for_column {
    foreach my $db ( keys %$tbl_structs ) {
       foreach my $tbl ( keys %{$tbl_structs->{$db}} ) {
          if ( $tbl_structs->{$db}->{$tbl}->{is_col}->{$col} ) {
-            MKDEBUG && _d($col, "column belongs to", $db, $tbl);
+            PTDEBUG && _d($col, "column belongs to", $db, $tbl);
             return $tbl;
          }
       }
    }
 
-   MKDEBUG && _d("Cannot determine table for column", $col);
+   PTDEBUG && _d("Cannot determine table for column", $col);
    return;
 }
 
@@ -3840,7 +3840,7 @@ package PodParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my %parse_items_from = (
    'OPTIONS'     => 1,
@@ -3885,7 +3885,7 @@ sub get_magic {
 sub parse_from_file {
    my ( $self, $file ) = @_;
    return unless $file;
-   MKDEBUG && _d('Parsing POD in', $file);
+   PTDEBUG && _d('Parsing POD in', $file);
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    my $para;
@@ -3897,7 +3897,7 @@ sub parse_from_file {
       if ( $para =~ m/^=(head|item|over|back)/ ) {
          my ($cmd, $name) = $para =~ m/^=(\w+)(?:\s+(.+))?/;
          $name ||= '';
-         MKDEBUG && _d('cmd:', $cmd, 'name:', $name);
+         PTDEBUG && _d('cmd:', $cmd, 'name:', $name);
          $self->command($cmd, $name);
       }
       elsif ( $parse_items_from{$self->{current_section}} ) {
@@ -3914,12 +3914,12 @@ sub command {
    $name =~ s/\s+\Z//m;  # Remove \n and blank line after name.
 
    if  ( $cmd eq 'head1' ) {
-      MKDEBUG && _d('In section', $name);
+      PTDEBUG && _d('In section', $name);
       $self->{current_section} = $name;
    }
    elsif ( $cmd eq 'over' ) {
       if ( $parse_items_from{$name} ) {
-         MKDEBUG && _d('Start items in', $self->{current_section});
+         PTDEBUG && _d('Start items in', $self->{current_section});
          $self->{items}->{$self->{current_section}} = {};
       }
    }
@@ -3927,7 +3927,7 @@ sub command {
       my $pat = $item_pattern_for{ $self->{current_section} };
       my ($item) = $name =~ m/$pat/;
       if ( $item ) {
-         MKDEBUG && _d($self->{current_section}, 'item:', $item);
+         PTDEBUG && _d($self->{current_section}, 'item:', $item);
          $self->{items}->{ $self->{current_section} }->{$item} = {
             desc => '',  # every item should have a desc
          };
@@ -3939,7 +3939,7 @@ sub command {
    }
    elsif ( $cmd eq 'back' ) {
       if ( $parse_items_from{$self->{current_section}} ) {
-         MKDEBUG && _d('End items in', $self->{current_section});
+         PTDEBUG && _d('End items in', $self->{current_section});
       }
    }
    else {
@@ -3960,7 +3960,7 @@ sub textblock {
    $para =~ s/\s+\Z//;
 
    if ( $para =~ m/^[a-z]\w+[:;] / ) {
-      MKDEBUG && _d('Item attributes:', $para);
+      PTDEBUG && _d('Item attributes:', $para);
       map {
          my ($attrib, $val) = split(/: /, $_);
          $item->{$attrib} = defined $val ? $val : 1;
@@ -3974,26 +3974,26 @@ sub textblock {
          if ( $indent ) {
             $para =~ s/^\s{$indent}//mg;
             $para =~ s/\s+$//;
-            MKDEBUG && _d("MAGIC", $self->{magic_ident}, "para:", $para);
+            PTDEBUG && _d("MAGIC", $self->{magic_ident}, "para:", $para);
             $self->{magic}->{$self->{current_section}}->{$self->{magic_ident}}
                = $para;
          }
          else {
-            MKDEBUG && _d("MAGIC", $self->{magic_ident},
+            PTDEBUG && _d("MAGIC", $self->{magic_ident},
                "para is not indented; treating as normal para");
          }
 
          $self->{magic_ident} = '';  # must unset this!
       }
 
-      MKDEBUG && _d('Item desc:', substr($para, 0, 40),
+      PTDEBUG && _d('Item desc:', substr($para, 0, 40),
          length($para) > 40 ? '...' : '');
       $para =~ s/\n+/ /g;
       $item->{desc} .= $para;
 
       if ( $para =~ m/MAGIC_(\w+)/ ) {
          $self->{magic_ident} = $1;  # XXX
-         MKDEBUG && _d("MAGIC", $self->{magic_ident}, "follows");
+         PTDEBUG && _d("MAGIC", $self->{magic_ident}, "follows");
       }
    }
 
@@ -4033,7 +4033,7 @@ package SQLParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -4088,7 +4088,7 @@ sub parse {
    my $type;
    if ( $query =~ s/^(\w+)\s+// ) {
       $type = lc $1;
-      MKDEBUG && _d('Query type:', $type);
+      PTDEBUG && _d('Query type:', $type);
       die "Cannot parse " . uc($type) . " queries"
          unless $type =~ m/$allowed_types/i;
    }
@@ -4100,7 +4100,7 @@ sub parse {
 
    my @subqueries;
    if ( $query =~ m/(\(SELECT )/i ) {
-      MKDEBUG && _d('Removing subqueries');
+      PTDEBUG && _d('Removing subqueries');
       @subqueries = $self->remove_subqueries($query);
       $query      = shift @subqueries;
    }
@@ -4108,14 +4108,14 @@ sub parse {
    my $parse_func = "parse_$type";
    my $struct     = $self->$parse_func($query);
    if ( !$struct ) {
-      MKDEBUG && _d($parse_func, 'failed to parse query');
+      PTDEBUG && _d($parse_func, 'failed to parse query');
       return;
    }
    $struct->{type} = $type;
    $self->_parse_clauses($struct);
 
    if ( @subqueries ) {
-      MKDEBUG && _d('Parsing subqueries');
+      PTDEBUG && _d('Parsing subqueries');
       foreach my $subquery ( @subqueries ) {
          my $subquery_struct = $self->parse($subquery->{query});
          @{$subquery_struct}{keys %$subquery} = values %$subquery;
@@ -4123,7 +4123,7 @@ sub parse {
       }
    }
 
-   MKDEBUG && _d('Query struct:', Dumper($struct));
+   PTDEBUG && _d('Query struct:', Dumper($struct));
    return $struct;
 }
 
@@ -4142,7 +4142,7 @@ sub _parse_clauses {
       $struct->{$clause} = $self->$parse_func($struct->{clauses}->{$clause});
 
       if ( $clause eq 'select' ) {
-         MKDEBUG && _d('Parsing subquery clauses');
+         PTDEBUG && _d('Parsing subquery clauses');
          $struct->{select}->{type} = 'select';
          $self->_parse_clauses($struct->{select});
       }
@@ -4188,13 +4188,13 @@ sub _parse_query {
    my $clause = $first_clause,
    my $value  = shift @clause;
    $struct->{clauses}->{$clause} = $value;
-   MKDEBUG && _d('Clause:', $clause, $value);
+   PTDEBUG && _d('Clause:', $clause, $value);
 
    while ( @clause ) {
       $clause = shift @clause;
       $value  = shift @clause;
       $struct->{clauses}->{lc $clause} = $value;
-      MKDEBUG && _d('Clause:', $clause, $value);
+      PTDEBUG && _d('Clause:', $clause, $value);
    }
 
    ($struct->{unknown}) = ($query =~ m/\G(.+)/);
@@ -4226,7 +4226,7 @@ sub parse_insert {
       my $values = $1;
       die "No values after ON DUPLICATE KEY UPDATE: $query" unless $values;
       $struct->{clauses}->{on_duplicate} = $values;
-      MKDEBUG && _d('Clause: on duplicate key update', $values);
+      PTDEBUG && _d('Clause: on duplicate key update', $values);
 
       $query =~ s/\s+ON DUPLICATE KEY UPDATE.+//;
    }
@@ -4240,13 +4240,13 @@ sub parse_insert {
    ) {
       my $tbl  = shift @into;  # table ref
       $struct->{clauses}->{into} = $tbl;
-      MKDEBUG && _d('Clause: into', $tbl);
+      PTDEBUG && _d('Clause: into', $tbl);
 
       my $cols = shift @into;  # columns, maybe
       if ( $cols ) {
          $cols =~ s/[\(\)]//g;
          $struct->{clauses}->{columns} = $cols;
-         MKDEBUG && _d('Clause: columns', $cols);
+         PTDEBUG && _d('Clause: columns', $cols);
       }
 
       my $next_clause = lc(shift @into);  # VALUES, SET or SELECT
@@ -4256,7 +4256,7 @@ sub parse_insert {
       my ($values) = ($query =~ m/\G(.+)/gci);
       die "INSERT/REPLACE without values: $query" unless $values;
       $struct->{clauses}->{$next_clause} = $values;
-      MKDEBUG && _d('Clause:', $next_clause, $values);
+      PTDEBUG && _d('Clause:', $next_clause, $values);
    }
 
    ($struct->{unknown}) = ($query =~ m/\G(.+)/);
@@ -4315,7 +4315,7 @@ sub parse_update {
 sub parse_from {
    my ( $self, $from ) = @_;
    return unless $from;
-   MKDEBUG && _d('Parsing FROM', $from);
+   PTDEBUG && _d('Parsing FROM', $from);
 
    my $comma_join = qr/(?>\s*,\s*)/;
    my $ansi_join  = qr/(?>
@@ -4333,10 +4333,10 @@ sub parse_from {
 
       $thing =~ s/^\s+//;
       $thing =~ s/\s+$//;
-      MKDEBUG && _d('Table thing:', $thing);
+      PTDEBUG && _d('Table thing:', $thing);
 
       if ( $thing =~ m/\s+(?:ON|USING)\s+/i ) {
-         MKDEBUG && _d("JOIN condition");
+         PTDEBUG && _d("JOIN condition");
          my ($tbl_ref_txt, $join_condition_verb, $join_condition_value)
             = $thing =~ m/^(.+?)\s+(ON|USING)\s+(.+)/i;
 
@@ -4358,7 +4358,7 @@ sub parse_from {
             $tbl_ref->{join} = $join;
          }
          push @tbls, $tbl_ref;
-         MKDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
+         PTDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
 
          $tbl_ref = undef;
          $join    = {};
@@ -4376,7 +4376,7 @@ sub parse_from {
       }
       else {
          $tbl_ref = $self->parse_table_reference($thing);
-         MKDEBUG && _d('Table reference:', Dumper($tbl_ref));
+         PTDEBUG && _d('Table reference:', Dumper($tbl_ref));
       }
    }
 
@@ -4385,7 +4385,7 @@ sub parse_from {
          $tbl_ref->{join} = $join;
       }
       push @tbls, $tbl_ref;
-      MKDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
+      PTDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
    }
 
    return \@tbls;
@@ -4394,7 +4394,7 @@ sub parse_from {
 sub parse_table_reference {
    my ( $self, $tbl_ref ) = @_;
    return unless $tbl_ref;
-   MKDEBUG && _d('Parsing table reference:', $tbl_ref);
+   PTDEBUG && _d('Parsing table reference:', $tbl_ref);
    my %tbl;
 
    if ( $tbl_ref =~ s/
@@ -4405,7 +4405,7 @@ sub parse_table_reference {
          )//xi)
    {
       $tbl{index_hint} = $1;
-      MKDEBUG && _d('Index hint:', $tbl{index_hint});
+      PTDEBUG && _d('Index hint:', $tbl{index_hint});
    }
 
    if ( $tbl_ref =~ m/$table_ident/ ) {
@@ -4431,7 +4431,7 @@ sub parse_table_reference {
 sub parse_where {
    my ( $self, $where ) = @_;
    return unless $where;
-   MKDEBUG && _d("Parsing WHERE", $where);
+   PTDEBUG && _d("Parsing WHERE", $where);
 
    my $op_symbol = qr/
       (?:
@@ -4475,8 +4475,8 @@ sub parse_where {
    $pred = substr $where, $offset;
    push @pred, $pred;
    push @has_op, $pred =~ m/$op_pat/o ? 1 : 0;
-   MKDEBUG && _d("Predicate fragments:", Dumper(\@pred));
-   MKDEBUG && _d("Predicate frags with operators:", @has_op);
+   PTDEBUG && _d("Predicate fragments:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate frags with operators:", @has_op);
 
    my $n = scalar @pred - 1;
    for my $i ( 1..$n ) {
@@ -4490,7 +4490,7 @@ sub parse_where {
          $pred[$i]  = undef;
       }
    }
-   MKDEBUG && _d("Predicate fragments joined:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate fragments joined:", Dumper(\@pred));
 
    for my $i ( 0..@pred ) {
       $pred = $pred[$i];
@@ -4502,7 +4502,7 @@ sub parse_where {
          $pred[$i + 1]  = undef;
       }
    }
-   MKDEBUG && _d("Predicate fragments balanced:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate fragments balanced:", Dumper(\@pred));
 
    my @predicates;
    foreach my $pred ( @pred ) {
@@ -4569,7 +4569,7 @@ sub parse_having {
 sub parse_group_by {
    my ( $self, $group_by ) = @_;
    return unless $group_by;
-   MKDEBUG && _d('Parsing GROUP BY', $group_by);
+   PTDEBUG && _d('Parsing GROUP BY', $group_by);
 
    my $with_rollup = $group_by =~ s/\s+WITH ROLLUP\s*//i;
 
@@ -4583,7 +4583,7 @@ sub parse_group_by {
 sub parse_order_by {
    my ( $self, $order_by ) = @_;
    return unless $order_by;
-   MKDEBUG && _d('Parsing ORDER BY', $order_by);
+   PTDEBUG && _d('Parsing ORDER BY', $order_by);
    my $idents = $self->parse_identifiers( $self->_parse_csv($order_by) );
    return $idents;
 }
@@ -4622,7 +4622,7 @@ sub parse_values {
 
 sub parse_set {
    my ( $self, $set ) = @_;
-   MKDEBUG && _d("Parse SET", $set);
+   PTDEBUG && _d("Parse SET", $set);
    return unless $set;
    my $vals = $self->_parse_csv($set);
    return unless $vals && @$vals;
@@ -4635,7 +4635,7 @@ sub parse_set {
          %$ident_struct,
          value => $val,
       };
-      MKDEBUG && _d("SET:", Dumper($set_struct));
+      PTDEBUG && _d("SET:", Dumper($set_struct));
       push @set, $set_struct;
    }
    return \@set;
@@ -4650,9 +4650,9 @@ sub _parse_csv {
       my $quote_char   = '';
       VAL:
       foreach my $val ( split(',', $vals) ) {
-         MKDEBUG && _d("Next value:", $val);
+         PTDEBUG && _d("Next value:", $val);
          if ( $quote_char ) {
-            MKDEBUG && _d("Value is part of previous quoted value");
+            PTDEBUG && _d("Value is part of previous quoted value");
             $vals[-1] .= ",$val";
 
             if ( $val =~ m/[^\\]*$quote_char$/ ) {
@@ -4660,7 +4660,7 @@ sub _parse_csv {
                   $vals[-1] =~ s/^\s*$quote_char//;
                   $vals[-1] =~ s/$quote_char\s*$//;
                }
-               MKDEBUG && _d("Previous quoted value is complete:", $vals[-1]);
+               PTDEBUG && _d("Previous quoted value is complete:", $vals[-1]);
                $quote_char = '';
             }
 
@@ -4670,10 +4670,10 @@ sub _parse_csv {
          $val =~ s/^\s+//;
 
          if ( $val =~ m/^(['"])/ ) {
-            MKDEBUG && _d("Value is quoted");
+            PTDEBUG && _d("Value is quoted");
             $quote_char = $1;  # XXX
             if ( $val =~ m/.$quote_char$/ ) {
-               MKDEBUG && _d("Value is complete");
+               PTDEBUG && _d("Value is complete");
                $quote_char = '';
                if ( $args{remove_quotes} ) {
                   $vals[-1] =~ s/^\s*$quote_char//;
@@ -4681,14 +4681,14 @@ sub _parse_csv {
                }
             }
             else {
-               MKDEBUG && _d("Quoted value is not complete");
+               PTDEBUG && _d("Quoted value is not complete");
             }
          }
          else {
             $val =~ s/\s+$//;
          }
 
-         MKDEBUG && _d("Saving value", ($quote_char ? "fragment" : ""));
+         PTDEBUG && _d("Saving value", ($quote_char ? "fragment" : ""));
          push @vals, $val;
       }
    }
@@ -4705,7 +4705,7 @@ sub _parse_csv {
 
 sub parse_columns {
    my ( $self, $cols ) = @_;
-   MKDEBUG && _d('Parsing columns list:', $cols);
+   PTDEBUG && _d('Parsing columns list:', $cols);
 
    my @cols;
    pos $cols = 0;
@@ -4755,31 +4755,31 @@ sub remove_subqueries {
    my $len_adj = 0;
    my $n    = 0;
    for my $i ( 0..$#start_pos ) {
-      MKDEBUG && _d('Query:', $query);
+      PTDEBUG && _d('Query:', $query);
       my $offset = $start_pos[$i];
       my $len    = $end_pos[$i] - $start_pos[$i] - $len_adj;
-      MKDEBUG && _d("Subquery $n start", $start_pos[$i],
+      PTDEBUG && _d("Subquery $n start", $start_pos[$i],
             'orig end', $end_pos[$i], 'adj', $len_adj, 'adj end',
             $offset + $len, 'len', $len);
 
       my $struct   = {};
       my $token    = '__SQ' . $n . '__';
       my $subquery = substr($query, $offset, $len, $token);
-      MKDEBUG && _d("Subquery $n:", $subquery);
+      PTDEBUG && _d("Subquery $n:", $subquery);
 
       my $outer_start = $start_pos[$i + 1];
       my $outer_end   = $end_pos[$i + 1];
       if (    $outer_start && ($outer_start < $start_pos[$i])
            && $outer_end   && ($outer_end   > $end_pos[$i]) ) {
-         MKDEBUG && _d("Subquery $n nested in next subquery");
+         PTDEBUG && _d("Subquery $n nested in next subquery");
          $len_adj += $len - length $token;
          $struct->{nested} = $i + 1;
       }
       else {
-         MKDEBUG && _d("Subquery $n not nested");
+         PTDEBUG && _d("Subquery $n not nested");
          $len_adj = 0;
          if ( $subqueries[-1] && $subqueries[-1]->{nested} ) {
-            MKDEBUG && _d("Outermost subquery");
+            PTDEBUG && _d("Outermost subquery");
          }
       }
 
@@ -4796,7 +4796,7 @@ sub remove_subqueries {
       else {
          $struct->{context} = 'identifier';
       }
-      MKDEBUG && _d("Subquery $n context:", $struct->{context});
+      PTDEBUG && _d("Subquery $n context:", $struct->{context});
 
       $subquery =~ s/^\s*\(//;
       $subquery =~ s/\s*\)\s*$//;
@@ -4812,11 +4812,11 @@ sub remove_subqueries {
 sub parse_identifiers {
    my ( $self, $idents ) = @_;
    return unless $idents;
-   MKDEBUG && _d("Parsing identifiers");
+   PTDEBUG && _d("Parsing identifiers");
 
    my @ident_parts;
    foreach my $ident ( @$idents ) {
-      MKDEBUG && _d("Identifier:", $ident);
+      PTDEBUG && _d("Identifier:", $ident);
       my $parts = {};
 
       if ( $ident =~ s/\s+(ASC|DESC)\s*$//i ) {
@@ -4824,17 +4824,17 @@ sub parse_identifiers {
       }
 
       if ( $ident =~ m/^\d+$/ ) {      # Position like 5
-         MKDEBUG && _d("Positional ident");
+         PTDEBUG && _d("Positional ident");
          $parts->{position} = $ident;
       }
       elsif ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
-         MKDEBUG && _d("Expression ident");
+         PTDEBUG && _d("Expression ident");
          my ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
          $parts->{function}   = uc $func;
          $parts->{expression} = $expr if $expr;
       }
       else {                           # Ref like (table.)column
-         MKDEBUG && _d("Table/column ident");
+         PTDEBUG && _d("Table/column ident");
          my ($tbl, $col)  = $self->split_unquote($ident);
          $parts->{table}  = $tbl if $tbl;
          $parts->{column} = $col;
@@ -4848,7 +4848,7 @@ sub parse_identifiers {
 sub parse_identifier {
    my ( $self, $type, $ident ) = @_;
    return unless $type && $ident;
-   MKDEBUG && _d("Parsing", $type, "identifier:", $ident);
+   PTDEBUG && _d("Parsing", $type, "identifier:", $ident);
 
    my %ident_struct;
    my @ident_parts = map { s/`//g; $_; } split /[.]/, $ident;
@@ -4884,7 +4884,7 @@ sub parse_identifier {
       }
    }
 
-   MKDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
+   PTDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
    return \%ident_struct;
 }
 
@@ -4952,7 +4952,7 @@ package MySQLDump;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 ( our $before = <<'EOF') =~ s/^   //gm;
    /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -5046,11 +5046,11 @@ sub dump {
 sub _use_db {
    my ( $self, $dbh, $quoter, $new ) = @_;
    if ( !$new ) {
-      MKDEBUG && _d('No new DB to use');
+      PTDEBUG && _d('No new DB to use');
       return;
    }
    my $sql = 'USE ' . $quoter->quote($new);
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    $dbh->do($sql);
    return;
 }
@@ -5062,12 +5062,12 @@ sub get_create_table {
          . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
          . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
          . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       eval { $dbh->do($sql); };
-      MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
       $self->_use_db($dbh, $quoter, $db);
       $sql = "SHOW CREATE TABLE " . $quoter->quote($db, $tbl);
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       my $href;
       eval { $href = $dbh->selectrow_hashref($sql); };
       if ( $EVAL_ERROR ) {
@@ -5077,15 +5077,15 @@ sub get_create_table {
 
       $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
          . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       $dbh->do($sql);
       my ($key) = grep { m/create table/i } keys %$href;
       if ( $key ) {
-         MKDEBUG && _d('This table is a base table');
+         PTDEBUG && _d('This table is a base table');
          $self->{tables}->{$db}->{$tbl} = [ 'table', $href->{$key} ];
       }
       else {
-         MKDEBUG && _d('This table is a view');
+         PTDEBUG && _d('This table is a view');
          ($key) = grep { m/create view/i } keys %$href;
          $self->{tables}->{$db}->{$tbl} = [ 'view', $href->{$key} ];
       }
@@ -5095,11 +5095,11 @@ sub get_create_table {
 
 sub get_columns {
    my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   MKDEBUG && _d('Get columns for', $db, $tbl);
+   PTDEBUG && _d('Get columns for', $db, $tbl);
    if ( !$self->{cache} || !$self->{columns}->{$db}->{$tbl} ) {
       $self->_use_db($dbh, $quoter, $db);
       my $sql = "SHOW COLUMNS FROM " . $quoter->quote($db, $tbl);
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       my $cols = $dbh->selectall_arrayref($sql, { Slice => {} });
 
       $self->{columns}->{$db}->{$tbl} = [
@@ -5120,7 +5120,7 @@ sub get_tmp_table {
       map { '  ' . $quoter->quote($_->{field}) . ' ' . $_->{type} }
       @{$self->get_columns($dbh, $quoter, $db, $tbl)});
    $result .= "\n)";
-   MKDEBUG && _d($result);
+   PTDEBUG && _d($result);
    return $result;
 }
 
@@ -5132,11 +5132,11 @@ sub get_triggers {
          . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
          . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
          . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       eval { $dbh->do($sql); };
-      MKDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
       $sql = "SHOW TRIGGERS FROM " . $quoter->quote($db);
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       my $sth = $dbh->prepare($sql);
       $sth->execute();
       if ( $sth->rows ) {
@@ -5149,7 +5149,7 @@ sub get_triggers {
       }
       $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
          . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       $dbh->do($sql);
    }
    if ( $tbl ) {
@@ -5168,7 +5168,7 @@ sub get_databases {
          push @params, $like;
       }
       my $sth = $dbh->prepare($sql);
-      MKDEBUG && _d($sql, @params);
+      PTDEBUG && _d($sql, @params);
       $sth->execute( @params );
       my @dbs = map { $_->[0] } @{$sth->fetchall_arrayref()};
       $self->{databases} = \@dbs unless $like;
@@ -5186,7 +5186,7 @@ sub get_table_status {
          $sql .= ' LIKE ?';
          push @params, $like;
       }
-      MKDEBUG && _d($sql, @params);
+      PTDEBUG && _d($sql, @params);
       my $sth = $dbh->prepare($sql);
       $sth->execute(@params);
       my @tables = @{$sth->fetchall_arrayref({})};
@@ -5212,7 +5212,7 @@ sub get_table_list {
          $sql .= ' LIKE ?';
          push @params, $like;
       }
-      MKDEBUG && _d($sql, @params);
+      PTDEBUG && _d($sql, @params);
       my $sth = $dbh->prepare($sql);
       $sth->execute(@params);
       my @tables = @{$sth->fetchall_arrayref()};
@@ -5257,7 +5257,7 @@ package TableParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -5302,7 +5302,7 @@ sub parse {
 
    my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
    my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
-   MKDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
+   PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
 
    my %def_for;
    @def_for{@cols} = @defs;
@@ -5363,7 +5363,7 @@ sub sort_indexes {
       }
       sort keys %{$tbl->{keys}};
 
-   MKDEBUG && _d('Indexes sorted best-first:', join(', ', @indexes));
+   PTDEBUG && _d('Indexes sorted best-first:', join(', ', @indexes));
    return @indexes;
 }
 
@@ -5381,7 +5381,7 @@ sub find_best_index {
          ($best) = $self->sort_indexes($tbl);
       }
    }
-   MKDEBUG && _d('Best index found is', $best);
+   PTDEBUG && _d('Best index found is', $best);
    return $best;
 }
 
@@ -5390,25 +5390,25 @@ sub find_possible_keys {
    return () unless $where;
    my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
       . ' WHERE ' . $where;
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $expl = $dbh->selectrow_hashref($sql);
    $expl = { map { lc($_) => $expl->{$_} } keys %$expl };
    if ( $expl->{possible_keys} ) {
-      MKDEBUG && _d('possible_keys =', $expl->{possible_keys});
+      PTDEBUG && _d('possible_keys =', $expl->{possible_keys});
       my @candidates = split(',', $expl->{possible_keys});
       my %possible   = map { $_ => 1 } @candidates;
       if ( $expl->{key} ) {
-         MKDEBUG && _d('MySQL chose', $expl->{key});
+         PTDEBUG && _d('MySQL chose', $expl->{key});
          unshift @candidates, grep { $possible{$_} } split(',', $expl->{key});
-         MKDEBUG && _d('Before deduping:', join(', ', @candidates));
+         PTDEBUG && _d('Before deduping:', join(', ', @candidates));
          my %seen;
          @candidates = grep { !$seen{$_}++ } @candidates;
       }
-      MKDEBUG && _d('Final list:', join(', ', @candidates));
+      PTDEBUG && _d('Final list:', join(', ', @candidates));
       return @candidates;
    }
    else {
-      MKDEBUG && _d('No keys in possible_keys');
+      PTDEBUG && _d('No keys in possible_keys');
       return ();
    }
 }
@@ -5422,66 +5422,66 @@ sub check_table {
    my ($dbh, $db, $tbl) = @args{@required_args};
    my $q      = $self->{Quoter};
    my $db_tbl = $q->quote($db, $tbl);
-   MKDEBUG && _d('Checking', $db_tbl);
+   PTDEBUG && _d('Checking', $db_tbl);
 
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $row;
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
-      MKDEBUG && _d('Table does not exist');
+      PTDEBUG && _d('Table does not exist');
       return 0;
    }
 
-   MKDEBUG && _d('Table exists; no privs to check');
+   PTDEBUG && _d('Table exists; no privs to check');
    return 1 unless $args{all_privs};
 
    $sql = "SHOW FULL COLUMNS FROM $db_tbl";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    eval {
       $row = $dbh->selectrow_hashref($sql);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       return 0;
    }
    if ( !scalar keys %$row ) {
-      MKDEBUG && _d('Table has no columns:', Dumper($row));
+      PTDEBUG && _d('Table has no columns:', Dumper($row));
       return 0;
    }
    my $privs = $row->{privileges} || $row->{Privileges};
 
    $sql = "DELETE FROM $db_tbl LIMIT 0";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    eval {
       $dbh->do($sql);
    };
    my $can_delete = $EVAL_ERROR ? 0 : 1;
 
-   MKDEBUG && _d('User privs on', $db_tbl, ':', $privs,
+   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
       ($can_delete ? 'delete' : ''));
 
    if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
           && $can_delete) ) {
-      MKDEBUG && _d('User does not have all privs');
+      PTDEBUG && _d('User does not have all privs');
       return 0;
    }
 
-   MKDEBUG && _d('User has all privs');
+   PTDEBUG && _d('User has all privs');
    return 1;
 }
 
 sub get_engine {
    my ( $self, $ddl, $opts ) = @_;
    my ( $engine ) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;
-   MKDEBUG && _d('Storage engine:', $engine);
+   PTDEBUG && _d('Storage engine:', $engine);
    return $engine || undef;
 }
 
@@ -5497,7 +5497,7 @@ sub get_keys {
       next KEY if $key =~ m/FOREIGN/;
 
       my $key_ddl = $key;
-      MKDEBUG && _d('Parsed key:', $key_ddl);
+      PTDEBUG && _d('Parsed key:', $key_ddl);
 
       if ( $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
@@ -5523,7 +5523,7 @@ sub get_keys {
       }
       $name =~ s/`//g;
 
-      MKDEBUG && _d( $name, 'key cols:', join(', ', map { "`$_`" } @cols));
+      PTDEBUG && _d( $name, 'key cols:', join(', ', map { "`$_`" } @cols));
 
       $keys->{$name} = {
          name         => $name,
@@ -5545,7 +5545,7 @@ sub get_keys {
          elsif ( $this_key->{is_unique} && !$this_key->{is_nullable} ) {
             $clustered_key = $this_key->{name};
          }
-         MKDEBUG && $clustered_key && _d('This key is the clustered key');
+         PTDEBUG && $clustered_key && _d('This key is the clustered key');
       }
    }
 
@@ -5613,7 +5613,7 @@ sub remove_secondary_indexes {
       }
       grep { $_->{name} ne $clustered_key }
       values %{$tbl_struct->{keys}};
-      MKDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
+      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
 
       if ( @sec_indexes ) {
          $sec_indexes_ddl = join(' ', @sec_indexes);
@@ -5623,7 +5623,7 @@ sub remove_secondary_indexes {
       $ddl =~ s/,(\n\) )/$1/s;
    }
    else {
-      MKDEBUG && _d('Not removing secondary indexes from',
+      PTDEBUG && _d('Not removing secondary indexes from',
          $tbl_struct->{engine}, 'table');
    }
 
@@ -5658,7 +5658,7 @@ package ReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(min max);
 use POSIX qw(ceil);
@@ -5691,7 +5691,7 @@ sub new {
          . "is not installed" unless $have_term;
       ($self->{line_width}) = GetTerminalSize();
    }
-   MKDEBUG && _d('Line width:', $self->{line_width});
+   PTDEBUG && _d('Line width:', $self->{line_width});
 
    return bless $self, $class;
 }
@@ -5716,7 +5716,7 @@ sub set_columns {
 
       if ( $col->{width} ) {
          $col->{width_pct} = ceil(($col->{width} * 100) / $self->{line_width});
-         MKDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
+         PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
             $col->{width_pct}, '%');
       }
 
@@ -5724,7 +5724,7 @@ sub set_columns {
          $used_width += $col->{width_pct};
       }
       else {
-         MKDEBUG && _d('Auto width col:', $col_name);
+         PTDEBUG && _d('Auto width col:', $col_name);
          $col->{auto_width} = 1;
          push @auto_width_cols, $i;
       }
@@ -5753,15 +5753,15 @@ sub set_columns {
 
    if ( @auto_width_cols ) {
       my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
-      MKDEBUG && _d('Line width left:', (100-$used_width), '%;',
+      PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
          'each auto width col:', $wid_per_col, '%');
       map { $self->{cols}->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
    }
 
    $min_hdr_wid += ($self->{n_cols} - 1) * length $self->{column_spacing};
-   MKDEBUG && _d('min header width:', $min_hdr_wid);
+   PTDEBUG && _d('min header width:', $min_hdr_wid);
    if ( $min_hdr_wid > $self->{line_width} ) {
-      MKDEBUG && _d('Will truncate headers because min header width',
+      PTDEBUG && _d('Will truncate headers because min header width',
          $min_hdr_wid, '> line width', $self->{line_width});
       $self->{truncate_headers} = 1;
    }
@@ -5802,7 +5802,7 @@ sub get_report {
    my @col_fmts = $self->_make_column_formats();
    my $fmt      = ($self->{line_prefix} || '')
                 . join($self->{column_spacing}, @col_fmts);
-   MKDEBUG && _d('Format:', $fmt);
+   PTDEBUG && _d('Format:', $fmt);
 
    (my $hdr_fmt = $fmt) =~ s/%([^-])/%-$1/g;
 
@@ -5854,7 +5854,7 @@ sub truncate_value {
       $val = $mark . substr($val, -1 * $width + length $mark);
    }
    else {
-      MKDEBUG && _d("I don't know how to", $side, "truncate values");
+      PTDEBUG && _d("I don't know how to", $side, "truncate values");
    }
    return $val;
 }
@@ -5866,27 +5866,27 @@ sub _calculate_column_widths {
    foreach my $col ( @{$self->{cols}} ) {
       my $print_width = int($self->{line_width} * ($col->{width_pct} / 100));
 
-      MKDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
+      PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
          'char width:', $print_width,
          'min val:', $col->{min_val}, 'max val:', $col->{max_val});
 
       if ( $col->{auto_width} ) {
          if ( $col->{min_val} && $print_width < $col->{min_val} ) {
-            MKDEBUG && _d('Increased to min val width:', $col->{min_val});
+            PTDEBUG && _d('Increased to min val width:', $col->{min_val});
             $print_width = $col->{min_val};
          }
          elsif ( $col->{max_val} &&  $print_width > $col->{max_val} ) {
-            MKDEBUG && _d('Reduced to max val width:', $col->{max_val});
+            PTDEBUG && _d('Reduced to max val width:', $col->{max_val});
             $extra_space += $print_width - $col->{max_val};
             $print_width  = $col->{max_val};
          }
       }
 
       $col->{print_width} = $print_width;
-      MKDEBUG && _d('print width:', $col->{print_width});
+      PTDEBUG && _d('print width:', $col->{print_width});
    }
 
-   MKDEBUG && _d('Extra space:', $extra_space);
+   PTDEBUG && _d('Extra space:', $extra_space);
    while ( $extra_space-- ) {
       foreach my $col ( @{$self->{cols}} ) {
          if (    $col->{auto_width}
@@ -5909,7 +5909,7 @@ sub _truncate_headers {
       my $print_width = $col->{print_width};
       next if length $col_name <= $print_width;
       $col->{name}  = $self->truncate_value($col, $col_name, $print_width, $side);
-      MKDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
+      PTDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
          'max width:', $print_width);
    }
    return;
@@ -5934,7 +5934,7 @@ sub _truncate_line_values {
             my $print_width = $col->{print_width};
             $val = $callback ? $callback->($col, $val, $print_width)
                  :             $self->truncate_value($col, $val, $print_width);
-            MKDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
+            PTDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
                '; max width:', $print_width);
             $vals->[$i] = $val;
          }
@@ -6014,7 +6014,7 @@ $Data::Dumper::Quotekeys = 0;
 
 Transformers->import(qw(make_checksum));
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Some rules report their match pos.  This sets how many
 # characters before and after that pos are shown to give
@@ -6126,7 +6126,7 @@ sub main {
    # like JOI.004 may not be able to work in some cases.  Maybe we can add
    # a rule attrib like "uses cxn: yes" to determine if need a cxn?
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d("Cannot connect to MySQL:", $EVAL_ERROR);
+      PTDEBUG && _d("Cannot connect to MySQL:", $EVAL_ERROR);
    }
 
    # #########################################################################
@@ -6137,7 +6137,7 @@ sub main {
    if ( my $query = $o->get('query') ) {
       push @pipeline, sub {
          my ( %args ) = @_;
-         MKDEBUG && _d('callback: query:', $query);
+         PTDEBUG && _d('callback: query:', $query);
          $args{oktorun}->(0) if $args{oktorun};
          return {
             cmd        => 'Query',
@@ -6151,12 +6151,12 @@ sub main {
       my $sql   = "SELECT sample FROM "
                 . $q->quote($review_dsn->{D}, $review_dsn->{t})
                 . ($where ? " WHERE $where" : "");
-      MKDEBUG && _d($review_dbh, $sql);
+      PTDEBUG && _d($review_dbh, $sql);
       my $queries = $review_dbh->selectall_arrayref($sql);
 
       push @pipeline, sub {
          my ( %args ) = @_;
-         MKDEBUG && _d('callback: review');
+         PTDEBUG && _d('callback: review');
          my $query = shift @$queries;
          if ( !$query ) {
             $args{oktorun}->(0) if $args{oktorun};
@@ -6189,7 +6189,7 @@ sub main {
             my ( %args ) = @_;
             return $parser->parse_event(%args);
          };
-         MKDEBUG && _d('Added', $module, 'module to callbacks');
+         PTDEBUG && _d('Added', $module, 'module to callbacks');
       }
    }
 
@@ -6197,14 +6197,14 @@ sub main {
    # rules, expect the event to have an arg.
    push @pipeline, sub {
       my ( %args ) = @_;
-      MKDEBUG && _d('callback: check cmd and arg');
+      PTDEBUG && _d('callback: check cmd and arg');
       my $event = $args{event};
       if ( ($event->{cmd} || '') ne 'Query' ) {
-         MKDEBUG && _d('Skipping non-Query cmd');
+         PTDEBUG && _d('Skipping non-Query cmd');
          return;
       }
       if ( !$event->{arg} ) {
-         MKDEBUG && _d('Skipping empty arg');
+         PTDEBUG && _d('Skipping empty arg');
          return;
       }
       return $event;
@@ -6215,11 +6215,11 @@ sub main {
    my $num_samples = $o->get('sample');
    push @pipeline, sub {
       my ( %args ) = @_;
-      MKDEBUG && _d('callback: fingerprint/sample');
+      PTDEBUG && _d('callback: fingerprint/sample');
       my $event = $args{event};
       $event->{fingerprint} = $qr->fingerprint($event->{arg});
       if ( ++$seen_fingerprint{ $event->{fingerprint} } > $num_samples ) {
-         MKDEBUG && _d("Event skipped because of --sample");
+         PTDEBUG && _d("Event skipped because of --sample");
          return;
       }
       $event->{query_id} = make_checksum($event->{fingerprint});
@@ -6231,18 +6231,18 @@ sub main {
    # continue because some rules may not need the query struct.
    push @pipeline, sub {
       my ( %args ) = @_;
-      MKDEBUG && _d('callback: parse query');
+      PTDEBUG && _d('callback: parse query');
       my $event        = $args{event};
       my $query_struct;
       eval {
          $query_struct = $sp->parse($event->{arg});
          if ( !$query_struct ) {
-            MKDEBUG && _d('Failed to parse query struct, no error');
+            PTDEBUG && _d('Failed to parse query struct, no error');
          }
          $event->{query_struct} = $query_struct;
       };
       if ( $EVAL_ERROR ) {
-         MKDEBUG && _d('Failed to parse query struct:', $EVAL_ERROR);
+         PTDEBUG && _d('Failed to parse query struct:', $EVAL_ERROR);
       } 
       return $event;
    };
@@ -6256,18 +6256,18 @@ sub main {
          my $tbl_structs = {};
          push @pipeline, sub {
             my ( %args ) = @_;
-            MKDEBUG && _d('callback: show create table');
+            PTDEBUG && _d('callback: show create table');
             my $event        = $args{event};
             my $query_struct = $event->{query_struct};
             if ( !$query_struct ) {
-               MKDEBUG && _d("No query struct");
+               PTDEBUG && _d("No query struct");
                return $event;
             }
             my $tbls = $query_struct->{from}
                || $query_struct->{into}
                || $query_struct->{tables};
             if ( !$tbls || !@$tbls ) {
-               MKDEBUG && _d("Query has no tables");
+               PTDEBUG && _d("Query has no tables");
                return $event;
             }
 
@@ -6275,7 +6275,7 @@ sub main {
                my $tbl = $tbl_info->{tbl};
                my $db  = $tbl_info->{db} || $event->{db} || $default_db;
                if ( !$db ) {
-                  MKDEBUG && _d("No database for table", $tbl);
+                  PTDEBUG && _d("No database for table", $tbl);
                   next;
                }
 
@@ -6303,9 +6303,9 @@ sub main {
    # Run rules on query, get a list of rules that match (advice).
    push @pipeline, sub {
       my ( %args ) = @_;
-      MKDEBUG && _d('callback: check query');
+      PTDEBUG && _d('callback: check query');
       my $event  = $args{event};
-      MKDEBUG && _d('Checking', $event->{arg});
+      PTDEBUG && _d('Checking', $event->{arg});
       my ($advice, $near_pos) = $adv->run_rules(event => $event);
       $event->{advice}   = $advice;
       $event->{near_pos} = $near_pos;
@@ -6316,7 +6316,7 @@ sub main {
    if ( $groupby eq 'none' ) {
       push @pipeline, sub {
          my ( %args ) = @_;
-         MKDEBUG && _d('callback: print advice');
+         PTDEBUG && _d('callback: print advice');
          my $event  = $args{event};
          my $advice = $event->{advice};
          return $event unless @$advice || $o->get('print-all');
@@ -6335,7 +6335,7 @@ sub main {
    else {   
       push @pipeline, sub {
          my ( %args ) = @_;
-         MKDEBUG && _d('callback: queue advice for group-by', $groupby);
+         PTDEBUG && _d('callback: queue advice for group-by', $groupby);
          my $event  = $args{event};
          my $advice = $event->{advice};
          return $event unless @$advice || $o->get('print-all');
@@ -6372,7 +6372,7 @@ sub main {
    if ( $o->get('daemonize') ) {
       $daemon = new Daemon(o=>$o);
       $daemon->daemonize();
-      MKDEBUG && _d('I am a daemon now');
+      PTDEBUG && _d('I am a daemon now');
    }
    elsif ( $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
@@ -6388,12 +6388,12 @@ sub main {
       if ( !$fh ) {
          my $file = shift @ARGV;
          if ( !$file ) {
-            MKDEBUG && _d('No more files to parse');
+            PTDEBUG && _d('No more files to parse');
             last EVENT;
          }
          if ( $file eq '-' ) {
             $fh = *STDIN;
-            MKDEBUG && _d('Reading STDIN');
+            PTDEBUG && _d('Reading STDIN');
          }
          else {
             if ( !open $fh, "<", $file ) {
@@ -6401,7 +6401,7 @@ sub main {
                warn "Cannot open $file: $OS_ERROR\n";
                next EVENT;
             }
-            MKDEBUG && _d('Reading', $file);
+            PTDEBUG && _d('Reading', $file);
          }
          $next_event  = sub { return <$fh>; };
          $tell        = sub { return tell $fh; };
@@ -6427,7 +6427,7 @@ sub main {
          last EVENT unless $o->get('continue-on-error');
       }
       if ( !$more_events ) {
-         MKDEBUG && _d('No more events');
+         PTDEBUG && _d('No more events');
          close $fh if $fh and $fh ne *STDIN;
          $fh = undef;
       }
@@ -6619,7 +6619,7 @@ sub get_cxn {
 
    my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), $args{opts});
    $dbh->{FetchHashKeyName} = 'NAME_lc';
-   MKDEBUG && _d('Connected dbh', $dbh);
+   PTDEBUG && _d('Connected dbh', $dbh);
    return $dbh;
 }
 
@@ -7270,7 +7270,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Percona Inc.
+This program is copyright 2010-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -7289,6 +7289,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v0.9.5 released 2011-08-04
+pt-query-advisor 2.0.3
 
 =cut

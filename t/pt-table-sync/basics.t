@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 17;
+   plan tests => 21;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -122,13 +122,13 @@ is_deeply(
    'Synced OK with Nibble'
 );
 
-# Save original MKDEBUG env because we modify it below.
-my $dbg = $ENV{MKDEBUG};
+# Save original PTDEBUG env because we modify it below.
+my $dbg = $ENV{PTDEBUG};
 
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$ENV{MKDEBUG} = 1;
+$ENV{PTDEBUG} = 1;
 $output = run_cmd('test1', 'test2', '--algorithms Nibble --no-bin-log --chunk-size 1 --transaction --lock 1');
-delete $ENV{MKDEBUG};
+delete $ENV{PTDEBUG};
 like(
    $output,
    qr/Executing statement on source/,
@@ -141,9 +141,9 @@ is_deeply(
 );
 
 # Sync tables that have values with leading zeroes
-$ENV{MKDEBUG} = 1;
+$ENV{PTDEBUG} = 1;
 $output = run('test3', 'test4', '--print --no-bin-log --verbose --function MD5');
-delete $ENV{MKDEBUG};
+delete $ENV{PTDEBUG};
 like(
    $output,
    qr/UPDATE `test`.`test4`.*51707/,
@@ -165,9 +165,73 @@ $output = run('test3', 'test4', '--algorithms Nibble --chunk-size 1k --print --v
 # If it lived, it's OK.
 ok($output, 'Synced with Nibble and data-size chunksize');
 
-# Restore MKDEBUG env.
-$ENV{MKDEBUG} = $dbg || 0;
+# Restore PTDEBUG env.
+$ENV{PTDEBUG} = $dbg || 0;
 
+# ###########################################################################
+# Fix bug 911996.
+# ###########################################################################
+`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor --quiet`;
+
+PerconaTest::wait_for_table($slave_dbh, "percona.checksums", "db='sakila' and tbl='actor' and chunk=7");
+$slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='actor' and chunk=3");
+$slave_dbh->do("update sakila.actor set last_name='' where actor_id=30");
+
+$output = output(
+   sub {
+      pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox',
+         qw(--print --execute --replicate percona.checksums),
+         qw(--no-foreign-key-checks))
+   }
+);
+
+like(
+   $output,
+   qr/^REPLACE INTO `sakila`.`actor`\(`actor_id`, `first_name`, `last_name`, `last_update`\) VALUES \('30', 'SANDRA', 'PECK', '2006-02-15 04:34:33'\)/,
+   "--replicate with char index col (bug 911996)"
+);
+
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor`;
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   0,
+   "Synced diff (bug 911996)"
+);
+
+# Fix bug 927771.
+$sb->load_file('master', 't/pt-table-sync/samples/bug_927771.sql');
+PerconaTest::wait_for_table($slave_dbh, "test.t", "c='j'");
+
+$slave_dbh->do("update test.t set c='z' where id>8");
+
+`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 2 -t test.t --quiet`;
+
+PerconaTest::wait_for_table($slave_dbh, "percona.checksums", "db='test' and tbl='t' and chunk=4");
+
+$output = output(
+   sub {
+      pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox',
+         qw(--print --execute --replicate percona.checksums),
+         qw(--no-foreign-key-checks))
+   },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/REPLACE INTO `test`.`t`\(`id`, `c`\) VALUES \('9', 'i'\)/,
+   "--replicate with uc index (bug 927771)"
+);
+
+my $rows = $slave_dbh->selectall_arrayref("select id, c from test.t where id>8 order by id");
+is_deeply(
+   $rows,
+   [
+      [9,  'i'],
+      [10, 'j'],
+   ],
+   "Synced slaved (bug 927771)"
+);
 
 # #############################################################################
 # Done.

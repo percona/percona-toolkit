@@ -35,7 +35,6 @@ $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
 $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-$sb->load_file('master', 't/pt-table-sync/samples/checksum_tbl.sql');
 
 # #############################################################################
 # Issue 79: mk-table-sync with --replicate doesn't honor --tables
@@ -49,7 +48,7 @@ $slave_dbh->do('insert into test.messages values (1), (2), (3)');
 # out of sync. Now we also unsync test2 on the slave and then re-sync only
 # it. If --tables is honored, only test2 on the slave will be synced.
 $sb->use('master', "-D test -e \"SET SQL_LOG_BIN=0; INSERT INTO test2 VALUES (1,'a'),(2,'b')\"");
-diag(`$trunk/bin/pt-table-checksum --replicate=test.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test > /dev/null`);
+diag(`$trunk/bin/pt-table-checksum --replicate=test.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --lock-wait-time 3 > /dev/null`);
 
 is_deeply(
    $master_dbh->selectall_arrayref('select * from test.messages'),
@@ -72,7 +71,7 @@ like($output,   qr/test2/,    '--replicate honors --tables (2/4)');
 
 # Now we'll test with a qualified db.tbl name.
 $sb->use('slave1', '-D test -e "TRUNCATE TABLE test2; TRUNCATE TABLE messages"');
-diag(`$trunk/bin/pt-table-checksum --replicate=test.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test > /dev/null`);
+diag(`$trunk/bin/pt-table-checksum --replicate=test.checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --lock-wait-time 3 > /dev/null`);
 
 $output = `$trunk/bin/pt-table-sync h=127.1,P=12345,u=msandbox,p=msandbox --replicate test.checksum --execute -d test -t test.test2 -v`;
 unlike($output, qr/messages/, '--replicate honors --tables (3/4)');

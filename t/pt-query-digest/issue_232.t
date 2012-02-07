@@ -20,7 +20,7 @@ my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 
 # #############################################################################
 my $output = 'foo'; # clear previous test results
 my $cmd = "${run_with}slow026.txt";
-$output = `MKDEBUG=1 $cmd 2>&1`;
+$output = `PTDEBUG=1 $cmd 2>&1`;
 # Changed qr// from matching db to Schema because attribs are auto-detected.
 like(
    $output,

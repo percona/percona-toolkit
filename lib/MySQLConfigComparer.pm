@@ -25,7 +25,7 @@ package MySQLConfigComparer;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Alternate values because a config file can have var=ON and then be shown
 # in SHOW VARS as var=TRUE.  I.e. there's several synonyms for basic
@@ -159,7 +159,7 @@ sub diff {
    my ($configs) = @args{@required_args};
 
    if ( @$configs < 2 ) {
-      MKDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
+      PTDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
       return;
    }
 
@@ -216,7 +216,7 @@ sub diff {
             # We reach here if no comparison above was true and skipped
             # to the next CONFIG.  So reaching here means the values are
             # different.  We save the real, not-normalized values.
-            MKDEBUG && _d("Different", $var, "values:", $val0, $valN);
+            PTDEBUG && _d("Different", $var, "values:", $val0, $valN);
             $diffs->{$var} = [ map { $_->value_of($var) } @$configs ];
             last CONFIG;
          }  # CONFIG
@@ -262,7 +262,7 @@ sub missing {
    my ($configs) = @args{@required_args};
 
    if ( @$configs < 2 ) {
-      MKDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
+      PTDEBUG && _d("Less than two MySQLConfig objects; nothing to compare");
       return;
    }
 

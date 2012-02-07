@@ -9,11 +9,14 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 42;
+use Test::More tests => 47;
 
 use MasterSlave;
 use DSNParser;
 use VersionParser;
+use OptionParser;
+use Quoter;
+use Cxn;
 use Sandbox;
 use PerconaTest;
 
@@ -22,10 +25,106 @@ my $ms = new MasterSlave(VersionParser => $vp);
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave_dbh  = $sb->get_dbh_for('slave1');
+     
+my $master_dsn = {
+   h => '127.1',
+   P => '12345',
+   u => 'msandbox',
+   p => 'msandbox',
+};
+
+# ############################################################################
+# get_slaves() wrapper around recurse_to_slaves()
+# ############################################################################
+my $q = new Quoter;
+my $o = new OptionParser(description => 'MasterSlave');
+$o->get_specs("$trunk/bin/pt-table-checksum");
+
+SKIP: {
+   skip "Cannot connect to sandbox master", 2 unless $master_dbh;
+   @ARGV = ();
+   $o->get_opts();
+
+   my $slaves = $ms->get_slaves(
+      dbh          => $master_dbh,
+      dsn          => $master_dsn,
+      OptionParser => $o,
+      DSNParser    => $dp,
+      Quoter       => $q,
+      make_cxn     => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
+   );
+
+   is_deeply(
+      $slaves->[0]->dsn(),
+      {  A => undef,
+         D => undef,
+         F => undef,
+         P => '12346',
+         S => undef,
+         h => '127.0.0.1',
+         p => 'msandbox',
+         t => undef,
+         u => 'msandbox',
+         server_id => 12346,
+         master_id => 12345,
+         source    => 'hosts',
+      },
+      'get_slaves() from recurse_to_slaves()'
+   );
+
+   my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
+   is(
+      $id,
+      '12346',
+      'dbh created from get_slaves()'
+   );
+
+   # This doesn't actually work because the master and slave are both
+   # localhost/127.1 so it will connect agian to the master, detect this,
+   # and ignore it.  This tests nonetheless that "processlist" isn't
+   # misspelled, which would cause the sub to die.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/921802
+   @ARGV = ('--recursion-method', 'processlist');
+   $o->get_opts();
+
+   $slaves = $ms->get_slaves(
+      OptionParser => $o,
+      DSNParser    => $dp,
+      Quoter       => $q,
+      dbh          => $master_dbh,
+      dsn          => $master_dsn,
+      make_cxn     => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
+   );
+
+   is_deeply(
+      $slaves,
+      [],
+      "get_slaves() by processlist"
+   );
+}
+
 # #############################################################################
 # First we need to setup a special replication sandbox environment apart from
 # the usual persistent sandbox servers on ports 12345 and 12346.
-# The tests in this script require a master with 3 slaves in a setup like:
+# The tests in this script require a master with 3 slaves in a setup like:ggn
 #    127.0.0.1:master
 #    +- 127.0.0.1:slave0
 #    |  +- 127.0.0.1:slave1
@@ -400,8 +499,6 @@ ok(
 # #############################################################################
 # get_replication_filters()
 # #############################################################################
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
 SKIP: {
    skip "Cannot connect to sandbox master", 3 unless $master_dbh;
    skip "Cannot connect to sandbox slave", 3 unless $slave_dbh;
@@ -463,8 +560,56 @@ ok(
    "get_slave_lag() for slave"
 );
 
+# ############################################################################
+# get_slaves() and DSN table
+# ############################################################################
+$sb->load_file('master', "t/lib/samples/MasterSlave/dsn_table.sql");
+
+@ARGV = ('--recursion-method', 'dsn=F=/tmp/12345/my.sandbox.cnf,D=dsn_t,t=dsns');
+$o->get_opts();
+
+my $slaves = $ms->get_slaves(
+   OptionParser => $o,
+   DSNParser    => $dp,
+   Quoter       => $q,
+   make_cxn     => sub {
+      my $cxn = new Cxn(
+         @_,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $cxn->connect();
+      return $cxn;
+   },
+);
+
+is_deeply(
+   $slaves->[0]->{dsn},
+   {  A => undef,
+      D => undef,
+      F => undef,
+      P => '12346',
+      S => undef,
+      h => '127.1',
+      p => 'msandbox',
+      t => undef,
+      u => 'msandbox',
+   },
+   'get_slaves() from DSN table'
+);
+
+my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
+is(
+   $id,
+   '12346',
+   'dbh created from DSN table works'
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
+diag(`/tmp/12346/use -e "set global read_only=1"`);
+diag(`/tmp/12347/use -e "set global read_only=1"`);
+diag(`$trunk/sandbox/test-env reset`);
 exit;
