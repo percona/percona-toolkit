@@ -102,21 +102,15 @@ is(make_checksum('hello world'), '93CB22BB8F5ACDC3', 'make_checksum');
 # #############################################################################
 # crc32() tests.
 # #############################################################################
-eval {
-   require Digest::Crc32;
-};
-SKIP: {
-   skip "Digest::Crc32 is not installed", 1 if $EVAL_ERROR;
-   
-   my $crc = new Digest::Crc32();
 
-   # Our crc32 should match the one from which we copied it.
-   is(
-      crc32('Hello world'),
-      $crc->strcrc32("Hello world"),
-      "crc32"
-   );
-};
+# Our crc32 is copied from Digest::Crc32 which is not a common module,
+# so we don't rely on it being installed.  Instead, I just copied the
+# original value from Digest::Crc32 into this test.
+is(
+   crc32('Hello world'),  # our crc32()
+   '2346098258',          # original value from Digest::Crc32::strcrc32()
+   "crc32"
+);
 
 # #############################################################################
 # any_unix_timestamp() tests.
