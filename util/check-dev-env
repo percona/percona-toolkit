@@ -3,14 +3,12 @@
 use warnings FATAL => 'all';
 use English;
 
-# This script is for developers to see if their box has all the modules
-# necessary for testing Percona Toolkit.  Any missing modules are printed
-# to STDERR and installed modules are printed to STDOUT.
+# This script checks if all modules necessary for testing Percona Toolkit
+# are installed.  It exits 0 if all modules are installed, else it exits
+# non-zero.
 #
-# In addition to these modules, many non-standard programs are needed
-# for other tasks, like building packages, writing test coverage, etc.
-#
-# Exits 0 if all modules are installed, else exits non-zero.
+# This check is just for testing Percona Toolkit.  Other dev tasks, like
+# building release packages, require other modules and programs.
 
 my @modules = qw(
    Data::Dumper
@@ -26,8 +24,7 @@ my @modules = qw(
    IO::Uncompress::Inflate
    List::Util
    POSIX
-   Socket
-   Term::ReadKey
+   Socket 
    Test::More
    Time::HiRes
    Time::Local
@@ -36,6 +33,7 @@ my @modules = qw(
 my $exit_status = 0;
 my $fmt         = "%-23s %s\n";
 
+# Not a module but we want to know the Perl version.
 printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`;
 
 foreach my $module (@modules) {
