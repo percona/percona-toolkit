@@ -19,6 +19,9 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
+# This issue/bug seems not to have been reproduced or followed up on.
+plan skip_all => "issue 1152";
+
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }

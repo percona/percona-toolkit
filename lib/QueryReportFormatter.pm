@@ -39,7 +39,7 @@ Transformers->import(qw(
    crc32
 ));
 
-use constant MKDEBUG           => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG           => $ENV{PTDEBUG} || 0;
 use constant LINE_LENGTH       => 74;
 use constant MAX_STRING_LENGTH => 10;
 
@@ -69,7 +69,7 @@ sub new {
 
    # If ever someone wishes for a wider label width.
    my $label_width = $args{label_width} || 12;
-   MKDEBUG && _d('Label width:', $label_width);
+   PTDEBUG && _d('Label width:', $label_width);
 
    my $cheat_width = $label_width + 1;
 
@@ -140,7 +140,7 @@ sub print_reports {
    my $last_report;
 
    foreach my $report ( @$reports ) {
-      MKDEBUG && _d('Printing', $report, 'report'); 
+      PTDEBUG && _d('Printing', $report, 'report'); 
       my $report_output = $self->$report(%args);
       if ( $report_output ) {
          print "\n"
@@ -148,7 +148,7 @@ sub print_reports {
          print $report_output;
       }
       else {
-         MKDEBUG && _d('No', $report, 'report');
+         PTDEBUG && _d('No', $report, 'report');
       }
       $last_report = $report;
    }
@@ -171,7 +171,7 @@ sub rusage {
          shorten( ($vsz || 0) * 1_024 );
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
    }
    return $rusage ? $rusage : "# Could not get rusage\n";
 }
@@ -236,7 +236,7 @@ sub header {
    }
 
    # First line
-   MKDEBUG && _d('global_cnt:', $global_cnt, 'unique:',
+   PTDEBUG && _d('global_cnt:', $global_cnt, 'unique:',
       scalar keys %{$results->{classes}}, 'qps:', $qps, 'conc:', $conc);
    my $line = sprintf(
       '# Overall: %s total, %s unique, %s QPS, %sx concurrency ',
@@ -565,7 +565,7 @@ sub event_report {
          push @result, "# EXPLAIN sparkline: $sparkline\n";
       };
       if ( $EVAL_ERROR ) {
-         MKDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
+         PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
       }
    }
 
@@ -889,7 +889,7 @@ sub profile {
                $samp_query, $default_db);
          };
          if ( $EVAL_ERROR ) {
-            MKDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
+            PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
          }
       }
 
@@ -1024,7 +1024,7 @@ sub prepared {
             $exec_cnt = $exec->{Query_time}->{cnt};
          }
          else {
-            MKDEBUG && _d('Statement prepared but not executed:', $item);
+            PTDEBUG && _d('Statement prepared but not executed:', $item);
             $exec_r   = 0;
             $exec_cnt = 0;
          }
@@ -1035,7 +1035,7 @@ sub prepared {
             $prep_cnt = scalar keys %{$prep->{Statement_id}->{unq}},
          }
          else {
-            MKDEBUG && _d('Statement executed but not prepared:', $item);
+            PTDEBUG && _d('Statement executed but not prepared:', $item);
             $prep_r   = 0;
             $prep_cnt = 0;
          }
@@ -1232,7 +1232,7 @@ sub format_string_list {
 sub sort_attribs {
    my ( $self, $attribs, $ea ) = @_;
    return unless $attribs && @$attribs;
-   MKDEBUG && _d("Sorting attribs:", @$attribs);
+   PTDEBUG && _d("Sorting attribs:", @$attribs);
 
    # Sort order for numeric attribs.  Attribs not listed here come after these
    # in alphabetical order.
@@ -1277,7 +1277,7 @@ sub sort_attribs {
          push @string, $attrib;
       }
       else {
-         MKDEBUG && _d("Unknown attrib type:", $type, "for", $attrib);
+         PTDEBUG && _d("Unknown attrib type:", $type, "for", $attrib);
       }
    }
 
@@ -1347,7 +1347,7 @@ sub explain_report {
    eval {
       if ( !$qp->has_derived_table($query) ) {
          if ( $db ) {
-            MKDEBUG && _d($dbh, "USE", $db);
+            PTDEBUG && _d($dbh, "USE", $db);
             $dbh->do("USE " . $q->quote($db));
          }
          my $sth = $dbh->prepare("EXPLAIN /*!50100 PARTITIONS */ $query");
@@ -1365,7 +1365,7 @@ sub explain_report {
       }
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d("EXPLAIN failed:", $query, $EVAL_ERROR);
+      PTDEBUG && _d("EXPLAIN failed:", $query, $EVAL_ERROR);
    }
    return $explain ? $explain : "# EXPLAIN failed: $EVAL_ERROR";
 }
@@ -1399,7 +1399,7 @@ sub explain_sparkline {
    return unless $dbh && $ex;
 
    if ( $db ) {
-      MKDEBUG && _d($dbh, "USE", $db);
+      PTDEBUG && _d($dbh, "USE", $db);
       $dbh->do("USE " . $q->quote($db));
    }
    my $res = $ex->normalize(

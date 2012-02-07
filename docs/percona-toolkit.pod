@@ -26,13 +26,13 @@ This release of Percona Toolkit includes the following tools:
 
 =over
 
+=item pt-align
+
+Align output from other tools to columns.
+
 =item pt-archiver
 
 Archive rows from a MySQL table into another table or a file.
-
-=item pt-collect
-
-Collect information from a server for some period of time.
 
 =item pt-config-diff
 
@@ -44,7 +44,7 @@ Extract and log MySQL deadlock information.
 
 =item pt-diskstats
 
-Aggregate and summarize F</proc/diskstats>.
+An interactive I/O monitoring tool for GNU/Linux.
 
 =item pt-duplicate-key-checker
 
@@ -69,6 +69,10 @@ Monitor MySQL replication delay.
 =item pt-index-usage
 
 Read queries from a log and analyze how they use indexes.
+
+=item pt-ioprofile
+
+Watch process IO and print a table of file and I/O activity.
 
 =item pt-kill
 
@@ -124,7 +128,7 @@ Watch and restart MySQL replication after errors.
 
 =item pt-stalk
 
-Wait for a condition to occur then begin collecting data.
+Gather forensic data about MySQL when a problem occurs.
 
 =item pt-summary
 
@@ -132,7 +136,7 @@ Summarize system information in a nice way.
 
 =item pt-table-checksum
 
-Perform an online replication consistency check, or checksum MySQL tables efficiently on one or many servers.
+Verify MySQL replication integrity.
 
 =item pt-table-sync
 
@@ -182,8 +186,8 @@ The syntax of the configuration files is as follows:
 
 =item *
 
-Whitespace followed by a hash (#) sign signifies that the rest of the line is a
-comment.  This is deleted.
+Whitespace followed by a hash sign (#) signifies that the rest of the line is a
+comment.  This is deleted.  For example:
 
 =item *
 
@@ -200,7 +204,9 @@ Each line is permitted to be in either of the following formats:
   option
   option=value
 
-Whitespace around the equals sign is deleted during processing.
+Do not prefix the option with C<-->.  Do not quote the values, even if
+it has spaces; value are literal.  Whitespace around the equals sign is
+deleted during processing.
 
 =item *
 
@@ -213,6 +219,22 @@ further lines are interpreted as additional arguments (not options) to the
 program.
 
 =back
+
+=head2 EXAMPLE
+
+This config file for pt-stalk,
+
+  # Config for pt-stalk
+  variable=Threads_connected
+  cycles=2  # trigger if problem seen twice in a row
+  --
+  --user daniel
+
+is equivalent to this command line:
+
+  pt-stalk --variable Threads_connected --cycles 2 -- --user daniel
+
+Options after C<--> are passed literally to mysql and mysqladmin.
 
 =head2 READ ORDER
 
@@ -447,7 +469,7 @@ for details.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011 Percona Inc. and others.
+Percona Toolkit is copyright 2011-2012 Percona Inc. and others.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -466,6 +488,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v1.0.1 released 2011-09-01
+Percona Toolkit v2.0.3 released 2012-02-03
 
 =cut

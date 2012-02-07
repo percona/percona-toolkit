@@ -25,7 +25,7 @@ package MasterSlave;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -34,6 +34,54 @@ sub new {
       replication_thread => {},
    };
    return bless $self, $class;
+}
+
+sub get_slaves {
+   my ($self, %args) = @_;
+   my @required_args = qw(make_cxn OptionParser DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($make_cxn, $o, $dp) = @args{@required_args};
+
+   my $slaves = [];
+   my $method = $o->get('recursion-method');
+   PTDEBUG && _d('Slave recursion method:', $method);
+   if ( !$method || $method =~ m/processlist|hosts/i ) {
+      my @required_args = qw(dbh dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dbh, $dsn) = @args{@required_args};
+      $self->recurse_to_slaves(
+         {  dbh        => $dbh,
+            dsn        => $dsn,
+            dsn_parser => $dp,
+            recurse    => $o->get('recurse'),
+            method     => $o->get('recursion-method'),
+            callback   => sub {
+               my ( $dsn, $dbh, $level, $parent ) = @_;
+               return unless $level;
+               PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
+               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
+               return;
+            },
+         }
+      );
+   }
+   elsif ( $method =~ m/^dsn=/i ) {
+      my ($dsn_table_dsn) = $method =~ m/^dsn=(.+)/i;
+      $slaves = $self->get_cxn_from_dsn_table(
+         %args,
+         dsn_table_dsn => $dsn_table_dsn,
+      );
+   }
+   else {
+      die "Invalid --recursion-method: $method.  Valid values are: "
+        . "dsn=DSN, hosts, or processlist.\n";
+   }
+
+   return $slaves;
 }
 
 # Sub: recurse_to_slaves
@@ -66,7 +114,7 @@ sub recurse_to_slaves {
    eval {
       $dbh = $args->{dbh} || $dp->get_dbh(
          $dp->get_cxn_params($dsn), { AutoCommit => 1 });
-      MKDEBUG && _d('Connected to', $dp->as_string($dsn));
+      PTDEBUG && _d('Connected to', $dp->as_string($dsn));
    };
    if ( $EVAL_ERROR ) {
       print STDERR "Cannot connect to ", $dp->as_string($dsn), "\n"
@@ -78,15 +126,15 @@ sub recurse_to_slaves {
    # server has the ID its master thought, and that we have not seen it before
    # in any case.
    my $sql  = 'SELECT @@SERVER_ID';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my ($id) = $dbh->selectrow_array($sql);
-   MKDEBUG && _d('Working on server ID', $id);
+   PTDEBUG && _d('Working on server ID', $id);
    my $master_thinks_i_am = $dsn->{server_id};
    if ( !defined $id
        || ( defined $master_thinks_i_am && $master_thinks_i_am != $id )
        || $args->{server_ids_seen}->{$id}++
    ) {
-      MKDEBUG && _d('Server ID seen, or not what master said');
+      PTDEBUG && _d('Server ID seen, or not what master said');
       if ( $args->{skip_callback} ) {
          $args->{skip_callback}->($dsn, $dbh, $level, $args->{parent});
       }
@@ -105,7 +153,7 @@ sub recurse_to_slaves {
          $self->find_slave_hosts($dp, $dbh, $dsn, $args->{method});
 
       foreach my $slave ( @slaves ) {
-         MKDEBUG && _d('Recursing from',
+         PTDEBUG && _d('Recursing from',
             $dp->as_string($dsn), 'to', $dp->as_string($slave));
          $self->recurse_to_slaves(
             { %$args, dsn => $slave, dbh => undef, parent => $dsn }, $level + 1 );
@@ -137,23 +185,23 @@ sub find_slave_hosts {
    }
    else {
       if ( ($dsn->{P} || 3306) != 3306 ) {
-         MKDEBUG && _d('Port number is non-standard; using only hosts method');
+         PTDEBUG && _d('Port number is non-standard; using only hosts method');
          @methods = qw(hosts);
       }
    }
-   MKDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
+   PTDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
       'using methods', @methods);
 
    my @slaves;
    METHOD:
    foreach my $method ( @methods ) {
       my $find_slaves = "_find_slaves_by_$method";
-      MKDEBUG && _d('Finding slaves with', $find_slaves);
+      PTDEBUG && _d('Finding slaves with', $find_slaves);
       @slaves = $self->$find_slaves($dsn_parser, $dbh, $dsn);
       last METHOD if @slaves;
    }
 
-   MKDEBUG && _d('Found', scalar(@slaves), 'slaves');
+   PTDEBUG && _d('Found', scalar(@slaves), 'slaves');
    return @slaves;
 }
 
@@ -187,12 +235,12 @@ sub _find_slaves_by_hosts {
 
    my @slaves;
    my $sql = 'SHOW SLAVE HOSTS';
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    @slaves = @{$dbh->selectall_arrayref($sql, { Slice => {} })};
 
    # Convert SHOW SLAVE HOSTS into DSN hashes.
    if ( @slaves ) {
-      MKDEBUG && _d('Found some SHOW SLAVE HOSTS info');
+      PTDEBUG && _d('Found some SHOW SLAVE HOSTS info');
       @slaves = map {
          my %hash;
          @hash{ map { lc $_ } keys %$_ } = values %$_;
@@ -227,7 +275,7 @@ sub get_connected_slaves {
       $user =~ s/([^@]+)@(.+)/'$1'\@'$2'/;
    }
    my $sql = $show . $user;
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
 
    my $proc;
    eval {
@@ -239,11 +287,11 @@ sub get_connected_slaves {
 
       if ( $EVAL_ERROR =~ m/no such grant defined for user/ ) {
          # Try again without a host.
-         MKDEBUG && _d('Retrying SHOW GRANTS without host; error:',
+         PTDEBUG && _d('Retrying SHOW GRANTS without host; error:',
             $EVAL_ERROR);
          ($user) = split('@', $user);
          $sql    = $show . $user;
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          eval {
             $proc = grep {
                m/ALL PRIVILEGES.*?\*\.\*|PROCESS/
@@ -260,7 +308,7 @@ sub get_connected_slaves {
    }
 
    $sql = 'SHOW PROCESSLIST';
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    # It's probably a slave if it's doing a binlog dump.
    grep { $_->{command} =~ m/Binlog Dump/i }
    map  { # Lowercase the column names
@@ -336,7 +384,7 @@ sub get_slave_status {
    if ( !$self->{not_a_slave}->{$dbh} ) {
       my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
             ||= $dbh->prepare('SHOW SLAVE STATUS');
-      MKDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
+      PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
       $sth->execute();
       my ($ss) = @{$sth->fetchall_arrayref({})};
 
@@ -345,7 +393,7 @@ sub get_slave_status {
          return $ss;
       }
 
-      MKDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
+      PTDEBUG && _d('This server returns nothing for SHOW SLAVE STATUS');
       $self->{not_a_slave}->{$dbh}++;
    }
 }
@@ -355,21 +403,21 @@ sub get_master_status {
    my ( $self, $dbh ) = @_;
 
    if ( $self->{not_a_master}->{$dbh} ) {
-      MKDEBUG && _d('Server on dbh', $dbh, 'is not a master');
+      PTDEBUG && _d('Server on dbh', $dbh, 'is not a master');
       return;
    }
 
    my $sth = $self->{sths}->{$dbh}->{MASTER_STATUS}
          ||= $dbh->prepare('SHOW MASTER STATUS');
-   MKDEBUG && _d($dbh, 'SHOW MASTER STATUS');
+   PTDEBUG && _d($dbh, 'SHOW MASTER STATUS');
    $sth->execute();
    my ($ms) = @{$sth->fetchall_arrayref({})};
-   MKDEBUG && _d(
+   PTDEBUG && _d(
       $ms ? map { "$_=" . (defined $ms->{$_} ? $ms->{$_} : '') } keys %$ms
           : '');
 
    if ( !$ms || scalar keys %$ms < 2 ) {
-      MKDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
+      PTDEBUG && _d('Server on dbh', $dbh, 'does not seem to be a master');
       $self->{not_a_master}->{$dbh}++;
    }
 
@@ -411,7 +459,7 @@ sub wait_for_master {
    if ( $master_status ) {
       my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', "
               . "$master_status->{position}, $timeout)";
-      MKDEBUG && _d($slave_dbh, $sql);
+      PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
 
@@ -421,11 +469,11 @@ sub wait_for_master {
       # waiting.
       $waited = time - $start;
 
-      MKDEBUG && _d('Result of waiting:', $result);
-      MKDEBUG && _d("Waited", $waited, "seconds");
+      PTDEBUG && _d('Result of waiting:', $result);
+      PTDEBUG && _d("Waited", $waited, "seconds");
    }
    else {
-      MKDEBUG && _d('Not waiting: this server is not a master');
+      PTDEBUG && _d('Not waiting: this server is not a master');
    }
 
    return {
@@ -439,7 +487,7 @@ sub stop_slave {
    my ( $self, $dbh ) = @_;
    my $sth = $self->{sths}->{$dbh}->{STOP_SLAVE}
          ||= $dbh->prepare('STOP SLAVE');
-   MKDEBUG && _d($dbh, $sth->{Statement});
+   PTDEBUG && _d($dbh, $sth->{Statement});
    $sth->execute();
 }
 
@@ -450,13 +498,13 @@ sub start_slave {
       # Just like with CHANGE MASTER TO, you can't quote the position.
       my $sql = "START SLAVE UNTIL MASTER_LOG_FILE='$pos->{file}', "
               . "MASTER_LOG_POS=$pos->{position}";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
    else {
       my $sth = $self->{sths}->{$dbh}->{START_SLAVE}
             ||= $dbh->prepare('START SLAVE');
-      MKDEBUG && _d($dbh, $sth->{Statement});
+      PTDEBUG && _d($dbh, $sth->{Statement});
       $sth->execute();
    }
 }
@@ -472,12 +520,12 @@ sub catchup_to_master {
    my $slave_pos     = $self->repl_posn($slave_status);
    my $master_status = $self->get_master_status($master);
    my $master_pos    = $self->repl_posn($master_status);
-   MKDEBUG && _d('Master position:', $self->pos_to_string($master_pos),
+   PTDEBUG && _d('Master position:', $self->pos_to_string($master_pos),
       'Slave position:', $self->pos_to_string($slave_pos));
 
    my $result;
    if ( $self->pos_cmp($slave_pos, $master_pos) < 0 ) {
-      MKDEBUG && _d('Waiting for slave to catch up to master');
+      PTDEBUG && _d('Waiting for slave to catch up to master');
       $self->start_slave($slave, $master_pos);
 
       # The slave may catch up instantly and stop, in which case
@@ -494,7 +542,7 @@ sub catchup_to_master {
       if ( !defined $result->{result} ) {
          $slave_status = $self->get_slave_status($slave);
          if ( !$self->slave_is_running($slave_status) ) {
-            MKDEBUG && _d('Master position:',
+            PTDEBUG && _d('Master position:',
                $self->pos_to_string($master_pos),
                'Slave position:', $self->pos_to_string($slave_pos));
             $slave_pos = $self->repl_posn($slave_status);
@@ -502,7 +550,7 @@ sub catchup_to_master {
                die "MASTER_POS_WAIT() returned NULL but slave has not "
                   . "caught up to master";
             }
-            MKDEBUG && _d('Slave is caught up to master and stopped');
+            PTDEBUG && _d('Slave is caught up to master and stopped');
          }
          else {
             die "Slave has not caught up to master and it is still running";
@@ -510,7 +558,7 @@ sub catchup_to_master {
       }
    }
    else {
-      MKDEBUG && _d("Slave is already caught up to master");
+      PTDEBUG && _d("Slave is already caught up to master");
    }
 
    return $result;
@@ -559,7 +607,7 @@ sub slave_is_running {
 sub has_slave_updates {
    my ( $self, $dbh ) = @_;
    my $sql = q{SHOW VARIABLES LIKE 'log_slave_updates'};
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my ($name, $value) = $dbh->selectrow_array($sql);
    return $value && $value =~ m/^(1|ON)$/;
 }
@@ -655,14 +703,14 @@ sub is_replication_thread {
    if ( !$match ) {
       # On a slave, there are two threads.  Both have user="system user".
       if ( ($query->{User} || $query->{user} || '') eq "system user" ) {
-         MKDEBUG && _d("Slave replication thread");
+         PTDEBUG && _d("Slave replication thread");
          if ( $type ne 'all' ) { 
             # Match a particular slave thread.
             my $state = $query->{State} || $query->{state} || '';
 
             if ( $state =~ m/^init|end$/ ) {
                # http://code.google.com/p/maatkit/issues/detail?id=1121
-               MKDEBUG && _d("Special state:", $state);
+               PTDEBUG && _d("Special state:", $state);
                $match = 1;
             }
             else {
@@ -692,7 +740,7 @@ sub is_replication_thread {
          }
       }
       else {
-         MKDEBUG && _d('Not system user');
+         PTDEBUG && _d('Not system user');
       }
 
       # MySQL loves to trick us.  Sometimes a slave replication thread will
@@ -707,14 +755,14 @@ sub is_replication_thread {
          }
          else {
             if ( $self->{replication_thread}->{$id} ) {
-               MKDEBUG && _d("Thread ID is a known replication thread ID");
+               PTDEBUG && _d("Thread ID is a known replication thread ID");
                $match = 1;
             }
          }
       }
    }
 
-   MKDEBUG && _d('Matches', $type, 'replication thread:',
+   PTDEBUG && _d('Matches', $type, 'replication thread:',
       ($match ? 'yes' : 'no'), '; match:', $match);
 
    return $match;
@@ -767,7 +815,7 @@ sub get_replication_filters {
       );
 
       my $sql = "SHOW VARIABLES LIKE 'slave_skip_errors'";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       my $row = $dbh->selectrow_arrayref($sql);
       # "OFF" in 5.0, "" in 5.1
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';
@@ -795,6 +843,43 @@ sub reset_known_replication_threads {
    my ( $self ) = @_;
    $self->{replication_thread} = {};
    return;
+}
+
+sub get_cxn_from_dsn_table {
+   my ($self, %args) = @_;
+   my @required_args = qw(dsn_table_dsn make_cxn DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dsn_table_dsn, $make_cxn, $dp, $q) = @args{@required_args};
+   PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
+
+   my $dsn = $dp->parse($dsn_table_dsn);
+   my $dsn_table;
+   if ( $dsn->{D} && $dsn->{t} ) {
+      $dsn_table = $q->quote($dsn->{D}, $dsn->{t});
+   }
+   elsif ( $dsn->{t} && $dsn->{t} =~ m/\./ ) {
+      $dsn_table = $q->quote($q->split_unquote($dsn->{t}));
+   }
+   else {
+      die "DSN table DSN does not specify a database (D) "
+        . "or a database-qualified table (t)";
+   }
+
+   my $dsn_tbl_cxn = $make_cxn->(dsn => $dsn);
+   my $dbh         = $dsn_tbl_cxn->connect();
+   my $sql         = "SELECT dsn FROM $dsn_table ORDER BY id";
+   PTDEBUG && _d($sql);
+   my $dsn_strings = $dbh->selectcol_arrayref($sql);
+   my @cxn;
+   if ( $dsn_strings ) {
+      foreach my $dsn_string ( @$dsn_strings ) {
+         PTDEBUG && _d('DSN from DSN table:', $dsn_string);
+         push @cxn, $make_cxn->(dsn_string => $dsn_string);
+      }
+   }
+   return \@cxn;
 }
 
 sub _d {

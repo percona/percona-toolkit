@@ -15,7 +15,6 @@ use TableChecksum;
 use VersionParser;
 use TableParser;
 use Quoter;
-use MySQLDump;
 use DSNParser;
 use Sandbox;
 use PerconaTest;
@@ -36,7 +35,6 @@ $sb->create_dbs($dbh, ['test']);
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
 my $vp = new VersionParser();
-my $du = new MySQLDump();
 my $c  = new TableChecksum(Quoter=>$q, VersionParser=>$vp);
 
 my $t;
@@ -645,7 +643,7 @@ is_deeply(
 # Issue 94: Enhance mk-table-checksum, add a --ignorecols option
 # #############################################################################
 $sb->load_file('master', 't/lib/samples/issue_94.sql');
-$t= $tp->parse( $du->get_create_table($dbh, $q, 'test', 'issue_94') );
+$t= $tp->parse( $tp->get_create_table($dbh, 'test', 'issue_94') );
 my $query = $c->make_checksum_query(
    db         => 'test',
    tbl        => 'issue_47',

@@ -40,6 +40,9 @@ make_sandbox() {
    if [ -n "$SQL_MODE" ]; then
       echo "sql-mode=$SQL_MODE" >> /tmp/$port/my.sandbox.cnf
    fi
+   if [ -n "$GENLOG" ]; then
+      echo "log=genlog" >> /tmp/$port/my.sandbox.cnf
+   fi
 
    # Start the sandbox and check that it has InnoDB.
    /tmp/$port/start

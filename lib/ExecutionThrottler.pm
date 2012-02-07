@@ -25,7 +25,7 @@ package ExecutionThrottler;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(sum min max);
 use Time::HiRes qw(time);
@@ -68,7 +68,7 @@ sub throttle {
       my $rate_avg = (sum(@{$self->{int_rates}})   || 0)
                    / (scalar @{$self->{int_rates}} || 1);
       my $running_avg = $self->_save_rate_avg($rate_avg);
-      MKDEBUG && _d('Average rate for last interval:', $rate_avg);
+      PTDEBUG && _d('Average rate for last interval:', $rate_avg);
 
       if ( $args{stats} ) {
          $args{stats}->{throttle_checked_rate}++;
@@ -82,7 +82,7 @@ sub throttle {
          # will be skipped.
          $self->{skip_prob} += $self->{step};
          $self->{skip_prob}  = 1.0 if $self->{skip_prob} > 1.0;
-         MKDEBUG && _d('Rate max exceeded');
+         PTDEBUG && _d('Rate max exceeded');
          $args{stats}->{throttle_rate_max_exceeded}++ if $args{stats};
       }
       else {
@@ -93,7 +93,7 @@ sub throttle {
          $args{stats}->{throttle_rate_ok}++ if $args{stats};
       }
 
-      MKDEBUG && _d('Skip probability:', $self->{skip_prob});
+      PTDEBUG && _d('Skip probability:', $self->{skip_prob});
       $self->{last_check} = $time;
    }
    else {
@@ -105,7 +105,7 @@ sub throttle {
          $args{stats}->{throttle_rate_max} = max(
             ($args{stats}->{throttle_rate_max} || ()), $current_rate);
       }
-      MKDEBUG && _d('Current rate:', $current_rate);
+      PTDEBUG && _d('Current rate:', $current_rate);
    } 
 
    # rand() returns a fractional value between [0,1).  If skip_prob is

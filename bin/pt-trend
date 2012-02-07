@@ -6,7 +6,7 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # ###########################################################################
 # OptionParser package
@@ -22,7 +22,7 @@ package OptionParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
@@ -106,7 +106,7 @@ sub get_specs {
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    if ( $contents =~ m/^=head1 DSN OPTIONS/m ) {
-      MKDEBUG && _d('Parsing DSN OPTIONS');
+      PTDEBUG && _d('Parsing DSN OPTIONS');
       my $dsn_attribs = {
          dsn  => 1,
          copy => 1,
@@ -150,7 +150,7 @@ sub get_specs {
 
    if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
       $self->{version} = $1;
-      MKDEBUG && _d($self->{version});
+      PTDEBUG && _d($self->{version});
    }
 
    return;
@@ -187,7 +187,7 @@ sub _pod_to_specs {
       chomp $para;
       $para =~ s/\s+/ /g;
       $para =~ s/$POD_link_re/$1/go;
-      MKDEBUG && _d('Option rule:', $para);
+      PTDEBUG && _d('Option rule:', $para);
       push @rules, $para;
    }
 
@@ -196,7 +196,7 @@ sub _pod_to_specs {
    do {
       if ( my ($option) = $para =~ m/^=item $self->{item}/ ) {
          chomp $para;
-         MKDEBUG && _d($para);
+         PTDEBUG && _d($para);
          my %attribs;
 
          $para = <$fh>; # read next paragraph, possibly attributes
@@ -215,7 +215,7 @@ sub _pod_to_specs {
             $para = <$fh>; # read next paragraph, probably short help desc
          }
          else {
-            MKDEBUG && _d('Option has no attributes');
+            PTDEBUG && _d('Option has no attributes');
          }
 
          $para =~ s/\s+\Z//g;
@@ -223,7 +223,7 @@ sub _pod_to_specs {
          $para =~ s/$POD_link_re/$1/go;
 
          $para =~ s/\.(?:\n.*| [A-Z].*|\Z)//s;
-         MKDEBUG && _d('Short help:', $para);
+         PTDEBUG && _d('Short help:', $para);
 
          die "No description after option spec $option" if $para =~ m/^=item/;
 
@@ -261,7 +261,7 @@ sub _parse_specs {
 
    foreach my $opt ( @specs ) {
       if ( ref $opt ) { # It's an option spec, not a rule.
-         MKDEBUG && _d('Parsing opt spec:',
+         PTDEBUG && _d('Parsing opt spec:',
             map { ($_, '=>', $opt->{$_}) } keys %$opt);
 
          my ( $long, $short ) = $opt->{spec} =~ m/^([\w-]+)(?:\|([^!+=]*))?/;
@@ -274,7 +274,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
 
          if ( length $long == 1 ) {
-            MKDEBUG && _d('Long opt', $long, 'looks like short opt');
+            PTDEBUG && _d('Long opt', $long, 'looks like short opt');
             $self->{short_opts}->{$long} = $long;
          }
 
@@ -300,14 +300,14 @@ sub _parse_specs {
 
          my ( $type ) = $opt->{spec} =~ m/=(.)/;
          $opt->{type} = $type;
-         MKDEBUG && _d($long, 'type:', $type);
+         PTDEBUG && _d($long, 'type:', $type);
 
 
          $opt->{spec} =~ s/=./=s/ if ( $type && $type =~ m/[HhAadzm]/ );
 
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
             $self->{defaults}->{$long} = defined $def ? $def : 1;
-            MKDEBUG && _d($long, 'default:', $def);
+            PTDEBUG && _d($long, 'default:', $def);
          }
 
          if ( $long eq 'config' ) {
@@ -316,13 +316,13 @@ sub _parse_specs {
 
          if ( (my ($dis) = $opt->{desc} =~ m/(disables .*)/) ) {
             $disables{$long} = $dis;
-            MKDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
+            PTDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
          }
 
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         MKDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt); 
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -330,17 +330,17 @@ sub _parse_specs {
          if ( $opt =~ m/mutually exclusive|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{mutex}}, \@participants;
-            MKDEBUG && _d(@participants, 'are mutually exclusive');
+            PTDEBUG && _d(@participants, 'are mutually exclusive');
          }
          if ( $opt =~ m/at least one|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{atleast1}}, \@participants;
-            MKDEBUG && _d(@participants, 'require at least one');
+            PTDEBUG && _d(@participants, 'require at least one');
          }
          if ( $opt =~ m/default to/ ) {
             $rule_ok = 1;
             $self->{defaults_to}->{$participants[0]} = $participants[1];
-            MKDEBUG && _d($participants[0], 'defaults to', $participants[1]);
+            PTDEBUG && _d($participants[0], 'defaults to', $participants[1]);
          }
          if ( $opt =~ m/restricted to option groups/ ) {
             $rule_ok = 1;
@@ -354,7 +354,7 @@ sub _parse_specs {
          if( $opt =~ m/accepts additional command-line arguments/ ) {
             $rule_ok = 1;
             $self->{strict} = 0;
-            MKDEBUG && _d("Strict mode disabled by rule");
+            PTDEBUG && _d("Strict mode disabled by rule");
          }
 
          die "Unrecognized option rule: $opt" unless $rule_ok;
@@ -364,7 +364,7 @@ sub _parse_specs {
    foreach my $long ( keys %disables ) {
       my @participants = $self->_get_participants($disables{$long});
       $self->{disables}->{$long} = \@participants;
-      MKDEBUG && _d('Option', $long, 'disables', @participants);
+      PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
    return; 
@@ -378,7 +378,7 @@ sub _get_participants {
          unless exists $self->{opts}->{$long};
       push @participants, $long;
    }
-   MKDEBUG && _d('Participants for', $str, ':', @participants);
+   PTDEBUG && _d('Participants for', $str, ':', @participants);
    return @participants;
 }
 
@@ -401,7 +401,7 @@ sub set_defaults {
       die "Cannot set default for nonexistent option $long"
          unless exists $self->{opts}->{$long};
       $self->{defaults}->{$long} = $defaults{$long};
-      MKDEBUG && _d('Default val for', $long, ':', $defaults{$long});
+      PTDEBUG && _d('Default val for', $long, ':', $defaults{$long});
    }
    return;
 }
@@ -430,7 +430,7 @@ sub _set_option {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
-   MKDEBUG && _d('Got option', $long, '=', $val);
+   PTDEBUG && _d('Got option', $long, '=', $val);
 }
 
 sub get_opts {
@@ -461,7 +461,7 @@ sub get_opts {
             if ( $self->got('config') ) {
                die $EVAL_ERROR;
             }
-            elsif ( MKDEBUG ) {
+            elsif ( PTDEBUG ) {
                _d($EVAL_ERROR);
             }
          }
@@ -528,7 +528,7 @@ sub _check_opts {
             if ( exists $self->{disables}->{$long} ) {
                my @disable_opts = @{$self->{disables}->{$long}};
                map { $self->{opts}->{$_}->{value} = undef; } @disable_opts;
-               MKDEBUG && _d('Unset options', @disable_opts,
+               PTDEBUG && _d('Unset options', @disable_opts,
                   'because', $long,'disables them');
             }
 
@@ -577,7 +577,7 @@ sub _check_opts {
             delete $long[$i];
          }
          else {
-            MKDEBUG && _d('Temporarily failed to parse', $long);
+            PTDEBUG && _d('Temporarily failed to parse', $long);
          }
       }
 
@@ -601,12 +601,12 @@ sub _validate_type {
    my $val = $opt->{value};
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
       my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
          $suffix = $s || 's';
-         MKDEBUG && _d('No suffix given; using', $suffix, 'for',
+         PTDEBUG && _d('No suffix given; using', $suffix, 'for',
             $opt->{long}, '(value:', $val, ')');
       }
       if ( $suffix =~ m/[smhd]/ ) {
@@ -615,23 +615,23 @@ sub _validate_type {
               : $suffix eq 'h' ? $num * 3600     # Hours
               :                  $num * 86400;   # Days
          $opt->{value} = ($prefix || '') . $val;
-         MKDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
+         PTDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
       }
       else {
          $self->save_error("Invalid time suffix for --$opt->{long}");
       }
    }
    elsif ( $val && $opt->{type} eq 'd' ) {  # type DSN
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
       my $prev = {};
       my $from_key = $self->{defaults_to}->{ $opt->{long} };
       if ( $from_key ) {
-         MKDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
+         PTDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
          if ( $self->{opts}->{$from_key}->{parsed} ) {
             $prev = $self->{opts}->{$from_key}->{value};
          }
          else {
-            MKDEBUG && _d('Cannot parse', $opt->{long}, 'until',
+            PTDEBUG && _d('Cannot parse', $opt->{long}, 'until',
                $from_key, 'parsed');
             return;
          }
@@ -640,7 +640,7 @@ sub _validate_type {
       $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
       $self->_parse_size($opt, $val);
    }
    elsif ( $opt->{type} eq 'H' || (defined $val && $opt->{type} eq 'h') ) {
@@ -650,7 +650,7 @@ sub _validate_type {
       $opt->{value} = [ split(/(?<!\\),\s*/, ($val || '')) ];
    }
    else {
-      MKDEBUG && _d('Nothing to validate for option',
+      PTDEBUG && _d('Nothing to validate for option',
          $opt->{long}, 'type', $opt->{type}, 'value', $val);
    }
 
@@ -724,11 +724,11 @@ sub usage_or_errors {
    $file ||= $self->{file} || __FILE__;
 
    if ( !$self->{description} || !$self->{usage} ) {
-      MKDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
+      PTDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
       my %synop = $self->_parse_synopsis($file);
       $self->{description} ||= $synop{description};
       $self->{usage}       ||= $synop{usage};
-      MKDEBUG && _d("Description:", $self->{description},
+      PTDEBUG && _d("Description:", $self->{description},
          "\nUsage:", $self->{usage});
    }
 
@@ -943,7 +943,7 @@ sub _parse_size {
    my ( $self, $opt, $val ) = @_;
 
    if ( lc($val || '') eq 'null' ) {
-      MKDEBUG && _d('NULL size for', $opt->{long});
+      PTDEBUG && _d('NULL size for', $opt->{long});
       $opt->{value} = 'null';
       return;
    }
@@ -953,7 +953,7 @@ sub _parse_size {
    if ( defined $num ) {
       if ( $factor ) {
          $num *= $factor_for{$factor};
-         MKDEBUG && _d('Setting option', $opt->{y},
+         PTDEBUG && _d('Setting option', $opt->{y},
             'to num', $num, '* factor', $factor);
       }
       $opt->{value} = ($pre || '') . $num;
@@ -977,7 +977,7 @@ sub _parse_attribs {
 sub _parse_synopsis {
    my ( $self, $file ) = @_;
    $file ||= $self->{file} || __FILE__;
-   MKDEBUG && _d("Parsing SYNOPSIS in", $file);
+   PTDEBUG && _d("Parsing SYNOPSIS in", $file);
 
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
@@ -990,7 +990,7 @@ sub _parse_synopsis {
       push @synop, $para;
    }
    close $fh;
-   MKDEBUG && _d("Raw SYNOPSIS text:", @synop);
+   PTDEBUG && _d("Raw SYNOPSIS text:", @synop);
    my ($usage, $desc) = @synop;
    die "The SYNOPSIS section in $file is not formatted properly"
       unless $usage && $desc;
@@ -1017,7 +1017,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-if ( MKDEBUG ) {
+if ( PTDEBUG ) {
    print '# ', $^X, ' ', $], "\n";
    if ( my $uname = `uname -a` ) {
       $uname =~ s/\s+/ /g;
@@ -1047,7 +1047,7 @@ package Daemon;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(setsid);
 
@@ -1065,17 +1065,17 @@ sub new {
 
    check_PID_file(undef, $self->{PID_file});
 
-   MKDEBUG && _d('Daemonized child will log to', $self->{log_file});
+   PTDEBUG && _d('Daemonized child will log to', $self->{log_file});
    return bless $self, $class;
 }
 
 sub daemonize {
    my ( $self ) = @_;
 
-   MKDEBUG && _d('About to fork and daemonize');
+   PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      MKDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('I am the parent and now I die');
       exit;
    }
 
@@ -1117,19 +1117,19 @@ sub daemonize {
       }
    }
 
-   MKDEBUG && _d('I am the child and now I live daemonized');
+   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
 sub check_PID_file {
    my ( $self, $file ) = @_;
    my $PID_file = $self ? $self->{PID_file} : $file;
-   MKDEBUG && _d('Checking PID file', $PID_file);
+   PTDEBUG && _d('Checking PID file', $PID_file);
    if ( $PID_file && -f $PID_file ) {
       my $pid;
       eval { chomp($pid = `cat $PID_file`); };
       die "Cannot cat $PID_file: $OS_ERROR" if $EVAL_ERROR;
-      MKDEBUG && _d('PID file exists; it contains PID', $pid);
+      PTDEBUG && _d('PID file exists; it contains PID', $pid);
       if ( $pid ) {
          my $pid_is_alive = kill 0, $pid;
          if ( $pid_is_alive ) {
@@ -1147,7 +1147,7 @@ sub check_PID_file {
       }
    }
    else {
-      MKDEBUG && _d('No PID file');
+      PTDEBUG && _d('No PID file');
    }
    return;
 }
@@ -1167,7 +1167,7 @@ sub _make_PID_file {
 
    my $PID_file = $self->{PID_file};
    if ( !$PID_file ) {
-      MKDEBUG && _d('No PID file to create');
+      PTDEBUG && _d('No PID file to create');
       return;
    }
 
@@ -1180,7 +1180,7 @@ sub _make_PID_file {
    close $PID_FH
       or die "Cannot close PID file $PID_file: $OS_ERROR";
 
-   MKDEBUG && _d('Created PID file:', $self->{PID_file});
+   PTDEBUG && _d('Created PID file:', $self->{PID_file});
    return;
 }
 
@@ -1189,10 +1189,10 @@ sub _remove_PID_file {
    if ( $self->{PID_file} && -f $self->{PID_file} ) {
       unlink $self->{PID_file}
          or warn "Cannot remove PID file $self->{PID_file}: $OS_ERROR";
-      MKDEBUG && _d('Removed PID file');
+      PTDEBUG && _d('Removed PID file');
    }
    else {
-      MKDEBUG && _d('No PID to remove');
+      PTDEBUG && _d('No PID to remove');
    }
    return;
 }
@@ -1233,7 +1233,7 @@ package Progress;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1374,7 +1374,7 @@ package FileIterator;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1405,14 +1405,14 @@ sub get_file_itr {
 
    if ( !@filenames ) {
       push @final_filenames, '-';
-      MKDEBUG && _d('Auto-adding "-" to the list of filenames');
+      PTDEBUG && _d('Auto-adding "-" to the list of filenames');
    }
 
-   MKDEBUG && _d('Final filenames:', @final_filenames);
+   PTDEBUG && _d('Final filenames:', @final_filenames);
    return sub {
       while ( @final_filenames ) {
          my $fn = shift @final_filenames;
-         MKDEBUG && _d('Filename:', $fn);
+         PTDEBUG && _d('Filename:', $fn);
          if ( $fn eq '-' ) { # Magical STDIN filename.
             return (*STDIN, undef, undef);
          }
@@ -1453,7 +1453,7 @@ package TimeSeriesTrender;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -1544,7 +1544,7 @@ package Transformers;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
@@ -1724,36 +1724,36 @@ sub any_unix_timestamp {
          : $suffix eq 'h' ? $n * 3600     # Hours
          : $suffix eq 'd' ? $n * 86400    # Days
          :                  $n;           # default: Seconds
-      MKDEBUG && _d('ts is now - N[shmd]:', $n);
+      PTDEBUG && _d('ts is now - N[shmd]:', $n);
       return time - $n;
    }
    elsif ( $val =~ m/^\d{9,}/ ) {
-      MKDEBUG && _d('ts is already a unix timestamp');
+      PTDEBUG && _d('ts is already a unix timestamp');
       return $val;
    }
    elsif ( my ($ymd, $hms) = $val =~ m/^(\d{6})(?:\s+(\d+:\d+:\d+))?/ ) {
-      MKDEBUG && _d('ts is MySQL slow log timestamp');
+      PTDEBUG && _d('ts is MySQL slow log timestamp');
       $val .= ' 00:00:00' unless $hms;
       return unix_timestamp(parse_timestamp($val));
    }
    elsif ( ($ymd, $hms) = $val =~ m/^(\d{4}-\d\d-\d\d)(?:[T ](\d+:\d+:\d+))?/) {
-      MKDEBUG && _d('ts is properly formatted timestamp');
+      PTDEBUG && _d('ts is properly formatted timestamp');
       $val .= ' 00:00:00' unless $hms;
       return unix_timestamp($val);
    }
    else {
-      MKDEBUG && _d('ts is MySQL expression');
+      PTDEBUG && _d('ts is MySQL expression');
       return $callback->($val) if $callback && ref $callback eq 'CODE';
    }
 
-   MKDEBUG && _d('Unknown ts type:', $val);
+   PTDEBUG && _d('Unknown ts type:', $val);
    return;
 }
 
 sub make_checksum {
    my ( $val ) = @_;
    my $checksum = uc substr(md5_hex($val), -16);
-   MKDEBUG && _d($checksum, 'checksum for', $val);
+   PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
 
@@ -1797,10 +1797,9 @@ sub _d {
 package pt_trend;
 
 use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+Transformers->import(qw(any_unix_timestamp));
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
-
-if ( !caller ) { exit main(@ARGV); } # Run the program.
 sub main {
    @ARGV = @_;  # set global ARGV for this package
 
@@ -1810,7 +1809,7 @@ sub main {
    my $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
-   $o->set('progress', undef) if $o->get('q');
+   $o->set('progress', undef) if $o->get('quiet');
    if ( !$o->got('help') ) {
       if ( $o->get('progress') ) {
          eval { Progress->validate_spec($o->get('progress')) };
@@ -1887,7 +1886,10 @@ sub main {
    return 0;
 }
 
-Transformers->import(qw(any_unix_timestamp));
+# ############################################################################
+# Subroutines
+# ############################################################################
+
 sub print_report {
    my ( $stats ) = @_;
    my $ts = any_unix_timestamp($stats->{ts});
@@ -1902,6 +1904,11 @@ sub _d {
         @_;
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
+
+# ############################################################################
+# Run the program.
+# ############################################################################
+if ( !caller ) { exit main(@ARGV); }
 
 1; # Because this is a module as well as a script.
 
@@ -1984,6 +1991,12 @@ parts.  The first part can be percentage, time, or iterations; the second part
 specifies how often an update should be printed, in percentage, seconds, or
 number of iterations.
 
+=item --quiet
+
+short form: -q
+
+Disables L<"--progress">.
+
 =item --version
 
 Show version and exit.
@@ -2062,7 +2075,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -2081,6 +2094,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-trend 1.0.1
+pt-trend 2.0.3
 
 =cut

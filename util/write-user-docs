@@ -1,23 +1,29 @@
 #!/usr/bin/env bash
 
-# Usage: write-user-docs [FILES]
+# Usage: write-user-docs [TOOLS]
 #
-# This script writes/updates a tool's user documentation.  First, pod2rst
-# is called to convert the file's POD to RST.  Then sphinx-build is called
-# to convert the RST to HTML.
+# This script writes/updates the user documentation.  User docs come from
+# three places: each tool's POD (pod2rst is used to convert their POD docs
+# to RST), static .rst file (docs/*.rst), and most head1 sections in
+# docs/percona-toolkit.pod (also converted writh pod2rst; this file is needed
+# in .pod form because it's used to make the percona-toolkit man page).
 #
-# RST files are written to docs/user/<tool>.rst, and HTML files are written
-# to docs/user/html/<tool>.html.
+# Run this script from any directory in the branch whose user docs you want
+# to build.  For example, to build user docs in the 2.0 branch:
+#   $ cd ~dev/perona-toolkit/2.0
+#   $ util/write-user-docs
+# Unlike other scripts, this one does *not* use PERCONA_TOOLKIT_BRANCH.
 #
-# If no file are specified on the command line, then only the sections from
-# docs/percona-toolkit.pod are written.
+# After all the RST files have been written, this script runs `make html'
+# in config/sphinx-build/ (which has a Makefile) to build the online HTML
+# docs, which are saved in docs/user/html.
 #
-# If the env variable PERCONA_TOOLKIT_BRANCH is not set, then this script
-# must be called from a directory in a branch.
+# If no tools are specified on the command line, then docs for bin/* are
+# written (plus all the extra sections).
 #
 # To rewrite all user docs from scratch:
 #   rm -rf docs/user/*
-#   util/write-user-docs bin/*
+#   util/write-user-docs
 #
 # Exits 0 on success, else 1 on warnings and errors.
 
@@ -38,29 +44,21 @@ warn() {
 }
 
 cwd=$PWD
-if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
-   BRANCH=$PERCONA_TOOLKIT_BRANCH
-   cd $BRANCH
-else
-   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
-      cd ..
-   done
-   if [ ! -f Makefile.PL ]; then
-      die "Cannot find the root directory of the Percona Toolkit branch"
-      exit 1
-   fi
-   BRANCH=`pwd`
+while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+   cd ..
+done
+if [ ! -f Makefile.PL ]; then
+   die "Cannot find the root directory of the Percona Toolkit branch"
 fi
+BRANCH=`pwd`
 cd $cwd
 
 # ############################################################################
 # Paths
 # ############################################################################
 
-DOCS=$BRANCH/docs
-RST=$DOCS/user
-HTML=$RST/html
-CONFIG=$BRANCH/config/sphinx-build
+DOCS_DIR=$BRANCH/docs
+RST_DIR=$DOCS_DIR/user
 
 # ############################################################################
 # Subroutines
@@ -74,57 +72,51 @@ write_rst() {
    fi
    local tool=$(basename $file)
 
-   cat $file | pod2rst --title=$tool > $RST/$tool.rst
-   exit_status=$(( exit_status | $? ))
-   echo "Wrote $RST/$tool.rst"
+   cat $file | pod2rst > $RST_DIR/$tool.orig.rst
+   if [ $? -eq 0 ]; then
+      $BRANCH/util/fix-pod2rst-output $RST_DIR/$tool.orig.rst $tool \
+         > $RST_DIR/$tool.rst
+      echo "Wrote $RST_DIR/$tool.rst"
+   else
+      warn "Error writing $RST_DIR/tool.rst"
+   fi
+
+   rm $RST_DIR/$tool.orig.rst
 }
 
-write_index() {
-   declare -a section_filenames
-   local i=0
+# Parse the head1 sections from percona-toolkit.pod and write them as
+# individual .rst files, except the sections in the grep -Ev below.
+# For example, head1 SYSTEM REQUIREMENTS becomes system_requirements.rst.
+# These sections are included in index.rst.
+write_sections() {
 
-   sections=$(grep '^=head1' $DOCS/percona-toolkit.pod | grep -v "NAME" | sed -e 's/=head1 //' -e 's/ /_/g')
+   # Grep head1 sections from percona-toolkit.pod, except a few, and
+   # change spaces to _ so the for..do loop doesn't treat "SYS REQS"
+   # as two sections.
+   sections=$(grep '^=head1' $DOCS_DIR/percona-toolkit.pod | sed -e 's/=head1 //' -e 's/ /_/g' | grep -Ev "^NAME|DESCRIPTION|TOOLS")
+
    for section in $sections; do
+      # Put spaces back in the section's name.
       header=$(echo $section | sed -e 's/_/ /g')
 
-      if [ $section = "DESCRIPTION" ]; then
-         filename="index"
-      else
-         filename=$(echo $section | sed -e 's/,//g' | tr "[:upper:]" "[:lower:]");
-         section_filenames[$i]=$filename
-         i=$(($i + 1))
-      fi
+      # Convert the section name to a simple filename.
+      filename=$(echo $section | sed -e 's/,//g' -e 's/[()]//g' | tr "[:upper:]" "[:lower:]");
 
-      $BRANCH/util/extract-text $DOCS/percona-toolkit.pod "^=head1 $header" "^=head1|=cut" > /tmp/$filename.pod
-      if [ $section = "DESCRIPTION" ]; then
-         sed -i.bak -e 's/DESCRIPTION/Percona Toolkit Documentation/' /tmp/$filename.pod
-      fi
+      # Extract the section as POD.
+      $BRANCH/util/extract-text $DOCS_DIR/percona-toolkit.pod "^=head1 $header" "^=head1|=cut" > /tmp/$filename.pod
+
+      # Convert POD to RST and remove all the Perl highlight blocks.
       cat /tmp/$filename.pod | pod2rst | sed -e 's/.. highlight:: perl//g' > /tmp/$filename.tmp
-      cat -s /tmp/$filename.tmp > $RST/$filename.rst
+
+      # Remove extra blank lines.
+      cat -s /tmp/$filename.tmp > $RST_DIR/$filename.rst
+
+      # Remove tmp files.
       rm /tmp/$filename.pod
       rm /tmp/$filename.tmp
-      echo "Wrote $RST/$filename.rst"
+
+      echo "Wrote $RST_DIR/$filename.rst"
    done
-
-   echo ".. toctree::"    >> $RST/index.rst
-   echo "   :maxdepth: 2" >> $RST/index.rst
-   echo                   >> $RST/index.rst
-   for section_filename in "${section_filenames[@]}"; do
-      echo "   $section_filename" >> $RST/index.rst
-   done
-
-   echo "   release_notes" >> $RST/index.rst
-
-   echo ".. toctree::" >> $RST/tools.rst
-   echo "   :hidden:"  >> $RST/tools.rst
-   echo                >> $RST/tools.rst
-   local tools=$(grep '^pt-' $RST/tools.rst)
-   for tool in $tools; do
-      echo "   $tool" >> $RST/tools.rst
-   done
-
-   sed -e 's/^\(pt-.*\)/:doc:`\1`/g' -i.bak $RST/tools.rst
-   rm $RST/*.bak
 }
 
 # ############################################################################
@@ -137,22 +129,24 @@ if [ $WRITE -eq 1 ]; then
       for tool; do
          write_rst $tool
       done
+   else
+      for tool in `ls $BRANCH/bin/*`; do
+         write_rst $tool
+      done
    fi
 
-   if [ ! -f "$RST/index.rst" ] || [ "$DOCS/percona-toolkit.pod" -nt "$RST/index.rst" ]; then
-      write_index
-   fi
+   # Parse and write certain parts of percona-toolkit.pod.
+   write_sections
 
-   if [ ! -f "$RST/release_notes.rst" ] || [ "$DOCS/release_notes.rst" -nt "$RST/release_notes.rst" ]; then
-      cp $DOCS/release_notes.rst $RST/
-      echo "Wrote $RST/release_notes.rst"
-   fi
+   # Copy all static .rst files, like index.rst.
+   cp $DOCS_DIR/*.rst $RST_DIR/
+   echo "Copied $DOCS_DIR/*.rst to $RST_DIR"
 fi
 
 BUILD=${BUILD:-1}
 if [ $BUILD -eq 1 ]; then
-   # -W treats warnings as errors; remove it to ignore warnings if you must.
-   sphinx-build -N -W -c $CONFIG -b html $RST $HTML
+   cd $BRANCH/config/sphinx-build
+   make html
    exit_status=$(( exit_status | $? ))
 fi
 

@@ -11,13 +11,17 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+# Hostnames make testing less accurate.  Tests need to see
+# that such-and-such happened on specific slave hosts, but
+# the sandbox servers are all on one host so all slaves have
+# the same hostname.
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
+
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
-
-diag(`$trunk/sandbox/test-env reset`);
-diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 12347 12346 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -38,17 +42,22 @@ else {
    plan tests => 3;
 }
 
+# Must have empty checksums table for these tests.
+$master_dbh->do('drop table if exists percona.checksums');
+
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3),
+                  '--progress', 'time,1', '--max-load', ''); 
 my $output;
 my $row;
-my $cnf  ='/tmp/12345/my.sandbox.cnf';
-my @args = (qw(--replicate test.checksum  --empty-replicate-table -d test -t resume -q), '-F', $cnf, 'h=127.1', '--progress', 'time,1');
+my $scripts = "$trunk/t/pt-table-checksum/scripts/";
 
-$sb->create_dbs($master_dbh, [qw(test)]);
-$sb->load_file('master', 't/pt-table-checksum/samples/checksum_tbl.sql');
-# We're not using resume table for anything specific, we just need
-# any table to checksum.
-$sb->load_file('master', 't/pt-table-checksum/samples/resume.sql');
-
+# ############################################################################
+# Tool should check all slaves' lag, so slave2, not just slave1.
+# ############################################################################
 wait_until(  # slaves aren't lagging
    sub {
       $row = $slave1_dbh->selectrow_hashref('show slave status');
@@ -56,47 +65,40 @@ wait_until(  # slaves aren't lagging
       $row = $slave2_dbh->selectrow_hashref('show slave status');
       return 0 if $row->{Seconds_Behind_Master};
       return 1;
-   }, 0.5, 10);
+   }
+) or die "Slaves are still lagging";
 
-$slave1_dbh->do('stop slave sql_thread');
-$row = $slave1_dbh->selectrow_hashref('show slave status');
-is(
-   $row->{slave_sql_running},
-   'No',
-   'Stopped slave SQL thread on slave1'
-);
+# This big fancy command waits until it sees the checksum for sakila.city
+# in the repl table on the master, then it stops slave2 for 2 seconds,
+# then starts it again.
+system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 2 \"start slave sql_thread\"' 3 >/dev/null &");
 
-$slave2_dbh->do('stop slave sql_thread');
-$row = $slave2_dbh->selectrow_hashref('show slave status');
-is(
-   $row->{slave_sql_running},
-   'No',
-   'Stopped slave SQL thread on slave2'
-);
-
-system("sleep 2 && /tmp/12346/use -e 'start slave sql_thread' >/dev/null 2>/dev/null &");
-system("sleep 3 && /tmp/12347/use -e 'start slave sql_thread' >/dev/null 2>/dev/null &");
-
-# This time we do not need to capture STDERR because mk-table-checksum
-# should see slave2 come alive in 2 seconds then return before wait_for
-# dies.
 $output = output(
-   sub { pt_table_checksum::main(@args); },
+   sub { pt_table_checksum::main(@args, qw(-d sakila)); },
    stderr => 1,
 );
 
 like(
    $output,
-   qr/Waiting for slave.+?Still waiting/s,
-   "Progress reports while waiting for slaves"
+   qr/Replica h=127.0.0.1,P=12347 is stopped/,
+   "--progress for slave lag"
+);
+
+like(
+   $output,
+   qr/sakila.store$/m,
+   "Checksumming continues after waiting for slave lag"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "No errors after waiting for slave lag"
 );
 
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox 12347 >/dev/null`);
-diag(`/tmp/12346/stop >/dev/null`);  # Start/stop clears SHOW SLAVE HOSTS.
-diag(`/tmp/12346/start >/dev/null`);
 $sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/test-env reset >/dev/null`);
 exit;

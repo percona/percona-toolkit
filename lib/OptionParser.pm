@@ -62,7 +62,7 @@ package OptionParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Getopt::Long;
@@ -179,7 +179,7 @@ sub get_specs {
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
    if ( $contents =~ m/^=head1 DSN OPTIONS/m ) {
-      MKDEBUG && _d('Parsing DSN OPTIONS');
+      PTDEBUG && _d('Parsing DSN OPTIONS');
       my $dsn_attribs = {
          dsn  => 1,
          copy => 1,
@@ -223,7 +223,7 @@ sub get_specs {
 
    if ( $contents =~ m/^=head1 VERSION\n\n^(.+)$/m ) {
       $self->{version} = $1;
-      MKDEBUG && _d($self->{version});
+      PTDEBUG && _d($self->{version});
    }
 
    return;
@@ -291,7 +291,7 @@ sub _pod_to_specs {
       chomp $para;
       $para =~ s/\s+/ /g;
       $para =~ s/$POD_link_re/$1/go;
-      MKDEBUG && _d('Option rule:', $para);
+      PTDEBUG && _d('Option rule:', $para);
       push @rules, $para;
    }
 
@@ -301,7 +301,7 @@ sub _pod_to_specs {
    do {
       if ( my ($option) = $para =~ m/^=item $self->{item}/ ) {
          chomp $para;
-         MKDEBUG && _d($para);
+         PTDEBUG && _d($para);
          my %attribs;
 
          $para = <$fh>; # read next paragraph, possibly attributes
@@ -320,7 +320,7 @@ sub _pod_to_specs {
             $para = <$fh>; # read next paragraph, probably short help desc
          }
          else {
-            MKDEBUG && _d('Option has no attributes');
+            PTDEBUG && _d('Option has no attributes');
          }
 
          # Remove extra spaces and POD formatting (L<"">).
@@ -331,7 +331,7 @@ sub _pod_to_specs {
          # Take the first period-terminated sentence as the option's short help
          # description.
          $para =~ s/\.(?:\n.*| [A-Z].*|\Z)//s;
-         MKDEBUG && _d('Short help:', $para);
+         PTDEBUG && _d('Short help:', $para);
 
          die "No description after option spec $option" if $para =~ m/^=item/;
 
@@ -385,7 +385,7 @@ sub _parse_specs {
 
    foreach my $opt ( @specs ) {
       if ( ref $opt ) { # It's an option spec, not a rule.
-         MKDEBUG && _d('Parsing opt spec:',
+         PTDEBUG && _d('Parsing opt spec:',
             map { ($_, '=>', $opt->{$_}) } keys %$opt);
 
          my ( $long, $short ) = $opt->{spec} =~ m/^([\w-]+)(?:\|([^!+=]*))?/;
@@ -399,7 +399,7 @@ sub _parse_specs {
          $self->{opts}->{$long} = $opt;
 
          if ( length $long == 1 ) {
-            MKDEBUG && _d('Long opt', $long, 'looks like short opt');
+            PTDEBUG && _d('Long opt', $long, 'looks like short opt');
             $self->{short_opts}->{$long} = $long;
          }
 
@@ -425,7 +425,7 @@ sub _parse_specs {
 
          my ( $type ) = $opt->{spec} =~ m/=(.)/;
          $opt->{type} = $type;
-         MKDEBUG && _d($long, 'type:', $type);
+         PTDEBUG && _d($long, 'type:', $type);
 
          # This check is no longer needed because we'll create a DSNParser
          # object for ourself if DSN OPTIONS exists in the POD.
@@ -442,7 +442,7 @@ sub _parse_specs {
          # to set_defaults().
          if ( (my ($def) = $opt->{desc} =~ m/default\b(?: ([^)]+))?/) ) {
             $self->{defaults}->{$long} = defined $def ? $def : 1;
-            MKDEBUG && _d($long, 'default:', $def);
+            PTDEBUG && _d($long, 'default:', $def);
          }
 
          # Handle special behavior for --config.
@@ -454,14 +454,14 @@ sub _parse_specs {
          if ( (my ($dis) = $opt->{desc} =~ m/(disables .*)/) ) {
             # Defer checking till later because of possible forward references.
             $disables{$long} = $dis;
-            MKDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
+            PTDEBUG && _d('Deferring check of disables rule for', $opt, $dis);
          }
 
          # Save the option.
          $self->{opts}->{$long} = $opt;
       }
       else { # It's an option rule, not a spec.
-         MKDEBUG && _d('Parsing rule:', $opt); 
+         PTDEBUG && _d('Parsing rule:', $opt); 
          push @{$self->{rules}}, $opt;
          my @participants = $self->_get_participants($opt);
          my $rule_ok = 0;
@@ -469,19 +469,19 @@ sub _parse_specs {
          if ( $opt =~ m/mutually exclusive|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{mutex}}, \@participants;
-            MKDEBUG && _d(@participants, 'are mutually exclusive');
+            PTDEBUG && _d(@participants, 'are mutually exclusive');
          }
          if ( $opt =~ m/at least one|one and only one/ ) {
             $rule_ok = 1;
             push @{$self->{atleast1}}, \@participants;
-            MKDEBUG && _d(@participants, 'require at least one');
+            PTDEBUG && _d(@participants, 'require at least one');
          }
          if ( $opt =~ m/default to/ ) {
             $rule_ok = 1;
             # Example: "DSN values in L<"--dest"> default to values
             # from L<"--source">."
             $self->{defaults_to}->{$participants[0]} = $participants[1];
-            MKDEBUG && _d($participants[0], 'defaults to', $participants[1]);
+            PTDEBUG && _d($participants[0], 'defaults to', $participants[1]);
          }
          if ( $opt =~ m/restricted to option groups/ ) {
             $rule_ok = 1;
@@ -498,7 +498,7 @@ sub _parse_specs {
             # information for details."
             $rule_ok = 1;
             $self->{strict} = 0;
-            MKDEBUG && _d("Strict mode disabled by rule");
+            PTDEBUG && _d("Strict mode disabled by rule");
          }
 
          die "Unrecognized option rule: $opt" unless $rule_ok;
@@ -510,7 +510,7 @@ sub _parse_specs {
       # _get_participants() will check that each opt exists.
       my @participants = $self->_get_participants($disables{$long});
       $self->{disables}->{$long} = \@participants;
-      MKDEBUG && _d('Option', $long, 'disables', @participants);
+      PTDEBUG && _d('Option', $long, 'disables', @participants);
    }
 
    return; 
@@ -535,7 +535,7 @@ sub _get_participants {
          unless exists $self->{opts}->{$long};
       push @participants, $long;
    }
-   MKDEBUG && _d('Participants for', $str, ':', @participants);
+   PTDEBUG && _d('Participants for', $str, ':', @participants);
    return @participants;
 }
 
@@ -568,7 +568,7 @@ sub set_defaults {
       die "Cannot set default for nonexistent option $long"
          unless exists $self->{opts}->{$long};
       $self->{defaults}->{$long} = $defaults{$long};
-      MKDEBUG && _d('Default val for', $long, ':', $defaults{$long});
+      PTDEBUG && _d('Default val for', $long, ':', $defaults{$long});
    }
    return;
 }
@@ -602,7 +602,7 @@ sub _set_option {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
-   MKDEBUG && _d('Got option', $long, '=', $val);
+   PTDEBUG && _d('Got option', $long, '=', $val);
 }
 
 # Sub: get_opts
@@ -644,7 +644,7 @@ sub get_opts {
             if ( $self->got('config') ) {
                die $EVAL_ERROR;
             }
-            elsif ( MKDEBUG ) {
+            elsif ( PTDEBUG ) {
                _d($EVAL_ERROR);
             }
          }
@@ -719,7 +719,7 @@ sub _check_opts {
             if ( exists $self->{disables}->{$long} ) {
                my @disable_opts = @{$self->{disables}->{$long}};
                map { $self->{opts}->{$_}->{value} = undef; } @disable_opts;
-               MKDEBUG && _d('Unset options', @disable_opts,
+               PTDEBUG && _d('Unset options', @disable_opts,
                   'because', $long,'disables them');
             }
 
@@ -772,7 +772,7 @@ sub _check_opts {
             delete $long[$i];
          }
          else {
-            MKDEBUG && _d('Temporarily failed to parse', $long);
+            PTDEBUG && _d('Temporarily failed to parse', $long);
          }
       }
 
@@ -802,13 +802,13 @@ sub _validate_type {
    my $val = $opt->{value};
 
    if ( $val && $opt->{type} eq 'm' ) {  # type time
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a time value');
       my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
       # The suffix defaults to 's' unless otherwise specified.
       if ( !$suffix ) {
          my ( $s ) = $opt->{desc} =~ m/\(suffix (.)\)/;
          $suffix = $s || 's';
-         MKDEBUG && _d('No suffix given; using', $suffix, 'for',
+         PTDEBUG && _d('No suffix given; using', $suffix, 'for',
             $opt->{long}, '(value:', $val, ')');
       }
       if ( $suffix =~ m/[smhd]/ ) {
@@ -817,26 +817,26 @@ sub _validate_type {
               : $suffix eq 'h' ? $num * 3600     # Hours
               :                  $num * 86400;   # Days
          $opt->{value} = ($prefix || '') . $val;
-         MKDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
+         PTDEBUG && _d('Setting option', $opt->{long}, 'to', $val);
       }
       else {
          $self->save_error("Invalid time suffix for --$opt->{long}");
       }
    }
    elsif ( $val && $opt->{type} eq 'd' ) {  # type DSN
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a DSN');
       # DSN vals for this opt may come from 3 places, in order of precedence:
       # the opt itself, the defaults to/copies from opt (prev), or
       # --host, --port, etc. (defaults).
       my $prev = {};
       my $from_key = $self->{defaults_to}->{ $opt->{long} };
       if ( $from_key ) {
-         MKDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
+         PTDEBUG && _d($opt->{long}, 'DSN copies from', $from_key, 'DSN');
          if ( $self->{opts}->{$from_key}->{parsed} ) {
             $prev = $self->{opts}->{$from_key}->{value};
          }
          else {
-            MKDEBUG && _d('Cannot parse', $opt->{long}, 'until',
+            PTDEBUG && _d('Cannot parse', $opt->{long}, 'until',
                $from_key, 'parsed');
             return;
          }
@@ -845,7 +845,7 @@ sub _validate_type {
       $opt->{value} = $self->{DSNParser}->parse($val, $prev, $defaults);
    }
    elsif ( $val && $opt->{type} eq 'z' ) {  # type size
-      MKDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
+      PTDEBUG && _d('Parsing option', $opt->{long}, 'as a size value');
       $self->_parse_size($opt, $val);
    }
    elsif ( $opt->{type} eq 'H' || (defined $val && $opt->{type} eq 'h') ) {
@@ -855,7 +855,7 @@ sub _validate_type {
       $opt->{value} = [ split(/(?<!\\),\s*/, ($val || '')) ];
    }
    else {
-      MKDEBUG && _d('Nothing to validate for option',
+      PTDEBUG && _d('Nothing to validate for option',
          $opt->{long}, 'type', $opt->{type}, 'value', $val);
    }
 
@@ -972,11 +972,11 @@ sub usage_or_errors {
    # First make sure we have a description and usage, else print_usage()
    # and print_errors() will die.
    if ( !$self->{description} || !$self->{usage} ) {
-      MKDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
+      PTDEBUG && _d("Getting description and usage from SYNOPSIS in", $file);
       my %synop = $self->_parse_synopsis($file);
       $self->{description} ||= $synop{description};
       $self->{usage}       ||= $synop{usage};
-      MKDEBUG && _d("Description:", $self->{description},
+      PTDEBUG && _d("Description:", $self->{description},
          "\nUsage:", $self->{usage});
    }
 
@@ -1247,7 +1247,7 @@ sub _parse_size {
 
    # Special case used by mk-find to do things like --datasize null.
    if ( lc($val || '') eq 'null' ) {
-      MKDEBUG && _d('NULL size for', $opt->{long});
+      PTDEBUG && _d('NULL size for', $opt->{long});
       $opt->{value} = 'null';
       return;
    }
@@ -1257,13 +1257,13 @@ sub _parse_size {
    if ( defined $num ) {
       if ( $factor ) {
          $num *= $factor_for{$factor};
-         MKDEBUG && _d('Setting option', $opt->{y},
+         PTDEBUG && _d('Setting option', $opt->{y},
             'to num', $num, '* factor', $factor);
       }
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1283,7 +1283,7 @@ sub _parse_attribs {
 sub _parse_synopsis {
    my ( $self, $file ) = @_;
    $file ||= $self->{file} || __FILE__;
-   MKDEBUG && _d("Parsing SYNOPSIS in", $file);
+   PTDEBUG && _d("Parsing SYNOPSIS in", $file);
 
    # Slurp the file.
    local $INPUT_RECORD_SEPARATOR = '';  # read paragraphs
@@ -1297,7 +1297,7 @@ sub _parse_synopsis {
       push @synop, $para;
    }
    close $fh;
-   MKDEBUG && _d("Raw SYNOPSIS text:", @synop);
+   PTDEBUG && _d("Raw SYNOPSIS text:", @synop);
    my ($usage, $desc) = @synop;
    die "The SYNOPSIS section in $file is not formatted properly"
       unless $usage && $desc;
@@ -1329,7 +1329,7 @@ sub _d {
 # This is debug code I want to run for all tools, and this is a module I
 # certainly include in all tools, but otherwise there's no real reason to put
 # it here.
-if ( MKDEBUG ) {
+if ( PTDEBUG ) {
    print '# ', $^X, ' ', $], "\n";
    if ( my $uname = `uname -a` ) {
       $uname =~ s/\s+/ /g;

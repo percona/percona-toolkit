@@ -13,9 +13,10 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
-my $vp  = new VersionParser();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
@@ -24,93 +25,55 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 6;
+   plan tests => 10;
 }
 
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3 --explain --chunk-size 3), '--max-load', '');
 my $output;
-my $cnf='/tmp/12345/my.sandbox.cnf';
-my @args = ('-F', $cnf, 'h=127.1', qw(-d issue_519 --explain --chunk-size 3));
+my $out        = "t/pt-table-checksum/samples/";
 
 $sb->load_file('master', "t/pt-table-checksum/samples/issue_519.sql");
 
-my $default_output = "issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`PRIMARY`) WHERE (`i` = 0)
-issue_519 t     `i` = 0
-issue_519 t     `i` > 0 AND `i` < '4'
-issue_519 t     `i` >= '4' AND `i` < '7'
-issue_519 t     `i` >= '7' AND `i` < '10'
-issue_519 t     `i` >= '10'
-";
-
-$output = output(
-   sub { pt_table_checksum::main(@args) },
-);
-
-is(
-   $output,
-   $default_output,
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(-t issue_519.t --explain)) },
+      "$out/chunkidx001.txt",
+   ),
    "Chooses chunk index by default"
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args, qw(--chunk-index dog)) },
-);
-
-is(
-   $output,
-   $default_output,
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(--chunk-index dog),
+         qw(-t issue_519.t --explain)) },
+      "$out/chunkidx001.txt",
+   ),
    "Chooses chunk index if --chunk-index doesn't exist"
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args, qw(--chunk-index myidx)) },
-);
-
-is(
-   $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`myidx`) WHERE (`i` = 0)
-issue_519 t     `i` = 0
-issue_519 t     `i` > 0 AND `i` < '4'
-issue_519 t     `i` >= '4' AND `i` < '7'
-issue_519 t     `i` >= '7' AND `i` < '10'
-issue_519 t     `i` >= '10'
-",
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(--chunk-index myidx),
+         qw(-t issue_519.t --explain)) },
+      "$out/chunkidx002.txt",
+   ),
    "Use --chunk-index"
 );
 
-$output = output(
-   sub { pt_table_checksum::main(@args, qw(--chunk-index y)) },
-);
-
-is(
-   $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`y`) WHERE (`y` = 0)
-issue_519 t     `y` = 0
-issue_519 t     `y` > 0 AND `y` < '2003'
-issue_519 t     `y` >= '2003' AND `y` < '2006'
-issue_519 t     `y` >= '2006' AND `y` < '2009'
-issue_519 t     `y` >= '2009'
-",
+# XXX I'm not sure what this tests thinks it's testing because index y
+# is a single column index, so there's really not "left-most".
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(--chunk-index y),
+         qw(-t issue_519.t --explain)) },
+      "$out/chunkidx003.txt",
+   ),
    "Chunks on left-most --chunk-index column"
 );
-
-# Disabling the index hint with --no-use-index should not affect the
-# chunks.  It should only remove the FORCE INDEX clause from the SQL.
-$output = output(
-   sub { pt_table_checksum::main(@args, qw(--chunk-index y --no-use-index)) },
-);
-
-is(
-   $output,
-"issue_519 t     SELECT /*issue_519.t:1/5*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t`  WHERE (`y` = 0)
-issue_519 t     `y` = 0
-issue_519 t     `y` > 0 AND `y` < '2003'
-issue_519 t     `y` >= '2003' AND `y` < '2006'
-issue_519 t     `y` >= '2006' AND `y` < '2009'
-issue_519 t     `y` >= '2009'
-",
-   "No index hint with --no-use-index"
-);
-
 
 # #############################################################################
 # Issue 378: Make mk-table-checksum try to use the index preferred by the
@@ -119,18 +82,63 @@ issue_519 t     `y` >= '2009'
 
 # This issue affect --chunk-index.  Tool should auto-choose chunk-index
 # when --where is given but no explicit --chunk-index|column is given.
-# Given the --where clause, MySQL will prefer the y index.
+# Given the --where clause, MySQL will prefer the idx_fk_country_id index.
 
-$output = output(
-   sub { pt_table_checksum::main(@args, "--where", "y > 2009") },
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, "--where", "country_id > 100",
+         qw(-t sakila.city)) },
+      "$out/chunkidx004.txt",
+   ),
+   "Auto-chosen --chunk-index for --where (issue 378)"
+);
+
+# If user specifies --chunk-index, then ignore the index MySQL wants to
+# use (idx_fk_country_id in this case) and use the user's index.
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args, qw(--chunk-index PRIMARY),
+         "--where", "country_id > 100", qw(-t sakila.city)) },
+      "$out/chunkidx005.txt",
+   ),
+   "Explicit --chunk-index overrides MySQL's index for --where"
+);
+
+# #############################################################################
+# Bug 925855: pt-table-checksum index check is case-sensitive
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/all-uc-table.sql");
+my $exit_status = 0;
+$output = output(sub {
+   $exit_status = pt_table_checksum::main(
+      $master_dsn, '--max-load', '',
+      qw(--lock-wait-timeout 3 --chunk-size 5 -t ALL_UC.T)
+   ) },
+   stderr => 1,
 );
 
 is(
-   $output,
-"issue_519 t     SELECT /*issue_519.t:1/1*/ 0 AS chunk_num, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `i`, `y`, `t`, CONCAT(ISNULL(`t`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `issue_519`.`t` FORCE INDEX (`y`) WHERE (1=1) AND ((y > 2009))
-issue_519 t     1=1
-",
-   "Auto-chosen --chunk-index for --where (issue 378)"
+   $exit_status,
+   0,
+   "Zero exit status (bug 925855)"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   0,
+   "0 skipped (bug 925855)"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "0 errors (bug 925855)"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   13,
+   "14 rows checksummed (bug 925855)"
 );
 
 # #############################################################################

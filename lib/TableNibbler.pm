@@ -25,7 +25,7 @@ package TableNibbler;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -72,15 +72,15 @@ sub generate_asc_stmt {
    # a nonexistent index.
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
-   MKDEBUG && _d('Will ascend index', $index);  
+   PTDEBUG && _d('Will ascend index', $index);  
 
    # These are the columns we'll ascend.
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
       @asc_cols = $asc_cols[0];
-      MKDEBUG && _d('Ascending only first column');
+      PTDEBUG && _d('Ascending only first column');
    }
-   MKDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
+   PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 
    # We found the columns by name, now find their positions for use as
    # array slices, and make sure they are included in the SELECT list.
@@ -93,7 +93,7 @@ sub generate_asc_stmt {
       }
       push @asc_slice, $col_posn{$col};
    }
-   MKDEBUG && _d('Will ascend, in ordinal position:', join(', ', @asc_slice));
+   PTDEBUG && _d('Will ascend, in ordinal position:', join(', ', @asc_slice));
 
    my $asc_stmt = {
       cols  => \@cols,
@@ -247,7 +247,7 @@ sub generate_del_stmt {
    else {
       @del_cols = @{$tbl->{cols}};
    }
-   MKDEBUG && _d('Columns needed for DELETE:', join(', ', @del_cols));
+   PTDEBUG && _d('Columns needed for DELETE:', join(', ', @del_cols));
 
    # We found the columns by name, now find their positions for use as
    # array slices, and make sure they are included in the SELECT list.
@@ -259,7 +259,7 @@ sub generate_del_stmt {
       }
       push @del_slice, $col_posn{$col};
    }
-   MKDEBUG && _d('Ordinals needed for DELETE:', join(', ', @del_slice));
+   PTDEBUG && _d('Ordinals needed for DELETE:', join(', ', @del_slice));
 
    my $del_stmt = {
       cols  => \@cols,

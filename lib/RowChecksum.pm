@@ -25,7 +25,7 @@ package RowChecksum;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use List::Util qw(max);
 use Data::Dumper;
@@ -45,17 +45,11 @@ sub new {
 # Sub: make_row_checksum
 #   Make a SELECT column list to checksum a row.
 #
-# Parameters:
-#   %args - Arguments
-#
 # Required Arguments:
 #   tbl  - Table ref
 #
 # Optional Arguments:
-#   sep        - Separator for CONCAT_WS(); default #
-#   cols       - Arrayref of columns to checksum
-#   trim       - Wrap VARCHAR cols in TRIM() for v4/v5 compatibility
-#   ignorecols - Arrayref of columns to exclude from checksum
+#   no_cols - Don't append columns to list oustide of functions.
 #
 # Returns:
 #   Column list for SELECT
@@ -71,40 +65,7 @@ sub make_row_checksum {
    my $q          = $self->{Quoter};
    my $tbl_struct = $tbl->{tbl_struct};
    my $func       = $args{func} || uc($o->get('function'));
-
-   my $sep = $args{sep} || '#';
-   $sep =~ s/'//g;
-   $sep ||= '#';
-
-   # This allows a simpler grep when building %cols below.
-   my $ignorecols = $args{ignorecols} || {};
-
-   # Generate the expression that will turn a row into a checksum.
-   # Choose columns.  Normalize query results: make FLOAT and TIMESTAMP
-   # stringify uniformly.
-   my %cols = map { lc($_) => 1 }
-              grep { !exists $ignorecols->{$_} }
-              ($args{cols} ? @{$args{cols}} : @{$tbl_struct->{cols}});
-   my %seen;
-   my @cols =
-      map {
-         my $type = $tbl_struct->{type_for}->{$_};
-         my $result = $q->quote($_);
-         if ( $type eq 'timestamp' ) {
-            $result .= ' + 0';
-         }
-         elsif ( $args{float_precision} && $type =~ m/float|double/ ) {
-            $result = "ROUND($result, $args{float_precision})";
-         }
-         elsif ( $args{trim} && $type =~ m/varchar/ ) {
-            $result = "TRIM($result)";
-         }
-         $result;
-      }
-      grep {
-         $cols{$_} && !$seen{$_}++
-      }
-      @{$tbl_struct->{cols}};
+   my $cols       = $self->get_checksum_columns(%args);
 
    # Prepend columns to query, resulting in "col1, col2, FUNC(..col1, col2...)",
    # unless caller says not to.  The only caller that says not to is
@@ -127,32 +88,36 @@ sub make_row_checksum {
                         $col .= " AS $real_col";
                      }
                      $col;
-                  } @cols)
+                  } @{$cols->{select}})
              . ', ';
    }
 
    if ( uc $func ne 'FNV_64' && uc $func ne 'FNV1A_64' ) {
+      my $sep = $o->get('separator') || '#';
+      $sep    =~ s/'//g;
+      $sep  ||= '#';
+
       # Add a bitmap of which nullable columns are NULL.
-      my @nulls = grep { $cols{$_} } @{$tbl_struct->{null_cols}};
+      my @nulls = grep { $cols->{allowed}->{$_} } @{$tbl_struct->{null_cols}};
       if ( @nulls ) {
          my $bitmap = "CONCAT("
             . join(', ', map { 'ISNULL(' . $q->quote($_) . ')' } @nulls)
             . ")";
-         push @cols, $bitmap;
+         push @{$cols->{select}}, $bitmap;
       }
 
-      $query .= @cols > 1
-              ? "$func(CONCAT_WS('$sep', " . join(', ', @cols) . '))'
-              : "$func($cols[0])";
+      $query .= @{$cols->{select}} > 1
+              ? "$func(CONCAT_WS('$sep', " . join(', ', @{$cols->{select}}) . '))'
+              : "$func($cols->{select}->[0])";
    }
    else {
       # As a special case, FNV1A_64/FNV_64 doesn't need its arguments
       # concatenated, and doesn't need a bitmap of NULLs.
       my $fnv_func = uc $func;
-      $query .= "$fnv_func(" . join(', ', @cols) . ')';
+      $query .= "$fnv_func(" . join(', ', @{$cols->{select}}) . ')';
    }
 
-   MKDEBUG && _d('Row checksum:', $query);
+   PTDEBUG && _d('Row checksum:', $query);
    return $query;
 }
 
@@ -187,14 +152,7 @@ sub make_chunk_checksum {
    my $q     = $self->{Quoter};
 
    my %crc_args = $self->get_crc_args(%args);
-   my $opt_slice; 
-   if ( $o->get('optimize-xor') ) {
-      if ( $crc_args{crc_type} !~ m/int$/ ) {
-         $opt_slice = $self->_optimize_xor(%args, %crc_args);
-         warn "Cannot use --optimize-xor" unless defined $opt_slice;
-      }
-   }
-   MKDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
+   PTDEBUG && _d("Checksum strat:", Dumper(\%crc_args));
 
    # This checksum algorithm concatenates the columns in each row and
    # checksums them, then slices this checksum up into 16-character chunks.
@@ -226,8 +184,52 @@ sub make_chunk_checksum {
    }
 
    my $select = "COUNT(*) AS cnt, $crc AS crc";
-   MKDEBUG && _d('Chunk checksum:', $select);
+   PTDEBUG && _d('Chunk checksum:', $select);
    return $select;
+}
+
+sub get_checksum_columns {
+   my ($self, %args) = @_;
+   my @required_args = qw(tbl);
+   foreach my $arg( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($tbl) = @args{@required_args};
+   my $o     = $self->{OptionParser};
+   my $q     = $self->{Quoter};
+
+   my $trim            = $o->get('trim');
+   my $float_precision = $o->get('float-precision');
+
+   my $tbl_struct = $tbl->{tbl_struct};
+   my $ignore_col = $o->get('ignore-columns') || {};
+   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my %cols       = map { lc($_) => 1 } grep { !$ignore_col->{$_} } @$all_cols;
+   my %seen;
+   my @cols =
+      map {
+         my $type   = $tbl_struct->{type_for}->{$_};
+         my $result = $q->quote($_);
+         if ( $type eq 'timestamp' ) {
+            $result .= ' + 0';
+         }
+         elsif ( $float_precision && $type =~ m/float|double/ ) {
+            $result = "ROUND($result, $float_precision)";
+         }
+         elsif ( $trim && $type =~ m/varchar/ ) {
+            $result = "TRIM($result)";
+         }
+         $result;
+      }
+      grep {
+         $cols{$_} && !$seen{$_}++
+      }
+      @{$tbl_struct->{cols}};
+
+   return {
+      select  => \@cols,
+      allowed => \%cols,
+   };
 }
 
 sub get_crc_args {
@@ -235,10 +237,16 @@ sub get_crc_args {
    my $func      = $args{func}     || $self->_get_hash_func(%args);
    my $crc_width = $args{crc_width}|| $self->_get_crc_width(%args, func=>$func);
    my $crc_type  = $args{crc_type} || $self->_get_crc_type(%args, func=>$func);
+   my $opt_slice; 
+   if ( $args{dbh} && $crc_type !~ m/int$/ ) {
+      $opt_slice = $self->_optimize_xor(%args, func=>$func);
+   }
+
    return (
       func      => $func,
       crc_width => $crc_width,
       crc_type  => $crc_type,
+      opt_slice => $opt_slice,
    );
 }
 
@@ -271,14 +279,14 @@ sub _get_hash_func {
    foreach my $func ( @funcs ) {
       eval {
          my $sql = "SELECT $func('test-string')";
-         MKDEBUG && _d($sql);
+         PTDEBUG && _d($sql);
          $args{dbh}->do($sql);
       };
       if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
          $error .= qq{$func cannot be used because "$1"\n};
-         MKDEBUG && _d($func, 'cannot be used because', $1);
+         PTDEBUG && _d($func, 'cannot be used because', $1);
       }
-      MKDEBUG && _d('Chosen hash func:', $result);
+      PTDEBUG && _d('Chosen hash func:', $result);
       return $func;
    }
    die $error || 'No hash functions (CRC32, MD5, etc.) are available';
@@ -320,13 +328,13 @@ sub _get_crc_type {
       $sth->execute();
       $type   = $sth->{mysql_type_name}->[0];
       $length = $sth->{mysql_length}->[0];
-      MKDEBUG && _d($sql, $type, $length);
+      PTDEBUG && _d($sql, $type, $length);
       if ( $type eq 'bigint' && $length < 20 ) {
          $type = 'int';
       }
    };
    $sth->finish;
-   MKDEBUG && _d('crc_type:', $type, 'length:', $length);
+   PTDEBUG && _d('crc_type:', $type, 'length:', $length);
    return $type;
 }
 
@@ -355,7 +363,7 @@ sub _optimize_xor {
    my $crc_width = length($unsliced) < 16 ? 16 : length($unsliced);
 
    do { # Try different positions till sliced result equals non-sliced.
-      MKDEBUG && _d('Trying slice', $opt_slice);
+      PTDEBUG && _d('Trying slice', $opt_slice);
       $dbh->do('SET @crc := "", @cnt := 0');
       my $slices = $self->_make_xor_slices(
          row_checksum => "\@crc := $func('a')",
@@ -366,18 +374,18 @@ sub _optimize_xor {
       my $sql = "SELECT CONCAT($slices) AS TEST FROM (SELECT NULL) AS x";
       $sliced = ($dbh->selectrow_array($sql))[0];
       if ( $sliced ne $unsliced ) {
-         MKDEBUG && _d('Slice', $opt_slice, 'does not work');
+         PTDEBUG && _d('Slice', $opt_slice, 'does not work');
          $start += 16;
          ++$opt_slice;
       }
    } while ( $start < $crc_width && $sliced ne $unsliced );
 
    if ( $sliced eq $unsliced ) {
-      MKDEBUG && _d('Slice', $opt_slice, 'works');
+      PTDEBUG && _d('Slice', $opt_slice, 'works');
       return $opt_slice;
    }
    else {
-      MKDEBUG && _d('No slice works');
+      PTDEBUG && _d('No slice works');
       return undef;
    }
 }
@@ -438,24 +446,27 @@ sub _make_xor_slices {
 
 # Queries the replication table for chunks that differ from the master's data.
 sub find_replication_differences {
-   my ( $self, $dbh, $table ) = @_;
+   my ($self, %args) = @_;
+   my @required_args = qw(dbh repl_table);
+   foreach my $arg( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $repl_table) = @args{@required_args};
 
-   (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
-         COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
-         COALESCE(
-            this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
-            0
-         ) AS crc_diff,
-         this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
-      WHERE master_cnt <> this_cnt OR master_crc <> this_crc
-      OR ISNULL(master_crc) <> ISNULL(this_crc)
-   EOF
-
-   MKDEBUG && _d($sql);
+   my $sql
+      = "SELECT CONCAT(db, '.', tbl) AS `table`, "
+      . "chunk, chunk_index, lower_boundary, upper_boundary, "
+      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE("
+      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      . "FROM $repl_table "
+      . "WHERE (master_cnt <> this_cnt OR master_crc <> this_crc "
+      .        "OR ISNULL(master_crc) <> ISNULL(this_crc))"
+      . ($args{where} ? " AND ($args{where})" : "");
+   PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-   return @$diffs;
+   return $diffs;
 }
 
 sub _d {

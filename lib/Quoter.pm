@@ -25,7 +25,7 @@ package Quoter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -142,6 +142,74 @@ sub join_quote {
    $db  = "`$db`"  if $db  && $db  !~ m/^`/;
    $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
    return $db ? "$db.$tbl" : $tbl;
+}
+
+# Return the list passed in, with the elements passed through quotemeta,
+# and the results concatenated with ','.
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   # If the only value is undef, which is NULL for MySQL, then return
+   # the same.  undef/NULL is a valid boundary value, however...
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   # ... if there's an undef/NULL value and more than one value,
+   # then we have no easy way to serialize the values into a list.
+   # We can't convert undef to "NULL" because "NULL" is a valid
+   # value itself, and we can't make it "" because a blank string
+   # is also a valid value.  In practice, a boundary value with
+   # two NULL values should be rare.
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   # Grab the rest of the string following the last match.
+   # If there wasn't a last match, like for a single-element list,
+   # the entire string represents the single element, so grab that.
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   # Undo the quotemeta().
+   my @unescaped_parts = map {
+      my $part = $_;
+      # Here be weirdness. Unfortunately quotemeta() is broken, and exposes
+      # the internal representation of scalars. Namely, the latin-1 range,
+      # \128-\377 (\p{Latin1} in newer Perls) is all escaped in downgraded
+      # strings, but left alone in UTF-8 strings. Thus, this.
+
+      # TODO: quotemeta() might change in 5.16 to mean
+      # qr/(?=\p{ASCII})\W|\p{Pattern_Syntax}/
+      # And also fix this whole weird behavior under
+      # use feature 'unicode_strings' --  If/once that's
+      # implemented, this will have to change.
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                                             # characters in the ASCII range
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+                                             # same as above, but also
+                                             # unescape the latin-1 range.
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
 }
 
 1;

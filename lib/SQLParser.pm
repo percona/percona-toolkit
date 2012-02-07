@@ -41,7 +41,7 @@ package SQLParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -142,7 +142,7 @@ sub parse {
    my $type;
    if ( $query =~ s/^(\w+)\s+// ) {
       $type = lc $1;
-      MKDEBUG && _d('Query type:', $type);
+      PTDEBUG && _d('Query type:', $type);
       die "Cannot parse " . uc($type) . " queries"
          unless $type =~ m/$allowed_types/i;
    }
@@ -156,7 +156,7 @@ sub parse {
    # They'll be parsed later, after the main outer query.
    my @subqueries;
    if ( $query =~ m/(\(SELECT )/i ) {
-      MKDEBUG && _d('Removing subqueries');
+      PTDEBUG && _d('Removing subqueries');
       @subqueries = $self->remove_subqueries($query);
       $query      = shift @subqueries;
    }
@@ -169,7 +169,7 @@ sub parse {
    my $parse_func = "parse_$type";
    my $struct     = $self->$parse_func($query);
    if ( !$struct ) {
-      MKDEBUG && _d($parse_func, 'failed to parse query');
+      PTDEBUG && _d($parse_func, 'failed to parse query');
       return;
    }
    $struct->{type} = $type;
@@ -177,7 +177,7 @@ sub parse {
    # TODO: parse functions
 
    if ( @subqueries ) {
-      MKDEBUG && _d('Parsing subqueries');
+      PTDEBUG && _d('Parsing subqueries');
       foreach my $subquery ( @subqueries ) {
          my $subquery_struct = $self->parse($subquery->{query});
          @{$subquery_struct}{keys %$subquery} = values %$subquery;
@@ -185,7 +185,7 @@ sub parse {
       }
    }
 
-   MKDEBUG && _d('Query struct:', Dumper($struct));
+   PTDEBUG && _d('Query struct:', Dumper($struct));
    return $struct;
 }
 
@@ -214,7 +214,7 @@ sub _parse_clauses {
       $struct->{$clause} = $self->$parse_func($struct->{clauses}->{$clause});
 
       if ( $clause eq 'select' ) {
-         MKDEBUG && _d('Parsing subquery clauses');
+         PTDEBUG && _d('Parsing subquery clauses');
          $struct->{select}->{type} = 'select';
          $self->_parse_clauses($struct->{select});
       }
@@ -300,14 +300,14 @@ sub _parse_query {
    my $clause = $first_clause,
    my $value  = shift @clause;
    $struct->{clauses}->{$clause} = $value;
-   MKDEBUG && _d('Clause:', $clause, $value);
+   PTDEBUG && _d('Clause:', $clause, $value);
 
    # All other clauses.
    while ( @clause ) {
       $clause = shift @clause;
       $value  = shift @clause;
       $struct->{clauses}->{lc $clause} = $value;
-      MKDEBUG && _d('Clause:', $clause, $value);
+      PTDEBUG && _d('Clause:', $clause, $value);
    }
 
    ($struct->{unknown}) = ($query =~ m/\G(.+)/);
@@ -340,7 +340,7 @@ sub parse_insert {
       my $values = $1;
       die "No values after ON DUPLICATE KEY UPDATE: $query" unless $values;
       $struct->{clauses}->{on_duplicate} = $values;
-      MKDEBUG && _d('Clause: on duplicate key update', $values);
+      PTDEBUG && _d('Clause: on duplicate key update', $values);
 
       # This clause can be confused for JOIN ... ON in INSERT-SELECT queries,
       # so we remove the ON DUPLICATE KEY UPDATE clause after extracting its
@@ -358,13 +358,13 @@ sub parse_insert {
    ) {
       my $tbl  = shift @into;  # table ref
       $struct->{clauses}->{into} = $tbl;
-      MKDEBUG && _d('Clause: into', $tbl);
+      PTDEBUG && _d('Clause: into', $tbl);
 
       my $cols = shift @into;  # columns, maybe
       if ( $cols ) {
          $cols =~ s/[\(\)]//g;
          $struct->{clauses}->{columns} = $cols;
-         MKDEBUG && _d('Clause: columns', $cols);
+         PTDEBUG && _d('Clause: columns', $cols);
       }
 
       my $next_clause = lc(shift @into);  # VALUES, SET or SELECT
@@ -374,7 +374,7 @@ sub parse_insert {
       my ($values) = ($query =~ m/\G(.+)/gci);
       die "INSERT/REPLACE without values: $query" unless $values;
       $struct->{clauses}->{$next_clause} = $values;
-      MKDEBUG && _d('Clause:', $next_clause, $values);
+      PTDEBUG && _d('Clause:', $next_clause, $values);
    }
 
    # Save any leftovers.  If there are any, parsing missed something.
@@ -483,7 +483,7 @@ sub parse_update {
 sub parse_from {
    my ( $self, $from ) = @_;
    return unless $from;
-   MKDEBUG && _d('Parsing FROM', $from);
+   PTDEBUG && _d('Parsing FROM', $from);
 
    # Table references in a FROM clause are separated either by commas
    # (comma/theta join, implicit INNER join) or the JOIN keyword (ansi
@@ -509,10 +509,10 @@ sub parse_from {
       # Strip leading and trailing spaces.
       $thing =~ s/^\s+//;
       $thing =~ s/\s+$//;
-      MKDEBUG && _d('Table thing:', $thing);
+      PTDEBUG && _d('Table thing:', $thing);
 
       if ( $thing =~ m/\s+(?:ON|USING)\s+/i ) {
-         MKDEBUG && _d("JOIN condition");
+         PTDEBUG && _d("JOIN condition");
          # This join condition follows a JOIN (comma joins don't have
          # conditions).  It includes a table ref, ON|USING, and then
          # the value to ON|USING.
@@ -544,7 +544,7 @@ sub parse_from {
             $tbl_ref->{join} = $join;
          }
          push @tbls, $tbl_ref;
-         MKDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
+         PTDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
 
          # Reset vars for the next table ref.
          $tbl_ref = undef;
@@ -567,7 +567,7 @@ sub parse_from {
       else {
          # First table ref and comma-joined tables.
          $tbl_ref = $self->parse_table_reference($thing);
-         MKDEBUG && _d('Table reference:', Dumper($tbl_ref));
+         PTDEBUG && _d('Table reference:', Dumper($tbl_ref));
       }
    }
 
@@ -578,7 +578,7 @@ sub parse_from {
          $tbl_ref->{join} = $join;
       }
       push @tbls, $tbl_ref;
-      MKDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
+      PTDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
    }
 
    return \@tbls;
@@ -591,7 +591,7 @@ sub parse_from {
 sub parse_table_reference {
    my ( $self, $tbl_ref ) = @_;
    return unless $tbl_ref;
-   MKDEBUG && _d('Parsing table reference:', $tbl_ref);
+   PTDEBUG && _d('Parsing table reference:', $tbl_ref);
    my %tbl;
 
    # First, check for an index hint.  Remove and save it if present.
@@ -605,7 +605,7 @@ sub parse_table_reference {
          )//xi)
    {
       $tbl{index_hint} = $1;
-      MKDEBUG && _d('Index hint:', $tbl{index_hint});
+      PTDEBUG && _d('Index hint:', $tbl{index_hint});
    }
 
    if ( $tbl_ref =~ m/$table_ident/ ) {
@@ -696,7 +696,7 @@ sub parse_table_reference {
 sub parse_where {
    my ( $self, $where ) = @_;
    return unless $where;
-   MKDEBUG && _d("Parsing WHERE", $where);
+   PTDEBUG && _d("Parsing WHERE", $where);
 
    # Not all the operators listed at
    # http://dev.mysql.com/doc/refman/5.1/en/non-typed-operators.html
@@ -747,8 +747,8 @@ sub parse_where {
    $pred = substr $where, $offset;
    push @pred, $pred;
    push @has_op, $pred =~ m/$op_pat/o ? 1 : 0;
-   MKDEBUG && _d("Predicate fragments:", Dumper(\@pred));
-   MKDEBUG && _d("Predicate frags with operators:", @has_op);
+   PTDEBUG && _d("Predicate fragments:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate frags with operators:", @has_op);
 
    # Step 3: join pred frags without ops to preceding pred frag.
    my $n = scalar @pred - 1;
@@ -771,7 +771,7 @@ sub parse_where {
          $pred[$i]  = undef;
       }
    }
-   MKDEBUG && _d("Predicate fragments joined:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate fragments joined:", Dumper(\@pred));
 
    # Step 4: join pred frags with unbalanced ' or " to preceding pred frag.
    for my $i ( 0..@pred ) {
@@ -784,7 +784,7 @@ sub parse_where {
          $pred[$i + 1]  = undef;
       }
    }
-   MKDEBUG && _d("Predicate fragments balanced:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate fragments balanced:", Dumper(\@pred));
 
    # Parse, clean up and save the complete predicates.
    my @predicates;
@@ -858,7 +858,7 @@ sub parse_having {
 sub parse_group_by {
    my ( $self, $group_by ) = @_;
    return unless $group_by;
-   MKDEBUG && _d('Parsing GROUP BY', $group_by);
+   PTDEBUG && _d('Parsing GROUP BY', $group_by);
 
    # Remove special "WITH ROLLUP" clause so we're left with a simple csv list.
    my $with_rollup = $group_by =~ s/\s+WITH ROLLUP\s*//i;
@@ -875,7 +875,7 @@ sub parse_group_by {
 sub parse_order_by {
    my ( $self, $order_by ) = @_;
    return unless $order_by;
-   MKDEBUG && _d('Parsing ORDER BY', $order_by);
+   PTDEBUG && _d('Parsing ORDER BY', $order_by);
    my $idents = $self->parse_identifiers( $self->_parse_csv($order_by) );
    return $idents;
 }
@@ -917,7 +917,7 @@ sub parse_values {
 
 sub parse_set {
    my ( $self, $set ) = @_;
-   MKDEBUG && _d("Parse SET", $set);
+   PTDEBUG && _d("Parse SET", $set);
    return unless $set;
    my $vals = $self->_parse_csv($set);
    return unless $vals && @$vals;
@@ -933,7 +933,7 @@ sub parse_set {
          %$ident_struct,
          value => $val,
       };
-      MKDEBUG && _d("SET:", Dumper($set_struct));
+      PTDEBUG && _d("SET:", Dumper($set_struct));
       push @set, $set_struct;
    }
    return \@set;
@@ -955,11 +955,11 @@ sub _parse_csv {
       my $quote_char   = '';
       VAL:
       foreach my $val ( split(',', $vals) ) {
-         MKDEBUG && _d("Next value:", $val);
+         PTDEBUG && _d("Next value:", $val);
          # If there's a quote char, then this val is the rest of a previously
          # quoted and split value.
          if ( $quote_char ) {
-            MKDEBUG && _d("Value is part of previous quoted value");
+            PTDEBUG && _d("Value is part of previous quoted value");
             # split() removed the comma inside the quoted value,
             # so add it back else "hello, world" is incorrectly
             # returned as "hello world".
@@ -972,7 +972,7 @@ sub _parse_csv {
                   $vals[-1] =~ s/^\s*$quote_char//;
                   $vals[-1] =~ s/$quote_char\s*$//;
                }
-               MKDEBUG && _d("Previous quoted value is complete:", $vals[-1]);
+               PTDEBUG && _d("Previous quoted value is complete:", $vals[-1]);
                $quote_char = '';
             }
 
@@ -990,10 +990,10 @@ sub _parse_csv {
          # end with that char.  E.g.: "foo but not "foo".  The val "foo is
          # the first part of the split value, e.g. "foo, bar".
          if ( $val =~ m/^(['"])/ ) {
-            MKDEBUG && _d("Value is quoted");
+            PTDEBUG && _d("Value is quoted");
             $quote_char = $1;  # XXX
             if ( $val =~ m/.$quote_char$/ ) {
-               MKDEBUG && _d("Value is complete");
+               PTDEBUG && _d("Value is complete");
                $quote_char = '';
                if ( $args{remove_quotes} ) {
                   $vals[-1] =~ s/^\s*$quote_char//;
@@ -1001,7 +1001,7 @@ sub _parse_csv {
                }
             }
             else {
-               MKDEBUG && _d("Quoted value is not complete");
+               PTDEBUG && _d("Quoted value is not complete");
             }
          }
          else {
@@ -1011,7 +1011,7 @@ sub _parse_csv {
          # Save complete value (e.g. foo or "foo" without the quotes),
          # or save the first part of a quoted and split value; the rest
          # of such a value will be joined back above.
-         MKDEBUG && _d("Saving value", ($quote_char ? "fragment" : ""));
+         PTDEBUG && _d("Saving value", ($quote_char ? "fragment" : ""));
          push @vals, $val;
       }
    }
@@ -1028,7 +1028,7 @@ sub _parse_csv {
 
 sub parse_columns {
    my ( $self, $cols ) = @_;
-   MKDEBUG && _d('Parsing columns list:', $cols);
+   PTDEBUG && _d('Parsing columns list:', $cols);
 
    my @cols;
    pos $cols = 0;
@@ -1097,17 +1097,17 @@ sub remove_subqueries {
    my $len_adj = 0;
    my $n    = 0;
    for my $i ( 0..$#start_pos ) {
-      MKDEBUG && _d('Query:', $query);
+      PTDEBUG && _d('Query:', $query);
       my $offset = $start_pos[$i];
       my $len    = $end_pos[$i] - $start_pos[$i] - $len_adj;
-      MKDEBUG && _d("Subquery $n start", $start_pos[$i],
+      PTDEBUG && _d("Subquery $n start", $start_pos[$i],
             'orig end', $end_pos[$i], 'adj', $len_adj, 'adj end',
             $offset + $len, 'len', $len);
 
       my $struct   = {};
       my $token    = '__SQ' . $n . '__';
       my $subquery = substr($query, $offset, $len, $token);
-      MKDEBUG && _d("Subquery $n:", $subquery);
+      PTDEBUG && _d("Subquery $n:", $subquery);
 
       # Adjust len for next outer subquery.  This is required because the
       # subqueries' start/end pos are found relative to one another, so
@@ -1118,15 +1118,15 @@ sub remove_subqueries {
       my $outer_end   = $end_pos[$i + 1];
       if (    $outer_start && ($outer_start < $start_pos[$i])
            && $outer_end   && ($outer_end   > $end_pos[$i]) ) {
-         MKDEBUG && _d("Subquery $n nested in next subquery");
+         PTDEBUG && _d("Subquery $n nested in next subquery");
          $len_adj += $len - length $token;
          $struct->{nested} = $i + 1;
       }
       else {
-         MKDEBUG && _d("Subquery $n not nested");
+         PTDEBUG && _d("Subquery $n not nested");
          $len_adj = 0;
          if ( $subqueries[-1] && $subqueries[-1]->{nested} ) {
-            MKDEBUG && _d("Outermost subquery");
+            PTDEBUG && _d("Outermost subquery");
          }
       }
 
@@ -1149,7 +1149,7 @@ sub remove_subqueries {
          # either a derived table or column.
          $struct->{context} = 'identifier';
       }
-      MKDEBUG && _d("Subquery $n context:", $struct->{context});
+      PTDEBUG && _d("Subquery $n context:", $struct->{context});
 
       # Remove ( ) around subquery so it can be parsed by a parse_TYPE sub.
       $subquery =~ s/^\s*\(//;
@@ -1178,11 +1178,11 @@ sub remove_subqueries {
 sub parse_identifiers {
    my ( $self, $idents ) = @_;
    return unless $idents;
-   MKDEBUG && _d("Parsing identifiers");
+   PTDEBUG && _d("Parsing identifiers");
 
    my @ident_parts;
    foreach my $ident ( @$idents ) {
-      MKDEBUG && _d("Identifier:", $ident);
+      PTDEBUG && _d("Identifier:", $ident);
       my $parts = {};
 
       if ( $ident =~ s/\s+(ASC|DESC)\s*$//i ) {
@@ -1190,17 +1190,17 @@ sub parse_identifiers {
       }
 
       if ( $ident =~ m/^\d+$/ ) {      # Position like 5
-         MKDEBUG && _d("Positional ident");
+         PTDEBUG && _d("Positional ident");
          $parts->{position} = $ident;
       }
       elsif ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
-         MKDEBUG && _d("Expression ident");
+         PTDEBUG && _d("Expression ident");
          my ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
          $parts->{function}   = uc $func;
          $parts->{expression} = $expr if $expr;
       }
       else {                           # Ref like (table.)column
-         MKDEBUG && _d("Table/column ident");
+         PTDEBUG && _d("Table/column ident");
          my ($tbl, $col)  = $self->split_unquote($ident);
          $parts->{table}  = $tbl if $tbl;
          $parts->{column} = $col;
@@ -1214,7 +1214,7 @@ sub parse_identifiers {
 sub parse_identifier {
    my ( $self, $type, $ident ) = @_;
    return unless $type && $ident;
-   MKDEBUG && _d("Parsing", $type, "identifier:", $ident);
+   PTDEBUG && _d("Parsing", $type, "identifier:", $ident);
 
    my %ident_struct;
    my @ident_parts = map { s/`//g; $_; } split /[.]/, $ident;
@@ -1250,7 +1250,7 @@ sub parse_identifier {
       }
    }
 
-   MKDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
+   PTDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
    return \%ident_struct;
 }
 

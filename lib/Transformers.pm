@@ -25,7 +25,7 @@ package Transformers;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
@@ -230,32 +230,32 @@ sub any_unix_timestamp {
          : $suffix eq 'h' ? $n * 3600     # Hours
          : $suffix eq 'd' ? $n * 86400    # Days
          :                  $n;           # default: Seconds
-      MKDEBUG && _d('ts is now - N[shmd]:', $n);
+      PTDEBUG && _d('ts is now - N[shmd]:', $n);
       return time - $n;
    }
    elsif ( $val =~ m/^\d{9,}/ ) {
       # unix timestamp 100000000 is roughly March, 1973, so older
       # dates won't be caught here; they'll probably be mistaken
       # for a MySQL slow log timestamp.
-      MKDEBUG && _d('ts is already a unix timestamp');
+      PTDEBUG && _d('ts is already a unix timestamp');
       return $val;
    }
    elsif ( my ($ymd, $hms) = $val =~ m/^(\d{6})(?:\s+(\d+:\d+:\d+))?/ ) {
-      MKDEBUG && _d('ts is MySQL slow log timestamp');
+      PTDEBUG && _d('ts is MySQL slow log timestamp');
       $val .= ' 00:00:00' unless $hms;
       return unix_timestamp(parse_timestamp($val));
    }
    elsif ( ($ymd, $hms) = $val =~ m/^(\d{4}-\d\d-\d\d)(?:[T ](\d+:\d+:\d+))?/) {
-      MKDEBUG && _d('ts is properly formatted timestamp');
+      PTDEBUG && _d('ts is properly formatted timestamp');
       $val .= ' 00:00:00' unless $hms;
       return unix_timestamp($val);
    }
    else {
-      MKDEBUG && _d('ts is MySQL expression');
+      PTDEBUG && _d('ts is MySQL expression');
       return $callback->($val) if $callback && ref $callback eq 'CODE';
    }
 
-   MKDEBUG && _d('Unknown ts type:', $val);
+   PTDEBUG && _d('Unknown ts type:', $val);
    return;
 }
 
@@ -263,7 +263,7 @@ sub any_unix_timestamp {
 sub make_checksum {
    my ( $val ) = @_;
    my $checksum = uc substr(md5_hex($val), -16);
-   MKDEBUG && _d($checksum, 'checksum for', $val);
+   PTDEBUG && _d($checksum, 'checksum for', $val);
    return $checksum;
 }
 

@@ -1,0 +1,7 @@
+UPDATE `bidi`.`t` SET `c`='ghi', `d`='5', `ts`='2010-02-01 09:17:52' WHERE `id`='3' LIMIT 1;
+UPDATE `bidi`.`t` SET `c`=NULL, `d`='0', `ts`='2010-02-02 05:10:00' WHERE `id`='5' LIMIT 1;
+INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('11', '?', '0', '2010-01-29 11:17:12');
+UPDATE `bidi`.`t` SET `c`='hmm', `d`='1', `ts`='2010-02-02 12:17:31' WHERE `id`='13' LIMIT 1;
+UPDATE `bidi`.`t` SET `c`='gtg', `d`='7', `ts`='2010-02-02 06:01:08' WHERE `id`='15' LIMIT 1;
+INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('17', 'good', '1', '2010-02-02 21:38:03');
+INSERT INTO `bidi`.`t`(`id`, `c`, `d`, `ts`) VALUES ('20', 'new', '100', '2010-02-01 04:15:36');

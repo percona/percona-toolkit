@@ -13,6 +13,47 @@ usage() {
    exit 1
 }
 
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+# pt-sift isn't ready for this yet.
+#set -u
+
+TMPDIR=""
+
+mk_tmpdir() {
+   local dir=${1:-""}
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir $dir || die "Cannot make tmpdir $dir"
+      fi
+      TMPDIR="$dir"
+   else
+      local tool=`basename $0`
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf $TMPDIR
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
 # Show current help and settings
 print_help() {
    cat <<-HELP
@@ -51,25 +92,8 @@ main() {
    fi
 
    # If the programs we need don't exist, try to get them.
-   # Aspersa tools:
-   for prog in align; do
-      if which $prog >/dev/null 2>&1 ; then
-         eval "PR_$prog"="$(which $prog)"
-      elif [ -f $prog -a -x $prog ]; then
-         eval "PR_$prog"="./$prog"
-      elif [ -f "${BASEDIR}/$prog" -a -x "${BASEDIR}/$prog" ]; then
-         eval "PR_$prog"="${BASEDIR}/$prog"
-      elif which "curl" >/dev/null 2>&1; then
-         echo "Fetching $prog" >&2
-         curl http://aspersa.googlecode.com/svn/trunk/$prog > "$prog" && chmod +x "$prog"
-         eval "PR_$prog"="./$prog"
-      else
-         echo "Cannot find or fetch required program: $prog" >&2
-         exit 1
-      fi
-   done
    # Percona Toolkit tools:
-   for prog in pt-diskstats pt-pmp pt-mext; do
+   for prog in pt-diskstats pt-pmp pt-mext pt-align; do
       # A var can't be named "PR_pt-pmp" so we chop of "pt-" to get
       # the program's basename, resulting in "PR_pmp".
       prog_base=${prog#"pt-"}
@@ -89,19 +113,22 @@ main() {
       fi 
    done
 
+   # Make a secure tmpdir.
+   mk_tmpdir
+
    # We need to generate a list of timestamps, and ask the user to choose one if
    # there is no PREFIX yet.  NOTE: we rely on the "-df" files here.
-   ls "${BASEDIR}" | grep -- '-df$' | cut -d- -f1 | sort > /tmp/pt-sift.prefixes
+   ls "${BASEDIR}" | grep -- '-df$' | cut -d- -f1 | sort > $TMPDIR/pt-sift.prefixes
    if [ -z "${PREFIX}" ]; then
-      if [ "$(grep -c . /tmp/pt-sift.prefixes)" = "1" ]; then
+      if [ "$(grep -c . $TMPDIR/pt-sift.prefixes)" = "1" ]; then
          # If there is only one sample, we use it as the prefix.
-         PREFIX="$(cat /tmp/pt-sift.prefixes)"
+         PREFIX="$(cat $TMPDIR/pt-sift.prefixes)"
       fi
    fi
    if [ -z "${PREFIX}" ]; then
       echo
       i=0
-      cat /tmp/pt-sift.prefixes | while read line; do
+      cat $TMPDIR/pt-sift.prefixes | while read line; do
          i=$(($i + 1))
          echo -n "  $line"
          if [ "${i}" = "3" ]; then
@@ -111,14 +138,14 @@ main() {
       done
       # We might have ended mid-line or we might have printed a newline; print a
       # newline if required to end the list of timestamp prefixes.
-      awk 'BEGIN { i = 0 } { i++ } END { if ( i % 3 != 0 ) { print "" } }' /tmp/pt-sift.prefixes
+      awk 'BEGIN { i = 0 } { i++ } END { if ( i % 3 != 0 ) { print "" } }' $TMPDIR/pt-sift.prefixes
       echo
-      while [ -z "${PREFIX}" -o "$(grep -c "${PREFIX}" /tmp/pt-sift.prefixes)" -ne 1 ]; do
-         DEFAULT="$(tail -1 /tmp/pt-sift.prefixes)"
+      while [ -z "${PREFIX}" -o "$(grep -c "${PREFIX}" $TMPDIR/pt-sift.prefixes)" -ne 1 ]; do
+         DEFAULT="$(tail -1 $TMPDIR/pt-sift.prefixes)"
          read -e -p "Select a timestamp from the list [${DEFAULT}] " ARG
          ARG="${ARG:-${DEFAULT}}"
-         if [ "$(grep -c "${ARG}" /tmp/pt-sift.prefixes)" -eq 1 ]; then
-            PREFIX="$(grep "${ARG}" /tmp/pt-sift.prefixes)"
+         if [ "$(grep -c "${ARG}" $TMPDIR/pt-sift.prefixes)" -eq 1 ]; then
+            PREFIX="$(grep "${ARG}" $TMPDIR/pt-sift.prefixes)"
          fi
       done
    fi
@@ -130,7 +157,7 @@ main() {
       if [ "${ACTION}" != "INVALID" ]; then
          # Print the current host, timestamp and action.  Figure out if we're at
          # the first or last sample, to make it easy to navigate.
-         PAGE="$(awk "/./{i++} /${PREFIX}/{c=i} END{print c, \"of\", i}" /tmp/pt-sift.prefixes)"
+         PAGE="$(awk "/./{i++} /${PREFIX}/{c=i} END{print c, \"of\", i}" $TMPDIR/pt-sift.prefixes)"
          HOST="$(cat "${BASEDIR}/${PREFIX}-hostname" 2>/dev/null)"
          echo -e "======== ${HOST:-unknown} at \033[34m${PREFIX} \033[31m${ACTION}\033[0m (${PAGE}) ========"
       fi
@@ -438,7 +465,7 @@ main() {
                   if ( printed == 0 ) {
                      print \"${PREFIX}\";
                   }
-               }" /tmp/pt-sift.prefixes)"
+               }" $TMPDIR/pt-sift.prefixes)"
             ;;
          1)
             ACTION="DEFAULT"
@@ -475,6 +502,7 @@ main() {
       esac
    done
 
+   rm_tmpdir
 }
 
 # Execute the program if it was not included from another file.  This makes it
@@ -590,7 +618,7 @@ This tool does not use any environment variables.
 =head1 SYSTEM REQUIREMENTS
 
 This tool requires Bash v3 and the following programs: pt-diskstats, pt-pmp,
-pt-mext, and align (from Aspersa).  If these programs are not in your PATH,
+pt-mext, and pt-align.  If these programs are not in your PATH,
 they will be fetched from the Internet if curl is available.
 
 =head1 BUGS
@@ -650,7 +678,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
+This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
 Feedback and improvements are welcome.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -669,7 +697,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-sift 1.0.1
+pt-sift 2.0.3
 
 =cut
 

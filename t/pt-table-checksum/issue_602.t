@@ -13,6 +13,8 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+shift @INC;  # our unshift (above)
+shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -26,8 +28,13 @@ else {
    plan tests => 1;
 }
 
+# The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
+# so we need to specify --lock-wait-timeout=3 else the tool will die.
+# And --max-load "" prevents waiting for status variables.
+my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
 my $output;
-my $cnf = '/tmp/12345/my.sandbox.cnf';
+
 $sb->load_file('master', 't/pt-table-checksum/samples/issue_602.sql');
 
 # #############################################################################
@@ -35,14 +42,13 @@ $sb->load_file('master', 't/pt-table-checksum/samples/issue_602.sql');
 # #############################################################################
 
 $output = output(
-   sub {
-      pt_table_checksum::main("F=$cnf", qw(-t issue_602.t --chunk-size 5)) },
+   sub { pt_table_checksum::main(@args, qw(-t issue_602.t --chunk-size 5)) },
    stderr => 1,
 );
 
-like(
-   $output,
-   qr/^issue_602\s+t\s+2/m,
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   11,
    "Checksums table despite invalid datetime"
 );
 

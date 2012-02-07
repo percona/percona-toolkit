@@ -17,15 +17,11 @@ require "$trunk/bin/pt-slave-find";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
-
-# Create slave2 as slave of slave1.
-diag(`/tmp/12347/stop >/dev/null 2>&1`);
-diag(`rm -rf /tmp/12347 >/dev/null 2>&1`);
-diag(`$trunk/sandbox/test-env reset`);
-diag(`$trunk/sandbox/start-sandbox slave 12347 12346 >/dev/null`);
+my $master_dbh  = $sb->get_dbh_for('master');
+my $slave_dbh   = $sb->get_dbh_for('slave1');
 my $slave_2_dbh = $sb->get_dbh_for('slave2');
+
+diag(`$trunk/sandbox/test-env reset`);
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -114,6 +110,4 @@ is(
 # Done.
 # #############################################################################
 diag(`rm -rf $outfile >/dev/null`);
-diag(`/tmp/12347/stop >/dev/null`);
-diag(`rm -rf /tmp/12347 >/dev/null`);
 exit;
