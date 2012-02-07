@@ -141,12 +141,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -1315,7 +1317,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1458,6 +1460,48 @@ sub join_quote {
    $db  = "`$db`"  if $db  && $db  !~ m/^`/;
    $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
    return $db ? "$db.$tbl" : $tbl;
+}
+
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
 }
 
 1;
@@ -2624,6 +2668,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -2641,6 +2686,7 @@ our @EXPORT_OK   = qw(
    any_unix_timestamp
    make_checksum
    crc32
+   encode_json
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -2846,6 +2892,96 @@ sub crc32 {
       $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
    }
    return $crc ^ 0xFFFFFFFF;
+}
+
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
 }
 
 sub _d {
@@ -5274,19 +5410,56 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+           . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+           . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+           . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+   PTDEBUG && _d($sql);
+   eval { $dbh->do($sql); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   $sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $sql);
+   $dbh->do($sql);
+
+   $sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
+   }
+
+   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+        . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   PTDEBUG && _d($sql);
+   $dbh->do($sql);
+
+   my ($key) = grep { m/create table/i } keys %$href;
+   if ( $key ) {
+      PTDEBUG && _d('This table is a base table');
+      $href->{$key}  =~ s/\b[ ]{2,}/ /g;
+      $href->{$key} .= "\n";
+   }
+   else {
+      PTDEBUG && _d('This table is a view');
+      ($key) = grep { m/create view/i } keys %$href;
+   }
+
+   return $href->{$key};
+}
+
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -5593,41 +5766,31 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         my $key_def = $_->{ddl};
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      PTDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {
@@ -6312,8 +6475,10 @@ sub main {
       return $event;
    };
 
+   my $json = $o->get('report-type')->{json}
+            ? {} : undef;
    # Print info (advice) about each rule that matched this query.
-   if ( $groupby eq 'none' ) {
+   if ( $groupby eq 'none' || $json ) {
       push @pipeline, sub {
          my ( %args ) = @_;
          PTDEBUG && _d('callback: print advice');
@@ -6327,6 +6492,7 @@ sub main {
             severity_count => \%severity_count,
             verbose        => $o->get('verbose'),
             report_format  => $o->get('report-format'),
+            json           => $json,
             Advisor        => $adv,
          );
          return $event;
@@ -6439,7 +6605,7 @@ sub main {
    # ########################################################################
    # Aggregate and report items for group-by reports
    # ########################################################################
-   if ( $groupby ne 'none' ) {
+   if ( $groupby ne 'none' && !$json ) {
       print_grouped_report(
          advice_queue  => \%advice_queue,
          group_by      => $groupby,
@@ -6451,7 +6617,7 @@ sub main {
    # ########################################################################
    # Create and print profile of each items note/warn/crit count.
    # ########################################################################
-   if ( keys %severity_count ) {
+   if ( keys %severity_count && !$json ) {
       eval {
          my $profile = new ReportFormatter(
             long_last_column => 1,
@@ -6482,6 +6648,8 @@ sub main {
       };
    }
 
+   print Transformers::encode_json($json), "\n" if $json;
+
    return 0;
 }
 
@@ -6497,6 +6665,7 @@ sub print_advice {
    my $adv            = $args{Advisor};
    my $seen_id        = $args{seen_id};
    my $severity_count = $args{severity_count};
+   my $json           = $args{json};
 
    my $advice   = $event->{advice};
    my $near_pos = $event->{near_pos};
@@ -6505,7 +6674,9 @@ sub print_advice {
 
    # Header
    my $query_id = $event->{query_id} || "";
-   print "\n# Query ID 0x$query_id at byte " . ($event->{pos_in_log} || 0) . "\n";
+
+   print "\n# Query ID 0x$query_id at byte " . ($event->{pos_in_log} || 0) . "\n"
+      unless $json;
 
    # New check IDs and their descriptions
    foreach my $i ( 1..$n_advice ) {
@@ -6526,9 +6697,10 @@ sub print_advice {
                   : $verbose == 2 ? "$desc[0] $desc[1]"  # fuller
                   : $verbose >  2 ? $desc                # complete
                   :                 '';                  # none
-         print "# ", uc $info->{severity}, " $rule_id $desc\n";
+         print "# ", uc $info->{severity}, " $rule_id $desc\n"
+            unless $json;
 
-         if ( $pos ) {
+         if ( $pos && !$json ) {
             my $offset = $pos > POS_CONTEXT ? $pos - POS_CONTEXT : 0;
             print "#   matches near: ",
                substr($event->{arg}, $offset, ($pos - $offset) + POS_CONTEXT),
@@ -6536,14 +6708,24 @@ sub print_advice {
          }
       }
 
+      if ( $json ) {
+         my $info_for_json = {
+            rule => $rule_id,
+            %$info
+         };
+         push @{$json->{$query_id} ||= []}, $info_for_json;
+      }
+
       $severity_count->{$query_id}->{$info->{severity}}++;
    }
 
-   # Already seen check IDs
-   print "# Also: @seen_ids\n" if scalar @seen_ids;
-
-   # The query
-   print "$event->{arg}\n";
+   if ( !$json ) {
+      # Already seen check IDs
+      print "# Also: @seen_ids\n" if scalar @seen_ids;
+   
+      # The query
+      print "$event->{arg}\n";
+   }
 
    return;
 }
@@ -6592,7 +6774,6 @@ sub print_grouped_report {
    my ($advice_queue, $groupby) = @args{@required_args};
    my $verbose = $args{verbose} || 0;
    my %seen;
-
 
    foreach my $groupby_attrib ( sort keys %$advice_queue ) {
       print "\n" . ($groupby eq 'query_id' ? "0x" : "") . $groupby_attrib;
@@ -7106,6 +7287,13 @@ type: Array
 
 The type of input to parse (default slowlog).  The permitted types are
 slowlog and genlog.
+
+=item --report-type
+
+type: Hash
+
+Alternative formats to output the report. Currently, only "json" is
+recognized -- anything else is ignored and the default behavior used.
 
 =item --user
 
