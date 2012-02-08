@@ -14,6 +14,7 @@ v2.0.3 released 2012-02-03
   * Fixed bug 857091: pt-sift downloads http://percona.com/get/pt-pmp, which does not work
   * Fixed bug 857104: pt-sift tries to invoke mext, should be pt-mext
   * Fixed bug 872699: pt-diskstats: rd_avkb & wr_avkb derived incorrectly
+  * Fixed bug 897029: pt-diskstats computes wrong values for md0
   * Fixed bug 882918: pt-stalk spams warning if oprofile isn't installed
   * Fixed bug 884504: pt-stalk doesn't check pt-collect
   * Fixed bug 897483: pt-online-schema-change "uninitialized value" due to update-foreign-keys-method
