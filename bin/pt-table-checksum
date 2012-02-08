@@ -3778,7 +3778,7 @@ sub set_nibble_number {
 
 sub nibble_index {
    my ($self) = @_;
-   return lc($self->{index});
+   return $self->{index};
 }
 
 sub statements {
@@ -5877,35 +5877,39 @@ sub main {
    # ########################################################################
    # Connect to the master.
    # ########################################################################
+   my $vp = new VersionParser();
+
    my $set_on_connect = sub {
       my ($dbh) = @_;
-
       return if $o->get('explain');
+      my $sql;
 
       # https://bugs.launchpad.net/percona-toolkit/+bug/919352
       # The tool shouldn't blindly attempt to change binlog_format;
       # instead, it should check if it's already set to STATEMENT.
       # This is becase starting with MySQL 5.1.29, changing the format
       # requires a SUPER user.
-      my $sql = 'SELECT @@binlog_format';
-      PTDEBUG && _d($dbh, $sql);
-      my ($original_binlog_format) = $dbh->selectrow_array($sql);
-      PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
-      if ( $original_binlog_format !~ /STATEMENT/i ) {
-         $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
-         eval {
-            PTDEBUG && _d($dbh, $sql);
-            $dbh->do($sql);
-         };
-         if ( $EVAL_ERROR ) {
-            die "Failed to $sql: $EVAL_ERROR\n"
-               . "This tool requires binlog_format=STATEMENT, "
-               . "but the current binlog_format is set to "
-               ."$original_binlog_format and an error occurred while "
-               . "attempting to change it.  If running MySQL 5.1.29 or newer, "
-               . "setting binlog_format requires the SUPER privilege.  "
-               . "You will need to manually set binlog_format to 'STATEMENT' "
-               . "before running this tool.\n";
+      if ( $vp->version_ge($dbh, '5.1.5') ) {
+         $sql = 'SELECT @@binlog_format';
+         PTDEBUG && _d($dbh, $sql);
+         my ($original_binlog_format) = $dbh->selectrow_array($sql);
+         PTDEBUG && _d('Original binlog_format:', $original_binlog_format);
+         if ( $original_binlog_format !~ /STATEMENT/i ) {
+            $sql = q{/*!50108 SET @@binlog_format := 'STATEMENT'*/};
+            eval {
+               PTDEBUG && _d($dbh, $sql);
+               $dbh->do($sql);
+            };
+            if ( $EVAL_ERROR ) {
+               die "Failed to $sql: $EVAL_ERROR\n"
+                  . "This tool requires binlog_format=STATEMENT, "
+                  . "but the current binlog_format is set to "
+                  ."$original_binlog_format and an error occurred while "
+                  . "attempting to change it.  If running MySQL 5.1.29 or newer, "
+                  . "setting binlog_format requires the SUPER privilege.  "
+                  . "You will need to manually set binlog_format to 'STATEMENT' "
+                  . "before running this tool.\n";
+            }
          }
       }
 
@@ -5995,7 +5999,6 @@ sub main {
    my $q  = new Quoter();
    my $tp = new TableParser(Quoter => $q);
    my $rc = new RowChecksum(Quoter=> $q, OptionParser => $o);
-   my $vp = new VersionParser();
    my $ms = new MasterSlave(VersionParser => $vp);
 
    my $slaves;         # all slaves (that we can find)
@@ -6399,7 +6402,8 @@ sub main {
             sth  => $sth->{explain_upper_boundary},
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
-         if ( lc($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
+         if (   lc($expl->{key} || '')
+             ne lc($nibble_iter->nibble_index() || '') ) {
             PTDEBUG && _d('Cannot nibble next chunk, aborting table');
             if ( $o->get('quiet') < 2 ) {
                my $msg
@@ -6467,7 +6471,8 @@ sub main {
                :          0;
 
             # Ensure that MySQL is using the chunk index.
-            if ( lc($expl->{key} || '') ne $nibble_iter->nibble_index() ) {
+            if (   lc($expl->{key} || '')
+                ne lc($nibble_iter->nibble_index() || '') ) {
                PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                   "$tbl->{db}.$tbl->{tbl} not using chunk index, skipping");
                return 0;  # next boundary
@@ -7266,7 +7271,7 @@ sub have_more_chunks {
 
    # The previous chunk index must match the current chunk index,
    # else we don't know what to do.
-   my $chunk_index = $nibble_iter->nibble_index() || '';
+   my $chunk_index = lc($nibble_iter->nibble_index() || '');
    if (lc($last_chunk->{chunk_index}   || '') ne $chunk_index) {
       warn ts("Cannot resume from table $tbl->{db}.$tbl->{tbl} chunk "
          . "$last_chunk->{chunk} because the chunk indexes are different: "

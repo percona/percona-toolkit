@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 19;
+   plan tests => 21;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -196,6 +196,41 @@ is(
    PerconaTest::count_checksum_results($output, 'diffs'),
    0,
    "Synced diff (bug 911996)"
+);
+
+# Fix bug 927771.
+$sb->load_file('master', 't/pt-table-sync/samples/bug_927771.sql');
+PerconaTest::wait_for_table($slave_dbh, "test.t", "c='j'");
+
+$slave_dbh->do("update test.t set c='z' where id>8");
+
+`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 2 -t test.t --quiet`;
+
+PerconaTest::wait_for_table($slave_dbh, "percona.checksums", "db='test' and tbl='t' and chunk=4");
+
+$output = output(
+   sub {
+      pt_table_sync::main('h=127.1,P=12345,u=msandbox,p=msandbox',
+         qw(--print --execute --replicate percona.checksums),
+         qw(--no-foreign-key-checks))
+   },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/REPLACE INTO `test`.`t`\(`id`, `c`\) VALUES \('9', 'i'\)/,
+   "--replicate with uc index (bug 927771)"
+);
+
+my $rows = $slave_dbh->selectall_arrayref("select id, c from test.t where id>8 order by id");
+is_deeply(
+   $rows,
+   [
+      [9,  'i'],
+      [10, 'j'],
+   ],
+   "Synced slaved (bug 927771)"
 );
 
 # #############################################################################
