@@ -6847,16 +6847,11 @@ pt-query-advisor - Analyze queries and advise on possible problems.
 
 Usage: pt-query-advisor [OPTION...] [FILE]
 
-pt-query-advisor analyzes queries and advises on possible problems.
-Queries are given either by specifying slowlog files, --query, or --review.
+pt-query-advisor detects bad patterns in a SQL query from the text alone.
 
-Analyze all queries in a slow log:
+Analyze all queries in a log in MySQL's slow query log format:
 
    pt-query-advisor /path/to/slow-query.log
-
-Analyze all queires in a general log:
-
-   pt-query-advisor --type genlog mysql.log
 
 Get queries from tcpdump using pt-query-digest:
 
@@ -6872,8 +6867,7 @@ tools) and those created by bugs.
 pt-query-advisor simply reads queries and examines them, and is thus
 very low risk.
 
-At the time of this release there is a bug that may cause an infinite (or
-very long) loop when parsing very large queries.
+At the time of this release there are no known bugs that could harm users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -6958,14 +6952,16 @@ wildcard is potentially a bug in the SQL.
 
 severity: warn
 
-SELECT without WHERE.  The SELECT statement has no WHERE clause.
+SELECT without WHERE.  The SELECT statement has no WHERE clause and could
+examine many more rows than intended.
 
 =item CLA.002
 
 severity: note
 
 ORDER BY RAND().  ORDER BY RAND() is a very inefficient way to
-retrieve a random row from the results.
+retrieve a random row from the results, because it sorts the entire result
+and then throws most of it away.
 
 =item CLA.003
 
@@ -6973,7 +6969,8 @@ severity: note
 
 LIMIT with OFFSET.  Paginating a result set with LIMIT and OFFSET is
 O(n^2) complexity, and will cause performance problems as the data
-grows larger.
+grows larger.  Pagination techniques such as bookmarked scans are much more
+efficient.
 
 =item CLA.004
 
@@ -6987,21 +6984,24 @@ query is changed.
 
 severity: warn
 
-ORDER BY constant column.
+ORDER BY constant column.  This is probably a bug in your SQL; at best it is a
+useless operation that does not change the query results.
 
 =item CLA.006
 
 severity: warn
 
-GROUP BY or ORDER BY different tables will force a temp table and filesort.
+GROUP BY or ORDER BY on different tables. This will force the use of a temporary
+table and filesort, which can be a huge performance problem and can consume
+large amounts of memory and temporary space on disk.
 
 =item CLA.007
 
 severity: warn
 
-ORDER BY different directions prevents index from being used. All tables
-in the ORDER BY clause must be either ASC or DESC, else MySQL cannot use
-an index.
+ORDER BY different directions. All tables in the ORDER BY clause must be in the
+same direction, either ASC or DESC, or MySQL cannot use an index to avoid a sort
+after generating results.
 
 =item COL.001
 
@@ -7033,8 +7033,9 @@ more efficient to store IP addresses as integers.
 
 severity: warn
 
-Unquoted date/time literal.  A query such as "WHERE col<2010-02-12"
-is valid SQL but is probably a bug; the literal should be quoted.
+Unquoted date/time literal.  A query such as "WHERE col<2010-02-12" is valid SQL
+but is probably a bug, because it will be interpreted as "WHERE col<1996"; the
+literal should be quoted.
 
 =item KWR.001
 
@@ -7049,23 +7050,25 @@ result screens.
 
 severity: crit
 
-Mixing comma and ANSI joins.  Mixing comma joins and ANSI joins
-is confusing to humans, and the behavior differs between some
-MySQL versions.
+Mixing comma and ANSI joins.  Mixing comma joins and ANSI joins is confusing to
+humans, and the behavior and precedence differs between some MySQL versions,
+which can introduce bugs.
 
 =item JOI.002
 
 severity: crit
 
 A table is joined twice.  The same table appears at least twice in the
-FROM clause.
+FROM clause in a manner that can be reduced to a single access to the table.
 
 =item JOI.003
 
 severity: warn
 
-Reference to outer table column in WHERE clause prevents OUTER JOIN,
-implicitly converts to INNER JOIN.
+OUTER JOIN defeated.  The reference to an outer table column in the WHERE clause
+prevents the OUTER JOIN from returning any non-matched rows, which implicitly
+converts the query to an INNER JOIN.  This is probably a bug in the query or a
+misunderstanding of how OUTER JOIN works.
 
 =item JOI.004
 
@@ -7096,7 +7099,8 @@ non-deterministic results, depending on the query execution plan.
 
 severity: note
 
-!= is non-standard.  Use the <> operator to test for inequality.
+The != operator is non-standard.  Use the <> operator to test for inequality
+instead.
 
 =item SUB.001
 
@@ -7104,9 +7108,8 @@ severity: crit
 
 IN() and NOT IN() subqueries are poorly optimized.  MySQL executes the subquery
 as a dependent subquery for each row in the outer query.  This is a frequent
-cause of serious performance problems.  This might change version 6.0 of MySQL,
-but for versions 5.1 and older, the query should be rewritten as a JOIN or a
-LEFT OUTER JOIN, respectively.
+cause of serious performance problems in MySQL 5.5 and older versions.  The
+query probably should be rewritten as a JOIN or a LEFT OUTER JOIN, respectively.
 
 =back
 
