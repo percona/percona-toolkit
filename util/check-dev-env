@@ -10,7 +10,7 @@ use English;
 # This check is just for testing Percona Toolkit.  Other dev tasks, like
 # building release packages, require other modules and programs.
 
-my @modules = qw(
+my @required_modules = qw(
    Data::Dumper
    DBD::mysql
    DBI
@@ -21,7 +21,6 @@ my @modules = qw(
    File::Temp
    Getopt::Long
    IO::File
-   IO::Uncompress::Inflate
    List::Util
    POSIX
    Socket 
@@ -30,13 +29,18 @@ my @modules = qw(
    Time::Local
 );
 
+# CentOS doesn't seem to have this in its repo.
+my @optional_modules = qw(
+   IO::Uncompress::Inflate
+);
+
 my $exit_status = 0;
-my $fmt         = "%-23s %s\n";
+my $fmt         = "%-23s %8s %s\n";
 
 # Not a module but we want to know the Perl version.
-printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`;
+printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`, "";
 
-foreach my $module (@modules) {
+foreach my $module (@required_modules) {
    my $version = "Not installed";
    eval "require $module";
    if ( $EVAL_ERROR ) { 
@@ -45,7 +49,16 @@ foreach my $module (@modules) {
    else {
       $version = ${"${module}::VERSION"};
    }
-   printf $fmt, $module, $version;
+   printf $fmt, $module, $version, "";
+}
+
+foreach my $module (@optional_modules) {
+   my $version = "Not installed";
+   eval "require $module";
+   if ( !$EVAL_ERROR ) { 
+      $version = ${"${module}::VERSION"};
+   }
+   printf $fmt, $module, $version, "MySQLProtocolParser, ProtocolParser"
 }
 
 exit $exit_status;
