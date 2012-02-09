@@ -41,7 +41,7 @@ my $fmt         = "%-23s %8s %s\n";
 printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`, "";
 
 foreach my $module (@required_modules) {
-   my $version = "Not installed";
+   my $version = "NA";
    eval "require $module";
    if ( $EVAL_ERROR ) { 
       $exit_status = 1;
@@ -53,7 +53,7 @@ foreach my $module (@required_modules) {
 }
 
 foreach my $module (@optional_modules) {
-   my $version = "Not installed";
+   my $version = "NA";
    eval "require $module";
    if ( !$EVAL_ERROR ) { 
       $version = ${"${module}::VERSION"};
