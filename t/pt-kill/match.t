@@ -18,13 +18,14 @@ my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $slave_dbh = $sb->get_dbh_for('slave1');
 
+my @args = qw(--test-matching);
 my $output;
 
 # #############################################################################
 # Test match commands.
 # #############################################################################
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset001.txt", qw(--match-info show --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset001.txt", qw(--match-info show --print)); }
 );
 like(
    $output,
@@ -33,7 +34,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --print)); }
 );
 is(
    $output,
@@ -42,7 +43,7 @@ is(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --ignore-state), "''", "--print"); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset002.txt", qw(--match-command Query --ignore-state), "''", "--print"); }
 );
 like(
    $output,
@@ -51,7 +52,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset003.txt", "--match-state", "Sorting result", "--print"); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset003.txt", "--match-state", "Sorting result", "--print"); }
 );
 like(
    $output,
@@ -60,7 +61,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset003.txt", qw(--match-state Updating --print --victims all)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset003.txt", qw(--match-state Updating --print --victims all)); }
 );
 like(
    $output,
@@ -69,7 +70,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset003.txt", qw(--ignore-user remote --match-command Query --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset003.txt", qw(--ignore-user remote --match-command Query --print)); }
 );
 like(
    $output,
@@ -78,7 +79,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 25 --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 25 --print)); }
 );
 like(
    $output,
@@ -87,7 +88,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 30 --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset004.txt", qw(--busy-time 30 --print)); }
 );
 is(
    $output,
@@ -96,7 +97,7 @@ is(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset005.txt", qw(--idle-time 15 --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset005.txt", qw(--idle-time 15 --print)); }
 );
 like(
    $output,
@@ -105,7 +106,7 @@ like(
 );
 
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset006.txt", qw(--match-state Locked --ignore-state), "''", qw(--busy-time 5 --print)); }
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset006.txt", qw(--match-state Locked --ignore-state), "''", qw(--busy-time 5 --print)); }
 );
 like(
    $output,
@@ -116,7 +117,7 @@ like(
 # The queries in recset002 are both State: Locked which is ignored
 # by default so nothing should match, not even for --match-all.
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt",
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset002.txt",
       qw(--match-all --print)); }
 );
 is(
@@ -127,7 +128,7 @@ is(
 
 # Now --match-all should match.
 $output = output(
-   sub { pt_kill::main("$trunk/t/lib/samples/pl/recset002.txt",
+   sub { pt_kill::main(@args, "$trunk/t/lib/samples/pl/recset002.txt",
       qw(--match-all --victims all --print --ignore-state blahblah)); }
 );
 like(
