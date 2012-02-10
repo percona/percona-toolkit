@@ -61,7 +61,7 @@ SKIP: {
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
 `touch /tmp/pt-script.pid`;
-$output = `$cmd $trunk/t/lib/samples/pl/recset006.txt --match-state Locked  --print --pid /tmp/pt-script.pid 2>&1`;
+$output = `$cmd --test-matching $trunk/t/lib/samples/pl/recset006.txt --match-state Locked  --print --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
    qr{PID file /tmp/pt-script.pid already exists},
