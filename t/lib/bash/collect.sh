@@ -73,9 +73,13 @@ else
    is "1" "1" "SKIP Can't determine MySQL 5.0 error log"
 fi
 
-cmd_ok \
-   "grep -q 'COMMAND[ ]\+PID[ ]\+USER' $p-lsof" \
-   "lsof"
+if [ "$(which lsof 2>/dev/null)" ]; then
+   cmd_ok \
+      "grep -q 'COMMAND[ ]\+PID[ ]\+USER' $p-lsof" \
+      "lsof"
+else
+   is "1" "1" "SKIP lsof not in PATH"
+fi
 
 cmd_ok \
    "grep -q 'buf0buf.c' $p-mutex-status1" \
