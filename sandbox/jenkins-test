@@ -54,7 +54,7 @@ fi
 ##################
 # Run the tests. #
 ##################
-ITERATIONS={ITERATIONS:-1}
+ITERATIONS="${ITERATIONS:-1}"
 for iter in $(_seq $ITERATIONS); do
    $TEST_CMD
 done
