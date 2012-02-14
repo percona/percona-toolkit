@@ -71,14 +71,17 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   # Only reopen STDIN to /dev/null if it's a tty.  It may be a pipe,
-   # in which case we don't want to break it.
-   if ( -t STDIN ) {
-      PTDEBUG && _d('STDIN is a terminal; redirecting from /dev/null');
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   # We used to only reopen STDIN to /dev/null if it's a tty because
+   # otherwise it may be a pipe, in which case we didn't want to break
+   # it.  However, Perl -t is not reliable.  This is true and false on
+   # various boxes even when the same code is ran, or it depends on if
+   # the code is ran via cron, Jenkins, etc.  Since there should be no
+   # sane reason to `foo | pt-tool --daemonize` for a tool that reads
+   # STDIN, we now just always close STDIN.
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
       PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
