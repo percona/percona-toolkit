@@ -54,9 +54,13 @@ fi
 ##################
 # Run the tests. #
 ##################
+EXIT_STATUS=0
 ITERATIONS="${ITERATIONS:-1}"
 for iter in $(_seq $ITERATIONS); do
-   $TEST_CMD
+   (
+      $TEST_CMD
+   )
+   EXIT_STATUS=$(($? | 0))
 done
 
 #############
@@ -65,3 +69,5 @@ done
 set +x
 sandbox/test-env stop
 set -x
+
+exit $EXIT_STATUS
