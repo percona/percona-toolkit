@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 22;
+use Test::More tests => 21;
 use Time::HiRes qw(sleep);
 use Daemon;
 use OptionParser;
@@ -103,8 +103,8 @@ unlike(
 # ##########################################################################
 rm_tmp_files();
 SKIP: {
-   skip 'No /proc', 2 unless -d '/proc';
-   skip 'No fd in /proc', 2 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
+   skip 'No /proc', 1 unless -d '/proc';
+   skip 'No fd in /proc', 1 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
    system("$cmd 1 --daemonize --pid $pid_file --log $log_file");
    PerconaTest::wait_for_files($pid_file);
@@ -113,29 +113,29 @@ SKIP: {
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
                  : die "Cannot find fd 0 symlink in /proc/$pid";
    PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
-      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`, `lsof -p $pid`);
+      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
    my $stdin = readlink $proc_fd_0;
    is(
       $stdin,
       '/dev/null',
-      'Reopens STDIN to /dev/null if not piped',
+      'Reopens STDIN to /dev/null'
    );
 
-   sleep 1;
-   system("echo foo | $cmd 1 --daemonize --pid $pid_file --log $log_file");
-   PerconaTest::wait_for_files($pid_file, $log_file);
-   chomp($pid = `cat $pid_file`);
-   $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
-              : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
-              : die "Cannot find fd 0 symlink in /proc/$pid";
-   PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
-      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`, `lsof -p $pid`);
-   $stdin = readlink $proc_fd_0;
-   like(
-      $stdin,
-      qr/pipe/,
-      'Does not reopen STDIN to /dev/null when piped',
-   );
+#   sleep 1;
+#   system("echo foo | $cmd 1 --daemonize --pid $pid_file --log $log_file");
+#   PerconaTest::wait_for_files($pid_file, $log_file);
+#   chomp($pid = `cat $pid_file`);
+#   $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
+#              : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
+#              : die "Cannot find fd 0 symlink in /proc/$pid";
+#   PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
+#      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
+#   $stdin = readlink $proc_fd_0;
+#   like(
+#      $stdin,
+#      qr/pipe/,
+#      'Does not reopen STDIN to /dev/null when piped',
+#   );
    sleep 1;
 };
 
