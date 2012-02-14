@@ -158,6 +158,10 @@ ok(
    "checksum: Query_time doesn't exist before execute()"
 );
 
+# XXX
+diag(`/tmp/12345/use -e "show tables from test"`);
+diag(`/tmp/12346/use -e "show tables from test"`);
+
 proc('execute');
 
 ok(
