@@ -324,17 +324,18 @@ sub test_log_parser {
       close $fh;
    };
 
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "No error on $args{file}"
+      "$base_file_name: no errors"
    );
 
    if ( defined $args{result} ) {
       is_deeply(
          \@e,
          $args{result},
-         $args{file}
+         "$base_file_name: results"
       ) or print "Got: ", Dumper(\@e);
    }
 
@@ -342,7 +343,7 @@ sub test_log_parser {
       is(
          scalar @e,
          $args{num_events},
-         "$args{file} num_events"
+         "$base_file_name: $args{num_events} events"
       );
    }
 
@@ -380,17 +381,18 @@ sub test_protocol_parser {
       close $fh;
    };
 
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "No error on $args{file}"
+      "$base_file_name: no errors"
    );
-   
+
    if ( defined $args{result} ) {
       is_deeply(
          \@e,
          $args{result},
-         $args{file} . ($args{desc} ? ": $args{desc}" : '')
+         "$base_file_name: " . ($args{desc} || "results")
       ) or print "Got: ", Dumper(\@e);
    }
 
@@ -398,7 +400,7 @@ sub test_protocol_parser {
       is(
          scalar @e,
          $args{num_events},
-         "$args{file} num_events"
+         "$base_file_name: $args{num_events} events"
       );
    }
 
