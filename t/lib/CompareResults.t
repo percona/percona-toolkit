@@ -46,8 +46,6 @@ else {
    plan tests => 56;
 }
 
-$sb->create_dbs($dbh1, ['test']);
-
 Transformers->import(qw(make_checksum));
 
 my $vp = new VersionParser();
@@ -108,7 +106,7 @@ sub get_id {
 # #############################################################################
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
-PerconaTest::wait_for_table($dbh1, "test.t3", "f > 1");
+PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 # XXX
 warn "1", `/tmp/12345/use -e "show tables from test"`;
@@ -327,7 +325,7 @@ my $tmpdir = '/tmp/mk-upgrade-res';
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
-PerconaTest::wait_for_table($dbh1, "test.t3", "f > 1");
+PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'rows',
