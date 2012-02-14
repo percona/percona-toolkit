@@ -1,0 +1,62 @@
+#!/bin/sh
+
+######################################
+# Source our alt_cmds.sh for _seq(). #
+######################################
+. lib/bash/alt_cmds.sh
+
+##############
+# Set modes. #
+##############
+set +u
+set -e
+
+##################################
+# Check for needed Perl modules. #
+##################################
+util/check-dev-env
+
+#####################################
+# Install barebones MySQL binaries. #
+#####################################
+if ! [ -d "mysql-${MYSQL}-barebones" ]; then
+   wget -q http://hackmysql.com/mysql-${MYSQL}-barebones.tar.gz
+	tar xvfz mysql-${MYSQL}-barebones.tar.gz
+fi
+
+##########################
+# Set required env vars. #
+##########################
+export PERCONA_TOOLKIT_BRANCH="$PWD"
+export PERCONA_TOOLKIT_SANDBOX="$PWD/mysql-${MYSQL}-barebones"
+export PATH="$PATH:/usr/sbin:$PWD/mysql-${MYSQL}-barebones/bin"
+
+#############################
+# Check and start test env. #
+#############################
+sandbox/test-env checkconfig
+sandbox/test-env restart
+
+#######################
+# Set debug env vars. #
+#######################
+if [ "$DEBUG_CODE" = "true" ]; then
+   export PTDEBUG=1
+fi
+
+if [ "$DEBUG_TEST" = "true" ]; then
+   export PTDEVDEBUG=1
+fi
+
+##################
+# Run the tests. #
+##################
+ITERATIONS={ITERATIONS:-1}
+for iter in $(_seq $ITERATIONS); do
+   $TEST_CMD
+done
+
+#############
+# Clean up. #
+#############
+sandbox/test-env stop
