@@ -23,6 +23,10 @@ local p="$TMPDIR/collect/2011_12_05"
 # Default collect, no extras like gdb, tcpdump, etc.
 collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
+# XXX
+ls $TMPDIR/collect
+df
+
 # Even if this system doesn't have all the cmds, collect should still
 # have created some files for cmds that (hopefully) all systems have.
 ls -1 $TMPDIR/collect | sort > $TMPDIR/collect-files
