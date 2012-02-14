@@ -264,9 +264,15 @@ sub wait_for_table {
       sub {
          my $r;
          eval { $r = $dbh->selectrow_arrayref($sql); };
-         return 0 if $EVAL_ERROR;
-         if ( $where ) {
-            return 0 unless $r && @$r;
+         if ( $EVAL_ERROR ) {
+            PTDEVDEBUG && _d('Waiting on', $dbh, 'for table', $tbl,
+               'error:', $EVAL_ERROR);
+            return 0;
+         }
+         if ( $where && (!$r || !scalar @$r) ) {
+            PTDEVDEBUG && _d('Waiting on', $dbh, 'for table', $tbl,
+               'WHERE', $where);
+            return 0;
          }
          return 1;
       },
