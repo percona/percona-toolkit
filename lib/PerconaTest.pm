@@ -31,10 +31,10 @@ package PerconaTest;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 use Test::More;
-use Time::HiRes qw(sleep);
+use Time::HiRes qw(sleep time);
 use POSIX qw(signal_h);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -220,14 +220,16 @@ sub parse_file {
 # Wait until code returns true.
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
-   $t     ||= .5;
-   $max_t ||= 10;
+   $t     ||= .25;
+   $max_t ||= 5;
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
       return 1 if $code->();
+      PTDEVDEBUG && _d('wait_until sleeping', $t);
       sleep $t;
       $slept += $t;
+      PTDEVDEBUG && _d('wait_until slept', $slept, 'of', $max_t);
    }
    return 0;
 }
@@ -622,7 +624,8 @@ sub _d {
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
         map { defined $_ ? $_ : 'undef' }
         @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+   my $t = sprintf '%.3f', time;
+   print STDERR "# $package:$line $PID $t ", join(' ', @_), "\n";
 }
 
 1;

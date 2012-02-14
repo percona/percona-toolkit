@@ -54,17 +54,19 @@ ok(! -f $pid_file, 'Removes PID file upon exit');
 # ############################################################################
 rm_tmp_files();
 
-system("$cmd 2 --daemonize --log $log_file");
+system("$cmd 0 --daemonize --log $log_file");
 PerconaTest::wait_for_files($log_file);
 ok(-f $log_file, 'Log file exists');
 
-sleep 2;
 $output = `cat $log_file`;
 like($output, qr/STDOUT\nSTDERR\n/, 'STDOUT and STDERR went to log file');
 
+my $log_size = -s $log_file;
+PTDEVDEBUG && PerconaTest::_d('log size', $log_size);
+
 # Check that the log file is appended to.
 system("$cmd 0 --daemonize --log $log_file");
-PerconaTest::wait_for_files($log_file);
+PerconaTest::wait_until(sub { -s $log_file > $log_size });
 $output = `cat $log_file`;
 like(
    $output,
@@ -82,7 +84,7 @@ ok(
    'PID file already exists'
 );
 
-$output = `PTDEBUG=1 $cmd 0 --daemonize --pid $pid_file 2>&1`;
+$output = `$cmd 2 --daemonize --pid $pid_file 2>&1`;
 like(
    $output,
    qr{The PID file $pid_file already exists},
@@ -126,6 +128,8 @@ SKIP: {
    $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
               : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
               : die "Cannot find fd 0 symlink in /proc/$pid";
+   PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
+      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
    $stdin = readlink $proc_fd_0;
    like(
       $stdin,
