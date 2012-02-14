@@ -21,7 +21,11 @@ parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.
 local p="$TMPDIR/collect/2011_12_05"
 
 # Default collect, no extras like gdb, tcpdump, etc.
-collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
+set -x
+collect "$TMPDIR/collect" "2011_12_05" # > $p-output 2>&1
+set +x
+# XXX
+ls $TMPDIR/collect
 
 # Even if this system doesn't have all the cmds, collect should still
 # have created some files for cmds that (hopefully) all systems have.
