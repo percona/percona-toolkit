@@ -110,6 +110,10 @@ sub get_id {
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
 PerconaTest::wait_for_table($dbh1, "test.t3", "f > 1");
 
+# XXX
+warn "1", `/tmp/12345/use -e "show tables from test"`;
+warn `/tmp/12346/use -e "show tables from test"`;
+
 $cr = new CompareResults(
    method     => 'checksum',
    'base-dir' => '/dev/null',  # not used with checksum method
@@ -139,6 +143,10 @@ is_deeply(
    'checksum: temp table exists'
 );
 
+# XXX
+warn "2", `/tmp/12345/use -e "show tables from test"`;
+warn `/tmp/12346/use -e "show tables from test"`;
+
 proc('before_execute', db=>'test', 'temp-table'=>'dropme');
 
 is(
@@ -159,8 +167,8 @@ ok(
 );
 
 # XXX
-diag(`/tmp/12345/use -e "show tables from test"`);
-diag(`/tmp/12346/use -e "show tables from test"`);
+warn "3", `/tmp/12345/use -e "show tables from test"`;
+warn `/tmp/12346/use -e "show tables from test"`;
 
 proc('execute');
 
