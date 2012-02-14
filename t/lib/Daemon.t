@@ -15,6 +15,8 @@ use Daemon;
 use OptionParser;
 use PerconaTest;
 
+use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
+
 my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
 my $d = new Daemon(o=>$o);
 
@@ -30,7 +32,7 @@ sub rm_tmp_files() {
 rm_tmp_files();
 
 my $cmd     = "$trunk/t/lib/samples/daemonizes.pl";
-my $ret_val = system("$cmd 2 --daemonize --pid $pid_file");
+my $ret_val = system("$cmd 2 --daemonize --pid $pid_file >/dev/null 2>&1");
 die 'Cannot test Daemon.pm because t/daemonizes.pl is not working'
    unless $ret_val == 0;
 
@@ -108,6 +110,8 @@ SKIP: {
    my $proc_fd_0 = -l "/proc/$pid/0"    ? "/proc/$pid/0"
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
                  : die "Cannot find fd 0 symlink in /proc/$pid";
+   PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
+      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
    my $stdin = readlink $proc_fd_0;
    is(
       $stdin,
@@ -136,7 +140,7 @@ SKIP: {
 # pid-file is still running
 # ##########################################################################
 rm_tmp_files();
-system("$cmd 5 --daemonize --pid $pid_file 2>&1");
+system("$cmd 5 --daemonize --pid $pid_file >/dev/null 2>&1");
 PerconaTest::wait_for_files($pid_file);
 chomp($pid = `cat $pid_file`);
 kill 9, $pid;
