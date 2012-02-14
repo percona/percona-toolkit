@@ -270,8 +270,6 @@ sub wait_for_table {
          }
          return 1;
       },
-      0.25,
-      15,
    );
 }
 
@@ -280,12 +278,13 @@ sub wait_for_files {
    return wait_until(
       sub {
          foreach my $file (@files) {
-            return 0 if ! -f $file;
+            if ( ! -f $file ) {
+               PTDEVDEBUG && _d('Waiting for file', $file);
+               return 0;
+            }
          }
          return 1;
       },
-      0.25,
-      15,
    );
 }
 

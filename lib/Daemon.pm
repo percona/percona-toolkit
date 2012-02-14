@@ -55,11 +55,12 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
    # I'm daemonized now.
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -73,12 +74,14 @@ sub daemonize {
    # Only reopen STDIN to /dev/null if it's a tty.  It may be a pipe,
    # in which case we don't want to break it.
    if ( -t STDIN ) {
+      PTDEBUG && _d('STDIN is a terminal; redirecting from /dev/null');
       close STDIN;
       open  STDIN, '/dev/null'
          or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
    }
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -93,18 +96,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 

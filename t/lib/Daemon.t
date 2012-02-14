@@ -113,7 +113,7 @@ SKIP: {
                  : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
                  : die "Cannot find fd 0 symlink in /proc/$pid";
    PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
-      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
+      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`, `lsof -p $pid`);
    my $stdin = readlink $proc_fd_0;
    is(
       $stdin,
@@ -129,7 +129,7 @@ SKIP: {
               : -l "/proc/$pid/fd/0" ? "/proc/$pid/fd/0"
               : die "Cannot find fd 0 symlink in /proc/$pid";
    PTDEVDEBUG && PerconaTest::_d('pid_file', $pid_file,
-      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`);
+      'pid', $pid, 'proc_fd_0', $proc_fd_0, `ls -l $proc_fd_0`, `lsof -p $pid`);
    $stdin = readlink $proc_fd_0;
    like(
       $stdin,
