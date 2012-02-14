@@ -10,6 +10,7 @@
 ##############
 set +u
 set -e
+set -x
 
 ##################################
 # Check for needed Perl modules. #
@@ -34,8 +35,10 @@ export PATH="$PATH:/usr/sbin:$PWD/mysql-${MYSQL}-barebones/bin"
 #############################
 # Check and start test env. #
 #############################
+set +x
 sandbox/test-env checkconfig
 sandbox/test-env restart
+set -x
 
 #######################
 # Set debug env vars. #
@@ -59,4 +62,6 @@ done
 #############
 # Clean up. #
 #############
+set +x
 sandbox/test-env stop
+set -x
