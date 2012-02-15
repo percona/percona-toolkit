@@ -1,0 +1,4 @@
+my ($comment) = $event->{Info} =~ m!/\*(.+?)\*/!;
+PTDEBUG && _d('comment:', $comment);
+$event->{comment} = $comment;
+1
