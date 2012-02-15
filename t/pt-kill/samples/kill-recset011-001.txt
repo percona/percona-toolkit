@@ -1,0 +1,2 @@
+KILL 4 (Query 6 sec) /* fruit=orange */ select 1 from fuits;
+KILL 3 (Query 6 sec) /* fruit=orange */ select 1 from fuits;
