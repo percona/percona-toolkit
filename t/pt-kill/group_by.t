@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 8;
+use Test::More tests => 9;
 
 use PerconaTest;
 use Sandbox;
@@ -120,6 +120,22 @@ is(
    $output,
    "",
    "Queries don't match unless comments are stripped"
+);
+
+# ###########################################################################
+# Use --filter to create custom --group-by columns.
+# ###########################################################################
+ok(
+   no_diff(
+      sub { pt_kill::main(@args, "$sample/recset011.txt",
+         "--filter", "$trunk/t/pt-kill/samples/filter001.txt",
+         qw(--group-by comment --query-count 2 --each-busy-time 5),
+         qw(--match-user foo --victims all --print --no-strip-comments));
+      },
+      "t/pt-kill/samples/kill-recset011-001.txt",
+      sed => [ "-e 's/^# [^ ]* //g'" ],
+   ),
+   "--filter and custom --group-by"
 );
 
 # #############################################################################
