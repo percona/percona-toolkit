@@ -1477,7 +1477,7 @@ L<"--variable"> column matches the L<"--match"> option.  For example, to trigger
 when more than 10 processes are in the "statistics" state, use the following
 options:
 
-  --trigger processlist --variable State \
+  --function processlist --variable State \
     --match statistics --threshold 10
 
 =back
