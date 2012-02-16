@@ -4085,7 +4085,7 @@ Print DROP KEY statement for each duplicate key.  By default an ALTER TABLE
 DROP KEY statement is printed below each duplicate key so that, if you want to
 remove the duplicate key, you can copy-paste the statement into MySQL.
 
-To disable printing these statements, specify --nosql.
+To disable printing these statements, specify C<--no-sql>.
 
 =item --[no]summary
 

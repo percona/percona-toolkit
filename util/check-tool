@@ -23,11 +23,12 @@ my $tool_type;        # perl or bash
 my @check_subs = (qw(
    check_alpha_order
    check_module_usage
-   check_option_types
    check_pod_header_order
    check_pod_formatting
-   check_option_usage
    check_pod_links
+   check_option_usage
+   check_option_types
+   check_option_typos
 ));
 
 TOOL:
@@ -469,6 +470,22 @@ sub check_option_usage {
    }
 
    return;
+}
+
+sub check_option_typos {
+   my ($fh) = @_;
+
+   my %ops = map { $_=>1 } split /\n/, `awk '/^=item --/ {print \$2}' $tool_file`;
+   my $len = `wc -l $tool_file`;
+   my $doc = `grep '^=pod' -A $len`;
+   while ( $doc =~ m/(--[a-z]+[a-z-]+)/sg ) {
+      my $op  = $1;
+      my $nop = $op;
+      $nop =~ s/^--no-/--[no]/;
+      if ( !$ops{$op} && !$ops{$nop} ) {
+         print "Unknown option in documentation: $op\n"
+      }
+   }
 }
 
 sub check_pod_links {

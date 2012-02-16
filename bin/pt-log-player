@@ -3066,7 +3066,7 @@ L<"--base-dir">.  These session files are played with L<"--play">.
 pt-log-player will L<"--play"> session files in parallel using N number of
 L<"--threads">.  (They're not technically threads, but we call them that
 anyway.)  Each thread will play all the sessions in its given session files.
-The sessions are played as fast as possible--there are no delays--because the
+The sessions are played as fast as possible (there are no delays) because the
 goal is to stress-test and load-test the server.  So be careful using this
 script on a production server!
 
