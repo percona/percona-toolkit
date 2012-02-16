@@ -14530,7 +14530,7 @@ and see also L<"FINGERPRINTS">.
 
 A report is printed for each L<"--group-by"> value (unless C<--no-report> is
 given).  Therefore, C<--group-by user,db> means "report on queries with the
-same user and report on queries with the same db"--it does not mean "report
+same user and report on queries with the same db"; it does not mean "report
 on queries with the same user and db."  See also L<"OUTPUT">.
 
 Every value must have a corresponding value in the same position in
@@ -15236,7 +15236,7 @@ The MySQL time expression is wrapped inside a query like
 valid inside this query.  For example, do not use UNIX_TIMESTAMP() because
 UNIX_TIMESTAMP(UNIX_TIMESTAMP()) returns 0.
 
-Events are assumed to be in chronological--older events at the beginning of
+Events are assumed to be in chronological: older events at the beginning of
 the log and newer events at the end of the log.  L<"--since"> is strict: it
 ignores all queries until one is found that is new enough.  Therefore, if
 the query events are not consistently timestamped, some may be ignored which
