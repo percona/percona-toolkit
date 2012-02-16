@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 24;
+   plan tests => 25;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -261,6 +261,12 @@ is(
    $output,
    2,
    "Not stalking, collect ran for --run-time"
+);
+
+is(
+   `cat $dest/nostalk-hostname`,
+   `hostname`,
+   "Not stalking, collect gathered data"
 );
 
 $output = `ps x | grep -v grep | grep 'pt-stalk --no-stalk'`;
