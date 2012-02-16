@@ -22,9 +22,10 @@ local p="$TMPDIR/collect/2011_12_05"
 
 # Default collect, no extras like gdb, tcpdump, etc.
 set -x
-collect "$TMPDIR/collect" "2011_12_05" # > $p-output 2>&1
+collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 set +x
 # XXX
+cat $p-output
 ls $TMPDIR/collect
 
 # Even if this system doesn't have all the cmds, collect should still
@@ -45,6 +46,9 @@ fi
 cmd_ok \
    "grep -q '\-hostname\$' $TMPDIR/collect-files" \
    "Collected hostname"
+
+# XXX
+df && cat $p-df
 
 cmd_ok \
    "grep -q 'Avail' $p-df" \
@@ -96,6 +100,9 @@ cmd_ok \
 cmd_ok \
    "grep -q '^| Uptime' $p-mysqladmin" \
    "mysqladmin ext"
+
+# XXX
+cat $p-opentables*
 
 cmd_ok \
    "grep -qP 'Database\tTable\tIn_use' $p-opentables1" \
