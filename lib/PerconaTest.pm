@@ -287,6 +287,16 @@ sub wait_for_files {
    );
 }
 
+sub wait_for_sh {
+   my ($cmd) = @_;
+   return wait_until(
+      sub {
+         my $retval = system("$cmd 2>/dev/null");
+         return $retval >> 8 == 0 ? 1 : 0;
+      }
+   );
+};
+
 sub _read {
    my ( $fh ) = @_;
    return <$fh>;
