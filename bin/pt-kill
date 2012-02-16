@@ -959,7 +959,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1249,12 +1249,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -3576,6 +3578,27 @@ sub main {
    }
 
    # ########################################################################
+   # Create the --filter sub.
+   # ########################################################################
+   my $filter_sub;
+   if ( my $filter = $o->get('filter') ) {
+      if ( -f $filter && -r $filter ) {
+         PTDEBUG && _d('Reading file', $filter, 'for --filter code');
+         open my $fh, "<", $filter or die "Cannot open $filter: $OS_ERROR";
+         $filter = do { local $/ = undef; <$fh> };
+         close $fh;
+      }
+      else {
+         $filter = "( $filter )";  # issue 565
+      }
+      my $code = 'sub { my ( $event ) = @_; '
+               . "$filter && return \$event; };";
+      PTDEBUG && _d('--filter code:', $code);
+      $filter_sub = eval $code
+         or die "Error compiling --filter code: $code\n$EVAL_ERROR";
+   }
+
+   # ########################################################################
    # Make input sub that will either get processlist from MySQL or a file.
    # ########################################################################
    my $dsn;
@@ -3658,7 +3681,8 @@ sub main {
    my $each_busy_time = $o->get('each-busy-time');
    my $any_busy_time  = $o->get('any-busy-time');
    my $group_by       = $o->get('group-by');
-   if ( $group_by ) {
+   if ( $group_by 
+        && $group_by =~ m/id|user|host|db|command|time|state|info/i ) {
       # Processlist.pm is case-sensitive.  It matches Id, Host, db, etc.
       # So we'll do the same because if we set NAME_lc on the dbh then
       # we'll break our Processlist obj.
@@ -3720,6 +3744,17 @@ sub main {
          die "Error getting SHOW PROCESSLIST: $EVAL_ERROR";
       }
 
+      # Apply --filter to the processlist events.
+      my $filtered_proclist;
+      if ( $filter_sub && $proclist && @$proclist ) {
+         foreach my $proc ( @$proclist ) {
+            push @$filtered_proclist, $proc if $filter_sub->($proc);
+         }
+      }
+      else {
+         $filtered_proclist = $proclist;
+      }
+
       my @queries;
       if ( $proclist ) {
          # ##################################################################
@@ -3738,27 +3773,26 @@ sub main {
          # ##################################################################
          CLASS:
          foreach my $class ( keys %$query_classes ) {
-            PTDEBUG && _d("Finding matching queries for class", $class);
+            PTDEBUG && _d('Finding matching queries in class', $class);
+
             my @matches = $pl->find($query_classes->{$class}, %find_spec);
-            if ( !@matches ) {
-               PTDEBUG && _d("Class has no matching queries");
-               next CLASS;
-            }
+            PTDEBUG && _d(scalar @matches, 'queries in class', $class);
+            next CLASS unless scalar @matches;
 
             # ###############################################################
             # Apply class-based filters.
             # ###############################################################
             if ( $query_count && @matches < $query_count ) {
-               PTDEBUG && _d("Class does not have enough queries; has",
-                  scalar @matches, "but needs at least", $query_count);
+               PTDEBUG && _d('Not enough queries in class', $class,
+                  '; has', scalar @matches, 'but needs at least', $query_count);
                next CLASS;
             }
 
             if ( $each_busy_time ) {
                foreach my $proc ( @matches ) {
                   if ( ($proc->{Time} || 0) <= $each_busy_time ) {
-                     PTDEBUG && _d("This proc hasn't been running long enough:",
-                        Dumper($proc));
+                     PTDEBUG && _d('This query in class', $class,
+                        'hasn\'t been running long enough:', Dumper($proc));
                      next CLASS;
                   }
                }
@@ -3772,7 +3806,7 @@ sub main {
                   }
                }
                if ( !$busy_enough ) {
-                  PTDEBUG && _d("No proc is busy enough");
+                  PTDEBUG && _d('No query is busy enough in class', $class);
                   next CLASS;
                }
             }
@@ -3799,8 +3833,9 @@ sub main {
             # ###############################################################
             # Save matching queries in this class.
             # ###############################################################
-            PTDEBUG && _d(scalar @matches, "queries in class to kill");
+            PTDEBUG && _d(scalar @matches, 'queries to kill in class', $class);
             push @queries, @matches;
+
          } # CLASS
          msg('Matched ' . scalar @queries . ' queries');
 
@@ -4129,6 +4164,48 @@ short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --filter
+
+type: string
+
+Discard events for which this Perl code doesn't return true.
+
+This option is a string of Perl code or a file containing Perl code that gets
+compiled into a subroutine with one argument: $event.  This is a hashref.
+If the given value is a readable file, then pt-kill reads the entire
+file and uses its contents as the code.  The file should not contain
+a shebang (#!/usr/bin/perl) line.
+
+If the code returns true, the chain of callbacks continues; otherwise it ends.
+The code is the last statement in the subroutine other than C<return $event>. 
+The subroutine template is:
+
+  sub { $event = shift; filter && return $event; }
+
+Filters given on the command line are wrapped inside parentheses like like
+C<( filter )>.  For complex, multi-line filters, you must put the code inside
+a file so it will not be wrapped inside parentheses.  Either way, the filter
+must produce syntactically valid code given the template.  For example, an
+if-else branch given on the command line would not be valid:
+
+  --filter 'if () { } else { }'  # WRONG
+
+Since it's given on the command line, the if-else branch would be wrapped inside
+parentheses which is not syntactically valid.  So to accomplish something more
+complex like this would require putting the code in a file, for example
+filter.txt:
+
+  my $event_ok; if (...) { $event_ok=1; } else { $event_ok=0; } $event_ok
+
+Then specify C<--filter filter.txt> to read the code from filter.txt.
+
+If the filter code won't compile, pt-kill will die with an error.
+If the filter code does compile, an error may still occur at runtime if the
+code tries to do something wrong (like pattern match an undefined value).
+pt-kill does not provide any safeguards so code carefully!
+
+It is permissible for the code to have side effects (to alter C<$event>).
 
 =item --group-by
 
