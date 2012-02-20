@@ -17,6 +17,7 @@ use PerconaTest;
 use Progress;
 use Transformers;
 use Retry;
+use Quoter;
 use CopyRowsInsertSelect;
 
 Transformers->import(qw(secs_to_time));
@@ -38,64 +39,124 @@ elsif ( !@{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')} ) {
    plan skip_all => "Sandbox master does not have the sakila database";
 }
 else {
-   plan tests => 8;
+   plan tests => 14;
 }
 
+my $q      = new Quoter();
 my $rr     = new Retry();
-my $osc    = new CopyRowsInsertSelect(Retry => $rr);
+my $osc    = new CopyRowsInsertSelect(Retry => $rr, Quoter => $q);
 my $msg    = sub { print "$_[0]\n"; };
 my $output = "";
+my $rows;
 
-$sb->load_file("master", "t/lib/samples/osc/tbl001.sql");
-$dbh->do("USE osc");
+# ###########################################################################
+# Copy simple tables.
+# ###########################################################################
 
-$osc->copy(
-   dbh        => $dbh,
-   from_table => 'osc.t',
-   to_table   => 'osc.__new_t',
-   columns    => [qw(id c)],
-   chunks     => ['1=1'],
-   msg        => $msg,
+sub test_copy_table {
+   my (%args) = @_;
+   my ($tbl, $col, $expect) = @args{qw(tbl col expect)};
+
+   $sb->load_file("master", "t/lib/samples/osc/$tbl");
+   PerconaTest::wait_for_table($dbh, "osc.t", "id=5");
+   $dbh->do("USE osc");
+
+   $osc->copy(
+      dbh        => $dbh,
+      from_table => 'osc.t',
+      to_table   => 'osc.__new_t',
+      columns    => ['id', $col],
+      chunks     => ['1=1'],
+      msg        => $msg,
+   );
+
+   $rows = $dbh->selectall_arrayref("select id, `$col` from __new_t order by id");
+   is_deeply(
+      $rows,
+      [ [1, 'a'], [2, 'b'], [3, 'c'], [4, 'd'], [5, 'e'], ],
+      "$tbl: One chunk copy"
+   ) or print Dumper($rows);
+
+   $dbh->do("truncate table osc.__new_t");
+
+   ok(
+      no_diff(
+       sub {
+            $osc->copy(
+               dbh          => $dbh,
+               from_table   => 'osc.t',
+               to_table     => 'osc.__new_t',
+               columns      => ['id', $col],
+               chunks       => ['id < 4', 'id >= 4 AND id < 6'],
+               msg          => $msg,
+               print        => 1,
+               engine_flags => 'LOCK IN SHARE MODE',
+            );
+         },
+         "t/lib/samples/osc/$expect",
+         stderr => 1,
+      ),
+      "$tbl: 2 chunk copy"
+   );
+
+   $rows = $dbh->selectall_arrayref("select id, `$col` from __new_t order by id");
+   is_deeply(
+      $rows,
+      [],
+      "$tbl: print doesn't exec statements"
+   );
+}
+
+test_copy_table(
+   tbl    => "tbl001.sql",
+   col    => "c",
+   expect => "copyins001.txt",
 );
 
-my $rows = $dbh->selectall_arrayref("select id, c from __new_t order by id");
-is_deeply(
-   $rows,
-   [ [1, 'a'], [2, 'b'], [3, 'c'], [4, 'd'], [5, 'e'], ],
-   "One chunk copy"
-) or print Dumper($rows);
-
-
+# Sleep callback.
+my $sleep_cnt = 0;
 $dbh->do("truncate table osc.__new_t");
-$output = output( sub {
+output( sub {
    $osc->copy(
-      dbh          => $dbh,
-      from_table   => 'osc.t',
-      to_table     => 'osc.__new_t',
-      columns      => [qw(id c)],
-      chunks       => ['id < 4', 'id >= 4 AND id < 6'],
-      msg          => $msg,
-      print        => 1,
-      engine_flags => 'LOCK IN SHARE MODE',
+      dbh        => $dbh,
+      from_table => 'osc.t',
+      to_table   => 'osc.__new_t',
+      columns    => [qw(id c)],
+      chunks     => ['id < 4', 'id >= 4 AND id < 6'],
+      msg        => $msg,
+      sleep      => sub { $sleep_cnt++; },
    );
 });
+is(
+   $sleep_cnt,
+   1,
+   "Calls sleep callback after each chunk (except last chunk)"
+);
+
+eval {
+   $output = output(sub { $osc->cleanup(); } );
+};
 
 ok(
-   no_diff(
-      $output,
-      "t/lib/samples/osc/copyins001.txt",
-      cmd_output => 1,
-   ),
-   "Prints 2 SQL statments for the 2 chunks"
+   !$EVAL_ERROR && !$output,
+   "cleanup() works but doesn't do anything"
 );
 
-$rows = $dbh->selectall_arrayref("select id, c from __new_t order by id");
-is_deeply(
-   $rows,
-   [],
-   "Doesn't exec those statements if print is true"
+test_copy_table(
+   tbl    => "tbl002.sql",
+   col    => "default",
+   expect => "copyins002.txt",
 );
 
+test_copy_table(
+   tbl    => "tbl003.sql",
+   col    => "space col",
+   expect => "copyins003.txt",
+);
+
+# ###########################################################################
+# Copy a larger, more complex sakila table.
+# ###########################################################################
 $dbh->do('create table osc.city like sakila.city');
 $dbh->do('alter table osc.city engine=myisam');
 my $chunks = [
@@ -138,35 +199,6 @@ like(
    $output,
    qr/Copy rows:\s+100% 00:00 remain/,
    "Reports copy progress if Progress obj given"
-);
-
-
-my $sleep_cnt = 0;
-
-$dbh->do("truncate table osc.__new_t");
-output( sub {
-   $osc->copy(
-      dbh        => $dbh,
-      from_table => 'osc.t',
-      to_table   => 'osc.__new_t',
-      columns    => [qw(id c)],
-      chunks     => ['id < 4', 'id >= 4 AND id < 6'],
-      msg        => $msg,
-      sleep      => sub { $sleep_cnt++; },
-   );
-});
-is(
-   $sleep_cnt,
-   1,
-   "Calls sleep callback after each chunk (except last chunk)"
-);
-
-eval {
-   $output = output(sub { $osc->cleanup(); } );
-};
-ok(
-   !$EVAL_ERROR && !$output,
-   "cleanup() works but doesn't do anything"
 );
 
 # #############################################################################
