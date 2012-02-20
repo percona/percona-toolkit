@@ -37,13 +37,13 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   OSCCaptureSync object
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw();
+   my @required_args = qw(Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
    my $self = {
-      %args,
+      Quoter => $args{Quoter},
    };
 
    return bless $self, $class;
@@ -73,11 +73,14 @@ sub _make_triggers {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($db, $tbl, $tmp_tbl, $chunk_column) = @args{@required_args};
+   my $q = $self->{Quoter};
 
-   my $old_table  = "`$db`.`$tbl`";
-   my $new_table  = "`$db`.`$tmp_tbl`";
-   my $new_values = join(', ', map { "NEW.$_" } @{$args{columns}});
-   my $columns    = join(', ', @{$args{columns}});
+   $chunk_column = $q->quote($chunk_column);
+
+   my $old_table  = $q->quote($db, $tbl);
+   my $new_table  = $q->quote($db, $tmp_tbl);
+   my $new_values = join(', ', map { "NEW.".$q->quote($_) } @{$args{columns}});
+   my $columns    = join(', ', map { $q->quote($_) }        @{$args{columns}});
 
    my $delete_trigger = "CREATE TRIGGER mk_osc_del AFTER DELETE ON $old_table "
                       . "FOR EACH ROW "
@@ -113,9 +116,10 @@ sub cleanup {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $msg) = @args{@required_args};
+   my $q = $self->{Quoter};
 
    foreach my $trigger ( qw(del ins upd) ) {
-      my $sql = "DROP TRIGGER IF EXISTS `$db`.`mk_osc_$trigger`";
+      my $sql = "DROP TRIGGER IF EXISTS " . $q->quote($db, "mk_osc_$trigger");
       $msg->($sql);
       $dbh->do($sql) unless $args{print};
    }
