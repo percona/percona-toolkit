@@ -41,7 +41,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 30;
+   plan tests => 32;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -394,6 +394,30 @@ like(
    $output,
    qr/^8\s+200\s+$/m,
    "--where for upper oob chunk"
+);
+
+# #############################################################################
+# Bug 932442: column with 2 spaces
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
+PerconaTest::wait_for_table($master_dbh, "test.t", "id=10");
+
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      qw(-t test.t --chunk-size 3)) },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "Bug 932442: 0 exit"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Bug 932442: 0 errors"
 );
 
 # #############################################################################
