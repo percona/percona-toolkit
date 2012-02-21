@@ -1,0 +1,45 @@
+*************************** 1. row ***************************
+     Id: 1
+   User: foo
+   Host: 127.0.0.1:3306
+     db: db
+Command: Query
+   Time: 5
+  State: statistics
+   Info: /* fruit=apple */ select 1 from fuits;
+*************************** 2. row ***************************
+     Id: 2
+   User: foo
+   Host: 127.0.0.1:3306
+     db: db
+Command: Query
+   Time: 5
+  State: statistics
+   Info: /* fruit=apple */ select 1 from fuits;
+*************************** 3. row ***************************
+     Id: 3
+   User: foo
+   Host: 127.0.0.1:3306
+     db: db
+Command: Query
+   Time: 6
+  State: statistics
+   Info: /* fruit=orange */ select 1 from fuits;
+*************************** 4. row ***************************
+     Id: 4
+   User: foo
+   Host: 127.0.0.1:3306
+     db: db
+Command: Query
+   Time: 6
+  State: statistics
+   Info: /* fruit=orange */ select 1 from fuits;
+*************************** 5. row ***************************
+     Id: 5
+   User: foo
+   Host: 127.0.0.1:3306
+     db: db
+Command: Query
+   Time: 4
+  State: statistics
+   Info: /* fruit=pear */ select 1 from fuits;

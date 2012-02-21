@@ -29,7 +29,6 @@ else {
 my $vp      = new VersionParser();
 my $q       = new Quoter();
 my $tp      = new TableParser(Quoter => $q);
-my $du      = new MySQLDump();
 my $chunker = new TableChunker(Quoter => $q, TableParser => $tp);
 my $o       = new OptionParser();
 
@@ -40,7 +39,7 @@ pt_online_schema_change::__set_quiet(1);
 $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
 $dbh->do('use mkosc');
 
-my $old_tbl_struct = $tp->parse($du->get_create_table($dbh, $q, 'mkosc', 'a'));
+my $old_tbl_struct = $tp->parse($tp->get_create_table($dbh, 'mkosc', 'a'));
 
 my %args = (
    dbh           => $dbh,
@@ -53,7 +52,6 @@ my %args = (
    TableParser   => $tp,
    OptionParser  => $o,
    TableChunker  => $chunker,
-   MySQLDump     => $du,
 );
 
 my %tbl_info = pt_online_schema_change::check_tables(%args);
@@ -112,7 +110,7 @@ throws_ok(
 $dbh->do('DROP TRIGGER mkosc.foo');
 
 $dbh->do('ALTER TABLE mkosc.a DROP COLUMN i');
-my $tmp_struct = $tp->parse($du->get_create_table($dbh, $q, 'mkosc', 'a'));
+my $tmp_struct = $tp->parse($tp->get_create_table($dbh, 'mkosc', 'a'));
 throws_ok(
    sub { pt_online_schema_change::check_tables(
       %args,

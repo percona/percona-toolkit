@@ -38,12 +38,12 @@ Changelog
 * Fixed bug 871438: Bash tools are insecure
 * Fixed bug 897758: Failed to prepare TableSyncChunk plugin: Use of uninitialized value $args{"chunk_range"} in lc at pt-table-sync line 3055
 * Fixed bug 919819: pt-kill --execute-command creates zombies
-* Fixed bug 894255: pt-kill: when --daemonize is given, should not check that stdin is a tty
 * Fixed bug 925778: pt-ioprofile doesn't run without a file
 * Fixed bug 925477: pt-ioprofile docs refer to pt-iostats
 * Fixed bug 857091: pt-sift downloads http://percona.com/get/pt-pmp, which does not work
 * Fixed bug 857104: pt-sift tries to invoke mext, should be pt-mext
 * Fixed bug 872699: pt-diskstats: rd_avkb & wr_avkb derived incorrectly
+* Fixed bug 897029: pt-diskstats computes wrong values for md0
 * Fixed bug 882918: pt-stalk spams warning if oprofile isn't installed
 * Fixed bug 884504: pt-stalk doesn't check pt-collect
 * Fixed bug 897483: pt-online-schema-change "uninitialized value" due to update-foreign-keys-method
