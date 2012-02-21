@@ -58,43 +58,63 @@ sub get_create_table {
    die "I need a tbl parameter" unless $tbl;
    my $q = $self->{Quoter};
 
-   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-           . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-           . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-           . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-   PTDEBUG && _d($sql);
-   eval { $dbh->do($sql); };
+   # To ensure a consistent output, we save the current (old) SQL mode,
+   # then set it to the new SQL mode that what we need.  When done, even
+   # if an error occurs, we restore the old SQL mode.
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   # Set new SQL mode.
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
    PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
    # Must USE the tbl's db because some bug with SHOW CREATE TABLE on a
    # view when the current db isn't the view's db causes MySQL to crash.
-   $sql = 'USE ' . $q->quote($db);
-   PTDEBUG && _d($dbh, $sql);
-   $dbh->do($sql);
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
 
-   $sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
-   PTDEBUG && _d($sql);
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
    my $href;
-   eval { $href = $dbh->selectrow_hashref($sql); };
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( $EVAL_ERROR ) {
+      # TODO: I think we fail silently for tools which may try to call
+      # this on temp tables, or don't care if the table goes away.  We
+      # should warn $EVAL_ERROR and require callers to eval us and do
+      # what they want with the warning.
       PTDEBUG && _d($EVAL_ERROR);
+
+      # Restore old SQL mode.
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
       return;
    }
 
-   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-        . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-   PTDEBUG && _d($sql);
-   $dbh->do($sql);
+   # Restore old SQL mode.
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
 
-   my ($key) = grep { m/create table/i } keys %$href;
-   if ( $key ) {
-      PTDEBUG && _d('This table is a base table');
-      $href->{$key}  =~ s/\b[ ]{2,}/ /g;
-      $href->{$key} .= "\n";
-   }
-   else {
-      PTDEBUG && _d('This table is a view');
-      ($key) = grep { m/create view/i } keys %$href;
+   # SHOW CREATE TABLE has at least 2 columns like:
+   # mysql> show create table city\G
+   # *************************** 1. row ***************************
+   #        Table: city
+   # Create Table: CREATE TABLE `city` (
+   #   `city_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+   #   ... 
+   # We want the second column.
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
    }
 
    return $href->{$key};
