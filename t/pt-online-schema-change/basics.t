@@ -19,13 +19,17 @@ use Data::Dumper;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave_dbh  = $sb->get_dbh_for('slave1');
 
-if ( !$dbh ) {
+if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( !$slave_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave';
+}
 else {
-   plan tests => 22;
+   plan tests => 24;
 }
 
 my $output  = "";
@@ -35,7 +39,9 @@ my $exit    = 0;
 my $rows;
 
 $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
-$dbh->do('use mkosc');
+PerconaTest::wait_for_table($slave_dbh, "mkosc.a", "c='r'");
+$master_dbh->do('use mkosc');
+$slave_dbh->do('use mkosc');
 
 # #############################################################################
 # --check-tables-and-exit
@@ -86,7 +92,7 @@ output(
       'D=mkosc,t=a', qw(--alter ENGINE=InnoDB)) },
 );
 
-$rows = $dbh->selectall_hashref('show table status from mkosc', 'name');
+$rows = $master_dbh->selectall_hashref('show table status from mkosc', 'name');
 is(
    $rows->{a}->{engine},
    'InnoDB',
@@ -99,8 +105,8 @@ is(
    "Kept old table, ENGINE=MyISAM"
 );
 
-my $org_rows = $dbh->selectall_arrayref('select * from mkosc.__old_a order by i');
-my $new_rows = $dbh->selectall_arrayref('select * from mkosc.a order by i');
+my $org_rows = $master_dbh->selectall_arrayref('select * from mkosc.__old_a order by i');
+my $new_rows = $master_dbh->selectall_arrayref('select * from mkosc.a order by i');
 is_deeply(
    $new_rows,
    $org_rows,
@@ -113,10 +119,19 @@ is(
    "Exit status 0"
 );
 
+# Tool should set SQL_LOG_BIN=0 by default, so the table
+# on the slave should not have changed.
+$rows = $slave_dbh->selectall_hashref('show table status from mkosc', 'name');
+is(
+   $rows->{a}->{engine},
+   'MyISAM',
+   "SQL_LOG_BIN=0 by default"
+);
+
 # #############################################################################
 # No --alter and --drop-old-table.
 # #############################################################################
-$dbh->do('drop table mkosc.__old_a');  # from previous run
+$master_dbh->do('drop table if exists mkosc.__old_a');  # from prev run
 $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
 
 output(
@@ -124,7 +139,7 @@ output(
       'D=mkosc,t=a', qw(--drop-old-table)) },
 );
 
-$rows = $dbh->selectall_hashref('show table status from mkosc', 'name');
+$rows = $master_dbh->selectall_hashref('show table status from mkosc', 'name');
 is(
    $rows->{a}->{engine},
    'MyISAM',
@@ -136,7 +151,7 @@ ok(
    "--drop-old-table"
 );
 
-$new_rows = $dbh->selectall_arrayref('select * from mkosc.a order by i');
+$new_rows = $master_dbh->selectall_arrayref('select * from mkosc.a order by i');
 is_deeply(
    $new_rows,
    $org_rows,  # from previous run since old table was dropped this run
@@ -147,6 +162,14 @@ is(
    $exit,
    0,
    "Exit status 0"
+);
+
+# Bug 933232: drop temp table replicates and break replication.
+$rows = $slave_dbh->selectrow_hashref('show slave status');
+is(
+   $rows->{last_error},
+   '',
+   "Dropping temp table doesn't break replication (bug 933232)"
 );
 
 # ############################################################################
@@ -164,7 +187,7 @@ is(
 $sb->load_file('master', "t/pt-online-schema-change/samples/fk_tables_schema.sql");
 
 # city has a fk constraint on country, so get its original table def.
-my $orig_table_def = $dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
+my $orig_table_def = $master_dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
 
 # Alter the parent table.  The error we need to avoid is:
 # DBD::mysql::db do failed: Cannot delete or update a parent row:
@@ -181,7 +204,7 @@ is(
    "Exit status 0 (rebuild_constraints method)"
 );
 
-$rows = $dbh->selectall_arrayref('show tables from mkosc like "\_\_%"');
+$rows = $master_dbh->selectall_arrayref('show tables from mkosc like "\_\_%"');
 is_deeply(
    $rows,
    [],
@@ -193,7 +216,7 @@ is_deeply(
 # also updated city's fk constraint to __old_country.  We should have
 # dropped and re-added that constraint exactly, changing only __old_country
 # to country, like it originally was.
-my $new_table_def = $dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
+my $new_table_def = $master_dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
 is(
    $new_table_def,
    $orig_table_def,
@@ -205,7 +228,7 @@ is(
 #######################
 $sb->load_file('master', "t/pt-online-schema-change/samples/fk_tables_schema.sql");
 
-$orig_table_def = $dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
+$orig_table_def = $master_dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
 
 output(
    sub { $exit = pt_online_schema_change::main(@args,
@@ -218,14 +241,14 @@ is(
    "Exit status 0 (drop_old_table method)"
 );
 
-$rows = $dbh->selectall_arrayref('show tables from mkosc like "\_\_%"');
+$rows = $master_dbh->selectall_arrayref('show tables from mkosc like "\_\_%"');
 is_deeply(
    $rows,
    [],
    "Old table dropped (drop_old_table method)"
 ) or print Dumper($rows);
 
-$new_table_def = $dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
+$new_table_def = $master_dbh->selectrow_hashref('show create table mkosc.city')->{'create table'};
 is(
    $new_table_def,
    $orig_table_def,
@@ -240,19 +263,19 @@ sub test_table {
    my ($file, $name) = @args{qw(file name)};
 
    $sb->load_file('master', "t/lib/samples/osc/$file");
-   PerconaTest::wait_for_table($dbh, "osc.t", "id=5");
-   PerconaTest::wait_for_table($dbh, "osc.__new_t");
-   $dbh->do('use osc');
-   $dbh->do("DROP TABLE IF EXISTS osc.__new_t");
+   PerconaTest::wait_for_table($master_dbh, "osc.t", "id=5");
+   PerconaTest::wait_for_table($master_dbh, "osc.__new_t");
+   $master_dbh->do('use osc');
+   $master_dbh->do("DROP TABLE IF EXISTS osc.__new_t");
 
-   $org_rows = $dbh->selectall_arrayref('select * from osc.t order by id');
+   $org_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
 
    output(
       sub { $exit = pt_online_schema_change::main(@args,
          'D=osc,t=t', qw(--alter ENGINE=InnoDB)) },
    );
 
-   $new_rows = $dbh->selectall_arrayref('select * from osc.t order by id');
+   $new_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
 
    is_deeply(
       $new_rows,
@@ -280,5 +303,5 @@ test_table(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh);
+$sb->wipe_clean($master_dbh);
 exit;
