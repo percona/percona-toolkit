@@ -21,12 +21,7 @@ parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.
 local p="$TMPDIR/collect/2011_12_05"
 
 # Default collect, no extras like gdb, tcpdump, etc.
-set -x
 collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
-set +x
-# XXX
-cat $p-output
-ls $TMPDIR/collect
 
 # Even if this system doesn't have all the cmds, collect should still
 # have created some files for cmds that (hopefully) all systems have.
@@ -46,9 +41,6 @@ fi
 cmd_ok \
    "grep -q '\-hostname\$' $TMPDIR/collect-files" \
    "Collected hostname"
-
-# XXX
-df && cat $p-df
 
 cmd_ok \
    "grep -q 'Avail' $p-df" \
@@ -100,9 +92,6 @@ cmd_ok \
 cmd_ok \
    "grep -q '^| Uptime' $p-mysqladmin" \
    "mysqladmin ext"
-
-# XXX
-cat $p-opentables*
 
 cmd_ok \
    "grep -qP 'Database\tTable\tIn_use' $p-opentables1" \
