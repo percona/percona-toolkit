@@ -4218,7 +4218,7 @@ sub main {
             msg($sql);
             $dbh->do($sql) unless $o->get('print');
             
-            $sql = "DROP TABLE `$db`.`$tbl`";
+            $sql = "DROP TABLE IF EXISTS `$db`.`$tbl`";
             msg($sql);
             $dbh->do($sql) unless $o->get('print');
 
@@ -4241,7 +4241,7 @@ sub main {
       $capture_sync->cleanup(%plugin_args);
 
       if ( $o->get('rename-tables') &&  $o->get('drop-old-table') ) {
-         $sql = "DROP TABLE `$db`.`$old_tbl`";
+         $sql = "DROP TABLE IF EXISTS `$db`.`$old_tbl`";
          msg($sql);
          $dbh->do($sql) unless $o->get('print');
       }
