@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 18;
+   plan tests => 22;
 }
 
 my $output  = "";
@@ -230,6 +230,51 @@ is(
    $new_table_def,
    $orig_table_def,
    "Updated child table foreign key constraint (drop_old_table method)"
+);
+
+# #############################################################################
+# Alter tables with columns with resvered words and spaces.
+# #############################################################################
+sub test_table {
+   my (%args) = @_;
+   my ($file, $name) = @args{qw(file name)};
+
+   $sb->load_file('master', "t/lib/samples/osc/$file");
+   PerconaTest::wait_for_table($dbh, "osc.t", "id=5");
+   PerconaTest::wait_for_table($dbh, "osc.__new_t");
+   $dbh->do('use osc');
+   $dbh->do("DROP TABLE IF EXISTS osc.__new_t");
+
+   $org_rows = $dbh->selectall_arrayref('select * from osc.t order by id');
+
+   output(
+      sub { $exit = pt_online_schema_change::main(@args,
+         'D=osc,t=t', qw(--alter ENGINE=InnoDB)) },
+   );
+
+   $new_rows = $dbh->selectall_arrayref('select * from osc.t order by id');
+
+   is_deeply(
+      $new_rows,
+      $org_rows,
+      "$name rows"
+   );
+
+   is(
+      $exit,
+      0,
+      "$name exit status 0"
+   );
+}
+
+test_table(
+   file => "tbl002.sql",
+   name => "Reserved word column",
+);
+
+test_table(
+   file => "tbl003.sql",
+   name => "Space column",
 );
 
 # #############################################################################

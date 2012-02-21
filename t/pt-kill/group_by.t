@@ -9,13 +9,14 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 8;
+use Test::More tests => 9;
 
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
 
 my $sample = "$trunk/t/lib/samples/pl/";
+my @args   = qw(--test-matching);
 my $output;
 
 # #############################################################################
@@ -25,7 +26,7 @@ my $output;
 # The 3rd query (id 4) is user=root.  Next we'll test that we can filter
 # that one out.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --each-busy-time 2 --match-all),
       qw(--victims all-but-oldest --print)); }
 );
@@ -37,7 +38,7 @@ like(
 
 # Now with --match-user user1, the 3rd query is not matched.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --each-busy-time 2 --match-user user1),
       qw(--victims all-but-oldest --print)); }
 );
@@ -52,7 +53,7 @@ like(
 # 9, but the 10 does.  This is correct (see issue 1221) because --victims
 # is applied *after* per-class query matching.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --any-busy-time 10 --match-user user1),
       qw(--victims oldest --print)); }
 );
@@ -63,7 +64,7 @@ is(
 );
 
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --any-busy-time 9 --match-user user1),
       qw(--victims oldest --print)); }
 );
@@ -75,7 +76,7 @@ like(
 
 # Nothing matches because --each-busy-time isn't satifised.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --each-busy-time 10 --match-user user1),
       qw(--victims all-but-oldest --print)); }
 );
@@ -87,7 +88,7 @@ is(
 
 # Each busy time matches on the lowest possible value.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --each-busy-time 8 --match-user user1),
       qw(--victims all-but-oldest --print)); }
 );
@@ -99,7 +100,7 @@ like(
 
 # Nothing matches because --query-count isn't satisified.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 4 --each-busy-time 1 --match-user user1),
       qw(--victims all-but-oldest --print)); }
 );
@@ -111,7 +112,7 @@ is(
 
 # Without stripping comments, the queries won't be grouped into a class.
 $output = output(
-   sub { pt_kill::main("$sample/recset010.txt", qw(--print),
+   sub { pt_kill::main(@args, "$sample/recset010.txt",
       qw(--group-by info --query-count 2 --each-busy-time 2 --match-user user1),
       qw(--victims all-but-oldest --print --no-strip-comments)); }
 );
@@ -119,6 +120,22 @@ is(
    $output,
    "",
    "Queries don't match unless comments are stripped"
+);
+
+# ###########################################################################
+# Use --filter to create custom --group-by columns.
+# ###########################################################################
+ok(
+   no_diff(
+      sub { pt_kill::main(@args, "$sample/recset011.txt",
+         "--filter", "$trunk/t/pt-kill/samples/filter001.txt",
+         qw(--group-by comment --query-count 2 --each-busy-time 5),
+         qw(--match-user foo --victims all --print --no-strip-comments));
+      },
+      "t/pt-kill/samples/kill-recset011-001.txt",
+      sed => [ "-e 's/^# [^ ]* //g'" ],
+   ),
+   "--filter and custom --group-by"
 );
 
 # #############################################################################

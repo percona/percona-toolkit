@@ -4556,8 +4556,8 @@ rows.  Specifying the index with the 'i' part of the L<"--source"> argument can
 be crucial for this; use L<"--dry-run"> to examine the generated queries and be
 sure to EXPLAIN them to see if they are efficient (most of the time you probably
 want to scan the PRIMARY key, which is the default).  Even better, profile
-pt-archiver with pt-query-profiler and make sure it is not scanning the whole
-table every query.
+pt-archiver with mk-query-profiler (L<http://maatkit.org/get/mk-query-profiler>)
+and make sure it is not scanning the whole table every query.
 
 You can disable the seek-then-scan optimizations partially or wholly with
 L<"--no-ascend"> and L<"--ascend-first">.  Sometimes this may be more efficient

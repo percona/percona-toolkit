@@ -25,7 +25,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 3;
 }
 
 my $output;
@@ -78,16 +78,6 @@ like(
    $output,
    qr/Checking processlist/,
    '--verbose'
-);
-
-# ############################################################################
-# Reading file (or STDIN) should require connection.
-# ############################################################################
-$output = `/tmp/12345/use -e "SHOW PROCESSLIST" | $trunk/bin/pt-kill -F $cnf --busy-time 1 --print --verbose`;
-like(
-   $output,
-   qr/Reading files -/,
-   "Read STDIN from pipe"
 );
 
 # #############################################################################

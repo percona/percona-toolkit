@@ -1,0 +1,3 @@
+CREATE TRIGGER mk_osc_del AFTER DELETE ON `osc`.`t` FOR EACH ROW DELETE IGNORE FROM `osc`.`__new_t` WHERE `osc`.`__new_t`.`id` = OLD.`id`
+CREATE TRIGGER mk_osc_upd AFTER UPDATE ON `osc`.`t` FOR EACH ROW REPLACE INTO `osc`.`__new_t` (`id`, `space col`) VALUES (NEW.`id`, NEW.`space col`)
+CREATE TRIGGER mk_osc_ins AFTER INSERT ON `osc`.`t` FOR EACH ROW REPLACE INTO `osc`.`__new_t` (`id`, `space col`) VALUES(NEW.`id`, NEW.`space col`)

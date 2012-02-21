@@ -16,6 +16,7 @@ warn() {
    exit_status=$((exit_status | 1))
 }
 
+cwd="$PWD"
 if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
    BRANCH=$PERCONA_TOOLKIT_BRANCH
 else
@@ -27,6 +28,7 @@ else
    fi
    BRANCH=`pwd`
 fi
+cd "$cwd"
 
 # ############################################################################
 # Global variables
