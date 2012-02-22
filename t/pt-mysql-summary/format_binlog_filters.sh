@@ -3,6 +3,8 @@
 TEST=1
 TMPDIR=$TEST_TMPDIR
 
+NAME_VAL_LEN=20
+
 cat <<EOF > $TMPDIR/expected
         binlog_do_db | foo
     binlog_ignore_db | mysql,test

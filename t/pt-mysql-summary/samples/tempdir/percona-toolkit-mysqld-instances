@@ -1,0 +1,4 @@
+root      1356  0.0  0.0   4756  1196 pts/0    S    06:21   0:00 sudo mysqld_safe --log-bin
+root      1357  0.0  0.0   2040   576 pts/0    S    06:21   0:00 /bin/sh /usr/bin/mysqld_safe --log-bin
+mysql     1483  0.2  0.9 137532 18460 pts/0    Sl   06:21   0:00 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --user=mysql --log-bin --pid-file=/var/lib/mysql/msandbox.pid --socket=/var/run/mysqld/mysqld.sock --port=3306
+msandbox   4142  0.0  0.0   4448   808 pts/0    S+   06:24   0:00 grep mysqld

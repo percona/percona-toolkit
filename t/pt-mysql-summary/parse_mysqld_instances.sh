@@ -3,22 +3,24 @@
 TESTS=4
 TMPDIR=$TEST_TMPDIR
 
+_NO_FALSE_NEGATIVES=1
+
 TEST_NAME="ps-mysqld-001.txt"
 cat <<EOF > $TMPDIR/expected
-  Port  Data Directory             Socket
-  ===== ========================== ======
-   3306 /var/lib/mysql             /var/run/mysqld/mysqld.sock
-  12345 /tmp/12345/data            /tmp/12345/mysql_sandbox12345.sock
-  12346 /tmp/12346/data            /tmp/12346/mysql_sandbox12346.sock
+  Port  Data Directory             Nice OOM Value Socket
+  ===== ========================== ==== ========= ======
+   3306 /var/lib/mysql             ?    ?         /var/run/mysqld/mysqld.sock
+  12345 /tmp/12345/data            ?    ?         /tmp/12345/mysql_sandbox12345.sock
+  12346 /tmp/12346/data            ?    ?         /tmp/12346/mysql_sandbox12346.sock
 EOF
 parse_mysqld_instances samples/ps-mysqld-001.txt > $TMPDIR/got
 no_diff $TMPDIR/got $TMPDIR/expected
 
 TEST_NAME="ps-mysqld-002.txt"
 cat <<EOF > $TMPDIR/expected
-  Port  Data Directory             Socket
-  ===== ========================== ======
-        /var/lib/mysql             /var/lib/mysql/mysql.sock
+  Port  Data Directory             Nice OOM Value Socket
+  ===== ========================== ==== ========= ======
+        /var/lib/mysql             ?    ?         /var/lib/mysql/mysql.sock
 EOF
 parse_mysqld_instances samples/ps-mysqld-002.txt > $TMPDIR/got
 no_diff $TMPDIR/got $TMPDIR/expected
@@ -26,17 +28,17 @@ no_diff $TMPDIR/got $TMPDIR/expected
 TEST_NAME="ps-mysqld-003.txt"
 #parse_mysqld_instances
 cat <<EOF > $TMPDIR/expected
-  Port  Data Directory             Socket
-  ===== ========================== ======
-   3306 /mnt/data-store/mysql/data /tmp/mysql.sock
+  Port  Data Directory             Nice OOM Value Socket
+  ===== ========================== ==== ========= ======
+   3306 /mnt/data-store/mysql/data ?    ?         /tmp/mysql.sock
 EOF
 parse_mysqld_instances samples/ps-mysqld-003.txt > $TMPDIR/got
 no_diff $TMPDIR/got $TMPDIR/expected
 
 cat <<EOF > $TMPDIR/expected
-  Port  Data Directory             Socket
-  ===== ========================== ======
-        /var/db/mysql              
+  Port  Data Directory             Nice OOM Value Socket
+  ===== ========================== ==== ========= ======
+        /var/db/mysql              ?    ?         
 EOF
 
 cat <<EOF > $TMPDIR/in
