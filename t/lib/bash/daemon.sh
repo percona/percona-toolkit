@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-TESTS=9
+plan 9
 
 TMPDIR="$TEST_TMPDIR"
-local file="$TMPDIR/pid-file"
+file="$TMPDIR/pid-file"
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/daemon.sh"
@@ -18,7 +18,7 @@ cmd_ok \
    "test -f $file" \
    "PID file created"
 
-local pid=`cat $file`
+pid=`cat $file`
 is \
    "$pid" \
    "$$" \
