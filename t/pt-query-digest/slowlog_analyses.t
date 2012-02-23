@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 42;
+use Test::More tests => 43;
 
 use PerconaTest;
 
@@ -419,6 +419,18 @@ ok(
       "t/pt-query-digest/samples/slow052-apdex-t-0.1.txt",
    ),
    'Analysis for slow052 (Apdex T = 0.1)',
+);
+
+# #############################################################################
+# Bug 821694: pt-query-digest doesn't recognize hex InnoDB txn IDs
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow054.txt',
+         qw(--check-attributes-limit 5)) },
+      "t/pt-query-digest/samples/slow054.txt",
+   ),
+   'Analysis for slow054 (InnoDB_trx_id bug 821694)'
 );
 
 # #############################################################################
