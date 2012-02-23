@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=78
+plan 78
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -93,7 +93,7 @@ parse_options "$T_LIB_DIR/samples/bash/po001.sh" --foo >$TMPFILE 2>&1
 cmd_ok "grep -q 'Unknown option: --foo' $TMPFILE" "Error on unknown option"
 
 usage_or_errors "$T_LIB_DIR/samples/bash/po001.sh" >$TMPFILE 2>&1
-local err=$?
+err=$?
 is "$err" "1" "Non-zero exit on unknown option"
 
 # ###########################################################################

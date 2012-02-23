@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=6
+plan 6
 
 source "$LIB_DIR/log_warn_die.sh"
 
