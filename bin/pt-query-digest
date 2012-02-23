@@ -13092,14 +13092,15 @@ sub main {
       # Create an EventAggregator for this groupby attrib and
       # add it to callbacks.
       my $type_for = {
-         val          => 'string',
-         key_print    => 'string',
-         Status_code  => 'string',
-         Statement_id => 'string',
-         Error_no     => 'string',
-         Last_errno   => 'string',
-         Thread_id    => 'string',
-         Killed       => 'bool',
+         val           => 'string',
+         key_print     => 'string',
+         Status_code   => 'string',
+         Statement_id  => 'string',
+         Error_no      => 'string',
+         Last_errno    => 'string',
+         Thread_id     => 'string',
+         InnoDB_trx_id => 'string',
+         Killed        => 'bool',
       };
 
       my $ea = new EventAggregator(
