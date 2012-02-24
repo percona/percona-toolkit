@@ -67,7 +67,7 @@ cmd_ok \
 
 if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
    cmd_ok \
-      "grep -q 'Memory status:' $p-log_error" \
+      "grep -qE 'Memory status|Open streams|Begin safemalloc' $p-log_error" \
       "debug"
 else
    is "1" "1" "SKIP Can't determine MySQL 5.0 error log"
