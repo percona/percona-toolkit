@@ -1,42 +1,64 @@
 #!/usr/bin/env perl
 
-# This pseudo-script is for developers to see if their box has all
-# the modules necessary for testing Percona Toolkit.  Any missing
-# modules will cause an error like "Can't locate Foo.pm in @INC ...".
-# Else the version for each module used by this script will be printed.
+use warnings FATAL => 'all';
+use English;
+
+# This script checks if all modules necessary for testing Percona Toolkit
+# are installed.  It exits 0 if all modules are installed, else it exits
+# non-zero.
 #
-# In addition to these modules, many non-standard programs are needed
-# for other tasks, like building packages, writing test coverage, etc.
-#
-# Exits 0 if all modules are installed, else exits non-zero.
+# This check is just for testing Percona Toolkit.  Other dev tasks, like
+# building release packages, require other modules and programs.
 
-use Data::Dumper;
-use DBD::mysql;
-use DBI;
-use Digest::Crc32;
-use Digest::MD5;
-use File::Basename;
-use File::Find;
-use File::Spec;
-use File::Temp;
-use Getopt::Long;
-use IO::File;
-use IO::Uncompress::Inflate;
-use List::Util;
-use POSIX;
-use Socket;
-use Term::ReadKey;
-use Test::More;
-use Time::HiRes;
-use Time::Local;
+my @required_modules = qw(
+   Data::Dumper
+   DBD::mysql
+   DBI
+   Digest::MD5
+   File::Basename
+   File::Find
+   File::Spec
+   File::Temp
+   Getopt::Long
+   IO::File
+   List::Util
+   POSIX
+   Socket 
+   Test::More
+   Time::HiRes
+   Time::Local
+);
 
-my $file    = __FILE__;
-my $m       = `cat $file | grep '^use'`;
-my @modules = map { m/use (.+?);/; $1 } split("\n", $m);
+# CentOS doesn't seem to have this in its repo.
+my @optional_modules = qw(
+   IO::Uncompress::Inflate
+);
 
-foreach my $module ( @modules ) {
-   my $version = "${module}::VERSION";
-   print "$module " . ${$version} . "\n";
-} 
+my $exit_status = 0;
+my $fmt         = "%-23s %8s %s\n";
 
-exit 0;
+# Not a module but we want to know the Perl version.
+printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`, "";
+
+foreach my $module (@required_modules) {
+   my $version = "NA";
+   eval "require $module";
+   if ( $EVAL_ERROR ) { 
+      $exit_status = 1;
+   }
+   else {
+      $version = ${"${module}::VERSION"};
+   }
+   printf $fmt, $module, $version, "";
+}
+
+foreach my $module (@optional_modules) {
+   my $version = "NA";
+   eval "require $module";
+   if ( !$EVAL_ERROR ) { 
+      $version = ${"${module}::VERSION"};
+   }
+   printf $fmt, $module, $version, "MySQLProtocolParser, ProtocolParser"
+}
+
+exit $exit_status;

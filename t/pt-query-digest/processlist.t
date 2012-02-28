@@ -55,6 +55,12 @@ my $output = output(
 );
 
 ($exec) = $output =~ m/^(# Exec time.+?)$/ms;
+# The end of the line is like "786ms      3s".  The 2nd to last value is
+# stddev which can vary slightly depending on the real exec time.  The
+# other int values should always round to the correct values.  786ms is
+# the usual stddev. -- stddev doesn't matter much.  It's the other vals
+# that indicate that --processlist works.
+$exec =~ s/(\S+)      3s$/786ms      3s/;
 ok(
    no_diff(
       $exec,

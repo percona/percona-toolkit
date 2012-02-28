@@ -46,8 +46,6 @@ else {
    plan tests => 56;
 }
 
-$sb->create_dbs($dbh1, ['test']);
-
 Transformers->import(qw(make_checksum));
 
 my $vp = new VersionParser();
@@ -107,7 +105,8 @@ sub get_id {
 # Test the checksum method.
 # #############################################################################
 
-diag(`/tmp/12345/use < $trunk/t/lib/samples/compare-results.sql`);
+$sb->load_file('master', "t/lib/samples/compare-results.sql");
+PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'checksum',
@@ -130,21 +129,6 @@ isa_ok($cr, 'CompareResults');
       fingerprint => 'select * from test.t where i>?',
       sampleno    => 1,
    },
-);
-
-$i = 0;
-PerconaTest::wait_until(
-   sub {
-      my $r;
-      eval {
-         $r = $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"');
-      };
-      return 1 if ($r->[0] || '') eq 'dropme';
-      diag('Waiting for CREATE TABLE...') unless $i++;
-      return 0;
-   },
-   0.5,
-   30,
 );
 
 is_deeply(
@@ -326,9 +310,10 @@ is_deeply(
 # #############################################################################
 
 my $tmpdir = '/tmp/mk-upgrade-res';
+diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
-diag(`/tmp/12345/use < $trunk/t/lib/samples/compare-results.sql`);
-diag(`rm -rf $tmpdir; mkdir $tmpdir`);
+$sb->load_file('master', "t/lib/samples/compare-results.sql");
+PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'rows',
@@ -349,21 +334,6 @@ isa_ok($cr, 'CompareResults');
       arg => 'select * from test.t',
       db  => 'test',
    },
-);
-
-$i = 0;
-PerconaTest::wait_until(
-   sub {
-      my $r;
-      eval {
-         $r = $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"');
-      };
-      return 1 if ($r->[0] || '') eq 'dropme';
-      diag('Waiting for CREATE TABLE...') unless $i++;
-      return 0;
-   },
-   0.5,
-   30,
 );
 
 is_deeply(

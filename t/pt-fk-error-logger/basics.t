@@ -9,6 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use Time::HiRes qw(sleep);
 use Test::More;
 
 use PerconaTest;
@@ -44,6 +45,7 @@ $sb->load_file('master', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
 
 # Then get and save that fke.
 output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+sleep 0.1;
 
 # And then test that it was actually saved.
 my $today = $dbh->selectall_arrayref('SELECT NOW()')->[0]->[0];
@@ -64,6 +66,7 @@ like(
 # Check again to make sure that the same fke isn't saved twice.
 my $first_ts = $fke->[0]->[0];
 output(sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+sleep 0.1;
 $fke = $dbh->selectall_arrayref('SELECT * FROM test.foreign_key_errors');
 is(
    $fke->[0]->[0],  # Timestamp
@@ -84,6 +87,7 @@ eval {
    $dbh->do('DELETE FROM parent WHERE id = 2');  # Causes foreign key error.
 };
 output( sub { pt_fk_error_logger::main('h=127.1,P=12345,u=msandbox,p=msandbox', '--dest', 'h=127.1,P=12345,D=test,t=foreign_key_errors'); } );
+sleep 0.1;
 $fke = $dbh->selectall_arrayref('SELECT * FROM test.foreign_key_errors');
 like(
    $fke->[1]->[1],  # Error
@@ -99,7 +103,6 @@ is(
 # ##########################################################################
 # Test printing the errors.
 # ##########################################################################
-sleep 1;
 $dbh->do('USE test');
 eval {
    $dbh->do('DELETE FROM parent WHERE id = 2');  # Causes foreign key error.

@@ -68,6 +68,8 @@ $cnf .= ',D=test';
 # TODO: This test is a PITA because every time the mqd output
 # changes the -n of tail has to be adjusted.
 
+# 
+
 # We tail to get everything from "Exec orig" onward.  The lines
 # above have the real execution time will will vary.  The last 18 lines
 # are sufficient to see that it actually executed without errors.
@@ -77,6 +79,7 @@ ok(
          "$trunk/t/lib/samples/slowlogs/slow018.txt") },
       't/pt-query-digest/samples/slow018_execute_report_2.txt',
       trf => 'tail -n 30',
+      sed => ["-e 's/s  ##*/s/g'"],
    ),
    '--execute with default database'
 );

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=1
+plan 1
 
 source "$LIB_DIR/alt_cmds.sh"
 
