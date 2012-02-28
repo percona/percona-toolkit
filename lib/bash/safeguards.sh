@@ -50,9 +50,10 @@ check_disk_space() {
    local bytes_margin="${4:-0}"
 
    # Real/actual bytes used and bytes free.
-   local used_bytes=$(cat "$file" | awk '/^\//{printf("%d",$3 * 1024)}');
-   local free_bytes=$(cat "$file" | awk '/^\//{printf("%d",$4 * 1024)}');
-   local pct_used=$(cat "$file" | awk '/^\//{print $5}' | sed -e 's/%//g');
+   
+   local used_bytes=$(perl -ane 'm!^/! && print $F[2] * 1024' "$file")
+   local free_bytes=$(perl -ane 'm!^/! && print $F[3] * 1024' "$file")
+   local pct_used=$(perl -ane 'm!^/! && print ($F[4] =~ m/(\d+)/)' "$file")
    local pct_free=$((100 - $pct_used))
 
    # Report the real values to the user.
@@ -63,7 +64,7 @@ check_disk_space() {
    if [ $bytes_margin -gt 0 ]; then
       used_bytes=$(($used_bytes + $bytes_margin))
       free_bytes=$(($free_bytes - $bytes_margin))
-      pct_used=$(awk "BEGIN { printf(\"%d\", ($used_bytes/($used_bytes + $free_bytes)) * 100) }")
+      pct_used=$(perl -e "print int(($used_bytes/($used_bytes + $free_bytes)) * 100)")
 
       pct_free=$((100 - $pct_used))
    fi

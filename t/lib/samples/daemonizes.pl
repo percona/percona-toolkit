@@ -11,9 +11,10 @@ BEGIN {
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG};
+use constant PTDEVDEBUG => $ENV{PTDEVDEBUG};
+
+use Time::HiRes qw(sleep);
 
 use Daemon;
 use OptionParser;
@@ -23,7 +24,8 @@ my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
 $o->get_specs();
 $o->get_opts();
 
-if ( scalar @ARGV < 1 ) {
+my ($sleep_time) = shift @ARGV;
+if ( !defined $sleep_time ) {
    $o->save_error('No SLEEP_TIME specified');
 }
 
@@ -31,15 +33,22 @@ $o->usage_or_errors();
 
 my $daemon;
 if ( $o->get('daemonize') ) {
+   PTDEVDEBUG && PerconaTest::_d('daemonizing');
+
+   $OUTPUT_AUTOFLUSH = 1;
+
    $daemon = new Daemon(o=>$o);
    $daemon->daemonize();
+   PTDEVDEBUG && PerconaTest::_d('daemonized');
 
    print "STDOUT\n";
    print STDERR "STDERR\n";
 
-   sleep $ARGV[0];
+   PTDEVDEBUG && PerconaTest::_d('daemon sleep', $sleep_time);
+   sleep $sleep_time;
 }
 
+PTDEVDEBUG && PerconaTest::_d('daemon done');
 exit;
 
 # ############################################################################
@@ -50,7 +59,7 @@ exit;
 
 =head1 SYNOPSIS
 
-Usage: daemonizes.pl SLEEP_TIME [ARGS]
+Usage: daemonizes.pl SLEEP_TIME
 
 daemonizes.pl daemonizes, prints to STDOUT and STDERR, sleeps and exits.
 

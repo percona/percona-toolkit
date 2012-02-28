@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=11
+plan 11
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/safeguards.sh"

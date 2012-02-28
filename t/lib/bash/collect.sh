@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=20
+plan 20
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
@@ -18,7 +18,7 @@ source "$LIB_DIR/collect.sh"
 parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 # Prefix (with path) for the collect files.
-local p="$TMPDIR/collect/2011_12_05"
+p="$TMPDIR/collect/2011_12_05"
 
 # Default collect, no extras like gdb, tcpdump, etc.
 collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
@@ -67,15 +67,19 @@ cmd_ok \
 
 if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
    cmd_ok \
-      "grep -q 'Status information:' $p-log_error" \
+      "grep -qE 'Memory status|Open streams|Begin safemalloc' $p-log_error" \
       "debug"
 else
    is "1" "1" "SKIP Can't determine MySQL 5.0 error log"
 fi
 
-cmd_ok \
-   "grep -q 'COMMAND[ ]\+PID[ ]\+USER' $p-lsof" \
-   "lsof"
+if [ "$(which lsof 2>/dev/null)" ]; then
+   cmd_ok \
+      "grep -q 'COMMAND[ ]\+PID[ ]\+USER' $p-lsof" \
+      "lsof"
+else
+   is "1" "1" "SKIP lsof not in PATH"
+fi
 
 cmd_ok \
    "grep -q 'buf0buf.c' $p-mutex-status1" \
@@ -109,7 +113,7 @@ cmd_ok \
    "grep -qP '^wait_timeout\t\d' $p-variables" \
    "variables"
 
-local iters=$(cat $p-df | grep -c '^TS ')
+iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "1" "1 iteration/1s run time"
 
 empty_files=0
@@ -136,7 +140,7 @@ rm $TMPDIR/collect/*
 
 collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
-local iters=$(cat $p-df | grep -c '^TS ')
+iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "2" "2 iteration/2s run time"
 
 # ############################################################################

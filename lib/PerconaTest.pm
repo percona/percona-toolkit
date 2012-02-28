@@ -31,10 +31,10 @@ package PerconaTest;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 use Test::More;
-use Time::HiRes qw(sleep);
+use Time::HiRes qw(sleep time);
 use POSIX qw(signal_h);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -220,14 +220,16 @@ sub parse_file {
 # Wait until code returns true.
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
-   $t     ||= .5;
-   $max_t ||= 10;
+   $t     ||= .25;
+   $max_t ||= 5;
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
       return 1 if $code->();
+      PTDEVDEBUG && _d('wait_until sleeping', $t);
       sleep $t;
       $slept += $t;
+      PTDEVDEBUG && _d('wait_until slept', $slept, 'of', $max_t);
    }
    return 0;
 }
@@ -262,14 +264,18 @@ sub wait_for_table {
       sub {
          my $r;
          eval { $r = $dbh->selectrow_arrayref($sql); };
-         return 0 if $EVAL_ERROR;
-         if ( $where ) {
-            return 0 unless $r && @$r;
+         if ( $EVAL_ERROR ) {
+            PTDEVDEBUG && _d('Waiting on', $dbh, 'for table', $tbl,
+               'error:', $EVAL_ERROR);
+            return 0;
+         }
+         if ( $where && (!$r || !scalar @$r) ) {
+            PTDEVDEBUG && _d('Waiting on', $dbh, 'for table', $tbl,
+               'WHERE', $where);
+            return 0;
          }
          return 1;
       },
-      0.25,
-      15,
    );
 }
 
@@ -278,12 +284,13 @@ sub wait_for_files {
    return wait_until(
       sub {
          foreach my $file (@files) {
-            return 0 if ! -f $file;
+            if ( ! -f $file ) {
+               PTDEVDEBUG && _d('Waiting for file', $file);
+               return 0;
+            }
          }
          return 1;
       },
-      0.25,
-      15,
    );
 }
 
@@ -323,17 +330,18 @@ sub test_log_parser {
       close $fh;
    };
 
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "No error on $args{file}"
+      "$base_file_name: no errors"
    );
 
    if ( defined $args{result} ) {
       is_deeply(
          \@e,
          $args{result},
-         $args{file}
+         "$base_file_name: results"
       ) or print "Got: ", Dumper(\@e);
    }
 
@@ -341,7 +349,7 @@ sub test_log_parser {
       is(
          scalar @e,
          $args{num_events},
-         "$args{file} num_events"
+         "$base_file_name: $args{num_events} events"
       );
    }
 
@@ -379,17 +387,18 @@ sub test_protocol_parser {
       close $fh;
    };
 
+   my ($base_file_name) = $args{file} =~ m/([^\/]+)$/;
    is(
       $EVAL_ERROR,
       '',
-      "No error on $args{file}"
+      "$base_file_name: no errors"
    );
-   
+
    if ( defined $args{result} ) {
       is_deeply(
          \@e,
          $args{result},
-         $args{file} . ($args{desc} ? ": $args{desc}" : '')
+         "$base_file_name: " . ($args{desc} || "results")
       ) or print "Got: ", Dumper(\@e);
    }
 
@@ -397,7 +406,7 @@ sub test_protocol_parser {
       is(
          scalar @e,
          $args{num_events},
-         "$args{file} num_events"
+         "$base_file_name: $args{num_events} events"
       );
    }
 
@@ -615,6 +624,15 @@ sub get_master_binlog_pos {
    my $sql = "SHOW MASTER STATUS";
    my $ms  = $dbh->selectrow_hashref($sql);
    return $ms->{position};
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   my $t = sprintf '%.3f', time;
+   print STDERR "# $package:$line $PID $t ", join(' ', @_), "\n";
 }
 
 1;
