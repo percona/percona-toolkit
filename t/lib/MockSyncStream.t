@@ -169,8 +169,8 @@ SKIP: {
          size => {
             id => undef,
             i  => undef,
-            f  => '(31,12)',
-            d  => $DBD::mysql::VERSION ge '4.001' ? '(7,2)' : '(7)',
+            f  => undef,
+            d  => undef,
             dt => undef,
             ts => undef,
             c  => '(1)',
