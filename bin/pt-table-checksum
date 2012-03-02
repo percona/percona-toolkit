@@ -7388,12 +7388,12 @@ sub _d {
 # http://www.mysqlperformanceblog.com/2012/02/21/dbd-mysql-4-014-breaks-pt-table-checksum-2-0/
 eval {
    require DBD::mysql;
-   if ( ($DBD::mysql::VERSION || '') eq '4.014' ) {
-      die "DBD::mysql v4.014 is installed but it has as bug which prevents "
-        . "pt-table-checksum 2.0 from working properly.  Please upgrade "
-        . "DBD::mysql to any new version.\n"
-   }
 };
+if ( !$EVAL_ERROR && $DBD::mysql::VERSION eq "4.014" ) {
+   die "DBD::mysql v4.014 is installed but it has as bug which prevents "
+     . "pt-table-checksum 2.0 from working properly.  Please upgrade "
+     . "DBD::mysql to any new version.\n"
+}
 
 if ( !caller ) { exit main(@ARGV); }
 
