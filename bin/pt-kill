@@ -4025,12 +4025,12 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-kill is designed to kill queries if you use the L<"--kill"> option is given,
-and that might disrupt your database's users, of course.  You should test with
-the <"--print"> option, which is safe, if you're unsure what the tool will do.
+pt-kill kills queries if you use the L<"--kill"> option, so it can disrupt
+your database's users, of course.  You should test with the <"--print"> option,
+which is safe, if you're unsure what the tool will do.
 
-At the time of this release, we know of no bugs that could cause serious harm to
-users.
+At the time of this release, we know of no bugs that could cause serious harm
+to users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -4052,11 +4052,11 @@ For brevity, we talk about killing queries, but they may just be printed
 Normally pt-kill connects to MySQL to get queries from SHOW PROCESSLIST.
 Alternatively, it can read SHOW PROCESSLIST output from files.  In this case,
 pt-kill does not connect to MySQL and L<"--kill"> has no effect.  You should
-use L<"--print"> instead when reading files.  The ability to read a file (or
-- for STDIN) allows you to capture SHOW PROCESSLIST and test it later with
-pt-kill to make sure that your matches kill the proper queries.  There are a
-lot of special rules to follow, such as "don't kill replication threads,"
-so be careful to not kill something important!
+use L<"--print"> instead when reading files.  The ability to read a file
+with L<"--test-matching"> allows you to capture SHOW PROCESSLIST and test it
+later with pt-kill to make sure that your matches kill the proper queries.
+There are a lot of special rules to follow, such as "don't kill replication
+threads," so be careful not to kill something important!
 
 Two important options to know are L<"--busy-time"> and L<"--victims">.
 First, whereas most match/filter options match their corresponding value from
@@ -4072,8 +4072,6 @@ Usually you need to specify at least one C<--match> option, else no
 queries will match.  Or, you can specify L<"--match-all"> to match all queries
 that aren't ignored by an C<--ignore> option.
 
-pt-kill is a work in progress, and there is much more it could do.
-
 =head1 GROUP, MATCH AND KILL
 
 Queries pass through several steps to determine which exactly will be killed
@@ -4082,7 +4080,7 @@ help you match precisely the queries you want.
 
 The first step is grouping queries into classes.  The L<"--group-by"> option
 controls grouping.  By default, this option has no value so all queries are
-grouped into one, big default class.  All types of matching and filtering
+grouped into one default class.  All types of matching and filtering
 (the next step) are applied per-class.  Therefore, you may need to group
 queries in order to match/filter some classes but not others.
 
@@ -4105,9 +4103,9 @@ queries to kill, print, etc.
 
 =head1 OUTPUT
 
-If only L<"--kill"> then there is no output.  If only L<"--print"> then a
-timestamped KILL statement if printed for every query that would have
-been killed, like:
+If only L<"--kill"> is given, then there is no output.  If only
+L<"--print"> is given, then a timestamped KILL statement if printed
+for every query that would have been killed, like:
 
   # 2009-07-15T15:04:01 KILL 8 (Query 42 sec) SELECT * FROM huge_table
 
