@@ -7390,9 +7390,9 @@ eval {
    require DBD::mysql;
 };
 if ( !$EVAL_ERROR && $DBD::mysql::VERSION eq "4.014" ) {
-   die "DBD::mysql v4.014 is installed but it has as bug which prevents "
-     . "pt-table-checksum 2.0 from working properly.  Please upgrade "
-     . "DBD::mysql to any new version.\n"
+   die "DBD::mysql v4.014 is installed, but it has as bug which causes "
+     . "pt-table-checksum to fail.  Please upgrade DBD::mysql to any "
+     . "newer version.\n"
 }
 
 if ( !caller ) { exit main(@ARGV); }
