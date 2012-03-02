@@ -4110,6 +4110,13 @@ sub main {
    # #####################################################################
    # Do the online alter.
    # #####################################################################
+   if ( !$o->get('execute') ) {
+      msg("Exiting without altering $db.$tbl because you did not "
+        . "specify --execute.  Please read the tool's documentation "
+        . "carefully before using this tool.");
+      return $exit_status;
+   }
+
    msg("Starting online schema change");
    eval {
       my $sql = "";
@@ -4510,12 +4517,12 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-online-schema-change reads, writes, alters and drops tables.  Although
-it is tested, do not use it in production until you have thoroughly tested it
-in your environment!
+pt-online-schema-change alters tables and data, therefore it is a high-risk
+tool.  Although the tool is tested and is known to work, you should not use
+it in production until you have thoroughly tested it in your environment!
 
-This tool has not been tested with replication; it may break replication.
-See L<"REPLICATION">.
+This tool has not been tested with replication, and it can break replication
+if not used properly.  See L<"REPLICATION">.
 
 At the time of this release there are no known bugs that pose a serious risk.
 
@@ -4604,8 +4611,24 @@ the tool might do before actually doing it.
 
 =head1 REPLICATION
 
-In brief: update slaves first if columns are added or removed.  Certain
-ALTER changes like ENGINE may not affect replication.
+If you use pt-online-schema-change to alter a table on a server with slaves,
+be aware that:
+
+=over
+
+=item * The tool is not tested with replication
+
+=item * The tool can break replication if not used properly
+
+=item * Although the tool sets SQL_BIN_LOG=0 by default (unless L<"--bin-log"> is specified), triggers which track changes to the table being altered still write statements to the binary log
+
+=item * Replicaiton will break if you alter a table on a master that does not exist on a slave
+
+=item * Update slaves first if columns are being added or removed
+
+=item * Do not use this tool in production before testing it
+
+=back
 
 =head1 OUTPUT
 
@@ -4736,6 +4759,13 @@ swapped for the original table), then the old table can be restored.
 
 If altering a table with foreign key constraints, you may need to specify
 this option depending on which L<"--update-foreign-keys-method"> you choose.
+
+=item --execute
+
+Alter the table.  This option must be specified to alter the table, else
+the tool will only check the table and exit.  This helps ensure that the
+user has read the documentation and is aware of the inherent risks of using
+this tool.
 
 =item --[no]foreign-key-checks
 

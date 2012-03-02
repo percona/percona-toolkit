@@ -29,12 +29,12 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 24;
+   plan tests => 25;
 }
 
 my $output  = "";
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
-my @args    = ('-F', $cnf);
+my @args    = ('-F', $cnf, '--execute');
 my $exit    = 0;
 my $rows;
 
@@ -42,6 +42,19 @@ $sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
 PerconaTest::wait_for_table($slave_dbh, "mkosc.a", "c='r'");
 $master_dbh->do('use mkosc');
 $slave_dbh->do('use mkosc');
+
+# #############################################################################
+# Tool shouldn't run without --execute (bug 933232).
+# #############################################################################
+$output = output(
+   sub { pt_online_schema_change::main('h=127.1,P=12345,u=msandbox,p=msandbox,D=mkosc,t=a') },
+);
+
+like(
+   $output,
+   qr/you did not specify --execute/,
+   "Doesn't run without --execute"
+);
 
 # #############################################################################
 # --check-tables-and-exit
