@@ -7383,6 +7383,18 @@ sub _d {
 # ############################################################################
 # Run the program.
 # ############################################################################
+
+# https://bugs.launchpad.net/percona-toolkit/+bug/916999
+# http://www.mysqlperformanceblog.com/2012/02/21/dbd-mysql-4-014-breaks-pt-table-checksum-2-0/
+eval {
+   require DBD::mysql;
+};
+if ( !$EVAL_ERROR && $DBD::mysql::VERSION eq "4.014" ) {
+   die "DBD::mysql v4.014 is installed, but it has as bug which causes "
+     . "pt-table-checksum to fail.  Please upgrade DBD::mysql to any "
+     . "newer version.\n"
+}
+
 if ( !caller ) { exit main(@ARGV); }
 
 1; # Because this is a module as well as a script.
