@@ -1,10 +1,10 @@
 
-# Query 1: ID 0x3C830E3839B916D7 at byte 0 _______________________________
+# Query 1: ID 0xC1B1E457814417E4 at byte 0 _______________________________
 # Found 1 differences in 1 samples:
 #   column counts   0
 #   column types    0
-#   column values   0
-#   row counts      1
+#   column values   1
+#   row counts      0
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
@@ -20,23 +20,23 @@
 #   stddev             0           0
 #   median             0           0
 # row_count                         
-#   sum                4           3
-#   min                4           3
-#   max                4           3
-#   avg                4           3
-#   pct_95             4           3
+#   sum                1           1
+#   min                1           1
+#   max                1           1
+#   avg                1           1
+#   pct_95             1           1
 #   stddev             0           0
-#   median             4           3
+#   median             1           1
 use `test`;
-select i from t where i is not null
+SELECT SUM(total) FROM test.t WHERE id > 0
 
-/* 3C830E3839B916D7-1 */ select i from t where i is not null
+/* C1B1E457814417E4-1 */ SELECT SUM(total) FROM test.t WHERE id > 0
 
 
-# Row count differences
-# Query ID           127.1:12345 127.1:12348
-# ================== =========== ===========
-# 3C830E3839B916D7-1           4           3
+# Column value differences
+# Query ID           Column     127.1:12345 127.1:12348
+# ================== ========== =========== ===========
+# C1B1E457814417E4-1 SUM(total) 14.68       13.68
 
 # Statistics
 # events                         1
