@@ -33,7 +33,7 @@ else {
 
 my $output  = "";
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
-my @args    = ('-F', $cnf);
+my @args    = ('-F', $cnf, '--execute');
 my $exit    = 0;
 my $rows;
 
