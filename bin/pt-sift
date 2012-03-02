@@ -347,11 +347,16 @@ main() {
             awk '/^[XS]-lock on.*latch/ { print }' \
               "${BASEDIR}/${PREFIX}-innodbstatus1" | sort | uniq -c | sort -rn
 
+            # This section checks for processlist or processlist1 for backwards
+            # compatibility with the obsolete pt-collect tool.
             echo "--processlist--"
+            local PROCESSLIST_FILE="${BASEDIR}/${PREFIX}-processlist"
+            if [ -e "${BASEDIR}/${PREFIX}-processlist1" ]; then
+               PROCESSLIST_FILE="${BASEDIR}/${PREFIX}-processlist1"
+            fi
             for word in State Command; do
                echo "    $word"
-               awk -F: "/^ *$word:/{print \$2}" \
-                  "${BASEDIR}/${PREFIX}-processlist1" \
+               awk -F: "/^ *$word:/{print \$2}" "${PROCESSLIST_FILE}" \
                   | sort | uniq -c | sort -rn | head -n 5
             done
 
