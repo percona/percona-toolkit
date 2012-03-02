@@ -1032,24 +1032,33 @@ stalk() {
       # Run the trigger which returns the value of whatever is being
       # checked.  When the value is > --threshold for at least --cycle
       # consecutive times, start collecting.
-      local value=$($TRIGGER_FUNCTION $OPT_VARIABLE)
-      local trg_exit_status=$?
+      if [ "$OPT_STALK" ]; then
+         local value=$($TRIGGER_FUNCTION $OPT_VARIABLE)
+         local trg_exit_status=$?
 
-      if [ -z "$value" ]; then
-         # No value.  Maybe we failed to connect to MySQL?
-         warn "Detected value is empty; something failed?  Trigger exit status: $trg_exit_status"
-         matched=""
-         cycles_true=0
-      elif [ $value -gt $OPT_THRESHOLD ]; then
-         matched="yes"
-         cycles_true=$(($cycles_true + 1))
-      else
-         matched=""
-         cycles_true=0
+         if [ -z "$value" ]; then
+            # No value.  Maybe we failed to connect to MySQL?
+            warn "Detected value is empty; something failed?  Trigger exit status: $trg_exit_status"
+            matched=""
+            cycles_true=0
+         elif [ $value -gt $OPT_THRESHOLD ]; then
+            matched="yes"
+            cycles_true=$(($cycles_true + 1))
+         else
+            matched=""
+            cycles_true=0
+         fi
+
+         local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
+         log "$msg"
+      elif [ "$OPT_COLLECT" ]; then
+         # Make the next if condition true.
+         matched=1
+         cycles_true=$OPT_CYCLES
+
+         local msg="Not stalking; collect triggered immediately"
+         log "$msg"
       fi
-
-      local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
-      log "$msg"
 
       if [ "$matched" -a $cycles_true -ge $OPT_CYCLES ]; then 
          # ##################################################################
@@ -1084,7 +1093,6 @@ stalk() {
                log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
                log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
                last_prefix="$prefix"
-
 
                # Fork and background the collect subroutine which will
                # run for --run-time seconds.  We (the parent) sleep
@@ -1166,6 +1174,14 @@ if    [ "${0##*/}" = "$TOOL" ] \
       option_error "Invalid --function value: $OPT_FUNCTION"
    fi
 
+   if [ -z "$OPT_STALK" -a "$OPT_COLLECT" ]; then
+      # Not stalking; do immediate collect once.
+      OPT_ITERATIONS=1
+      OPT_CYCLES=0
+      OPT_SLEEP=0
+      OPT_INTERVAL=0
+   fi
+
    usage_or_errors "$0"
    po_status=$?
    rm_tmpdir
@@ -1206,7 +1222,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       fi
    fi
 
-   if [ "$OPT_DAEMONIZE" ]; then
+   if [ "$OPT_STALK" -a "$OPT_DAEMONIZE" ]; then
       # Check access to the --log file.
       touch "$OPT_LOG" || die "Cannot write to --log $OPT_LOG"
 
@@ -1226,7 +1242,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       # use $! to get the PID of the child we just forked.
       echo "$!" > "$OPT_PID"
    else
-      make_pid_file "$OPT_PID" $$
+      [ "$OPT_STALK" ] && make_pid_file "$OPT_PID" $$
       main "$@"
    fi
 fi
@@ -1359,6 +1375,8 @@ default: yes; negatable: yes
 
 Collect system information.  You can negate this option to make the tool watch
 the system but not actually gather any diagnostic data.
+
+See also L<"--stalk">.
 
 =item --collect-gdb
 
@@ -1582,6 +1600,22 @@ How long to sleep after collecting data.  This prevents the tool from triggering
 continuously, which might be a problem if the collection process is intrusive.
 It also prevents filling up the disk or gathering too much data to analyze
 reasonably.
+
+=item --stalk
+
+default: yes; negatable: yes
+
+Watch the server and wait for the trigger to occur.  You can negate this option
+to make the tool immediately gather any diagnostic data once and exit.  This is
+useful if a problem is already happening, but pt-stalk is not running, so
+you only want to collect diagnostic data.
+
+If this option is negate, L<"--daemonize">, L<"--log">, L<"--pid">, and other
+stalking-related options have no effect; the tool simply collects diagnostic
+data and exits.  Safeguard options, like L<"--disk-bytes-free"> and
+L<"--disk-pct-free">, are still respected.
+
+See also L<"--collect">.
 
 =item --threshold
 

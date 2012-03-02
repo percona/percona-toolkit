@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 21;
+   plan tests => 25;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -155,7 +155,7 @@ is(
    "Collect ran for --run-time"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk pt-stalk --iterations 1 --dest $dest'`;
+$output = `ps x | grep -v grep | grep 'pt-stalk --iterations 1'`;
 is(
    $output,
    "",
@@ -202,7 +202,7 @@ ok(
    "No files collected"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk pt-stalk --iterations 1 --dest $dest'`;
+$output = `ps x | grep -v grep | grep 'pt-stalk --no-collect'`;
 is(
    $output,
    "",
@@ -236,6 +236,45 @@ like(
 
 diag(`rm $ENV{HOME}/.pt-stalk.conf`);
 diag(`cp $ENV{HOME}/.pt-stalk.conf.original $ENV{HOME}/.pt-stalk.conf 2>/dev/null`);
+
+# #############################################################################
+# Don't stalk, just collect.
+# #############################################################################
+diag(`rm $pid_file 2>/dev/null`);
+diag(`rm $log_file 2>/dev/null`);
+diag(`rm $dest/*   2>/dev/null`);
+
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk -- --defaults-file=$cnf >$log_file 2>&1");
+
+PerconaTest::wait_for_files("$dest/nostalk-trigger");
+$output = `cat $dest/nostalk-trigger`;
+like(
+   $output,
+   qr/Not stalking/,
+   "Not stalking, collect triggered"
+);
+
+PerconaTest::wait_for_files("$dest/nostalk-df");
+PerconaTest::wait_for_sh("test \$(grep -c '^TS' $dest/nostalk-df) -ge 2");
+chomp($output = `grep -c '^TS' $dest/nostalk-df`);
+is(
+   $output,
+   2,
+   "Not stalking, collect ran for --run-time"
+);
+
+is(
+   `cat $dest/nostalk-hostname`,
+   `hostname`,
+   "Not stalking, collect gathered data"
+);
+
+$output = `ps x | grep -v grep | grep 'pt-stalk --no-stalk'`;
+is(
+   $output,
+   "",
+   "Not stalking, pt-stalk is not running"
+);
 
 # #############################################################################
 # Done.
