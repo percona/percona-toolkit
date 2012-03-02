@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 107;
+use Test::More tests => 108;
 
 use PerconaTest;
 
@@ -447,6 +447,30 @@ is_deeply(
       stime => '0.0364741641337386',
    },
    "_calc_misc_stats works"
+);
+
+# Bug 928226: IOS IN PROGRESS can be negative due to kernel bugs,
+# which can eventually cause a division by zero if it happens to
+# be the negative of the number of ios.
+# The tool should return zero in that case, rather than dying.
+$deltas->{ios_in_progress} = -$deltas->{ios_requested};
+%misc_stats = $obj->_calc_misc_stats(
+   delta_for     => $deltas,
+   elapsed       => $curr->{TS} - $prev->{TS},
+   devs_in_group => 1,
+   stats         => { %write_stats, %read_stats },
+);
+
+is_deeply(
+   \%misc_stats,
+   {
+      busy => '0.6',
+      line_ts => '  0.0',
+      qtime => 0,
+      s_spent_doing_io => '28.5',
+      stime => '0.0364741641337386',
+   },
+   "_calc_misc_stats works around a negative the IOS IN PROGRESS"
 );
 
 $obj->clear_state();
