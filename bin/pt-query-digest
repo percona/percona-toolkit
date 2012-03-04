@@ -12350,6 +12350,11 @@ sub main {
                );
             };
             if ( $EVAL_ERROR ) {
+               if ( $EVAL_ERROR =~ m/perhaps you forgot to load/ ) {
+                  # There is no module to handle --type, so wrong --type
+                  die "'$module' is not a valid input type. "
+                     . "Please check the documentation for --type.\n";
+               }
                die "Failed to load $module module: $EVAL_ERROR";
             }
             
