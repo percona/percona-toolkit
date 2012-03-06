@@ -377,7 +377,11 @@ main() {
             done
 
             echo "--stack traces--"
-            $PR_pmp -l 5 "${BASEDIR}/${PREFIX}-stacktrace" | head -n 5
+            if [ -e "${BASEDIR}/${PREFIX}-stacktrace" ]; then
+               $PR_pmp -l 5 "${BASEDIR}/${PREFIX}-stacktrace" | head -n 5
+            else
+               echo "    No stack trace file exists"
+            fi
 
             echo "--oprofile--"
             if [ ! -e "${BASEDIR}/${PREFIX}-opreport" ]; then
