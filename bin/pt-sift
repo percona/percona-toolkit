@@ -169,11 +169,11 @@ main() {
          DEFAULT)
             echo "--diskstats--"
 
-            $PR_diskstats -g disk "${BASEDIR}/${PREFIX}-diskstats" \
+            $PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
                | awk '
                   /ts/ { header = $0 }
                   /[0-9]/ {
-                     io  = $3 + $6;
+                     io  = $3 + $9;
                      if ( io >= mio ) {
                         mio   = io;
                         mseen = $0;
@@ -185,10 +185,10 @@ main() {
                   }'
 
             # Find out which device was the busiest.
-            mdev="$($PR_diskstats -g disk "${BASEDIR}/${PREFIX}-diskstats" \
+            mdev="$($PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
                | awk '
                   /[0-9]/ {
-                     io  = $3 + $6;
+                     io  = $3 + $9;
                      if ( io >= mio ) {
                         mio   = io;
                         mdev  = $2;
@@ -200,14 +200,14 @@ main() {
 
             # Print the busy% for that device, rounded to the nearest N%, with
             # "." as a marker for a repeated value.
-            $PR_diskstats -g sample "${BASEDIR}/${PREFIX}-diskstats" \
+            $PR_diskstats --group-by sample "${BASEDIR}/${PREFIX}-diskstats" \
                | awk "
                   BEGIN {
                      fuzz = 5;
                      printf \" ${mdev} \"
                   }
                   \$1 = \"${mdev}\" {
-                     busy_rounded = fuzz * sprintf(\"%d\", substr(\$9, 1, length(\$9) - 1) / fuzz);
+                     busy_rounded = fuzz * sprintf(\"%d\", substr(\$15, 1, length(\$15) - 1) / fuzz);
                      if ( printed == 1 && prev == busy_rounded ) {
                         printf \" .\";
                      }
@@ -464,9 +464,13 @@ main() {
       esac
 
       # Capture and handle the interactive key-strokes.
+      tput sgr0
       KEY=""
-      read -n 1 -s KEY
-      case "${KEY}" in
+      if ! read -n 1 -s KEY 2>/dev/null; then
+         echo "Error while trying to read interactive keystroke command. Exiting."
+         exit
+      fi
+      case "${KEY:-}" in
          j|k)
             PREFIX="$(awk "
                BEGIN {
