@@ -356,7 +356,23 @@ main() {
             fi
             for word in State Command; do
                echo "    $word"
-               awk -F: "/^ *$word:/{print \$2}" "${PROCESSLIST_FILE}" \
+               awk -F: -v column="$word" '
+               BEGIN {
+                  regex = "^ *" column
+               }
+               {
+                  if ( $1 ~ regex ) {
+                     print $2;
+                  }
+                  # Newer versions of pt-stalk gather several samples. We will
+                  # analyze only the first sample.
+                  if ( $0 ~ /^TS/ ) {
+                     ts++;
+                     if (ts > 1) {
+                        exit
+                     }
+                  }
+               }' "${PROCESSLIST_FILE}" \
                   | sort | uniq -c | sort -rn | head -n 5
             done
 
