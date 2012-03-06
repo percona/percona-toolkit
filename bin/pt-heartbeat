@@ -3109,7 +3109,7 @@ use IO::File;
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-Transformers->import qw(ts unix_timestamp);
+Transformers->import(qw(ts unix_timestamp));
 
 my @dbhs;  # Holds slave DBHs if --recurse
 my @sths;  # Holds [$host, $sth] if --recurse

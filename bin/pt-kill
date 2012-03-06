@@ -3507,7 +3507,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-Transformers->import qw(ts);
+Transformers->import(qw(ts));
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
