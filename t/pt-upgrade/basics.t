@@ -174,7 +174,7 @@ ok(
 my $row = $dbh1->selectrow_arrayref("show create table test.mk_upgrade_left");
 like(
    $row->[1],
-   qr/`SUM\(total\)`\s+double\sDEFAULT/,
+   qr/`SUM\(total\)`\s+double\sDEFAULT/i,
    "No M,D in table def (bug 926598)"
 );
 
