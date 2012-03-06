@@ -28,17 +28,13 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
 my $output;
 my $cmd;
 my $pid_file = "/tmp/pt-query-digest-mirror-test.pid";
-
 diag(`rm $pid_file 2>/dev/null`);
-
-my $pid_file = '/tmp/pt-query-digest.test.pid';
-`rm -rf $pid_file >/dev/null`;
 
 # ##########################################################################
 # Tests for swapping --processlist and --execute
@@ -74,10 +70,9 @@ is(
    '',
    'It is stopped now'
 );
-=======
-$output = `ps -p $output`;
+
+$output = `ps -p $pid`;
 unlike($output, qr/pt-query-digest/, 'It is stopped now'); 
->>>>>>> MERGE-SOURCE
 
 $output = `grep read_only /tmp/read_only.txt`;
 # Sample output:
