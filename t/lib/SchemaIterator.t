@@ -314,7 +314,7 @@ SKIP: {
    $tp = new TableParser(Quoter => $q);
    test_so(
       filters   => [qw(-t mysql.user)],
-      result    => $sandbox_version eq '5.1' ? "$out/mysql-user-ddl.txt"
+      result    => $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
                                              : "$out/mysql-user-ddl-5.0.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
