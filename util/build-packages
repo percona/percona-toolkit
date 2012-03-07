@@ -293,8 +293,8 @@ update_rel_notes() {
    local line="v$VERSION released $DATE"
    local len=${#line}
    local ul=$(printf "%${len}s")
-   echo $line                             >> /tmp/release_notes.tmp
-   echo ${ul// /=}                        >> /tmp/release_notes.tmp
+   echo "$line"                           >> /tmp/release_notes.tmp
+   echo "${ul// /=}"                      >> /tmp/release_notes.tmp
    echo                                   >> /tmp/release_notes.tmp
    (cd $cwd && cat $REL_NOTES             >> /tmp/release_notes.tmp)
    echo                                   >> /tmp/release_notes.tmp
