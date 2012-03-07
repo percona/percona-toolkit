@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.0.4 released 2012-03-07
+
   * Added --filter to pt-kill to allow arbitrary --group-by
   * Added --[no]stalk to pt-stalk (bug 932331)
   * Added --execute to pt-online-schema-change (bug 933232)
