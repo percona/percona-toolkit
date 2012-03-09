@@ -15,7 +15,7 @@ use SlowLogParser;
 use PerconaTest;
 
 my $p      = new SlowLogParser;
-my $sample = "t/lib/samples/slowlogs/";
+my $sample = "t/lib/samples/slowlogs";
 
 # Check that I can parse a slow log in the default slow log format.
 test_log_parser(

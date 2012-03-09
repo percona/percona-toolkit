@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(sleep);
 
 use PerconaTest;
 use DSNParser;
@@ -27,13 +28,12 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
 my $output;
 my $cmd;
 my $pid_file = "/tmp/pt-query-digest-mirror-test.pid";
-
 diag(`rm $pid_file 2>/dev/null`);
 
 # ##########################################################################
@@ -48,23 +48,32 @@ $cmd  = "$trunk/bin/pt-query-digest "
 
 $ENV{PTDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
-$ENV{PTDEBUG}=0;
-sleep 5;
+
+$ENV{MKDEBUG}=0;
+sleep 3;
+
 $dbh1->do('select sleep(1)');
 sleep 1;
 $dbh1->do('set global read_only=1');
 $dbh2->do('set global read_only=0');
 $dbh1->do('select sleep(1)');
-sleep 2;
-chomp($output = `cat $pid_file`);
-kill 15, $output;
+
 sleep 1;
+chomp(my $pid = `cat $pid_file`);
+kill 15, $pid;
+sleep 0.25;
+
 # Verify that it's dead...
-$output = `ps -p $output`;
+$output = `ps x | grep '^[ ]*$pid'`;
+is(
+   $output,
+   '',
+   'It is stopped now'
+);
+
+$output = `ps -p $pid`;
 unlike($output, qr/pt-query-digest/, 'It is stopped now'); 
 
-$dbh1->do('set global read_only=0');
-$dbh2->do('set global read_only=1');
 $output = `grep read_only /tmp/read_only.txt`;
 # Sample output:
 # # main:3619 6897 read_only on execute for --execute: 1 (want 1)

@@ -959,7 +959,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1249,12 +1249,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -1514,10 +1516,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -1528,13 +1531,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -1545,18 +1548,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -3505,7 +3511,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-Transformers->import qw(ts);
+Transformers->import(qw(ts));
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -3543,14 +3549,9 @@ sub main {
          unless $o->got('interval');
    }
 
-   if ( !-t STDIN ) {
-      PTDEBUG && _d("STDIN is piped");
-      @ARGV = ('-');
-   }
-
    # Disable opts that don't make sense when reading proclist
    # from a file (or STDIN).
-   if ( @ARGV ) {
+   if ( $o->get('test-matching') ) {
       $o->set('run-time',    0);
       $o->set('interval',    0);
       $o->set('ignore-self', 0);
@@ -3581,19 +3582,41 @@ sub main {
    }
 
    # ########################################################################
+   # Create the --filter sub.
+   # ########################################################################
+   my $filter_sub;
+   if ( my $filter = $o->get('filter') ) {
+      if ( -f $filter && -r $filter ) {
+         PTDEBUG && _d('Reading file', $filter, 'for --filter code');
+         open my $fh, "<", $filter or die "Cannot open $filter: $OS_ERROR";
+         $filter = do { local $/ = undef; <$fh> };
+         close $fh;
+      }
+      else {
+         $filter = "( $filter )";  # issue 565
+      }
+      my $code = 'sub { my ( $event ) = @_; '
+               . "$filter && return \$event; };";
+      PTDEBUG && _d('--filter code:', $code);
+      $filter_sub = eval $code
+         or die "Error compiling --filter code: $code\n$EVAL_ERROR";
+   }
+
+   # ########################################################################
    # Make input sub that will either get processlist from MySQL or a file.
    # ########################################################################
    my $dsn;
    my $dbh;
    my $kill_sth;
    my $get_proclist;
-   if ( @ARGV ) {
-      PTDEBUG && _d('Getting processlist from files:', @ARGV);
+   my $files;
+   if ( $files = $o->get('test-matching') ) {
+      PTDEBUG && _d('Getting processlist from files:', @$files);
       my $trp = new TextResultSetParser();
       my $fh;
       $get_proclist = sub {
          if ( !$fh ) {
-            my $file = shift @ARGV;
+            my $file = shift @$files;
             die 'No more files' unless $file;
             if ( $file eq '-' ) {
                $fh = *STDIN;
@@ -3655,14 +3678,15 @@ sub main {
    # ########################################################################
    msg("$PROGRAM_NAME starting");
    msg($dbh ? "Connected to host " . $dp->as_string($dsn)
-            : "Reading files @ARGV");
+            : "Test matching files @$files");
 
    # Class-based match criteria.
    my $query_count    = $o->get('query-count');
    my $each_busy_time = $o->get('each-busy-time');
    my $any_busy_time  = $o->get('any-busy-time');
    my $group_by       = $o->get('group-by');
-   if ( $group_by ) {
+   if ( $group_by 
+        && $group_by =~ m/id|user|host|db|command|time|state|info/i ) {
       # Processlist.pm is case-sensitive.  It matches Id, Host, db, etc.
       # So we'll do the same because if we set NAME_lc on the dbh then
       # we'll break our Processlist obj.
@@ -3724,6 +3748,17 @@ sub main {
          die "Error getting SHOW PROCESSLIST: $EVAL_ERROR";
       }
 
+      # Apply --filter to the processlist events.
+      my $filtered_proclist;
+      if ( $filter_sub && $proclist && @$proclist ) {
+         foreach my $proc ( @$proclist ) {
+            push @$filtered_proclist, $proc if $filter_sub->($proc);
+         }
+      }
+      else {
+         $filtered_proclist = $proclist;
+      }
+
       my @queries;
       if ( $proclist ) {
          # ##################################################################
@@ -3742,27 +3777,26 @@ sub main {
          # ##################################################################
          CLASS:
          foreach my $class ( keys %$query_classes ) {
-            PTDEBUG && _d("Finding matching queries for class", $class);
+            PTDEBUG && _d('Finding matching queries in class', $class);
+
             my @matches = $pl->find($query_classes->{$class}, %find_spec);
-            if ( !@matches ) {
-               PTDEBUG && _d("Class has no matching queries");
-               next CLASS;
-            }
+            PTDEBUG && _d(scalar @matches, 'queries in class', $class);
+            next CLASS unless scalar @matches;
 
             # ###############################################################
             # Apply class-based filters.
             # ###############################################################
             if ( $query_count && @matches < $query_count ) {
-               PTDEBUG && _d("Class does not have enough queries; has",
-                  scalar @matches, "but needs at least", $query_count);
+               PTDEBUG && _d('Not enough queries in class', $class,
+                  '; has', scalar @matches, 'but needs at least', $query_count);
                next CLASS;
             }
 
             if ( $each_busy_time ) {
                foreach my $proc ( @matches ) {
                   if ( ($proc->{Time} || 0) <= $each_busy_time ) {
-                     PTDEBUG && _d("This proc hasn't been running long enough:",
-                        Dumper($proc));
+                     PTDEBUG && _d('This query in class', $class,
+                        'hasn\'t been running long enough:', Dumper($proc));
                      next CLASS;
                   }
                }
@@ -3776,7 +3810,7 @@ sub main {
                   }
                }
                if ( !$busy_enough ) {
-                  PTDEBUG && _d("No proc is busy enough");
+                  PTDEBUG && _d('No query is busy enough in class', $class);
                   next CLASS;
                }
             }
@@ -3803,8 +3837,9 @@ sub main {
             # ###############################################################
             # Save matching queries in this class.
             # ###############################################################
-            PTDEBUG && _d(scalar @matches, "queries in class to kill");
+            PTDEBUG && _d(scalar @matches, 'queries to kill in class', $class);
             push @queries, @matches;
+
          } # CLASS
          msg('Matched ' . scalar @queries . ' queries');
 
@@ -3959,7 +3994,7 @@ pt-kill - Kill MySQL queries that match certain criteria.
 
 =head1 SYNOPSIS
 
-Usage: pt-kill [OPTION]... [FILE...]
+Usage: pt-kill [OPTIONS]
 
 pt-kill kills MySQL connections.  pt-kill connects to MySQL and gets queries
 from SHOW PROCESSLIST if no FILE is given.  Else, it reads queries from one
@@ -3984,7 +4019,8 @@ Print all login processes:
 
 See which queries in the processlist right now would match:
 
-   mysql -e "SHOW PROCESSLIST" | pt-kill --busy-time 60 --print
+   mysql -e "SHOW PROCESSLIST" > proclist.txt
+   pt-kill --test-matching proclist.txt --busy-time 60 --print
 
 =head1 RISKS
 
@@ -3993,12 +4029,12 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-kill is designed to kill queries if you use the L<"--kill"> option is given,
-and that might disrupt your database's users, of course.  You should test with
-the <"--print"> option, which is safe, if you're unsure what the tool will do.
+pt-kill kills queries if you use the L<"--kill"> option, so it can disrupt
+your database's users, of course.  You should test with the <"--print"> option,
+which is safe, if you're unsure what the tool will do.
 
-At the time of this release, we know of no bugs that could cause serious harm to
-users.
+At the time of this release, we know of no bugs that could cause serious harm
+to users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -4020,11 +4056,11 @@ For brevity, we talk about killing queries, but they may just be printed
 Normally pt-kill connects to MySQL to get queries from SHOW PROCESSLIST.
 Alternatively, it can read SHOW PROCESSLIST output from files.  In this case,
 pt-kill does not connect to MySQL and L<"--kill"> has no effect.  You should
-use L<"--print"> instead when reading files.  The ability to read a file (or
-- for STDIN) allows you to capture SHOW PROCESSLIST and test it later with
-pt-kill to make sure that your matches kill the proper queries.  There are a
-lot of special rules to follow, such as "don't kill replication threads,"
-so be careful to not kill something important!
+use L<"--print"> instead when reading files.  The ability to read a file
+with L<"--test-matching"> allows you to capture SHOW PROCESSLIST and test it
+later with pt-kill to make sure that your matches kill the proper queries.
+There are a lot of special rules to follow, such as "don't kill replication
+threads," so be careful not to kill something important!
 
 Two important options to know are L<"--busy-time"> and L<"--victims">.
 First, whereas most match/filter options match their corresponding value from
@@ -4040,8 +4076,6 @@ Usually you need to specify at least one C<--match> option, else no
 queries will match.  Or, you can specify L<"--match-all"> to match all queries
 that aren't ignored by an C<--ignore> option.
 
-pt-kill is a work in progress, and there is much more it could do.
-
 =head1 GROUP, MATCH AND KILL
 
 Queries pass through several steps to determine which exactly will be killed
@@ -4050,7 +4084,7 @@ help you match precisely the queries you want.
 
 The first step is grouping queries into classes.  The L<"--group-by"> option
 controls grouping.  By default, this option has no value so all queries are
-grouped into one, big default class.  All types of matching and filtering
+grouped into one default class.  All types of matching and filtering
 (the next step) are applied per-class.  Therefore, you may need to group
 queries in order to match/filter some classes but not others.
 
@@ -4073,9 +4107,9 @@ queries to kill, print, etc.
 
 =head1 OUTPUT
 
-If only L<"--kill"> then there is no output.  If only L<"--print"> then a
-timestamped KILL statement if printed for every query that would have
-been killed, like:
+If only L<"--kill"> is given, then there is no output.  If only
+L<"--print"> is given, then a timestamped KILL statement if printed
+for every query that would have been killed, like:
 
   # 2009-07-15T15:04:01 KILL 8 (Query 42 sec) SELECT * FROM huge_table
 
@@ -4097,8 +4131,7 @@ L<"--any-busy-time"> and L<"--each-busy-time"> are mutually exclusive.
 
 L<"--kill"> and L<"--kill-query"> are mutually exclusive.
 
-This tool accepts additional command-line arguments.  Refer to the
-L<"SYNOPSIS"> and usage information for details.
+L<"--daemonize"> and L<"--test-matching"> are mutually exclusive.
 
 =over
 
@@ -4133,6 +4166,48 @@ short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --filter
+
+type: string
+
+Discard events for which this Perl code doesn't return true.
+
+This option is a string of Perl code or a file containing Perl code that gets
+compiled into a subroutine with one argument: $event.  This is a hashref.
+If the given value is a readable file, then pt-kill reads the entire
+file and uses its contents as the code.  The file should not contain
+a shebang (#!/usr/bin/perl) line.
+
+If the code returns true, the chain of callbacks continues; otherwise it ends.
+The code is the last statement in the subroutine other than C<return $event>. 
+The subroutine template is:
+
+  sub { $event = shift; filter && return $event; }
+
+Filters given on the command line are wrapped inside parentheses like like
+C<( filter )>.  For complex, multi-line filters, you must put the code inside
+a file so it will not be wrapped inside parentheses.  Either way, the filter
+must produce syntactically valid code given the template.  For example, an
+if-else branch given on the command line would not be valid:
+
+  --filter 'if () { } else { }'  # WRONG
+
+Since it's given on the command line, the if-else branch would be wrapped inside
+parentheses which is not syntactically valid.  So to accomplish something more
+complex like this would require putting the code in a file, for example
+filter.txt:
+
+  my $event_ok; if (...) { $event_ok=1; } else { $event_ok=0; } $event_ok
+
+Then specify C<--filter filter.txt> to read the code from filter.txt.
+
+If the filter code won't compile, pt-kill will die with an error.
+If the filter code does compile, an error may still occur at runtime if the
+code tries to do something wrong (like pattern match an undefined value).
+pt-kill does not provide any safeguards so code carefully!
+
+It is permissible for the code to have side effects (to alter C<$event>).
 
 =item --group-by
 
@@ -4503,6 +4578,17 @@ By default, matches do not apply to replication threads; i.e. replication
 threads are completely ignored.  Specifying this option allows matches to
 match (and potentially kill) replication threads on masters and slaves.
 
+=item --test-matching
+
+type: array; group: Query Matches
+
+Files with processlist snapshots to test matching options against.  Since
+the matching options can be complex, you can save snapshots of processlist
+in files, then test matching options against queries in those files.
+
+This option disables L<"--run-time">, L<"--interval">,
+and L<"--[no]ignore-self">.
+
 =back
 
 =head2 CLASS MATCHES
@@ -4771,6 +4857,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 2.0.3
+pt-kill 2.0.4
 
 =cut

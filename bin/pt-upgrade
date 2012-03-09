@@ -141,12 +141,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -700,19 +702,56 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+           . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+           . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+           . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+   PTDEBUG && _d($sql);
+   eval { $dbh->do($sql); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   $sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $sql);
+   $dbh->do($sql);
+
+   $sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
+   }
+
+   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+        . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   PTDEBUG && _d($sql);
+   $dbh->do($sql);
+
+   my ($key) = grep { m/create table/i } keys %$href;
+   if ( $key ) {
+      PTDEBUG && _d('This table is a base table');
+      $href->{$key}  =~ s/\b[ ]{2,}/ /g;
+      $href->{$key} .= "\n";
+   }
+   else {
+      PTDEBUG && _d('This table is a view');
+      ($key) = grep { m/create view/i } keys %$href;
+   }
+
+   return $href->{$key};
+}
+
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -1019,41 +1058,31 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         my $key_def = $_->{ddl};
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      PTDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {
@@ -1139,6 +1168,48 @@ sub join_quote {
    $db  = "`$db`"  if $db  && $db  !~ m/^`/;
    $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
    return $db ? "$db.$tbl" : $tbl;
+}
+
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
 }
 
 1;
@@ -2098,7 +2169,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -4403,10 +4474,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -4417,13 +4489,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -4434,18 +4506,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -6019,23 +6094,21 @@ sub generate_asc_stmt {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($tbl_struct, $index) = @args{@required_args};
-   my @cols = $args{cols}  ? @{$args{cols}} : @{$tbl_struct->{cols}};
+   my @cols = $args{cols} ? @{$args{cols}} : @{$tbl_struct->{cols}};
    my $q    = $self->{Quoter};
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
+   PTDEBUG && _d('Will ascend index', $index);  
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
-   my @asc_slice;
-
-   @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
-   PTDEBUG && _d('Will ascend index', $index);
-   PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
    if ( $args{asc_first} ) {
       @asc_cols = $asc_cols[0];
       PTDEBUG && _d('Ascending only first column');
    }
+   PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 
+   my @asc_slice;
    my %col_posn = do { my $i = 0; map { $_ => $i++ } @cols };
    foreach my $col ( @asc_cols ) {
       if ( !exists $col_posn{$col} ) {
@@ -6596,18 +6669,16 @@ sub make_checksum_query {
 sub find_replication_differences {
    my ( $self, $dbh, $table ) = @_;
 
-   (my $sql = <<"   EOF") =~ s/\s+/ /gm;
-      SELECT db, tbl, chunk, boundaries,
-         COALESCE(this_cnt-master_cnt, 0) AS cnt_diff,
-         COALESCE(
-            this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc),
-            0
-         ) AS crc_diff,
-         this_cnt, master_cnt, this_crc, master_crc
-      FROM $table
-      WHERE master_cnt <> this_cnt OR master_crc <> this_crc
-      OR ISNULL(master_crc) <> ISNULL(this_crc)
-   EOF
+   my $sql
+      = "SELECT db, tbl, CONCAT(db, '.', tbl) AS `table`, "
+      . "chunk, chunk_index, lower_boundary, upper_boundary, "
+      . "COALESCE(this_cnt-master_cnt, 0) AS cnt_diff, "
+      . "COALESCE("
+      .   "this_crc <> master_crc OR ISNULL(master_crc) <> ISNULL(this_crc), 0"
+      . ") AS crc_diff, this_cnt, master_cnt, this_crc, master_crc "
+      . "FROM $table "
+      . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
+      . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
 
    PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
@@ -7016,11 +7087,12 @@ sub lock_and_wait {
 
    eval {
       if ( my $timeout = $args{wait} ) {
-         my $wait  = $args{wait_retry_args}->{wait}  || 10;
+         my $ms    = $self->{MasterSlave};
          my $tries = $args{wait_retry_args}->{tries} || 3;
+         my $wait;
          $self->{Retry}->retry(
-            wait  => sub { sleep $wait; },
             tries => $tries,
+            wait  => sub { sleep $args{wait_retry_args}->{wait}  || 10 },
             try   => sub {
                my ( %args ) = @_;
 
@@ -7028,12 +7100,18 @@ sub lock_and_wait {
                   warn "Retrying MASTER_POS_WAIT() for --wait $timeout...";
                }
 
-               my $ms   = $self->{MasterSlave};
-               my $wait = $ms->wait_for_master(
+               $wait = $ms->wait_for_master(
                   master_status => $ms->get_master_status($src->{misc_dbh}),
                   slave_dbh     => $dst->{dbh},
                   timeout       => $timeout,
                );
+               if ( defined $wait->{result} && $wait->{result} != -1 ) {
+                  return;  # slave caught up
+               }
+               die; # call fail
+            },
+            fail => sub {
+               my (%args) = @_;
                if ( !defined $wait->{result} ) {
                   my $msg;
                   if ( $wait->{waited}  ) {
@@ -7048,20 +7126,14 @@ sub lock_and_wait {
                      $msg .= "  Sleeping $wait seconds then retrying "
                            . ($tries - $args{tryno}) . " more times.";
                   }
-                  warn $msg;
-                  return;
+                  warn "$msg\n";
+                  return 1; # call wait, call try
                }
                elsif ( $wait->{result} == -1 ) {
-                  die "Slave did not catch up to its master after waiting "
-                     . "$timeout seconds with MASTER_POS_WAIT.  Try inceasing "
-                     . "the --wait time, or disable this feature by specifying "
-                     . "--wait 0.";
-               }
-               else {
-                  return $result;  # slave caught up
+                  return 0;  # call final_fail
                }
             },
-            on_failure => sub {
+            final_fail => sub {
                die "Slave did not catch up to its master after $tries attempts "
                   . "of waiting $timeout seconds with MASTER_POS_WAIT.  "
                   . "Check that the slave is running, increase the --wait "
@@ -8088,8 +8160,6 @@ sub get_result_set_struct {
    my @cols     = @{$sth->{NAME}};
    my @types    = map { $dbh->type_info($_)->{TYPE_NAME} } @{$sth->{TYPE}};
    my @nullable = map { $dbh->type_info($_)->{NULLABLE} == 1 ? 1 : 0 } @{$sth->{TYPE}};
-   my @p = @{$sth->{PRECISION}};
-   my @s = @{$sth->{SCALE}};
 
    my $struct   = {
       cols => \@cols, 
@@ -8104,11 +8174,11 @@ sub get_result_set_struct {
       $struct->{is_nullable}->{$col} = $nullable[$i];
       $struct->{is_numeric}->{$col} 
          = ($type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ? 1 : 0);
+
       $struct->{size}->{$col}
-         = ($type =~ m/(?:float|double)/)           ? "($s[$i],$p[$i])"
-         : ($type =~ m/(?:decimal)/)                ? "($p[$i],$s[$i])"
-         : ($type =~ m/(?:char|varchar)/ && $p[$i]) ? "($p[$i])"
-         :                                            undef;
+         = $type =~ m/(?:char|varchar)/ && $sth->{PRECISION}->[$i]
+         ? "($sth->{PRECISION}->[$i])"
+         : undef;
    }
 
    return $struct;
@@ -8857,7 +8927,7 @@ $Data::Dumper::Quotekeys = 0;
 sub new {
    my ( $class, %args ) = @_;
    my @required_args = qw(method base-dir plugins get_id
-                          QueryParser MySQLDump TableParser TableSyncer Quoter);
+                          QueryParser TableParser TableSyncer Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -9454,7 +9524,6 @@ sub add_indexes {
    my $qp = $self->{QueryParser};
    my $tp = $self->{TableParser};
    my $q  = $self->{Quoter};
-   my $du = $self->{MySQLDump};
 
    my @src_tbls = $qp->get_tables($query);
    my @keys;
@@ -9464,8 +9533,11 @@ sub add_indexes {
          my $tbl_struct;
          eval {
             $tbl_struct = $tp->parse(
-               $du->get_create_table($dsts->[0]->{dbh}, $q, $db, $tbl)
-            );
+               $tp->get_create_table(
+                  dbh => $dsts->[0]->{dbh},
+                  db  => $db,
+                  tbl => $tbl,
+               ));
          };
          if ( $EVAL_ERROR ) {
             PTDEBUG && _d('Error parsing', $db, '.', $tbl, ':', $EVAL_ERROR);
@@ -10384,48 +10456,42 @@ sub new {
 
 sub retry {
    my ( $self, %args ) = @_;
-   my @required_args = qw(try wait);
+   my @required_args = qw(try fail final_fail);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
-   my ($try, $wait) = @args{@required_args};
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
    my $tries = $args{tries} || 3;
 
+   my $last_error;
    my $tryno = 0;
+   TRY:
    while ( ++$tryno <= $tries ) {
-      PTDEBUG && _d("Retry", $tryno, "of", $tries);
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
       my $result;
       eval {
          $result = $try->(tryno=>$tryno);
       };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
 
-      if ( defined $result ) {
-         PTDEBUG && _d("Try code succeeded");
-         if ( my $on_success = $args{on_success} ) {
-            PTDEBUG && _d("Calling on_success code");
-            $on_success->(tryno=>$tryno, result=>$result);
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
          }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
          return $result;
       }
-
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d("Try code died:", $EVAL_ERROR);
-         die $EVAL_ERROR unless $args{retry_on_die};
-      }
-
-      if ( $tryno < $tries ) {
-         PTDEBUG && _d("Try code failed, calling wait code");
-         $wait->(tryno=>$tryno);
-      }
    }
 
-   PTDEBUG && _d("Try code did not succeed");
-   if ( my $on_failure = $args{on_failure} ) {
-      PTDEBUG && _d("Calling on_failure code");
-      $on_failure->();
-   }
-
-   return;
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
 }
 
 sub _d {
@@ -11818,6 +11884,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-upgrade 2.0.3
+pt-upgrade 2.0.4
 
 =cut

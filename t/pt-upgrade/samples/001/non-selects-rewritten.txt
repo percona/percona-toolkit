@@ -8,7 +8,7 @@
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
-#            127.1:12345 127.1:12347
+#            127.1:12345 127.1:12348
 # Errors               0           0
 # Warnings             0           0
 # Query_time                        
@@ -42,7 +42,7 @@ select * from  t where id is not null
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
-#            127.1:12345 127.1:12347
+#            127.1:12345 127.1:12348
 # Errors               0           0
 # Warnings             0           0
 # Query_time                        
@@ -75,7 +75,7 @@ select id from test.t where id > 3
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
-#            127.1:12345 127.1:12347
+#            127.1:12345 127.1:12348
 # Errors               0           0
 # Warnings             0           0
 # Query_time                        

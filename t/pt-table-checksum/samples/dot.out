@@ -1,0 +1,19 @@
+--
+-- test.t
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `no.`, `foo.bar`, CONCAT(ISNULL(`foo.bar`)))) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `test`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`no.` >= ?)) AND ((`no.` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `test`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`no.` < ?)) ORDER BY `no.` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `test`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`no.` > ?)) ORDER BY `no.` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `no.` FROM `test`.`t` FORCE INDEX(`PRIMARY`) WHERE ((`no.` >= ?)) ORDER BY `no.` LIMIT ?, 2 /*next chunk boundary*/
+
+1 eight four
+2 nine seven
+3 six three
+4 two two
+5  eight
+6 two 
+

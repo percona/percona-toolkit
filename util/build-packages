@@ -181,8 +181,8 @@ update_copyright_year() {
    echo -n "Updating copyright year in tools... "
    cd $BRANCH/bin
    for tool_file in *; do
-      local copyright=$(grep "[0-9] Percona Inc." $tool_file);
-      local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
+      local copyright="$(grep "[0-9] Percona Inc." $tool_file)"
+      local new_copyright="$(../util/new-copyright-year "$YEAR" "$copyright")"
       if [ $? -ne 0 ]; then
          die "Error parsing copyright year in $tool_file"
       fi
@@ -196,8 +196,8 @@ update_copyright_year() {
 
    echo -n "Updating copyright year in percona-toolkit.pod... "
    local pod=$DOCS_DIR/percona-toolkit.pod
-   local copyright=$(grep "[0-9] Percona Inc." $pod)
-   local new_copyright=$(../util/new-copyright-year $YEAR "$copyright")
+   local copyright="$(grep "[0-9] Percona Inc." $pod)"
+   local new_copyright="$(../util/new-copyright-year "$YEAR" "$copyright")"
    if [ $? -ne 0 ]; then
       die "Error parsing copyright year in percona-toolkit.pod"
    fi
@@ -292,9 +292,9 @@ update_rel_notes() {
 
    local line="v$VERSION released $DATE"
    local len=${#line}
-   local ul=$(printf "%${len}s")
-   echo $line                             >> /tmp/release_notes.tmp
-   echo ${ul// /=}                        >> /tmp/release_notes.tmp
+   local ul="$(printf "%${len}s" | tr [:space:] '=')"
+   echo "$line"                           >> /tmp/release_notes.tmp
+   echo "$ul"                             >> /tmp/release_notes.tmp
    echo                                   >> /tmp/release_notes.tmp
    (cd $cwd && cat $REL_NOTES             >> /tmp/release_notes.tmp)
    echo                                   >> /tmp/release_notes.tmp

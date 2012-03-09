@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More tests => 5;
 
 use PerconaTest;
 
@@ -42,6 +42,13 @@ like(
    $output,
    qr/No database was specified/,
    "Either DSN D part or --database required"
+);
+
+$output = `$cmd --help`;
+like(
+   $output,
+   qr/--execute\s+FALSE/,
+   "--execute FALSE by default"
 );
 
 # #############################################################################

@@ -8,7 +8,7 @@
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
-#            P=12345,h=127.1,p=...,u=msandbox P=12347,h=127.1,p=...,u=msandbox
+#            P=12345,h=127.1,p=...,u=msandbox P=12348,h=127.1,p=...,u=msandbox
 # Errors                                    1                                1
 # Warnings                                  0                                0
 # Query_time                                                                  
@@ -31,7 +31,7 @@ select borked
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
-#            P=12345,h=127.1,p=...,u=msandbox P=12347,h=127.1,p=...,u=msandbox
+#            P=12345,h=127.1,p=...,u=msandbox P=12348,h=127.1,p=...,u=msandbox
 # Errors                                    0                                0
 # Warnings                                  0                                0
 # Query_time                                                                  
@@ -55,7 +55,7 @@ select * from t where name='jane'
 # Errors
 # Query ID           Host                             Error
 # ================== ================================ ========================
-# 3B323396273BC4C7-1 P=12347,h=127.1,p=...,u=msandbox Failed to execute query: DBD::mysql::st execute failed: Unknown column 'borked' in 'field list' [for Statement "select borked"] at ../mk-upgrade line 7059, <$fh> line 2.
+# 3B323396273BC4C7-1 P=12348,h=127.1,p=...,u=msandbox Failed to execute query: DBD::mysql::st execute failed: Unknown column 'borked' in 'field list' [for Statement "select borked"] at ../mk-upgrade line 7059, <$fh> line 2.
 
 # Statistics
 # CompareResults_after_execute_skipped 2
