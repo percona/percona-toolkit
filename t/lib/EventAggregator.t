@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 80;
+use Test::More tests => 81;
 
 use QueryRewriter;
 use EventAggregator;
@@ -1904,6 +1904,24 @@ cmp_ok(
    '<=',
    1000,
    "Saved no more than 1_000 CRCs"
+);
+
+# #############################################################################
+# Bug 821694: pt-query-digest doesn't recognize hex InnoDB txn IDs
+# #############################################################################
+$ea = new EventAggregator(
+   groupby      => 'arg',
+   worst        => 'Query_time',
+   unroll_limit => 5,
+   type_for     => {
+      'InnoDB_trx_id' => 'string',
+   },
+);
+parse_file('t/lib/samples/slowlogs/slow054.txt', $p, $ea);
+is(
+   $ea->{result_classes}->{'SELECT * FROM foo WHERE id=1'}->{InnoDB_trx_id}->{cnt},
+   8,
+   "Parse InnoDB_trx_id as string"
 );
 
 # #############################################################################

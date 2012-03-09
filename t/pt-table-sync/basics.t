@@ -223,6 +223,7 @@ like(
    "--replicate with uc index (bug 927771)"
 );
 
+PerconaTest::wait_for_table($slave_dbh, "test.t", "id=10 AND c='j'");
 my $rows = $slave_dbh->selectall_arrayref("select id, c from test.t where id>8 order by id");
 is_deeply(
    $rows,

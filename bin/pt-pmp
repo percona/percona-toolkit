@@ -4,6 +4,48 @@
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
+# ###########################################################################
+# tmpdir package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/tmpdir.sh
+#   t/lib/bash/tmpdir.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+
+set -u
+
+TMPDIR=""
+
+mk_tmpdir() {
+   local dir="${1:-""}"
+
+   if [ -n "$dir" ]; then
+      if [ ! -d "$dir" ]; then
+         mkdir "$dir" || die "Cannot make tmpdir $dir"
+      fi
+      TMPDIR="$dir"
+   else
+      local tool="${0##*/}"
+      local pid="$$"
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+         || die "Cannot make secure tmpdir"
+   fi
+}
+
+rm_tmpdir() {
+   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
+      rm -rf "$TMPDIR"
+   fi
+   TMPDIR=""
+}
+
+# ###########################################################################
+# End tmpdir package
+# ###########################################################################
+
+set +u
+
 usage() {
    if [ "${OPT_ERR}" ]; then
       echo "${OPT_ERR}" >&2
@@ -100,7 +142,6 @@ aggregate_stacktrace() {
 
 # The main program to run.
 main() {
-   rm -f /tmp/percona-toolkit
 
    # Get command-line options
    for o; do
@@ -155,15 +196,14 @@ main() {
       fi
       date;
       for x in $(seq 1 $OPT_i); do
-         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-/tmp/percona-toolkit}"
-         date +'TS %N.%s %F %T' >> "${OPT_k:-/tmp/percona-toolkit}"
+         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-$TMPDIR/percona-toolkit}"
+         date +'TS %N.%s %F %T' >> "${OPT_k:-$TMPDIR/percona-toolkit}"
          sleep $OPT_s
       done
    fi
 
    if [ $# -eq 0 ]; then
-      aggregate_stacktrace "${OPT_l}" "${OPT_k:-/tmp/percona-toolkit}"
-      rm -f /tmp/percona-toolkit
+      aggregate_stacktrace "${OPT_l}" "${OPT_k:-$TMPDIR/percona-toolkit}"
    else
       aggregate_stacktrace "${OPT_l}" "$@"
    fi
@@ -172,7 +212,9 @@ main() {
 # Execute the program if it was not included from another file.  This makes it
 # possible to include without executing, and thus test.
 if [ "$(basename "$0")" = "pt-pmp" ] || [ "$(basename "$0")" = "bash" -a "$_" = "$0" ]; then
-    main "$@"
+   mk_tmpdir
+   main "$@"
+   rm_tmpdir
 fi
 
 # ############################################################################
@@ -348,7 +390,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-pmp 2.0.3
+pt-pmp 2.0.4
 
 =cut
 

@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use Data::Dumper;
+
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-kill";
@@ -23,7 +25,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 3;
 }
 
 my $output;
@@ -32,7 +34,7 @@ my $cmd = "$trunk/bin/pt-kill -F $cnf -h 127.1";
 
 # Shell out to a sleep(10) query and try to capture the query.
 # Backticks don't work here.
-system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(5)' >/dev/null&");
+system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(5)' >/dev/null &");
 
 $output = `$cmd --busy-time 1s --print --run-time 10`;
 
@@ -47,7 +49,10 @@ $output = `$cmd --busy-time 1s --print --run-time 10`;
 # 2009-05-27T22:19:47 KILL 5 (Query 8 sec) select sleep(10)
 # 2009-05-27T22:19:48 KILL 5 (Query 9 sec) select sleep(10)
 my @times = $output =~ m/\(Query (\d+) sec\)/g;
-ok(@times > 2 && @times < 7, "There were 2 to 5 captures");
+ok(
+   @times > 2 && @times < 7,
+   "There were 2 to 5 captures"
+) or print STDERR Dumper($output);
 
 # This is to catch a bad bug where there wasn't any sleep time when
 # --iterations  was 0, and another bug when --run-time was not respected.
@@ -56,7 +61,10 @@ ok(@times > 2 && @times < 7, "There were 2 to 5 captures");
 system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(10)' >/dev/null&");
 $output = `$cmd --busy-time 1s --print --run-time 11s`;
 @times = $output =~ m/\(Query (\d+) sec\)/g;
-ok(@times > 7 && @times < 12, 'Approximately 9 or 10 captures with --iterations 0');
+ok(
+   @times > 7 && @times < 12,
+   'Approximately 9 or 10 captures with --iterations 0'
+) or print STDERR Dumper($output);
 
 
 # ############################################################################
@@ -70,16 +78,6 @@ like(
    $output,
    qr/Checking processlist/,
    '--verbose'
-);
-
-# ############################################################################
-# Reading file (or STDIN) should require connection.
-# ############################################################################
-$output = `/tmp/12345/use -e "SHOW PROCESSLIST" | $trunk/bin/pt-kill -F $cnf --busy-time 1 --print --verbose`;
-like(
-   $output,
-   qr/Reading files -/,
-   "Read STDIN from pipe"
 );
 
 # #############################################################################

@@ -1,6 +1,51 @@
 Release Notes
 *************
 
+v2.0.4 released 2012-03-07
+==========================
+
+Percona Toolkit 2.0.4 has been released.  23 bugs were fixed in this release,
+and three new features were implemented.  First, --filter was added to pt-kill
+which allows for arbitrary --group-by.  Second, pt-online-schema-change now
+requires that its new --execute option be given, else the tool will just check
+the tables and exit.  This is a safeguard to encourage users to read the
+documentation, particularly when replication is involved.  Third, pt-stalk
+also received a new option: --[no]stalk.  To collect immediately without
+stalking, specify --no-stalk and the tool will collect once and exit.
+
+This release is completely backwards compatible with previous 2.0 releases.
+Given the number of bug fixes, it's worth upgrading to 2.0.4.
+
+Changelog
+---------
+
+* Added --filter to pt-kill to allow arbitrary --group-by
+* Added --[no]stalk to pt-stalk (bug 932331)
+* Added --execute to pt-online-schema-change (bug 933232)
+* Fixed bug 873598: pt-online-schema-change doesn't like reserved words in column names
+* Fixed bug 928966: pt-pmp still uses insecure /tmp
+* Fixed bug 933232: pt-online-schema-change can break replication
+* Fixed bug 941225: Use of qw(...) as parentheses is deprecated at pt-kill line 3511
+* Fixed bug 821694: pt-query-digest doesn't recognize hex InnoDB txn IDs
+* Fixed bug 894255: pt-kill shouldn't check if STDIN is a tty when --daemonize is given
+* Fixed bug 916999: pt-table-checksum error: DBD::mysql::st execute failed: called with 2 bind variables when 6 are needed
+* Fixed bug 926598: DBD::mysql bug causes pt-upgrade to use wrong precision (M) and scale (D)
+* Fixed bug 928226: pt-diskstats illegal division by zero
+* Fixed bug 928415: Typo in pt-stalk doc: --trigger should be --function
+* Fixed bug 930317: pt-archiver doc refers to nonexistent pt-query-profiler
+* Fixed bug 930533: pt-sift looking for *-processlist1; broken compatibility with pt-stalk
+* Fixed bug 932331: pt-stalk cannot collect without stalking
+* Fixed bug 932442: pt-table-checksum error when column name has two spaces
+* Fixed bug 932883: File Debian bug after each release
+* Fixed bug 940503: pt-stalk disk space checks wrong on 32bit platforms
+* Fixed bug 944420: --daemonize doesn't always close STDIN
+* Fixed bug 945834: pt-sift invokes pt-diskstats with deprecated argument
+* Fixed bug 945836: pt-sift prints awk error if there are no stack traces to aggregate
+* Fixed bug 945842: pt-sift generates wrong state sum during processlist analysis
+* Fixed bug 946438: pt-query-digest should print a better message when an unsupported log format is specified
+* Fixed bug 946776: pt-table-checksum ignores --lock-wait-timeout
+* Fixed bug 940440: Bad grammar in pt-kill docs
+
 v2.0.3 released 2012-02-03
 ==========================
 
@@ -38,12 +83,12 @@ Changelog
 * Fixed bug 871438: Bash tools are insecure
 * Fixed bug 897758: Failed to prepare TableSyncChunk plugin: Use of uninitialized value $args{"chunk_range"} in lc at pt-table-sync line 3055
 * Fixed bug 919819: pt-kill --execute-command creates zombies
-* Fixed bug 894255: pt-kill: when --daemonize is given, should not check that stdin is a tty
 * Fixed bug 925778: pt-ioprofile doesn't run without a file
 * Fixed bug 925477: pt-ioprofile docs refer to pt-iostats
 * Fixed bug 857091: pt-sift downloads http://percona.com/get/pt-pmp, which does not work
 * Fixed bug 857104: pt-sift tries to invoke mext, should be pt-mext
 * Fixed bug 872699: pt-diskstats: rd_avkb & wr_avkb derived incorrectly
+* Fixed bug 897029: pt-diskstats computes wrong values for md0
 * Fixed bug 882918: pt-stalk spams warning if oprofile isn't installed
 * Fixed bug 884504: pt-stalk doesn't check pt-collect
 * Fixed bug 897483: pt-online-schema-change "uninitialized value" due to update-foreign-keys-method

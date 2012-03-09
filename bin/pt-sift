@@ -169,11 +169,11 @@ main() {
          DEFAULT)
             echo "--diskstats--"
 
-            $PR_diskstats -g disk "${BASEDIR}/${PREFIX}-diskstats" \
+            $PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
                | awk '
                   /ts/ { header = $0 }
                   /[0-9]/ {
-                     io  = $3 + $6;
+                     io  = $3 + $9;
                      if ( io >= mio ) {
                         mio   = io;
                         mseen = $0;
@@ -185,10 +185,10 @@ main() {
                   }'
 
             # Find out which device was the busiest.
-            mdev="$($PR_diskstats -g disk "${BASEDIR}/${PREFIX}-diskstats" \
+            mdev="$($PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
                | awk '
                   /[0-9]/ {
-                     io  = $3 + $6;
+                     io  = $3 + $9;
                      if ( io >= mio ) {
                         mio   = io;
                         mdev  = $2;
@@ -200,14 +200,14 @@ main() {
 
             # Print the busy% for that device, rounded to the nearest N%, with
             # "." as a marker for a repeated value.
-            $PR_diskstats -g sample "${BASEDIR}/${PREFIX}-diskstats" \
+            $PR_diskstats --group-by sample "${BASEDIR}/${PREFIX}-diskstats" \
                | awk "
                   BEGIN {
                      fuzz = 5;
                      printf \" ${mdev} \"
                   }
                   \$1 = \"${mdev}\" {
-                     busy_rounded = fuzz * sprintf(\"%d\", substr(\$9, 1, length(\$9) - 1) / fuzz);
+                     busy_rounded = fuzz * sprintf(\"%d\", substr(\$15, 1, length(\$15) - 1) / fuzz);
                      if ( printed == 1 && prev == busy_rounded ) {
                         printf \" .\";
                      }
@@ -347,16 +347,41 @@ main() {
             awk '/^[XS]-lock on.*latch/ { print }' \
               "${BASEDIR}/${PREFIX}-innodbstatus1" | sort | uniq -c | sort -rn
 
+            # This section checks for processlist or processlist1 for backwards
+            # compatibility with the obsolete pt-collect tool.
             echo "--processlist--"
+            local PROCESSLIST_FILE="${BASEDIR}/${PREFIX}-processlist"
+            if [ -e "${BASEDIR}/${PREFIX}-processlist1" ]; then
+               PROCESSLIST_FILE="${BASEDIR}/${PREFIX}-processlist1"
+            fi
             for word in State Command; do
                echo "    $word"
-               awk -F: "/^ *$word:/{print \$2}" \
-                  "${BASEDIR}/${PREFIX}-processlist1" \
+               awk -F: -v column="$word" '
+               BEGIN {
+                  regex = "^ *" column
+               }
+               {
+                  if ( $1 ~ regex ) {
+                     print $2;
+                  }
+                  # Newer versions of pt-stalk gather several samples. We will
+                  # analyze only the first sample.
+                  if ( $0 ~ /^TS/ ) {
+                     ts++;
+                     if (ts > 1) {
+                        exit
+                     }
+                  }
+               }' "${PROCESSLIST_FILE}" \
                   | sort | uniq -c | sort -rn | head -n 5
             done
 
             echo "--stack traces--"
-            $PR_pmp -l 5 "${BASEDIR}/${PREFIX}-stacktrace" | head -n 5
+            if [ -e "${BASEDIR}/${PREFIX}-stacktrace" ]; then
+               $PR_pmp -l 5 "${BASEDIR}/${PREFIX}-stacktrace" | head -n 5
+            else
+               echo "    No stack trace file exists"
+            fi
 
             echo "--oprofile--"
             if [ ! -e "${BASEDIR}/${PREFIX}-opreport" ]; then
@@ -439,9 +464,13 @@ main() {
       esac
 
       # Capture and handle the interactive key-strokes.
+      tput sgr0
       KEY=""
-      read -n 1 -s KEY
-      case "${KEY}" in
+      if ! read -n 1 -s KEY 2>/dev/null; then
+         echo "Error while trying to read interactive keystroke command. Exiting."
+         exit
+      fi
+      case "${KEY:-}" in
          j|k)
             PREFIX="$(awk "
                BEGIN {
@@ -697,7 +726,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-sift 2.0.3
+pt-sift 2.0.4
 
 =cut
 

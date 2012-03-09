@@ -1771,41 +1771,43 @@ sub get_create_table {
    die "I need a tbl parameter" unless $tbl;
    my $q = $self->{Quoter};
 
-   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-           . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-           . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-           . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-   PTDEBUG && _d($sql);
-   eval { $dbh->do($sql); };
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
    PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
 
-   $sql = 'USE ' . $q->quote($db);
-   PTDEBUG && _d($dbh, $sql);
-   $dbh->do($sql);
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
 
-   $sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
-   PTDEBUG && _d($sql);
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
    my $href;
-   eval { $href = $dbh->selectrow_hashref($sql); };
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
    if ( $EVAL_ERROR ) {
       PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
       return;
    }
 
-   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-        . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-   PTDEBUG && _d($sql);
-   $dbh->do($sql);
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
 
-   my ($key) = grep { m/create table/i } keys %$href;
-   if ( $key ) {
-      PTDEBUG && _d('This table is a base table');
-      $href->{$key}  =~ s/\b[ ]{2,}/ /g;
-      $href->{$key} .= "\n";
-   }
-   else {
-      PTDEBUG && _d('This table is a view');
-      ($key) = grep { m/create view/i } keys %$href;
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
    }
 
    return $href->{$key};
@@ -4360,10 +4362,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -4374,13 +4377,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -4391,18 +4394,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -5938,29 +5944,37 @@ sub main {
             . "level to REPEATABLE-READ.\n";
       }
 
-      # We set innodb_lock_wait_timeout=1 so that if this tool happens to cause
-      # some locking, it will be more likely to be the victim than other
-      # connections to the server, and thus disrupt the server less.
-      $sql = 'SHOW SESSION VARIABLES LIKE "innodb_lock_wait_timeout"';
-      PTDEBUG && _d($dbh, $sql);
-      my (undef, $lock_wait_timeout) = $dbh->selectrow_array($sql);
-      PTDEBUG && _d('innodb_lock_wait_timeout', $lock_wait_timeout);
-      if ( ($lock_wait_timeout || 0) > $o->get('lock-wait-timeout') ) {
-         $sql = 'SET SESSION innodb_lock_wait_timeout=1';
-         eval {
-            PTDEBUG && _d($dbh, $sql);
-            $dbh->do($sql);
-         };
-         if ( $EVAL_ERROR ) {
-            warn "Failed to $sql: $EVAL_ERROR\n"
+      # We set innodb_lock_wait_timeout=1 (the option's default value)
+      # so that if this tool happens to cause some locking, it will more
+      # likely be the victim than other connections and thus avoid disrupting
+      # the server.  The var is only dynamic with the InnoDB plugin, so
+      # if setting it fails we only warn if the server's value is greater
+      # than the desired value.  E.g. if user does --lock-wait-timeout 5
+      # and the set fails but the server's value is 1, then that's ok, but
+      # if the server's value is 10, then that's not ok.
+      my $lock_wait_timeout = $o->get('lock-wait-timeout');
+      my $set_lwt = "SET SESSION innodb_lock_wait_timeout=$lock_wait_timeout";
+      PTDEBUG && _d($dbh, $set_lwt);
+      eval {
+         $dbh->do($set_lwt);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         # Get the server's current value.
+         $sql = "SHOW SESSION VARIABLES LIKE 'innodb_lock_wait_timeout'";
+         PTDEBUG && _d($dbh, $sql);
+         my (undef, $curr_lwt) = $dbh->selectrow_array($sql);
+         PTDEBUG && _d('innodb_lock_wait_timeout on server:', $curr_lwt);
+         if ( $curr_lwt > $lock_wait_timeout ) { 
+            warn "Failed to $set_lwt: $EVAL_ERROR\n"
                . "The current innodb_lock_wait_timeout value "
-               . "$lock_wait_timeout is higher than the --lock-wait-timeout "
-               . "value " . $o->get('lock-wait-timeout') . " and the variable "
-               . "cannot be changed.  innodb_lock_wait_timeout is only dynamic "
-               . "when using the InnoDB plugin.  To prevent this warning, either "
-               . "specify --lock-wait-time=$lock_wait_timeout, or manually "
-               . "set innodb_lock_wait_timeout to a value less than or equal "
-               . "to " . $o->get('lock-wait-timeout') . " and restart MySQL.\n";
+               . "$curr_lwt is greater than the --lock-wait-timeout "
+               . "value $lock_wait_timeout and the variable cannot be "
+               . "changed.  innodb_lock_wait_timeout is only dynamic when "
+               . "using the InnoDB plugin.  To prevent this warning, either "
+               . "specify --lock-wait-time=$curr_lwt, or manually set "
+               . "innodb_lock_wait_timeout to a value less than or equal "
+               . "to $lock_wait_timeout and restart MySQL.\n";
          }
       }
    };
@@ -7381,6 +7395,18 @@ sub _d {
 # ############################################################################
 # Run the program.
 # ############################################################################
+
+# https://bugs.launchpad.net/percona-toolkit/+bug/916999
+# http://www.mysqlperformanceblog.com/2012/02/21/dbd-mysql-4-014-breaks-pt-table-checksum-2-0/
+eval {
+   require DBD::mysql;
+};
+if ( !$EVAL_ERROR && $DBD::mysql::VERSION eq "4.014" ) {
+   die "DBD::mysql v4.014 is installed, but it has as bug which causes "
+     . "pt-table-checksum to fail.  Please upgrade DBD::mysql to any "
+     . "newer version.\n"
+}
+
 if ( !caller ) { exit main(@ARGV); }
 
 1; # Because this is a module as well as a script.
@@ -7975,10 +8001,13 @@ Ignore tables whose names match the Perl regex.
 
 type: int; default: 1
 
-Set the session value of the innodb_lock_wait_timeout variable on the master host.
-Setting this option dynamically requires the InnoDB plugin, so this works only
-on newer InnoDB and MySQL versions.  This option helps guard against long lock
-waits if the checksum queries become slow for some reason.
+Set the session value of C<innodb_lock_wait_timeout> on the master host.
+This option helps guard against long lock waits if the checksum queries
+become slow for some reason.  Setting this option dynamically requires the
+InnoDB plugin, so this works only on newer InnoDB and MySQL versions.  If
+setting the value fails and the current server value is greater than the
+specified value, then a warning is printed; else, if the current server
+value is less than or equal to the specified value, no warning is printed.
 
 =item --max-lag
 
@@ -8437,6 +8466,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.0.3
+pt-table-checksum 2.0.4
 
 =cut

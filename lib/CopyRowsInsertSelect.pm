@@ -37,13 +37,14 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   CopyRowsInsertSelect object
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(Retry);
+   my @required_args = qw(Retry Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
    my $self = {
-      %args,
+      Retry  => $args{Retry},
+      Quoter => $args{Quoter},
    };
 
    return bless $self, $class;
@@ -56,9 +57,10 @@ sub copy {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $msg, $from_table, $to_table, $chunks) = @args{@required_args};
+   my $q        = $self->{Quoter};
    my $pr       = $args{Progress};
    my $sleep    = $args{sleep};
-   my $columns  = join(', ', @{$args{columns}});
+   my $columns  = join(', ', map { $q->quote($_) } @{$args{columns}});
    my $n_chunks = @$chunks - 1;
 
    for my $chunkno ( 0..$n_chunks ) {

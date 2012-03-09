@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TESTS=9
+plan 9
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/tmpdir.sh"
@@ -21,7 +21,7 @@ is "$TMPDIR" "" "rm_tmpdir resets TMPDIR"
 # User-specified tmpdir.
 # ###########################################################################
 
-local dir="/tmp/use--tmpdir"
+dir="/tmp/use--tmpdir"
 
 is "$TMPDIR" "" "TMPDIR not defined"
 

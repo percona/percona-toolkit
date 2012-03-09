@@ -19,6 +19,8 @@ my $in   = "$trunk/t/lib/samples/slowlogs";
 my $out  = "t/pt-trend/samples/";
 my @args = ();
 
+$ENV{TZ}='MST7MDT';
+
 ok(
    no_diff(
       sub { pt_trend::main(@args, "$in/slow053.txt") },

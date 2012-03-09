@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 38;
+use Test::More tests => 39;
 
 use TableParser;
 use Quoter;
@@ -38,14 +38,25 @@ SKIP: {
       "get_create_table(nonexistent table)"
    );
 
+   my $ddl = $tp->get_create_table($dbh, 'sakila', 'actor');
    ok(
       no_diff(
-         $tp->get_create_table($dbh, 'sakila', 'actor'),
+         "$ddl\n",
          $sandbox_version ge '5.1' ? "$sample/sakila.actor"
                                    : "$sample/sakila.actor-5.0",
          cmd_output => 1,
       ),
       "get_create_table(sakila.actor)"
+   );
+
+   # Bug 932442: column with 2 spaces
+   $sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
+   PerconaTest::wait_for_table($dbh, "test.t");
+   $ddl = $tp->get_create_table($dbh, qw(test t));
+   like(
+      $ddl,
+      qr/`a  b`\s+/,
+      "Does not compress spaces (bug 932442)"
    );
 };
 

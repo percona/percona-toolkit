@@ -97,8 +97,6 @@ sub get_result_set_struct {
    my @cols     = @{$sth->{NAME}};
    my @types    = map { $dbh->type_info($_)->{TYPE_NAME} } @{$sth->{TYPE}};
    my @nullable = map { $dbh->type_info($_)->{NULLABLE} == 1 ? 1 : 0 } @{$sth->{TYPE}};
-   my @p = @{$sth->{PRECISION}};
-   my @s = @{$sth->{SCALE}};
 
    my $struct   = {
       cols => \@cols, 
@@ -114,11 +112,16 @@ sub get_result_set_struct {
       $struct->{is_nullable}->{$col} = $nullable[$i];
       $struct->{is_numeric}->{$col} 
          = ($type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ? 1 : 0);
+
+      # We no longer specify the (precision, scale) for double, float, and
+      # decimal because DBD::mysql isn't reliable and defaults should work.
+      # But char col sizes are important, e.g. varchar(16) and varchar(255)
+      # won't hold the same values.
+      # https://bugs.launchpad.net/percona-toolkit/+bug/926598
       $struct->{size}->{$col}
-         = ($type =~ m/(?:float|double)/)           ? "($s[$i],$p[$i])"
-         : ($type =~ m/(?:decimal)/)                ? "($p[$i],$s[$i])"
-         : ($type =~ m/(?:char|varchar)/ && $p[$i]) ? "($p[$i])"
-         :                                            undef;
+         = $type =~ m/(?:char|varchar)/ && $sth->{PRECISION}->[$i]
+         ? "($sth->{PRECISION}->[$i])"
+         : undef;
    }
 
    return $struct;
