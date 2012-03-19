@@ -3452,8 +3452,11 @@ necessary to change it.
 
 severity: warn 
 
-Setting relay_log_space_limit is relatively rare, and could cause
-an increased risk of previously unknown bugs in replication.
+Setting relay_log_space_limit can cause replicas to stop fetching binary logs
+from their master immediately. This could increase the risk that your data will
+be lost if the master crashes. If the replicas have encountered a limit on relay
+log space, then it is possible that the latest transactions exist only on the
+master and no replica has retrieved them.
 
 =item slave_net_timeout
 
