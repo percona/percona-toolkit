@@ -1,951 +1,47 @@
-#!/usr/bin/env bash
-
-# This program is part of Percona Toolkit: http://www.percona.com/software/
-# See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
-# notices and disclaimers.
-
-set -u
-
-# ###########################################################################
-# log_warn_die package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/log_warn_die.sh
-#   t/lib/bash/log_warn_die.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-set -u
-
-PTDEBUG="${PTDEBUG:-""}"
-EXIT_STATUS=0
-
-log() {
-   TS=$(date +%F-%T | tr :- _);
-   echo "$TS $*"
-}
-
-warn() {
-   log "$*" >&2
-   EXIT_STATUS=1
-}
-
-die() {
-   warn "$*"
-   exit 1
-}
-
-_d () {
-   [ "$PTDEBUG" ] && echo "# $(log "$@")" >&2
-}
-
-# ###########################################################################
-# End log_warn_die package
-# ###########################################################################
-
-# ###########################################################################
-# parse_options package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/parse_options.sh
-#   t/lib/bash/parse_options.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-
-
-
-set -u
-
-ARGV=""           # Non-option args (probably input files)
-EXT_ARGV=""       # Everything after -- (args for an external command)
-HAVE_EXT_ARGV=""  # Got --, everything else is put into EXT_ARGV
-OPT_ERRS=0        # How many command line option errors
-OPT_VERSION=""    # If --version was specified
-OPT_HELP=""       # If --help was specified
-PO_DIR=""         # Directory with program option spec files
-
-usage() {
-   local file="$1"
-
-   local usage=$(grep '^Usage: ' "$file")
-   echo $usage
-   echo
-   echo "For more information, 'man $TOOL' or 'perldoc $file'."
-}
-
-usage_or_errors() {
-   local file="$1"
-
-   if [ "$OPT_VERSION" ]; then
-      local version=$(grep '^pt-[^ ]\+ [0-9]' "$file")
-      echo "$version"
-      return 1
-   fi
-
-   if [ "$OPT_HELP" ]; then
-      usage "$file"
-      echo
-      echo "Command line options:"
-      echo
-      perl -e '
-         use strict;
-         use warnings FATAL => qw(all);
-         my $lcol = 20;         # Allow this much space for option names.
-         my $rcol = 80 - $lcol; # The terminal is assumed to be 80 chars wide.
-         my $name;
-         while ( <> ) {
-            my $line = $_;
-            chomp $line;
-            if ( $line =~ s/^long:/  --/ ) {
-               $name = $line;
-            }
-            elsif ( $line =~ s/^desc:// ) {
-               $line =~ s/ +$//mg;
-               my @lines = grep { $_      }
-                           $line =~ m/(.{0,$rcol})(?:\s+|\Z)/g;
-               if ( length($name) >= $lcol ) {
-                  print $name, "\n", (q{ } x $lcol);
-               }
-               else {
-                  printf "%-${lcol}s", $name;
-               }
-               print join("\n" . (q{ } x $lcol), @lines);
-               print "\n";
-            }
-         }
-      ' "$PO_DIR"/*
-      echo
-      echo "Options and values after processing arguments:"
-      echo
-      for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
-         local varvalue="${!varname}"
-         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
-         echo
-      done
-      return 1
-   fi
-
-   if [ $OPT_ERRS -gt 0 ]; then
-      echo
-      usage "$file"
-      return 1
-   fi
-
-   return 0
-}
-
-option_error() {
-   local err="$1"
-   OPT_ERRS=$(($OPT_ERRS + 1))
-   echo "$err" >&2
-}
-
-parse_options() {
-   local file="$1"
-   shift
-
-   ARGV=""
-   EXT_ARGV=""
-   HAVE_EXT_ARGV=""
-   OPT_ERRS=0
-   OPT_VERSION=""
-   OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
-
-   if [ ! -d "$PO_DIR" ]; then
-      mkdir "$PO_DIR"
-      if [ $? -ne 0 ]; then
-         echo "Cannot mkdir $PO_DIR" >&2
-         exit 1
-      fi
-   fi
-
-   rm -rf "$PO_DIR"/*
-   if [ $? -ne 0 ]; then
-      echo "Cannot rm -rf $PO_DIR/*" >&2
-      exit 1
-   fi
-
-   _parse_pod "$file"  # Parse POD into program option (po) spec files
-   _eval_po            # Eval po into existence with default values
-
-   if [ $# -ge 2 ] &&  [ "$1" = "--config" ]; then
-      shift  # --config
-      local user_config_files="$1"
-      shift  # that ^
-      local IFS=","
-      for user_config_file in $user_config_files; do
-         _parse_config_files "$user_config_file"
-      done
-   else
-      _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
-   fi
-
-   _parse_command_line "$@"
-}
-
-_parse_pod() {
-   local file="$1"
-
-   cat "$file" | PO_DIR="$PO_DIR" perl -ne '
-      BEGIN { $/ = ""; }
-      next unless $_ =~ m/^=head1 OPTIONS/;
-      while ( defined(my $para = <>) ) {
-         last if $para =~ m/^=head1/;
-         chomp;
-         if ( $para =~ m/^=item --(\S+)/ ) {
-            my $opt  = $1;
-            my $file = "$ENV{PO_DIR}/$opt";
-            open my $opt_fh, ">", $file or die "Cannot open $file: $!";
-            print $opt_fh "long:$opt\n";
-            $para = <>;
-            chomp;
-            if ( $para =~ m/^[a-z ]+:/ ) {
-               map {
-                  chomp;
-                  my ($attrib, $val) = split(/: /, $_);
-                  print $opt_fh "$attrib:$val\n";
-               } split(/; /, $para);
-               $para = <>;
-               chomp;
-            }
-            my ($desc) = $para =~ m/^([^?.]+)/;
-            print $opt_fh "desc:$desc.\n";
-            close $opt_fh;
-         }
-      }
-      last;
-   '
-}
-
-_eval_po() {
-   local IFS=":"
-   for opt_spec in "$PO_DIR"/*; do
-      local opt=""
-      local default_val=""
-      local neg=0
-      local size=0
-      while read key val; do
-         case "$key" in
-            long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
-               ;;
-            default)
-               default_val="$val"
-               ;;
-            "short form")
-               ;;
-            type)
-               [ "$val" = "size" ] && size=1
-               ;;
-            desc)
-               ;;
-            negatable)
-               if [ "$val" = "yes" ]; then
-                  neg=1
-               fi
-               ;;
-            *)
-               echo "Invalid attribute in $opt_spec: $line" >&2
-               exit 1
-         esac 
-      done < "$opt_spec"
-
-      if [ -z "$opt" ]; then
-         echo "No long attribute in option spec $opt_spec" >&2
-         exit 1
-      fi
-
-      if [ $neg -eq 1 ]; then
-         if [ -z "$default_val" ] || [ "$default_val" != "yes" ]; then
-            echo "Option $opt_spec is negatable but not default: yes" >&2
-            exit 1
-         fi
-      fi
-
-      if [ $size -eq 1 -a -n "$default_val" ]; then
-         default_val=$(size_to_bytes $default_val)
-      fi
-
-      eval "OPT_${opt}"="$default_val"
-   done
-}
-
-_parse_config_files() {
-
-   for config_file in "$@"; do
-      test -f "$config_file" || continue
-
-      while read config_opt; do
-
-         echo "$config_opt" | grep '^[ ]*[^#]' >/dev/null 2>&1 || continue
-
-         config_opt="$(echo "$config_opt" | sed -e 's/^ *//g' -e 's/ *$//g' -e 's/[ ]*=[ ]*/=/' -e 's/[ ]*#.*$//')"
-
-         [ "$config_opt" = "" ] && continue
-
-         if ! [ "$HAVE_EXT_ARGV" ]; then
-            config_opt="--$config_opt"
-         fi
-
-         _parse_command_line "$config_opt"
-
-      done < "$config_file"
-
-      HAVE_EXT_ARGV=""  # reset for each file
-
-   done
-}
-
-_parse_command_line() {
-   local opt=""
-   local val=""
-   local next_opt_is_val=""
-   local opt_is_ok=""
-   local opt_is_negated=""
-   local real_opt=""
-   local required_arg=""
-   local spec=""
-
-   for opt in "$@"; do
-      if [ "$opt" = "--" -o "$opt" = "----" ]; then
-         HAVE_EXT_ARGV=1
-         continue
-      fi
-      if [ "$HAVE_EXT_ARGV" ]; then
-         if [ "$EXT_ARGV" ]; then
-            EXT_ARGV="$EXT_ARGV $opt"
-         else
-            EXT_ARGV="$opt"
-         fi
-         continue
-      fi
-
-      if [ "$next_opt_is_val" ]; then
-         next_opt_is_val=""
-         if [ $# -eq 0 ] || [ $(expr "$opt" : "-") -eq 1 ]; then
-            option_error "$real_opt requires a $required_arg argument"
-            continue
-         fi
-         val="$opt"
-         opt_is_ok=1
-      else
-         if [ $(expr "$opt" : "-") -eq 0 ]; then
-            if [ -z "$ARGV" ]; then
-               ARGV="$opt"
-            else
-               ARGV="$ARGV $opt"
-            fi
-            continue
-         fi
-
-         real_opt="$opt"
-
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
-         else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
-         fi
-
-         if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
-            val="$(echo $opt | awk -F= '{print $2}')"
-            opt="$(echo $opt | awk -F= '{print $1}')"
-         fi
-
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
-         else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
-            if [ -z "$spec"  ]; then
-               option_error "Unknown option: $real_opt"
-               continue
-            fi
-         fi
-
-         required_arg=$(cat "$spec" | awk -F: '/^type:/{print $2}')
-         if [ "$required_arg" ]; then
-            if [ "$val" ]; then
-               opt_is_ok=1
-            else
-               next_opt_is_val=1
-            fi
-         else
-            if [ "$val" ]; then
-               option_error "Option $real_opt does not take a value"
-               continue
-            fi 
-            if [ "$opt_is_negated" ]; then
-               val=""
-            else
-               val="yes"
-            fi
-            opt_is_ok=1
-         fi
-      fi
-
-      if [ "$opt_is_ok" ]; then
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
-
-         if grep "^type:size" "$spec" >/dev/null; then
-            val=$(size_to_bytes $val)
-         fi
-
-         eval "OPT_$opt"="'$val'"
-
-         opt=""
-         val=""
-         next_opt_is_val=""
-         opt_is_ok=""
-         opt_is_negated=""
-         real_opt=""
-         required_arg=""
-         spec=""
-      fi
-   done
-}
-
-size_to_bytes() {
-   local size="$1"
-   echo $size | perl -ne '%f=(B=>1, K=>1_024, M=>1_048_576, G=>1_073_741_824, T=>1_099_511_627_776); m/^(\d+)([kMGT])?/i; print $1 * $f{uc($2 || "B")};'
-}
-
-# ###########################################################################
-# End parse_options package
-# ###########################################################################
-
-# ###########################################################################
-# tmpdir package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/tmpdir.sh
-#   t/lib/bash/tmpdir.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-set -u
-
-TMPDIR=""
-
-mk_tmpdir() {
-   local dir="${1:-""}"
-
-   if [ -n "$dir" ]; then
-      if [ ! -d "$dir" ]; then
-         mkdir "$dir" || die "Cannot make tmpdir $dir"
-      fi
-      TMPDIR="$dir"
-   else
-      local tool="${0##*/}"
-      local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
-         || die "Cannot make secure tmpdir"
-   fi
-}
-
-rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
-   fi
-   TMPDIR=""
-}
-
-# ###########################################################################
-# End tmpdir package
-# ###########################################################################
-
-# ###########################################################################
-# alt_cmds package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/alt_cmds.sh
-#   t/lib/bash/alt_cmds.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-set -u
-
-_seq() {
-   local i="$1"
-   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
-}
-
-_pidof() {
-   local cmd="$1"
-   if ! pidof "$cmd" 2>/dev/null; then
-      ps -eo pid,ucomm | awk -v comm="$cmd" '$2 == comm { print $1 }'
-   fi
-}
-
-_lsof() {
-   local pid="$1"
-   if ! lsof -p $pid 2>/dev/null; then
-      /bin/ls -l /proc/$pid/fd 2>/dev/null
-   fi
-}
-
-_which() {
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
-}
-
-# ###########################################################################
-# End alt_cmds package
-# ###########################################################################
-
-# ###########################################################################
-# report_formatting package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/report_formatting.sh
-#   t/lib/bash/report_formatting.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-set -u
-
-POSIXLY_CORRECT=1
-export POSIXLY_CORRECT
-
-fuzzy_formula='
-   rounded = 0;
-   if (fuzzy_var <= 10 ) {
-      rounded   = 1;
-   }
-   factor = 1;
-   while ( rounded == 0 ) {
-      if ( fuzzy_var <= 50 * factor ) {
-         fuzzy_var = sprintf("%.0f", fuzzy_var / (5 * factor)) * 5 * factor;
-         rounded   = 1;
-      }
-      else if ( fuzzy_var <= 100  * factor) {
-         fuzzy_var = sprintf("%.0f", fuzzy_var / (10 * factor)) * 10 * factor;
-         rounded   = 1;
-      }
-      else if ( fuzzy_var <= 250  * factor) {
-         fuzzy_var = sprintf("%.0f", fuzzy_var / (25 * factor)) * 25 * factor;
-         rounded   = 1;
-      }
-      factor = factor * 10;
-   }'
-
-fuzz () {
-   echo $1 | awk "{fuzzy_var=\$1; ${fuzzy_formula} print fuzzy_var;}"
-}
-
-fuzzy_pct () {
-   local pct="$(echo $1 $2 | awk '{ if ($2 > 0) { printf "%d", $1/$2*100; } else {print 0} }')";
-   echo "$(fuzz "${pct}")%"
-}
-
-section () {
-   local str="$1"
-   local line="$(printf '#_%-60s' "${str}_" | sed -e 's/[[:space:]]/#/g' -e 's/_/ /g')"
-   printf "%s\n" "${line}"
-}
-
-NAME_VAL_LEN=12
-name_val () {
-   printf "%+*s | %s\n" "${NAME_VAL_LEN}" "$1" "$2"
-}
-
-shorten() {
-   local num="$1"
-   local prec="${2:-2}"
-   local div="${3:-1024}"
-
-   echo "$num" | awk -v prec="$prec" -v div="$div" '
-   {
-      size = 4;
-      val  = $1;
-
-      unit = val >= 1099511627776 ? "T" : val >= 1073741824 ? "G" : val >= 1048576 ? "M" : val >= 1024 ? "k" : "";
-
-      while ( int(val) && !(val % 1024) ) {
-         val /= 1024;
-      }
-
-      while ( val > 1000 ) {
-         val /= div;
-      }
-
-      printf "%.*f%s", prec, val, unit;
-   }
-   '
-}
-
-group_concat () {
-   sed -e '{H; $!d;}' -e 'x' -e 's/\n[[:space:]]*\([[:digit:]]*\)[[:space:]]*/, \1x/g' -e 's/[[:space:]][[:space:]]*/ /g' -e 's/, //' "${1}"
-}
-
-# ###########################################################################
-# End report_formatting package
-# ###########################################################################
-
-# ###########################################################################
-# summary_common package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/summary_common.sh
-#   t/lib/bash/summary_common.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-set -u
-
-get_nice_of_pid () {
-   local pid="$1"
-   local niceness=$(ps -p $pid -o nice | tail -n+2 | awk '{print $1; exit;}')
-
-   if [ -n "${niceness}" ]; then
-      echo $niceness
-   else
-      local tmpfile="$TMPDIR/nice_through_c.tmp.c"
-      _d "Getting the niceness from ps failed, somehow. We are about to try this:"
-      cat <<EOC > "$tmpfile"
-
-int main(void) {
-   int priority = getpriority(PRIO_PROCESS, $pid);
-   if ( priority == -1 && errno == ESRCH ) {
-      return 1;
-   }
-   else {
-      printf("%d\\n", priority);
-      return 0;
-   }
-}
-
-EOC
-      local c_comp=$(_which gcc)
-      if [ -z "${c_comp}" ]; then
-         c_comp=$(_which cc)
-      fi
-      _d "$tmpfile: $( cat "$tmpfile" )"
-      _d "$c_comp -xc \"$tmpfile\" -o \"$tmpfile\" && eval \"$tmpfile\""
-      $c_comp -xc "$tmpfile" -o "$tmpfile" 2>/dev/null && eval "$tmpfile" 2>/dev/null
-      if [ $? -ne 0 ]; then
-         echo "?"
-         _d "Failed to get a niceness value for $pid"
-      fi
-   fi
-}
-
-get_oom_of_pid () {
-   local pid="$1"
-   local oom_adj=""
-
-   if [ -n "${pid}" ] && [ -e /proc/cpuinfo ]; then
-      if [ -s "/proc/$pid/oom_score_adj" ]; then
-         oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
-      else
-         oom_adj=$(cat "/proc/$pid/oom_adj" 2>/dev/null)
-         _d "For $pid, the oom value is $oom_adj, retreived from oom_adj"
-      fi
-   fi
-
-   if [ -n "${oom_adj}" ]; then
-      echo "${oom_adj}"
-   else
-      echo "?"
-      _d "Can't find the oom value for $pid"
-   fi
-}
-
-CMD_FILE="$( _which file 2>/dev/null )"
-CMD_NM="$( _which nm 2>/dev/null )"
-CMD_OBJDUMP="$( _which objdump 2>/dev/null )"
-
-has_symbols () {
-   local executable="$(_which "$1")"
-   local has_symbols=""
-
-   if    [ "${CMD_FILE}" ] \
-      && [ "$($CMD_FILE "${executable}" | grep 'not stripped' )" ]; then
-      has_symbols=1
-   elif    [ "${CMD_NM}" ] \
-        || [ "${CMD_OBJDMP}" ]; then
-      if    [ "${CMD_NM}" ] \
-         && [ !"$("${CMD_NM}" -- "${executable}" 2>&1 | grep 'File format not recognized' )" ]; then
-         if [ -z "$( $CMD_NM -- "${executable}" 2>&1 | grep ': no symbols' )" ]; then
-            has_symbols=1
-         fi
-      elif [ -z "$("${CMD_OBJDUMP}" -t -- "${executable}" | grep '^no symbols$' )" ]; then
-         has_symbols=1
-      fi
-   fi
-
-   if [ "${has_symbols}" ]; then
-      echo "Yes"
-      return 0
-   else
-      echo "No"
-      return 1
-   fi
-}
-
-setup_data_dir () {
-   local data_dir=""
-   if [ -z "$OPT_SAVE_DATA" ]; then
-      mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
-      data_dir="$TMPDIR/data"
-   else
-      if [ ! -d "$OPT_SAVE_DATA" ]; then
-         mkdir "$OPT_SAVE_DATA" || die "Cannot mkdir $OPT_SAVE_DATA"
-      fi
-      touch "$OPT_SAVE_DATA/test" || die "Cannot write to $OPT_SAVE_DATA"
-      rm "$OPT_SAVE_DATA/test"    || die "Cannot rm $OPT_SAVE_DATA/test"
-      data_dir="$OPT_SAVE_DATA"
-   fi
-   echo "$data_dir"
-}
-
-_GET_VAR_DEFAULT=0
-get_var () {
-   local varname="$1"
-   local file="$2"
-   local v="$(awk "\$1 ~ /^${varname}$/ { print \$2 }" "${file}")"
-   echo "${v:-$_GET_VAR_DEFAULT}"
-}
-
-# ###########################################################################
-# End summary_common package
-# ###########################################################################
-
-# ###########################################################################
-# collect_mysql_info package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/collect_mysql_info.sh
-#   t/lib/bash/collect_mysql_info.sh
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-
-
-
-collect_mysqld_instances () {
-   local file="$1"
-   ps auxww 2>/dev/null | grep mysqld > "$file"
-}
-
-find_my_cnf_file() {
-   local file="$1"
-   local port=${2:-""}
-
-   local cnf_file=""
-   if test -n "$port" && grep -- "/mysqld.*--port=$port" "${file}" >/dev/null 2>&1 ; then
-      cnf_file="$(grep -- "/mysqld.*--port=$port" "${file}" \
-         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
-         | head -n1)"
-   else
-      cnf_file="$(grep '/mysqld' "${file}" \
-         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
-         | head -n1)"
-   fi
-
-   if [ ! -n "${cnf_file}" ]; then
-      _d "Cannot autodetect config file, trying common locations"
-      cnf_file="/etc/my.cnf";
-      if [ ! -e "${cnf_file}" ]; then
-         cnf_file="/etc/mysql/my.cnf";
-      fi
-      if [ ! -e "${cnf_file}" ]; then
-         cnf_file="/var/db/mysql/my.cnf";
-      fi
-   fi
-
-   echo "$cnf_file"
-}
-
-collect_mysql_variables () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss  -e 'SHOW /*!40100 GLOBAL*/ VARIABLES' > "$file"
-}
-
-collect_mysql_status () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' > "$file"
-}
-
-collect_mysql_databases () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' > "$file" 2>/dev/null
-}
-
-collect_mysql_plugins () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW PLUGINS' > "$file" 2>/dev/null
-}
-
-collect_mysql_slave_status () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW SLAVE STATUS' > "$file" 2>/dev/null
-}
-
-collect_mysql_innodb_status () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' > "$file" 2>/dev/null
-}
-
-collect_mysql_processlist () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW FULL PROCESSLIST' > "$file" 2>/dev/null
-}
-
-collect_mysql_users () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' > "$file" 2>/dev/null
-}
-
-collect_master_logs_status () {
-   local master_logs_file="$1"
-   local master_status_file="$2"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW MASTER LOGS' > "$master_logs_file" 2>/dev/null
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW MASTER STATUS' > "$master_status_file" 2>/dev/null
-}
-
-collect_mysql_deferred_status () {
-   local status_file="$1"
-   local defer_file="$2"
-   collect_mysql_status "$TMPDIR/defer_gatherer"
-   cat "$TMPDIR/defer_gatherer" | join "$status_file" - > "$defer_file"
-}
-
-collect_internal_vars () {
-   local file="$1"
-
-   local FNV_64=""
-   if $CMD_MYSQL $EXT_ARGV -e 'SELECT FNV_64("a")' >/dev/null 2>&1; then
-      FNV_64="Enabled";
-   else
-      FNV_64="Unknown";
-   fi
-
-   local now="$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT NOW()')"
-   local user="$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT CURRENT_USER()')"
-   local trigger_count=$($CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null)
-   local has_symbols="$(has_symbols "${CMD_MYSQL}")"
-
-   echo "pt-summary-internal-now    $now" >> "$file"
-   echo "pt-summary-internal-user   $user" >> "$file"
-   echo "pt-summary-internal-FNV_64   $FNV_64" >> "$file"
-   echo "pt-summary-internal-trigger_count   $trigger_count" >> "$file"
-   echo "pt-summary-internal-symbols   $has_symbols" >> "$file"
-}
-
-get_mysqldump_for () {
-   local file="$1"
-   local args="$2"
-   local dbtodump="${3:---all-databases}"
-
-   $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
-      --skip-add-locks --skip-add-drop-table --compact \
-      --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-      ${args} "${dbtodump}" > "$file"
-}
-
-get_mysqldump_args () {
-   local file="$1"
-   local trg_arg=""
-
-   if $CMD_MYSQLDUMP --help --verbose 2>&1 | grep triggers >/dev/null; then
-      _d "mysqldump supports triggers"
-      trg_arg="--routines"
-   fi
-
-   if [ "${trg_arg}" ]; then
-      local triggers="--skip-triggers"
-      local trg=$(get_var "pt-summary-internal-trigger_count" "$file" )
-      if [ -n "${trg}" ] && [ "${trg}" -gt 0 ]; then
-         _d "We have triggers to dump"
-         triggers="--triggers"
-      fi
-      trg_arg="${trg_arg} ${triggers}";
-   fi
-   echo "${trg_arg}"
-}
-
-collect_mysql_info () {
-   local dir="$1"
-   local prefix="${2:-percona-toolkit}"
-
-   collect_mysqld_instances "$dir/${prefix}-mysqld-instances"
-
-   collect_mysql_variables "$dir/${prefix}-mysql-variables"
-   collect_mysql_status "$dir/${prefix}-mysql-status"
-   collect_mysql_databases "$dir/${prefix}-mysql-databases"
-   collect_mysql_plugins "$dir/${prefix}-mysql-plugins"
-   collect_mysql_slave_status "$dir/${prefix}-mysql-slave"
-   collect_mysql_innodb_status "$dir/${prefix}-innodb-status"
-   collect_mysql_processlist "$dir/${prefix}-mysql-processlist"   
-   collect_mysql_users "$dir/${prefix}-mysql-users"
-
-   local binlog="$(get_var log_bin "$dir/${prefix}-mysql-variables")"
-   if [ "${binlog}" ]; then
-      _d "Got a binlog, going to get MASTER LOGS and MASTER STATUS"
-      collect_master_logs_status "$dir/${prefix}-mysql-master-logs" "$dir/${prefix}-mysql-master-status"
-   fi
-
-   local uptime="$(get_var Uptime "$dir/${prefix}-mysql-status")"
-   local current_time="$($CMD_MYSQL $EXT_ARGV -ss -e \
-                         "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
-
-   local port="$(get_var port "$dir/${prefix}-mysql-variables")"
-   local cnf_file=$(find_my_cnf_file "$dir/${prefix}-mysqld-instances" ${port});
-
-   echo "pt-summary-internal-current_time    $current_time" >> "$dir/${prefix}-mysql-variables"
-   echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/${prefix}-mysql-variables"
-   collect_internal_vars "$dir/${prefix}-mysql-variables"
-
-   if [ -n "${OPT_DUMP_SCHEMAS}" ]; then
-      _d "--dump-schemas passed in, dumping early"
-      local trg_arg="$( get_mysqldump_args "$dir/${prefix}-mysql-variables" )"
-      get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${OPT_DUMP_SCHEMAS}"
-   fi
-
-   (
-      sleep $OPT_SLEEP
-      collect_mysql_deferred_status "$dir/${prefix}-mysql-status" "$dir/${prefix}-mysql-status-defer"
-   ) &
-   _d "Forked child is $!"
-}
-
-# ###########################################################################
-# End collect_mysql_info package
-# ###########################################################################
-
+# This program is copyright 2011 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
 # report_mysql_info package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/bash/report_mysql_info.sh
-#   t/lib/bash/report_mysql_info.sh
-# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+# Package: report_mysql_info
+# Report various aspects of MySQL
 
 set -u
+POSIXLY_CORRECT=1
 
+# Accepts a number of seconds, and outputs a d+h:m:s formatted string
 secs_to_time () {
    echo "$1" | awk '{
       printf( "%d+%02d:%02d:%02d", $1 / 86400, ($1 % 86400) / 3600, ($1 % 3600) / 60, $1 % 60);
    }'
 }
 
+# Returns true if a variable exists
 var_exists () {
    local varname="$1"
    local file="$2"
    grep "${varname}" "${file}" >/dev/null 2>&1;
 }
 
+# Returns "Enabled", "Disabled", or "Not Supported" depending on whether the
+# variable exists and is ON or enabled.  You can pass 2nd and 3rd variables to
+# control whether the variable should be 'gt' (numeric greater than) or 'eq'
+# (string equal) to some value.
 feat_on() {
    local file="$1"
    if var_exists "$2" "${file}" ; then
@@ -987,6 +83,7 @@ get_table_cache () {
    echo ${table_cache:-0}
 }
 
+# Gets the status of a plugin, or returns "Not found"
 get_plugin_status () {
    local file="$1"
    local plugin="$2"
@@ -996,7 +93,13 @@ get_plugin_status () {
    echo ${status:-"Not found"}
 }
 
+# ##############################################################################
+# Functions for parsing specific files and getting desired info from them.
+# These are called from within main() and are separated so they can be tested
+# easily.
+# ##############################################################################
 
+# Parses the output of 'ps -e -o args | grep mysqld' or 'ps auxww...'
 _NO_FALSE_NEGATIVES=""
 parse_mysqld_instances () {
    local file="$1"
@@ -1009,6 +112,8 @@ parse_mysqld_instances () {
    grep '/mysqld ' "$file" | while read line; do
       local pid=$(echo "$line" | awk '{print $2;}')
       for word in ${line}; do
+         # Some grep doesn't have -o, so I have to pull out the words I want by
+         # looking at each word
          if echo "${word}" | grep -- "--socket=" > /dev/null; then
             socket="$(echo "${word}" | cut -d= -f2)"
          fi
@@ -1021,6 +126,7 @@ parse_mysqld_instances () {
       done
       local nice=$(get_nice_of_pid $pid )
       local oom=$(get_oom_of_pid $pid )
+      # Only used during testing
       if [ -n "${_NO_FALSE_NEGATIVES}" ]; then
          nice="?"
          oom="?"
@@ -1029,6 +135,7 @@ parse_mysqld_instances () {
    done
 }
 
+# Gets the MySQL system time.  Uses input from $MYSQL_VARIABLES_FILE.
 get_mysql_timezone () {
    local file="${1:-$MYSQL_VARIABLES_FILE}"
    local tz="$(get_var time_zone "${file}")"
@@ -1038,12 +145,14 @@ get_mysql_timezone () {
    echo "${tz}"
 }
 
+# Gets the MySQL system version.
 get_mysql_version () {
    local file="$1"
    name_val Version "$(get_var version "${file}") $(get_var version_comment "${file}")"
    name_val "Built On" "$(get_var version_compile_os "${file}") $(get_var version_compile_machine "${file}")"
 }
 
+# Gets the system start and uptime in human readable format.
 get_mysql_uptime () {
    local uptime="$1"
    local restart="$2"
@@ -1051,6 +160,7 @@ get_mysql_uptime () {
    echo "${restart} (up ${uptime})"
 }
 
+# Summarizes the output of SHOW MASTER LOGS.
 summarize_binlogs () {
    local file="$1"
    local size="$(awk '{t += $2} END{printf "%0.f\n", t}' "$file")"
@@ -1064,14 +174,20 @@ format_users () {
    awk '{printf "%d users, %d anon, %d w/o pw, %d old pw\n", $1, $2, $3, $4}' "${file}"
 }
 
+# Print out binlog_do_db and binlog_ignore_db
 format_binlog_filters () {
    local file="$1"
    name_val "binlog_do_db" "$(cut -f3 "$file")"
    name_val "binlog_ignore_db" "$(cut -f4 "$file")"
 }
 
+# Takes as input a file that has two samples of SHOW STATUS, columnized next to
+# each other.  Outputs fuzzy-ed numbers:
+# absolute, all-time per second, and per-second over the interval between the
+# samples.  Omits any rows that are all zeroes.
 format_status_variables () {
    local file="$1"
+   # First, figure out the intervals.
    utime1="$(awk '/Uptime /{print $2}' "$file")";
    utime2="$(awk '/Uptime /{print $3}' "$file")";
    awk "
@@ -1113,6 +229,15 @@ format_status_variables () {
    }" "$file"
 }
 
+# Slices the processlist a bunch of different ways.  The processlist should be
+# created with the \G flag so it's vertical.
+# The parsing is a bit awkward because different
+# versions of awk have limitations like "too many fields on line xyz".  So we
+# use 'cut' to shorten the lines.  We count all things into temporary variables
+# for each process in the processlist, and when we hit the Info: line which
+# ought to be the last line in the process, we decide what to do with the temp
+# variables.  If we're summarizing Command, we count everything; otherwise, only
+# non-Sleep processes get counted towards the sum and max of Time.
 summarize_processlist () {
    local file="$1"
    for param in Command User Host db State; do
@@ -1162,18 +287,22 @@ summarize_processlist () {
    echo
 }
 
+# Pretty-prints the my.cnf file.  It's super annoying, but some *modern*
+# versions of awk don't support POSIX character sets in regular
+# expressions, like [[:space:]] (looking at you, Debian).  So
+# the below patterns contain [<space><tab>] and must remain that way.
 pretty_print_cnf_file () {
    local file="$1"
    awk '
    BEGIN {
       FS="="
    }
-   /^ *[a-zA-Z[]/ {
+   /^[ \t]*[a-zA-Z[]/ {
       if (length($2)) {
-         gsub(/^[    ]*/, "", $1);
-         gsub(/^[    ]*/, "", $2);
-         gsub(/[  ]*$/, "", $1);
-         gsub(/[  ]*$/, "", $2);
+         gsub(/^[ \t]*/, "", $1);
+         gsub(/^[ \t]*/, "", $2);
+         gsub(/[ \t]*$/, "", $1);
+         gsub(/[ \t]*$/, "", $2);
          printf("%-35s = %s\n", $1, $2);
       }
       else if ( $0 ~ /\[/ ) {
@@ -1319,6 +448,7 @@ find_transation_states () {
    group_concat "${tmpfile}"
 }
 
+# Summarizes various things about InnoDB status that are not easy to see by eye.
 format_innodb_status () {
    local file=$1
    name_val "Checkpoint Age"      "$(shorten $(find_checkpoint_age "${file}") 0)"
@@ -1354,12 +484,19 @@ format_innodb_status () {
    fi
 }
 
+# Summarizes per-database statistics for a bunch of different things: count of
+# tables, views, etc.  $1 is the file name.  $2 is the database name; if none,
+# then there should be multiple databases.
 format_overall_db_stats () {
    local file="$1"
    local tmpfile="$TMPDIR/format_overall_db_stats.tmp"
    echo
+   # We keep counts of everything in an associative array keyed by db name, and
+   # what it is.  The num_dbs counter is to ensure sort order is consistent when
+   # we run the awk commands following this one.
    awk '
       BEGIN {
+         # In case there is no USE statement in the file.
          db      = "{chosen}";
          num_dbs = 0;
       }
@@ -1371,6 +508,7 @@ format_overall_db_stats () {
          }
       }
       /^CREATE TABLE/ {
+         # Handle single-DB dumps, where there is no USE statement.
          if (num_dbs == 0) {
             num_dbs     = 1;
             db_seen[db] = 1;
@@ -1415,8 +553,10 @@ format_overall_db_stats () {
    tail -n +3 "$tmpfile" | sort
 
    echo
+   # Now do the summary of engines per DB
    awk '
       BEGIN {
+         # In case there is no USE statement in the file.
          db          = "{chosen}";
          num_dbs     = 0;
          num_engines = 0;
@@ -1429,6 +569,7 @@ format_overall_db_stats () {
          }
       }
       /^\) ENGINE=/ {
+         # Handle single-DB dumps, where there is no USE statement.
          if (num_dbs == 0) {
             num_dbs     = 1;
             db_seen[db] = 1;
@@ -1472,8 +613,11 @@ format_overall_db_stats () {
    tail -n +2 "$tmpfile" | sort
 
    echo
+   # Now do the summary of index types per DB. Careful -- index is a reserved
+   # word in awk.
    awk '
       BEGIN {
+         # In case there is no USE statement in the file.
          db        = "{chosen}";
          num_dbs   = 0;
          num_idxes = 0;
@@ -1486,6 +630,7 @@ format_overall_db_stats () {
          }
       }
       /KEY/ {
+         # Handle single-DB dumps, where there is no USE statement.
          if (num_dbs == 0) {
             num_dbs     = 1;
             db_seen[db] = 1;
@@ -1541,8 +686,10 @@ format_overall_db_stats () {
    tail -n +2 "$tmpfile" | sort
 
    echo
+   # Now do the summary of datatypes per DB
    awk '
       BEGIN {
+         # In case there is no USE statement in the file.
          db          = "{chosen}";
          num_dbs     = 0;
          num_types = 0;
@@ -1555,6 +702,7 @@ format_overall_db_stats () {
          }
       }
       /^  `/ {
+         # Handle single-DB dumps, where there is no USE statement.
          if (num_dbs == 0) {
             num_dbs     = 1;
             db_seen[db] = 1;
@@ -1680,6 +828,8 @@ section_innodb () {
    local variables_file="$1"
    local status_file="$2"
 
+   # XXX TODO I don't think this is working right.
+   # XXX TODO Should it use data from information_schema.plugins too?
    local version=$(get_var innodb_version "$variables_file")
    name_val Version ${version:-default}
 
@@ -1755,6 +905,9 @@ section_noteworthy_variables () {
    done
 }
 
+#
+# Formats and outputs the semisyncronious replication-related variables
+#
 _semi_sync_stats_for () {
    local target="$1"
    local file="$2"
@@ -1799,6 +952,9 @@ _semi_sync_stats_for () {
    fi
 }
 
+# Make a pattern of things we want to omit because they aren't
+# counters, they are gauges (in RRDTool terminology).  Gauges are shown
+# elsewhere in the output.
 noncounters_pattern () {
    local noncounters_pattern=""
 
@@ -1835,8 +991,12 @@ report_mysql_summary () {
    local dir="$1"
    local prefix="${2:-percona-toolkit}"
 
+   # Field width for name_val
    local NAME_VAL_LEN=25
 
+   # ########################################################################
+   # Header for the whole thing, table of discovered instances
+   # ########################################################################
 
    section Percona_Toolkit_MySQL_Summary_Report
    name_val "System time" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
@@ -1846,6 +1006,9 @@ report_mysql_summary () {
    section MySQL_Executable
    name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/${prefix}-mysql-variables" )"
 
+   # ########################################################################
+   # General date, hostname, etc
+   # ########################################################################
    local user="$(get_var "pt-summary-internal-user" "$dir/${prefix}-mysql-variables")"
    local port="$(get_var port "$dir/${prefix}-mysql-variables")"
    local now="$(get_var "pt-summary-internal-NOW" "$dir/${prefix}-mysql-variables")"
@@ -1873,6 +1036,8 @@ report_mysql_summary () {
    name_val Replication "Is ${slave}a slave, has ${slavecount} slaves connected"
 
 
+   # TODO move this into a section with other files: error log, slow log and
+   # show the sizes
    local pid_file="$(get_var pid_file "$dir/${prefix}-mysql-variables")"
    local PID_EXISTS=""
    if [ -e "${pid_file}" ]; then
@@ -1882,26 +1047,45 @@ report_mysql_summary () {
    fi
    name_val Pidfile "${pid_file} ${PID_EXISTS}"
 
+   # ########################################################################
+   # Processlist, sliced several different ways
+   # ########################################################################
    section Processlist
    summarize_processlist "$dir/${prefix}-mysql-processlist"
 
+   # ########################################################################
+   # Queries and query plans
+   # ########################################################################
    section "Status_Counters_(Wait_${OPT_SLEEP}_Seconds)"
+   # Wait for the child that was forked during collection.
    wait
    local noncounters_pattern="$(noncounters_pattern)"
    format_status_variables "$dir/${prefix}-mysql-status-defer" | grep -v "${noncounters_pattern}"
 
+   # ########################################################################
+   # Table cache
+   # ########################################################################
    section Table_cache
    local open_tables=$(get_var Open_tables "$dir/${prefix}-mysql-status")
    local table_cache=$(get_table_cache "$dir/${prefix}-mysql-status")
    name_val Size  $table_cache
    name_val Usage "$(fuzzy_pct ${open_tables} ${table_cache})"
 
+   # ########################################################################
+   # Percona Server features
+   # ########################################################################
    section Key_Percona_Server_features
    section_percona_server_features "$dir/${prefix}-mysql-variables"
 
+   # ########################################################################
+   # Plugins
+   # ########################################################################
    section Plugins
    name_val "InnoDB compression" "$(get_plugin_status "$dir/${prefix}-mysql-plugins" "INNODB_CMP")"
 
+   # ########################################################################
+   # Query cache
+   # ########################################################################
    if [ "$(get_var have_query_cache "$dir/${prefix}-mysql-variables")" ]; then
       section Query_cache
       local query_cache_size=$(get_var query_cache_size "$dir/${prefix}-mysql-variables")
@@ -1929,8 +1113,14 @@ report_mysql_summary () {
       fi
    fi
 
+   # ########################################################################
+   # Schema, databases, data type, other analysis.
+   # ########################################################################
    section Schema
+   # Assume "no" if stdin or stdout is not a terminal, so this can be run and
+   # put into a file, or piped into a pager, or something else like that.
    local reply="n"
+   # But dump no matter what if they passed in something through --dump-schemas
    if [ -n "${OPT_DUMP_SCHEMAS}" ]; then
       reply="y"
    elif [ -t 0 -a -t 1 ]; then
@@ -1940,7 +1130,9 @@ report_mysql_summary () {
    fi
    if echo "${reply:-n}" | grep -i '^y' > /dev/null ; then
       if [ -z "${OPT_DUMP_SCHEMAS}" ]; then
+         # If --dump-schemas wasn't used, ask what they want
 
+         # Find out which databases to dump
          echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
          echo -n "Type the name of the database, or press Enter to dump all of them. "
          local dbtodump=""
@@ -1949,6 +1141,9 @@ report_mysql_summary () {
          get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${dbtodump}"
       fi
 
+      # Test the result by checking the file, not by the exit status, because we
+      # might get partway through and then die, and the info is worth analyzing
+      # anyway.
 
       if [ -e "$dir/${prefix}-mysqldump" -a -s "$dir/${prefix}-mysqldump" ] \
          && grep 'CREATE TABLE' "$dir/${prefix}-mysqldump" >/dev/null 2>&1; then
@@ -1960,6 +1155,9 @@ report_mysql_summary () {
       echo "Skipping schema analysis"
    fi
 
+   # ########################################################################
+   # Noteworthy Technologies
+   # ########################################################################
    section Noteworthy_Technologies
    if [ -s "$dir/${prefix}-mysqldump" ]; then
       if grep FULLTEXT "$dir/${prefix}-mysqldump" > /dev/null; then
@@ -2019,6 +1217,9 @@ report_mysql_summary () {
       name_val "Prepared statement count" "${prep_count}"
    fi
 
+   # ########################################################################
+   # InnoDB
+   # ########################################################################
    section InnoDB
    local have_innodb=$(get_var have_innodb "$dir/${prefix}-mysql-variables")
    if [ "${have_innodb}" = "YES" ]; then
@@ -2029,14 +1230,24 @@ report_mysql_summary () {
       fi
    fi
 
+   # ########################################################################
+   # MyISAM
+   # ########################################################################
    section MyISAM
    section_myisam "$dir/${prefix}-mysql-variables" "$dir/${prefix}-mysql-status"
 
+   # ########################################################################
+   # Users & Security
+   # ########################################################################
    section Security
    local users="$( format_users "$dir/${prefix}-mysql-users" )"
+   # XXX TODO Give it a different formatting?
    name_val Users "${users}"
    name_val "Old Passwords" "$(get_var old_passwords "$dir/${prefix}-mysql-variables")"
 
+   # ########################################################################
+   # Binary Logging
+   # ########################################################################
    section Binary_Logging
 
    if    [ -s "$dir/${prefix}-mysql-master-logs" ] \
@@ -2050,10 +1261,18 @@ report_mysql_summary () {
       format_binlog_filters "$dir/${prefix}-mysql-master-status"
    fi
 
+# Replication: seconds behind, running, filters, skip_slave_start, skip_errors,
+# read_only, temp tables open, slave_net_timeout, slave_exec_mode
 
+   # ########################################################################
+   # Interesting things that you just ought to know about.
+   # ########################################################################
    section Noteworthy_Variables
    section_noteworthy_variables "$dir/${prefix}-mysql-variables"
 
+   # ########################################################################
+   # If there is a my.cnf in a standard location, see if we can pretty-print it.
+   # ########################################################################
    section Configuration_File
    local cnf_file="$(get_var "pt-summary-internal-Config_File" "$dir/${prefix}-mysql-variables")"
    if [ -n "${cnf_file}" ]; then
@@ -2063,318 +1282,10 @@ report_mysql_summary () {
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
 
+   # Make sure that we signal the end of the tool's output.
    section The_End
 }
 
 # ###########################################################################
 # End report_mysql_info package
 # ###########################################################################
-
-# ########################################################################
-# Some global setup is necessary for cross-platform compatibility, even
-# when sourcing this script for testing purposes.
-# ########################################################################
-
-TOOL="pt-mysql-summary"
-
-CMD_MYSQL="$(_which mysql)"
-CMD_MYSQLDUMP="$( _which mysqldump )"
-
-check_mysql () {
-   # Check that mysql and mysqldump are in PATH.  If not, we're
-   # already dead in the water, so don't bother with cmd line opts,
-   # just error and exit.
-   [ -n "$(mysql --help 2>/dev/null)" ] \
-      || die "Cannot execute mysql.  Check that it is in PATH."
-   [ -n "$(mysqldump --help 2>/dev/null)" ] \
-      || die "Cannot execute mysqldump.  Check that it is in PATH."
-
-   # Now that we have the cmd line opts, check that we can actually
-   # connect to MySQL.
-   [ -n "$(mysql $EXT_ARGV -e 'SELECT 1')" ] \
-      || die "Cannot connect to MySQL.  Check that MySQL is running and that the options after -- are correct."
-
-}
-
-sigtrap() {
-   warn "Caught signal, forcing exit"
-   exit $EXIT_STATUS
-}
-
-# ##############################################################################
-# The main() function is called at the end of the script.  This makes it
-# testable.  Major bits of parsing are separated into functions for testability.
-# ##############################################################################
-main() {
-   # Prepending SIG to these doesn't work with NetBSD's sh
-   trap sigtrap HUP INT TERM
-
-   local RAN_WITH="--sleep=$OPT_SLEEP --dump-schemas=$OPT_DUMP_SCHEMAS --save-data=$OPT_SAVE_DATA"
-
-   _d "Starting $0 $RAN_WITH"
-
-   # Begin by setting the $PATH to include some common locations that are not
-   # always in the $PATH, including the "sbin" locations.  On SunOS systems,
-   # prefix the path with the location of more sophisticated utilities.
-   export PATH="${PATH}:/usr/local/bin:/usr/bin:/bin:/usr/libexec"
-   export PATH="${PATH}:/usr/mysql/bin/:/usr/local/sbin:/usr/sbin:/sbin"
-   export PATH="/usr/gnu/bin/:/usr/xpg4/bin/:${PATH}"
-
-   _d "Going to use: mysql=${CMD_MYSQL} mysqldump=${CMD_MYSQLDUMP}"
-
-   # Create the tmpdir for everything to run in
-   mk_tmpdir
-
-   # Set DATA_DIR where we'll save collected data files.
-   local data_dir="$(setup_data_dir)"
-
-   _d "Temp dir is [$TMPDIR], saving data in [$data_dir]"
-
-   # ########################################################################
-   # Fetch most info, leave a child in the background gathering the rest
-   # ########################################################################
-   collect_mysql_info "${data_dir}"
-
-   # ########################################################################
-   # Format and pretty-print the data
-   # ########################################################################
-   report_mysql_summary "${data_dir}"
-
-   rm_tmpdir
-
-}
-
-# Execute the program if it was not included from another file.
-# This makes it possible to include without executing, and thus test.
-if    [ "${0##*/}" = "$TOOL" ] \
-   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
-
-   # Set up temporary dir.
-   mk_tmpdir
-   # Parse command line options.
-   parse_options "$0" "$@"
-
-   # Verify that --sleep, if present, is positive
-   if [ -n "$OPT_SLEEP" ] && [ "$OPT_SLEEP" -lt 0 ]; then
-      option_error "Invalid --sleep value: $sleep"
-   fi
-
-   usage_or_errors "$0"
-   po_status=$?
-   rm_tmpdir
-
-   if [ $po_status -ne 0 ]; then
-      [ $OPT_ERRS -gt 0 ] && exit 1
-      exit 0
-   fi
-
-   # Check if mysql and mysqldump are there, otherwise bail out early.
-   check_mysql
-
-   main "$@"
-fi
-
-# ############################################################################
-# Documentation
-# ############################################################################
-:<<'DOCUMENTATION'
-=pod
-
-=head1 NAME
-
-pt-mysql-summary - Summarize MySQL information in a nice way.
-
-=head1 SYNOPSIS
-
-Usage: pt-mysql-summary [MYSQL-OPTIONS]
-
-pt-mysql-summary conveniently summarizes the status and configuration of a
-MySQL database server so that you can learn about it at a glance.  It is not
-a tuning tool or diagnosis tool.  It produces a report that is easy to diff
-and can be pasted into emails without losing the formatting.  It should work
-well on any modern UNIX systems.
-
-=head1 RISKS
-
-The following section is included to inform users about the potential risks,
-whether known or unknown, of using this tool.  The two main categories of risks
-are those created by the nature of the tool (e.g. read-only tools vs. read-write
-tools) and those created by bugs.
-
-pt-mysql-summary is a read-only tool.  It should be very low-risk.
-
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
-
-The authoritative source for updated information is always the online issue
-tracking system.  Issues that affect this tool will be marked as such.  You can
-see a list of such issues at the following URL:
-L<http://www.percona.com/bugs/pt-mysql-summary>.
-
-See also L<"BUGS"> for more information on filing bugs and getting help.
-
-=head1 DESCRIPTION
-
-pt-mysql-summary works by connecting to a MySQL database server and querying
-it for status and configuration information.  It saves these bits of data
-into files in a temporary directory, and then formats them neatly with awk
-and other scripting languages.
-
-To use, simply execute it.  Optionally add the same command-line options
-you would use to connect to MySQL, like  C<pt-mysql-summary --user=foo>.
-
-The tool interacts minimally with the server upon which it runs.  It assumes
-that you'll run it on the same server you're inspecting, and therefore it
-assumes that it will be able to find the my.cnf configuration file, for
-example.  However, it should degrade gracefully if this is not the case.
-Note, however, that its output does not indicate which information comes from
-the MySQL database and which comes from the host operating system, so it is
-possible for confusing output to be generated if you run the tool on one
-server and direct it to connect to a MySQL database server running on another
-server.
-
-=head1 Fuzzy-Rounding
-
-Many of the outputs from this tool are deliberately rounded to show their
-magnitude but not the exact detail.  This is called fuzzy-rounding. The idea
-is that it doesn't matter whether a server is running 918 queries per second
-or 921 queries per second; such a small variation is insignificant, and only
-makes the output hard to compare to other servers.  Fuzzy-rounding rounds in
-larger increments as the input grows.  It begins by rounding to the nearest 5,
-then the nearest 10, nearest 25, and then repeats by a factor of 10 larger
-(50, 100, 250), and so on, as the input grows.
-
-=head1 OPTIONS
-
-All options after -- are passed to C<mysql>.
-
-=over
-
-=item --config
-
-type: string
-
-Read this comma-separated list of config files.  If specified, this must be the
-first option on the command line.
-
-=item --help
-
-Print help and exit.
-
-=item --save-data
-
-type: string
-
-Save the data files used to generate the summary in this directory.
-
-=item --dump-schemas
-
-type: string
-
-Names of databases to dump through myslqdump. If you want all of them,
-you can use --all-databases. If not provided, the program will ask you
-for manual input.
-
-=item --sleep
-
-type: int; default: 10
-
-Seconds to sleep when gathering status counters.
-
-=item --version
-
-Print tool's version and exit.
-
-=back
-
-=head1 ENVIRONMENT
-
-This tool does not use any environment variables.
-
-=head1 SYSTEM REQUIREMENTS
-
-This tool requires Bash v3 or newer, Perl 5.8 or newer, and binutils.
-These are generally already provided by most distributions.
-On BSD systems, it may require a mounted procfs.
-
-=head1 BUGS
-
-For a list of known bugs, see L<http://www.percona.com/bugs/pt-mysql-summary>.
-
-Please report bugs at L<https://bugs.launchpad.net/percona-toolkit>.
-Include the following information in your bug report:
-
-=over
-
-=item * Complete command-line used to run the tool
-
-=item * Tool L<"--version">
-
-=item * MySQL version of all servers involved
-
-=item * Output from the tool including STDERR
-
-=item * Input files (log/dump/config files, etc.)
-
-=back
-
-If possible, include debugging output by running the tool with C<PTDEBUG>;
-see L<"ENVIRONMENT">.
-
-=head1 DOWNLOADING
-
-Visit L<http://www.percona.com/software/percona-toolkit/> to download the
-latest release of Percona Toolkit.  Or, get the latest release from the
-command line:
-
-   wget percona.com/get/percona-toolkit.tar.gz
-
-   wget percona.com/get/percona-toolkit.rpm
-
-   wget percona.com/get/percona-toolkit.deb
-
-You can also get individual tools from the latest release:
-
-   wget percona.com/get/TOOL
-
-Replace C<TOOL> with the name of any tool.
-
-=head1 AUTHORS
-
-Baron Schwartz, Brian Fraser, and Daniel Nichter.
-
-=head1 ABOUT PERCONA TOOLKIT
-
-This tool is part of Percona Toolkit, a collection of advanced command-line
-tools developed by Percona for MySQL support and consulting.  Percona Toolkit
-was forked from two projects in June, 2011: Maatkit and Aspersa.  Those
-projects were created by Baron Schwartz and developed primarily by him and
-Daniel Nichter, both of whom are employed by Percona.  Visit
-L<http://www.percona.com/software/> for more software developed by Percona.
-
-=head1 COPYRIGHT, LICENSE, AND WARRANTY
-
-This program is copyright 2010-2011 Baron Schwartz, 2011 Percona Inc.
-Feedback and improvements are welcome.
-
-THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
-systems, you can issue `man perlgpl' or `man perlartistic' to read these
-licenses.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA  02111-1307  USA.
-
-=head1 VERSION
-
-pt-mysql-summary 2.0.4
-
-=cut
-
-DOCUMENTATION
