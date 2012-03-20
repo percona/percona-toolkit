@@ -241,6 +241,7 @@ sub next {
 
 sub _iterate_files {
    my ( $self ) = @_;
+   my $q = $self->{Quoter};
 
    if ( !$self->{fh} ) {
       my ($fh, $file) = $self->{file_itr}->();
@@ -300,9 +301,10 @@ sub _iterate_files {
 
             if ( !$engine || $self->engine_is_allowed($engine) ) {
                return {
-                  db  => $self->{db},
-                  tbl => $tbl,
-                  ddl => $ddl,
+                  db   => $self->{db},
+                  tbl  => $tbl,
+                  name => $q->quote($self->{db}, $tbl),
+                  ddl  => $ddl,
                };
             }
          }
@@ -385,6 +387,7 @@ sub _iterate_dbh {
          return {
             db         => $self->{db},
             tbl        => $tbl,
+            name       => $q->quote($self->{db}, $tbl),
             ddl        => $ddl,
             tbl_status => $tbl_status,
          };
