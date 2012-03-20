@@ -124,6 +124,18 @@ plan() {
 # The following subs are for the test files to call.
 #
 
+skip() {
+   local skip="$1"
+   local number_of_tests="$2"
+   local reason="${3:-""}"
+
+   if [ $skip ]; then
+      for n in $(seq $number_of_tests); do
+         result 0 "# skip $n $reason"
+      done
+   fi
+}
+
 no_diff() {
    local got=$1
    local expected=$2
