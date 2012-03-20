@@ -12,7 +12,7 @@ cat <<EOF > $TMPDIR/expected
 2010-05-27 11:38 (up 0+02:08:52)
 EOF
 cp samples/mysql-status-001.txt $TMPDIR/percona-toolkit-mysql-status
-local uptime="$(get_stat Uptime $TMPDIR/percona-toolkit-mysql-status)"
+local uptime="$(get_var Uptime $TMPDIR/percona-toolkit-mysql-status)"
 local current_time="$(echo -e "2010-05-27 11:38\n")"
 get_mysql_uptime "${uptime}" "${current_time}" > $TMPDIR/got
 no_diff $TMPDIR/got $TMPDIR/expected
