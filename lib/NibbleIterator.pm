@@ -61,40 +61,25 @@ sub new {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
+
+   # Die unless table can be nibbled, else return row estimate, nibble index,
+   # and if table can be nibbled in one chunk.
+   my $nibble_params = can_nibble(%args);
    
-   my $where = $o->get('where');
-   my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
-   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
-                  : 0;
-   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
-
-   if ( $args{resume}
-        && !defined $args{resume}->{lower_boundary}
-        && !defined $args{resume}->{upper_boundary} ) {
-      PTDEBUG && _d('Resuming from one nibble table');
-      $one_nibble = 1;
-   }
-
-   # Get an index to nibble by.  We'll order rows by the index's columns.
-   my $index = _find_best_index(%args, mysql_index => $mysql_index);
-   if ( !$index && !$one_nibble ) {
-      die "There is no good index and the table is oversized.";
-   }
-
+   my $where       = $o->get('where');
    my $tbl_struct = $tbl->{tbl_struct};
    my $ignore_col = $o->get('ignore-columns') || {};
    my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
-   if ( $one_nibble ) {
+   if ( $nibble_params->{one_nibble} ) {
       # If the chunk size is >= number of rows in table, then we don't
       # need to chunk; we can just select all rows, in order, at once.
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . " /*checksum table*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
@@ -103,7 +88,7 @@ sub new {
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . " /*explain checksum table*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
@@ -117,6 +102,7 @@ sub new {
       };
    }
    else {
+      my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
 
       # Figure out how to nibble the table with the index.
@@ -132,7 +118,7 @@ sub new {
       # Make SQL statements, prepared on first call to next().  FROM and
       # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
       # are needed to ensure deterministic nibbling.
-      my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+      my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
       # The real first row in the table.  Usually we start nibbling from
@@ -246,7 +232,7 @@ sub new {
       };
    }
 
-   $self->{row_est}    = $row_est;
+   $self->{row_est}    = $nibble_params->{row_est},
    $self->{nibbleno}   = 0;
    $self->{have_rows}  = 0;
    $self->{rowno}      = 0;
@@ -418,6 +404,52 @@ sub row_estimate {
    return $self->{row_est};
 }
 
+sub can_nibble {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+
+   # About how many rows are there?
+   my ($row_est, $mysql_index) = get_row_estimate(
+      Cxn   => $cxn,
+      tbl   => $tbl,
+      where => $o->get('where'),
+   );
+
+   # Can all those rows be nibbled in one chunk?  If one_nibble is defined,
+   # then do as it says; else, look at the chunk size limit.
+   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
+                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
+                  : 0;
+   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
+
+   # Special case: we're resuming and there's no boundaries, so the table
+   # being resumed was originally nibbled in one chunk, so do the same again.
+   if ( $args{resume}
+        && !defined $args{resume}->{lower_boundary}
+        && !defined $args{resume}->{upper_boundary} ) {
+      PTDEBUG && _d('Resuming from one nibble table');
+      $one_nibble = 1;
+   }
+
+   # Get an index to nibble by.  We'll order rows by the index's columns.
+   my $index = _find_best_index(%args, mysql_index => $mysql_index);
+   if ( !$index && !$one_nibble ) {
+      die "There is no good index and the table is oversized.";
+   }
+
+   # The table can be nibbled if this point is reached, else we would have
+   # died earlier.  Return some values about nibbling the table.
+   return {
+      row_est     => $row_est,      # nibble about this many rows
+      index       => $index,        # using this index
+      one_nibble  => $one_nibble,   # if the table fits in one nibble/chunk
+   };
+}
+
 sub _find_best_index {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl TableParser);
@@ -494,11 +526,11 @@ sub _find_best_index {
 
 sub _get_index_cardinality {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl index Quoter);
-   my ($cxn, $tbl, $index, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl index);
+   my ($cxn, $tbl, $index) = @args{@required_args};
 
-   my $sql = "SHOW INDEXES FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-           . " WHERE Key_name = '$index'";
+   my $sql = "SHOW INDEXES FROM $tbl->{name} "
+           . "WHERE Key_name = '$index'";
    PTDEBUG && _d($sql);
    my $cardinality = 1;
    my $rows = $cxn->dbh()->selectall_hashref($sql, 'key_name');
@@ -511,21 +543,24 @@ sub _get_index_cardinality {
 
 sub get_row_estimate {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl OptionParser TableParser Quoter);
-   my ($cxn, $tbl, $o, $tp, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl) = @args{@required_args};
 
-   if ( $args{where} ) {
-      PTDEBUG && _d('WHERE clause, using explain plan for row estimate');
-      my $table = $q->quote(@{$tbl}{qw(db tbl)});
-      my $sql   = "EXPLAIN SELECT * FROM $table WHERE $args{where}";
+   if ( !$args{where} && exists $tbl->{tbl_status} ) {
+      PTDEBUG && _d('Using table status for row estimate');
+      return $tbl->{tbl_status}->{rows} || 0;
+   }
+   else {
+      PTDEBUG && _d('Use EXPLAIN for row estimate');
+      my $sql   = "EXPLAIN SELECT * FROM $tbl->{name} "
+                . "WHERE " . ($args{where} || '1=1');
       PTDEBUG && _d($sql);
       my $expl = $cxn->dbh()->selectrow_hashref($sql);
       PTDEBUG && _d(Dumper($expl));
       return ($expl->{rows} || 0), $expl->{key};
-   }
-   else {
-      PTDEBUG && _d('No WHERE clause, using table status for row estimate');
-      return $tbl->{tbl_status}->{rows} || 0;
    }
 }
 
