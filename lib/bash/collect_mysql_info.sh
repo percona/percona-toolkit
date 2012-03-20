@@ -140,9 +140,49 @@ collect_internal_vars () {
    echo "pt-summary-internal-symbols   $has_symbols" >> "$file"
 }
 
+# Uses mysqldump and dumps the results to FILE.
+# args and dbtodump are passed to mysqldump.
+get_mysqldump_for () {
+   local file="$1"
+   local args="$2"
+   local dbtodump="${3:---all-databases}"
+
+   $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
+      --skip-add-locks --skip-add-drop-table --compact \
+      --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
+      ${args} "${dbtodump}" > "$file"
+}
+
+# Returns a string with arguments to pass to mysqldump.
+# Takes one argument, which should be a
+get_mysqldump_args () {
+   local file="$1"
+   local trg_arg=""
+
+   # If mysqldump supports triggers, then add options for routines.
+   if $CMD_MYSQLDUMP --help --verbose 2>&1 | grep triggers >/dev/null; then
+      _d "mysqldump supports triggers"
+      trg_arg="--routines"
+   fi
+
+   if [ "${trg_arg}" ]; then
+      # Find out if there are any triggers.  If there are none, we will skip
+      # that option to mysqldump, because when mysqldump checks for them, it
+      # can take a long time, one table at a time.
+      local triggers="--skip-triggers"
+      local trg=$(get_var "pt-summary-internal-trigger_count" "$file" )
+      if [ -n "${trg}" ] && [ "${trg}" -gt 0 ]; then
+         _d "We have triggers to dump"
+         triggers="--triggers"
+      fi
+      trg_arg="${trg_arg} ${triggers}";
+   fi
+   echo "${trg_arg}"
+}
+
 collect_mysql_info () {
    local dir="$1"
-   local prefix="$2"
+   local prefix="${2:-percona-toolkit}"
 
    collect_mysqld_instances "$dir/${prefix}-mysqld-instances"
 

@@ -13,11 +13,8 @@ use English qw(-no_match_vars);
 use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
-push @ARGV, "$trunk/t/$tool/*.sh" unless @ARGV;
-system("$trunk/util/test-bash-functions $trunk/bin/$tool @ARGV");
 
-require Test::More;
-Test::More->import( tests => 3 );
+use Test::More tests => 3;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
@@ -38,7 +35,7 @@ my @files = glob("$dir/*");
 
 is(
    scalar @files,
-   13,
+   12,
    "And leaves all files in there"
 );
 

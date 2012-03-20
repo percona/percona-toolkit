@@ -51,7 +51,6 @@ fuzzy_formula='
 # Does fuzzy rounding: rounds to nearest interval, but the interval gets larger
 # as the number gets larger.  This is to make things easier to diff.
 fuzz () {
-   _d "fuzz: $1"
    echo $1 | awk "{fuzzy_var=\$1; ${fuzzy_formula} print fuzzy_var;}"
 }
 
