@@ -23,22 +23,22 @@ use File::Temp qw( tempdir );
 local $ENV{PTDEBUG} = "";
 
 #
-# --tempdir
+# --save-data
 #
 my $dir = tempdir( CLEANUP => 1 );
 
-`$trunk/bin/$tool --sleep 1 --tempdir $dir`;
+`$trunk/bin/$tool --sleep 1 --save-data $dir`;
 
 ok(
    -e $dir,
-   "Using --tempdir doesn't mistakenly delete the target dir"
+   "Using --save-data doesn't mistakenly delete the target dir"
 );
 
 my @files = glob("$dir/*");
 
 is(
    scalar @files,
-   14,
+   13,
    "And leaves all files in there"
 );
 
@@ -48,7 +48,7 @@ undef($dir);
 # --dump-schemas
 #
 
-my $out = `$trunk/bin/$tool --sleep 1 --dump-schemas mysql`;
+my $out = `$trunk/bin/$tool --sleep 1 --dump-schemas mysql 2>/dev/null`;
 
 like(
    $out,
