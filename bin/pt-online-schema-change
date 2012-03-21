@@ -4113,6 +4113,8 @@ sub main {
       $o->set('drop-old-table', 0),
    }
 
+   $o->set('chunk-time', 0) if $o->got('chunk-size');
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
@@ -4209,7 +4211,7 @@ sub main {
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
    # triggers cannot contain direct references to tables by name."
    my $vp = new VersionParser();
-   if ( !$vp->version_ge($dbh, '5.0.10') ) {
+   if ( !$vp->version_ge($cxn->dbh(), '5.0.10') ) {
       die "This tool requires MySQL 5.0.10 or newer.\n";
    }
 
@@ -4412,27 +4414,33 @@ sub main {
 
    # Check that all the tables exist, etc., else die if there's a problem.
    check_tables(
-      org_tbl      => $org_tbl,
+      orig_tbl     => $orig_tbl,
       old_tbl      => $old_tbl,
       new_tbl      => $new_tbl,
       Cxn          => $cxn,
       OptionParser => $o,
       TableParser  => $tp,
+      Quoter       => $q,
    );
 
    # Get child tables if necessary.
    my @child_tables;
    if ( my $child_tables = $o->get('child-tables') ) {
-      if ( lc $child_tables eq 'auto_detect' ) {
-         msg("Auto-detecting child tables of $tbl");
-         @child_tables = get_child_tables(%plugin_args);
-         msg("Child tables of $tables{old_tbl}: "
-            .  (@child_tables ? join(', ', @child_tables) : "(none)"));
+      # TODO: this will fail if a child table is named `auto_detect` and
+      # the user wants to specify that explicitly
+      if ( lc($child_tables) eq 'auto_detect' ) {
+         @child_tables = get_child_tables(
+            tbl    => $orig_tbl,
+            Cxn    => $cxn,
+            Quoter => $q,
+         );
       }
       else {
          @child_tables = split(',', $child_tables);
-         msg("User-specified child tables: " . join(', ', @child_tables));
       }
+      print "Child tables of $orig_tbl->{name}: "
+         . (@child_tables ? join(', ', @child_tables) : "(none)")
+         . "\n";
    }
 
    if ( $o->get('check-tables-and-exit') ) {
@@ -4452,14 +4460,26 @@ sub main {
    # #####################################################################
    if ( $o->get('create-tmp-table') ) {
       my $sql = "CREATE TABLE $new_tbl->{name} LIKE $orig_tbl->{name}";
-      msg($sql);
-      $dbh->do($sql) unless $o->get('print');
+      PTDEBUG && _d($sql);
+      eval {
+         $cxn->dbh()->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Error creating table $new_tbl->{name} for --create-tmp-table: "
+            . "$EVAL_ERROR\n";
+      }
    }
 
    if ( my $alter = $o->get('alter') ) {
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
-      msg($sql);
-      $dbh->do($sql) unless $o->get('print');
+      PTDEBUG && _d($sql);
+      eval {
+         $cxn->dbh()->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         die "Error altering the new table $new_tbl->{name}: "
+            . "$EVAL_ERROR\n";
+      }
    }
 
    # #####################################################################
@@ -4492,55 +4512,43 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
-         my $oktonibble  = 1;
 
+         # If table is a single chunk on the master, make sure it's also
+         # a single chunk on all slaves.  E.g. if a slave is out of sync
+         # and has a lot more rows than the master, single chunking on the
+         # master could cause the slave to choke.
          if ( $nibble_iter->one_nibble() ) {
             PTDEBUG && _d('Getting table row estimate on replicas');
-            my $chunk_size_limit = $o->get('chunk-size-limit');
             my @too_large;
             foreach my $slave ( @$slaves ) {
                my ($n_rows) = NibbleIterator::get_row_estimate(
-                  Cxn          => $slave,
-                  tbl          => $tbl,
-                  where        => $o->get('where') || "1=1",
-                  OptionParser => $o,
-                  TableParser  => $tp,
-                  Quoter       => $q,
+                  Cxn   => $slave,
+                  tbl   => $tbl,
+                  where => $o->get('where'),
                );
-               PTDEBUG && _d('Table on', $slave->name(),
-                  'has', $n_rows, 'rows');
-               if ( $n_rows
-                    && $n_rows > ($tbl->{chunk_size} * $chunk_size_limit) )
-               {
+               PTDEBUG && _d('Table on',$slave->name(),'has', $n_rows, 'rows');
+               if ( $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
                   PTDEBUG && _d('Table too large on', $slave->name());
                   push @too_large, [$slave->name(), $n_rows || 0];
                }
             }
             if ( @too_large ) {
-               if ( $o->get('quiet') < 2 ) {
-                  my $msg
-                     = "Skipping table $tbl->{db}.$tbl->{tbl} because"
-                     . " on the master it would be checksummed in one chunk"
-                     . " but on these replicas it has too many rows:\n";
-                  foreach my $info ( @too_large ) {
-                     $msg .= "  $info->[1] rows on $info->[0]\n";
-                  }
-                  $msg .= "The current chunk size limit is "
-                        . ($tbl->{chunk_size} * $chunk_size_limit)
-                        . " rows (chunk size=$tbl->{chunk_size}"
-                        . " * chunk size limit=$chunk_size_limit).\n";
-                  warn ts($msg);
+               my $msg
+                  = "Cannot copy table $tbl->{name} because"
+                  . " on the master it would be checksummed in one chunk"
+                  . " but on these replicas it has too many rows:\n";
+               foreach my $info ( @too_large ) {
+                  $msg .= "  $info->[1] rows on $info->[0]\n";
                }
-               $tbl->{results}->{errors}++;
-               $oktonibble = 0;
+               $msg .= "The current chunk size limit is "
+                     . ($tbl->{chunk_size} * $limit)
+                     . " rows (chunk size=$tbl->{chunk_size}"
+                     . " * chunk size limit=$limit).\n";
+               die $msg;
             }
          }
 
-         # #########################################################
-         # XXX DO NOT CHANGE THE DB UNTIL THIS TABLE IS FINISHED XXX
-         # #########################################################
-
-         return $oktonibble; # continue nibbling table?
+         return 1; # continue nibbling table
       },
       next_boundaries => sub {
          my (%args) = @_;
@@ -4560,23 +4568,18 @@ sub main {
             sth  => $sth->{explain_upper_boundary},
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
-         if (   lc($expl->{key} || '')
-             ne lc($nibble_iter->nibble_index() || '') ) {
+         if (lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '')) {
             PTDEBUG && _d('Cannot nibble next chunk, aborting table');
-            if ( $o->get('quiet') < 2 ) {
-               my $msg
-                  = "Aborting table $tbl->{db}.$tbl->{tbl} at chunk "
-                  . ($nibble_iter->nibble_number() + 1)
-                  . " because it is not safe to chunk.  Chunking should "
-                  . "use the "
-                  . ($nibble_iter->nibble_index() || '?')
-                  . " index, but MySQL EXPLAIN reports that "
-                  . ($expl->{key} ? "the $expl->{key}" : "no")
-                  . " index will be used.\n";
-               warn ts($msg);
-            }
-            $tbl->{results}->{errors}++;
-            return 0; # stop nibbling table
+            my $msg
+               = "Aborting copying table $tbl->{name} at chunk "
+               . ($nibble_iter->nibble_number() + 1)
+               . " because it is not safe to ascend.  Chunking should "
+               . "use the "
+               . ($nibble_iter->nibble_index() || '?')
+               . " index, but MySQL EXPLAIN reports that "
+               . ($expl->{key} ? "the $expl->{key}" : "no")
+               . " index will be used.\n";
+            die $msg;
          }
 
          # Once nibbling begins for a table, control does not return to this
@@ -4604,28 +4607,46 @@ sub main {
                sth  => $sth->{explain_nibble},
                vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
             );
-            my $oversize_chunk
-               = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
-               :          0;
 
             # Ensure that MySQL is using the chunk index.
             if (   lc($expl->{key} || '')
                 ne lc($nibble_iter->nibble_index() || '') ) {
                PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                   "$tbl->{db}.$tbl->{tbl} not using chunk index, skipping");
-               return 0;  # next boundary
+               my $msg
+                  = "Aborting copying table $tbl->{name} at chunk "
+                  . $nibble_iter->nibble_number()
+                  . " because it is not safe to chunk.  Chunking should "
+                  . "use the "
+                  . ($nibble_iter->nibble_index() || '?')
+                  . " index, but MySQL EXPLAIN reports that "
+                  . ($expl->{key} ? "the $expl->{key}" : "no")
+                  . " index will be used.\n";
+               die $msg;
             }
 
             # Check chunk size limit if the upper boundary and next lower
             # boundary are identical.
             if ( $limit ) {
                my $boundary = $nibble_iter->boundaries(); 
-               if ( $nibble_iter->identical_boundaries(
-                       $boundary->{upper}, $boundary->{next_lower})
-                    && $oversize_chunk ) {
+               my $oversize_chunk
+                  = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
+                  :          0;
+               if ( $oversize_chunk
+                    && $nibble_iter->identical_boundaries(
+                          $boundary->{upper}, $boundary->{next_lower}) )
+               {
                   PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
                      "$tbl->{db}.$tbl->{tbl} is too large, skipping");
-                  return 0;  # next boundary
+                  my $msg
+                     = "Aborting copying table $tbl->{name} at chunk "
+                     . $nibble_iter->nibble_number()
+                     . " because the chunk is too large: MySQL estimates "
+                     . ($expl->{rows} || 0) . "rows.  The current chunk "
+                     . "size limit is " . ($tbl->{chunk_size} * $limit)
+                     . " rows (chunk size=$tbl->{chunk_size}"
+                     . " * chunk size limit=$limit).\n";
+                  die $msg;
                }
             }
          }
@@ -4648,13 +4669,6 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
-         
-         # Nibble time will be zero if the chunk was skipped.
-         if ( !defined $tbl->{nibble_time} ) {
-            PTDEBUG && _d('Skipping chunk', $chunk);
-            $tbl->{results}->{skipped}++;
-            return;
-         }
 
          # XXX
          # TODO
@@ -4672,22 +4686,23 @@ sub main {
 
             # Adjust chunk size.  This affects the next chunk.
             if ( $o->get('chunk-time') ) {
-               $tbl->{chunk_size}
-                  = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
+               $tbl->{chunk_size} = $tbl->{rate}->update(
+                  $cnt,                # processed this many rows
+                  $tbl->{nibble_time}, # is this amount of time
+               );
 
                if ( $tbl->{chunk_size} < 1 ) {
-                  # This shouldn't happen.  WeightedAvgRate::update() may return
-                  # a value < 1, but minimum chunk size is 1.
+                  # This shouldn't happen.  WeightedAvgRate::update() may
+                  # return a value < 1, but minimum chunk size is 1.
                   $tbl->{chunk_size} = 1;
 
                   # This warning is printed once per table.
                   if ( !$tbl->{warned_slow} && $o->get('quiet') < 2 ) {
                      warn ts("Checksum queries for table "
-                        . "$tbl->{db}.$tbl->{tbl} are executing very slowly.  "
+                        . "$tbl->{name} are executing very slowly.  "
                         . "--chunk-size has been automatically reduced to 1.  "
                         . "Check that the server is not being overloaded, "
-                        . "or increase --chunk-time.  The last chunk, number "
-                        . "$chunk of table $tbl->{db}.$tbl->{tbl}, "
+                        . "or increase --chunk-time.  The last chunk "
                         . "selected $cnt rows and took "
                         . sprintf('%.3f', $tbl->{nibble_time})
                         . " seconds to execute.\n");
@@ -4701,7 +4716,7 @@ sub main {
 
             # Every table should have a Progress obj; update it.
             if ( my $tbl_pr = $tbl->{progress} ) {
-               $tbl_pr->update(sub {return $tbl->{results}->{n_rows}});
+               $tbl_pr->update( sub { return $total_rows } );
             }
          }
 
@@ -4744,7 +4759,7 @@ sub main {
    }
 
    # Init a new weighted avg rate calculator for the table.
-   $orig_tbl->{rate} = new WeightedAvgRate(target_t => $chunk_time);
+   $orig_tbl->{rate} = new WeightedAvgRate(target_t => $o->get('chunk-time'));
 
    # Make a Progress obj for this table.  It may not be used;
    # depends on how many rows, chunk size, how fast the server
@@ -4763,8 +4778,6 @@ sub main {
    # #####################################################################
    # Do the online alter.
    # #####################################################################
-
-   msg("Starting online schema change");
    eval {
       # #####################################################################
       # Start capturing changes to the new table.
@@ -4774,43 +4787,52 @@ sub main {
       # #####################################################################
       # Copy rows from new table to old table.
       # #####################################################################
-      1 while $nibble_iter->next();
+      eval {
+         1 while $nibble_iter->next();
+      };
+      if ( $EVAL_ERROR ) {
+         # XXX
+         # TODO: drop_triggers(), what to do with data created by triggers?
+         die "Error copying rows from original table $orig_tbl->{name} to "
+           . "new table $new_tbl->{name}: $EVAL_ERROR";
+      }
 
       # #####################################################################
       # Rename tables.
       # #####################################################################
       if ( $o->get('rename-tables') ) {
-         msg("Renaming tables");
-         my $sql = "RENAME TABLE `$db`.`$tbl` TO `$db`.`$old_tbl`,"
-              . " `$db`.`$tmp_tbl` TO `$db`.`$tbl`";
-         msg($sql);
-         $dbh->do($sql) unless $o->get('print');
-         msg("Original table $tbl renamed to $old_tbl");
+         my $sql = "RENAME TABLE "
+                 . "$orig_tbl->{name} TO $old_tbl->{name},"
+                 . " $new_tbl->{name} TO $orig_tbl->{name}";
+         PTDEBUG && _d($sql);
+         eval {
+            $cxn->dbh()->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            # XXX
+            # TODO: drop_triggers(), what to do with data created by triggers?
+            die "Error renaming the tables: $EVAL_ERROR\n";
+         }
       }
 
       # #####################################################################
       # Update foreign key constraints if there are child tables.
       # #####################################################################
       if ( @child_tables ) {
-         msg("Renaming foreign key constraints in child table");
          if ( $rename_fk_method eq 'rebuild_constraints' ) { 
             update_foreign_key_constraints(
                child_tables => \@child_tables,
-               %plugin_args,
             );
          }
          elsif ( $rename_fk_method eq 'drop_old_table' ) {
             my $sql = "SET foreign_key_checks=0";
-            msg($sql);
-            $dbh->do($sql) unless $o->get('print');
+            $cxn->dbh()->do($sql) unless $o->get('print');
             
-            $sql = "DROP TABLE IF EXISTS `$db`.`$tbl`";
-            msg($sql);
-            $dbh->do($sql) unless $o->get('print');
+            $sql = "DROP TABLE IF EXISTS $orig_tbl->{name}";
+            $cxn->dbh()->do($sql) unless $o->get('print');
 
-            $sql = "RENAME TABLE `$db`.`$tmp_tbl` TO `$db`.`$tbl`";
-            msg($sql);
-            $dbh->do($sql) unless $o->get('print');
+            $sql = "RENAME TABLE $new_tbl->{name} TO $orig_tbl->{name}";
+            $cxn->dbh()->do($sql) unless $o->get('print');
          }
          else {
             die "Invalid --update-foreign-keys-method value: $rename_fk_method";
@@ -4820,18 +4842,19 @@ sub main {
       # #####################################################################
       # Drop old table and delete triggers.
       # #####################################################################
-      delete_triggers();
+      drop_triggers(
+         tbl    => $orig_tbl,
+         Cxn    => $cxn,
+         Quoter => $q,
+      );
 
       if ( $o->get('rename-tables') &&  $o->get('drop-old-table') ) {
-         my $sql = "DROP TABLE IF EXISTS `$db`.`$old_tbl`";
-         $dbh->do($sql) unless $o->get('print');
+         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
+         $cxn->dbh()->do($sql) unless $o->get('print');
       }
    };
    if ( $EVAL_ERROR ) {
-      warn "An error occurred:\n\n$EVAL_ERROR\n"
-         . "Some triggers, temp tables, etc. may not have been removed. "
-         . "Run with --cleanup-and-exit to remove these items.\n";
-      $exit_status = 1;
+      die "An unknown fatal error occurred: $EVAL_ERROR";
    }
 
    return $exit_status;
@@ -4858,74 +4881,78 @@ sub unique_table_name {
 
 sub check_tables {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl old_tbl new_tbl Cxn TableParser OptionParser);
+   my @required_args = qw(orig_tbl old_tbl new_tbl
+                          Cxn TableParser OptionParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $old_tbl, $new_tbl, $cxn, $tp, $o) = @args{@required_args};
+   my ($orig_tbl, $old_tbl, $new_tbl, $cxn, $tp, $o, $q)
+      = @args{@required_args};
+
+   my $dbh = $cxn->dbh();
 
    # The original table must exist, of course.
-   if ( !$tp->check_table(dbh=>$dbh, db=>$db, tbl=>$tbl) ) {
-      die "Table $db.$tbl does not exist\n";
+   if (!$tp->check_table(dbh=>$dbh,db=>$orig_tbl->{db},tbl=>$orig_tbl->{tbl})) {
+      die "The original table $orig_tbl->{name} does not exist.\n";
    }
 
    # There cannot be any triggers on the original table.
-   my $sql = "SHOW TRIGGERS FROM `$db` LIKE '$tbl'";
+   my $sql = "SHOW TRIGGERS FROM " . $q->quote($orig_tbl->{db})
+           . "LIKE '$orig_tbl->{tbl}'";
+   PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
    if ( $triggers && @$triggers ) {
-      die "Table $db.$tbl has triggers.  This tool needs to create "
-         . "its own triggers, so the table cannot already have triggers.\n";
+      die "The original table $orig_tbl->{name} has triggers.  This tool "
+         . "needs to create its own triggers, so the original table cannot "
+         . "already have triggers.\n";
    }
 
    # Must be able to nibble the original table (to copy rows to the new table).
-   TableNibbler::can_nibble(
-      Cxn          => $cxn,
-      tbl          => $orig_tbl,
-      chunk_size   => $o->get('chunk-size'),
-      OptionParser => $o,
-      TableParser  => $tp,
-   );
+   eval {
+      TableNibbler::can_nibble(
+         Cxn          => $cxn,
+         tbl          => $orig_tbl,
+         chunk_size   => $o->get('chunk-size'),
+         OptionParser => $o,
+         TableParser  => $tp,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Cannot chunk the original table $orig_tbl->{name}: $EVAL_ERROR\n";
+   }
 
    # The new table should not exist if we're supposed to create it.
    # Else, if user specifies --no-create-tmp-table, they should ensure
    # that it exists.
    if ( $o->get('create-tmp-table')
-        && $tp->check_table(dbh=>$dbh, db=>$db, tbl=>$tmp_tbl) ) {
-      die "Temporary table $db.$tmp_tbl exists which will prevent "
-         . "--create-tmp-table from creating the temporary table.\n";
+        && $tp->check_table(dbh=>$dbh,db=>$new_tbl->{db},tbl=>$new_tbl->{tbl}) )
+   {
+      die "--create-tmp-table was specified but the table $new_tbl->{name} "
+         . "already exists.\n";
    }
 
-   # If we're going to rename the tables, which we do by default,
-   # then the old table cannot already exist.
-   if ( $o->get('rename-tables')
-        && $tp->check_table(dbh=>$dbh, db=>$db, tbl=>$old_tbl) ) {
-      die "Table $db.$old_tbl exists which will prevent $db.$tbl "
-         . "from being renamed to it.  Table $db.$old_tbl could be from "
-         . "a previous run that failed.  See --drop-old-table for more "
-         . "information.\n";
-   }
-
-   return;
+   return;  # success
 }
 
 sub get_child_tables {
    my ( %args ) = @_;
-   my @required_args = qw(dbh db tbl Quoter);
+   my @required_args = qw(tbl Cxn Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $db, $tbl, $q) = @args{@required_args};
+   my ($tbl, $cxn, $q) = @args{@required_args};
 
    my $sql = "SELECT table_name "
            . "FROM information_schema.key_column_usage "
-           . "WHERE constraint_schema='$db' AND referenced_table_name='$tbl'";
-   PTDEBUG && _d($dbh, $sql);
+           . "WHERE constraint_schema='$tbl->{db}' "
+           . "AND referenced_table_name='$tbl->{tbl}'";
+   PTDEBUG && _d($sql);
    my $child_tables;
    eval {
-      $child_tables = $dbh->selectall_arrayref($sql);
+      $child_tables = $cxn->dbh()->selectall_arrayref($sql);
    };
    if ( $EVAL_ERROR ) {
-      die "Error executing query to check $tbl for child tables.\n\n"
+      die "Error executing query to check $tbl->{name} for child tables.\n\n"
          . "Query: $sql\n\n"
          . "Error: $EVAL_ERROR"
    }
@@ -4984,53 +5011,52 @@ sub update_foreign_key_constraints {
 
 sub create_triggers {
    my ( $self, %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl chunk_column columns);
+   my @required_args = qw(orig_tbl new_tbl chunk_column columns Cxn Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($db, $tbl, $tmp_tbl, $chunk_column) = @args{@required_args};
-   my $q = $self->{Quoter};
+   my ($orig_tbl, $new_tbl, $chunk_col, $cols, $cxn, $q)
+      = @args{@required_args};
 
-   $chunk_column = $q->quote($chunk_column);
+   $chunk_col   = $q->quote($chunk_col);
+   my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
+   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
 
-   my $old_table  = $q->quote($db, $tbl);
-   my $new_table  = $q->quote($db, $tmp_tbl);
-   my $new_values = join(', ', map { "NEW.".$q->quote($_) } @{$args{columns}});
-   my $columns    = join(', ', map { $q->quote($_) }        @{$args{columns}});
+   my $delete_trigger
+      = "CREATE TRIGGER pt_osc_del AFTER DELETE ON $orig_tbl->{name} "
+      . "FOR EACH ROW "
+      . "DELETE IGNORE FROM $new_tbl->{name} "
+      . "WHERE $new_tbl->{name}.$chunk_col = OLD.$chunk_col";
 
-   my $delete_trigger = "CREATE TRIGGER mk_osc_del AFTER DELETE ON $old_table "
-                      . "FOR EACH ROW "
-                      . "DELETE IGNORE FROM $new_table "
-                      . "WHERE $new_table.$chunk_column = OLD.$chunk_column";
+   my $insert_trigger
+      = "CREATE TRIGGER pt_osc_ins AFTER INSERT ON $orig_tbl->{name} "
+      . "FOR EACH ROW "
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
-   my $insert_trigger = "CREATE TRIGGER mk_osc_ins AFTER INSERT ON $old_table "
-                      . "FOR EACH ROW "
-                      . "REPLACE INTO $new_table ($columns) "
-                      . "VALUES($new_values)";
-
-   my $update_trigger = "CREATE TRIGGER mk_osc_upd AFTER UPDATE ON $old_table "
-                      . "FOR EACH ROW "
-                      . "REPLACE INTO $new_table ($columns) "
-                      . "VALUES ($new_values)";
+   my $update_trigger
+      = "CREATE TRIGGER pt_osc_upd AFTER UPDATE ON $orig_tbl->{name} "
+      . "FOR EACH ROW "
+      . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
    foreach my $sql ( $delete_trigger, $update_trigger, $insert_trigger ) {
-      $dbh->do($sql) unless $args{print};
+      $cxn->dbh()->do($sql);
    }
+
+   return;
 }
 
 sub drop_triggers {
    my ( $self, %args ) = @_;
-   my @required_args = qw(dbh db msg);
+   my @required_args = qw(tbl Cxn Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $db, $msg) = @args{@required_args};
-   my $q = $self->{Quoter};
+   my ($tbl, $cxn, $q) = @args{@required_args};
 
    foreach my $trigger ( qw(del ins upd) ) {
-      my $sql = "DROP TRIGGER IF EXISTS " . $q->quote($db, "mk_osc_$trigger");
-      $msg->($sql);
-      $dbh->do($sql) unless $args{print};
+      my $sql = "DROP TRIGGER IF EXISTS "
+              . $q->quote($tbl->{db}, "pt_osc_$trigger");
+      $cxn->dbh()->do($sql);
    }
 
    return;
