@@ -2697,6 +2697,146 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Cxn package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Cxn.pm
+#   t/lib/Cxn.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Cxn;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(DSNParser OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
+   if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
+      $dsn = $dp->parse(
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+   }
+
+   my $self = {
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
+      set          => $args{set},
+      dbh_set      => 0,
+      OptionParser => $o,
+      DSNParser    => $dp,
+   };
+
+   return bless $self, $class;
+}
+
+sub connect {
+   my ( $self ) = @_;
+   my $dsn = $self->{dsn};
+   my $dp  = $self->{DSNParser};
+   my $o   = $self->{OptionParser};
+
+   my $dbh = $self->{dbh};
+   if ( !$dbh || !$dbh->ping() ) {
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
+      }
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+   }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+
+   return $self->set_dbh($dbh);
+}
+
+sub set_dbh {
+   my ($self, $dbh) = @_;
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   PTDEBUG && _d($dbh, 'Setting dbh');
+
+   $dbh->{FetchHashKeyName} = 'NAME_lc';
+   
+   my $sql = 'SELECT @@hostname, @@server_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
+
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
+   return $dbh;
+}
+
+sub dbh {
+   my ($self) = @_;
+   return $self->{dbh};
+}
+
+sub dsn {
+   my ($self) = @_;
+   return $self->{dsn};
+}
+
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   if ( $self->{dbh} ) {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      $self->{dbh}->disconnect();
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Cxn package
+# ###########################################################################
+
+# ###########################################################################
 # MasterSlave package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -5321,14 +5461,14 @@ table; this part can take awhile.  When done copying rows, the two tables
 are swapped by using C<RENAME TABLE>.  At this point there are two copies
 of the table: the old table which used to be the original table, and the
 new table which used to be the temporary table but now has the same name
-as the original table.  If L<"--drop-old-table"> is specified, then the
+as the original table.  If L<"--[no]drop-old-table"> is specified, then the
 old table is dropped.
 
 For example, if you alter table C<foo>, the tool will create table
 C<__tmp_foo>, alter it, define triggers on C<foo>, and then copy rows
 from C<foo> to C<__tmp_foo>.  Once all rows are copied, C<foo> is renamed
 to C<__old_foo> and C<__tmp_foo> is renamed to C<foo>.
-If L<"--drop-old-table"> is specified, then C<__old_foo> is dropped.
+If L<"--[no]drop-old-table"> is specified, then C<__old_foo> is dropped.
 
 The tool preforms the following steps:
 
@@ -5381,7 +5521,7 @@ be aware that:
 
 =item * The tool can break replication if not used properly
 
-=item * Although the tool sets SQL_BIN_LOG=0 by default (unless L<"--bin-log"> is specified), triggers which track changes to the table being altered still write statements to the binary log
+=item * Triggers which track changes to the table being altered still write statements to the binary log
 
 =item * Replicaiton will break if you alter a table on a master that does not exist on a slave
 
@@ -5453,11 +5593,6 @@ checksumming.  Therefore, these queries will be executed on the replica, and if
 the table or database you're checksumming does not exist, the queries will cause
 replication to fail.  For more information on replication rules, see
 L<http://dev.mysql.com/doc/en/replication-rules.html>.
-
-Replication filtering makes it impossible to be sure that the checksum queries
-won't break replication (or simply fail to replicate).  If you are sure that
-it's OK to run the checksum queries, you can negate this option to disable the
-checks.  See also L<"--replicate-database">.
 
 =item --check-slave-lag
 
@@ -5783,7 +5918,7 @@ Rename/swap the original table and the L<"--tmp-table">.  This option
 essentially completes the online schema change process by making the
 temporary table with the new schema take the place of the original table.
 The original tables becomes the "old table" and is dropped if
-L<"--drop-old-table"> is specified.
+L<"--[no]drop-old-table"> is specified.
 
 =item --retries
 
@@ -5853,7 +5988,7 @@ new table.
 
 This method uses C<ALTER TABLE> which can by slow and blocking, but it is
 safer because the old table does not need to be dropped.  So if there's a
-problem with the new table and L<"--drop-old-table"> was not specified,
+problem with the new table and L<"--[no]drop-old-table"> was not specified,
 then the original table can be restored.
 
 =item drop_old_table
@@ -5865,7 +6000,7 @@ the same name.  Foreign key checks must be disabled to drop table because it is
 referenced by foreign key constraints.  Since the original table is not renamed,
 MySQL does not auto-rename references to it.  Then the temporary table is
 renamed to the same name so child table references are maintained.
-So this method requires L<"--drop-old-table">.
+So this method requires L<"--[no]drop-old-table">.
 
 This method is faster and does not block, but it is less safe for two reasons.
 One, for a very short time (between dropping the original table and renaming the
