@@ -5329,23 +5329,23 @@ sub main {
       # #####################################################################
       # Rename tables.
       # #####################################################################
-      # TODO
-      my $old_tbl = {
-      };
-#      if ( $o->get('rename-tables') ) {
-#         my $sql = "RENAME TABLE "
-#                 . "$orig_tbl->{name} TO $old_tbl->{name},"
-#                 . " $new_tbl->{name} TO $orig_tbl->{name}";
-#         PTDEBUG && _d($sql);
-#         eval {
-#            $cxn->dbh()->do($sql);
-#         };
-#         if ( $EVAL_ERROR ) {
-#            # XXX
-#            # TODO: drop_triggers(), what to do with data created by triggers?
-#            die "Error renaming the tables: $EVAL_ERROR\n";
-#         }
-#      }
+      my $old_tbl;
+      if ( $o->get('rename-tables') ) {
+         eval {
+            $old_tbl = rename_tables(
+               orig_tbl => $orig_tbl,
+               new_tbl  => $new_tbl,
+               suffix   => '_OLD',
+               Cxn      => $cxn,
+               Quoter   => $q,
+            );
+         };
+         if ( $EVAL_ERROR ) {
+            # XXX
+            # TODO: drop_triggers(), what to do with data created by triggers?
+            die "Error renaming the tables: $EVAL_ERROR\n";
+         }
+      }
 
       # #####################################################################
       # Update foreign key constraints if there are child tables.
@@ -5380,10 +5380,11 @@ sub main {
          Quoter => $q,
       );
 
-#      if ( $o->get('drop-old-table') ) {
-#         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
-#         $cxn->dbh()->do($sql) unless $o->get('print');
-#      }
+      if ( $old_tbl && $o->get('drop-old-table') ) {
+         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
+         PTDEBUG && _d($sql);
+         $cxn->dbh()->do($sql);
+      }
    };
    if ( $EVAL_ERROR ) {
       die "An unknown fatal error occurred: $EVAL_ERROR";
@@ -5434,6 +5435,41 @@ sub create_table_like {
    }
 
    die "Failed to find a unique new table name after serveral attempts.\n";
+}
+
+sub rename_tables {
+   my (%args) = @_;
+   my @required_args = qw(orig_tbl new_tbl Cxn Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($orig_tbl, $new_tbl, $cxn, $q) = @args{@required_args};
+
+   my $prefix          = '_';
+   my $table_name      = $orig_tbl->{tbl} . ($args{suffix} || '');
+   my $tries           = 10;  # don't try forever
+
+   while ( $tries-- ) {
+      $table_name = $prefix . $table_name;
+      my $sql     = "RENAME TABLE $orig_tbl->{name} "
+                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
+                  . ", $new_tbl->{name} TO $orig_tbl->{name}";
+      PTDEBUG && _d($sql);
+      eval {
+         $cxn->dbh()->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         next if $EVAL_ERROR =~ m/table.+?already exists/i;
+         die "Error renaming table: $EVAL_ERROR\n";
+      }
+      return { # success
+         db   => $orig_tbl->{db},
+         tbl  => $table_name,
+         name => $q->quote($orig_tbl->{db}, $table_name),
+      };
+   }
+
+   die "Failed to find a unique old table name after serveral attempts.\n";
 }
 
 sub check_orig_table {
