@@ -66,10 +66,14 @@ sub new {
    # and if table can be nibbled in one chunk.
    my $nibble_params = can_nibble(%args);
    
-   my $where       = $o->get('where');
+   my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
-   my $ignore_col = $o->get('ignore-columns') || {};
-   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my $ignore_col = $o->has('ignore-columns')
+                  ? ($o->get('ignore-columns') || {})
+                  : {};
+   my $all_cols   = $o->has('columns')
+                  ? ($o->get('columns') || $tbl_struct->{cols})
+                  : $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
    if ( $nibble_params->{one_nibble} ) {
@@ -416,7 +420,7 @@ sub can_nibble {
    my ($row_est, $mysql_index) = get_row_estimate(
       Cxn   => $cxn,
       tbl   => $tbl,
-      where => $o->get('where'),
+      where => $o->has('where') ? $o->get('where') : '',
    );
 
    # Can all those rows be nibbled in one chunk?  If one_nibble is defined,
