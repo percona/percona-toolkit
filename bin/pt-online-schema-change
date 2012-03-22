@@ -3537,6 +3537,346 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# ReplicaLagWaiter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/ReplicaLagWaiter.pm
+#   t/lib/ReplicaLagWaiter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package ReplicaLagWaiter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Time::HiRes qw(sleep time);
+use Data::Dumper;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(oktorun get_lag sleep max_lag slaves);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $self = {
+      %args,
+   };
+
+   return bless $self, $class;
+}
+
+sub wait {
+   my ( $self, %args ) = @_;
+   my @required_args = qw();
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $pr = $args{Progress};
+
+   my $oktorun = $self->{oktorun};
+   my $get_lag = $self->{get_lag};
+   my $sleep   = $self->{sleep};
+   my $slaves  = $self->{slaves};
+   my $max_lag = $self->{max_lag};
+
+   my $worst;  # most lagging slave
+   my $pr_callback;
+   my $pr_first_report;
+   if ( $pr ) {
+      $pr_callback = sub {
+         my ($fraction, $elapsed, $remaining, $eta, $completed) = @_;
+         my $dsn_name = $worst->{cxn}->name();
+         if ( defined $worst->{lag} ) {
+            print STDERR "Replica lag is " . ($worst->{lag} || '?')
+               . " seconds on $dsn_name.  Waiting.\n";
+         }
+         else {
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+         }
+         return;
+      };
+      $pr->set_callback($pr_callback);
+
+      $pr_first_report = sub {
+         my $dsn_name = $worst->{cxn}->name();
+         if ( !defined $worst->{lag} ) {
+            print STDERR "Replica $dsn_name is stopped.  Waiting.\n";
+         }
+         return;
+      };
+   }
+
+   my @lagged_slaves = map { {cxn=>$_, lag=>undef} } @$slaves;  
+   while ( $oktorun->() && @lagged_slaves ) {
+      PTDEBUG && _d('Checking slave lag');
+      for my $i ( 0..$#lagged_slaves ) {
+         my $lag = $get_lag->($lagged_slaves[$i]->{cxn});
+         PTDEBUG && _d($lagged_slaves[$i]->{cxn}->name(),
+            'slave lag:', $lag);
+         if ( !defined $lag || $lag > $max_lag ) {
+            $lagged_slaves[$i]->{lag} = $lag;
+         }
+         else {
+            delete $lagged_slaves[$i];
+         }
+      }
+
+      @lagged_slaves = grep { defined $_ } @lagged_slaves;
+      if ( @lagged_slaves ) {
+         @lagged_slaves = reverse sort {
+              defined $a->{lag} && defined $b->{lag} ? $a->{lag} <=> $b->{lag}
+            : defined $a->{lag}                      ? -1
+            :                                           1;
+         } @lagged_slaves;
+         $worst = $lagged_slaves[0];
+         PTDEBUG && _d(scalar @lagged_slaves, 'slaves are lagging, worst:',
+            $worst->{lag}, 'on', Dumper($worst->{cxn}->dsn()));
+
+         if ( $pr ) {
+            $pr->update(
+               sub { return 0; },
+               first_report => $pr_first_report,
+            );
+         }
+
+         PTDEBUG && _d('Calling sleep callback');
+         $sleep->($worst->{cxn}, $worst->{lag});
+      }
+   }
+
+   PTDEBUG && _d('All slaves caught up');
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End ReplicaLagWaiter package
+# ###########################################################################
+
+# ###########################################################################
+# MySQLStatusWaiter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MySQLStatusWaiter.pm
+#   t/lib/MySQLStatusWaiter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package MySQLStatusWaiter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(spec get_status sleep oktorun);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $max_val_for = _parse_spec(%args);
+
+   my $self = {
+      get_status  => $args{get_status},
+      sleep       => $args{sleep},
+      oktorun     => $args{oktorun},
+      max_val_for => $max_val_for,
+   };
+
+   return bless $self, $class;
+}
+
+sub _parse_spec {
+   my ( %args ) = @_;
+   my @required_args = qw(spec get_status);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($spec, $get_status) = @args{@required_args};
+
+   if ( !@$spec ) {
+      PTDEBUG && _d('No spec, disabling status var waits');
+      return;
+   }
+
+   my %max_val_for;
+   foreach my $var_val ( @$spec ) {
+      my ($var, $val) = split /[:=]/, $var_val;
+      die "Invalid spec: $var_val" unless $var;
+      if ( !$val ) {
+         my $init_val = $get_status->($var);
+         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
+         $val = int(($init_val * .20) + $init_val);
+      }
+      PTDEBUG && _d('Wait if', $var, '>=', $val);
+      $max_val_for{$var} = $val;
+   }
+
+   return \%max_val_for; 
+}
+
+sub max_values {
+   my ($self) = @_;
+   return $self->{max_val_for};
+}
+
+sub wait {
+   my ( $self, %args ) = @_;
+
+   return unless $self->{max_val_for};
+
+   my $pr = $args{Progress}; # optional
+
+   my $oktorun    = $self->{oktorun};
+   my $get_status = $self->{get_status};
+   my $sleep      = $self->{sleep};
+   
+   my %vals_too_high = %{$self->{max_val_for}};
+   my $pr_callback;
+   if ( $pr ) {
+      $pr_callback = sub {
+         print STDERR "Pausing because "
+            . join(', ',
+                 map {
+                    "$_="
+                    . (defined $vals_too_high{$_} ? $vals_too_high{$_}
+                                                  : 'unknown')
+                 } sort keys %vals_too_high
+              )
+            . ".\n";
+         return;
+      };
+      $pr->set_callback($pr_callback);
+   }
+
+   while ( $oktorun->() ) {
+      PTDEBUG && _d('Checking status variables');
+      foreach my $var ( sort keys %vals_too_high ) {
+         my $val = $get_status->($var);
+         PTDEBUG && _d($var, '=', $val);
+         if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
+            $vals_too_high{$var} = $val;
+         }
+         else {
+            delete $vals_too_high{$var};
+         }
+      }
+
+      last unless scalar keys %vals_too_high;
+
+      PTDEBUG && _d(scalar keys %vals_too_high, 'values are too high:',
+         %vals_too_high);
+      if ( $pr ) {
+         $pr->update(sub { return 0; });
+      }
+      PTDEBUG && _d('Calling sleep callback');
+      $sleep->();
+      %vals_too_high = %{$self->{max_val_for}}; # recheck all vars
+   }
+
+   PTDEBUG && _d('All var vals are low enough');
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End MySQLStatusWaiter package
+# ###########################################################################
+
+# ###########################################################################
+# WeightedAvgRate package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/WeightedAvgRate.pm
+#   t/lib/WeightedAvgRate.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package WeightedAvgRate;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(target_t);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $self = {
+      %args,
+      avg_n  => 0,
+      avg_t  => 0,
+      weight => $args{weight} || 0.75,
+   };
+
+   return bless $self, $class;
+}
+
+sub update {
+   my ($self, $n, $t) = @_;
+   PTDEBUG && _d('Master op time:', $n, 'n /', $t, 's');
+
+   if ( $self->{avg_n} && $self->{avg_t} ) {
+      $self->{avg_n}    = ($self->{avg_n} * $self->{weight}) + $n;
+      $self->{avg_t}    = ($self->{avg_t} * $self->{weight}) + $t;
+      $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
+      PTDEBUG && _d('Weighted avg rate:', $self->{avg_rate}, 'n/s');
+   }
+   else {
+      $self->{avg_n}    = $n;
+      $self->{avg_t}    = $t;
+      $self->{avg_rate} = $self->{avg_n}  / $self->{avg_t};
+      PTDEBUG && _d('Initial avg rate:', $self->{avg_rate}, 'n/s');
+   }
+
+   my $new_n = int($self->{avg_rate} * $self->{target_t});
+   PTDEBUG && _d('Adjust n to', $new_n);
+   return $new_n;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End WeightedAvgRate package
+# ###########################################################################
+
+# ###########################################################################
 # NibbleIterator package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -3567,10 +3907,14 @@ sub new {
 
    my $nibble_params = can_nibble(%args);
    
-   my $where       = $o->get('where');
+   my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
-   my $ignore_col = $o->get('ignore-columns') || {};
-   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my $ignore_col = $o->has('ignore-columns')
+                  ? ($o->get('ignore-columns') || {})
+                  : {};
+   my $all_cols   = $o->has('columns')
+                  ? ($o->get('columns') || $tbl_struct->{cols})
+                  : $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
    if ( $nibble_params->{one_nibble} ) {
@@ -3884,7 +4228,7 @@ sub can_nibble {
    my ($row_est, $mysql_index) = get_row_estimate(
       Cxn   => $cxn,
       tbl   => $tbl,
-      where => $o->get('where'),
+      where => $o->has('where') ? $o->get('where') : '',
    );
 
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
@@ -4216,7 +4560,8 @@ $Data::Dumper::Quotekeys = 0;
 my $oktorun = 1;
 
 sub main {
-   @ARGV    = @_;  # set global ARGV for this package
+   # Reset global vars else tests will fail.
+   @ARGV    = @_;
    $oktorun = 1;
 
    my $exit_status = 0;
@@ -4232,18 +4577,30 @@ sub main {
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
 
-   my ($dsn, $db, $tbl);  # original table
-   $dsn = shift @ARGV;
+   # The original table, i.e. the one being altered, must be specified
+   # on the command line via the DSN.
+   my ($db, $tbl);
+   my $dsn = shift @ARGV;
    if ( !$dsn ) {
-      $o->save_error('A DSN with a t part must be specified');
+      $o->save_error('A DSN must be specified');
    }
    else {
+      # Parse DSN string and convert it to a DSN data struct.
       $dsn = $dp->parse($dsn, $dp->parse_options($o));
-      if ( !$dsn->{t} ) {
-         $o->save_error('The DSN must specify a t (table) part');
-      }
-      else {
-         ($db, $tbl) = $q->split_unquote($dsn->{t} || "", $dsn->{D} || "");
+
+      # If there isn't a D or t part, these errors will be handled later.
+      # For now, check if the t part is db-qualified.
+      if ( $dsn->{t} ) {
+         my ($qualified_db, $qualified_tbl) = $q->split_unquote($dsn->{t});
+         if ( $qualified_db ) {
+            # Qualfied-db take precedence over D=db.
+            $db  = $qualified_db;
+            $tbl = $qualified_tbl;
+         }
+         else {
+            $db  = $dsn->{D};
+            $tbl = $dsn->{t};  
+         }
       }
    }
 
@@ -4253,6 +4610,7 @@ sub main {
       $o->set('drop-old-table', 0),
    }
 
+   # Explicit --chunk-size disable auto chunk sizing.
    $o->set('chunk-time', 0) if $o->got('chunk-size');
 
    if ( !$o->get('help') ) {
@@ -4261,12 +4619,16 @@ sub main {
       }
 
       if ( !$db ) {
-         $o->save_error("No database was specified in the DSN or by "
-            . "--database (-D)");
+         $o->save_error("The DSN must specify a database (D) or "
+            . "a database-qualified table (t)");
       }
 
-      if ( $tbl && $tbl eq ($o->get('tmp-table') || "") ) {
-         $o->save_error("--tmp-table cannot be the same as the table");
+      if ( !$tbl ) {
+         $o->save_error('The DSN must specify a table (t)');
+      }
+
+      if ( $tbl && lc($tbl) eq lc($o->get('new-table') || "") ) {
+         $o->save_error("The DSN table and --new-table cannot be the same");
       }
 
       if ( $o->get('progress') ) {
@@ -4286,6 +4648,13 @@ sub main {
            && $rename_fk_method ne 'drop_old_table' ) {
          $o->save_error("Invalid --update-foreign-keys-method value");
       }
+
+      if ( my $new_table = $o->get('new-table') ) {
+         my ($db, $tbl) = $q->split_unquote($new_table);
+         if ( !$db ) {
+            $o->save_errors("--new-table must be database-qualified");
+         }
+      }
    }
 
    $o->usage_or_errors(); 
@@ -4295,8 +4664,6 @@ sub main {
    # ########################################################################
    my $set_on_connect = sub {
       my ($dbh) = @_;
-      return if $o->get('explain');
-      my $sql;
 
       # See the same code in pt-table-checksum.
       my $lock_wait_timeout = $o->get('lock-wait-timeout');
@@ -4308,7 +4675,7 @@ sub main {
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d($EVAL_ERROR);
          # Get the server's current value.
-         $sql = "SHOW SESSION VARIABLES LIKE 'innodb_lock_wait_timeout'";
+         my $sql = "SHOW SESSION VARIABLES LIKE 'innodb_lock_wait_timeout'";
          PTDEBUG && _d($dbh, $sql);
          my (undef, $curr_lwt) = $dbh->selectrow_array($sql);
          PTDEBUG && _d('innodb_lock_wait_timeout on server:', $curr_lwt);
@@ -4338,7 +4705,7 @@ sub main {
       );
       eval { $cxn->connect() };  # connect or die trying
       if ( $EVAL_ERROR ) {
-         die ts($EVAL_ERROR);
+         die "Cannot connect to MySQL: $EVAL_ERROR\n";
       }
       return $cxn;
    };
@@ -4346,10 +4713,10 @@ sub main {
    my $cxn = $make_cxn->(dsn => $dsn);
 
    # ########################################################################
-   # Check MySQL version.
-   # ########################################################################   
+   # Check if MySQL is new enough to have the triggers we need.
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
    # triggers cannot contain direct references to tables by name."
+   # ########################################################################   
    my $vp = new VersionParser();
    if ( !$vp->version_ge($cxn->dbh(), '5.0.10') ) {
       die "This tool requires MySQL 5.0.10 or newer.\n";
@@ -4358,7 +4725,7 @@ sub main {
    # ########################################################################
    # Setup lag and load monitors.
    # ########################################################################   
-   my $slaves;         # all slaves (that we can find)
+   my $slaves;         # all slaves that are found or specified
    my $slave_lag_cxns; # slaves whose lag we'll check
    my $replica_lag;    # ReplicaLagWaiter object
    my $replica_lag_pr; # Progress for ReplicaLagWaiter
@@ -4366,11 +4733,10 @@ sub main {
    my $sys_load_pr;    # Progress for MySQLStatusWaiter object
 
    if ( $o->get('execute') ) {
-      my $ms = new MasterSlave();
-
       # #####################################################################
       # Find and connect to slaves.
       # #####################################################################
+      my $ms = new MasterSlave();
       $slaves = $ms->get_slaves(
          dbh          => $cxn->dbh(),
          dsn          => $cxn->dsn(),
@@ -4515,48 +4881,19 @@ sub main {
    }
 
    # ########################################################################
-   # Daemonize only after (potentially) asking for passwords for --ask-pass.
-   # ########################################################################
-   my $daemon;
-   if ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
-   }
-
-   # ########################################################################
-   # Setup and check all the tables.
+   # Stage 1: setup and check tables.
    # ########################################################################
    my $tp = new TableParser(Quoter => $q);
 
    # Common table data struct (that modules like NibbleIterator expect).
    my $orig_tbl = {
-      db   => $cxn->dsn()->{D},
-      tbl  => $cxn->dsn()->{t},
-      name => $q->quote($cxn->dsn()->{D}, $cxn->dsn()->{t}),
+      db   => $db,
+      tbl  => $tbl,
+      name => $q->quote($db, $tbl),
    };
 
-   # unique_table_name() makes the given table name unique by prepending _,
-   # then it returns a common table data struct like the one above.
-   my $old_tbl = unique_table_name(
-      db     => $orig_tbl->{D},
-      tbl    => $orig_tbl->{t},
-      Cxn    => $cxn,
-      Quoter => $q,
-   );
-   
-   my $new_tbl = unique_table_name(
-      db     => $orig_tbl->{D},
-      tbl    => $orig_tbl->{t},
-      Cxn    => $cxn,
-      Quoter => $q,
-   );
-
-   # Check that all the tables exist, etc., else die if there's a problem.
-   check_tables(
+   check_orig_table(
       orig_tbl     => $orig_tbl,
-      old_tbl      => $old_tbl,
-      new_tbl      => $new_tbl,
       Cxn          => $cxn,
       OptionParser => $o,
       TableParser  => $tp,
@@ -4583,31 +4920,71 @@ sub main {
          . "\n";
    }
 
-   if ( $o->get('check-tables-and-exit') ) {
-      msg("$PROGRAM_NAME ending for --check-tables-and-exit");
-      return 0;
-   }
+#   if ( $o->get('check-tables-and-exit') ) {
+#      print "$PROGRAM_NAME ending for --check-tables-and-exit";
+#      return $exit_status;
+#   }
 
    if ( !$o->get('execute') ) {
-      msg("Exiting without altering $db.$tbl because you did not "
+      print "Exiting without altering $db.$tbl because you did not "
         . "specify --execute.  Please read the tool's documentation "
-        . "carefully before using this tool.");
+        . "carefully before using this tool.";
       return $exit_status;
+   }
+
+   # ########################################################################
+   # Daemonize only after (potentially) asking for passwords for --ask-pass.
+   # ########################################################################
+   my $daemon;
+   if ( $o->get('pid') ) {
+      # We're not daemoninzing, it just handles PID stuff.
+      $daemon = new Daemon(o=>$o);
+      $daemon->make_PID_file();
    }
 
    # #####################################################################
    # Create and alter the new table (but do not copy rows yet).
    # #####################################################################
-   if ( $o->get('create-tmp-table') ) {
-      my $sql = "CREATE TABLE $new_tbl->{name} LIKE $orig_tbl->{name}";
-      PTDEBUG && _d($sql);
-      eval {
-         $cxn->dbh()->do($sql);
-      };
-      if ( $EVAL_ERROR ) {
-         die "Error creating table $new_tbl->{name} for --create-tmp-table: "
-            . "$EVAL_ERROR\n";
+   my $new_tbl;
+   if ( my $new_table = $o->get('new-table') ) {
+      # We presume the table name is db-qualified because it should
+      # have been checked earlier.
+      my ($db, $tbl)       = $q->split_unquote($new_table);
+      my $new_table_exists = $tp->check_table(
+         dbh => $cxn->dbh(),
+         db  => $db,
+         tbl => $tbl,
+      );
+      if ( !$new_table_exists ) {
+         if ( $o->get('create-new-table') ) {
+            my $sql = "CREATE TABLE $new_table LIKE $orig_tbl->{name}";
+            PTDEBUG && _d($sql);
+            eval {
+               $cxn->dbh()->do($sql);
+            };
+            if ( $EVAL_ERROR ) {
+               die "Error creating --new-table $new_table: $EVAL_ERROR\n";
+            }
+         }
+         else {
+            die "The --new-table $new_table does not exist and "
+              . "--no-create-new-table was specified.\n";
+         }
       }
+      $new_tbl = {
+         db   => $db,
+         tbl  => $tbl,
+         name => $q->quote($db, $tbl),
+      };
+   }
+   else { 
+      # Auto-create a new table name based on the original table name.
+      $new_tbl = create_table_like(
+         tbl    => $orig_tbl,
+         suffix => '_NEW',
+         Cxn    => $cxn,
+         Quoter => $q,
+      );
    }
 
    if ( my $alter = $o->get('alter') ) {
@@ -4622,19 +4999,24 @@ sub main {
       }
    }
 
+   # Get the new table struct.
+   my $ddl = $tp->get_create_table(
+      $cxn->dbh(),
+      $new_tbl->{db},
+      $new_tbl->{tbl},
+   );
+   $new_tbl->{tbl_struct} = $tp->parse($ddl);
+
    # #####################################################################
    # Determine what columns the original and new tables have in common.
    # #####################################################################
-   $orig_tbl->{tbl_struct} = $tp->parse($cxn->dbh(), @{$orig_tbl}{qw(db tbl)});
-   $new_tbl->{tbl_struct}  = $tp->parse($cxn->dbh(), @{$new_tbl}{qw(db tbl)});
-   
    my $col_posn    = $orig_tbl->{tbl_struct}->{col_posn};
    my $orig_cols   = $orig_tbl->{tbl_struct}->{is_col};
    my $new_cols    = $new_tbl->{tbl_struct}->{is_col};
    my @common_cols = sort { $col_posn->{$a} <=> $col_posn->{$b} }
                      grep { $new_cols->{$_} }
                      keys %$orig_cols;
-   msg("Shared columns: " . join(', ', @common_cols));
+   print "Common columns: ", join(', ', @common_cols), "\n";
 
    # #####################################################################
    # Make a nibble iterator to copys rows from the orig to new table.
@@ -4664,7 +5046,6 @@ sub main {
                my ($n_rows) = NibbleIterator::get_row_estimate(
                   Cxn   => $slave,
                   tbl   => $tbl,
-                  where => $o->get('where'),
                );
                PTDEBUG && _d('Table on',$slave->name(),'has', $n_rows, 'rows');
                if ( $n_rows && $n_rows > ($tbl->{chunk_size} * $limit) ) {
@@ -4875,15 +5256,17 @@ sub main {
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
    my $dml    = "INSERT IGNORE INTO $new_tbl->{name} "
-              . "(" . join(',', @common_cols) . ")";
-   my $select = "SELECT " . join(', ', @common_cols);
+              . "(" . join(', ', map { $q->quote($_) } @common_cols) . ")";
+   my $select = "SELECT " . join(', ', map { $q->quote($_) } @common_cols);
+
+   $orig_tbl->{chunk_size} = $o->get('chunk-size');
 
    my $nibble_iter;
    eval {
       $nibble_iter = new NibbleIterator(
          Cxn          => $cxn,
          tbl          => $orig_tbl,
-         chunk_size   => $o->get('chunk-size'),
+         chunk_size   => $orig_tbl->{chunk_size},
          chunk_index  => $o->get('chunk-index'),
          dml          => $dml,
          select       => $select,
@@ -4897,7 +5280,7 @@ sub main {
    if ( $EVAL_ERROR ) {
       die "Cannot chunk table $orig_tbl->{name}: $EVAL_ERROR\n";
    }
-
+ 
    # Init a new weighted avg rate calculator for the table.
    $orig_tbl->{rate} = new WeightedAvgRate(target_t => $o->get('chunk-time'));
 
@@ -4922,7 +5305,13 @@ sub main {
       # #####################################################################
       # Start capturing changes to the new table.
       # #####################################################################
-      make_triggers();
+      create_triggers(
+         orig_tbl => $orig_tbl,
+         new_tbl  => $new_tbl,
+         columns  => \@common_cols,
+         Cxn      => $cxn,
+         Quoter   => $q,
+      );
 
       # #####################################################################
       # Copy rows from new table to old table.
@@ -4940,20 +5329,23 @@ sub main {
       # #####################################################################
       # Rename tables.
       # #####################################################################
-      if ( $o->get('rename-tables') ) {
-         my $sql = "RENAME TABLE "
-                 . "$orig_tbl->{name} TO $old_tbl->{name},"
-                 . " $new_tbl->{name} TO $orig_tbl->{name}";
-         PTDEBUG && _d($sql);
-         eval {
-            $cxn->dbh()->do($sql);
-         };
-         if ( $EVAL_ERROR ) {
-            # XXX
-            # TODO: drop_triggers(), what to do with data created by triggers?
-            die "Error renaming the tables: $EVAL_ERROR\n";
-         }
-      }
+      # TODO
+      my $old_tbl = {
+      };
+#      if ( $o->get('rename-tables') ) {
+#         my $sql = "RENAME TABLE "
+#                 . "$orig_tbl->{name} TO $old_tbl->{name},"
+#                 . " $new_tbl->{name} TO $orig_tbl->{name}";
+#         PTDEBUG && _d($sql);
+#         eval {
+#            $cxn->dbh()->do($sql);
+#         };
+#         if ( $EVAL_ERROR ) {
+#            # XXX
+#            # TODO: drop_triggers(), what to do with data created by triggers?
+#            die "Error renaming the tables: $EVAL_ERROR\n";
+#         }
+#      }
 
       # #####################################################################
       # Update foreign key constraints if there are child tables.
@@ -4988,10 +5380,10 @@ sub main {
          Quoter => $q,
       );
 
-      if ( $o->get('rename-tables') &&  $o->get('drop-old-table') ) {
-         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
-         $cxn->dbh()->do($sql) unless $o->get('print');
-      }
+#      if ( $o->get('drop-old-table') ) {
+#         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
+#         $cxn->dbh()->do($sql) unless $o->get('print');
+#      }
    };
    if ( $EVAL_ERROR ) {
       die "An unknown fatal error occurred: $EVAL_ERROR";
@@ -5010,24 +5402,47 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
-sub unique_table_name {
+sub create_table_like {
    my (%args) = @_;
    my @required_args = qw(tbl Cxn Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $cxn, $q) = @args{@required_args};
+
+   my $prefix          = '_';
+   my $table_name      = $tbl->{tbl} . ($args{suffix} || '');
+   my $tries           = 10;  # don't try forever
+
+   while ( $tries-- ) {
+      $table_name = $prefix . $table_name;
+      my $sql     = "CREATE TABLE " . $q->quote($tbl->{db}, $table_name)
+                  . " LIKE $tbl->{name}";
+      PTDEBUG && _d($sql);
+      eval {
+         $cxn->dbh()->do($sql);
+      };
+      if ( $EVAL_ERROR ) {
+         next if $EVAL_ERROR =~ m/table.+?already exists/i;
+         die "Error creating new table: $EVAL_ERROR\n";
+      }
+      return { # success
+         db   => $tbl->{db},
+         tbl  => $table_name,
+         name => $q->quote($tbl->{db}, $table_name),
+      };
+   }
+
+   die "Failed to find a unique new table name after serveral attempts.\n";
 }
 
-sub check_tables {
+sub check_orig_table {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl old_tbl new_tbl
-                          Cxn TableParser OptionParser Quoter);
+   my @required_args = qw(orig_tbl Cxn TableParser OptionParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $old_tbl, $new_tbl, $cxn, $tp, $o, $q)
-      = @args{@required_args};
+   my ($orig_tbl, $cxn, $tp, $o, $q) = @args{@required_args};
 
    my $dbh = $cxn->dbh();
 
@@ -5047,9 +5462,17 @@ sub check_tables {
          . "already have triggers.\n";
    }
 
+   # Get the table struct.  NibbleIterator needs this, and so do we.
+   my $ddl = $tp->get_create_table(
+      $cxn->dbh(),
+      $orig_tbl->{db},
+      $orig_tbl->{tbl},
+   );
+   $orig_tbl->{tbl_struct} = $tp->parse($ddl);
+
    # Must be able to nibble the original table (to copy rows to the new table).
    eval {
-      TableNibbler::can_nibble(
+      NibbleIterator::can_nibble(
          Cxn          => $cxn,
          tbl          => $orig_tbl,
          chunk_size   => $o->get('chunk-size'),
@@ -5061,14 +5484,20 @@ sub check_tables {
       die "Cannot chunk the original table $orig_tbl->{name}: $EVAL_ERROR\n";
    }
 
-   # The new table should not exist if we're supposed to create it.
-   # Else, if user specifies --no-create-tmp-table, they should ensure
-   # that it exists.
-   if ( $o->get('create-tmp-table')
-        && $tp->check_table(dbh=>$dbh,db=>$new_tbl->{db},tbl=>$new_tbl->{tbl}) )
-   {
-      die "--create-tmp-table was specified but the table $new_tbl->{name} "
-         . "already exists.\n";
+   # Find a pk or unique index to use for the delete trigger.  can_nibble()
+   # above returns an index, but NibbleIterator will use non-unique indexes,
+   # so we have to do this again here.
+   my $indexes = $orig_tbl->{tbl_struct}->{indexes}; # brevity
+   foreach my $index ( $tp->sort_indexes($orig_tbl->{tbl_struct}) ) {
+      if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+         PTDEBUG && _d('Delete trigger index:', Dumper($index));
+         $orig_tbl->{del_index} = $index;
+         last;
+      }
+   }
+   if ( !$orig_tbl->{del_index} ) {
+      die "The original table $orig_tbl->{name} does not have a PRIMARY KEY "
+        . "or a unique index which is required for the DELETE trigger.\n";
    }
 
    return;  # success
@@ -5150,35 +5579,43 @@ sub update_foreign_key_constraints {
 }
 
 sub create_triggers {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl chunk_column columns Cxn Quoter);
+   my ( %args ) = @_;
+   my @required_args = qw(orig_tbl new_tbl columns Cxn Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $chunk_col, $cols, $cxn, $q)
-      = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cols, $cxn, $q) = @args{@required_args};
 
-   $chunk_col   = $q->quote($chunk_col);
-   my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
-   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
-
+   # To be safe, the delete trigger must specify all the columns of the
+   # primary key/unique index.
+   my $tbl_struct     = $orig_tbl->{tbl_struct};
+   my $del_index      = $orig_tbl->{del_index};
+   my $del_index_cols = join(" AND ",
+                           map {
+                              my $col = $q->quote($_);
+                              "$new_tbl->{name}.$col = OLD.$col"
+                           } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
    my $delete_trigger
       = "CREATE TRIGGER pt_osc_del AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "DELETE IGNORE FROM $new_tbl->{name} "
-      . "WHERE $new_tbl->{name}.$chunk_col = OLD.$chunk_col";
+      . "WHERE $del_index_cols";
 
+   # The insert and update triggers should only use values for columns
+   # that exist in both tables.
+   my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
+   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
    my $insert_trigger
       = "CREATE TRIGGER pt_osc_ins AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
-
    my $update_trigger
       = "CREATE TRIGGER pt_osc_upd AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
    foreach my $sql ( $delete_trigger, $update_trigger, $insert_trigger ) {
+      PTDEBUG && _d($sql);
       $cxn->dbh()->do($sql);
    }
 
@@ -5186,7 +5623,7 @@ sub create_triggers {
 }
 
 sub drop_triggers {
-   my ( $self, %args ) = @_;
+   my ( %args ) = @_;
    my @required_args = qw(tbl Cxn Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
@@ -5388,9 +5825,8 @@ pt-online-schema-change - Perform online, non-blocking table schema changes.
 Usage: pt-online-schema-change [OPTION...] DSN
 
 pt-online-schema-change performs online, non-blocking schema changes to a table.
-The table to change must be specified in the DSN C<t> part, like C<t=my_table>.
-The table can be database-qualified, or the database can be specified with the
-L<"--database"> option.
+The database and table to alter must be specified in by DSN like
+C<D=db,t=table>, or the table can be database-qualified like C<t=db.table>.
 
 Change the table's engine to InnoDB:
 
@@ -5401,7 +5837,7 @@ Change the table's engine to InnoDB:
 
 Rebuild but do not alter the table, and keep the temporary table:
 
-  pt-online-schema-change h=127.1,t=tbl --database db
+  pt-online-schema-change h=127.1,t=db.tbl
 
 Add column to parent table, update child table foreign key constraints:
 
@@ -5444,7 +5880,7 @@ tool only works with MySQL 5.0.2 and newer.
 
 The table to alter is specified by the DSN C<t> part on the command line,
 as shown in the L<"SYNOPSIS"> examples.  A database must also be specified
-either by the DSN C<D> part or by the L<"--database"> option.
+either by the DSN C<D> part or by qualifying the table with the database.
 
 If you're using replication, read L<"REPLICATION"> or else you may break
 replication.  Performing an online schema change in a replication environment
@@ -5500,7 +5936,7 @@ C<RENAME TABLE> respectively for these phases.
 
 Here are options related to each phase:
 
-  1. --[no]create-tmp-table, --alter, --tmp-table
+  1. --alter, --new-table
   2. (none)
   3. --chunk-size, --sleep
   4. (none)
@@ -5719,24 +6155,11 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --[no]create-tmp-table
+=item --[no]create-new-table
 
 default: yes
 
-Create the L<"--tmp-table"> with C<CREATE TABLE LIKE>.  The temporary table
-to which the L<"--alter"> statements are applied is automatically created
-by default with the name C<__tmp_TABLE> where C<TABLE> is the original table
-specified by the DSN on the command line.  If you want to create the temporary
-table manually before running this tool, then you must specify
-C<--no-create-tmp-table> B<and> L<"--tmp-table"> so the tool will use your
-temporary table.
-
-=item --database
-
-short form: -D; type: string
-
-Database of the table.  You can also specify the database with the C<D> part
-of the DSN given on the command line.
+Create the L<"--new-table"> if it does not already exist.
 
 =item --defaults-file
 
@@ -5749,8 +6172,8 @@ pathname.
 
 default: yes
 
-Drop the original table after it's swapped with the L<"--tmp-table">.
-After the original table is renamed/swapped with the L<"--tmp-table">
+Drop the original table after it's swapped with the L<"--new-table">.
+After the original table is renamed/swapped with the L<"--new-table">
 it becomes the "old table".  By default, the old table is not dropped
 because if there are problems with the "new table" (the temporary table
 swapped for the original table), then the old table can be restored.
@@ -5774,6 +6197,18 @@ Show help and exit.
 short form: -h; type: string
 
 Connect to host.
+
+=item --lock-wait-timeout
+
+type: int; default: 1
+
+Set the session value of C<innodb_lock_wait_timeout> on the master host.
+This option helps guard against long lock waits if the checksum queries
+become slow for some reason.  Setting this option dynamically requires the
+InnoDB plugin, so this works only on newer InnoDB and MySQL versions.  If
+setting the value fails and the current server value is greater than the
+specified value, then a warning is printed; else, if the current server
+value is less than or equal to the specified value, no warning is printed.
 
 =item --max-lag
 
@@ -5914,7 +6349,7 @@ and parent_id are otherwise ignored.
 
 default: yes
 
-Rename/swap the original table and the L<"--tmp-table">.  This option
+Rename/swap the original table and the L<"--new-table">.  This option
 essentially completes the online schema change process by making the
 temporary table with the new schema take the place of the original table.
 The original tables becomes the "old table" and is dropped if
@@ -5940,20 +6375,17 @@ short form: -S; type: string
 
 Socket file to use for connection.
 
-=item --tmp-table
+=item --new-table
 
 type: string
 
-Temporary table if C<--no-create-tmp-table> is specified.  If you specify
-C<--no-create-tmp-table>, then you must also specify this option to tell
-the tool which table to use as the temporary table.  The temporary table
-and the original table are renamed/swapped unless C<--no-rename-tables> is
-specified.
+New table on which L<"--alter"> is executed.
 
-The default behavior, when this option is not specified and
-C<--[no]create-tmp-tble> is true, is to create a temporary table named
-C<__tmp_TABLE> where C<TABLE> is the original table specified by the DSN
-on the command line.
+The new table is created from the original table specified by the DSN
+on the command line.  If no new table name is specified, a unique table
+name is automatically created using the original table name.  Else, if
+the new table does not exist, it is automatically created using the given
+name.
 
 =item --update-foreign-keys-method
 
@@ -5968,7 +6400,7 @@ foreign key constraints that reference the renamed table so that the rename
 does not break foreign key constraints.  This poses a problem for this tool.
 
 For example: if the table being altered is C<foo>, then C<foo> is renamed
-to C<__old_foo> when it is swapped with the L<"--tmp-table">.
+to C<__old_foo> when it is swapped with the L<"--new-table">.
 Any foreign key references to C<foo> before it is swapped/renamed are renamed
 automatically by MySQL to C<__old_foo>.  We do not want this; we want those
 foreign key references to continue to reference C<foo>.
