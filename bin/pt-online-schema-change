@@ -4559,6 +4559,8 @@ $Data::Dumper::Quotekeys = 0;
 
 my $oktorun = 1;
 
+$OUTPUT_AUTOFLUSH = 1;
+
 sub main {
    # Reset global vars else tests will fail.
    @ARGV    = @_;
@@ -4920,18 +4922,6 @@ sub main {
          . "\n";
    }
 
-#   if ( $o->get('check-tables-and-exit') ) {
-#      print "$PROGRAM_NAME ending for --check-tables-and-exit";
-#      return $exit_status;
-#   }
-
-   if ( !$o->get('execute') ) {
-      print "Exiting without altering $db.$tbl because you did not "
-        . "specify --execute.  Please read the tool's documentation "
-        . "carefully before using this tool.";
-      return $exit_status;
-   }
-
    # ########################################################################
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
    # ########################################################################
@@ -4940,6 +4930,20 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
+   }
+
+   if ( $o->get('dry-run') ) {
+      print "Starting a dry run.  $orig_tbl->{name} will not be altered.  "
+          . "Specify --execute instead of --dry-run to alter the table.\n";
+   }
+   elsif ( !$o->get('execute') ) {
+      print "Exiting without altering $orig_tbl->{name} because neither "
+        . "--dry-run nor --execute was specified.  Please read the tool's "
+        . "documentation carefully before using this tool.\n";
+      return $exit_status;
+   }
+   else {
+      print "Altering $orig_tbl->{name}...\n";
    }
 
    # #####################################################################
@@ -4980,14 +4984,16 @@ sub main {
    else { 
       # Auto-create a new table name based on the original table name.
       $new_tbl = create_table_like(
-         tbl    => $orig_tbl,
-         suffix => '_NEW',
-         Cxn    => $cxn,
-         Quoter => $q,
+         tbl          => $orig_tbl,
+         suffix       => '_new',
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
       );
    }
 
    if ( my $alter = $o->get('alter') ) {
+      print "\nAltering new table: ";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
       PTDEBUG && _d($sql);
       eval {
@@ -4997,6 +5003,8 @@ sub main {
          die "Error altering the new table $new_tbl->{name}: "
             . "$EVAL_ERROR\n";
       }
+      print "OK\n";
+      print $sql, "\n" if $o->get('print');
    }
 
    # Get the new table struct.
@@ -5016,7 +5024,7 @@ sub main {
    my @common_cols = sort { $col_posn->{$a} <=> $col_posn->{$b} }
                      grep { $new_cols->{$_} }
                      keys %$orig_cols;
-   print "Common columns: ", join(', ', @common_cols), "\n";
+   PTDEBUG && _d('Common columns', @common_cols);
 
    # #####################################################################
    # Make a nibble iterator to copys rows from the orig to new table.
@@ -5034,6 +5042,28 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
+
+         if ( $o->get('dry-run') ) {
+            print "\nNot copying rows because this is a dry run.\n";
+         }
+         else {
+            print "\nCopying approximately ", $nibble_iter->row_estimate(),
+               " rows...\n";
+         }
+
+         if ( $o->get('print') ) {
+            # Print the checksum and next boundary statements.
+            my $statements = $nibble_iter->statements();
+            foreach my $sth ( sort keys %$statements ) {
+               next if $sth =~ m/^explain/;
+               if ( $statements->{$sth} ) {
+                  print $statements->{$sth}->{Statement}, "\n";
+               }
+            }
+
+         }
+
+         return unless $o->get('execute');
 
          # If table is a single chunk on the master, make sure it's also
          # a single chunk on all slaves.  E.g. if a slave is out of sync
@@ -5078,6 +5108,7 @@ sub main {
          my $sth         = $nibble_iter->statements();
          my $boundary    = $nibble_iter->boundaries();
 
+         return 0 if $o->get('dry-run');
          return 1 if $nibble_iter->one_nibble();
 
          # Check that MySQL will use the nibble index for the next upper
@@ -5116,6 +5147,8 @@ sub main {
          my $nibble_iter = $args{NibbleIterator};
          my $sth         = $nibble_iter->statements();
          my $boundary    = $nibble_iter->boundaries();
+
+         return if $o->get('dry-run');
 
          # Count every chunk, even if it's ultimately skipped, etc.
          $tbl->{results}->{n_chunks}++;
@@ -5191,6 +5224,8 @@ sub main {
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
 
+         return unless $o->get('execute');
+
          # XXX
          # TODO
          my $cnt = $tbl->{n_rows};
@@ -5251,13 +5286,19 @@ sub main {
 
          return;
       },
+      done => sub {
+         if ( !$o->get('dry-run') ) {
+            print "Done copying rows.\n";
+         }
+      },
    };
 
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
    my $dml    = "INSERT IGNORE INTO $new_tbl->{name} "
-              . "(" . join(', ', map { $q->quote($_) } @common_cols) . ")";
-   my $select = "SELECT " . join(', ', map { $q->quote($_) } @common_cols);
+              . "(" . join(', ', map { $q->quote($_) } @common_cols) . ") "
+              . "SELECT ";
+   my $select = join(', ', map { $q->quote($_) } @common_cols);
 
    $orig_tbl->{chunk_size} = $o->get('chunk-size');
 
@@ -5294,100 +5335,135 @@ sub main {
       $orig_tbl->{progress} = new Progress(
          jobsize => $nibble_iter->row_estimate(),
          spec    => $o->get('progress'),
-         name    => "Copying $tbl->{name}",
+         name    => "Copying $orig_tbl->{name}",
       );
    }
 
    # #####################################################################
-   # Do the online alter.
+   # Start capturing changes to the new table.
    # #####################################################################
    eval {
-      # #####################################################################
-      # Start capturing changes to the new table.
-      # #####################################################################
       create_triggers(
-         orig_tbl => $orig_tbl,
-         new_tbl  => $new_tbl,
-         columns  => \@common_cols,
-         Cxn      => $cxn,
-         Quoter   => $q,
+         orig_tbl     => $orig_tbl,
+         new_tbl      => $new_tbl,
+         columns      => \@common_cols,
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
       );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Error creating triggers: $EVAL_ERROR\n";
+   };
 
-      # #####################################################################
-      # Copy rows from new table to old table.
-      # #####################################################################
+   # #####################################################################
+   # Copy rows from new table to old table.
+   # #####################################################################
+   eval {
+      1 while $nibble_iter->next();
+   };
+   if ( $EVAL_ERROR ) {
+      # XXX
+      # TODO: drop_triggers(), what to do with data created by triggers?
+      die "Error copying rows from original table $orig_tbl->{name} to "
+        . "new table $new_tbl->{name}: $EVAL_ERROR";
+   }
+
+   # #####################################################################
+   # Rename tables.
+   # #####################################################################
+   my $old_tbl;
+   if ( $o->get('rename-tables') ) {
       eval {
-         1 while $nibble_iter->next();
+         $old_tbl = rename_tables(
+            orig_tbl     => $orig_tbl,
+            new_tbl      => $new_tbl,
+            suffix       => '_old',
+            Cxn          => $cxn,
+            Quoter       => $q,
+            OptionParser => $o,
+         );
       };
       if ( $EVAL_ERROR ) {
          # XXX
          # TODO: drop_triggers(), what to do with data created by triggers?
-         die "Error copying rows from original table $orig_tbl->{name} to "
-           . "new table $new_tbl->{name}: $EVAL_ERROR";
+         die "Error renaming the tables: $EVAL_ERROR\n";
       }
+   }
 
-      # #####################################################################
-      # Rename tables.
-      # #####################################################################
-      my $old_tbl;
-      if ( $o->get('rename-tables') ) {
-         eval {
-            $old_tbl = rename_tables(
-               orig_tbl => $orig_tbl,
-               new_tbl  => $new_tbl,
-               suffix   => '_OLD',
-               Cxn      => $cxn,
-               Quoter   => $q,
-            );
-         };
-         if ( $EVAL_ERROR ) {
-            # XXX
-            # TODO: drop_triggers(), what to do with data created by triggers?
-            die "Error renaming the tables: $EVAL_ERROR\n";
-         }
-      }
-
-      # #####################################################################
-      # Update foreign key constraints if there are child tables.
-      # #####################################################################
-      if ( @child_tables ) {
+   # #####################################################################
+   # Update foreign key constraints if there are child tables.
+   # #####################################################################
+   if ( @child_tables ) {
+      eval {
          if ( $rename_fk_method eq 'rebuild_constraints' ) { 
             update_foreign_key_constraints(
+               orig_tbl     => $orig_tbl,
+               old_tbl      => $old_tbl,
                child_tables => \@child_tables,
+               OptionParser => $o,
+               Quoter       => $q,
+               Cxn          => $cxn,
             );
          }
          elsif ( $rename_fk_method eq 'drop_old_table' ) {
-            my $sql = "SET foreign_key_checks=0";
-            $cxn->dbh()->do($sql) unless $o->get('print');
-            
-            $sql = "DROP TABLE IF EXISTS $orig_tbl->{name}";
-            $cxn->dbh()->do($sql) unless $o->get('print');
-
-            $sql = "RENAME TABLE $new_tbl->{name} TO $orig_tbl->{name}";
-            $cxn->dbh()->do($sql) unless $o->get('print');
+            drop_and_rename_orig_table(
+               orig_tbl     => $orig_tbl,
+               new_tbl      => $new_tbl,
+               Cxn          => $cxn,
+               OptionParser => $o,
+            );
          }
          else {
             die "Invalid --update-foreign-keys-method value: $rename_fk_method";
          }
+      };
+      if ( $EVAL_ERROR ) {
+         die "Error updating foreign key constraints: $EVAL_ERROR\n";
       }
+   }
 
-      # #####################################################################
-      # Drop old table and delete triggers.
-      # #####################################################################
+   # #####################################################################
+   # Drop old table and delete triggers.
+   # #####################################################################
+   eval {
       drop_triggers(
-         tbl    => $orig_tbl,
-         Cxn    => $cxn,
-         Quoter => $q,
+         tbl          => $orig_tbl,
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
       );
-
-      if ( $old_tbl && $o->get('drop-old-table') ) {
-         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
-         PTDEBUG && _d($sql);
-         $cxn->dbh()->do($sql);
-      }
    };
    if ( $EVAL_ERROR ) {
-      die "An unknown fatal error occurred: $EVAL_ERROR";
+      die "Error dropping triggers: $EVAL_ERROR\n";
+   }
+
+   if ( $o->get('drop-old-table') ) {
+      if ( $o->get('dry-run') ) {
+         print "\nNot dropping old table because this is a dry run.\n";
+      }
+      else {
+         print "\nDropping old table: ";
+         my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
+         eval {
+            PTDEBUG && _d($sql); 
+            $cxn->dbh()->do($sql) if $o->get('execute');
+         };
+         if ( $EVAL_ERROR ) {
+            die "Error dropping old table: $EVAL_ERROR\n";
+         }
+         print "OK\n";
+         print $sql, "\n" if $o->get('print');
+      }
+   }
+
+   if ( $o->get('dry-run') ) {
+      print "\nDry run complete.  $orig_tbl->{name} was not altered.  "
+          . "To drop the new table, execute:\n"
+          . "DROP TABLE IF EXISTS $new_tbl->{name};\n";
+   }
+   else {
+      print "\nDone altering $orig_tbl->{name}.\n";
    }
 
    return $exit_status;
@@ -5396,24 +5472,19 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
-sub ts {
-   my ($msg) = @_;
-   my ($s, $m, $h, $d, $M) = localtime;
-   my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
-   return $msg ? "$ts $msg" : $ts;
-}
-
 sub create_table_like {
    my (%args) = @_;
-   my @required_args = qw(tbl Cxn Quoter);
+   my @required_args = qw(tbl Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($tbl, $cxn, $q) = @args{@required_args};
+   my ($tbl, $cxn, $q, $o) = @args{@required_args};
 
    my $prefix          = '_';
    my $table_name      = $tbl->{tbl} . ($args{suffix} || '');
    my $tries           = 10;  # don't try forever
+
+   print "\nCreating new table: ";
 
    while ( $tries-- ) {
       $table_name = $prefix . $table_name;
@@ -5427,6 +5498,8 @@ sub create_table_like {
          next if $EVAL_ERROR =~ m/table.+?already exists/i;
          die "Error creating new table: $EVAL_ERROR\n";
       }
+      print "OK\n";
+      print $sql, "\n" if $o->get('print');
       return { # success
          db   => $tbl->{db},
          tbl  => $table_name,
@@ -5439,22 +5512,29 @@ sub create_table_like {
 
 sub rename_tables {
    my (%args) = @_;
-   my @required_args = qw(orig_tbl new_tbl Cxn Quoter);
+   my @required_args = qw(orig_tbl new_tbl Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cxn, $q) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cxn, $q, $o) = @args{@required_args};
 
    my $prefix          = '_';
    my $table_name      = $orig_tbl->{tbl} . ($args{suffix} || '');
    my $tries           = 10;  # don't try forever
 
+   if ( $o->get('dry-run') ) {
+      print "\nNot swapping tables because this is a dry run.\n";
+      return;
+   }
+
+   print "\nSwapping tables: ";
+
    while ( $tries-- ) {
       $table_name = $prefix . $table_name;
       my $sql     = "RENAME TABLE $orig_tbl->{name} "
                   . "TO " . $q->quote($orig_tbl->{db}, $table_name)
-                  . ", $new_tbl->{name} TO $orig_tbl->{name}";
-      PTDEBUG && _d($sql);
+                  . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
+      PTDEBUG && _d($sql); 
       eval {
          $cxn->dbh()->do($sql);
       };
@@ -5462,6 +5542,8 @@ sub rename_tables {
          next if $EVAL_ERROR =~ m/table.+?already exists/i;
          die "Error renaming table: $EVAL_ERROR\n";
       }
+      print "OK\n";
+      print $sql, "\n" if $o->get('print');
       return { # success
          db   => $orig_tbl->{db},
          tbl  => $table_name,
@@ -5568,23 +5650,25 @@ sub get_child_tables {
 
 sub update_foreign_key_constraints {
    my ( %args ) = @_;
-   my @required_args = qw(msg dbh db tbl old_tbl child_tables Quoter);
+   my @required_args = qw(orig_tbl old_tbl child_tables
+                          Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($msg, $dbh, $db, $tbl, $old_tbl, $child_tables, $q)
+   my ($orig_tbl, $old_tbl, $child_tables, $cxn, $q, $o)
       = @args{@required_args};
 
-   my $constraint = qr/^\s+(CONSTRAINT.+?REFERENCES `$old_tbl`.+)$/mo;
+   my $constraint = qr/^\s+(CONSTRAINT.+?REFERENCES `$old_tbl->{tbl}`.+)$/m;
 
    CHILD_TABLE:
    foreach my $child_table ( @$child_tables ) {
-      my $sql = "SHOW CREATE TABLE `$db`.`$child_table`";
-      PTDEBUG && _d($dbh, $sql);
-      $msg->($sql);
+      $child_table = $q->quote($orig_tbl->{db}, $child_table);
+
+      my $sql = "SHOW CREATE TABLE $child_table";
+      PTDEBUG && _d($sql);
       my $table_def;
       eval {
-         $table_def = $dbh->selectrow_arrayref($sql)->[1];
+         $table_def = $cxn->dbh()->selectrow_arrayref($sql)->[1];
       };
       if ( $EVAL_ERROR ) {
          warn "Skipping child table $child_table: $EVAL_ERROR";
@@ -5593,21 +5677,56 @@ sub update_foreign_key_constraints {
 
       my @constraints = $table_def =~ m/$constraint/g;
       if ( !@constraints ) {
-         warn "Child table `$child_table` does not have any foreign key "
-            . "constraints referencing $old_tbl";
+         warn "Child table $child_table does not have any foreign key "
+            . "constraints referencing $old_tbl->{name}.\n";
          next CHILD_TABLE;
       }
 
       foreach my $constraint ( @constraints ) {
          my ($fk_symbol) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
-         $sql = "ALTER TABLE `$db`.`$child_table` DROP FOREIGN KEY $fk_symbol";
-         $msg->($sql);
-         $dbh->do($sql) unless $args{print};
+         $sql = "ALTER TABLE $child_table DROP FOREIGN KEY $fk_symbol";
+         if ( $o->get('print') ) {
+            print "-- $sql\n";
+         }
+         else {
+            $cxn->dbh()->do($sql);
+         }
 
-         $constraint =~ s/REFERENCES `$old_tbl`/REFERENCES `$tbl`/o;
-         $sql = "ALTER TABLE `$db`.`$child_table` ADD $constraint"; 
-         $msg->($sql);
-         $dbh->do($sql) unless $args{print};
+         $constraint =~ s/REFERENCES `$old_tbl->{tbl}`/REFERENCES `$orig_tbl->{tbl}`/o;
+         $sql = "ALTER TABLE $child_table ADD $constraint"; 
+         if ( $o->get('print') ) {
+            print "-- $sql\n";
+         }
+         else {
+            $cxn->dbh()->do($sql);
+         }
+      }
+   }
+
+   return;
+}
+
+sub drop_and_rename_orig_table {
+   my ( %args ) = @_;
+   my @required_args = qw(orig_tbl new_tbl Cxn OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($orig_tbl, $new_tbl, $cxn, $o) = @args{@required_args};
+
+   my @sqls = (
+      "SET foreign_key_checks=0",
+      "DROP TABLE IF EXISTS $orig_tbl->{name}",
+      "RENAME TABLE $new_tbl->{name} TO $orig_tbl->{name}",
+   );
+
+   foreach my $sql ( @sqls ) {
+      PTDEBUG && _d($sql);
+      if ( $o->get('print') ) {
+         print "-- $sql\n";
+      }
+      else {
+         $cxn->dbh()->do($sql);
       }
    }
 
@@ -5616,11 +5735,18 @@ sub update_foreign_key_constraints {
 
 sub create_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl columns Cxn Quoter);
+   my @required_args = qw(orig_tbl new_tbl columns Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cols, $cxn, $q) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $cols, $cxn, $q, $o) = @args{@required_args};
+
+   if ( $o->get('dry-run') ) {
+      print "\nNot creating triggers because this is a dry run.\n";
+   }
+   else {
+      print "\nCreating triggers: ";
+   }
 
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.
@@ -5651,8 +5777,17 @@ sub create_triggers {
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
    foreach my $sql ( $delete_trigger, $update_trigger, $insert_trigger ) {
-      PTDEBUG && _d($sql);
-      $cxn->dbh()->do($sql);
+      if ( $o->get('execute') ) {
+         $cxn->dbh()->do($sql);
+      }
+   }
+
+   if ( $o->get('execute') ) {
+      print "OK\n";
+   }
+
+   if ( $o->get('print') ) {
+      print $_, "\n" for ($delete_trigger, $update_trigger, $insert_trigger);
    }
 
    return;
@@ -5660,16 +5795,35 @@ sub create_triggers {
 
 sub drop_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(tbl Cxn Quoter);
+   my @required_args = qw(tbl Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($tbl, $cxn, $q) = @args{@required_args};
+   my ($tbl, $cxn, $q, $o) = @args{@required_args};
 
+   if ( $o->get('dry-run') ) {
+      print "\nNot dropping triggers because this is a dry run.\n";
+   }
+   else {
+      print "\nDropping triggers: ";
+   }
+
+   my @sqls;
    foreach my $trigger ( qw(del ins upd) ) {
       my $sql = "DROP TRIGGER IF EXISTS "
               . $q->quote($tbl->{db}, "pt_osc_$trigger");
-      $cxn->dbh()->do($sql);
+      if ( $o->get('execute') ) {
+         $cxn->dbh()->do($sql);
+      }
+      push @sqls, $sql;
+   }
+
+   if ( $o->get('execute') ) {
+      print "OK\n";
+   }
+
+   if ( $o->get('print') ) {
+      print $_, "\n" for @sqls;
    }
 
    return;
@@ -5830,6 +5984,39 @@ sub exec_nibble {
       }
    );
 }
+}
+
+# Sub: explain_statement
+#   EXPLAIN a statement.
+#
+# Required Arguments:
+#   * tbl  - Standard tbl hashref
+#   * sth  - Sth with EXLAIN <statement>
+#   * vals - Values for sth, if any
+#
+# Returns:
+#   Hashref with EXPLAIN plan
+sub explain_statement {
+   my ( %args ) = @_;
+   my @required_args = qw(tbl sth vals);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($tbl, $sth, $vals) = @args{@required_args};
+
+   my $expl;
+   eval {
+      PTDEBUG && _d($sth->{Statement}, 'params:', @$vals);
+      $sth->execute(@$vals);
+      $expl = $sth->fetchrow_hashref();
+      $sth->finish();
+   };
+   if ( $EVAL_ERROR ) {
+      # This shouldn't happen.
+      die "Error executing " . $sth->{Statement} . ": $EVAL_ERROR\n";
+   }
+   PTDEBUG && _d('EXPLAIN plan:', Dumper($expl));
+   return $expl;
 }
 
 sub _d {
@@ -6009,6 +6196,8 @@ Output to STDOUT is very verbose and should tell you everything that the
 tool is doing.  Warnings, errors, and L<"--progress"> are printed to STDERR.
 
 =head1 OPTIONS
+
+L<"--dry-run"> and L<"--execute"> are mutually exclusive.
 
 This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
@@ -6216,6 +6405,10 @@ swapped for the original table), then the old table can be restored.
 
 If altering a table with foreign key constraints, you may need to specify
 this option depending on which L<"--update-foreign-keys-method"> you choose.
+
+=item --dry-run
+
+Do not create triggers, copy rows, or rename tables.
 
 =item --execute
 
