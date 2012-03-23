@@ -4538,6 +4538,262 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Transformers package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Transformers.pm
+#   t/lib/Transformers.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Transformers;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Time::Local qw(timegm timelocal);
+use Digest::MD5 qw(md5_hex);
+
+require Exporter;
+our @ISA         = qw(Exporter);
+our %EXPORT_TAGS = ();
+our @EXPORT      = ();
+our @EXPORT_OK   = qw(
+   micro_t
+   percentage_of
+   secs_to_time
+   time_to_secs
+   shorten
+   ts
+   parse_timestamp
+   unix_timestamp
+   any_unix_timestamp
+   make_checksum
+   crc32
+);
+
+our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
+our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
+our $n_ts      = qr/(\d{1,5})([shmd]?)/; # Limit \d{1,5} because \d{6} looks
+
+sub micro_t {
+   my ( $t, %args ) = @_;
+   my $p_ms = defined $args{p_ms} ? $args{p_ms} : 0;  # precision for ms vals
+   my $p_s  = defined $args{p_s}  ? $args{p_s}  : 0;  # precision for s vals
+   my $f;
+
+   $t = 0 if $t < 0;
+
+   $t = sprintf('%.17f', $t) if $t =~ /e/;
+
+   $t =~ s/\.(\d{1,6})\d*/\.$1/;
+
+   if ($t > 0 && $t <= 0.000999) {
+      $f = ($t * 1000000) . 'us';
+   }
+   elsif ($t >= 0.001000 && $t <= 0.999999) {
+      $f = sprintf("%.${p_ms}f", $t * 1000);
+      $f = ($f * 1) . 'ms'; # * 1 to remove insignificant zeros
+   }
+   elsif ($t >= 1) {
+      $f = sprintf("%.${p_s}f", $t);
+      $f = ($f * 1) . 's'; # * 1 to remove insignificant zeros
+   }
+   else {
+      $f = 0;  # $t should = 0 at this point
+   }
+
+   return $f;
+}
+
+sub percentage_of {
+   my ( $is, $of, %args ) = @_;
+   my $p   = $args{p} || 0; # float precision
+   my $fmt = $p ? "%.${p}f" : "%d";
+   return sprintf $fmt, ($is * 100) / ($of ||= 1);
+}
+
+sub secs_to_time {
+   my ( $secs, $fmt ) = @_;
+   $secs ||= 0;
+   return '00:00' unless $secs;
+
+   $fmt ||= $secs >= 86_400 ? 'd'
+          : $secs >= 3_600  ? 'h'
+          :                   'm';
+
+   return
+      $fmt eq 'd' ? sprintf(
+         "%d+%02d:%02d:%02d",
+         int($secs / 86_400),
+         int(($secs % 86_400) / 3_600),
+         int(($secs % 3_600) / 60),
+         $secs % 60)
+      : $fmt eq 'h' ? sprintf(
+         "%02d:%02d:%02d",
+         int(($secs % 86_400) / 3_600),
+         int(($secs % 3_600) / 60),
+         $secs % 60)
+      : sprintf(
+         "%02d:%02d",
+         int(($secs % 3_600) / 60),
+         $secs % 60);
+}
+
+sub time_to_secs {
+   my ( $val, $default_suffix ) = @_;
+   die "I need a val argument" unless defined $val;
+   my $t = 0;
+   my ( $prefix, $num, $suffix ) = $val =~ m/([+-]?)(\d+)([a-z])?$/;
+   $suffix = $suffix || $default_suffix || 's';
+   if ( $suffix =~ m/[smhd]/ ) {
+      $t = $suffix eq 's' ? $num * 1        # Seconds
+         : $suffix eq 'm' ? $num * 60       # Minutes
+         : $suffix eq 'h' ? $num * 3600     # Hours
+         :                  $num * 86400;   # Days
+
+      $t *= -1 if $prefix && $prefix eq '-';
+   }
+   else {
+      die "Invalid suffix for $val: $suffix";
+   }
+   return $t;
+}
+
+sub shorten {
+   my ( $num, %args ) = @_;
+   my $p = defined $args{p} ? $args{p} : 2;     # float precision
+   my $d = defined $args{d} ? $args{d} : 1_024; # divisor
+   my $n = 0;
+   my @units = ('', qw(k M G T P E Z Y));
+   while ( $num >= $d && $n < @units - 1 ) {
+      $num /= $d;
+      ++$n;
+   }
+   return sprintf(
+      $num =~ m/\./ || $n
+         ? "%.${p}f%s"
+         : '%d',
+      $num, $units[$n]);
+}
+
+sub ts {
+   my ( $time, $gmt ) = @_;
+   my ( $sec, $min, $hour, $mday, $mon, $year )
+      = $gmt ? gmtime($time) : localtime($time);
+   $mon  += 1;
+   $year += 1900;
+   my $val = sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+      $year, $mon, $mday, $hour, $min, $sec);
+   if ( my ($us) = $time =~ m/(\.\d+)$/ ) {
+      $us = sprintf("%.6f", $us);
+      $us =~ s/^0\././;
+      $val .= $us;
+   }
+   return $val;
+}
+
+sub parse_timestamp {
+   my ( $val ) = @_;
+   if ( my($y, $m, $d, $h, $i, $s, $f)
+         = $val =~ m/^$mysql_ts$/ )
+   {
+      return sprintf "%d-%02d-%02d %02d:%02d:"
+                     . (defined $f ? '%09.6f' : '%02d'),
+                     $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   return $val;
+}
+
+sub unix_timestamp {
+   my ( $val, $gmt ) = @_;
+   if ( my($y, $m, $d, $h, $i, $s, $us) = $val =~ m/^$proper_ts$/ ) {
+      $val = $gmt
+         ? timegm($s, $i, $h, $d, $m - 1, $y)
+         : timelocal($s, $i, $h, $d, $m - 1, $y);
+      if ( defined $us ) {
+         $us = sprintf('%.6f', $us);
+         $us =~ s/^0\././;
+         $val .= $us;
+      }
+   }
+   return $val;
+}
+
+sub any_unix_timestamp {
+   my ( $val, $callback ) = @_;
+
+   if ( my ($n, $suffix) = $val =~ m/^$n_ts$/ ) {
+      $n = $suffix eq 's' ? $n            # Seconds
+         : $suffix eq 'm' ? $n * 60       # Minutes
+         : $suffix eq 'h' ? $n * 3600     # Hours
+         : $suffix eq 'd' ? $n * 86400    # Days
+         :                  $n;           # default: Seconds
+      PTDEBUG && _d('ts is now - N[shmd]:', $n);
+      return time - $n;
+   }
+   elsif ( $val =~ m/^\d{9,}/ ) {
+      PTDEBUG && _d('ts is already a unix timestamp');
+      return $val;
+   }
+   elsif ( my ($ymd, $hms) = $val =~ m/^(\d{6})(?:\s+(\d+:\d+:\d+))?/ ) {
+      PTDEBUG && _d('ts is MySQL slow log timestamp');
+      $val .= ' 00:00:00' unless $hms;
+      return unix_timestamp(parse_timestamp($val));
+   }
+   elsif ( ($ymd, $hms) = $val =~ m/^(\d{4}-\d\d-\d\d)(?:[T ](\d+:\d+:\d+))?/) {
+      PTDEBUG && _d('ts is properly formatted timestamp');
+      $val .= ' 00:00:00' unless $hms;
+      return unix_timestamp($val);
+   }
+   else {
+      PTDEBUG && _d('ts is MySQL expression');
+      return $callback->($val) if $callback && ref $callback eq 'CODE';
+   }
+
+   PTDEBUG && _d('Unknown ts type:', $val);
+   return;
+}
+
+sub make_checksum {
+   my ( $val ) = @_;
+   my $checksum = uc substr(md5_hex($val), -16);
+   PTDEBUG && _d($checksum, 'checksum for', $val);
+   return $checksum;
+}
+
+sub crc32 {
+   my ( $string ) = @_;
+   return unless $string;
+   my $poly = 0xEDB88320;
+   my $crc  = 0xFFFFFFFF;
+   foreach my $char ( split(//, $string) ) {
+      my $comp = ($crc ^ ord($char)) & 0xFF;
+      for ( 1 .. 8 ) {
+         $comp = $comp & 1 ? $poly ^ ($comp >> 1) : $comp >> 1;
+      }
+      $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
+   }
+   return $crc ^ 0xFFFFFFFF;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Transformers package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -4552,19 +4808,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Time::HiRes qw(time);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
 my $oktorun = 1;
+my @drop_trigger_sqls;
 
 $OUTPUT_AUTOFLUSH = 1;
 
 sub main {
    # Reset global vars else tests will fail.
-   @ARGV    = @_;
-   $oktorun = 1;
+   @ARGV              = @_;
+   $oktorun           = 1;
+   @drop_trigger_sqls = ();
 
    my $exit_status = 0;
 
@@ -4608,7 +4867,7 @@ sub main {
 
    my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
    if ( ($rename_fk_method || '') eq 'drop_old_table' ) {
-      $o->set('rename-tables',  0);
+      $o->set('swap-tables',  0);
       $o->set('drop-old-table', 0),
    }
 
@@ -4883,7 +5142,7 @@ sub main {
    }
 
    # ########################################################################
-   # Stage 1: setup and check tables.
+   # Setup and check the original table.
    # ########################################################################
    my $tp = new TableParser(Quoter => $q);
 
@@ -4902,36 +5161,33 @@ sub main {
       Quoter       => $q,
    );
 
-   # Get child tables if necessary.
+   # ########################################################################
+   # Get child tables of the original table, if necessary.
+   # ########################################################################
    my @child_tables;
    if ( my $child_tables = $o->get('child-tables') ) {
-      # TODO: this will fail if a child table is named `auto_detect` and
-      # the user wants to specify that explicitly
-      if ( lc($child_tables) eq 'auto_detect' ) {
-         @child_tables = get_child_tables(
-            tbl    => $orig_tbl,
-            Cxn    => $cxn,
-            Quoter => $q,
-         );
-      }
-      else {
-         @child_tables = split(',', $child_tables);
-      }
-      print "Child tables of $orig_tbl->{name}: "
-         . (@child_tables ? join(', ', @child_tables) : "(none)")
-         . "\n";
+      @child_tables = split(',', $child_tables);
+      print "User-specified child tables:\n";
+      print "\t$_\n" for @child_tables;
+   }
+   elsif ( $o->get('find-child-tables') ) {
+      print "\nFinding child tables:\n";
+      @child_tables = find_child_tables(
+         tbl    => $orig_tbl,
+         Cxn    => $cxn,
+         Quoter => $q,
+      );
+      print "\t$_\n" for @child_tables;
    }
 
    # ########################################################################
-   # Daemonize only after (potentially) asking for passwords for --ask-pass.
+   # XXX
+   # Ready to begin the alter!  Nothing has been changed on the server at
+   # this point; we've just checked and looked for things.  Past this point,
+   # the code is live if --execute, else it's doing a --run-run.  Or, if
+   # the user didn't read the docs, we may bail out here.
+   # XXX
    # ########################################################################
-   my $daemon;
-   if ( $o->get('pid') ) {
-      # We're not daemoninzing, it just handles PID stuff.
-      $daemon = new Daemon(o=>$o);
-      $daemon->make_PID_file();
-   }
-
    if ( $o->get('dry-run') ) {
       print "Starting a dry run.  $orig_tbl->{name} will not be altered.  "
           . "Specify --execute instead of --dry-run to alter the table.\n";
@@ -4944,6 +5200,16 @@ sub main {
    }
    else {
       print "Altering $orig_tbl->{name}...\n";
+   }
+
+   # ########################################################################
+   # Check and create PID file if user specified --pid.
+   # ########################################################################
+   my $daemon;
+   if ( $o->get('pid') ) {
+      # We're not daemoninzing, it just handles PID stuff.
+      $daemon = new Daemon(o=>$o);
+      $daemon->make_PID_file();
    }
 
    # #####################################################################
@@ -4992,6 +5258,10 @@ sub main {
       );
    }
 
+   my $drop_new_table_sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
+
+   # Alter the new, empty table.  This should be very quick, or die if
+   # the user specified a bad alter statement.
    if ( my $alter = $o->get('alter') ) {
       print "\nAltering new table: ";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
@@ -5000,9 +5270,13 @@ sub main {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         die "Error altering the new table $new_tbl->{name}: "
-            . "$EVAL_ERROR\n";
+         print "ERROR\n";
+         die "Error altering the new table $new_tbl->{name}:\n\n$EVAL_ERROR\n"
+           . "Please verify the --alter statement and try again.  "
+           . "To drop the new table, execute: $drop_new_table_sql\n\n"
+           . "$orig_tbl->{name} was not altered.\n";
       }
+
       print "OK\n";
       print $sql, "\n" if $o->get('print');
    }
@@ -5226,12 +5500,9 @@ sub main {
 
          return unless $o->get('execute');
 
-         # XXX
-         # TODO
-         my $cnt = $tbl->{n_rows};
-
          # Update rate, chunk size, and progress if the nibble actually
          # selected some rows.
+         my $cnt = $tbl->{row_cnt};
          if ( ($cnt || 0) > 0 ) {
             # Update the rate of rows per second for the entire server.
             # This is used for the initial chunk size of the next table.
@@ -5339,9 +5610,10 @@ sub main {
       );
    }
 
-   # #####################################################################
-   # Start capturing changes to the new table.
-   # #####################################################################
+   # ########################################################################
+   # Create the triggers to capture changes on the original table and
+   # apply them to the new table.
+   # ########################################################################
    eval {
       create_triggers(
          orig_tbl     => $orig_tbl,
@@ -5353,7 +5625,22 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      die "Error creating triggers: $EVAL_ERROR\n";
+      warn "Error creating triggers:\n\n$EVAL_ERROR\n";
+
+      # Drop whatever triggers were recreated.
+      # This sub handles its own errors.
+      drop_triggers(
+         tbl          => $orig_tbl,
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
+      );
+
+      warn "The new table $new_tbl->{name} has not been dropped.  "
+         . "To drop it, execute: $drop_new_table_sql\n\n"
+         . "$orig_tbl->{name} has not been modified.\n";
+
+      exit 1;
    };
 
    # #####################################################################
@@ -5363,19 +5650,36 @@ sub main {
       1 while $nibble_iter->next();
    };
    if ( $EVAL_ERROR ) {
-      # XXX
-      # TODO: drop_triggers(), what to do with data created by triggers?
-      die "Error copying rows from original table $orig_tbl->{name} to "
-        . "new table $new_tbl->{name}: $EVAL_ERROR";
+      warn "Error copying rows from $orig_tbl->{name} to "
+         . "$new_tbl->{name}:\n\n$EVAL_ERROR\n";
+
+      # Drop the triggers.  This sub handles its own errors.
+      drop_triggers(
+         tbl          => $orig_tbl,
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
+      );
+
+      warn "The new table $new_tbl->{name} has not been dropped.  "
+         . "To drop it, execute: $drop_new_table_sql\n\n"
+         . "$orig_tbl->{name} has not been modified.\n";
+
+      exit 1;
    }
 
    # #####################################################################
-   # Rename tables.
+   # XXX
+   # Rename tables: orig -> old, new -> orig
+   # Past this point, the original table has been modified. This shouldn't
+   # fail, but if it does, the failure could be serious depending on what
+   # state the tables are left in.
+   # XXX
    # #####################################################################
    my $old_tbl;
-   if ( $o->get('rename-tables') ) {
+   if ( $o->get('swap-tables') ) {
       eval {
-         $old_tbl = rename_tables(
+         $old_tbl = swap_tables(
             orig_tbl     => $orig_tbl,
             new_tbl      => $new_tbl,
             suffix       => '_old',
@@ -5385,8 +5689,6 @@ sub main {
          );
       };
       if ( $EVAL_ERROR ) {
-         # XXX
-         # TODO: drop_triggers(), what to do with data created by triggers?
          die "Error renaming the tables: $EVAL_ERROR\n";
       }
    }
@@ -5423,21 +5725,24 @@ sub main {
       }
    }
 
-   # #####################################################################
-   # Drop old table and delete triggers.
-   # #####################################################################
-   eval {
-      drop_triggers(
+   # ########################################################################
+   # Drop the triggers.
+   # ########################################################################
+   my $drop_triggers_errors = drop_triggers(
          tbl          => $orig_tbl,
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      die "Error dropping triggers: $EVAL_ERROR\n";
+   );
+   if ( $drop_triggers_errors ) {
+      die "The new table $new_tbl->{name} has not been dropped.  To drop it, "
+        . "execute: $drop_new_table_sql\n\n"
+        . "$orig_tbl->{name} has not been modified.\n";
    }
 
+   # ########################################################################
+   # Drop the old table.
+   # ########################################################################
    if ( $o->get('drop-old-table') ) {
       if ( $o->get('dry-run') ) {
          print "\nNot dropping old table because this is a dry run.\n";
@@ -5456,7 +5761,10 @@ sub main {
          print $sql, "\n" if $o->get('print');
       }
    }
-
+   
+   # ########################################################################
+   # Done.
+   # ########################################################################
    if ( $o->get('dry-run') ) {
       print "\nDry run complete.  $orig_tbl->{name} was not altered.  "
           . "To drop the new table, execute:\n"
@@ -5510,7 +5818,7 @@ sub create_table_like {
    die "Failed to find a unique new table name after serveral attempts.\n";
 }
 
-sub rename_tables {
+sub swap_tables {
    my (%args) = @_;
    my @required_args = qw(orig_tbl new_tbl Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
@@ -5621,7 +5929,7 @@ sub check_orig_table {
    return;  # success
 }
 
-sub get_child_tables {
+sub fin_child_tables {
    my ( %args ) = @_;
    my @required_args = qw(tbl Cxn Quoter);
    foreach my $arg ( @required_args ) {
@@ -5776,10 +6084,23 @@ sub create_triggers {
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
-   foreach my $sql ( $delete_trigger, $update_trigger, $insert_trigger ) {
+   my @triggers = (
+      ['del', $delete_trigger],
+      ['upd', $update_trigger],
+      ['ins', $insert_trigger],
+   );
+
+   @drop_trigger_sqls = ();
+   foreach my $trg ( @triggers ) {
+      my ($name, $sql) = @$trg;
       if ( $o->get('execute') ) {
          $cxn->dbh()->do($sql);
       }
+      # Only save the trigger once it has been created
+      # (or faked to be created) so if the 2nd trigger
+      # fails to create, we know to only drop the 1st.
+      push @drop_trigger_sqls,
+         "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, "pt_osc_$name");
    }
 
    if ( $o->get('execute') ) {
@@ -5787,7 +6108,7 @@ sub create_triggers {
    }
 
    if ( $o->get('print') ) {
-      print $_, "\n" for ($delete_trigger, $update_trigger, $insert_trigger);
+      print $_->[1], "\n" for @triggers;
    }
 
    return;
@@ -5801,32 +6122,31 @@ sub drop_triggers {
    }
    my ($tbl, $cxn, $q, $o) = @args{@required_args};
 
+   my $exit_status = 0;
+
    if ( $o->get('dry-run') ) {
       print "\nNot dropping triggers because this is a dry run.\n";
    }
    else {
       print "\nDropping triggers: ";
-   }
-
-   my @sqls;
-   foreach my $trigger ( qw(del ins upd) ) {
-      my $sql = "DROP TRIGGER IF EXISTS "
-              . $q->quote($tbl->{db}, "pt_osc_$trigger");
-      if ( $o->get('execute') ) {
-         $cxn->dbh()->do($sql);
+      foreach my $sql ( @drop_trigger_sqls ) {
+         eval {
+            $cxn->dbh()->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            print "ERROR\n" if $exit_status == 0;
+            warn "Error dropping trigger:\n\n$EVAL_ERROR\n";
+            $exit_status = 1;
+         }
       }
-      push @sqls, $sql;
-   }
-
-   if ( $o->get('execute') ) {
-      print "OK\n";
+      print "OK\n" if $exit_status == 0;
    }
 
    if ( $o->get('print') ) {
-      print $_, "\n" for @sqls;
+      print $_, "\n" for @drop_trigger_sqls;
    }
 
-   return;
+   return $exit_status;
 }
 
 {
@@ -5889,6 +6209,9 @@ sub exec_nibble {
          # ###################################################################
          # End timing the checksum query.
          # ###################################################################
+
+         # How many rows were inserted this time.  Used for auto chunk sizing.
+         $tbl->{row_cnt} = $sth->{nibble}->rows();
 
          # Check if checksum query caused any warnings.
          my $sql_warn = 'SHOW WARNINGS';
@@ -6163,7 +6486,7 @@ Here are options related to each phase:
   2. (none)
   3. --chunk-size, --sleep
   4. (none)
-  5. --[no]rename-tables
+  5. --[no]swap-tables
   6. --drop-old-table
 
 Options L<"--check-tables-and-exit"> and L<"--print"> are helpful to see what
@@ -6408,7 +6731,7 @@ this option depending on which L<"--update-foreign-keys-method"> you choose.
 
 =item --dry-run
 
-Do not create triggers, copy rows, or rename tables.
+Do not create triggers, copy rows, or L<"--swap-tables">.
 
 =item --execute
 
@@ -6416,6 +6739,10 @@ Alter the table.  This option must be specified to alter the table, else
 the tool will only check the table and exit.  This helps ensure that the
 user has read the documentation and is aware of the inherent risks of using
 this tool.
+
+=item --find-child-tables
+
+Automatically find child tables using the INFORMATION_SCHEMA.
 
 =item --help
 
@@ -6574,11 +6901,11 @@ replication lag and checksum differences, insert the values C<h=10.10.1.16> and
 C<h=10.10.1.17> into the table. Currently, the DSNs are ordered by id, but id
 and parent_id are otherwise ignored.  
 
-=item --[no]rename-tables
+=item --[no]swap-tables
 
 default: yes
 
-Rename/swap the original table and the L<"--new-table">.  This option
+Swap the the original table and the L<"--new-table">.  This option
 essentially completes the online schema change process by making the
 temporary table with the new schema take the place of the original table.
 The original tables becomes the "old table" and is dropped if
@@ -6586,7 +6913,7 @@ L<"--[no]drop-old-table"> is specified.
 
 =item --retries
 
-type: int; default: 2
+type: int; default: 3
 
 Retry a chunk this many times when there is a nonfatal error.  Nonfatal errors
 are problems such as a lock wait timeout or the query being killed.
