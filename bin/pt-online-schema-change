@@ -4866,8 +4866,8 @@ sub main {
    }
 
    my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
-   if ( ($rename_fk_method || '') eq 'drop_old_table' ) {
-      $o->set('swap-tables',  0);
+   if ( $rename_fk_method eq 'drop_old_table' ) {
+      $o->set('swap-tables',    0);
       $o->set('drop-old-table', 0),
    }
 
@@ -4900,8 +4900,20 @@ sub main {
          }
       }
 
-      if ( $o->get('child-tables') && !$o->get('update-foreign-keys-method') ) {
-         $o->save_error("--child-tables requires --update-foreign-keys-method");
+      if ( my $children = $o->get('child-tables') ) {
+
+         if ( !$o->get('update-foreign-keys-method') ) {
+            $o->save_error("--child-tables requires --update-foreign-keys-method");
+         }
+
+         if ( @$children == 0 ) {
+            $o->save_error("Specify at least one table for --child-tables");
+         }
+      }
+
+      if ( $o->get('find-child-tables')
+           && !$o->get('update-foreign-keys-method') ) {
+         $o->save_error("--find-child-tables requires --update-foreign-keys-method");
       }
 
       if ( $rename_fk_method
@@ -5164,20 +5176,24 @@ sub main {
    # ########################################################################
    # Get child tables of the original table, if necessary.
    # ########################################################################
-   my @child_tables;
-   if ( my $child_tables = $o->get('child-tables') ) {
-      @child_tables = split(',', $child_tables);
+   my $child_tables;
+   if ( $child_tables = $o->get('child-tables') ) {
       print "User-specified child tables:\n";
-      print "\t$_\n" for @child_tables;
+      print "\t$_\n" for @$child_tables;
    }
    elsif ( $o->get('find-child-tables') ) {
-      print "\nFinding child tables:\n";
-      @child_tables = find_child_tables(
+      $child_tables = find_child_tables(
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
       );
-      print "\t$_\n" for @child_tables;
+      if ( !$child_tables ) {
+         die "No child tables were found.  If no tables reference "
+           . "$orig_tbl->{name}, do not specify --find-child-tables or "
+           . "--update-foreign-keys-method to alter the table.\n";
+      }
+      print "Found child tables:\n";
+      print "\t$_\n" for @$child_tables;
    }
 
    # ########################################################################
@@ -5206,7 +5222,7 @@ sub main {
    # Check and create PID file if user specified --pid.
    # ########################################################################
    my $daemon;
-   if ( $o->get('pid') ) {
+   if ( $o->get('execute') && $o->get('pid') ) {
       # We're not daemoninzing, it just handles PID stuff.
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
@@ -5250,7 +5266,7 @@ sub main {
    else { 
       # Auto-create a new table name based on the original table name.
       $new_tbl = create_table_like(
-         tbl          => $orig_tbl,
+         orig_tbl     => $orig_tbl,
          suffix       => '_new',
          Cxn          => $cxn,
          Quoter       => $q,
@@ -5263,22 +5279,21 @@ sub main {
    # Alter the new, empty table.  This should be very quick, or die if
    # the user specified a bad alter statement.
    if ( my $alter = $o->get('alter') ) {
-      print "\nAltering new table: ";
+      print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
+      print $sql, "\n" if $o->get('print');
       PTDEBUG && _d($sql);
       eval {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         print "ERROR\n";
-         die "Error altering the new table $new_tbl->{name}:\n\n$EVAL_ERROR\n"
+         die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
            . "Please verify the --alter statement and try again.  "
            . "To drop the new table, execute: $drop_new_table_sql\n\n"
            . "$orig_tbl->{name} was not altered.\n";
       }
 
-      print "OK\n";
-      print $sql, "\n" if $o->get('print');
+      print "Done creating new table.\n"
    }
 
    # Get the new table struct.
@@ -5318,10 +5333,10 @@ sub main {
          my $nibble_iter = $args{NibbleIterator};
 
          if ( $o->get('dry-run') ) {
-            print "\nNot copying rows because this is a dry run.\n";
+            print "Not copying rows because this is a dry run.\n";
          }
          else {
-            print "\nCopying approximately ", $nibble_iter->row_estimate(),
+            print "Copying approximately ", $nibble_iter->row_estimate(),
                " rows...\n";
          }
 
@@ -5558,7 +5573,7 @@ sub main {
          return;
       },
       done => sub {
-         if ( !$o->get('dry-run') ) {
+         if ( $o->get('execute') ) {
             print "Done copying rows.\n";
          }
       },
@@ -5625,10 +5640,10 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      warn "Error creating triggers:\n\n$EVAL_ERROR\n";
+      warn "Error creating triggers: $EVAL_ERROR\n";
 
       # Drop whatever triggers were recreated.
-      # This sub handles its own errors.
+      # This sub warns about its own errors.
       drop_triggers(
          tbl          => $orig_tbl,
          Cxn          => $cxn,
@@ -5651,9 +5666,9 @@ sub main {
    };
    if ( $EVAL_ERROR ) {
       warn "Error copying rows from $orig_tbl->{name} to "
-         . "$new_tbl->{name}:\n\n$EVAL_ERROR\n";
+         . "$new_tbl->{name}: $EVAL_ERROR\n";
 
-      # Drop the triggers.  This sub handles its own errors.
+      # Drop the triggers.  This warns about its own errors.
       drop_triggers(
          tbl          => $orig_tbl,
          Cxn          => $cxn,
@@ -5689,27 +5704,31 @@ sub main {
          );
       };
       if ( $EVAL_ERROR ) {
-         die "Error renaming the tables: $EVAL_ERROR\n";
+         die "Error swapping the tables: $EVAL_ERROR\n"
+           . "Verify that the original table $orig_tbl->{name} has not "
+           . "been modified or renamed to the old table $old_tbl->{name}.  "
+           . "Then drop the new table $new_tbl->{name} if it exists "
+           . "by executing: $drop_new_table_sql\n";
       }
    }
 
    # #####################################################################
    # Update foreign key constraints if there are child tables.
    # #####################################################################
-   if ( @child_tables ) {
+   if ( $child_tables ) {
       eval {
          if ( $rename_fk_method eq 'rebuild_constraints' ) { 
-            update_foreign_key_constraints(
+            rebuild_constraints(
                orig_tbl     => $orig_tbl,
                old_tbl      => $old_tbl,
-               child_tables => \@child_tables,
+               child_tables => $child_tables,
                OptionParser => $o,
                Quoter       => $q,
                Cxn          => $cxn,
             );
          }
          elsif ( $rename_fk_method eq 'drop_old_table' ) {
-            drop_and_rename_orig_table(
+            drop_and_swap_orig_table(
                orig_tbl     => $orig_tbl,
                new_tbl      => $new_tbl,
                Cxn          => $cxn,
@@ -5721,6 +5740,7 @@ sub main {
          }
       };
       if ( $EVAL_ERROR ) {
+         # TODO: improve error message
          die "Error updating foreign key constraints: $EVAL_ERROR\n";
       }
    }
@@ -5735,9 +5755,10 @@ sub main {
          OptionParser => $o,
    );
    if ( $drop_triggers_errors ) {
-      die "The new table $new_tbl->{name} has not been dropped.  To drop it, "
-        . "execute: $drop_new_table_sql\n\n"
-        . "$orig_tbl->{name} has not been modified.\n";
+      # The sub has already warned about its own errors.
+      warn "To try to drop the triggers again, execute:\n"
+         . join("\n", @drop_trigger_sqls) . "\n\n"
+        . "$orig_tbl->{name} has been modified.\n";
    }
 
    # ########################################################################
@@ -5745,20 +5766,21 @@ sub main {
    # ########################################################################
    if ( $o->get('drop-old-table') ) {
       if ( $o->get('dry-run') ) {
-         print "\nNot dropping old table because this is a dry run.\n";
+         print "Not dropping old table because this is a dry run.\n";
       }
       else {
-         print "\nDropping old table: ";
+         print "Dropping old table...\n";
          my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
+         print $sql, "\n" if $o->get('print');
+         PTDEBUG && _d($sql); 
          eval {
-            PTDEBUG && _d($sql); 
-            $cxn->dbh()->do($sql) if $o->get('execute');
+            $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die "Error dropping old table: $EVAL_ERROR\n";
+            die "Error dropping the old table: $EVAL_ERROR\n"
+              . "$orig_tbl->{name} has been modified.\n";
          }
-         print "OK\n";
-         print $sql, "\n" if $o->get('print');
+         print "Done dropping old table.\n";
       }
    }
    
@@ -5766,12 +5788,21 @@ sub main {
    # Done.
    # ########################################################################
    if ( $o->get('dry-run') ) {
-      print "\nDry run complete.  $orig_tbl->{name} was not altered.  "
-          . "To drop the new table, execute:\n"
-          . "DROP TABLE IF EXISTS $new_tbl->{name};\n";
+      print "Dropping new table because this a dry run...\n";
+      print $drop_new_table_sql, "\n" if $o->get('print');
+      eval {
+         $cxn->dbh()->do($drop_new_table_sql);
+      };
+      if ( $EVAL_ERROR ) {
+         print "Error drop new table: $EVAL_ERROR\n";
+      }
+      else { 
+         print "Done dropping new table.\n";
+      }
+      print "Dry run complete.  $orig_tbl->{name} was not altered.\n";
    }
    else {
-      print "\nDone altering $orig_tbl->{name}.\n";
+      print "Done altering $orig_tbl->{name}.\n";
    }
 
    return $exit_status;
@@ -5782,39 +5813,42 @@ sub main {
 # ############################################################################
 sub create_table_like {
    my (%args) = @_;
-   my @required_args = qw(tbl Cxn Quoter OptionParser);
+   my @required_args = qw(orig_tbl Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($tbl, $cxn, $q, $o) = @args{@required_args};
+   my ($orig_tbl, $cxn, $q, $o) = @args{@required_args};
 
-   my $prefix          = '_';
-   my $table_name      = $tbl->{tbl} . ($args{suffix} || '');
-   my $tries           = 10;  # don't try forever
+   my $prefix     = '_';
+   my $table_name = $orig_tbl->{tbl} . ($args{suffix} || '');
+   my $tries      = 10;  # don't try forever
 
-   print "\nCreating new table: ";
-
+   print "Creating new table...\n";
    while ( $tries-- ) {
       $table_name = $prefix . $table_name;
-      my $sql     = "CREATE TABLE " . $q->quote($tbl->{db}, $table_name)
-                  . " LIKE $tbl->{name}";
+      my $sql     = "CREATE TABLE " . $q->quote($orig_tbl->{db}, $table_name)
+                  . " LIKE $orig_tbl->{name}";
       PTDEBUG && _d($sql);
       eval {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
+         # Ignore this error because we're expecting it.
          next if $EVAL_ERROR =~ m/table.+?already exists/i;
-         die "Error creating new table: $EVAL_ERROR\n";
+
+         # Some other error happened.  Let the caller catch it.
+         die $EVAL_ERROR;
       }
-      print "OK\n";
       print $sql, "\n" if $o->get('print');
+      print "Done creating new table.\n";
       return { # success
-         db   => $tbl->{db},
+         db   => $orig_tbl->{db},
          tbl  => $table_name,
-         name => $q->quote($tbl->{db}, $table_name),
+         name => $q->quote($orig_tbl->{db}, $table_name),
       };
    }
 
+   # This shouldn't happen.
    die "Failed to find a unique new table name after serveral attempts.\n";
 }
 
@@ -5826,40 +5860,53 @@ sub swap_tables {
    }
    my ($orig_tbl, $new_tbl, $cxn, $q, $o) = @args{@required_args};
 
-   my $prefix          = '_';
-   my $table_name      = $orig_tbl->{tbl} . ($args{suffix} || '');
-   my $tries           = 10;  # don't try forever
+   my $prefix     = '_';
+   my $table_name = $orig_tbl->{tbl} . ($args{suffix} || '');
+   my $tries      = 10;  # don't try forever
 
+   # This sub only works for --execute.  Since the options are
+   # mutually exclusive and we return in the if case, the elsif
+   # is just a paranoid check because swapping the tables is one
+   # of the most sensitive/dangerous operations.
    if ( $o->get('dry-run') ) {
-      print "\nNot swapping tables because this is a dry run.\n";
-      return;
+      print "Not swapping tables because this is a dry run.\n";
+
+      # A return value really isn't needed, but this trick allows
+      # rebuild_constraints() to parse and show the sql statements
+      # it would used.  Otherwise, this has no effect.      
+      return $orig_tbl;
    }
+   elsif ( $o->get('execute') ) {
+      print "Swapping tables...\n";
 
-   print "\nSwapping tables: ";
+      while ( $tries-- ) {
+         $table_name = $prefix . $table_name;
+         my $sql     = "RENAME TABLE $orig_tbl->{name} "
+                     . "TO " . $q->quote($orig_tbl->{db}, $table_name)
+                     . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
+         PTDEBUG && _d($sql); 
+         eval {
+            $cxn->dbh()->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            # Ignore this error because we're expecting it.
+            next if $EVAL_ERROR =~ m/table.+?already exists/i;
 
-   while ( $tries-- ) {
-      $table_name = $prefix . $table_name;
-      my $sql     = "RENAME TABLE $orig_tbl->{name} "
-                  . "TO " . $q->quote($orig_tbl->{db}, $table_name)
-                  . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
-      PTDEBUG && _d($sql); 
-      eval {
-         $cxn->dbh()->do($sql);
-      };
-      if ( $EVAL_ERROR ) {
-         next if $EVAL_ERROR =~ m/table.+?already exists/i;
-         die "Error renaming table: $EVAL_ERROR\n";
+            # Some other error happened.  Let caller catch it.
+            die $EVAL_ERROR;
+         }
+         print $sql, "\n" if $o->get('print');
+         print "Done swapping tables.\n";
+         return { # success
+            db   => $orig_tbl->{db},
+            tbl  => $table_name,
+            name => $q->quote($orig_tbl->{db}, $table_name),
+         };
       }
-      print "OK\n";
-      print $sql, "\n" if $o->get('print');
-      return { # success
-         db   => $orig_tbl->{db},
-         tbl  => $table_name,
-         name => $q->quote($orig_tbl->{db}, $table_name),
-      };
-   }
 
-   die "Failed to find a unique old table name after serveral attempts.\n";
+      # This shouldn't happen.
+      die "Failed to find a unique old table name after serveral attempts.\n";
+   }
 }
 
 sub check_orig_table {
@@ -5929,7 +5976,7 @@ sub check_orig_table {
    return;  # success
 }
 
-sub fin_child_tables {
+sub find_child_tables {
    my ( %args ) = @_;
    my @required_args = qw(tbl Cxn Quoter);
    foreach my $arg ( @required_args ) {
@@ -5942,21 +5989,18 @@ sub fin_child_tables {
            . "WHERE constraint_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
    PTDEBUG && _d($sql);
-   my $child_tables;
-   eval {
-      $child_tables = $cxn->dbh()->selectall_arrayref($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      die "Error executing query to check $tbl->{name} for child tables.\n\n"
-         . "Query: $sql\n\n"
-         . "Error: $EVAL_ERROR"
+   my $child_tables = $cxn->dbh()->selectall_arrayref($sql);
+   if ( !$child_tables || !@$child_tables ) {
+      PTDEBUG && _d('No child tables found');
+      return;
    }
 
-   PTDEBUG && _d("Child tables:", join(', ', map { $_->[0] } @$child_tables));
-   return map { $_->[0] } @$child_tables;
+   PTDEBUG && _d("Child tables:", Dumper($child_tables));
+   my @child_tables = map { $_->[0] } @$child_tables;
+   return \@child_tables;
 }
 
-sub update_foreign_key_constraints {
+sub rebuild_constraints {
    my ( %args ) = @_;
    my @required_args = qw(orig_tbl old_tbl child_tables
                           Cxn Quoter OptionParser);
@@ -5966,7 +6010,15 @@ sub update_foreign_key_constraints {
    my ($orig_tbl, $old_tbl, $child_tables, $cxn, $q, $o)
       = @args{@required_args};
 
-   my $constraint = qr/^\s+(CONSTRAINT.+?REFERENCES `$old_tbl->{tbl}`.+)$/m;
+   my $exit_status = 0;
+   my $constraint  = qr/^\s+(CONSTRAINT.+?REFERENCES `$old_tbl->{tbl}`.+)$/m;
+
+   if ( $o->get('dry-run') ) {
+      print "Not rebuilding foreign key constraints because this is a dry run.\n";
+   }
+   else {
+      print "Rebuilding foreign key constraints...\n";
+   }
 
    CHILD_TABLE:
    foreach my $child_table ( @$child_tables ) {
@@ -5992,35 +6044,42 @@ sub update_foreign_key_constraints {
 
       foreach my $constraint ( @constraints ) {
          my ($fk_symbol) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
-         $sql = "ALTER TABLE $child_table DROP FOREIGN KEY $fk_symbol";
-         if ( $o->get('print') ) {
-            print "-- $sql\n";
-         }
-         else {
-            $cxn->dbh()->do($sql);
-         }
 
+         # Drop the reference to the old table/renamed orig table.
+         $sql = "ALTER TABLE $child_table DROP FOREIGN KEY $fk_symbol";
+         print $sql, "\n"      if $o->get('print');
+         $cxn->dbh()->do($sql) if $o->get('execute');
+
+         # Make the child reference the new table, i.e. the table name it
+         # originally referenced instead of the old/renamed orig table.
          $constraint =~ s/REFERENCES `$old_tbl->{tbl}`/REFERENCES `$orig_tbl->{tbl}`/o;
          $sql = "ALTER TABLE $child_table ADD $constraint"; 
-         if ( $o->get('print') ) {
-            print "-- $sql\n";
-         }
-         else {
-            $cxn->dbh()->do($sql);
-         }
+         print $sql, "\n"      if $o->get('print');
+         $cxn->dbh()->do($sql) if $o->get('execute');
       }
+   }
+
+   if ( $o->get('execute') ) {
+      print "Done rebuilding foreign key constraints.\n";
    }
 
    return;
 }
 
-sub drop_and_rename_orig_table {
+sub drop_and_swap_orig_table {
    my ( %args ) = @_;
    my @required_args = qw(orig_tbl new_tbl Cxn OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($orig_tbl, $new_tbl, $cxn, $o) = @args{@required_args};
+
+   if ( $o->get('dry-run') ) {
+      print "Not drop-swapping tables because this is a dry run.\n";
+   }
+   else {
+      print "Drop-swapping tables...\n";
+   }
 
    my @sqls = (
       "SET foreign_key_checks=0",
@@ -6030,12 +6089,12 @@ sub drop_and_rename_orig_table {
 
    foreach my $sql ( @sqls ) {
       PTDEBUG && _d($sql);
-      if ( $o->get('print') ) {
-         print "-- $sql\n";
-      }
-      else {
-         $cxn->dbh()->do($sql);
-      }
+      print $sql, "\n"      if $o->get('print');
+      $cxn->dbh()->do($sql) if $o->get('execute');
+   }
+
+   if ( $o->get('execute') ) {
+      print "Done drop-swapping tables.\n";
    }
 
    return;
@@ -6049,11 +6108,14 @@ sub create_triggers {
    }
    my ($orig_tbl, $new_tbl, $cols, $cxn, $q, $o) = @args{@required_args};
 
+   # This sub works for --dry-run and --execute.  With --dry-run it's
+   # only interesting if --print is specified, too; then the user can
+   # see the create triggers statements for --execute.
    if ( $o->get('dry-run') ) {
-      print "\nNot creating triggers because this is a dry run.\n";
+      print "Not creating triggers because this is a dry run.\n";
    }
    else {
-      print "\nCreating triggers: ";
+      print "Creating triggers...\n";
    }
 
    # To be safe, the delete trigger must specify all the columns of the
@@ -6093,6 +6155,7 @@ sub create_triggers {
    @drop_trigger_sqls = ();
    foreach my $trg ( @triggers ) {
       my ($name, $sql) = @$trg;
+      print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
          $cxn->dbh()->do($sql);
       }
@@ -6104,11 +6167,7 @@ sub create_triggers {
    }
 
    if ( $o->get('execute') ) {
-      print "OK\n";
-   }
-
-   if ( $o->get('print') ) {
-      print $_->[1], "\n" for @triggers;
+      print "Done creating triggers.\n";
    }
 
    return;
@@ -6124,28 +6183,34 @@ sub drop_triggers {
 
    my $exit_status = 0;
 
+   # This sub works for --dry-run and --execute, although --dry-run is
+   # only interesting with --print so the user can see the drop trigger
+   # statements for --execute.
    if ( $o->get('dry-run') ) {
-      print "\nNot dropping triggers because this is a dry run.\n";
+      print "Not dropping triggers because this is a dry run.\n";
    }
    else {
-      print "\nDropping triggers: ";
-      foreach my $sql ( @drop_trigger_sqls ) {
+      print "Dropping triggers...\n";
+   }
+
+   # The statements are shifted/removed so that if one fails, the caller
+   # can report which triggers are left to drop manually.
+   while ( my $sql = shift @drop_trigger_sqls ) {
+      print $sql, "\n" if $o->get('print');
+      if ( $o->get('execute') ) {
          eval {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            print "ERROR\n" if $exit_status == 0;
-            warn "Error dropping trigger:\n\n$EVAL_ERROR\n";
+            warn "Error dropping trigger: $EVAL_ERROR\n";
             $exit_status = 1;
          }
       }
-      print "OK\n" if $exit_status == 0;
    }
 
-   if ( $o->get('print') ) {
-      print $_, "\n" for @drop_trigger_sqls;
+   if ( $o->get('execute') && $exit_status == 0) {
+      print "Done dropping triggers.\n";
    }
-
    return $exit_status;
 }
 
@@ -6522,6 +6587,8 @@ tool is doing.  Warnings, errors, and L<"--progress"> are printed to STDERR.
 
 L<"--dry-run"> and L<"--execute"> are mutually exclusive.
 
+L<"--child-tables"> and L<"--find-child-tables"> are mutually exclusive.
+
 This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
 
@@ -6600,7 +6667,7 @@ incorrect syntax.
 
 =item --child-tables
 
-type: string
+type: array
 
 Foreign key constraints in these (child) tables reference the table.
 If the table being altered is a parent to tables which reference it with
