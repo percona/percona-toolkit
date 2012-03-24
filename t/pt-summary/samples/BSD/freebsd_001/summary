@@ -1,0 +1,10 @@
+platform    FreeBSD
+hostname    
+uptime    57 mins, 1 user, load averages: 0.16, 0.03, 0.07
+kernel    199506
+release    8.2-RELEASE
+CPU_ARCH    32-bit
+OS_ARCH    32-bit
+virt    No virtualization detected
+rss    18558976
+raid_controller    No RAID controller detected

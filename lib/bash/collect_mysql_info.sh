@@ -25,6 +25,9 @@
 # THIS LIB REQUIRES log_warn_die.sh, summary_common.sh, and alt_cmds.sh!
 # XXX
 
+CMD_MYSQL="${CMD_MYSQL:-""}"
+CMD_MYSQLDUMP="${CMD_MYSQLDUMP:-""}"
+
 # Simply looks for instances of mysqld in the outof of ps.
 collect_mysqld_instances () {
    local file="$1"
@@ -36,7 +39,7 @@ collect_mysqld_instances () {
 # interested in, in case there are multiple instances.
 find_my_cnf_file() {
    local file="$1"
-   local port=${2:-""}
+   local port="${2:-""}"
 
    local cnf_file=""
    if test -n "$port" && grep -- "/mysqld.*--port=$port" "${file}" >/dev/null 2>&1 ; then
@@ -100,7 +103,7 @@ collect_mysql_processlist () {
 
 collect_mysql_users () {
    local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' > "$file" 2>/dev/null
 }
 
 collect_master_logs_status () {

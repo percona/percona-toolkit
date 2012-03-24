@@ -51,12 +51,12 @@ fuzzy_formula='
 # Does fuzzy rounding: rounds to nearest interval, but the interval gets larger
 # as the number gets larger.  This is to make things easier to diff.
 fuzz () {
-   echo $1 | awk "{fuzzy_var=\$1; ${fuzzy_formula} print fuzzy_var;}"
+   awk -v fuzzy_var="$1" "BEGIN { ${fuzzy_formula} print fuzzy_var;}"
 }
 
 # Fuzzy computes the percent that $1 is of $2
 fuzzy_pct () {
-   local pct="$(echo $1 $2 | awk '{ if ($2 > 0) { printf "%d", $1/$2*100; } else {print 0} }')";
+   local pct="$(awk -v one="$1" -v two="$2" 'BEGIN{ if (two > 0) { printf "%d", one/two*100; } else {print 0} }')";
    echo "$(fuzz "${pct}")%"
 }
 

@@ -1,0 +1,10 @@
+platform    OpenBSD
+hostname    openbsd.my.domain
+uptime     1:14, 1 user, load averages: 0.44, 0.20, 0.16
+kernel    201111
+release    5.0
+CPU_ARCH    32-bit
+OS_ARCH    32-bit
+virt    No virtualization detected
+rss    5541888
+raid_controller    No RAID controller detected

@@ -26,16 +26,9 @@ POSIXLY_CORRECT=1
 
 # Accepts a number of seconds, and outputs a d+h:m:s formatted string
 secs_to_time () {
-   echo "$1" | awk '{
-      printf( "%d+%02d:%02d:%02d", $1 / 86400, ($1 % 86400) / 3600, ($1 % 3600) / 60, $1 % 60);
+   awk -v sec="$1" 'BEGIN {
+      printf( "%d+%02d:%02d:%02d", sec / 86400, (sec % 86400) / 3600, (sec % 3600) / 60, sec % 60);
    }'
-}
-
-# Returns true if a variable exists
-var_exists () {
-   local varname="$1"
-   local file="$2"
-   grep "${varname}" "${file}" >/dev/null 2>&1;
 }
 
 # Returns "Enabled", "Disabled", or "Not Supported" depending on whether the
@@ -44,7 +37,10 @@ var_exists () {
 # (string equal) to some value.
 feat_on() {
    local file="$1"
-   if var_exists "$2" "${file}" ; then
+
+   test ! -e "$file" && return
+
+   if get_var "$2" "${file}" 1>/dev/null 2>&1 ; then
       local var="$(awk "\$1 ~ /^$2$/ { print \$2 }" $file)"
       if [ "${var}" = "ON" ]; then
          echo "Enabled"
@@ -74,8 +70,11 @@ feat_on() {
 
 get_table_cache () {
    local file="$1"
+
+   test ! -e "$file" && return
+
    local table_cache=""
-   if var_exists table_open_cache "${file}"; then
+   if get_var table_open_cache "${file}" 1>/dev/null 2>&1; then
       table_cache="$(get_var table_open_cache "${file}")"
    else
       table_cache="$(get_var table_cache "${file}")"
@@ -106,8 +105,11 @@ parse_mysqld_instances () {
    local socket=${socket:-""}
    local port=${port:-""}
    local datadir="${datadir:-""}"
-   echo "  Port  Data Directory             Nice OOM Value Socket"
-   echo "  ===== ========================== ==== ========= ======"
+
+   test ! -e "$file" && return
+
+   echo "  Port  Data Directory             Nice OOM Socket"
+   echo "  ===== ========================== ==== === ======"
 
    grep '/mysqld ' "$file" | while read line; do
       local pid=$(echo "$line" | awk '{print $2;}')
@@ -131,13 +133,16 @@ parse_mysqld_instances () {
          nice="?"
          oom="?"
       fi
-      printf "  %5s %-26s %-4s %-9s %s\n" "${port}" "${datadir}" "${nice}" "${oom}" "${socket}"
+      printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice}" "${oom}" "${socket}"
    done
 }
 
 # Gets the MySQL system time.  Uses input from $MYSQL_VARIABLES_FILE.
 get_mysql_timezone () {
-   local file="${1:-$MYSQL_VARIABLES_FILE}"
+   local file="$1"
+
+   test ! -e "$file" && return
+
    local tz="$(get_var time_zone "${file}")"
    if [ "${tz}" = "SYSTEM" ]; then
       tz="$(get_var system_time_zone "${file}")"
@@ -148,6 +153,7 @@ get_mysql_timezone () {
 # Gets the MySQL system version.
 get_mysql_version () {
    local file="$1"
+
    name_val Version "$(get_var version "${file}") $(get_var version_comment "${file}")"
    name_val "Built On" "$(get_var version_compile_os "${file}") $(get_var version_compile_machine "${file}")"
 }
@@ -163,6 +169,9 @@ get_mysql_uptime () {
 # Summarizes the output of SHOW MASTER LOGS.
 summarize_binlogs () {
    local file="$1"
+
+   test ! -e "$file" && return
+
    local size="$(awk '{t += $2} END{printf "%0.f\n", t}' "$file")"
    name_val "Binlogs" $(wc -l "$file")
    name_val "Zero-Sized" $(grep -c '\<0$' "$file")
@@ -171,12 +180,14 @@ summarize_binlogs () {
 
 format_users () {
    local file="$1"
+   test ! -e "$file" && return
    awk '{printf "%d users, %d anon, %d w/o pw, %d old pw\n", $1, $2, $3, $4}' "${file}"
 }
 
 # Print out binlog_do_db and binlog_ignore_db
 format_binlog_filters () {
    local file="$1"
+   test ! -e "$file" && return
    name_val "binlog_do_db" "$(cut -f3 "$file")"
    name_val "binlog_ignore_db" "$(cut -f4 "$file")"
 }
@@ -187,6 +198,8 @@ format_binlog_filters () {
 # samples.  Omits any rows that are all zeroes.
 format_status_variables () {
    local file="$1"
+   test ! -e "$file" && return
+
    # First, figure out the intervals.
    utime1="$(awk '/Uptime /{print $2}' "$file")";
    utime2="$(awk '/Uptime /{print $3}' "$file")";
@@ -240,6 +253,9 @@ format_status_variables () {
 # non-Sleep processes get counted towards the sum and max of Time.
 summarize_processlist () {
    local file="$1"
+
+   test ! -e "$file" && return
+
    for param in Command User Host db State; do
       echo
       printf '  %-30s %8s %7s %9s %9s\n' \
@@ -293,6 +309,9 @@ summarize_processlist () {
 # the below patterns contain [<space><tab>] and must remain that way.
 pretty_print_cnf_file () {
    local file="$1"
+
+   test ! -e "$file" && return
+
    awk '
    BEGIN {
       FS="="
@@ -339,6 +358,9 @@ find_checkpoint_age() {
 
 find_pending_io_reads() {
    local file="$1"
+
+   test ! -e "$file" && return
+
    awk '
    /Pending normal aio reads/ {
       normal_aio_reads  = substr($5, 1, index($5, ","));
@@ -361,6 +383,9 @@ find_pending_io_reads() {
 
 find_pending_io_writes() {
    local file="$1"
+
+   test ! -e "$file" && return
+
    awk '
    /aio writes/ {
       aio_writes = substr($NF, 1, index($NF, ","));
@@ -389,6 +414,9 @@ find_pending_io_writes() {
 
 find_pending_io_flushes() {
    local file="$1"
+
+   test ! -e "$file" && return
+
    awk '
    /Pending flushes/ {
       log_flushes = substr($5, 1, index($5, ";"));
@@ -402,6 +430,9 @@ find_pending_io_flushes() {
 
 summarize_undo_log_entries() {
    local file="$1"
+
+   test ! -e "$file" && return
+
    grep 'undo log entries' "${file}" \
       | sed -e 's/^.*undo log entries \([0-9]*\)/\1/' \
       | awk '
@@ -419,6 +450,9 @@ summarize_undo_log_entries() {
 
 find_max_trx_time() {
    local file="$1"
+
+   test ! -e "$file" && return
+
    awk '
    BEGIN {
       max = 0;
@@ -441,6 +475,9 @@ find_max_trx_time() {
 find_transation_states () {
    local file="$1"
    local tmpfile="$TMPDIR/find_transation_states.tmp"
+
+   test ! -e "$file" && return
+
    awk -F, '/^---TRANSACTION/{print $2}' "${file}"   \
                         | sed -e 's/ [0-9]* sec.*//' \
                         | sort                       \
@@ -451,6 +488,9 @@ find_transation_states () {
 # Summarizes various things about InnoDB status that are not easy to see by eye.
 format_innodb_status () {
    local file=$1
+
+   test ! -e "$file" && return
+
    name_val "Checkpoint Age"      "$(shorten $(find_checkpoint_age "${file}") 0)"
    name_val "InnoDB Queue"        "$(awk '/queries inside/{print}' "${file}")"
    name_val "Oldest Transaction"  "$(find_max_trx_time "${file}") Seconds";
@@ -490,6 +530,9 @@ format_innodb_status () {
 format_overall_db_stats () {
    local file="$1"
    local tmpfile="$TMPDIR/format_overall_db_stats.tmp"
+
+   test ! -e "$file" && return
+
    echo
    # We keep counts of everything in an associative array keyed by db name, and
    # what it is.  The num_dbs counter is to ensure sort order is consistent when
@@ -781,6 +824,9 @@ format_overall_db_stats () {
 
 section_percona_server_features () {
    local file="$1"
+
+   test ! -e "$file" && return
+
    name_val "Table & Index Stats"   \
             "$(feat_on "$file" userstat_running)"
    name_val "Multiple I/O Threads"  \
@@ -811,13 +857,15 @@ section_myisam () {
    local variables_file="$1"
    local status_file="$2"
 
-   local buf_size=$(get_var key_buffer_size "$variables_file")
-   local blk_size=$(get_var key_cache_block_size "$variables_file")
-   local blk_unus=$(get_var Key_blocks_unused "$status_file")
-   local blk_unfl=$(get_var Key_blocks_not_flushed "$variables_file")
-   local unus=$((${blk_unus} * ${blk_size}))
-   local unfl=$((${blk_unfl} * ${blk_size}))
-   local used=$((${buf_size} - ${unus}))
+   test ! -e "$variables_file" -o ! -e "$status_file" && return
+
+   local buf_size="$(get_var key_buffer_size "$variables_file")"
+   local blk_size="$(get_var key_cache_block_size "$variables_file")"
+   local blk_unus="$(get_var Key_blocks_unused "$status_file")"
+   local blk_unfl="$(get_var Key_blocks_not_flushed "$variables_file")"
+   local unus=$((${blk_unus:-0} * ${blk_size:-0}))
+   local unfl=$((${blk_unfl:-0} * ${blk_size:-0}))
+   local used=$((${buf_size:-0} - ${unus}))
 
    name_val "Key Cache" "$(shorten ${buf_size} 1)"
    name_val "Pct Used" "$(fuzzy_pct ${used} ${buf_size})"
@@ -828,13 +876,15 @@ section_innodb () {
    local variables_file="$1"
    local status_file="$2"
 
+   test ! -e "$variables_file" -o ! -e "$status_file" && return
+
    # XXX TODO I don't think this is working right.
    # XXX TODO Should it use data from information_schema.plugins too?
    local version=$(get_var innodb_version "$variables_file")
    name_val Version ${version:-default}
 
    local bp_size="$(get_var innodb_buffer_pool_size "$variables_file")"
-   name_val "Buffer Pool Size" "$(shorten ${bp_size} 1)"
+   name_val "Buffer Pool Size" "$(shorten "${bp_size:-0}" 1)"
 
    local bp_pags="$(get_var Innodb_buffer_pool_pages_total "$status_file")"
    local bp_free="$(get_var Innodb_buffer_pool_pages_free "$status_file")"
@@ -848,7 +898,7 @@ section_innodb () {
 
    local log_size="$(get_var innodb_log_file_size "$variables_file")"
    local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
-   local log_total=$(echo 1 | awk "{printf \"%.2f\n\", ${log_size}*${log_file}}" )
+   local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
    name_val "Log File Size"       \
             "${log_file} * $(shorten ${log_size} 1 1000) = $(shorten ${log_total} 1 1000)"
    name_val "Log Buffer Size"     \
@@ -885,23 +935,25 @@ section_innodb () {
 section_noteworthy_variables () {
    local file="$1"
 
+   test ! -e "$file" && return
+
    name_val "Auto-Inc Incr/Offset" "$(get_var auto_increment_increment "$file")/$(get_var auto_increment_offset "$file")"
    for v in \
       default_storage_engine flush_time init_connect init_file sql_mode;
    do
-      name_val ${v} $(get_var ${v} "$file")
+      name_val "${v}" "$(get_var ${v} "$file")"
    done
    for v in \
       join_buffer_size sort_buffer_size read_buffer_size read_rnd_buffer_size \
       bulk_insert_buffer max_heap_table_size tmp_table_size \
       max_allowed_packet thread_stack;
    do
-      name_val ${v} $(shorten $(get_var ${v} "$file") 0)
+      name_val "${v}" "$(shorten $(get_var ${v} "$file") 0)"
    done
    for v in log log_error log_warnings log_slow_queries \
          log_queries_not_using_indexes log_slave_updates;
    do
-      name_val ${v} $(get_var ${v} "$file")
+      name_val "${v}" "$(get_var ${v} "$file")"
    done
 }
 
@@ -911,6 +963,8 @@ section_noteworthy_variables () {
 _semi_sync_stats_for () {
    local target="$1"
    local file="$2"
+
+   test ! -e "$file" && return
 
    local semisync_status="$(get_var "Rpl_semi_sync_${target}_status" "${file}" )"
    local semisync_trace="$(get_var "rpl_semi_sync_${target}_trace_level" "${file}")"
@@ -1011,7 +1065,7 @@ report_mysql_summary () {
    # ########################################################################
    local user="$(get_var "pt-summary-internal-user" "$dir/${prefix}-mysql-variables")"
    local port="$(get_var port "$dir/${prefix}-mysql-variables")"
-   local now="$(get_var "pt-summary-internal-NOW" "$dir/${prefix}-mysql-variables")"
+   local now="$(get_var "pt-summary-internal-now" "$dir/${prefix}-mysql-variables")"
    section "Report_On_Port_${port}"
    name_val User "${user}"
    name_val Time "${now} ($(get_mysql_timezone "$dir/${prefix}-mysql-variables"))"
@@ -1019,7 +1073,7 @@ report_mysql_summary () {
    get_mysql_version "$dir/${prefix}-mysql-variables"
 
    local uptime="$(get_var Uptime "$dir/${prefix}-mysql-status")"
-   local current_time="$(get_var "pt-summary-internal-current_time" "$dir/${prefix}-mysql-status")"
+   local current_time="$(get_var "pt-summary-internal-current_time" "$dir/${prefix}-mysql-variables")"
    name_val Started "$(get_mysql_uptime "${uptime}" "${current_time}")"
 
    local num_dbs="$(grep -c . "$dir/${prefix}-mysql-databases")"
@@ -1181,27 +1235,32 @@ report_mysql_summary () {
          name_val "Partitioning" No
       fi
    fi
-   if [ "$(get_var Ssl_accepts "$dir/${prefix}-mysql-status")" -gt 0 ]; then
+   local ssl="$(get_var Ssl_accepts "$dir/${prefix}-mysql-status")"
+   if [ -n "$ssl" -a "${ssl:-0}" -gt 0 ]; then
       name_val "SSL" Yes
    else
       name_val "SSL" No
    fi
-   if [ "$(get_var Com_lock_tables "$dir/${prefix}-mysql-status")" -gt 0 ]; then
+   local lock_tables="$(get_var Com_lock_tables "$dir/${prefix}-mysql-status")"
+   if [ -n "$lock_tables" -a "${lock_tables:-0}" -gt 0 ]; then
       name_val "Explicit LOCK TABLES" Yes
    else
       name_val "Explicit LOCK TABLES" No
    fi
-   if [ "$(get_var Delayed_writes "$dir/${prefix}-mysql-status")" -gt 0 ]; then
+   local delayed_insert="$(get_var Delayed_writes "$dir/${prefix}-mysql-status")"
+   if [ -n "$delayed_insert" -a "${delayed_insert:-0}" -gt 0 ]; then
       name_val "Delayed Insert" Yes
    else
       name_val "Delayed Insert" No
    fi
-   if [ "$(get_var Com_xa_start "$dir/${prefix}-mysql-status")" -gt 0 ]; then
+   local xat="$(get_var Com_xa_start "$dir/${prefix}-mysql-status")"
+   if [ -n "$xat" -a "${xat:-0}" -gt 0 ]; then
       name_val "XA Transactions" Yes
    else
       name_val "XA Transactions" No
    fi
-   if [ "$(get_var Ndb_cluster_node_id "$dir/${prefix}-mysql-status")" -gt 0 ]; then
+   local ndb_cluster="$(get_var Ndb_cluster_node_id "$dir/${prefix}-mysql-status")"
+   if [ -n "$ndb_cluster" -a "${ndb_cluster:-0}" -gt 0 ]; then
       name_val "NDB Cluster" Yes
    else
       name_val "NDB Cluster" No
@@ -1221,7 +1280,7 @@ report_mysql_summary () {
    # InnoDB
    # ########################################################################
    section InnoDB
-   local have_innodb=$(get_var have_innodb "$dir/${prefix}-mysql-variables")
+   local have_innodb="$(get_var have_innodb "$dir/${prefix}-mysql-variables")"
    if [ "${have_innodb}" = "YES" ]; then
       section_innodb "$dir/${prefix}-mysql-variables" "$dir/${prefix}-mysql-status"
 
@@ -1255,9 +1314,9 @@ report_mysql_summary () {
       summarize_binlogs "$dir/${prefix}-mysql-master-logs"
       local format="$(get_var binlog_format "$dir/${prefix}-mysql-variables")"
       name_val binlog_format "${format:-STATEMENT}"
-      name_val expire_logs_days $(get_var expire_logs_days "$dir/${prefix}-mysql-variables")
-      name_val sync_binlog $(get_var sync_binlog "$dir/${prefix}-mysql-variables")
-      name_val server_id $(get_var server_id "$dir/${prefix}-mysql-variables")
+      name_val expire_logs_days "$(get_var expire_logs_days "$dir/${prefix}-mysql-variables")"
+      name_val sync_binlog "$(get_var sync_binlog "$dir/${prefix}-mysql-variables")"
+      name_val server_id "$(get_var server_id "$dir/${prefix}-mysql-variables")"
       format_binlog_filters "$dir/${prefix}-mysql-master-status"
    fi
 

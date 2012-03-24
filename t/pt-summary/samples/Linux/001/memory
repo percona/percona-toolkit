@@ -1,0 +1,50 @@
+             total       used       free     shared    buffers     cached
+Mem:    2099851264 1599336448  500514816          0  204341248  762146816
+-/+ buffers/cache:  632848384 1467002880
+Swap:   2133848064          0 2133848064
+MemTotal:        2050636 kB
+MemFree:          488716 kB
+Buffers:          199552 kB
+Cached:           744284 kB
+SwapCached:            0 kB
+Active:           979228 kB
+Inactive:         472084 kB
+Active(anon):     740908 kB
+Inactive(anon):    26548 kB
+Active(file):     238320 kB
+Inactive(file):   445536 kB
+Unevictable:          16 kB
+Mlocked:              16 kB
+HighTotal:       1176152 kB
+HighFree:          14892 kB
+LowTotal:         874484 kB
+LowFree:          473824 kB
+SwapTotal:       2083836 kB
+SwapFree:        2083836 kB
+Dirty:               144 kB
+Writeback:             0 kB
+AnonPages:        507500 kB
+Mapped:           141176 kB
+Shmem:            259984 kB
+Slab:              68800 kB
+SReclaimable:      54100 kB
+SUnreclaim:        14700 kB
+KernelStack:        3168 kB
+PageTables:         8752 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:     3109152 kB
+Committed_AS:    2952180 kB
+VmallocTotal:     122880 kB
+VmallocUsed:       21448 kB
+VmallocChunk:      96704 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:         0 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       4096 kB
+DirectMap4k:       16376 kB
+DirectMap4M:      892928 kB
