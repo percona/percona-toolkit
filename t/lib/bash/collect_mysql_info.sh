@@ -50,9 +50,10 @@ no_diff \
 # collect_mysql_status
 $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' > "$TMPDIR/collect_mysql_status"
 
-pat='Com_\|Bytes_\|Handler_\|Created_\|Que\|Uptime\|Select_scan\|Connections\|Opened_files\|_created\|Table_locks\|Innodb'
-grep -v $pat "$p/percona-toolkit-mysql-status" > "$TMPDIR/collect_mysql_status_collect"
-grep -v $pat "$TMPDIR/collect_mysql_status" > "$TMPDIR/collect_mysql_status_manual"
+
+# TODO This is still pretty fragile.
+awk '{print $1}' "$p/percona-toolkit-mysql-status" | sort > "$TMPDIR/collect_mysql_status_collect"
+awk '{print $1}' "$TMPDIR/collect_mysql_status" | sort  > "$TMPDIR/collect_mysql_status_manual"
 
 no_diff \
    "$TMPDIR/collect_mysql_status_collect" \

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 29
+plan 30
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
