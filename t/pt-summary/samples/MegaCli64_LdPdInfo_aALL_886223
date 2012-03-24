@@ -1,0 +1,214 @@
+# /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
+                                     
+Adapter #0
+
+Number of Virtual Disks: 1
+Virtual Drive: 0 (Target Id: 0)
+Name                :
+RAID Level          : Primary-1, Secondary-3, RAID Level Qualifier-0
+Size                : 135.5 GB
+Mirror Data         : 135.5 GB
+State               : Optimal
+Strip Size          : 64 KB
+Number Of Drives per span:2
+Span Depth          : 2
+Default Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Current Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+Default Access Policy: Read/Write
+Current Access Policy: Read/Write
+Disk Cache Policy   : Disk's Default
+Encryption Type     : None
+Is VD Cached: No
+Number of Spans: 2
+Span: 0 - Number of PDs: 2
+
+PD: 0 Information
+Enclosure Device ID: 32
+Slot Number: 0
+Drive's postion: DiskGroup: 0, Span: 0, Arm: 0
+Enclosure position: 0
+Device Id: 0
+WWN: 5000C5001365F9E0
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 68.366 GB [0x88bb93a Sectors]
+Non Coerced Size: 67.866 GB [0x87bb93a Sectors]
+Coerced Size: 67.75 GB [0x8780000 Sectors]
+Firmware state: Online, Spun Up
+Device Firmware Level: SM04
+Shield Counter: 0
+Successful diagnostics completion on :  N/A
+SAS Address(0): 0x5000c5001365f9e1
+SAS Address(1): 0x0
+Connected Port Number: 0(path0) 
+Inquiry Data: SEAGATE ST973451SS      SM043PD2JH68            
+FDE Enable: Disable
+Secured: Unsecured
+Locked: Unlocked
+Needs EKM Attention: No
+Foreign State: None 
+Device Speed: Unknown 
+Link Speed: Unknown 
+Media Type: Hard Disk Device
+Drive Temperature :35C (95.00 F)
+PI Eligibility:  No 
+Drive is formatted for PI information:  No
+PI: No PI
+Drive's write cache : Disabled
+Port-0 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Port-1 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Drive has flagged a S.M.A.R.T alert : No
+
+
+
+
+PD: 1 Information
+Enclosure Device ID: 32
+Slot Number: 1
+Drive's postion: DiskGroup: 0, Span: 0, Arm: 1
+Enclosure position: 0
+Device Id: 1
+WWN: 5000C5001365F458
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 68.366 GB [0x88bb93a Sectors]
+Non Coerced Size: 67.866 GB [0x87bb93a Sectors]
+Coerced Size: 67.75 GB [0x8780000 Sectors]
+Firmware state: Online, Spun Up
+Device Firmware Level: SM04
+Shield Counter: 0
+Successful diagnostics completion on :  N/A
+SAS Address(0): 0x5000c5001365f459
+SAS Address(1): 0x0
+Connected Port Number: 1(path0) 
+Inquiry Data: SEAGATE ST973451SS      SM043PD2JH34            
+FDE Enable: Disable
+Secured: Unsecured
+Locked: Unlocked
+Needs EKM Attention: No
+Foreign State: None 
+Device Speed: Unknown 
+Link Speed: Unknown 
+Media Type: Hard Disk Device
+Drive Temperature :34C (93.20 F)
+PI Eligibility:  No 
+Drive is formatted for PI information:  No
+PI: No PI
+Drive's write cache : Disabled
+Port-0 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Port-1 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Drive has flagged a S.M.A.R.T alert : No
+
+
+
+Span: 1 - Number of PDs: 2
+
+PD: 0 Information
+Enclosure Device ID: 32
+Slot Number: 2
+Drive's postion: DiskGroup: 0, Span: 1, Arm: 0
+Enclosure position: 0
+Device Id: 2
+WWN: 5000C500136605E0
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 68.366 GB [0x88bb93a Sectors]
+Non Coerced Size: 67.866 GB [0x87bb93a Sectors]
+Coerced Size: 67.75 GB [0x8780000 Sectors]
+Firmware state: Online, Spun Up
+Device Firmware Level: SM04
+Shield Counter: 0
+Successful diagnostics completion on :  N/A
+SAS Address(0): 0x5000c500136605e1
+SAS Address(1): 0x0
+Connected Port Number: 2(path0) 
+Inquiry Data: SEAGATE ST973451SS      SM043PD2JKD3            
+FDE Enable: Disable
+Secured: Unsecured
+Locked: Unlocked
+Needs EKM Attention: No
+Foreign State: None 
+Device Speed: Unknown 
+Link Speed: Unknown 
+Media Type: Hard Disk Device
+Drive Temperature :34C (93.20 F)
+PI Eligibility:  No 
+Drive is formatted for PI information:  No
+PI: No PI
+Drive's write cache : Disabled
+Port-0 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Port-1 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Drive has flagged a S.M.A.R.T alert : No
+
+
+
+
+PD: 1 Information
+Enclosure Device ID: 32
+Slot Number: 3
+Drive's postion: DiskGroup: 0, Span: 1, Arm: 1
+Enclosure position: 0
+Device Id: 3
+WWN: 5000C5001365C7F4
+Sequence Number: 2
+Media Error Count: 0
+Other Error Count: 0
+Predictive Failure Count: 0
+Last Predictive Failure Event Seq Number: 0
+PD Type: SAS
+Raw Size: 68.366 GB [0x88bb93a Sectors]
+Non Coerced Size: 67.866 GB [0x87bb93a Sectors]
+Coerced Size: 67.75 GB [0x8780000 Sectors]
+Firmware state: Online, Spun Up
+Device Firmware Level: SM04
+Shield Counter: 0
+Successful diagnostics completion on :  N/A
+SAS Address(0): 0x5000c5001365c7f5
+SAS Address(1): 0x0
+Connected Port Number: 3(path0) 
+Inquiry Data: SEAGATE ST973451SS      SM043PD2GJKA            
+FDE Enable: Disable
+Secured: Unsecured
+Locked: Unlocked
+Needs EKM Attention: No
+Foreign State: None 
+Device Speed: Unknown 
+Link Speed: Unknown 
+Media Type: Hard Disk Device
+Drive Temperature :32C (89.60 F)
+PI Eligibility:  No 
+Drive is formatted for PI information:  No
+PI: No PI
+Drive's write cache : Disabled
+Port-0 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Port-1 :
+Port status: Active
+Port's Linkspeed: Unknown 
+Drive has flagged a S.M.A.R.T alert : No
+

@@ -23,6 +23,10 @@
 
 set -u
 
+CMD_FILE="$( _which file 2>/dev/null )"
+CMD_NM="$( _which nm 2>/dev/null )"
+CMD_OBJDUMP="$( _which objdump 2>/dev/null )"
+
 # Tries to find the niceness of the passed in PID. First with ps, and
 # failing that, with a bit of C, using getpriority().
 # Returns the nice for the pid, or "?" if it can't find any.
@@ -92,10 +96,6 @@ get_oom_of_pid () {
    fi
 }
 
-CMD_FILE="$( _which file 2>/dev/null )"
-CMD_NM="$( _which nm 2>/dev/null )"
-CMD_OBJDUMP="$( _which objdump 2>/dev/null )"
-
 has_symbols () {
    local executable="$(_which "$1")"
    local has_symbols=""
@@ -117,10 +117,8 @@ has_symbols () {
 
    if [ "${has_symbols}" ]; then
       echo "Yes"
-      return 0
    else
       echo "No"
-      return 1
    fi
 }
 
@@ -142,14 +140,17 @@ setup_data_dir () {
    echo "$data_dir"
 }
 
-# gets a value from the passed in file.  Returns _GET_VAR_DEFAULT if it doesn't
-# exist, which unless changed is 0.
-_GET_VAR_DEFAULT=0
+# gets a value from the passed in file.
 get_var () {
    local varname="$1"
    local file="$2"
-   local v="$(awk "\$1 ~ /^${varname}$/ { print \$2 }" "${file}")"
-   echo "${v:-$_GET_VAR_DEFAULT}"
+   local v="$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
+   if [ -n "$v" ]; then
+      echo "$v"
+      return 0
+   else
+      return 1
+   fi
 }
 
 # ###########################################################################

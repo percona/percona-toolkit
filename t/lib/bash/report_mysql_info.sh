@@ -128,23 +128,23 @@ no_diff "$TMPDIR/expected" "$TMPDIR/got" "summarize_binlogs"
 # ###########################################################################
 
 cat <<EOF > "$TMPDIR/expected"
-   master semisync status | 0
+   master semisync status | 
        master trace level | 32, net wait (more information about network waits)
 master timeout in milliseconds | 10000
   master waits for slaves | ON
-           master clients | 0
- master net_avg_wait_time | 0
-     master net_wait_time | 0
-         master net_waits | 0
-          master no_times | 0
-             master no_tx | 0
- master timefunc_failures | 0
-  master tx_avg_wait_time | 0
-      master tx_wait_time | 0
-          master tx_waits | 0
-master wait_pos_backtraverse | 0
-     master wait_sessions | 0
-            master yes_tx | 0
+           master clients | 
+ master net_avg_wait_time | 
+     master net_wait_time | 
+         master net_waits | 
+          master no_times | 
+             master no_tx | 
+ master timefunc_failures | 
+  master tx_avg_wait_time | 
+      master tx_wait_time | 
+          master tx_waits | 
+master wait_pos_backtraverse | 
+     master wait_sessions | 
+            master yes_tx | 
 EOF
 
 _semi_sync_stats_for "master" "$samples/mysql-variables-with-semisync.txt" > "$TMPDIR/got"
@@ -267,36 +267,36 @@ is \
 _NO_FALSE_NEGATIVES=1
 
 cat <<EOF > $TMPDIR/expected
-  Port  Data Directory             Nice OOM Value Socket
-  ===== ========================== ==== ========= ======
-   3306 /var/lib/mysql             ?    ?         /var/run/mysqld/mysqld.sock
-  12345 /tmp/12345/data            ?    ?         /tmp/12345/mysql_sandbox12345.sock
-  12346 /tmp/12346/data            ?    ?         /tmp/12346/mysql_sandbox12346.sock
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+   3306 /var/lib/mysql             ?    ?   /var/run/mysqld/mysqld.sock
+  12345 /tmp/12345/data            ?    ?   /tmp/12345/mysql_sandbox12345.sock
+  12346 /tmp/12346/data            ?    ?   /tmp/12346/mysql_sandbox12346.sock
 EOF
 parse_mysqld_instances "$samples/ps-mysqld-001.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-001.txt"
 
 cat <<EOF > "$TMPDIR/expected"
-  Port  Data Directory             Nice OOM Value Socket
-  ===== ========================== ==== ========= ======
-        /var/lib/mysql             ?    ?         /var/lib/mysql/mysql.sock
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+        /var/lib/mysql             ?    ?   /var/lib/mysql/mysql.sock
 EOF
 parse_mysqld_instances "$samples/ps-mysqld-002.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-002.txt"
 
 #parse_mysqld_instances
 cat <<EOF > $TMPDIR/expected
-  Port  Data Directory             Nice OOM Value Socket
-  ===== ========================== ==== ========= ======
-   3306 /mnt/data-store/mysql/data ?    ?         /tmp/mysql.sock
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+   3306 /mnt/data-store/mysql/data ?    ?   /tmp/mysql.sock
 EOF
 parse_mysqld_instances "$samples/ps-mysqld-003.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-003.txt"
 
 cat <<EOF > "$TMPDIR/expected"
-  Port  Data Directory             Nice OOM Value Socket
-  ===== ========================== ==== ========= ======
-        /var/db/mysql              ?    ?         
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+        /var/db/mysql              ?    ?   
 EOF
 
 cat <<EOF > "$TMPDIR/in"
@@ -304,7 +304,7 @@ mysql   767  0.0  0.9  3492  1100  v0  I     3:01PM   0:00.07 /bin/sh /usr/local
 mysql   818  0.0 17.4 45292 20584  v0  I     3:01PM   0:02.28 /usr/local/libexec/mysqld --defaults-extra-file=/var/db/mysql/my.cnf --basedir=/usr/local --datadir=/var/db/mysql --user=mysql --log-error=/var/db/mysql/freebsd.hsd1.va.comcast.net..err --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
 EOF
 parse_mysqld_instances "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_mysqld_instances"
 
 # ###########################################################################
 # get_mysql_*
@@ -655,7 +655,7 @@ test_format_innodb () {
                 Page Size | 16k
             Log File Size | 2 * 1.5G = 3.0G
           Log Buffer Size | 8M
-             Flush Method | 0
+             Flush Method | 
       Flush Log At Commit | 1
                XA Support | ON
                 Checksums | ON
@@ -670,7 +670,7 @@ test_format_innodb () {
       Adaptive Checkpoint | estimate
 EOF
 
-   section_innodb $samples/temp001/percona-toolkit-mysql-variables $samples/temp001/percona-toolkit-mysql-status > $TMPDIR/got
+   section_innodb "$samples/temp001/percona-toolkit-mysql-variables" $samples/temp001/percona-toolkit-mysql-status > $TMPDIR/got
    no_diff $TMPDIR/expected $TMPDIR/got
 }
 
@@ -689,8 +689,8 @@ format_innodb_filters_test () {
     binlog_ignore_db | mysql,test
 EOF
 
-   format_binlog_filters $samples/mysql-show-master-status-001.txt > $TMPDIR/got
-   no_diff $TMPDIR/got $TMPDIR/expected
+   format_binlog_filters "$samples/mysql-show-master-status-001.txt" > $TMPDIR/got
+   no_diff "$TMPDIR/got" "$TMPDIR/expected"
 }
 
 format_innodb_filters_test
@@ -703,8 +703,12 @@ OPT_SLEEP=1
 OPT_DUMP_SCHEMAS="mysql"
 NAME_VAL_LEN=25
 _NO_FALSE_NEGATIVES=1
-report_mysql_summary "$samples/tempdir" "percona-toolkit" | tail -n+3 > $TMPDIR/got
+report_mysql_summary "$samples/tempdir" "percona-toolkit" | tail -n+3 > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$samples/expected_result_report_summary.txt"
+
+OPT_SLEEP=10
+report_mysql_summary "$samples/temp002" "percona-toolkit" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+no_diff "$TMPDIR/got" "$samples/expected_output_temp002.txt"
 
 # ###########################################################################
 # Done

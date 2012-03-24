@@ -1,16 +1,16 @@
 # Instances ##################################################
-  Port  Data Directory             Nice OOM Value Socket
-  ===== ========================== ==== ========= ======
-   3306 /var/lib/mysql             ?    ?         /var/run/mysqld/mysqld.sock
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+   3306 /var/lib/mysql             ?    ?   /var/run/mysqld/mysqld.sock
 # MySQL Executable ###########################################
               Has symbols | No
 # Report On Port 3306 ########################################
-                     User | 0
-                     Time | 0 (ART)
+                     User | 
+                     Time | 2012-02-22 06:24:23 (ART)
                  Hostname | msandbox
                   Version | 5.1.58-1ubuntu1-log (Ubuntu)
                  Built On | debian-linux-gnu i686
-                  Started | 0 (up 0+00:02:43)
+                  Started | 2012-02-22 06:21 (up 0+00:02:43)
                 Databases | 3
                   Datadir | /var/lib/mysql/
                 Processes | 1 connected, 1 running
@@ -116,9 +116,6 @@ Uptime                                    90000           1           1
                      Size | 16.0M
                     Usage | 0%
          HitToInsertRatio | 0%
-# Semisynchronous Replication ################################
-                   Master | Disabled
-                    Slave | Disabled
 # Schema #####################################################
 
   Database Tables Views SPs Trigs Funcs   FKs Partn
@@ -155,7 +152,7 @@ Uptime                                    90000           1           1
       Prepared Statements | No
  Prepared statement count | 0
 # InnoDB #####################################################
-                  Version | 0
+                  Version | default
          Buffer Pool Size | 8.0M
          Buffer Pool Fill | 3%
         Buffer Pool Dirty | 0%
@@ -163,19 +160,19 @@ Uptime                                    90000           1           1
                 Page Size | 16k
             Log File Size | 2 * 5.0M = 10.0M
           Log Buffer Size | 1M
-             Flush Method | 0
+             Flush Method | 
       Flush Log At Commit | 1
                XA Support | ON
                 Checksums | ON
               Doublewrite | ON
-          R/W I/O Threads | 0 0
-             I/O Capacity | 0
+          R/W I/O Threads |  
+             I/O Capacity | 
        Thread Concurrency | 8
       Concurrency Tickets | 500
        Commit Concurrency | 0
       Txn Isolation Level | REPEATABLE-READ
-        Adaptive Flushing | 0
-      Adaptive Checkpoint | 0
+        Adaptive Flushing | 
+      Adaptive Checkpoint | 
            Checkpoint Age | 0
              InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
        Oldest Transaction | 0 Seconds
@@ -209,16 +206,16 @@ Uptime                                    90000           1           1
          binlog_ignore_db | 
 # Noteworthy Variables #######################################
      Auto-Inc Incr/Offset | 1/1
-   default_storage_engine | 0
+   default_storage_engine | 
                flush_time | 0
-             init_connect | 0
-                init_file | 0
-                 sql_mode | 0
+             init_connect | 
+                init_file | 
+                 sql_mode | 
          join_buffer_size | 128k
          sort_buffer_size | 2M
          read_buffer_size | 128k
      read_rnd_buffer_size | 256k
-       bulk_insert_buffer | 0
+       bulk_insert_buffer | 0.00
       max_heap_table_size | 16M
            tmp_table_size | 16M
        max_allowed_packet | 16M

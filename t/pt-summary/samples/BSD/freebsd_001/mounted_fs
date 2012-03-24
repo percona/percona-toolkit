@@ -1,0 +1,7 @@
+/dev/ad0s1a 620M 172M 398M 30% / on / (ufs, local)
+/dev/ad0s1d 1.3G 1.0M 1.2G 0% /var on /var (ufs, local, soft-updates)
+/dev/ad0s1e 341M 18K 313M 0% /tmp on /tmp (ufs, local, soft-updates)
+/dev/ad0s1f 3.3G 976M 2.0G 32% /usr on /usr (ufs, local, soft-updates)
+/dev/da0s1 3.8G 18M 3.7G 0% /mnt/usb on /mnt/usb (msdosfs, local)
+devfs 1.0K 1.0K 0B 100% /dev on /dev (devfs, local, multilabel)
+procfs 4.0K 4.0K 0B 100% /proc on /proc (procfs, local)

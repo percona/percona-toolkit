@@ -1,0 +1,10 @@
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 1548 hugmeir   20   0  122m  14m  10m S    2  0.7   1:44.97 gnome-settings-
+ 1567 hugmeir   20   0  257m  88m  22m S    2  4.4  83:35.58 compiz
+ 4455 hugmeir   20   0  283m  30m  21m S    2  1.5  30:42.87 knotify4
+17394 hugmeir   20   0  118m  37m  26m S    2  1.9   0:29.35 kwrite
+30819 root      20   0  2824 1144  844 R    2  0.1   0:00.03 top
+    1 root      20   0  3328 1912 1248 S    0  0.1   0:01.55 init
+    2 root      20   0     0    0    0 S    0  0.0   0:00.07 kthreadd
+    3 root      20   0     0    0    0 S    0  0.0   0:05.54 ksoftirqd/0
+    6 root      RT   0     0    0    0 S    0  0.0   0:00.00 migration/0

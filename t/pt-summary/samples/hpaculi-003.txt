@@ -1,0 +1,11 @@
+# hpacucli ctrl all show status
+
+Smart Array P410i in Slot 0 (Embedded)
+   Controller Status: OK
+   Cache Status: OK
+   Battery/Capacitor Status: OK
+
+Smart Array P800 in Slot 1
+   Controller Status: OK
+   Cache Status: OK
+   Battery/Capacitor Status: OK
