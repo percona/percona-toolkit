@@ -5208,14 +5208,14 @@ sub main {
       print "Starting a dry run.  $orig_tbl->{name} will not be altered.  "
           . "Specify --execute instead of --dry-run to alter the table.\n";
    }
-   elsif ( !$o->get('execute') ) {
+   elsif ( $o->get('execute') ) {
+      print "Altering $orig_tbl->{name}...\n";
+   }
+   else {
       print "Exiting without altering $orig_tbl->{name} because neither "
         . "--dry-run nor --execute was specified.  Please read the tool's "
         . "documentation carefully before using this tool.\n";
       return $exit_status;
-   }
-   else {
-      print "Altering $orig_tbl->{name}...\n";
    }
 
    # ########################################################################
@@ -5241,7 +5241,15 @@ sub main {
          db  => $db,
          tbl => $tbl,
       );
-      if ( !$new_table_exists ) {
+      if ( $new_table_exists ) {
+         # Do not create the new table if it already exists in case the user
+         # does something bad like --new-table wrong.table because then we'll
+         # modify the wrong table and really break stuff.
+         die "The --new-table $new_table already exists.  Please specify "
+           . "a new table name that does not yet exist.\n";
+      }
+      else {
+         # --new-table does not exist.  Create it?
          if ( $o->get('create-new-table') ) {
             my $sql = "CREATE TABLE $new_table LIKE $orig_tbl->{name}";
             PTDEBUG && _d($sql);
@@ -5711,6 +5719,7 @@ sub main {
            . "by executing: $drop_new_table_sql\n";
       }
    }
+   PTDEBUG && _d('Old table:', Dumper($old_tbl));
 
    # #####################################################################
    # Update foreign key constraints if there are child tables.
@@ -5983,7 +5992,9 @@ sub find_child_tables {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $cxn, $q) = @args{@required_args};
-
+   
+   PTDEBUG && _d('Finding child tables');
+   
    my $sql = "SELECT table_name "
            . "FROM information_schema.key_column_usage "
            . "WHERE constraint_schema='$tbl->{db}' "
@@ -5995,8 +6006,8 @@ sub find_child_tables {
       return;
    }
 
-   PTDEBUG && _d("Child tables:", Dumper($child_tables));
    my @child_tables = map { $_->[0] } @$child_tables;
+   PTDEBUG && _d("Child tables:", @child_tables);
    return \@child_tables;
 }
 
@@ -6012,6 +6023,8 @@ sub rebuild_constraints {
 
    my $exit_status = 0;
    my $constraint  = qr/^\s+(CONSTRAINT.+?REFERENCES `$old_tbl->{tbl}`.+)$/m;
+
+   PTDEBUG && _d('Rebuilding fk constraint:', $constraint);
 
    if ( $o->get('dry-run') ) {
       print "Not rebuilding foreign key constraints because this is a dry run.\n";
@@ -6043,19 +6056,26 @@ sub rebuild_constraints {
       }
 
       foreach my $constraint ( @constraints ) {
-         my ($fk_symbol) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
+         PTDEBUG && _d('Rewriting fk constraint:', $constraint);
+         my ($fk) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
 
          # Drop the reference to the old table/renamed orig table.
-         $sql = "ALTER TABLE $child_table DROP FOREIGN KEY $fk_symbol";
-         print $sql, "\n"      if $o->get('print');
-         $cxn->dbh()->do($sql) if $o->get('execute');
+         $sql = "ALTER TABLE $child_table DROP FOREIGN KEY $fk";
+         print $sql, "\n" if $o->get('print');
+         if ( $o->get('execute') ) {
+            PTDEBUG && _d($sql);
+            $cxn->dbh()->do($sql);
+         }
 
          # Make the child reference the new table, i.e. the table name it
          # originally referenced instead of the old/renamed orig table.
-         $constraint =~ s/REFERENCES `$old_tbl->{tbl}`/REFERENCES `$orig_tbl->{tbl}`/o;
+         $constraint =~ s/REFERENCES `$old_tbl->{tbl}`/REFERENCES `$orig_tbl->{tbl}`/;
          $sql = "ALTER TABLE $child_table ADD $constraint"; 
-         print $sql, "\n"      if $o->get('print');
-         $cxn->dbh()->do($sql) if $o->get('execute');
+         print $sql, "\n" if $o->get('print');
+         if ( $o->get('execute') ) {
+            PTDEBUG && _d($sql);
+            $cxn->dbh()->do($sql);
+         }
       }
    }
 
