@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 12
+plan 17
 
 . "$LIB_DIR/report_formatting.sh"
 

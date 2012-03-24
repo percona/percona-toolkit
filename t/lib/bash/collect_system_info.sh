@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 32
+plan 39
 
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
