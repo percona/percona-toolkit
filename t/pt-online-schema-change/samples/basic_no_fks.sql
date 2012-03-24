@@ -1,12 +1,13 @@
-DROP DATABASE IF EXISTS `mkosc`;
-CREATE DATABASE `mkosc`;
-USE `mkosc`;
-CREATE TABLE a (
-  i int auto_increment primary key,
-  c char(16),
-  d date
+DROP DATABASE IF EXISTS pt_osc;
+CREATE DATABASE pt_osc;
+USE pt_osc;
+CREATE TABLE t (
+  id int auto_increment primary key,
+  c  char(16),
+  d  date,
+  unique index (c(16))
 ) ENGINE=MyISAM;
-INSERT INTO a VALUES
+INSERT INTO pt_osc.t VALUES
    (null, 'a', now()),
    (null, 'b', now()),
    (null, 'c', now()),
@@ -16,7 +17,7 @@ INSERT INTO a VALUES
    (null, 'g', now()),
    (null, 'h', now()),
    (null, 'i', now()),
-   (null, 'j', now()),
+   (null, 'j', now()), -- 10
    (null, 'k', now()),
    (null, 'l', now()),
    (null, 'm', now()),
@@ -24,4 +25,6 @@ INSERT INTO a VALUES
    (null, 'o', now()),
    (null, 'p', now()),
    (null, 'q', now()),
-   (null, 'r', now());
+   (null, 'r', now()),
+   (null, 's', now()),
+   (null, 't', now()); -- 20
