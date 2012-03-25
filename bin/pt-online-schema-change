@@ -4875,8 +4875,12 @@ sub main {
       }
    }
 
-   my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
-   if ( $rename_fk_method eq 'drop_old_table' ) {
+   # The update fk method value can be like "drop swap", "drop-swap", or
+   # "drop_swap", to give the user some flexibility, but for our sanity
+   # we use only underscores.
+   my $update_fk_method = lc($o->get('update-foreign-keys-method') || ''); 
+   $update_fk_method    =~ s/[ -]/_/g;
+   if ( $update_fk_method eq 'drop_swap' ) {
       $o->set('swap-tables',    0);
       $o->set('drop-old-table', 0),
    }
@@ -4907,27 +4911,18 @@ sub main {
       }
 
       if ( my $children = $o->get('child-tables') ) {
-
-         if ( !$o->get('update-foreign-keys-method') ) {
-            $o->save_error("--child-tables requires --update-foreign-keys-method");
-         }
-
          if ( @$children == 0 ) {
             $o->save_error("Specify at least one table for --child-tables");
          }
       }
 
-      if ( $o->get('find-child-tables')
-           && !$o->get('update-foreign-keys-method') ) {
-         $o->save_error("--find-child-tables requires --update-foreign-keys-method");
-      }
-
       # See the "pod-based-option-value-validation" spec for how this may
       # be automagically validated.
-      if ( $rename_fk_method
-           && $rename_fk_method ne 'rebuild_constraints'
-           && $rename_fk_method ne 'drop_old_table' ) {
-         $o->save_error("Invalid --update-foreign-keys-method value");
+      if ( $update_fk_method
+           && $update_fk_method ne 'rebuild_constraints'
+           && $update_fk_method ne 'drop_swap' )
+      {
+         $o->save_error("Invalid --update-foreign-keys-method value: $update_fk_method");
       }
    }
 
@@ -5186,22 +5181,43 @@ sub main {
    # ########################################################################
    my $child_tables;
    if ( $child_tables = $o->get('child-tables') ) {
-      print "User-specified child tables:\n";
-      print "\t$_\n" for @$child_tables;
+      # Convert the user's list of child tables into a list of standard
+      # table data structs.  Also db-qualify the table, presuming that
+      # the child table is in the same db as the orig table.
+      my @child_tables = map {
+         my ($db, $tbl) = $q->split_unquote($_);
+         $db ||= $orig_tbl->{db};
+         my $tbl_struct = {
+            db   => $db,
+            tbl  => $tbl,
+            name => $q->quote($db, $tbl),
+         };
+         $tbl_struct;
+      } @$child_tables;
+      $child_tables = \@child_tables;
    }
-   elsif ( $o->get('find-child-tables') ) {
+   else {
       $child_tables = find_child_tables(
          tbl    => $orig_tbl,
          Cxn    => $cxn,
          Quoter => $q,
       );
-      if ( !$child_tables ) {
-         die "No child tables were found.  If no tables reference "
-           . "$orig_tbl->{name}, do not specify --find-child-tables or "
-           . "--update-foreign-keys-method to alter the table.\n";
-      }
-      print "Found child tables:\n";
-      print "\t$_\n" for @$child_tables;
+   }
+   if ( $child_tables && !@$child_tables ) {
+      print "No child tables were found or specified."
+          . ($o->got('update-foreign-keys-method')
+               ? "  --update-foreign-keys-method will be ignored.\n"
+               : "\n");
+   }
+   else {
+      print "Child tables:\n";
+      print "  $_->{name}\n" for @$child_tables;
+
+      # Let the user know how we're going to update the child table fk refs.
+      print "Will "
+         . ($update_fk_method ? "use the $update_fk_method"
+                              : "automatically determine the")
+         . " method to update child table foreign keys.\n";
    }
 
    # ########################################################################
@@ -5299,8 +5315,9 @@ sub main {
    # #####################################################################
    my $total_rows = 0;
    my $total_time = 0;
-   my $total_rate = 0;
+   my $avg_rate   = 0;  # rows/second
    my $limit      = $o->get('chunk-size-limit');
+   my $chunk_time = $o->get('chunk-time');
    my $retry      = new Retry();
 
    # Callbacks for each table's nibble iterator.  All checksum work is done
@@ -5502,11 +5519,11 @@ sub main {
             # This is used for the initial chunk size of the next table.
             $total_rows += $cnt;
             $total_time += $tbl->{nibble_time};
-            $total_rate  = int($total_rows / $total_time);
-            PTDEBUG && _d('Total avg rate:', $total_rate);
+            $avg_rate    = int($total_rows / $total_time);
+            PTDEBUG && _d('Average copy rate (rows/s):', $avg_rate);
 
             # Adjust chunk size.  This affects the next chunk.
-            if ( $o->get('chunk-time') ) {
+            if ( $chunk_time ) {
                $tbl->{chunk_size} = $tbl->{rate}->update(
                   $cnt,                # processed this many rows
                   $tbl->{nibble_time}, # is this amount of time
@@ -5565,6 +5582,9 @@ sub main {
               . "SELECT ";
    my $select = join(', ', map { $q->quote($_) } @common_cols);
 
+   # The chunk size is auto-adjusted, so use --chunk-size as
+   # the initial value, but then save and update the adjusted
+   # chunk size in the table data struct.
    $orig_tbl->{chunk_size} = $o->get('chunk-size');
 
    my $nibble_iter;
@@ -5592,7 +5612,7 @@ sub main {
    }
  
    # Init a new weighted avg rate calculator for the table.
-   $orig_tbl->{rate} = new WeightedAvgRate(target_t => $o->get('chunk-time'));
+   $orig_tbl->{rate} = new WeightedAvgRate(target_t => $chunk_time);
 
    # Make a Progress obj for this table.  It may not be used;
    # depends on how many rows, chunk size, how fast the server
@@ -5701,7 +5721,27 @@ sub main {
    # #####################################################################
    if ( $child_tables ) {
       eval {
-         if ( $rename_fk_method eq 'rebuild_constraints' ) { 
+         if ( !$update_fk_method ) {
+            # If chunk time is set, then use the average rate of rows/s
+            # from copying the orig table to determine the max size of
+            # a child table that can be altered within one chunk time.
+            # The limit is a fudge factor.  Chunk time won't be set if
+            # the user specified --chunk-size=N on the cmd line, in which
+            # case the max child table size is their specified chunk size
+            # times the fudge factor.
+            my $max_rows = $o->get('dry-run') ? $o->get('chunk-size') * $limit
+                         : $chunk_time        ? $avg_rate * $chunk_time * $limit
+                                              : $o->get('chunk-size') * $limit;
+            PTDEBUG && _d('Max allowed child table size:', $max_rows);
+            $update_fk_method = determine_update_fk_method(
+               child_tables => $child_tables,
+               max_rows     => $max_rows,
+               Cxn          => $cxn,
+               OptionParser => $o,
+            );
+         }
+
+         if ( ($update_fk_method || '') eq 'rebuild_constraints' ) {
             rebuild_constraints(
                orig_tbl     => $orig_tbl,
                old_tbl      => $old_tbl,
@@ -5709,22 +5749,20 @@ sub main {
                OptionParser => $o,
                Quoter       => $q,
                Cxn          => $cxn,
+               TableParser  => $tp,
             );
          }
-         elsif ( $rename_fk_method eq 'drop_old_table' ) {
-            drop_and_swap_orig_table(
+         elsif ( ($update_fk_method || '') eq 'drop_swap' ) {
+            drop_swap(
                orig_tbl     => $orig_tbl,
                new_tbl      => $new_tbl,
                Cxn          => $cxn,
                OptionParser => $o,
             );
          }
-         else {
-            die "Invalid --update-foreign-keys-method value: $rename_fk_method";
-         }
       };
       if ( $EVAL_ERROR ) {
-         # TODO: improve error message
+         # TODO: improve error message and handling.
          die "Error updating foreign key constraints: $EVAL_ERROR\n";
       }
    }
@@ -5847,7 +5885,7 @@ sub create_new_table{
    die "Failed to find a unique new table name after $tries attemps.  "
      . "The following tables exist which may be left over from previous "
      . "failed runs of the tool:\n"
-     . join("\n", map { "\t$_" } @old_tables)
+     . join("\n", map { "  $_" } @old_tables)
      . "\nExamine these tables and drop some or all of them if they are "
      . "no longer need, then re-run the tool.\n";
 }
@@ -5993,7 +6031,7 @@ sub find_child_tables {
    
    PTDEBUG && _d('Finding child tables');
    
-   my $sql = "SELECT table_name "
+   my $sql = "SELECT table_schema, table_name "
            . "FROM information_schema.key_column_usage "
            . "WHERE constraint_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
@@ -6004,30 +6042,82 @@ sub find_child_tables {
       return;
    }
 
-   my @child_tables = map { $_->[0] } @$child_tables;
+   my @child_tables = map {
+      my $tbl = {
+         db   => $_->[0],
+         tbl  => $_->[1],
+         name => $q->quote(@$_),
+      };
+      $tbl;
+   } @$child_tables;
    PTDEBUG && _d("Child tables:", @child_tables);
    return \@child_tables;
 }
 
-# BARON: I am thinking we ought to make the tool automatically look for child
-# tables and if they exist, choose a fk-alteration method automatically. If all
-# of the child tables are "small" then we can rebuild them; otherwise we can
-# automatically do the drop-and-rename trick.  The user could override, of
-# course. We can add this feature in the future.
-sub rebuild_constraints {
+sub determine_update_fk_method {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl old_tbl child_tables
-                          Cxn Quoter OptionParser);
+   my @required_args = qw(child_tables max_rows Cxn OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $old_tbl, $child_tables, $cxn, $q, $o)
+   my ($child_tables, $max_rows, $cxn, $o) = @args{@required_args};
+
+   if ( $o->get('dry-run') ) {
+      print "Not determining the method to update child table foreign keys "
+         . "because this is a dry run.\n";
+      return;
+   }
+
+   # The rebuild_constraints method is the default becuase it's safer
+   # and doesn't cause the orig table to go missing for a moment.
+   my $method = 'rebuild_constraints';
+   
+   print "Max rows for the rebuild_constraints method: $max_rows\n",
+         "Determining the method to update child table foreign keys...\n";
+   foreach my $child_tbl ( @$child_tables ) {
+      print "  $child_tbl->{name}: ";
+      my ($n_rows) = NibbleIterator::get_row_estimate(
+         Cxn   => $cxn,
+         tbl   => $child_tbl,
+      );
+      if ( $n_rows > $max_rows ) {
+         print "too many rows: $n_rows; must use drop_swap\n";
+         $method = 'drop_swap';
+         last;
+      }
+      else {
+         print "$n_rows rows; can use rebuild_constraints\n";
+      }
+   }
+
+   return $method;
+}
+
+sub rebuild_constraints {
+   my ( %args ) = @_;
+   my @required_args = qw(orig_tbl old_tbl child_tables
+                          Cxn Quoter OptionParser TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($orig_tbl, $old_tbl, $child_tables, $cxn, $q, $o, $tp)
       = @args{@required_args};
 
-   my $exit_status = 0;
-   my $constraint  = qr/^\s+(CONSTRAINT.+?REFERENCES `$old_tbl->{tbl}`.+)$/m;
-
-   PTDEBUG && _d('Rebuilding fk constraint:', $constraint);
+   # MySQL has a "feature" where if the parent tbl is in the same db,
+   # then the child tbl ref is simply `parent_tbl`, but if the parent tbl
+   # is in another db, then the child tbl ref is `other_db`.`parent_tbl`.
+   # When we recreate the ref below, we use the db-qualified form, and
+   # MySQL will automatically trim the db if the tables are in the same db.
+   my $quoted_old_table = $q->quote($old_tbl->{tbl});
+   my $constraint       = qr/
+      ^\s+
+      (
+         CONSTRAINT.+?
+         REFERENCES\s(?:$quoted_old_table|$old_tbl->{name})
+         .+
+      )$
+   /xm;
+   PTDEBUG && _d('Rebuilding fk constraint matching', $constraint);
 
    if ( $o->get('dry-run') ) {
       print "Not rebuilding foreign key constraints because this is a dry run.\n";
@@ -6037,33 +6127,27 @@ sub rebuild_constraints {
    }
 
    CHILD_TABLE:
-   foreach my $child_table ( @$child_tables ) {
-      $child_table = $q->quote($orig_tbl->{db}, $child_table);
-
-      my $sql = "SHOW CREATE TABLE $child_table";
-      PTDEBUG && _d($sql);
-      my $table_def;
-      eval {
-         $table_def = $cxn->dbh()->selectrow_arrayref($sql)->[1];
-      };
-      if ( $EVAL_ERROR ) {
-         warn "Skipping child table $child_table: $EVAL_ERROR";
-         next CHILD_TABLE;
-      }
-
+   foreach my $child_tbl ( @$child_tables ) {
+      my $table_def = $tp->get_create_table(
+         $cxn->dbh(),
+         $child_tbl->{db},
+         $child_tbl->{tbl},
+      );
       my @constraints = $table_def =~ m/$constraint/g;
       if ( !@constraints ) {
-         warn "Child table $child_table does not have any foreign key "
+         warn "Child table $child_tbl->{name} does not have any foreign key "
             . "constraints referencing $old_tbl->{name}.\n";
          next CHILD_TABLE;
       }
 
       foreach my $constraint ( @constraints ) {
-         PTDEBUG && _d('Rewriting fk constraint:', $constraint);
+         PTDEBUG && _d('Rebuilding fk constraint:', $constraint);
+
+         # XXX This will fail if the fk name has spaces.
          my ($fk) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
 
          # Drop the reference to the old table/renamed orig table.
-         $sql = "ALTER TABLE $child_table DROP FOREIGN KEY $fk";
+         my $sql = "ALTER TABLE $child_tbl->{name} DROP FOREIGN KEY $fk";
          print $sql, "\n" if $o->get('print');
          if ( $o->get('execute') ) {
             PTDEBUG && _d($sql);
@@ -6072,8 +6156,8 @@ sub rebuild_constraints {
 
          # Make the child reference the new table, i.e. the table name it
          # originally referenced instead of the old/renamed orig table.
-         $constraint =~ s/REFERENCES `$old_tbl->{tbl}`/REFERENCES `$orig_tbl->{tbl}`/;
-         $sql = "ALTER TABLE $child_table ADD $constraint"; 
+         $constraint =~ s/REFERENCES[^\(]+/REFERENCES $orig_tbl->{name} /;
+         $sql = "ALTER TABLE $child_tbl->{name} ADD $constraint"; 
          print $sql, "\n" if $o->get('print');
          if ( $o->get('execute') ) {
             PTDEBUG && _d($sql);
@@ -6089,7 +6173,7 @@ sub rebuild_constraints {
    return;
 }
 
-sub drop_and_swap_orig_table {
+sub drop_swap {
    my ( %args ) = @_;
    my @required_args = qw(orig_tbl new_tbl Cxn OptionParser);
    foreach my $arg ( @required_args ) {
@@ -6243,6 +6327,7 @@ sub drop_triggers {
    if ( $o->get('execute') && $exit_status == 0) {
       print "Done dropping triggers.\n";
    }
+
    return $exit_status;
 }
 
@@ -6489,7 +6574,7 @@ Add column to parent table, update child table foreign key constraints:
     h=127.1,D=db,t=parent          \
     --alter "ADD COLUMN (foo INT)" \
     --child-tables child1,child2   \
-    --update-foreign-keys-method drop_old_table
+    --update-foreign-keys-method drop_swap
 
 =head1 RISKS
 
@@ -6619,8 +6704,6 @@ tool is doing.  Warnings, errors, and L<"--progress"> are printed to STDERR.
 =head1 OPTIONS
 
 L<"--dry-run"> and L<"--execute"> are mutually exclusive.
-
-L<"--child-tables"> and L<"--find-child-tables"> are mutually exclusive.
 
 This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
@@ -6752,7 +6835,7 @@ L<"--chunk-size-limit">.
 
 =item --chunk-size-limit
 
-type: float; default: 2.0; group: Safety
+type: float; default: 4.0; group: Safety
 
 Do not checksum chunks this much larger than the desired chunk size.
 
@@ -6829,10 +6912,6 @@ Alter the table.  This option must be specified to alter the table, else
 the tool will only check the table and exit.  This helps ensure that the
 user has read the documentation and is aware of the inherent risks of using
 this tool.
-
-=item --find-child-tables
-
-Automatically find child tables using the INFORMATION_SCHEMA.
 
 =item --help
 
@@ -7057,7 +7136,7 @@ safer because the old table does not need to be dropped.  So if there's a
 problem with the new table and L<"--[no]drop-old-table"> was not specified,
 then the original table can be restored.
 
-=item drop_old_table
+=item drop_swap
 
 Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table.
 This method bypasses MySQL's auto-renaming feature by disabling foreign key
