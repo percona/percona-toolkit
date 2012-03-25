@@ -3906,7 +3906,17 @@ sub new {
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
 
    my $nibble_params = can_nibble(%args);
-   
+
+   my %comments = (
+      bite   => "bite table",
+      nibble => "nibble table",
+   );
+   if ( $args{comments} ) {
+      map  { $comments{$_} = $args{comments}->{$_} }
+      grep { defined $args{comments}->{$_}         }
+      keys %{$args{comments}};
+   }
+
    my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
    my $ignore_col = $o->has('ignore-columns')
@@ -3924,7 +3934,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*checksum table*/";
+         . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
@@ -3933,7 +3943,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*explain checksum table*/";
+         . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -4015,9 +4025,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*checksum chunk*/";
-         # BARON: the above "checksum chunk" looks like this module isn't
-         # genericized for use outside of pt-table-checksum.
+         . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -4029,7 +4037,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*explain checksum chunk*/";
+         . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
@@ -4867,8 +4875,6 @@ sub main {
       }
    }
 
-   # BARON: we should check that this option has a legal value. (Is this
-   # something we should add to OptionParser?)
    my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
    if ( $rename_fk_method eq 'drop_old_table' ) {
       $o->set('swap-tables',    0);
@@ -4925,7 +4931,8 @@ sub main {
          $o->save_error("--find-child-tables requires --update-foreign-keys-method");
       }
 
-      # BARON: oh, I see you do it here.
+      # See the "pod-based-option-value-validation" spec for how this may
+      # be automagically validated.
       if ( $rename_fk_method
            && $rename_fk_method ne 'rebuild_constraints'
            && $rename_fk_method ne 'drop_old_table' ) {
@@ -5628,6 +5635,10 @@ sub main {
          Quoter       => $q,
          TableParser  => $tp,
          TableNibbler => new TableNibbler(TableParser => $tp, Quoter => $q),
+         comments     => {
+            bite   => "pt-online-schema-change $PID copy table",
+            nibble => "pt-online-schema-change $PID copy nibble",
+         },
       );
    };
    if ( $EVAL_ERROR ) {

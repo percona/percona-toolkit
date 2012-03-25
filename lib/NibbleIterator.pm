@@ -65,7 +65,19 @@ sub new {
    # Die unless table can be nibbled, else return row estimate, nibble index,
    # and if table can be nibbled in one chunk.
    my $nibble_params = can_nibble(%args);
-   
+
+   # Text appended to the queries in comments so caller can identify
+   # them in processlist, binlog, etc.
+   my %comments = (
+      bite   => "bite table",
+      nibble => "nibble table",
+   );
+   if ( $args{comments} ) {
+      map  { $comments{$_} = $args{comments}->{$_} }
+      grep { defined $args{comments}->{$_}         }
+      keys %{$args{comments}};
+   }
+
    my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
    my $ignore_col = $o->has('ignore-columns')
@@ -85,7 +97,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*checksum table*/";
+         . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
@@ -94,7 +106,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*explain checksum table*/";
+         . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -197,7 +209,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*checksum chunk*/";
+         . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -209,7 +221,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*explain checksum chunk*/";
+         . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
