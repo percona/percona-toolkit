@@ -4958,7 +4958,7 @@ sub main {
       # See the same code in pt-table-checksum.
       my $lock_wait_timeout = $o->get('lock-wait-timeout');
       my $set_lwt = "SET SESSION innodb_lock_wait_timeout=$lock_wait_timeout";
-      PTDEBUG && _d($dbh, $set_lwt);
+      PTDEBUG && _d($set_lwt);
       eval {
          $dbh->do($set_lwt);
       };
@@ -5094,11 +5094,6 @@ sub main {
       my $sleep = sub {
          # Don't let the master dbh die while waiting for slaves because we
          # may wait a very long time for slaves.
-
-         # This is called from within the main TABLE loop, so use the
-         # master cxn; do not use $master_dbh.
-         # BARON: the above comment doesn't clarify things for me. I feel like
-         # there is some undocumented magic about a $cxn versus a $dbh.
          my $dbh = $cxn->dbh();
          if ( !$dbh || !$dbh->ping() ) {
             PTDEBUG && _d('Lost connection to master while waiting for slave lag');
@@ -5612,9 +5607,7 @@ sub main {
 
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
-   # BARON: we probably ought to add LOW_PRIORITY modifiers to this. That will
-   # make it not block SELECT queries in case of MyISAM.
-   my $dml    = "INSERT IGNORE INTO $new_tbl->{name} "
+   my $dml    = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
               . "(" . join(', ', map { $q->quote($_) } @common_cols) . ") "
               . "SELECT ";
    my $select = join(', ', map { $q->quote($_) } @common_cols);
@@ -5828,6 +5821,7 @@ sub main {
    if ( $o->get('dry-run') ) {
       print "Dropping new table because this a dry run...\n";
       print $drop_new_table_sql, "\n" if $o->get('print');
+      PTDEBUG && _d($drop_new_table_sql);
       eval {
          $cxn->dbh()->do($drop_new_table_sql);
       };
@@ -5930,9 +5924,12 @@ sub swap_tables {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            # Ignore this error because we're expecting it.
-            # BARON: why are we expecting it? In what case should a table
-            # already exist?
+            # Ignore this error because if multiple instances of the tool
+            # are running, or previous runs failed and weren't cleaned up,
+            # then there will be other similarly named tables with fewer
+            # leading prefix chars.  Or, in rarer cases, the db just happens
+            # to have a similarly named table created by the user for other
+            # purposes.
             next if $EVAL_ERROR =~ m/table.+?already exists/i;
 
             # Some other error happened.  Let caller catch it.
@@ -5970,13 +5967,8 @@ sub check_orig_table {
    }
 
    # There cannot be any triggers on the original table.
-   # BARON: the LIKE will interpret _ in the table name as a wildcard. We ought
-   # to have a $q->quote_like option for this. (It often happens with SHOW
-   # STATUS too, but it usually is harmless there.)  Anyway, if we have tableXfoo
-   # with triggers and table_foo we're altering, we'll find triggers in this
-   # code and fail.
-   my $sql = "SHOW TRIGGERS FROM " . $q->quote($orig_tbl->{db})
-           . "LIKE '$orig_tbl->{tbl}'";
+   my $sql = 'SHOW TRIGGERS FROM ' . $q->quote($orig_tbl->{db})
+           . ' LIKE ' . $q->literal_like($orig_tbl->{tbl});
    PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
    if ( $triggers && @$triggers ) {
@@ -6229,7 +6221,8 @@ sub create_triggers {
       my ($name, $sql) = @$trg;
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
-         # BARON: Are we catching errors in this?
+         # Let caller catch errors.
+         PTDEBUG && _d($sql);
          $cxn->dbh()->do($sql);
       }
       # Only save the trigger once it has been created
@@ -6271,6 +6264,7 @@ sub drop_triggers {
    while ( my $sql = shift @drop_trigger_sqls ) {
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
+         PTDEBUG && _d($sql);
          eval {
             $cxn->dbh()->do($sql);
          };
@@ -6302,42 +6296,35 @@ sub exec_nibble {
    my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
    my $chunk_index = $nibble_iter->nibble_index();
+         
+   # Completely ignore these error codes.
+   my %ignore_code = (
+      # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
+      # Message: Statement may not be safe to log in statement format. 
+      # Ignore this warning because we have purposely set statement-based
+      # replication.
+      1592 => 1,
+   );
+         
+   # Warn once per-table for these error codes if the error message
+   # matches the pattern.
+   my %warn_code = (
+      # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
+      # Message: Data truncated for column '%s' at row %ld
+      1265 => {
+         # any pattern
+         # use MySQL's message for this warning
+      },
+   );
 
    return $retry->retry(
       tries => $o->get('retries'),
       wait  => sub { return; },
       try   => sub {
          # ###################################################################
-         # BARON: we have checksum copy/paste in this subroutine I guess?
          # Start timing the checksum query.
          # ###################################################################
          my $t_start = time;        
-
-         # BARON: I think we need some kind of Message module to handle things like
-         # printing out messages, suppressing repeated messages, suppressing certain
-         # messages, etc.
-         # Completely ignore these error codes.
-         my %ignore_code = (
-            # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-            # Message: Statement may not be safe to log in statement format. 
-            # Ignore this warning because we have purposely set statement-based
-            # replication.
-            # BARON: We're actually not ignoring this code -- the tool hits this and
-            # exits on mysql 5.5.20. When I run in the debugger it appears this hash is
-            # empty. Scoping problems maybe? I'm moving it inside the subroutine...
-            1592 => 1,
-         );
-
-         # Warn once per-table for these error codes if the error message
-         # matches the pattern.
-         my %warn_code = (
-            # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
-            # Message: Data truncated for column '%s' at row %ld
-            1265 => {
-               # any pattern
-               # use MySQL's message for this warning
-            },
-         );
 
          # Execute the INSERT..SELECT query.
          PTDEBUG && _d($sth->{nibble}->{Statement},
