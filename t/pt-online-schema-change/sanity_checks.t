@@ -1,0 +1,92 @@
+#!/usr/bin/env perl
+
+BEGIN {
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
+      unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
+   unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
+};
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use Test::More;
+
+use PerconaTest;
+use Sandbox;
+require "$trunk/bin/pt-online-schema-change";
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+my $dp         = new DSNParser(opts=>$dsn_opts);
+my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave_dbh  = $sb->get_dbh_for('slave1');
+
+if ( !$master_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox master';
+}
+else {
+   plan tests => 4;
+}
+
+my $q      = new Quoter();
+my $tp     = new TableParser(Quoter => $q);
+my @args   = qw(--lock-wait-timeout 3);
+my $output = "";
+my $dsn    = "h=127.1,P=12345,u=msandbox,p=msandbox";
+my $exit   = 0;
+my $sample = "t/pt-online-schema-change/samples";
+my $rows;
+
+# #############################################################################
+# Checks for the original table (check_orig_table()).
+# #############################################################################
+
+# Of course, the orig database and table must exist.
+throws_ok(
+   sub { pt_online_schema_change::main(@args,
+         "$dsn,t=nonexistent_db.t", qw(--dry-run)) },
+   qr/`nonexistent_db`.`t` does not exist/,
+   "Original database must exist"
+);
+
+throws_ok(
+   sub { pt_online_schema_change::main(@args,
+         "$dsn,t=mysql.nonexistent_tbl", qw(--dry-run)) },
+   qr/`mysql`.`nonexistent_tbl` does not exist/,
+   "Original table must exist"
+);
+
+$sb->load_file('master', "$sample/basic_no_fks.sql");
+PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
+$master_dbh->do("USE pt_osc");
+$slave_dbh->do("USE pt_osc");
+
+# The orig table cannot have any triggers.
+$master_dbh->do("CREATE TRIGGER pt_osc.pt_osc_test AFTER DELETE ON pt_osc.t FOR EACH ROW DELETE FROM pt_osc.t WHERE 0");
+throws_ok(
+   sub { pt_online_schema_change::main(@args,
+         "$dsn,t=pt_osc.t", qw(--dry-run)) },
+   qr/`pt_osc`.`t` has triggers/,
+   "Original table cannot have triggers"
+);
+$master_dbh->do('DROP TRIGGER pt_osc.pt_osc_test');
+
+# The orig table must have a pk or unique index so the delete trigger is safe.
+$master_dbh->do("ALTER TABLE pt_osc.t DROP COLUMN id");
+$master_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
+throws_ok(
+   sub { pt_online_schema_change::main(@args,
+         "$dsn,t=pt_osc.t", qw(--dry-run)) },
+   qr/`pt_osc`.`t` does not have a PRIMARY KEY or a unique index/,
+   "Original table must have a PK or unique index"
+);
+
+# #############################################################################
+# Done.
+# #############################################################################
+$sb->wipe_clean($master_dbh);
+exit;
