@@ -4898,15 +4898,6 @@ sub main {
          $o->save_error('The DSN must specify a table (t)');
       }
 
-      if ( $tbl && lc($tbl) eq lc($o->get('new-table') || "") ) {
-         # BARON: what if they are in different databases? And the comparison is
-         # case-insensitive but most systems will have case-sensitive table
-         # names so it would actually be OK to name them foo and Foo. Also, it
-         # looks like you might be comparing a table name to a database.table
-         # name.
-         $o->save_error("The DSN table and --new-table cannot be the same");
-      }
-
       if ( $o->get('progress') ) {
          eval { Progress->validate_spec($o->get('progress')) };
          if ( $EVAL_ERROR ) {
@@ -4938,16 +4929,15 @@ sub main {
            && $rename_fk_method ne 'drop_old_table' ) {
          $o->save_error("Invalid --update-foreign-keys-method value");
       }
-
-      if ( my $new_table = $o->get('new-table') ) {
-         my ($db, $tbl) = $q->split_unquote($new_table);
-         if ( !$db ) {
-            $o->save_errors("--new-table must be database-qualified");
-         }
-      }
    }
 
    $o->usage_or_errors(); 
+
+   if ( $o->get('quiet') ) {
+      close STDOUT;
+      open  STDOUT, '>', '/dev/null'
+         or warn "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
+   }
 
    # ########################################################################
    # Connect to MySQL.
@@ -5250,56 +5240,19 @@ sub main {
    # Create and alter the new table (but do not copy rows yet).
    # #####################################################################
    my $new_tbl;
-   if ( my $new_table = $o->get('new-table') ) {
-      # We presume the table name is db-qualified because it should
-      # have been checked earlier.
-      my ($db, $tbl)       = $q->split_unquote($new_table);
-      my $new_table_exists = $tp->check_table(
-         dbh => $cxn->dbh(),
-         db  => $db,
-         tbl => $tbl,
-      );
-      if ( $new_table_exists ) {
-         # Do not create the new table if it already exists in case the user
-         # does something bad like --new-table wrong.table because then we'll
-         # modify the wrong table and really break stuff.
-         die "The --new-table $new_table already exists.  Please specify "
-           . "a new table name that does not yet exist.\n";
-      }
-      else {
-         # --new-table does not exist.  Create it?
-         if ( $o->get('create-new-table') ) {
-            my $sql = "CREATE TABLE $new_table LIKE $orig_tbl->{name}";
-            PTDEBUG && _d($sql);
-            eval {
-               $cxn->dbh()->do($sql);
-            };
-            if ( $EVAL_ERROR ) {
-               die "Error creating --new-table $new_table: $EVAL_ERROR\n";
-            }
-         }
-         else {
-            die "The --new-table $new_table does not exist and "
-              . "--no-create-new-table was specified.\n";
-         }
-      }
-      $new_tbl = {
-         db   => $db,
-         tbl  => $tbl,
-         name => $q->quote($db, $tbl),
-      };
-   }
-   else { 
-      # Auto-create a new table name based on the original table name.
-      $new_tbl = create_table_like(
+   eval {
+      $new_tbl = create_new_table(
          orig_tbl     => $orig_tbl,
          suffix       => '_new',
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
       );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Error creating new table: $EVAL_ERROR\n"
+        . "$orig_tbl->{name} was not altered.\n";
    }
-
    my $drop_new_table_sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
 
    # Alter the new, empty table.  This should be very quick, or die if
@@ -5843,7 +5796,7 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
-sub create_table_like {
+sub create_new_table{
    my (%args) = @_;
    my @required_args = qw(orig_tbl Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
@@ -5851,16 +5804,16 @@ sub create_table_like {
    }
    my ($orig_tbl, $cxn, $q, $o) = @args{@required_args};
 
-   my $prefix     = '_';
-   my $table_name = $orig_tbl->{tbl} . ($args{suffix} || '');
-   my $tries      = 10;  # don't try forever
+   my $tries      = $args{tries}  || 10;  # don't try forever
+   my $prefix     = $args{prefix} || '_';
+   my $suffix     = $args{suffix} || '_new';
+   my $table_name = $orig_tbl->{tbl} . $suffix;
 
    print "Creating new table...\n";
-   while ( $tries-- ) {
+   my $tryno = 1;
+   my @old_tables;
+   while ( $tryno++ < $tries ) {
       $table_name = $prefix . $table_name;
-      # BARON: here we are creating the new table in the same DB as the original
-      # one, but shouldn't the user be able to specify otherdb with
-      # --new-table=otherdb.newtblname?
       my $sql     = "CREATE TABLE " . $q->quote($orig_tbl->{db}, $table_name)
                   . " LIKE $orig_tbl->{name}";
       PTDEBUG && _d($sql);
@@ -5868,13 +5821,21 @@ sub create_table_like {
          $cxn->dbh()->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         # Ignore this error because we're expecting it.
-         next if $EVAL_ERROR =~ m/table.+?already exists/i;
+         # Ignore this error because if multiple instances of the tool
+         # are running, or previous runs failed and weren't cleaned up,
+         # then there will be other similarly named tables with fewer
+         # leading prefix chars.  Or, in rarer cases, the db just happens
+         # to have a similarly named table created by the user for other
+         # purposes.
+         if ( $EVAL_ERROR =~ m/table.+?already exists/i ) {
+            push @old_tables, $q->quote($orig_tbl->{db}, $table_name);
+            next;
+         }
 
          # Some other error happened.  Let the caller catch it.
          die $EVAL_ERROR;
       }
-      print $sql, "\n" if $o->get('print');
+      print $sql, "\n" if $o->get('print');  # the sql that work
       print "Done creating new table.\n";
       return { # success
          db   => $orig_tbl->{db},
@@ -5883,8 +5844,12 @@ sub create_table_like {
       };
    }
 
-   # This shouldn't happen.
-   die "Failed to find a unique new table name after serveral attempts.\n";
+   die "Failed to find a unique new table name after $tries attemps.  "
+     . "The following tables exist which may be left over from previous "
+     . "failed runs of the tool:\n"
+     . join("\n", map { "\t$_" } @old_tables)
+     . "\nExamine these tables and drop some or all of them if they are "
+     . "no longer need, then re-run the tool.\n";
 }
 
 sub swap_tables {
@@ -6615,7 +6580,7 @@ C<RENAME TABLE> respectively for these phases.
 
 Here are options related to each phase:
 
-  1. --alter, --new-table
+  1. --alter
   2. (none)
   3. --chunk-size, --sleep
   4. (none)
@@ -6838,12 +6803,6 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --[no]create-new-table
-
-default: yes
-
-Create the L<"--new-table"> if it does not already exist.
-
 =item --defaults-file
 
 short form: -F; type: string
@@ -6855,14 +6814,10 @@ pathname.
 
 default: yes
 
-Drop the original table after it's swapped with the L<"--new-table">.
-After the original table is renamed/swapped with the L<"--new-table">
-it becomes the "old table".  By default, the old table is not dropped
-because if there are problems with the "new table" (the temporary table
-swapped for the original table), then the old table can be restored.
-
-If altering a table with foreign key constraints, you may need to specify
-this option depending on which L<"--update-foreign-keys-method"> you choose.
+Drop the original table after it has been successfully altered and swapped out.
+After the original table is swapped with the new, altered table
+it becomes the "old table".  By default, the old table is dropped
+if there are no errors and the new table successfully takes it place.
 
 =item --dry-run
 
@@ -7040,7 +6995,7 @@ and parent_id are otherwise ignored.
 
 default: yes
 
-Swap the the original table and the L<"--new-table">.  This option
+Swap the the original table and the new, altered table.  This step
 essentially completes the online schema change process by making the
 temporary table with the new schema take the place of the original table.
 The original tables becomes the "old table" and is dropped if
@@ -7066,18 +7021,6 @@ short form: -S; type: string
 
 Socket file to use for connection.
 
-=item --new-table
-
-type: string
-
-New table on which L<"--alter"> is executed.
-
-The new table is created from the original table specified by the DSN
-on the command line.  If no new table name is specified, a unique table
-name is automatically created using the original table name.  Else, if
-the new table does not exist, it is automatically created using the given
-name.
-
 =item --update-foreign-keys-method
 
 type: string
@@ -7091,7 +7034,7 @@ foreign key constraints that reference the renamed table so that the rename
 does not break foreign key constraints.  This poses a problem for this tool.
 
 For example: if the table being altered is C<foo>, then C<foo> is renamed
-to C<__old_foo> when it is swapped with the L<"--new-table">.
+to C<__old_foo> when it is swapped with the new table.
 Any foreign key references to C<foo> before it is swapped/renamed are renamed
 automatically by MySQL to C<__old_foo>.  We do not want this; we want those
 foreign key references to continue to reference C<foo>.

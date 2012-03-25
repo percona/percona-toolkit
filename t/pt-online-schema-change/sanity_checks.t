@@ -29,7 +29,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my $q      = new Quoter();
@@ -83,6 +83,27 @@ throws_ok(
          "$dsn,t=pt_osc.t", qw(--dry-run)) },
    qr/`pt_osc`.`t` does not have a PRIMARY KEY or a unique index/,
    "Original table must have a PK or unique index"
+);
+
+# #############################################################################
+# Checks for the new table.
+# #############################################################################
+
+$sb->load_file('master', "$sample/basic_no_fks.sql");
+PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
+$master_dbh->do("USE pt_osc");
+$slave_dbh->do("USE pt_osc");
+
+for my $i ( 1..10 ) {
+   my $table = ('_' x $i) . 't_new';
+   $master_dbh->do("create table $table (id int)");
+}
+
+throws_ok(
+   sub { pt_online_schema_change::main(@args,
+         "$dsn,t=pt_osc.t", qw(--quiet --dry-run)) },
+   qr/Failed to find a unique new table name/,
+   "Doesn't try forever to find a new table name"
 );
 
 # #############################################################################
