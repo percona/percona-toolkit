@@ -29,7 +29,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 38;
+   plan tests => 42;
 }
 
 my $q      = new Quoter();
@@ -121,6 +121,19 @@ sub test_alter_table {
             $tp->get_create_table($master_dbh, $db, $tbl->[0]));
          push @orig_fks, $fks;
       }
+
+      # Go that extra mile and verify that the fks are actually
+      # still functiona: i.e. that they'll prevent us from delete
+      # a parent row that's being referenced by a child.
+      my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
+      eval {
+         $master_dbh->do($sql);
+      };
+      like(
+         $EVAL_ERROR,
+         qr/foreign key constraint fails/,
+         "$name FK constraints still hold"
+      );
    }
 
    $output = output(
