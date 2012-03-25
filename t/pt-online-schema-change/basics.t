@@ -29,7 +29,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 43;
+   plan tests => 55;
 }
 
 my $q      = new Quoter();
@@ -124,27 +124,18 @@ sub test_alter_table {
             $tp->get_create_table($master_dbh, $db, $tbl->[0]));
          push @orig_fks, $fks;
       }
-
-      # Go that extra mile and verify that the fks are actually
-      # still functiona: i.e. that they'll prevent us from delete
-      # a parent row that's being referenced by a child.
-      my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
-      eval {
-         $master_dbh->do($sql);
-      };
-      like(
-         $EVAL_ERROR,
-         qr/foreign key constraint fails/,
-         "$name FK constraints still hold"
-      );
    }
 
+   # TODO: output() is capturing if this call dies, so if a test
+   # causes it to die, the tests just stop without saying why, i.e.
+   # without re-throwing the error.
    $output = output(
       sub { $exit = pt_online_schema_change::main(
          @args,
          "$dsn,D=$db,t=$tbl",
          @$cmds,
       )},
+      stderr => 1,
    );
 
    is(
@@ -215,6 +206,19 @@ sub test_alter_table {
          \@orig_fks,
          "$name FK constraints"
       );
+
+      # Go that extra mile and verify that the fks are actually
+      # still functiona: i.e. that they'll prevent us from delete
+      # a parent row that's being referenced by a child.
+      my $sql = "DELETE FROM $table WHERE $pk_col=1 LIMIT 1";
+      eval {
+         $master_dbh->do($sql);
+      };
+      like(
+         $EVAL_ERROR,
+         qr/foreign key constraint fails/,
+         "$name FK constraints still hold"
+      );
    }
 
    return;
@@ -278,7 +282,6 @@ test_alter_table(
    cmds       => [
    qw(
       --dry-run
-      --find-child-tables
       --update-foreign-keys-method rebuild_constraints
    ),
       '--alter', 'DROP COLUMN last_update',
@@ -298,14 +301,13 @@ test_alter_table(
    cmds       => [
    qw(
       --execute
-      --find-child-tables
       --update-foreign-keys-method rebuild_constraints
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
 );
 
-# drop_old_table method -- This method tricks MySQL by disabling fk checks,
+# drop_swap method -- This method tricks MySQL by disabling fk checks,
 # then dropping the original table and renaming the new table in its place.
 # Since fk checks were disabled, MySQL doesn't update the child table fk refs.
 # Somewhat dangerous, but quick.  Downside: table doesn't exist for a moment.
@@ -322,8 +324,7 @@ test_alter_table(
    cmds       => [
    qw(
       --dry-run
-      --find-child-tables
-      --update-foreign-keys-method drop_old_table
+      --update-foreign-keys-method drop_swap
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
@@ -342,8 +343,44 @@ test_alter_table(
    cmds       => [
    qw(
       --execute
-      --find-child-tables
-      --update-foreign-keys-method drop_old_table
+      --update-foreign-keys-method drop_swap
+   ),
+      '--alter', 'DROP COLUMN last_update',
+   ],
+);
+
+# Let the tool auto-determine the fk update method.
+test_alter_table(
+   name       => "Basic FK auto --execute",
+   table      => "pt_osc.country",
+   pk_col     => "country_id",
+   file       => "basic_with_fks.sql",
+   wait       => ["pt_osc.address", "address_id=5"],
+   test_type  => "drop_col",
+   drop_col   => "last_update",
+   check_fks  => 1,
+   cmds       => [
+   qw(
+      --execute
+   ),
+      '--alter', 'DROP COLUMN last_update',
+   ],
+);
+
+# Specify the child tables manually.
+test_alter_table(
+   name       => "Basic FK with given child tables",
+   table      => "pt_osc.country",
+   pk_col     => "country_id",
+   file       => "basic_with_fks.sql",
+   wait       => ["pt_osc.address", "address_id=5"],
+   test_type  => "drop_col",
+   drop_col   => "last_update",
+   check_fks  => 1,
+   cmds       => [
+   qw(
+      --execute
+      --child-tables city
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
