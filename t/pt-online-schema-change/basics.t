@@ -29,7 +29,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 42;
+   plan tests => 43;
 }
 
 my $q      = new Quoter();
@@ -48,19 +48,22 @@ my $rows;
 $sb->load_file('master', "$sample/basic_no_fks.sql");
 PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
 
-# --new-table really ensures the tool exists before doing stuff because
-# setting up the new table is the first thing the tool does and this would
-# cause an error because mysql.user already exists.  To prove this, add
-# --dry-run and the test will fail because the code doesn't exit early.
 $output = output(
    sub { $exit = pt_online_schema_change::main(@args, "$dsn,t=pt_osc.t",
-      qw(--new-table mysql.user)) }
+      '--alter', 'drop column id') }
 );
 
 like(
    $output,
    qr/neither --dry-run nor --execute was specified/,
    "Doesn't run without --execute (bug 933232)"
+);
+
+my $ddl = $master_dbh->selectrow_arrayref("show create table pt_osc.t");
+like(
+   $ddl->[1],
+   qr/^\s+`id`/m,
+   "Did not alter the table"
 );
 
 is(
