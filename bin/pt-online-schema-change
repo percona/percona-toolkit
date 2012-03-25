@@ -4016,6 +4016,8 @@ sub new {
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
          . " /*checksum chunk*/";
+         # BARON: the above "checksum chunk" looks like this module isn't
+         # genericized for use outside of pt-table-checksum.
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -4865,6 +4867,8 @@ sub main {
       }
    }
 
+   # BARON: we should check that this option has a legal value. (Is this
+   # something we should add to OptionParser?)
    my $rename_fk_method = lc($o->get('update-foreign-keys-method') || '');
    if ( $rename_fk_method eq 'drop_old_table' ) {
       $o->set('swap-tables',    0);
@@ -4889,6 +4893,11 @@ sub main {
       }
 
       if ( $tbl && lc($tbl) eq lc($o->get('new-table') || "") ) {
+         # BARON: what if they are in different databases? And the comparison is
+         # case-insensitive but most systems will have case-sensitive table
+         # names so it would actually be OK to name them foo and Foo. Also, it
+         # looks like you might be comparing a table name to a database.table
+         # name.
          $o->save_error("The DSN table and --new-table cannot be the same");
       }
 
@@ -4916,6 +4925,7 @@ sub main {
          $o->save_error("--find-child-tables requires --update-foreign-keys-method");
       }
 
+      # BARON: oh, I see you do it here.
       if ( $rename_fk_method
            && $rename_fk_method ne 'rebuild_constraints'
            && $rename_fk_method ne 'drop_old_table' ) {
@@ -4968,6 +4978,10 @@ sub main {
 
    # Do not call "new Cxn(" directly; use this sub so that set_on_connect
    # is applied to every cxn.
+   # BARON: why not make this a subroutine instead of a subroutine variable? I
+   # think that can be less confusing. Also, the $set_on_connect variable can be
+   # inlined into this subroutine. Many of our tools have a get_dbh() subroutine
+   # and it might be good to just make a convention of it.
    my $make_cxn = sub {
       my (%args) = @_;
       my $cxn = new Cxn(
@@ -5076,6 +5090,8 @@ sub main {
 
          # This is called from within the main TABLE loop, so use the
          # master cxn; do not use $master_dbh.
+         # BARON: the above comment doesn't clarify things for me. I feel like
+         # there is some undocumented magic about a $cxn versus a $dbh.
          my $dbh = $cxn->dbh();
          if ( !$dbh || !$dbh->ping() ) {
             PTDEBUG && _d('Lost connection to master while waiting for slave lag');
@@ -5301,7 +5317,7 @@ sub main {
            . "$orig_tbl->{name} was not altered.\n";
       }
 
-      print "Done creating new table.\n"
+      print "Done altering new table.\n"
    }
 
    # Get the new table struct.
@@ -5589,6 +5605,8 @@ sub main {
 
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
+   # BARON: we probably ought to add LOW_PRIORITY modifiers to this. That will
+   # make it not block SELECT queries in case of MyISAM.
    my $dml    = "INSERT IGNORE INTO $new_tbl->{name} "
               . "(" . join(', ', map { $q->quote($_) } @common_cols) . ") "
               . "SELECT ";
@@ -5835,6 +5853,9 @@ sub create_table_like {
    print "Creating new table...\n";
    while ( $tries-- ) {
       $table_name = $prefix . $table_name;
+      # BARON: here we are creating the new table in the same DB as the original
+      # one, but shouldn't the user be able to specify otherdb with
+      # --new-table=otherdb.newtblname?
       my $sql     = "CREATE TABLE " . $q->quote($orig_tbl->{db}, $table_name)
                   . " LIKE $orig_tbl->{name}";
       PTDEBUG && _d($sql);
@@ -5899,6 +5920,8 @@ sub swap_tables {
          };
          if ( $EVAL_ERROR ) {
             # Ignore this error because we're expecting it.
+            # BARON: why are we expecting it? In what case should a table
+            # already exist?
             next if $EVAL_ERROR =~ m/table.+?already exists/i;
 
             # Some other error happened.  Let caller catch it.
@@ -5914,6 +5937,8 @@ sub swap_tables {
       }
 
       # This shouldn't happen.
+      # Here and in the attempt to find a new table name we probably ought to
+      # use --retries (and maybe a Retry object?)
       die "Failed to find a unique old table name after serveral attempts.\n";
    }
 }
@@ -5934,6 +5959,11 @@ sub check_orig_table {
    }
 
    # There cannot be any triggers on the original table.
+   # BARON: the LIKE will interpret _ in the table name as a wildcard. We ought
+   # to have a $q->quote_like option for this. (It often happens with SHOW
+   # STATUS too, but it usually is harmless there.)  Anyway, if we have tableXfoo
+   # with triggers and table_foo we're altering, we'll find triggers in this
+   # code and fail.
    my $sql = "SHOW TRIGGERS FROM " . $q->quote($orig_tbl->{db})
            . "LIKE '$orig_tbl->{tbl}'";
    PTDEBUG && _d($sql);
@@ -6011,6 +6041,11 @@ sub find_child_tables {
    return \@child_tables;
 }
 
+# BARON: I am thinking we ought to make the tool automatically look for child
+# tables and if they exist, choose a fk-alteration method automatically. If all
+# of the child tables are "small" then we can rebuild them; otherwise we can
+# automatically do the drop-and-rename trick.  The user could override, of
+# course. We can add this feature in the future.
 sub rebuild_constraints {
    my ( %args ) = @_;
    my @required_args = qw(orig_tbl old_tbl child_tables
@@ -6140,6 +6175,9 @@ sub create_triggers {
 
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.
+   # BARON: it's still not 100% safe because unique indexes can be nullable and
+   # we are using '='. We will need to use the (? IS NULL OR ? = ?) trick that
+   # Nibbler uses.
    my $tbl_struct     = $orig_tbl->{tbl_struct};
    my $del_index      = $orig_tbl->{del_index};
    my $del_index_cols = join(" AND ",
@@ -6155,6 +6193,9 @@ sub create_triggers {
 
    # The insert and update triggers should only use values for columns
    # that exist in both tables.
+   # BARON: here we need to choose unique trigger names just like we create
+   # unique table names. There might be multiple runs of the tool happening at
+   # one time (on different tables, of course).
    my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
    my $insert_trigger
@@ -6177,6 +6218,7 @@ sub create_triggers {
       my ($name, $sql) = @$trg;
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
+         # BARON: Are we catching errors in this?
          $cxn->dbh()->do($sql);
       }
       # Only save the trigger once it has been created
@@ -6234,27 +6276,6 @@ sub drop_triggers {
    return $exit_status;
 }
 
-{
-# Completely ignore these error codes.
-my %ignore_code = (
-   # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-   # Message: Statement may not be safe to log in statement format. 
-   # Ignore this warning because we have purposely set statement-based
-   # replication.
-   1592 => 1,
-);
-
-# Warn once per-table for these error codes if the error message
-# matches the pattern.
-my %warn_code = (
-   # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
-   # Message: Data truncated for column '%s' at row %ld
-   1265 => {
-      # any pattern
-      # use MySQL's message for this warning
-   },
-);
-
 sub exec_nibble {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
@@ -6276,9 +6297,36 @@ sub exec_nibble {
       wait  => sub { return; },
       try   => sub {
          # ###################################################################
+         # BARON: we have checksum copy/paste in this subroutine I guess?
          # Start timing the checksum query.
          # ###################################################################
          my $t_start = time;        
+
+         # BARON: I think we need some kind of Message module to handle things like
+         # printing out messages, suppressing repeated messages, suppressing certain
+         # messages, etc.
+         # Completely ignore these error codes.
+         my %ignore_code = (
+            # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
+            # Message: Statement may not be safe to log in statement format. 
+            # Ignore this warning because we have purposely set statement-based
+            # replication.
+            # BARON: We're actually not ignoring this code -- the tool hits this and
+            # exits on mysql 5.5.20. When I run in the debugger it appears this hash is
+            # empty. Scoping problems maybe? I'm moving it inside the subroutine...
+            1592 => 1,
+         );
+
+         # Warn once per-table for these error codes if the error message
+         # matches the pattern.
+         my %warn_code = (
+            # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
+            # Message: Data truncated for column '%s' at row %ld
+            1265 => {
+               # any pattern
+               # use MySQL's message for this warning
+            },
+         );
 
          # Execute the INSERT..SELECT query.
          PTDEBUG && _d($sth->{nibble}->{Statement},
@@ -6392,7 +6440,6 @@ sub exec_nibble {
       }
    );
 }
-}
 
 # Sub: explain_statement
 #   EXPLAIN a statement.
@@ -6454,6 +6501,9 @@ pt-online-schema-change - Perform online, non-blocking table schema changes.
 =head1 SYNOPSIS
 
 Usage: pt-online-schema-change [OPTION...] DSN
+
+BARON: NOTE we should say that you ought not to use 'rename' in --alter or the
+new table won't exist and the tool will fail.
 
 pt-online-schema-change performs online, non-blocking schema changes to a table.
 The database and table to alter must be specified in by DSN like
