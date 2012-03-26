@@ -632,7 +632,7 @@ Sets the action to just list the files in the sample.
 
 =item *
 
-Sets the action to view all of the samples's files in the less program.
+Sets the action to view all of the sample's files in the less program.
 
 =back
 

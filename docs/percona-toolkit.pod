@@ -464,7 +464,7 @@ see L<"ENVIRONMENT">.
 =head1 AUTHORS
 
 Percona Toolkit is primarily developed by Baron Schwartz and Daniel Nichter,
-both of whom are employed by Percona Inc.  See each program's documenation
+both of whom are employed by Percona Inc.  See each program's documentation
 for details.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
@@ -474,7 +474,7 @@ See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

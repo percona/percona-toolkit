@@ -4871,7 +4871,7 @@ and the original table are renamed/swapped unless C<--no-rename-tables> is
 specified.
 
 The default behavior, when this option is not specified and
-C<--[no]create-tmp-tble> is true, is to create a temporary table named
+C<--[no]create-tmp-table> is true, is to create a temporary table named
 C<__tmp_TABLE> where C<TABLE> is the original table specified by the DSN
 on the command line.
 

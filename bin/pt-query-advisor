@@ -6677,7 +6677,7 @@ Analyze all queries in a slow log:
 
    pt-query-advisor /path/to/slow-query.log
 
-Analyze all queires in a general log:
+Analyze all queries in a general log:
 
    pt-query-advisor --type genlog mysql.log
 

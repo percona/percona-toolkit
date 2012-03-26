@@ -11332,7 +11332,7 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 =head1 DESCRIPTION
 
 pt-upgrade executes queries from slowlogs on one or more MySQL server to find
-differences in query time, warnings, results, and other aspects of the querys'
+differences in query time, warnings, results, and other aspects of the queries'
 execution.  This helps evaluate upgrades, migrations and configuration
 changes.  The comparisons specified by L<"--compare"> determine what
 differences can be found.  A report is printed which outlines all the
@@ -11494,7 +11494,7 @@ Continue working even if there is an error.
 Convert non-SELECT statements to SELECTs and compare.
 
 By default non-SELECT statements are not allowed.  This option causes
-non-SELECT statments (like UPDATE, INSERT and DELETE) to be converted
+non-SELECT statements (like UPDATE, INSERT and DELETE) to be converted
 to SELECT statements, executed and compared.
 
 For example, C<DELETE col FROM tbl WHERE id=1> is converted to
