@@ -177,12 +177,12 @@ sub fingerprint {
    $query =~ s/'.*?'/?/sg;               # quoted strings
 
    # MD5 checksums which are always 32 hex chars 
-   if ( $self->{fingerprint_md5} ) { 
+   if ( $self->{match_md5_checksums} ) { 
       $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
    }
 
    # Things resembling numbers/hex.
-   if ( !$self->{preserve_embedded_numbers} ) {
+   if ( !$self->{match_embedded_numbers} ) {
       # For speed, this regex is extremely broad in its definition
       # of what looks like a number.
       $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;
@@ -192,7 +192,7 @@ sub fingerprint {
    }
 
    # Clean up leftovers
-   if ( $self->{fingerprint_md5} ) {
+   if ( $self->{match_md5_checksums} ) {
       $query =~ s/[xb+-]\?/?/g;                
    }
    else {

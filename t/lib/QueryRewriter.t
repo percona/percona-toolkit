@@ -353,7 +353,7 @@ is(
 # special feature used by pt-fingerprint.
 $qr = new QueryRewriter(
    QueryParser     => $qp,
-   fingerprint_md5 => 1,
+   match_md5_checksums => 1,
 );
 
 is(
@@ -374,8 +374,8 @@ is(
 
 $qr = new QueryRewriter(
    QueryParser     => $qp,
-   fingerprint_md5 => 1,
-   preserve_embedded_numbers => 1,
+   match_md5_checksums => 1,
+   match_embedded_numbers => 1,
 );
 
 is(
@@ -383,7 +383,7 @@ is(
       "SELECT * FROM db.fbc5e685a5d3d45aa1d0347fdb7c4d35_temp where id=1"
    ),
    "select * from db.?_temp where id=?",
-   "Fingerprint db.MD5_tbl (with preserve_embedded_numbers)"
+   "Fingerprint db.MD5_tbl (with match_embedded_numbers)"
 );
 
 is(
@@ -391,12 +391,12 @@ is(
       "SELECT * FROM db.temp_fbc5e685a5d3d45aa1d0347fdb7c4d35 where id=1"
    ),
    "select * from db.temp_? where id=?",
-   "Fingerprint db.tbl_MD5 (with preserve_embedded_numbers)"
+   "Fingerprint db.tbl_MD5 (with match_embedded_numbers)"
 );
 
 $qr = new QueryRewriter(
    QueryParser => $qp,
-   preserve_embedded_numbers => 1,
+   match_embedded_numbers => 1,
 );
 
 is(
