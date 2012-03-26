@@ -2253,7 +2253,7 @@ Define how the arrival and completion timestamps of a query, and thus its
 response time (elapsed time) are computed.  Recall that there may be multiple
 inbound and outbound packets per request and response, and refer to the
 following ASCII diagram.  Suppose that a client sends a series of three inbound
-(I) packets to the server, whch computes the result and then sends two outbound
+(I) packets to the server, which computes the result and then sends two outbound
 (O) packets back:
 
   I I    I ..................... O    O

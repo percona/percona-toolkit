@@ -2564,7 +2564,7 @@ If the results were in order 2-3-4, I think that would mean 3 is a subquery of
 2, 4 is a subquery of 3.  As it is, this means 4 is a subquery of the nearest
 previous recent row with a smaller id, which is 1.  Likewise for 3 and 2.
 
-This structure is hard to programatically build into a tree for the same reason
+This structure is hard to programmatically build into a tree for the same reason
 it's hard to understand by inspection: there are both forward and backward
 references.  <derivedN> is a forward reference to selectN, while <unionM,N> is a
 backward reference to selectM and selectN.  That makes recursion and other
