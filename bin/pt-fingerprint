@@ -1559,8 +1559,25 @@ sub fingerprint {
    $query =~ s/\\["']//g;                # quoted strings
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
-   $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;# Anything vaguely resembling numbers
-   $query =~ s/[xb.+-]\?/?/g;            # Clean up leftovers
+
+   if ( $self->{match_md5_checksums} ) { 
+      $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
+   }
+
+   if ( !$self->{match_embedded_numbers} ) {
+      $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+   else {
+      $query =~ s/\b[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+
+   if ( $self->{match_md5_checksums} ) {
+      $query =~ s/[xb+-]\?/?/g;                
+   }
+   else {
+      $query =~ s/[xb.+-]\?/?/g;
+   }
+
    $query =~ s/\A\s+//;                  # Chop off leading whitespace
    chomp $query;                         # Kill trailing whitespace
    $query =~ tr[ \n\t\r\f][ ]s;          # Collapse whitespace
@@ -1840,7 +1857,11 @@ sub main {
    $o->usage_or_errors();
 
    my $qp = new QueryParser();
-   my $qr = new QueryRewriter(QueryParser=>$qp);
+   my $qr = new QueryRewriter(
+      QueryParser            => $qp,
+      match_md5_checksums    => $o->get('match-md5-checksums'),
+      match_embedded_numbers => $o->get('match-embedded-numbers'),
+   );
 
    if ( $o->got('query') ) {
       print $qr->fingerprint($o->get('query')), "\n";
@@ -1992,6 +2013,24 @@ first option on the command line.
 =item --help
 
 Show help and exit.
+
+=item --match-embedded-numbers
+
+Match numbers embedded in words and replace as single values.  This option
+causes the tool to be more careful about matching numbers so that words
+with numbers, like C<catch22> are matched and replaced as a single C<?>
+placeholder.  Otherwise the default number matching pattern will replace
+C<catch22> as C<catch?>.
+
+This is helpful if database or table names contain numbers.
+
+=item --match-md5-checksums
+
+Match MD5 checksums and replace as single values.  This option causes
+the tool to be more careful about matching numbers so that MD5 checksums
+like C<fbc5e685a5d3d45aa1d0347fdb7c4d35> are matched and replaced as a
+single C<?> placeholder.  Otherwise, the default number matching pattern will
+replace C<fbc5e685a5d3d45aa1d0347fdb7c4d35> as C<fbc?>.
 
 =item --query
 
