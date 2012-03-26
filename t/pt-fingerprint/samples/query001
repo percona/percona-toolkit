@@ -1,0 +1,2 @@
+# Query_time: 1
+select * from db.tbl where id=1 or foo='bar';

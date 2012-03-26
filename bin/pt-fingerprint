@@ -1871,6 +1871,9 @@ sub main {
       while ( <> ) {
          my $query = $_;
          chomp $query;
+         $query =~ s/^#.+$//mg;
+         $query =~ s/^\s+//;
+         next unless $query =~ m/^\w/;
          print $qr->fingerprint($query), "\n";
       }
    }
