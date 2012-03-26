@@ -10,7 +10,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 266;
+use Test::More tests => 271;
 
 use QueryRewriter;
 use QueryParser;
@@ -347,6 +347,64 @@ is(
    $qr->fingerprint("LOAD DATA INFILE '/tmp/foo.txt' INTO db.tbl"),
    "load data infile ? into db.tbl",
    "Fingerprint LOAD DATA INFILE"
+);
+
+# fingerprint MD5 checksums, 32 char hex strings.  This is a
+# special feature used by pt-fingerprint.
+$qr = new QueryRewriter(
+   QueryParser     => $qp,
+   fingerprint_md5 => 1,
+);
+
+is(
+   $qr->fingerprint(
+      "SELECT * FROM db.fbc5e685a5d3d45aa1d0347fdb7c4d35_temp where id=1"
+   ),
+   "select * from db.?_temp where id=?",
+   "Fingerprint db.MD5_tbl"
+);
+
+is(
+   $qr->fingerprint(
+      "SELECT * FROM db.temp_fbc5e685a5d3d45aa1d0347fdb7c4d35 where id=1"
+   ),
+   "select * from db.temp_? where id=?",
+   "Fingerprint db.tbl_MD5"
+);
+
+$qr = new QueryRewriter(
+   QueryParser     => $qp,
+   fingerprint_md5 => 1,
+   preserve_embedded_numbers => 1,
+);
+
+is(
+   $qr->fingerprint(
+      "SELECT * FROM db.fbc5e685a5d3d45aa1d0347fdb7c4d35_temp where id=1"
+   ),
+   "select * from db.?_temp where id=?",
+   "Fingerprint db.MD5_tbl (with preserve_embedded_numbers)"
+);
+
+is(
+   $qr->fingerprint(
+      "SELECT * FROM db.temp_fbc5e685a5d3d45aa1d0347fdb7c4d35 where id=1"
+   ),
+   "select * from db.temp_? where id=?",
+   "Fingerprint db.tbl_MD5 (with preserve_embedded_numbers)"
+);
+
+$qr = new QueryRewriter(
+   QueryParser => $qp,
+   preserve_embedded_numbers => 1,
+);
+
+is(
+   $qr->fingerprint(
+      "SELECT * FROM prices.rt_5min where id=1"
+   ),
+   "select * from prices.rt_5min where id=?",
+   "Fingerprint db.tbl<number>name (preserve number)"
 );
 
 # #############################################################################
