@@ -11,11 +11,7 @@ raid_controller    No RAID controller detected
 threading    NPTL 2.5
 getenforce    No SELinux detected
 swappiness    
-disks    dm-0
-dm-1
-hda
-hdc
-md0
+internal::disks    dm-0 dm-1 hda hdc md0
 internal::hda    [cfq] 128
 internal::hdc    [cfq] 128
 dentry-state    9175	7239	45	0	0	0

@@ -1036,7 +1036,7 @@ parse_mysqld_instances () {
    echo "  ===== ========================== ==== === ======"
 
    grep '/mysqld ' "$file" | while read line; do
-      local pid=$(echo "$line" | awk '{print $2;}')
+      local pid=$(echo "$line" | awk '{print $1;}')
       for word in ${line}; do
          if echo "${word}" | grep -- "--socket=" > /dev/null; then
             socket="$(echo "${word}" | cut -d= -f2)"
@@ -2260,7 +2260,9 @@ if    [ "${0##*/}" = "$TOOL" ] \
    fi
 
    # Check if mysql and mysqldump are there, otherwise bail out early.
-   check_mysql
+   # But don't if they passed in --read-samples, since we don't need
+   # a connection then.
+   [ "$OPT_READ_SAMPLES" ] || check_mysql
 
    main "$@"
 fi

@@ -1364,6 +1364,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
   udev        995M   1% devtmpfs   rw,mode=0755                                                                                      /dev
 # Disk Schedulers And Queue Size #############################
          sda | [cfq] 128
+         sdb | [cfq] 128
 # Disk Partioning ############################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
@@ -1383,7 +1384,7 @@ dentry-state | 78471 67588 45 0  0  0
      file-nr | 9248  0  203574
     inode-nr | 70996 10387
 # LVM Volumes ################################################
-No volume groups found
+  No volume groups found
 # RAID Controller ############################################
   Controller | No RAID controller detected
 # Network Config #############################################
@@ -1432,6 +1433,7 @@ No volume groups found
 EOF
 
 report_system_summary "$samples/Linux/001" | tail -n +3 > "$TMPDIR/got"
+cp "$TMPDIR/got" yadda.txt
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from Linux (Ubuntu)"
 
 report_system_summary "$samples/Linux/002" | tail -n +3 > "$TMPDIR/got"
