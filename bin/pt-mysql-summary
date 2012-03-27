@@ -492,8 +492,16 @@ _lsof() {
    fi
 }
 
+
+
 _which() {
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
 }
 
 # ###########################################################################
@@ -608,7 +616,7 @@ CMD_OBJDUMP="$( _which objdump 2>/dev/null )"
 
 get_nice_of_pid () {
    local pid="$1"
-   local niceness=$(ps -p $pid -o nice | tail -n+2 | awk '{print $1; exit;}')
+   local niceness="$(ps -p $pid -o nice | awk '$1 !~ /[^0-9]/ {print $1; exit}')"
 
    if [ -n "${niceness}" ]; then
       echo $niceness
@@ -647,7 +655,7 @@ get_oom_of_pid () {
    local pid="$1"
    local oom_adj=""
 
-   if [ -n "${pid}" ] && [ -e /proc/cpuinfo ]; then
+   if [ -n "${pid}" -a -e /proc/cpuinfo ]; then
       if [ -s "/proc/$pid/oom_score_adj" ]; then
          oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
          _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
@@ -692,6 +700,7 @@ has_symbols () {
 }
 
 setup_data_dir () {
+   local OPT_SAVE_DATA="$1"
    local data_dir=""
    if [ -z "$OPT_SAVE_DATA" ]; then
       mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
@@ -710,13 +719,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   local v="$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
-   if [ -n "$v" ]; then
-      echo "$v"
-      return 0
-   else
-      return 1
-   fi
+   echo "$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
 }
 
 # ###########################################################################
@@ -739,7 +742,25 @@ CMD_MYSQLDUMP="${CMD_MYSQLDUMP:-""}"
 
 collect_mysqld_instances () {
    local file="$1"
-   ps auxww 2>/dev/null | grep mysqld > "$file"
+   local variables_file="$2"
+
+   local pids="$(_pidof mysqld)"
+
+   if [ -n "$pids" ]; then
+
+      for pid in $pids; do
+         local nice="$( get_nice_of_pid $pid )"
+         local oom="$( get_oom_of_pid $pid )"
+         echo "internal::nice_of_$pid    $nice" >> "$variables_file"
+         echo "internal::oom_of_$pid    $oom" >> "$variables_file"
+      done
+
+      pids="$(echo $pids | sed -e 's/ /,/g')"
+      ps ww -p "$pids" 2>/dev/null > "$file"
+   else
+      echo "mysqld doesn't appear to be running" > "$file"
+   fi
+
 }
 
 find_my_cnf_file() {
@@ -758,7 +779,6 @@ find_my_cnf_file() {
    fi
 
    if [ ! -n "${cnf_file}" ]; then
-      _d "Cannot autodetect config file, trying common locations"
       cnf_file="/etc/my.cnf";
       if [ ! -e "${cnf_file}" ]; then
          cnf_file="/etc/mysql/my.cnf";
@@ -840,6 +860,7 @@ collect_internal_vars () {
    local trigger_count=$($CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null)
    local has_symbols="$(has_symbols "${CMD_MYSQL}")"
 
+   echo "pt-summary-internal-mysql_executable    $CMD_MYSQL" >> "$file"
    echo "pt-summary-internal-now    $now" >> "$file"
    echo "pt-summary-internal-user   $user" >> "$file"
    echo "pt-summary-internal-FNV_64   $FNV_64" >> "$file"
@@ -850,12 +871,12 @@ collect_internal_vars () {
 get_mysqldump_for () {
    local file="$1"
    local args="$2"
-   local dbtodump="${3:---all-databases}"
+   local dbtodump="${3:-"--all-databases"}"
 
    $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
       --skip-add-locks --skip-add-drop-table --compact \
       --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-      ${args} "${dbtodump}" > "$file"
+      ${args} --databases $( local IFS=,; echo ${dbtodump}) >> "$file"
 }
 
 get_mysqldump_args () {
@@ -863,7 +884,6 @@ get_mysqldump_args () {
    local trg_arg=""
 
    if $CMD_MYSQLDUMP --help --verbose 2>&1 | grep triggers >/dev/null; then
-      _d "mysqldump supports triggers"
       trg_arg="--routines"
    fi
 
@@ -871,7 +891,6 @@ get_mysqldump_args () {
       local triggers="--skip-triggers"
       local trg=$(get_var "pt-summary-internal-trigger_count" "$file" )
       if [ -n "${trg}" ] && [ "${trg}" -gt 0 ]; then
-         _d "We have triggers to dump"
          triggers="--triggers"
       fi
       trg_arg="${trg_arg} ${triggers}";
@@ -883,8 +902,6 @@ collect_mysql_info () {
    local dir="$1"
    local prefix="${2:-percona-toolkit}"
 
-   collect_mysqld_instances "$dir/${prefix}-mysqld-instances"
-
    collect_mysql_variables "$dir/${prefix}-mysql-variables"
    collect_mysql_status "$dir/${prefix}-mysql-status"
    collect_mysql_databases "$dir/${prefix}-mysql-databases"
@@ -894,9 +911,10 @@ collect_mysql_info () {
    collect_mysql_processlist "$dir/${prefix}-mysql-processlist"   
    collect_mysql_users "$dir/${prefix}-mysql-users"
 
+   collect_mysqld_instances "$dir/${prefix}-mysqld-instances" "$dir/${prefix}-mysql-variables"
+
    local binlog="$(get_var log_bin "$dir/${prefix}-mysql-variables")"
    if [ "${binlog}" ]; then
-      _d "Got a binlog, going to get MASTER LOGS and MASTER STATUS"
       collect_master_logs_status "$dir/${prefix}-mysql-master-logs" "$dir/${prefix}-mysql-master-status"
    fi
 
@@ -911,10 +929,9 @@ collect_mysql_info () {
    echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/${prefix}-mysql-variables"
    collect_internal_vars "$dir/${prefix}-mysql-variables"
 
-   if [ -n "${OPT_DUMP_SCHEMAS}" ]; then
-      _d "--dump-schemas passed in, dumping early"
+   if [ -n "${OPT_DATABASES}" ]; then
       local trg_arg="$( get_mysqldump_args "$dir/${prefix}-mysql-variables" )"
-      get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${OPT_DUMP_SCHEMAS}"
+      get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${OPT_DATABASES}"
    fi
 
    (
@@ -1007,6 +1024,8 @@ get_plugin_status () {
 _NO_FALSE_NEGATIVES=""
 parse_mysqld_instances () {
    local file="$1"
+   local variables_file="$2"
+
    local socket=${socket:-""}
    local port=${port:-""}
    local datadir="${datadir:-""}"
@@ -1029,13 +1048,13 @@ parse_mysqld_instances () {
             datadir="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      local nice=$(get_nice_of_pid $pid )
-      local oom=$(get_oom_of_pid $pid )
+      local nice="$(get_var "internal::nice_of_$pid" "$variables_file")"
+      local oom="$(get_var "internal::oom_of_$pid" "$variables_file")"
       if [ -n "${_NO_FALSE_NEGATIVES}" ]; then
          nice="?"
          oom="?"
       fi
-      printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice}" "${oom}" "${socket}"
+      printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
    done
 }
 
@@ -1709,7 +1728,7 @@ section_percona_server_features () {
             "$(feat_on "$file" innodb_adaptive_checkpoint ne none)"
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
-   name_val "Fast Maatkit Hashes"   \
+   name_val "Fast Hash UDFs"   \
             "$(get_var "pt-summary-internal-FNV_64" "$file")"
 }
 
@@ -1903,9 +1922,10 @@ report_mysql_summary () {
    section Percona_Toolkit_MySQL_Summary_Report
    name_val "System time" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
    section Instances
-   parse_mysqld_instances "$dir/${prefix}-mysqld-instances"
+   parse_mysqld_instances "$dir/${prefix}-mysqld-instances" "$dir/${prefix}-mysql-variables"
 
    section MySQL_Executable
+   name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/${prefix}-mysql-variables" )"
    name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/${prefix}-mysql-variables" )"
 
    local user="$(get_var "pt-summary-internal-user" "$dir/${prefix}-mysql-variables")"
@@ -1993,7 +2013,8 @@ report_mysql_summary () {
 
    section Schema
    local reply="n"
-   if [ -n "${OPT_DUMP_SCHEMAS}" ]; then
+   if [ -n "${OPT_DATABASES}" ] || [ -n "${OPT_READ_SAMPLES}" ] \
+      || [ -e "$dir/${prefix}-mysqldump" -a -s "$dir/${prefix}-mysqldump" ]; then
       reply="y"
    elif [ -t 0 -a -t 1 ]; then
       echo -n "Would you like to mysqldump -d the schema and analyze it? y/n "
@@ -2001,8 +2022,8 @@ report_mysql_summary () {
       reply=${reply:-n}
    fi
    if echo "${reply:-n}" | grep -i '^y' > /dev/null ; then
-      if [ -z "${OPT_DUMP_SCHEMAS}" ]; then
-
+      if [ -z "${OPT_DATABASES}" ] && [ -z "$OPT_READ_SAMPLES" ] \
+         && [ ! -e "$dir/${prefix}-mysqldump" ]; then
          echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
          echo -n "Type the name of the database, or press Enter to dump all of them. "
          local dbtodump=""
@@ -2010,7 +2031,6 @@ report_mysql_summary () {
          local trg_arg="$( get_mysqldump_args "$dir/${prefix}-mysql-variables" )"
          get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${dbtodump}"
       fi
-
 
       if [ -e "$dir/${prefix}-mysqldump" -a -s "$dir/${prefix}-mysqldump" ] \
          && grep 'CREATE TABLE' "$dir/${prefix}-mysqldump" >/dev/null 2>&1; then
@@ -2176,7 +2196,7 @@ main() {
    # Prepending SIG to these doesn't work with NetBSD's sh
    trap sigtrap HUP INT TERM
 
-   local RAN_WITH="--sleep=$OPT_SLEEP --dump-schemas=$OPT_DUMP_SCHEMAS --save-data=$OPT_SAVE_DATA"
+   local RAN_WITH="--sleep=$OPT_SLEEP --databases=$OPT_DATABASES --save-samples=$OPT_SAVE_SAMPLES"
 
    _d "Starting $0 $RAN_WITH"
 
@@ -2193,14 +2213,18 @@ main() {
    mk_tmpdir
 
    # Set DATA_DIR where we'll save collected data files.
-   local data_dir="$(setup_data_dir)"
+   local data_dir="$(setup_data_dir "${OPT_SAVE_SAMPLES:-""}")"
 
-   _d "Temp dir is [$TMPDIR], saving data in [$data_dir]"
-
-   # ########################################################################
-   # Fetch most info, leave a child in the background gathering the rest
-   # ########################################################################
-   collect_mysql_info "${data_dir}"
+   if [ -n "$OPT_READ_SAMPLES" -a -d "$OPT_READ_SAMPLES" ]; then
+      # --read-samples was set and is a directory, so the samples
+      # will already be there.
+      data_dir="$OPT_READ_SAMPLES"
+   else
+      # #####################################################################
+      # Fetch most info, leave a child in the background gathering the rest
+      # #####################################################################
+      collect_mysql_info "${data_dir}"
+   fi
 
    # ########################################################################
    # Format and pretty-print the data
@@ -2253,7 +2277,7 @@ pt-mysql-summary - Summarize MySQL information in a nice way.
 
 =head1 SYNOPSIS
 
-Usage: pt-mysql-summary [MYSQL-OPTIONS]
+Usage: pt-mysql-summary [OPTIONS] [-- MYSQL OPTIONS]
 
 pt-mysql-summary conveniently summarizes the status and configuration of a
 MySQL database server so that you can learn about it at a glance.  It is not
@@ -2328,18 +2352,25 @@ first option on the command line.
 
 Print help and exit.
 
-=item --save-data
+=item --save-samples
 
 type: string
 
 Save the data files used to generate the summary in this directory.
 
-=item --dump-schemas
+=item --read-samples
+
+type: string
+
+Create a report from the files found in this directory.
+
+=item --databases
 
 type: string
 
 Names of databases to dump through myslqdump. If you want all of them,
-you can use --all-databases. If not provided, the program will ask you
+you can use --all-databases; you can also pass in a comma-separated list
+of database names. If not provided, the program will ask you
 for manual input.
 
 =item --sleep

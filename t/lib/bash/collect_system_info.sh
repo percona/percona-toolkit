@@ -10,6 +10,7 @@ TOOL="pt-summary"
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/parse_options.sh"
 . "$LIB_DIR/summary_common.sh"
+. "$LIB_DIR/parse_options.sh"
 . "$LIB_DIR/collect_system_info.sh"
 
 # Prefix (with path) for the collect files.
@@ -18,7 +19,8 @@ samples="$PERCONA_TOOLKIT_BRANCH/t/pt-summary/samples"
 
 mkdir "$p"
 
-OPT_SLEEP="1"
+parse_options "$BIN_DIR/pt-summary" --sleep 1
+
 collect_system_data "$p"
 
 cat <<EOF > "$TMPDIR/expected"
@@ -106,7 +108,7 @@ no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-007.txt"
 # raid_controller
 
 rm "$TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
-raid_controller "$TMPDIR/raid_controller_outfile.tmp" "" ""
+raid_controller "" "" > "$TMPDIR/raid_controller_outfile.tmp"
 
 is \
    "$(get_var raid_controller "$TMPDIR/raid_controller_outfile.tmp")" \
@@ -114,14 +116,14 @@ is \
    "raid_controller has a sane default"
 
 rm "$TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
-raid_controller "$TMPDIR/raid_controller_outfile.tmp" "" "$samples/lspci-001.txt"
+raid_controller "" "$samples/lspci-001.txt" > "$TMPDIR/raid_controller_outfile.tmp"
 is \
    "$(get_var raid_controller "$TMPDIR/raid_controller_outfile.tmp")" \
    "Fusion-MPT SAS" \
    "raid_controller gets the correct result from an lspci file"
 
 rm "$TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
-raid_controller "$TMPDIR/raid_controller_outfile.tmp" "$samples/dmesg-004.txt" ""
+raid_controller "$samples/dmesg-004.txt" "" > "$TMPDIR/raid_controller_outfile.tmp"
 is \
    "$(get_var raid_controller "$TMPDIR/raid_controller_outfile.tmp")" \
    "AACRAID" \
@@ -157,6 +159,7 @@ test_linux_exclusive_collection () {
    local PT_SUMMARY_SKIP=""
 
    mkdir "$dir/1"
+   cp "$dir/sysctl" "$dir/1/"
    linux_exclusive_collection "$dir/1"
 
    is \
@@ -171,6 +174,7 @@ test_linux_exclusive_collection () {
    done
    
    mkdir "$dir/2"
+   cp "$dir/sysctl" "$dir/2/"
    linux_exclusive_collection "$dir/2"
 
    is \
@@ -192,6 +196,7 @@ platform="$(get_var platform "$p/summary")"
 
 if [ "$platform" = "Linux" ]; then
    mkdir "$TMPDIR/linux_data"
+   cp "$p/sysctl" "$TMPDIR/linux_data/sysctl"
    test_linux_exclusive_collection "$TMPDIR/linux_data"
 else
    skip 1 5 "Tests exclusive for Linux"
@@ -249,7 +254,7 @@ forked_pid="$!"
 if [ -e /proc/$forked_pid/oom_adj ] \
       && echo "-17" > /proc/$forked_pid/oom_adj 2>/dev/null; then
 
-   notable_processes_info "$TMPDIR/notable_procs"
+   notable_processes_info > "$TMPDIR/notable_procs"
    like \
       "$(cat "$TMPDIR/notable_procs")" \
       "${forked_pid}\\s+-17" \
@@ -274,7 +279,7 @@ test_dmidecode_system_info () {
    cmd_ok '! test -s "$dir/outfile"' "If dmidecode isn't found, produces nothing"
 
    fake_command dmidecode '[$@]'
-   dmidecode_system_info "$dir/outfile"
+   dmidecode_system_info > "$dir/outfile"
 
    cat <<EOF >> "$dir/expected"
 vendor    [-s system-manufacturer]

@@ -3,6 +3,7 @@
   ===== ========================== ==== === ======
    3306 /var/lib/mysql             ?    ?   /var/run/mysqld/mysqld.sock
 # MySQL Executable ###########################################
+       Path to executable | 
               Has symbols | No
 # Report On Port 3306 ########################################
                      User | 
@@ -108,7 +109,7 @@ Uptime                                    90000           1           1
       Response Time Hist. | Not Supported
           Smooth Flushing | Not Supported
       HandlerSocket NoSQL | Not Supported
-      Fast Maatkit Hashes | Unknown
+           Fast Hash UDFs | Unknown
 # Plugins ####################################################
        InnoDB compression | Not found
 # Query cache ################################################

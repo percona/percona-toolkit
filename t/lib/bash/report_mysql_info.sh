@@ -273,7 +273,8 @@ cat <<EOF > $TMPDIR/expected
   12345 /tmp/12345/data            ?    ?   /tmp/12345/mysql_sandbox12345.sock
   12346 /tmp/12346/data            ?    ?   /tmp/12346/mysql_sandbox12346.sock
 EOF
-parse_mysqld_instances "$samples/ps-mysqld-001.txt" > "$TMPDIR/got"
+touch "$TMPDIR/empty"
+parse_mysqld_instances "$samples/ps-mysqld-001.txt" "$TMPDIR/empty" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-001.txt"
 
 cat <<EOF > "$TMPDIR/expected"
@@ -281,7 +282,7 @@ cat <<EOF > "$TMPDIR/expected"
   ===== ========================== ==== === ======
         /var/lib/mysql             ?    ?   /var/lib/mysql/mysql.sock
 EOF
-parse_mysqld_instances "$samples/ps-mysqld-002.txt" > "$TMPDIR/got"
+parse_mysqld_instances "$samples/ps-mysqld-002.txt" "$TMPDIR/empty" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-002.txt"
 
 #parse_mysqld_instances
@@ -290,7 +291,7 @@ cat <<EOF > $TMPDIR/expected
   ===== ========================== ==== === ======
    3306 /mnt/data-store/mysql/data ?    ?   /tmp/mysql.sock
 EOF
-parse_mysqld_instances "$samples/ps-mysqld-003.txt" > "$TMPDIR/got"
+parse_mysqld_instances "$samples/ps-mysqld-003.txt" "$TMPDIR/empty" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-003.txt"
 
 cat <<EOF > "$TMPDIR/expected"
@@ -303,7 +304,7 @@ cat <<EOF > "$TMPDIR/in"
 mysql   767  0.0  0.9  3492  1100  v0  I     3:01PM   0:00.07 /bin/sh /usr/local/bin/mysqld_safe --defaults-extra-file=/var/db/mysql/my.cnf --user=mysql --datadir=/var/db/mysql --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
 mysql   818  0.0 17.4 45292 20584  v0  I     3:01PM   0:02.28 /usr/local/libexec/mysqld --defaults-extra-file=/var/db/mysql/my.cnf --basedir=/usr/local --datadir=/var/db/mysql --user=mysql --log-error=/var/db/mysql/freebsd.hsd1.va.comcast.net..err --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
 EOF
-parse_mysqld_instances "$TMPDIR/in" > "$TMPDIR/got"
+parse_mysqld_instances "$TMPDIR/in" "$TMPDIR/empty" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_mysqld_instances"
 
 # ###########################################################################
@@ -427,7 +428,7 @@ Uptime                                    90000           1           1
 Uptime_since_flush_status                 90000           1            
 EOF
 
-join $samples/mysql-status-00{1,2}.txt > "$TMPDIR/in"
+join "$samples/mysql-status-001.txt" "$samples/mysql-status-002.txt" > "$TMPDIR/in"
 format_status_variables "$TMPDIR/in" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "format_status_variables"
 
@@ -435,7 +436,7 @@ no_diff "$TMPDIR/got" "$TMPDIR/expected" "format_status_variables"
 # format_overall_db_stats
 # ###########################################################################
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > "$TMPDIR/expected"
 
   Database Tables Views SPs Trigs Funcs   FKs Partn
   mysql        17                                  
@@ -463,9 +464,8 @@ cat <<EOF > $TMPDIR/expected
   sakila     1  15   1   3  19  26   3   4   1          45   4   1   7   2
 
 EOF
-format_overall_db_stats $samples/mysql-schema-001.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
-
+format_overall_db_stats "$samples/mysql-schema-001.txt" > "$TMPDIR/got"
+no_diff "$TMPDIR/got" "$TMPDIR/expected"
 
 cat <<EOF > $TMPDIR/expected
 
@@ -489,8 +489,11 @@ cat <<EOF > $TMPDIR/expected
   {chosen}   1   1
 
 EOF
-format_overall_db_stats $samples/mysql-schema-002.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+format_overall_db_stats "$samples/mysql-schema-002.txt" > "$TMPDIR/got"
+no_diff \
+   "$TMPDIR/got" \
+   "$TMPDIR/expected" \
+   "format_overall_db_stats: single DB without CREATE DATABASE nor USE db defaults to {chosen}"
 
 # ###########################################################################
 # format_innodb_status
@@ -700,7 +703,8 @@ format_innodb_filters_test
 # ###########################################################################
 
 OPT_SLEEP=1
-OPT_DUMP_SCHEMAS="mysql"
+OPT_DATABASES=""
+OPT_READ_SAMPLES=""
 NAME_VAL_LEN=25
 _NO_FALSE_NEGATIVES=1
 report_mysql_summary "$samples/tempdir" "percona-toolkit" | tail -n+3 > "$TMPDIR/got"

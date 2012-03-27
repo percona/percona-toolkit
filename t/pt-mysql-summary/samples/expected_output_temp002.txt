@@ -3,6 +3,7 @@
   ===== ========================== ==== === ======
    3306 /var/lib/mysql             ?    ?   /var/run/mysqld/mysqld.sock
 # MySQL Executable ###########################################
+       Path to executable | 
               Has symbols | Yes
 # Report On Port 3306 ########################################
                      User | hugmeir@localhost
@@ -124,7 +125,7 @@ Uptime                                    90000           1           1
       Response Time Hist. | Not Supported
           Smooth Flushing | Not Supported
       HandlerSocket NoSQL | Not Supported
-      Fast Maatkit Hashes | Unknown
+           Fast Hash UDFs | Unknown
 # Plugins ####################################################
        InnoDB compression | ACTIVE
 # Query cache ################################################
@@ -133,6 +134,44 @@ Uptime                                    90000           1           1
                     Usage | 0%
          HitToInsertRatio | 0%
 # Schema #####################################################
+
+  Database           Tables Views SPs Trigs Funcs   FKs Partn
+  bluh                    1                                  
+  meh                     1                                  
+  mysql                  22                                  
+  percona                 1                                  
+  performance_schema                                         
+
+  Database           MyISAM InnoDB
+  bluh                    1       
+  meh                            1
+  mysql                  22       
+  percona                        1
+  performance_schema              
+
+  Database           BTREE
+  bluh                    
+  meh                     
+  mysql                 31
+  percona                2
+  performance_schema      
+
+                       i   t   b   b   c   t   s   e   l   d   t   s   b   v   f
+                       n   e   i   l   h   i   e   n   o   a   i   m   i   a   l
+                       t   x   n   o   a   m   t   u   n   t   n   a   g   r   o
+                           t   a   b   r   e       m   g   e   y   l   i   c   a
+                               r           s           b   t   i   l   n   h   t
+                               y           t           l   i   n   i   t   a    
+                                           a           o   m   t   n       r    
+                                           m           b   e       t            
+                                           p                                    
+  Database           === === === === === === === === === === === === === === ===
+  bluh                 1   1   1   1                                            
+  meh                                  1                                        
+  mysql               19   2       4  63   8   6  77   5   4   3   3   8   1    
+  percona              3   2           4   1                               1   1
+  performance_schema                                                            
+
 # Noteworthy Technologies ####################################
                       SSL | No
      Explicit LOCK TABLES | No

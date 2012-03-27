@@ -1,0 +1,9 @@
+
+
+Disk /dev/hda: 8589 MB, 8589934592 bytes
+255 heads, 63 sectors/track, 1044 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/hda1   *           1          13      104391   83  Linux
+/dev/hda2              14        1044     8281507+  8e  Linux LVM
