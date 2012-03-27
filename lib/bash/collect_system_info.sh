@@ -147,7 +147,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
       echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
    fi
 
-   schedulers_and_queue_size "$data_dir/summary" "$data_dir/partitioning"
+   schedulers_and_queue_size "$data_dir/summary" > "$data_dir/partitioning"
 
    for file in dentry-state file-nr inode-nr; do
       echo "${file}    $(cat /proc/sys/fs/${file} 2>&1)" >> "$data_dir/summary"
@@ -417,15 +417,14 @@ find_raid_controller_lspci () { local PTFUNCNAME=find_raid_controller_lspci;
 
 schedulers_and_queue_size () { local PTFUNCNAME=schedulers_and_queue_size;
    local file="$1"
-   local disk_partitioning_file="$2"
 
-   local disks="$(ls /sys/block/ | grep -v -e ram -e loop -e 'fd[0-9]')"
-   echo "disks    $disks" >> "$file"
-   echo "" > "$disk_partitioning_file"
+   local disks="$(ls /sys/block/ | grep -v -e ram -e loop -e 'fd[0-9]' | xargs echo)"
+   echo "internal::disks    $disks" >> "$file"
+
    for disk in $disks; do
       if [ -e "/sys/block/${disk}/queue/scheduler" ]; then
          echo "internal::${disk}    $(cat /sys/block/${disk}/queue/scheduler | grep -o '\[.*\]') $(cat /sys/block/${disk}/queue/nr_requests)" >> "$file"
-         fdisk -l "/dev/${disk}" >> "$disk_partitioning_file" 2>/dev/null
+         fdisk -l "/dev/${disk}" 2>/dev/null
       fi
    done
 }
@@ -449,7 +448,7 @@ top_processes () { local PTFUNCNAME=top_processes;
 
 notable_processes_info () { local PTFUNCNAME=notable_processes_info;
    local format="%5s    %+2d    %s\n"
-   local sshd_pid=$(_pidof "/usr/sbin/sshd")
+   local sshd_pid=$(ps -eo pid,args | awk '$2 ~ /\/usr\/sbin\/sshd/ { print $1; exit }')
 
    echo "  PID    OOM    COMMAND"
 

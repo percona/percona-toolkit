@@ -15,8 +15,7 @@ rss    1233723392
 swappiness    60
 dirtypolicy    20, 10
 raid_controller    No RAID controller detected
-disks    sda
-sdb
+internal::disks    sda sdb
 internal::sda    [cfq] 128
 internal::sdb    [cfq] 128
 dentry-state    78471 67588 45 0  0  0

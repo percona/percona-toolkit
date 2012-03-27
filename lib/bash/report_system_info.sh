@@ -384,7 +384,7 @@ parse_filesystems () { local PTFUNCNAME=parse_filesystems;
 parse_fdisk () { local PTFUNCNAME=parse_fdisk;
    local file="$1"
 
-   [ -e "$file" ] || return
+   [ -e "$file" -a -s "$file" ] || return
 
    awk '
       BEGIN {
@@ -922,9 +922,10 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    if [ "${platform}" = "Linux" ]; then
 
       section "Disk_Schedulers_And_Queue_Size"
-      local disks="$( get_var disks "$data_dir/summary" )"
-      for disk in ${disks}; do
-         name_val "${disk}" "$( get_var "internal::${disk}" "$data_dir/summary" )"
+      local disks="$( get_var "internal::disks" "$data_dir/summary" )"
+      for disk in $disks; do
+         local scheduler="$( get_var "internal::${disk}" "$data_dir/summary" )"
+         name_val "${disk}" "${scheduler:-"UNREADABLE"}"
       done
 
       section "Disk_Partioning"

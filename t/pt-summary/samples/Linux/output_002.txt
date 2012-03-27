@@ -29,7 +29,11 @@ Architecture | CPU = 32-bit, OS = 32-bit
   /dev/mapper/VolGroup00-LogVol00  5.7G  20% ext3  rw   /
   tmpfs                            506M   0% tmpfs rw   /dev/shm
 # Disk Schedulers And Queue Size #############################
-        dm-0 | 
+        dm-0 | UNREADABLE
+        dm-1 | UNREADABLE
+         hda | [cfq] 128
+         hdc | [cfq] 128
+         md0 | UNREADABLE
 # Disk Partioning ############################################
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================

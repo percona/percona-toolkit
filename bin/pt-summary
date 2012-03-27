@@ -13,6 +13,13 @@ TOOL="pt-summary"
 POSIXLY_CORRECT=1
 export POSIXLY_CORRECT
 
+# Begin by setting the $PATH to include some common locations that are not
+# always in the $PATH, including the "sbin" locations, and some common
+# locations for proprietary management software, such as RAID controllers.
+export PATH="${PATH}:/usr/local/bin:/usr/bin:/bin:/usr/libexec"
+export PATH="${PATH}:/usr/local/sbin:/usr/sbin:/sbin"
+export PATH="${PATH}:/usr/StorMan/:/opt/MegaRAID/MegaCli/";
+
 # ###########################################################################
 # log_warn_die package
 # This package is a copy without comments from the original.  The original
@@ -856,7 +863,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
       echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
    fi
 
-   schedulers_and_queue_size "$data_dir/summary" "$data_dir/partitioning"
+   schedulers_and_queue_size "$data_dir/summary" > "$data_dir/partitioning"
 
    for file in dentry-state file-nr inode-nr; do
       echo "${file}    $(cat /proc/sys/fs/${file} 2>&1)" >> "$data_dir/summary"
@@ -1103,15 +1110,14 @@ find_raid_controller_lspci () { local PTFUNCNAME=find_raid_controller_lspci;
 
 schedulers_and_queue_size () { local PTFUNCNAME=schedulers_and_queue_size;
    local file="$1"
-   local disk_partitioning_file="$2"
 
-   local disks="$(ls /sys/block/ | grep -v -e ram -e loop -e 'fd[0-9]')"
-   echo "disks    $disks" >> "$file"
-   echo "" > "$disk_partitioning_file"
+   local disks="$(ls /sys/block/ | grep -v -e ram -e loop -e 'fd[0-9]' | xargs echo)"
+   echo "internal::disks    $disks" >> "$file"
+
    for disk in $disks; do
       if [ -e "/sys/block/${disk}/queue/scheduler" ]; then
          echo "internal::${disk}    $(cat /sys/block/${disk}/queue/scheduler | grep -o '\[.*\]') $(cat /sys/block/${disk}/queue/nr_requests)" >> "$file"
-         fdisk -l "/dev/${disk}" >> "$disk_partitioning_file" 2>/dev/null
+         fdisk -l "/dev/${disk}" 2>/dev/null
       fi
    done
 }
@@ -1135,7 +1141,7 @@ top_processes () { local PTFUNCNAME=top_processes;
 
 notable_processes_info () { local PTFUNCNAME=notable_processes_info;
    local format="%5s    %+2d    %s\n"
-   local sshd_pid=$(_pidof "/usr/sbin/sshd")
+   local sshd_pid=$(ps -eo pid,args | awk '$2 ~ /\/usr\/sbin\/sshd/ { print $1; exit }')
 
    echo "  PID    OOM    COMMAND"
 
@@ -1506,7 +1512,7 @@ parse_filesystems () { local PTFUNCNAME=parse_filesystems;
 parse_fdisk () { local PTFUNCNAME=parse_fdisk;
    local file="$1"
 
-   [ -e "$file" ] || return
+   [ -e "$file" -a -s "$file" ] || return
 
    awk '
       BEGIN {
@@ -1972,9 +1978,10 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    if [ "${platform}" = "Linux" ]; then
 
       section "Disk_Schedulers_And_Queue_Size"
-      local disks="$( get_var disks "$data_dir/summary" )"
-      for disk in ${disks}; do
-         name_val "${disk}" "$( get_var "internal::${disk}" "$data_dir/summary" )"
+      local disks="$( get_var "internal::disks" "$data_dir/summary" )"
+      for disk in $disks; do
+         local scheduler="$( get_var "internal::${disk}" "$data_dir/summary" )"
+         name_val "${disk}" "${scheduler:-"UNREADABLE"}"
       done
 
       section "Disk_Partioning"
@@ -2062,13 +2069,6 @@ main () { local PTFUNCNAME=main;
    local RAN_WITH="--sleep=$OPT_SLEEP --save-samples=$OPT_SAVE_SAMPLES --read-samples=$OPT_READ_SAMPLES"
 
    _d "Starting $0 $RAN_WITH"
-
-   # Begin by setting the $PATH to include some common locations that are not
-   # always in the $PATH, including the "sbin" locations, and some common
-   # locations for proprietary management software, such as RAID controllers.
-   export PATH="${PATH}:/usr/local/bin:/usr/bin:/bin:/usr/libexec"
-   export PATH="${PATH}:/usr/local/sbin:/usr/sbin:/sbin"
-   export PATH="${PATH}:/usr/StorMan/:/opt/MegaRAID/MegaCli/";
 
    # Set up temporary files.
    mk_tmpdir

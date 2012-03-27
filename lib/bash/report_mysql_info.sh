@@ -114,7 +114,7 @@ parse_mysqld_instances () {
    echo "  ===== ========================== ==== === ======"
 
    grep '/mysqld ' "$file" | while read line; do
-      local pid=$(echo "$line" | awk '{print $2;}')
+      local pid=$(echo "$line" | awk '{print $1;}')
       for word in ${line}; do
          # Some grep doesn't have -o, so I have to pull out the words I want by
          # looking at each word
