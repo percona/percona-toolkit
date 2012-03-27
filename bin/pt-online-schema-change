@@ -4878,6 +4878,10 @@ sub main {
    # The update fk method value can be like "drop swap", "drop-swap", or
    # "drop_swap", to give the user some flexibility, but for our sanity
    # we use only underscores.
+   # BARON: I hate that MySQL does this. Remember how hard it is to parse config
+   # files? I don't think that flexibility is good -- this looks like gold
+   # plating to me -- more code to maintain, more complexity, but not more
+   # beneficial. Ditto for the lc().
    my $update_fk_method = lc($o->get('update-foreign-keys-method') || ''); 
    $update_fk_method    =~ s/[ -]/_/g;
    if ( $update_fk_method eq 'drop_swap' ) {
@@ -4910,6 +4914,8 @@ sub main {
          }
       }
 
+      # BARON: I think we can remove this option now too, to simplify. Always
+      # auto-find; never let the user specify.
       if ( my $children = $o->get('child-tables') ) {
          if ( @$children == 0 ) {
             $o->save_error("Specify at least one table for --child-tables");
@@ -4929,6 +4935,11 @@ sub main {
    $o->usage_or_errors(); 
 
    if ( $o->get('quiet') ) {
+      # BARON: this will fail on Windows, where there is no /dev/null. I feel
+      # it's a hack, like ignoring a problem instead of fixing it somehow. We
+      # should take a look at the things that get printed in a "normal"
+      # non-quiet run, and "if !quiet" them, and then do some kind of Logger.pm
+      # or Messager.pm module for a future release.
       close STDOUT;
       open  STDOUT, '>', '/dev/null'
          or warn "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
@@ -5204,6 +5215,9 @@ sub main {
       );
    }
    if ( $child_tables && !@$child_tables ) {
+      # BARON: if we remove --child-tables then this error can just be silenced.
+      # If the user specifies --update-foreign-keys-method we can still
+      # highlight that it'll be ignored.
       print "No child tables were found or specified."
           . ($o->got('update-foreign-keys-method')
                ? "  --update-foreign-keys-method will be ignored.\n"
@@ -6147,6 +6161,9 @@ sub rebuild_constraints {
          my ($fk) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
 
          # Drop the reference to the old table/renamed orig table.
+         # BARON: here we need to do the DROP and ADD in one step -- doing them
+         # separately is two full table rebuilds. You can "ALTER... DROP ..., ADD
+         # ..."
          my $sql = "ALTER TABLE $child_tbl->{name} DROP FOREIGN KEY $fk";
          print $sql, "\n" if $o->get('print');
          if ( $o->get('execute') ) {
