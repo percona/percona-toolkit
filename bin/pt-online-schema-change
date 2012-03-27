@@ -5302,7 +5302,7 @@ sub main {
            . "$orig_tbl->{name} was not altered.\n";
       }
 
-      print "Done altering new table.\n"
+      print "Altered $new_tbl->{name} OK.\n"
    }
 
    # Get the new table struct.
@@ -5584,7 +5584,7 @@ sub main {
       },
       done => sub {
          if ( $o->get('execute') ) {
-            print "Done copying rows.\n";
+            print "Copied rows OK.\n";
          }
       },
    };
@@ -5816,7 +5816,7 @@ sub main {
             die "Error dropping the old table: $EVAL_ERROR\n"
               . "$orig_tbl->{name} has been modified.\n";
          }
-         print "Done dropping old table.\n";
+         print "Dropped old table $old_tbl->{name} OK.\n";
       }
    }
    
@@ -5834,12 +5834,13 @@ sub main {
          print "Error drop new table: $EVAL_ERROR\n";
       }
       else { 
-         print "Done dropping new table.\n";
+         print "Dropped new table $new_tbl->{name} OK.\n";
       }
       print "Dry run complete.  $orig_tbl->{name} was not altered.\n";
    }
    else {
-      print "Done altering $orig_tbl->{name}.\n";
+      # BARON: I think it's good to end with a clear indication of success.
+      print "Successfully altered $orig_tbl->{name}.\n";
    }
 
    return $exit_status;
@@ -5888,7 +5889,7 @@ sub create_new_table{
          die $EVAL_ERROR;
       }
       print $sql, "\n" if $o->get('print');  # the sql that work
-      print "Done creating new table.\n";
+      print "Created new table $orig_tbl->{db}.$table_name OK.\n";
       return { # success
          db   => $orig_tbl->{db},
          tbl  => $table_name,
@@ -5953,7 +5954,7 @@ sub swap_tables {
             die $EVAL_ERROR;
          }
          print $sql, "\n" if $o->get('print');
-         print "Done swapping tables.\n";
+         print "Swapped original and new tables OK.\n";
          return { # success
             db   => $orig_tbl->{db},
             tbl  => $table_name,
@@ -6184,7 +6185,7 @@ sub rebuild_constraints {
    }
 
    if ( $o->get('execute') ) {
-      print "Done rebuilding foreign key constraints.\n";
+      print "Rebuilt foreign key constraints OK.\n";
    }
 
    return;
@@ -6218,7 +6219,7 @@ sub drop_swap {
    }
 
    if ( $o->get('execute') ) {
-      print "Done drop-swapping tables.\n";
+      print "Dropped and swapped tables OK.\n";
    }
 
    return;
@@ -6299,7 +6300,7 @@ sub create_triggers {
    }
 
    if ( $o->get('execute') ) {
-      print "Done creating triggers.\n";
+      print "Created triggers OK.\n";
    }
 
    return;
@@ -6342,12 +6343,17 @@ sub drop_triggers {
    }
 
    if ( $o->get('execute') && $exit_status == 0) {
-      print "Done dropping triggers.\n";
+      print "Dropped triggers OK.\n";
    }
 
    return $exit_status;
 }
 
+# BARON: in this subroutine we still have a lot of references to checksums, so
+# we can get error messages like this:
+# Error copying rows from `sbtest`.`sbtest` to `sbtest`.`_sbtest_new`: Error
+# executing checksum query: Checksum query for table sbtest.sbtest caused MySQL
+# error 1364:
 sub exec_nibble {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
