@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-plan 40
+plan 42
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
+. "$LIB_DIR/parse_options.sh"
 . "$LIB_DIR/summary_common.sh"
 . "$LIB_DIR/report_formatting.sh"
 . "$LIB_DIR/report_system_info.sh"
@@ -1154,7 +1155,7 @@ parse_arcconf "$samples/arcconf-003_900285.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "Bug 900285"
 
 # report_system_summary
-PT_SUMMARY_SKIP=""
+parse_options "$BIN_DIR/pt-summary"
 
 cat <<EOF > "$TMPDIR/expected"
     Hostname | 
@@ -1430,5 +1431,11 @@ No volume groups found
 # The End ####################################################
 EOF
 
-report_system_summary "$samples/Linux/001" | tail -n +3  > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from Linux"
+report_system_summary "$samples/Linux/001" | tail -n +3 > "$TMPDIR/got"
+no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from Linux (Ubuntu)"
+
+report_system_summary "$samples/Linux/002" | tail -n +3 > "$TMPDIR/got"
+no_diff "$TMPDIR/got" "$samples/Linux/output_002.txt" "report_system_summary works with samples from Linux (CentOS 5.7, as root)"
+
+report_system_summary "$samples/Linux/003" | tail -n +3 > "$TMPDIR/got"
+no_diff "$TMPDIR/got" "$samples/Linux/output_003.txt" "report_system_summary works with samples from Linux (CentOS 5.7, as non-root)"

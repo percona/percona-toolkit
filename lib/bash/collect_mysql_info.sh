@@ -31,7 +31,25 @@ CMD_MYSQLDUMP="${CMD_MYSQLDUMP:-""}"
 # Simply looks for instances of mysqld in the outof of ps.
 collect_mysqld_instances () {
    local file="$1"
-   ps auxww 2>/dev/null | grep mysqld > "$file"
+   local variables_file="$2"
+
+   local pids="$(_pidof mysqld)"
+
+   if [ -n "$pids" ]; then
+
+      for pid in $pids; do
+         local nice="$( get_nice_of_pid $pid )"
+         local oom="$( get_oom_of_pid $pid )"
+         echo "internal::nice_of_$pid    $nice" >> "$variables_file"
+         echo "internal::oom_of_$pid    $oom" >> "$variables_file"
+      done
+
+      pids="$(echo $pids | sed -e 's/ /,/g')"
+      ps ww -p "$pids" 2>/dev/null > "$file"
+   else
+      echo "mysqld doesn't appear to be running" > "$file"
+   fi
+
 }
 
 # Tries to find the my.cnf file by examining 'ps' output.
@@ -53,7 +71,7 @@ find_my_cnf_file() {
    fi
 
    if [ ! -n "${cnf_file}" ]; then
-      _d "Cannot autodetect config file, trying common locations"
+      # "Cannot autodetect config file, trying common locations"
       cnf_file="/etc/my.cnf";
       if [ ! -e "${cnf_file}" ]; then
          cnf_file="/etc/mysql/my.cnf";
@@ -136,6 +154,7 @@ collect_internal_vars () {
    local trigger_count=$($CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null)
    local has_symbols="$(has_symbols "${CMD_MYSQL}")"
 
+   echo "pt-summary-internal-mysql_executable    $CMD_MYSQL" >> "$file"
    echo "pt-summary-internal-now    $now" >> "$file"
    echo "pt-summary-internal-user   $user" >> "$file"
    echo "pt-summary-internal-FNV_64   $FNV_64" >> "$file"
@@ -148,12 +167,12 @@ collect_internal_vars () {
 get_mysqldump_for () {
    local file="$1"
    local args="$2"
-   local dbtodump="${3:---all-databases}"
+   local dbtodump="${3:-"--all-databases"}"
 
    $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
       --skip-add-locks --skip-add-drop-table --compact \
       --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-      ${args} "${dbtodump}" > "$file"
+      ${args} --databases $( local IFS=,; echo ${dbtodump}) >> "$file"
 }
 
 # Returns a string with arguments to pass to mysqldump.
@@ -164,7 +183,7 @@ get_mysqldump_args () {
 
    # If mysqldump supports triggers, then add options for routines.
    if $CMD_MYSQLDUMP --help --verbose 2>&1 | grep triggers >/dev/null; then
-      _d "mysqldump supports triggers"
+      # "mysqldump supports triggers"
       trg_arg="--routines"
    fi
 
@@ -175,7 +194,6 @@ get_mysqldump_args () {
       local triggers="--skip-triggers"
       local trg=$(get_var "pt-summary-internal-trigger_count" "$file" )
       if [ -n "${trg}" ] && [ "${trg}" -gt 0 ]; then
-         _d "We have triggers to dump"
          triggers="--triggers"
       fi
       trg_arg="${trg_arg} ${triggers}";
@@ -187,8 +205,6 @@ collect_mysql_info () {
    local dir="$1"
    local prefix="${2:-percona-toolkit}"
 
-   collect_mysqld_instances "$dir/${prefix}-mysqld-instances"
-
    collect_mysql_variables "$dir/${prefix}-mysql-variables"
    collect_mysql_status "$dir/${prefix}-mysql-status"
    collect_mysql_databases "$dir/${prefix}-mysql-databases"
@@ -198,9 +214,11 @@ collect_mysql_info () {
    collect_mysql_processlist "$dir/${prefix}-mysql-processlist"   
    collect_mysql_users "$dir/${prefix}-mysql-users"
 
+   collect_mysqld_instances "$dir/${prefix}-mysqld-instances" "$dir/${prefix}-mysql-variables"
+
    local binlog="$(get_var log_bin "$dir/${prefix}-mysql-variables")"
    if [ "${binlog}" ]; then
-      _d "Got a binlog, going to get MASTER LOGS and MASTER STATUS"
+      # "Got a binlog, going to get MASTER LOGS and MASTER STATUS"
       collect_master_logs_status "$dir/${prefix}-mysql-master-logs" "$dir/${prefix}-mysql-master-status"
    fi
 
@@ -216,10 +234,10 @@ collect_mysql_info () {
    echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/${prefix}-mysql-variables"
    collect_internal_vars "$dir/${prefix}-mysql-variables"
 
-   if [ -n "${OPT_DUMP_SCHEMAS}" ]; then
-      _d "--dump-schemas passed in, dumping early"
+   if [ -n "${OPT_DATABASES}" ]; then
+      # "--dump-schemas passed in, dumping early"
       local trg_arg="$( get_mysqldump_args "$dir/${prefix}-mysql-variables" )"
-      get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${OPT_DUMP_SCHEMAS}"
+      get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${OPT_DATABASES}"
    fi
 
    # TODO: gather this data in the same format as normal: TS line, stats

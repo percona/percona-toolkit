@@ -25,8 +25,6 @@
 # THIS LIB REQUIRES log_warn_die.sh, summary_common.sh, and alt_cmds.sh!
 # XXX
 
-PT_SUMMARY_SKIP="${PT_SUMMARY_SKIP:-""}"
-
 set -u
 
 # While extremely unwieldly, this allows us to fake the commands when testing.
@@ -53,8 +51,9 @@ CMD_IP="$( _which ip 2>/dev/null )"
 CMD_NETSTAT="$( _which netstat 2>/dev/null )"
 CMD_PSRINFO="$( _which psrinfo 2>/dev/null )"
 CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
+CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
 
-collect_system_data () { local FUNCNAME=collect_system_data;
+collect_system_data () { local PTFUNCNAME=collect_system_data;
    local data_dir="$1"
 
    if [ -r /var/log/dmesg -a -s /var/log/dmesg ]; then
@@ -66,88 +65,87 @@ collect_system_data () { local FUNCNAME=collect_system_data;
    # ########################################################################
    $CMD_SYSCTL -a > "$data_dir/sysctl" 2>/dev/null
 
-   if [ -n "${CMD_LSPCI}" ]; then
+   if [ "${CMD_LSPCI}" ]; then
       $CMD_LSPCI > "$data_dir/lspci_file" 2>/dev/null
    fi
 
    local platform="$(uname -s)"
    echo "platform    $platform" >> "$data_dir/summary"
    echo "hostname    $(uname -n)" >> "$data_dir/summary"
-   echo "uptime    $(uptime | awk '{print substr($0, index($0, "up") + 3)}')" >> "$data_dir/summary"
+   uptime >> "$data_dir/uptime"
 
    processor_info "$data_dir"
-   find_release_and_kernel "$data_dir/summary" "$platform"
-   cpu_and_os_arch   "$data_dir/summary" "$platform"
-   find_virtualization "$data_dir/summary" "$platform" "$data_dir/dmesg_file" "$data_dir/lspci_file"
-   dmidecode_system_info "$data_dir/summary"
+   find_release_and_kernel "$platform" >> "$data_dir/summary"
+   cpu_and_os_arch "$platform" >> "$data_dir/summary"
+   find_virtualization "$platform" "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
+   dmidecode_system_info >> "$data_dir/summary"
 
-   if [ "${platform}" = "SunOS" ] && [ -n "${CMD_ZONENAME}" ]; then
+   if [ "${platform}" = "SunOS" -a "${CMD_ZONENAME}" ]; then
       echo "zonename    $($CMD_ZONENAME)" >> "$data_dir/summary"
    fi
 
    # Threading library
-   if [ "${platform}" = "Linux" ]; then
-      echo "threading    $(getconf GNU_LIBPTHREAD_VERSION)" >> "$data_dir/summary"
-   fi
    if [ -x /lib/libc.so.6 ]; then
       echo "compiler    $(/lib/libc.so.6 | grep 'Compiled by' | cut -c13-)" >> "$data_dir/summary"
-   fi
-
-   if [ "${platform}" = "Linux" ]; then
-      local getenforce=""
-      if [ -n "$CMD_GETENFORCE" ]; then
-         getenforce="$($CMD_GETENFORCE 2>&1)";
-      fi
-      echo "getenforce    ${getenforce:-No SELinux detected}" >> "$data_dir/summary"
    fi
 
    local rss=$(ps -eo rss 2>/dev/null | awk '/[0-9]/{total += $1 * 1024} END {print total}')
    echo "rss    ${rss}" >> "$data_dir/summary"
 
-   if [ "${platform}" = "Linux" ]; then
-      echo "swappiness    $(awk '/vm.swappiness/{print $3}' "$data_dir/sysctl")">> "$data_dir/summary"
-      echo "dirtypolicy    $(awk '/vm.dirty_ratio/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_ratio/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
-      if $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl") > /dev/null 2>&1; then
-         echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
-      fi
-   fi
+   [ "$CMD_DMIDECODE" ] && $CMD_DMIDECODE > "$data_dir/dmidecode" 2>/dev/null
 
-   if [ -n "$CMD_DMIDECODE" ]; then
-      $CMD_DMIDECODE > "$data_dir/dmidecode" 2>/dev/null
-   fi
-
-   find_memory_stats "$data_dir/memory" "$platform"
-   mounted_fs_info   "$data_dir/mounted_fs" "$platform" "$PT_SUMMARY_SKIP"
-   raid_controller   "$data_dir/summary" "$data_dir/dmesg_file" "$data_dir/lspci_file"
+   find_memory_stats "$platform" > "$data_dir/memory"
+   [ "$OPT_SUMMARIZE_MOUNTS" ] && mounted_fs_info "$platform" > "$data_dir/mounted_fs"
+   raid_controller   "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
 
    local controller="$(get_var raid_controller "$data_dir/summary")"
    propietary_raid_controller "$data_dir/raid-controller" "$data_dir/summary" "$data_dir" "$controller"
 
-   if [ "${platform}" = "Linux" ]; then
-      linux_exclusive_collection "$data_dir"
-   fi
+   [ "${platform}" = "Linux" ] && linux_exclusive_collection "$data_dir"
 
-   if [ -n "$CMD_IP" ] && echo "${PT_SUMMARY_SKIP}" | grep -v NETWORK >/dev/null; then
-      $CMD_IP -s link > "$data_dir/ip"
-   fi
+   [ "$CMD_IP" -a "$OPT_SUMMARIZE_NETWORK" ] && $CMD_IP -s link > "$data_dir/ip"
 
-   if [ -n "$CMD_SWAPCTL" ]; then
-      $CMD_SWAPCTL -s > "$data_dir/swapctl"
-   fi
+   [ "$CMD_SWAPCTL" ] && $CMD_SWAPCTL -s > "$data_dir/swapctl"
 
-   top_processes "$data_dir/processes" "$PT_SUMMARY_SKIP"
-   notable_processes_info "$data_dir/notable_procs" "$PT_SUMMARY_SKIP"
+   if [ "$OPT_SUMMARIZE_PROCESSES" ]; then
+      top_processes > "$data_dir/processes"
+      notable_processes_info > "$data_dir/notable_procs"
 
-   if [ -n "$CMD_VMSTAT" ]; then
-      touch "$data_dir/vmstat"
-      (
-         $CMD_VMSTAT 1 $OPT_SLEEP > "$data_dir/vmstat"
-      ) &
+      if [ "$CMD_VMSTAT" ]; then
+         # Here we make an exception from our usual rule of not leaving
+         # empty files, since the reporting code uses its existence
+         # as an indicator to do the vmstat portion of the code,
+         # and it's entirely possible to have reached that spot without
+         # having the forked process output anything.
+         touch "$data_dir/vmstat"
+         (
+            $CMD_VMSTAT 1 $OPT_SLEEP > "$data_dir/vmstat"
+         ) &
+      fi
    fi
 }
 
-linux_exclusive_collection () { local FUNCNAME=linux_exclusive_collection;
+linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
    local data_dir="$1"
+
+   echo "threading    $(getconf GNU_LIBPTHREAD_VERSION)" >> "$data_dir/summary"
+
+   local getenforce=""
+   [ "$CMD_GETENFORCE" ] && $CMD_GETENFORCE 2>&1
+   echo "getenforce    ${getenforce:-"No SELinux detected"}" >> "$data_dir/summary"
+
+   echo "swappiness    $(awk '/vm.swappiness/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
+
+   local dirty_ratio="$(awk '/vm.dirty_ratio/{print $3}' "$data_dir/sysctl")"
+   local dirty_bg_ratio="$(awk '/vm.dirty_background_ratio/{print $3}' "$data_dir/sysctl")"
+   if [ "$dirty_ratio" -a "$dirty_bg_ratio" ]; then
+      echo "dirtypolicy    $dirty_ratio, $dirty_bg_ratio" >> "$data_dir/summary"
+   fi
+
+   local dirty_bytes="$(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl")"
+   if [ "$dirty_bytes" ]; then
+      echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
+   fi
 
    schedulers_and_queue_size "$data_dir/summary" "$data_dir/partitioning"
 
@@ -155,23 +153,18 @@ linux_exclusive_collection () { local FUNCNAME=linux_exclusive_collection;
       echo "${file}    $(cat /proc/sys/fs/${file} 2>&1)" >> "$data_dir/summary"
    done
 
-   if [ -n "$CMD_LVS" ] && test -x "$CMD_LVS"; then
-      $CMD_LVS 1>"$data_dir/lvs" 2>&1
-   fi
+   [ "$CMD_LVS" -a -x "$CMD_LVS" ] && $CMD_LVS 1>"$data_dir/lvs" 2>&1
 
-   if [ -n "$CMD_VGS" ] && test -x "$CMD_VGS"; then
+   [ "$CMD_VGS" -a -x "$CMD_VGS" ] && \
       $CMD_VGS -o vg_name,vg_size,vg_free 2>/dev/null > "$data_dir/vgs"
-   fi
 
-   if [ -n "$CMD_NETSTAT" ] && echo "${PT_SUMMARY_SKIP}" | grep -v NETWORK >/dev/null; then
+   [ "$CMD_NETSTAT" -a "$OPT_SUMMARIZE_NETWORK" ] && \
       $CMD_NETSTAT -antp > "$data_dir/netstat" 2>/dev/null
-   fi
 }
 
 # Try to find all sorts of different files that say what the release is.
-find_release_and_kernel () { local FUNCNAME=find_release_and_kernel;
-   local file="$1"
-   local platform="$2"
+find_release_and_kernel () { local PTFUNCNAME=find_release_and_kernel;
+   local platform="$1"
 
    local kernel=""
    local release=""
@@ -183,8 +176,8 @@ find_release_and_kernel () { local FUNCNAME=find_release_and_kernel;
          release=$(cat /etc/redhat-release);
       elif [ -e /etc/system-release ]; then
          release=$(cat /etc/system-release);
-      elif _which lsb_release >/dev/null 2>&1; then
-         release="$(lsb_release -ds) ($(lsb_release -cs))"
+      elif [ "$CMD_LSB_RELEASE" ]; then
+         release="$($CMD_LSB_RELEASE -ds) ($($CMD_LSB_RELEASE -cs))"
       elif [ -e /etc/lsb-release ]; then
          release=$(grep DISTRIB_DESCRIPTION /etc/lsb-release |awk -F'=' '{print $2}' |sed 's#"##g');
       elif [ -e /etc/debian_version ]; then
@@ -202,8 +195,8 @@ find_release_and_kernel () { local FUNCNAME=find_release_and_kernel;
             release=$(cat /etc/*release | head -n1);
          fi
       fi
-   elif [ "${platform}" = "FreeBSD" ]    \
-         || [ "${platform}" = "NetBSD" ] \
+   elif     [ "${platform}" = "FreeBSD" ] \
+         || [ "${platform}" = "NetBSD"  ] \
          || [ "${platform}" = "OpenBSD" ]; then
       release="$(uname -r)"
       kernel="$($CMD_SYSCTL -n kern.osrevision)"
@@ -214,13 +207,12 @@ find_release_and_kernel () { local FUNCNAME=find_release_and_kernel;
       fi
       kernel="$(uname -v)"
    fi
-   echo "kernel    $kernel" >> "$file"
-   echo "release    $release" >> "$file"
+   echo "kernel    $kernel"
+   echo "release    $release"
 }
 
-cpu_and_os_arch () { local FUNCNAME=cpu_and_os_arch;
-   local file="$1"
-   local platform="$2"
+cpu_and_os_arch () { local PTFUNCNAME=cpu_and_os_arch;
+   local platform="$1"
 
    local CPU_ARCH='32-bit'
    local OS_ARCH='32-bit'
@@ -247,19 +239,18 @@ cpu_and_os_arch () { local FUNCNAME=cpu_and_os_arch;
        OS_ARCH='64-bit'
    fi
 
-   echo "CPU_ARCH    $CPU_ARCH" >> "$file"
-   echo "OS_ARCH    $OS_ARCH" >> "$file"
+   echo "CPU_ARCH    $CPU_ARCH"
+   echo "OS_ARCH    $OS_ARCH"
 }
 
 # We look in dmesg for virtualization information first, because it's often
 # available to non-root users and usually has telltale signs.  It's most
 # reliable to look at /var/log/dmesg if possible.  There are a number of
 # other ways to find out if a system is virtualized.
-find_virtualization () { local FUNCNAME=find_virtualization;
-   local vars_file="$1"
-   local platform="$2"
-   local dmesg_file="$3"
-   local lspci_file="$4"
+find_virtualization () { local PTFUNCNAME=find_virtualization;
+   local platform="$1"
+   local dmesg_file="$2"
+   local lspci_file="$3"
 
    local tempfile="$TMPDIR/find_virtualziation.tmp"
 
@@ -268,25 +259,25 @@ find_virtualization () { local FUNCNAME=find_virtualization;
       virt="$(find_virtualization_dmesg "$dmesg_file")"
    fi
    if [ -z "${virt}" ] && [ -s "$lspci_file" ]; then
-      if grep -qi virtualbox "$lspci_file" ; then
-         virt=VirtualBox
-      elif grep -qi vmware "$lspci_file" ; then
-         virt=VMWare
+      if grep -qi "virtualbox" "$lspci_file" ; then
+         virt="VirtualBox"
+      elif grep -qi "vmware" "$lspci_file" ; then
+         virt="VMWare"
       fi
    elif [ "${platform}" = "FreeBSD" ]; then
       if ps -o stat | grep J ; then
          virt="FreeBSD Jail"
       fi
    elif [ "${platform}" = "SunOS" ]; then
-      if [ -n "$CMD_PRTDIAG" ] && $CMD_PRTDIAG > "$tempfile" 2>/dev/null; then
+      if [ "$CMD_PRTDIAG" ] && $CMD_PRTDIAG > "$tempfile" 2>/dev/null; then
          virt="$(find_virtualization_generic "$tempfile" )"
-      elif [ -n "$CMD_SMBIOS" ] && $CMD_SMBIOS > "$tempfile" 2>/dev/null; then
+      elif [ "$CMD_SMBIOS" ] && $CMD_SMBIOS > "$tempfile" 2>/dev/null; then
          virt="$(find_virtualization_generic "$tempfile" )"
       fi
    elif [ -e /proc/user_beancounters ]; then
       virt="OpenVZ/Virtuozzo"
    fi
-   echo "virt    ${virt:-"No virtualization detected"}" >> "$vars_file"
+   echo "virt    ${virt:-"No virtualization detected"}"
 }
 
 # ##############################################################################
@@ -294,10 +285,10 @@ find_virtualization () { local FUNCNAME=find_virtualization;
 # ##############################################################################
 find_virtualization_generic() { local PTFUNCNAME=find_virtualization_generic;
    local file="$1"
-   if grep -i -e virtualbox "$file" >/dev/null; then
-      echo VirtualBox
-   elif grep -i -e vmware "$file" >/dev/null; then
-      echo VMWare
+   if grep -i -e "virtualbox" "$file" >/dev/null; then
+      echo "VirtualBox"
+   elif grep -i -e "vmware" "$file" >/dev/null; then
+      echo "VMWare"
    fi
 }
 
@@ -306,15 +297,15 @@ find_virtualization_generic() { local PTFUNCNAME=find_virtualization_generic;
 # ##############################################################################
 find_virtualization_dmesg () { local PTFUNCNAME=find_virtualization_dmesg;
    local file="$1"
-   if grep -qi -e vmware -e vmxnet -e 'paravirtualized kernel on vmi' "${file}"; then
+   if grep -qi -e "vmware" -e "vmxnet" -e 'paravirtualized kernel on vmi' "${file}"; then
       echo "VMWare";
    elif grep -qi -e 'paravirtualized kernel on xen' -e 'Xen virtual console' "${file}"; then
       echo "Xen";
-   elif grep -qi qemu "${file}"; then
+   elif grep -qi "qemu" "${file}"; then
       echo "QEmu";
    elif grep -qi 'paravirtualized kernel on KVM' "${file}"; then
       echo "KVM";
-   elif grep -q VBOX "${file}"; then
+   elif grep -q "VBOX" "${file}"; then
       echo "VirtualBox";
    elif grep -qi 'hd.: Virtual .., ATA.*drive' "${file}"; then
       echo "Microsoft VirtualPC";
@@ -322,11 +313,10 @@ find_virtualization_dmesg () { local PTFUNCNAME=find_virtualization_dmesg;
 }
 
 # TODO: Maybe worth it to just dump dmidecode once and parse that?
-dmidecode_system_info () { local FUNCNAME=dmidecode_system_info;
-   local file="$1"
-   if [ -n "${CMD_DMIDECODE}" ]; then
+dmidecode_system_info () { local PTFUNCNAME=dmidecode_system_info;
+   if [ "${CMD_DMIDECODE}" ]; then
       local vendor="$($CMD_DMIDECODE -s system-manufacturer 2>/dev/null | sed 's/ *$//g')"
-      echo "vendor    ${vendor}" >> "$file"
+      echo "vendor    ${vendor}"
       if [ "${vendor}" ]; then
          local product="$($CMD_DMIDECODE -s system-product-name 2>/dev/null | sed 's/ *$//g')"
          local version="$($CMD_DMIDECODE -s system-version 2>/dev/null | sed 's/ *$//g')"
@@ -334,41 +324,33 @@ dmidecode_system_info () { local FUNCNAME=dmidecode_system_info;
          local servicetag="$($CMD_DMIDECODE -s system-serial-number 2>/dev/null | sed 's/ *$//g')"
          local system="${vendor}; ${product}; v${version} (${chassis})"
 
-         echo "system    ${system}" >> "$file"
-         echo "servicetag    ${servicetag:-Not found}" >> "$file"
+         echo "system    ${system}"
+         echo "servicetag    ${servicetag:-Not found}"
       fi
    fi
 }
 
 find_memory_stats () { local PTFUNCNAME=find_memory_stats;
-   local file="$1"
-   local platform="$2"
+   local platform="$1"
+
    if [ "${platform}" = "Linux" ]; then
-      _d "In Linux, so saving the output of free -b" \
-         "and /proc/meminfo into $file"
-      free -b > "$file"
-      cat /proc/meminfo >> "$file"
+      free -b
+      cat /proc/meminfo
    elif [ "${platform}" = "SunOS" ]; then
-      _d "In SunOS, calling prtconf"
-      $CMD_PRTCONF | awk -F: '/Memory/{print $2}' > "$file"
+      $CMD_PRTCONF | awk -F: '/Memory/{print $2}'
    fi
 }
 
 mounted_fs_info () { local PTFUNCNAME=mounted_fs_info;
-   local file="$1"
-   local platform="$2"
-   local skip="${3:-$PT_SUMMARY_SKIP}"
+   local platform="$1"
 
-   if echo "${skip}" | grep -v MOUNT >/dev/null; then
-      if [ "${platform}" != "SunOS" ]; then
-         local cmd="df -h"
-         if [ "${platform}" = "Linux" ]; then
-            cmd="df -h -P"
-         fi
-         _d "calling $cmd"
-         $cmd  | sort > "$TMPDIR/mounted_fs_info.tmp"
-         mount | sort | join "$TMPDIR/mounted_fs_info.tmp" - > "$file"
+   if [ "${platform}" != "SunOS" ]; then
+      local cmd="df -h"
+      if [ "${platform}" = "Linux" ]; then
+         cmd="df -h -P"
       fi
+      $cmd  | sort > "$TMPDIR/mounted_fs_info.tmp"
+      mount | sort | join "$TMPDIR/mounted_fs_info.tmp" -
    fi
 }
 
@@ -378,9 +360,8 @@ mounted_fs_info () { local PTFUNCNAME=mounted_fs_info;
 # /var/log/dmesg if possible.
 # ########################################################################
 raid_controller () { local PTFUNCNAME=raid_controller;
-   local file="$1"
-   local dmesg_file="$2"
-   local lspci_file="$3"
+   local dmesg_file="$1"
+   local lspci_file="$2"
 
    local tempfile="$TMPDIR/raid_controller.tmp"
 
@@ -392,7 +373,7 @@ raid_controller () { local PTFUNCNAME=raid_controller;
       controller="$(find_raid_controller_dmesg "$dmesg_file")"
    fi
 
-   echo "raid_controller    ${controller:-"No RAID controller detected"}" >> "$file"
+   echo "raid_controller    ${controller:-"No RAID controller detected"}"
 }
 
 # ##############################################################################
@@ -434,7 +415,7 @@ find_raid_controller_lspci () { local PTFUNCNAME=find_raid_controller_lspci;
    fi
 }
 
-schedulers_and_queue_size () { local FUNCNAME=schedulers_and_queue_size;
+schedulers_and_queue_size () { local PTFUNCNAME=schedulers_and_queue_size;
    local file="$1"
    local disk_partitioning_file="$2"
 
@@ -449,64 +430,55 @@ schedulers_and_queue_size () { local FUNCNAME=schedulers_and_queue_size;
    done
 }
 
-top_processes () { local FUNCNAME=top_processes;
-   local top_processes_file="$1"
-   local skip="${2:-"$PT_SUMMARY_SKIP"}"
-
-   if echo "${skip}" | grep -v PROCESS >/dev/null; then
-      if [ -n "$CMD_PRSTAT" ]; then
-         $CMD_PRSTAT | head > "$top_processes_file"
-      elif [ -n "$CMD_TOP" ]; then
-         local cmd="$CMD_TOP -bn 1"
-         if [ "${platform}" = "FreeBSD" ] \
-            || [ "${platform}" = "NetBSD" ] \
-            || [ "${platform}" = "OpenBSD" ]; then
-            cmd="$CMD_TOP -b -d 1"
-         fi
-         $cmd | sed -e 's# *$##g' -e '/./{H;$!d;}' -e 'x;/PID/!d;' | grep . | head > "$top_processes_file"
+top_processes () { local PTFUNCNAME=top_processes;
+   if [ "$CMD_PRSTAT" ]; then
+      $CMD_PRSTAT | head
+   elif [ "$CMD_TOP" ]; then
+      local cmd="$CMD_TOP -bn 1"
+      if    [ "${platform}" = "FreeBSD" ] \
+         || [ "${platform}" = "NetBSD"  ] \
+         || [ "${platform}" = "OpenBSD" ]; then
+         cmd="$CMD_TOP -b -d 1"
       fi
+      $cmd \
+         | sed -e 's# *$##g' -e '/./{H;$!d;}' -e 'x;/PID/!d;' \
+         | grep . \
+         | head
    fi
 }
 
 notable_processes_info () { local PTFUNCNAME=notable_processes_info;
-   local notable_processes_file="$1"
-   local skip="${2:-"$PT_SUMMARY_SKIP"}"
+   local format="%5s    %+2d    %s\n"
+   local sshd_pid=$(_pidof "/usr/sbin/sshd")
 
-   if echo "${skip}" | grep -v PROCESS >/dev/null; then
-      local format="%5s    %+2d    %s\n"
-      local sshd_pid=$(_pidof "/usr/sbin/sshd")
+   echo "  PID    OOM    COMMAND"
 
-      echo "  PID    OOM    COMMAND" > "$notable_processes_file"
-
-      # First, let's find the oom value of sshd
-      if [ "$sshd_pid" ]; then
-         printf "$format" $sshd_pid $(get_oom_of_pid $sshd_pid) "sshd" >> "$notable_processes_file"
-      else
-         printf "%5s    %3s    %s\n" "?" "?" "sshd doesn't appear to be running"  >> "$notable_processes_file"
-      fi
-
-      # Disabling PTDEBUG for the remainder of this function, otherwise we get several
-      # hundred linebs of mostly useless debug output
-      local PTDEBUG=""
-      # Let's find out if any process has an oom of -17
-      ps -eo pid,ucomm | tail -n +2 | while read pid proc; do
-         # Skip sshd, since we manually checked this before
-         [ "$sshd_pid" ] && [ "$sshd_pid" = "$pid" ] && continue
-         local oom="$(get_oom_of_pid $pid)"
-         if [ "$oom" ] && [ "$oom" != "?" ] && [ "$oom" = "-17" ]; then
-            printf "$format" $pid $oom $proc >> "$notable_processes_file"
-         fi
-      done
+   # First, let's find the oom value of sshd
+   if [ "$sshd_pid" ]; then
+      printf "$format" "$sshd_pid" "$(get_oom_of_pid $sshd_pid)" "sshd"
+   else
+      printf "%5s    %3s    %s\n" "?" "?" "sshd doesn't appear to be running"
    fi
+
+   # Disabling PTDEBUG for the remainder of this function, otherwise we get several
+   # hundred lines of mostly useless debug output
+   local PTDEBUG=""
+   # Let's find out if any process has an oom of -17
+   ps -eo pid,ucomm | grep '^[0-9]' | while read pid proc; do
+      # Skip sshd, since we manually checked this before
+      [ "$sshd_pid" ] && [ "$sshd_pid" = "$pid" ] && continue
+      local oom="$(get_oom_of_pid $pid)"
+      if [ "$oom" ] && [ "$oom" != "?" ] && [ "$oom" = "-17" ]; then
+         printf "$format" "$pid" "$oom" "$proc"
+      fi
+   done
 }
 
-processor_info () { local FUNCNAME=processor_info;
+processor_info () { local PTFUNCNAME=processor_info;
    local data_dir="$1"
    if [ -f /proc/cpuinfo ]; then
-      _d "Got /proc/cpuinfo, copying that"
       cat /proc/cpuinfo > "$data_dir/proc_cpuinfo_copy" 2>/dev/null
    elif [ "${platform}" = "SunOS" ]; then
-      _d "On SunOS, using psrinfo"
       $CMD_PSRINFO -v > "$data_dir/psrinfo_minus_v"
    fi 
 }
@@ -517,14 +489,11 @@ processor_info () { local FUNCNAME=processor_info;
 # in a weird location, such as /usr/StorMan/arcconf, should have their
 # location added to $PATH at the beginning of main().
 # ########################################################################
-propietary_raid_controller () { local FUNCNAME=propietary_raid_controller;
+propietary_raid_controller () { local PTFUNCNAME=propietary_raid_controller;
    local file="$1"
    local variable_file="$2"
    local data_dir="$3"
    local controller="$4"
-
-   rm -f "$file"
-   touch "$file"
 
    notfound=""
    if [ "${controller}" = "AACRAID" ]; then

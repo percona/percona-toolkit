@@ -102,6 +102,8 @@ get_plugin_status () {
 _NO_FALSE_NEGATIVES=""
 parse_mysqld_instances () {
    local file="$1"
+   local variables_file="$2"
+
    local socket=${socket:-""}
    local port=${port:-""}
    local datadir="${datadir:-""}"
@@ -126,14 +128,14 @@ parse_mysqld_instances () {
             datadir="$(echo "${word}" | cut -d= -f2)"
          fi
       done
-      local nice=$(get_nice_of_pid $pid )
-      local oom=$(get_oom_of_pid $pid )
+      local nice="$(get_var "internal::nice_of_$pid" "$variables_file")"
+      local oom="$(get_var "internal::oom_of_$pid" "$variables_file")"
       # Only used during testing
       if [ -n "${_NO_FALSE_NEGATIVES}" ]; then
          nice="?"
          oom="?"
       fi
-      printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice}" "${oom}" "${socket}"
+      printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
    done
 }
 
@@ -849,7 +851,7 @@ section_percona_server_features () {
             "$(feat_on "$file" innodb_adaptive_checkpoint ne none)"
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
-   name_val "Fast Maatkit Hashes"   \
+   name_val "Fast Hash UDFs"   \
             "$(get_var "pt-summary-internal-FNV_64" "$file")"
 }
 
@@ -1055,9 +1057,10 @@ report_mysql_summary () {
    section Percona_Toolkit_MySQL_Summary_Report
    name_val "System time" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
    section Instances
-   parse_mysqld_instances "$dir/${prefix}-mysqld-instances"
+   parse_mysqld_instances "$dir/${prefix}-mysqld-instances" "$dir/${prefix}-mysql-variables"
 
    section MySQL_Executable
+   name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/${prefix}-mysql-variables" )"
    name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/${prefix}-mysql-variables" )"
 
    # ########################################################################
@@ -1174,8 +1177,10 @@ report_mysql_summary () {
    # Assume "no" if stdin or stdout is not a terminal, so this can be run and
    # put into a file, or piped into a pager, or something else like that.
    local reply="n"
-   # But dump no matter what if they passed in something through --dump-schemas
-   if [ -n "${OPT_DUMP_SCHEMAS}" ]; then
+   # But dump no matter what if they passed in something through --dump-schemas,
+   # OR if --read-samples was set
+   if [ -n "${OPT_DATABASES}" ] || [ -n "${OPT_READ_SAMPLES}" ] \
+      || [ -e "$dir/${prefix}-mysqldump" -a -s "$dir/${prefix}-mysqldump" ]; then
       reply="y"
    elif [ -t 0 -a -t 1 ]; then
       echo -n "Would you like to mysqldump -d the schema and analyze it? y/n "
@@ -1183,10 +1188,9 @@ report_mysql_summary () {
       reply=${reply:-n}
    fi
    if echo "${reply:-n}" | grep -i '^y' > /dev/null ; then
-      if [ -z "${OPT_DUMP_SCHEMAS}" ]; then
-         # If --dump-schemas wasn't used, ask what they want
-
-         # Find out which databases to dump
+      if [ -z "${OPT_DATABASES}" ] && [ -z "$OPT_READ_SAMPLES" ] \
+         && [ ! -e "$dir/${prefix}-mysqldump" ]; then
+         # If --dump-schemas wasn't used, ask what they want to dump
          echo "There are ${num_dbs} databases.  Would you like to dump all, or just one?"
          echo -n "Type the name of the database, or press Enter to dump all of them. "
          local dbtodump=""
@@ -1198,7 +1202,6 @@ report_mysql_summary () {
       # Test the result by checking the file, not by the exit status, because we
       # might get partway through and then die, and the info is worth analyzing
       # anyway.
-
       if [ -e "$dir/${prefix}-mysqldump" -a -s "$dir/${prefix}-mysqldump" ] \
          && grep 'CREATE TABLE' "$dir/${prefix}-mysqldump" >/dev/null 2>&1; then
             format_overall_db_stats "$dir/${prefix}-mysqldump"

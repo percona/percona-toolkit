@@ -32,7 +32,7 @@ CMD_OBJDUMP="$( _which objdump 2>/dev/null )"
 # Returns the nice for the pid, or "?" if it can't find any.
 get_nice_of_pid () {
    local pid="$1"
-   local niceness=$(ps -p $pid -o nice | tail -n+2 | awk '{print $1; exit;}')
+   local niceness="$(ps -p $pid -o nice | awk '$1 !~ /[^0-9]/ {print $1; exit}')"
 
    if [ -n "${niceness}" ]; then
       echo $niceness
@@ -78,7 +78,7 @@ get_oom_of_pid () {
    local pid="$1"
    local oom_adj=""
 
-   if [ -n "${pid}" ] && [ -e /proc/cpuinfo ]; then
+   if [ -n "${pid}" -a -e /proc/cpuinfo ]; then
       if [ -s "/proc/$pid/oom_score_adj" ]; then
          oom_adj=$(cat "/proc/$pid/oom_score_adj" 2>/dev/null)
          _d "For $pid, the oom value is $oom_adj, retreived from oom_score_adj"
@@ -123,6 +123,7 @@ has_symbols () {
 }
 
 setup_data_dir () {
+   local OPT_SAVE_DATA="$1"
    local data_dir=""
    if [ -z "$OPT_SAVE_DATA" ]; then
       # User didn't specify a --save-data dir, so use a sub-dir in our tmpdir.
@@ -144,13 +145,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   local v="$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
-   if [ -n "$v" ]; then
-      echo "$v"
-      return 0
-   else
-      return 1
-   fi
+   echo "$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
 }
 
 # ###########################################################################

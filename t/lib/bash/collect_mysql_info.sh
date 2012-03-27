@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 15
+plan 20
 
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
@@ -28,10 +28,10 @@ wait
 
 file_count=$(ls "$p" | wc -l)
 
-is $file_count 12 "Creates the correct number of files (without --dump-schemas)"
+is $file_count 12 "Creates the correct number of files (without --databases)"
 
-grep -v grep "$p/percona-toolkit-mysqld-instances" | awk '{print $2}' > "$TMPDIR/collect_mysqld_instances1.test"
-ps auxww 2>/dev/null | grep mysqld | grep -v grep | awk '{print $2}' > "$TMPDIR/collect_mysqld_instances2.test"
+awk '{print $1}' "$p/percona-toolkit-mysqld-instances" > "$TMPDIR/collect_mysqld_instances1.test"
+ps ww -p "$(_pidof mysqld | sed -e "s/ /,/g")" | awk '{print $1}' > "$TMPDIR/collect_mysqld_instances2.test"
 
 no_diff \
    "$TMPDIR/collect_mysqld_instances1.test" \
@@ -40,7 +40,7 @@ no_diff \
 
 collect_mysqld_instances "$TMPDIR/collect_mysqld_instances3.test"
 
-grep -v grep "$TMPDIR/collect_mysqld_instances3.test" | awk '{print $2}' > "$TMPDIR/collect_mysqld_instances4.test"
+awk '{print $1}' "$TMPDIR/collect_mysqld_instances3.test"> "$TMPDIR/collect_mysqld_instances4.test"
 
 no_diff \
    "$TMPDIR/collect_mysqld_instances4.test" \
@@ -127,3 +127,71 @@ if [ -n "$(get_var log_bin "$p/percona-toolkit-mysql-variables")" ]; then
 else
    skip 1 2 "no binlog"
 fi
+
+# get_mysqldump_for
+
+test_get_mysqldump_for () {
+   local dir="$1"
+   # Let's fake mysqldump
+
+   printf '#!/usr/bin/env bash\necho $@\n' > "$TMPDIR/mysqldump_fake.sh"
+   chmod +x "$TMPDIR/mysqldump_fake.sh"
+   local orig_mysqldump="$CMD_MYSQLDUMP"
+   local CMD_MYSQLDUMP="$TMPDIR/mysqldump_fake.sh"
+
+   cat <<EOF > "$TMPDIR/expected"
+--defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases --all-databases
+EOF
+   get_mysqldump_for "$dir/mysqldump_test_1" ''
+   no_diff \
+      "$dir/mysqldump_test_1" \
+      "$TMPDIR/expected" \
+      "get_mysqldump_for picks a name default"
+
+   get_mysqldump_for "$dir/mysqldump_test_2" '' '--all-databases'
+   no_diff \
+      "$dir/mysqldump_test_2" \
+      "$TMPDIR/expected" \
+      "..which is the same as if we explicitly set --all-databases"
+
+   cat <<EOF > "$TMPDIR/expected"
+--defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases a
+EOF
+   get_mysqldump_for "$dir/mysqldump_test_3" '' 'a'
+   no_diff \
+      "$dir/mysqldump_test_3" \
+      "$TMPDIR/expected" \
+      "get_mysqldump_for: Explicitly setting a database works"
+
+   cat <<EOF > "$TMPDIR/expected"
+--defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases a b
+EOF
+   get_mysqldump_for "$dir/mysqldump_test_4" '' 'a,b'
+   no_diff \
+      "$dir/mysqldump_test_4" \
+      "$TMPDIR/expected" \
+      "get_mysqldump_for: Two databases separated by a comma are interpreted correctly"
+
+   if [ -n "$orig_mysqldump" ]; then
+      local CMD_MYSQLDUMP="$orig_mysqldump"
+      $CMD_MYSQL $EXT_ARGV -ss -e 'CREATE DATABASE collect_mysql_databases_test1;' 1>/dev/null 2>&1
+      $CMD_MYSQL $EXT_ARGV -ss -e 'CREATE DATABASE collect_mysql_databases_test2;' 1>/dev/null 2>&1
+
+      get_mysqldump_for "$dir/mysqldump_test_5" '' "collect_mysql_databases_test1,collect_mysql_databases_test2"
+
+      like \
+         "$(cat $dir/mysqldump_test_5)" \
+         'use `collect_mysql_databases_test1`.*use `collect_mysql_databases_test2`|use `collect_mysql_databases_test2`.*use `collect_mysql_databases_test1`' \
+         "get_mysqldump_for dumps the dbs we request"
+
+      $CMD_MYSQL $EXT_ARGV -ss -e 'DROP DATABASE collect_mysql_databases_test1;'
+      $CMD_MYSQL $EXT_ARGV -ss -e 'DROP DATABASE collect_mysql_databases_test2;'
+      
+   else
+      skip 1 1 "No mysqldump"
+   fi
+
+}
+
+mkdir "$TMPDIR/mysqldump"
+test_get_mysqldump_for "$TMPDIR/mysqldump"

@@ -43,10 +43,34 @@ _lsof() {
    fi
 }
 
+
+# We don't get things like "which: command not found", so for the pathological
+# case where /usr/bin/which isn't installed, we check that "which which" and
+# if which really isn't there then just return the command passed in and hope
+# they are somewhere
+
+# TODO:
+#  we just need to redirect STDERR when we execute 
+#  "which" and check it. Some shells are really weird this way. We 
+#  can't check "which"'s exit status because it will be nonzero if 
+#  the sought-for command doesn't exist.
+# 
 _which() {
    # which on CentOS is aliased to a cmd that prints extra stuff.
    # Also, if the cmd isn't found, a msg is printed to stderr.
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      # Well, this is bizarre. /usr/bin/which either doesn't exist or
+      # isn't executable, but the shell can use which just fine.
+      # So we bite the bullet, hope that it doesn't do anything
+      # insane, and use it.
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      # We don't have which. Just return the command that was
+      # originally passed in.
+      echo "$1"
+   fi
 }
 
 # ###########################################################################

@@ -43,8 +43,8 @@ parse_proc_cpuinfo () { local PTFUNCNAME=parse_proc_cpuinfo;
    local cores="$(grep 'cpu cores' "${file}" | head -n 1 | cut -d: -f2)";
 
    # Older kernel won't have 'physical id' or 'cpu cores'.
-   if [ "${physical}" = "0" ]; then physical="${virtual}"; fi
-   if [ -z "${cores}" ]; then cores=0; fi
+   [ "${physical}" = "0" ] && physical="${virtual}"
+   [ -z "${cores}" ] && cores=0
 
    # Test for HTT; cannot trust the 'ht' flag.  If physical * cores < virtual,
    # then hyperthreading is in use.
@@ -73,7 +73,7 @@ parse_proc_cpuinfo () { local PTFUNCNAME=parse_proc_cpuinfo;
 # ##############################################################################
 parse_sysctl_cpu_freebsd() { local PTFUNCNAME=parse_sysctl_cpu_freebsd;
    local file="$1"
-   test ! -e "$file" && return;
+   [ -e "$file" ] || return;
    local virtual="$(awk '/hw.ncpu/{print $2}' "$file")"
    name_val "Processors" "virtual = ${virtual}"
    name_val "Speeds" "$(awk '/hw.clockrate/{print $2}' "$file")"
@@ -87,7 +87,7 @@ parse_sysctl_cpu_netbsd() { local PTFUNCNAME=parse_sysctl_cpu_netbsd;
    local file="$1"
 
    # return early if they didn't pass in a file
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local virtual="$(awk '/hw.ncpu /{print $NF}' "$file")"
    name_val "Processors" "virtual = ${virtual}"
@@ -101,7 +101,7 @@ parse_sysctl_cpu_netbsd() { local PTFUNCNAME=parse_sysctl_cpu_netbsd;
 parse_sysctl_cpu_openbsd() { local PTFUNCNAME=parse_sysctl_cpu_openbsd;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    name_val "Processors" "$(awk -F= '/hw.ncpu=/{print $2}' "$file")"
    name_val "Speeds" "$(awk -F= '/hw.cpuspeed/{print $2}' "$file")"
@@ -114,9 +114,9 @@ parse_sysctl_cpu_openbsd() { local PTFUNCNAME=parse_sysctl_cpu_openbsd;
 parse_psrinfo_cpus() { local PTFUNCNAME=parse_psrinfo_cpus;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
-   name_val Processors "$(grep -c 'Status of .* processor' "$file")"
+   name_val "Processors" "$(grep -c 'Status of .* processor' "$file")"
    awk '/operates at/ {
       start = index($0, " at ") + 4;
       end   = length($0) - start - 4
@@ -131,19 +131,19 @@ parse_psrinfo_cpus() { local PTFUNCNAME=parse_psrinfo_cpus;
 parse_free_minus_b () { local PTFUNCNAME=parse_free_minus_b;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local physical=$(awk '/Mem:/{print $3}' "${file}")
    local swap_alloc=$(awk '/Swap:/{print $2}' "${file}")
    local swap_used=$(awk '/Swap:/{print $3}' "${file}")
    local virtual=$(shorten $(($physical + $swap_used)) 1)
 
-   name_val Total   $(shorten $(awk '/Mem:/{print $2}' "${file}") 1)
-   name_val Free    $(shorten $(awk '/Mem:/{print $4}' "${file}") 1)
-   name_val Used    "physical = $(shorten ${physical} 1), swap allocated = $(shorten ${swap_alloc} 1), swap used = $(shorten ${swap_used} 1), virtual = ${virtual}"
-   name_val Buffers $(shorten $(awk '/Mem:/{print $6}' "${file}") 1)
-   name_val Caches  $(shorten $(awk '/Mem:/{print $7}' "${file}") 1)
-   name_val Dirty  "$(awk '/Dirty:/ {print $2, $3}' "${file}")"
+   name_val "Total"   $(shorten $(awk '/Mem:/{print $2}' "${file}") 1)
+   name_val "Free"    $(shorten $(awk '/Mem:/{print $4}' "${file}") 1)
+   name_val "Used"    "physical = $(shorten ${physical} 1), swap allocated = $(shorten ${swap_alloc} 1), swap used = $(shorten ${swap_used} 1), virtual = ${virtual}"
+   name_val "Buffers" $(shorten $(awk '/Mem:/{print $6}' "${file}") 1)
+   name_val "Caches"  $(shorten $(awk '/Mem:/{print $7}' "${file}") 1)
+   name_val "Dirty"  "$(awk '/Dirty:/ {print $2, $3}' "${file}")"
 }
 
 # ##############################################################################
@@ -152,7 +152,7 @@ parse_free_minus_b () { local PTFUNCNAME=parse_free_minus_b;
 parse_memory_sysctl_freebsd() { local PTFUNCNAME=parse_memory_sysctl_freebsd;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local physical=$(awk '/hw.realmem:/{print $2}' "${file}")
    local mem_hw=$(awk '/hw.physmem:/{print $2}' "${file}")
@@ -169,9 +169,9 @@ parse_memory_sysctl_freebsd() { local PTFUNCNAME=parse_memory_sysctl_freebsd;
          print mem_hw - mem_inactive - mem_cache - mem_free;
       }
    ' "$file");
-   name_val Total   $(shorten ${mem_hw} 1)
-   name_val Virtual $(shorten ${physical} 1)
-   name_val Used    $(shorten ${mem_used} 1)
+   name_val "Total"   $(shorten ${mem_hw} 1)
+   name_val "Virtual" $(shorten ${physical} 1)
+   name_val "Used"    $(shorten ${mem_used} 1)
 }
 
 # ##############################################################################
@@ -181,12 +181,12 @@ parse_memory_sysctl_netbsd() { local PTFUNCNAME=parse_memory_sysctl_netbsd;
    local file="$1"
    local swapctl_file="$2"
 
-   test ! -e "$file" -o ! -e "$swapctl_file" && return
+   [ -e "$file" -a -e "$swapctl_file" ] || return
 
    local swap_mem="$(echo "$(awk '{print $2;}' "$swapctl_file")*512" | bc -l)"
-   name_val Total   $(shorten "$(awk '/hw.physmem /{print $NF}' "$file")" 1)
-   name_val User    $(shorten "$(awk '/hw.usermem /{print $NF}' "$file")" 1)
-   name_val Swap    $(shorten ${swap_mem} 1)
+   name_val "Total"   $(shorten "$(awk '/hw.physmem /{print $NF}' "$file")" 1)
+   name_val "User"    $(shorten "$(awk '/hw.usermem /{print $NF}' "$file")" 1)
+   name_val "Swap"    $(shorten ${swap_mem} 1)
 }
 
 # ##############################################################################
@@ -196,12 +196,12 @@ parse_memory_sysctl_openbsd() { local PTFUNCNAME=parse_memory_sysctl_openbsd;
    local file="$1"
    local swapctl_file="$2"
 
-   test ! -e "$file" -o ! -e "$swapctl_file" && return
+   [ -e "$file" -a -e "$swapctl_file" ] || return
 
    local swap_mem="$(echo "$(awk '{print $2;}' "$swapctl_file")*512" | bc -l)"
-   name_val Total   $(shorten "$(awk -F= '/hw.physmem/{print $2}' "$file")" 1)
-   name_val User    $(shorten "$(awk -F= '/hw.usermem/{print $2}' "$file")" 1)
-   name_val Swap    $(shorten ${swap_mem} 1)
+   name_val "Total"   $(shorten "$(awk -F= '/hw.physmem/{print $2}' "$file")" 1)
+   name_val "User"    $(shorten "$(awk -F= '/hw.usermem/{print $2}' "$file")" 1)
+   name_val "Swap"    $(shorten ${swap_mem} 1)
 }
 
 # ##############################################################################
@@ -210,7 +210,7 @@ parse_memory_sysctl_openbsd() { local PTFUNCNAME=parse_memory_sysctl_openbsd;
 parse_dmidecode_mem_devices () { local PTFUNCNAME=parse_dmidecode_mem_devices;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    echo "  Locator   Size     Speed             Form Factor   Type          Type Detail"
    echo "  ========= ======== ================= ============= ============= ==========="
@@ -242,7 +242,7 @@ parse_dmidecode_mem_devices () { local PTFUNCNAME=parse_dmidecode_mem_devices;
 parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    echo "  interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors"
    echo "  ========= ========= ========== ========== ========== ========== =========="
@@ -273,7 +273,7 @@ parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
 parse_netstat () { local PTFUNCNAME=parse_netstat;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    echo "  Connections from remote IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
@@ -327,7 +327,7 @@ parse_filesystems () { local PTFUNCNAME=parse_filesystems;
    local file="$1"
    local platform="$2"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local spec="$(awk "
       BEGIN {
@@ -384,7 +384,7 @@ parse_filesystems () { local PTFUNCNAME=parse_filesystems;
 parse_fdisk () { local PTFUNCNAME=parse_fdisk;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    awk '
       BEGIN {
@@ -420,10 +420,10 @@ parse_fdisk () { local PTFUNCNAME=parse_fdisk;
 parse_ethernet_controller_lspci () { local PTFUNCNAME=parse_ethernet_controller_lspci;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    grep -i ethernet "${file}" | cut -d: -f3 | while read line; do
-      name_val Controller "${line}"
+      name_val "Controller" "${line}"
    done
 }
 
@@ -433,7 +433,7 @@ parse_ethernet_controller_lspci () { local PTFUNCNAME=parse_ethernet_controller_
 # ##############################################################################
 parse_hpacucli () { local PTFUNCNAME=parse_hpacucli;
    local file="$1"
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
    grep 'logicaldrive\|physicaldrive' "${file}"
 }
 
@@ -443,13 +443,13 @@ parse_hpacucli () { local PTFUNCNAME=parse_hpacucli;
 parse_arcconf () { local PTFUNCNAME=parse_arcconf;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local model="$(awk -F: '/Controller Model/{print $2}' "${file}")"
    local chan="$(awk -F: '/Channel description/{print $2}' "${file}")"
    local cache="$(awk -F: '/Installed memory/{print $2}' "${file}")"
    local status="$(awk -F: '/Controller Status/{print $2}' "${file}")"
-   name_val Specs "$(echo "$model" | sed -e 's/ //'),${chan},${cache} cache,${status}"
+   name_val "Specs" "$(echo "$model" | sed -e 's/ //'),${chan},${cache} cache,${status}"
 
    local battery=""
    if grep -q "ZMM" "$file"; then
@@ -463,7 +463,7 @@ parse_arcconf () { local PTFUNCNAME=parse_arcconf;
                /Time remaining/     {t=sprintf("%dd%dh%dm", $7, $9, $11)}
                END                  {printf("%d%%, %s remaining, %s", c, t, s)}')"
    fi
-   name_val Battery "${battery}"
+   name_val "Battery" "${battery}"
 
    # ###########################################################################
    # Logical devices
@@ -565,7 +565,7 @@ parse_fusionmpt_lsiutil () { local PTFUNCNAME=parse_fusionmpt_lsiutil;
 parse_lsi_megaraid_adapter_info () { local PTFUNCNAME=parse_lsi_megaraid_adapter_info;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local name="$(awk -F: '/Product Name/{print substr($2, 2)}' "${file}")";
    local int=$(awk '/Host Interface/{print $4}' "${file}");
@@ -578,8 +578,8 @@ parse_lsi_megaraid_adapter_info () { local PTFUNCNAME=parse_lsi_megaraid_adapter
    local crd=$(awk '/Critical Disks/{print $4}' "${file}");
    local fad=$(awk '/Failed Disks/{print $4}' "${file}");
 
-   name_val Model "${name}, ${int} interface, ${prt} ports"
-   name_val Cache "${mem} Memory, BBU ${bbu}"
+   name_val "Model" "${name}, ${int} interface, ${prt} ports"
+   name_val "Cache" "${mem} Memory, BBU ${bbu}"
 }
 
 # ##############################################################################
@@ -589,12 +589,12 @@ parse_lsi_megaraid_adapter_info () { local PTFUNCNAME=parse_lsi_megaraid_adapter
 parse_lsi_megaraid_bbu_status () { local PTFUNCNAME=parse_lsi_megaraid_bbu_status;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    local charge=$(awk '/Relative State/{print $5}' "${file}");
    local temp=$(awk '/^Temperature/{print $2}' "${file}");
    local soh=$(awk '/isSOHGood:/{print $2}' "${file}");
-   name_val BBU "${charge}% Charged, Temperature ${temp}C, isSOHGood=${soh}"
+   name_val "BBU" "${charge}% Charged, Temperature ${temp}C, isSOHGood=${soh}"
 }
 
 # ##############################################################################
@@ -609,7 +609,7 @@ format_lvs () { local PTFUNCNAME=format_lvs;
    if [ -e "$lvs_file" -a -e "$vgs_file" ]; then
       local header="$(head -n1 "$lvs_file")$(head -n1 "$vgs_file" | sed -e 's/^ *VG//')"
 
-      echo $header
+      echo "$header"
       tail -n+2 "$lvs_file" | while read lvs_line; do
          local current_vg="$(echo $lvs_line | awk '{print $2}')"
          while read vgs_line; do
@@ -639,7 +639,7 @@ format_lvs () { local PTFUNCNAME=format_lvs;
 parse_lsi_megaraid_devices () { local PTFUNCNAME=parse_lsi_megaraid_devices;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    echo
    echo "  PhysiclDev Type State   Errors Vendor  Model        Size"
@@ -671,7 +671,7 @@ parse_lsi_megaraid_devices () { local PTFUNCNAME=parse_lsi_megaraid_devices;
 parse_lsi_megaraid_virtual_devices () { local PTFUNCNAME=parse_lsi_megaraid_virtual_devices;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    # Somewhere on the Internet, I found the following guide to understanding the
    # RAID level, but I don't know the source anymore.
@@ -753,7 +753,7 @@ parse_lsi_megaraid_virtual_devices () { local PTFUNCNAME=parse_lsi_megaraid_virt
 format_vmstat () { local PTFUNCNAME=format_vmstat;
    local file="$1"
 
-   test ! -e "$file" && return
+   [ -e "$file" ] || return
 
    awk "
       BEGIN {
@@ -790,72 +790,28 @@ processes_section () { local PTFUNCNAME=processes_section;
    local vmstat_file="$3"
    local platform="$4"
 
-   if echo "${PT_SUMMARY_SKIP}" | grep -v PROCESS >/dev/null; then
-      section Top_Processes
-      cat "$top_process_file"
-      section Notable_Processes
-      cat "$notable_procs_file"
-      if [ -e "$vmstat_file" ]; then
-         section "Simplified_and_fuzzy_rounded_vmstat_(wait_please)"
-         wait # For the process we forked that was gathering vmstat samples
-         if [ "${platform}" = "Linux" ]; then
-            format_vmstat "$vmstat_file"
-         else
-            # TODO: simplify/format for other platforms
-            cat "$vmstat_file"
-         fi
+   section "Top_Processes"
+   cat "$top_process_file"
+   section "Notable_Processes"
+   cat "$notable_procs_file"
+   if [ -e "$vmstat_file" ]; then
+      section "Simplified_and_fuzzy_rounded_vmstat_(wait_please)"
+      wait # For the process we forked that was gathering vmstat samples
+      if [ "${platform}" = "Linux" ]; then
+         format_vmstat "$vmstat_file"
+      else
+         # TODO: simplify/format for other platforms
+         cat "$vmstat_file"
       fi
    fi
 }
 
-# The sum of all of the above
-report_system_summary () { local PTFUNCNAME=report_system_summary;
-   local data_dir="$1"
+section_Processor () {
+   local platform="$1"
+   local data_dir="$2"
 
-   section Percona_Toolkit_System_Summary_Report
+   section "Processor"
 
-   # ########################################################################
-   # General date, time, load, etc
-   # ########################################################################
-
-   test ! -e "$data_dir/summary" \
-      && die "The data directory doesn't have a summary file, exiting."
-
-   local platform="$(get_var platform "$data_dir/summary")"
-   name_val "Date" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
-   name_val "Hostname" "$(get_var hostname "$data_dir/summary")"
-   name_val "Uptime" "$(get_var uptime "$data_dir/summary")"
-
-   if [ -n "$(get_var vendor "$data_dir/summary")" ]; then
-      name_val "System" "$(get_var system "$data_dir/summary")";
-      name_val "Service Tag" "$(get_var servicetag "$data_dir/summary")";
-   fi
-
-   name_val "Platform" "${platform}"
-   local zonename="$(get_var zonename "$data_dir/summary")";
-   if [ -n "${zonename}" ]; then
-      name_val "Zonename" "$zonename"
-   fi
-
-   name_val Release "$(get_var release "$data_dir/summary")"
-   name_val Kernel "$(get_var kernel "$data_dir/summary")"
-
-   name_val "Architecture" "CPU = $(get_var CPU_ARCH "$data_dir/summary"), OS = $(get_var OS_ARCH "$data_dir/summary")"
-
-   local threading="$(get_var threading "$data_dir/summary")"
-   local compiler="$(get_var compiler "$data_dir/summary")"
-   [ -n "$threading" ] && name_val Threading "$threading"
-   [ -n "$compiler"  ] && name_val Compiler "$compiler"
-
-   local getenforce="$(get_var getenforce "$data_dir/summary")"
-   [ -n "$getenforce" ] && name_val "SELinux" "${getenforce}";
-
-   name_val Virtualized "$(get_var virt "$data_dir/summary")"
-
-   # ########################################################################
-   # Processor/CPU, Memory, Swappiness, dmidecode
-   # ########################################################################
-   section Processor
    if [ -e "$data_dir/proc_cpuinfo_copy" ]; then
       parse_proc_cpuinfo "$data_dir/proc_cpuinfo_copy"
    elif [ "${platform}" = "FreeBSD" ]; then
@@ -868,8 +824,13 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       parse_psrinfo_cpus "$data_dir/psrinfo_minus_v"
       # TODO: prtconf -v actually prints the CPU model name etc.
    fi
+}
 
-   section Memory
+section_Memory () {
+   local platform="$1"
+   local data_dir="$2"
+
+   section "Memory"
    if [ "${platform}" = "Linux" ]; then
       parse_free_minus_b "$data_dir/memory"
    elif [ "${platform}" = "FreeBSD" ]; then
@@ -879,24 +840,74 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    elif [ "${platform}" = "OpenBSD" ]; then
       parse_memory_sysctl_openbsd "$data_dir/sysctl" "$data_dir/swapctl"
    elif [ "${platform}" = "SunOS" ]; then
-      name_val Memory "$(cat "$data_dir/memory")"
+      name_val "Memory" "$(cat "$data_dir/memory")"
    fi
 
-   local rss=$( get_var rss "$data_dir/summary" )
-   name_val UsedRSS "$(shorten ${rss} 1)"
+   local rss=$( get_var "rss" "$data_dir/summary" )
+   name_val "UsedRSS" "$(shorten ${rss} 1)"
 
    if [ "${platform}" = "Linux" ]; then
-      name_val Swappiness "$(get_var swappiness "$data_dir/summary")"
-      name_val DirtyPolicy "$(get_var dirtypolicy "$data_dir/summary")"
-      local dirty_status="$(get_var dirtystatus "$data_dir/summary")"
+      name_val "Swappiness" "$(get_var "swappiness" "$data_dir/summary")"
+      name_val "DirtyPolicy" "$(get_var "dirtypolicy" "$data_dir/summary")"
+      local dirty_status="$(get_var "dirtystatus" "$data_dir/summary")"
       if [ -n "$dirty_status" ]; then
-         name_val DirtyStatus "$dirty_status"
+         name_val "DirtyStatus" "$dirty_status"
       fi
    fi
 
    if [ -s "$data_dir/dmidecode" ]; then
       parse_dmidecode_mem_devices "$data_dir/dmidecode"
    fi
+}
+
+# The sum of all of the above
+report_system_summary () { local PTFUNCNAME=report_system_summary;
+   local data_dir="$1"
+
+   section "Percona_Toolkit_System_Summary_Report"
+
+   # ########################################################################
+   # General date, time, load, etc
+   # ########################################################################
+
+   [ -e "$data_dir/summary" ] \
+      || die "The data directory doesn't have a summary file, exiting."
+
+   local platform="$(get_var "platform" "$data_dir/summary")"
+   name_val "Date" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
+   name_val "Hostname" "$(get_var hostname "$data_dir/summary")"
+   name_val "Uptime" "$(cat "$data_dir/uptime")"
+
+   if [ "$(get_var "vendor" "$data_dir/summary")" ]; then
+      name_val "System" "$(get_var "system" "$data_dir/summary")";
+      name_val "Service Tag" "$(get_var "servicetag" "$data_dir/summary")";
+   fi
+
+   name_val "Platform" "${platform}"
+   local zonename="$(get_var zonename "$data_dir/summary")";
+   [ -n "${zonename}" ] && name_val "Zonename" "$zonename"
+
+   name_val "Release" "$(get_var "release" "$data_dir/summary")"
+   name_val "Kernel" "$(get_var "kernel" "$data_dir/summary")"
+
+   name_val "Architecture" "CPU = $(get_var "CPU_ARCH" "$data_dir/summary"), OS = $(get_var "OS_ARCH" "$data_dir/summary")"
+
+   local threading="$(get_var threading "$data_dir/summary")"
+   local compiler="$(get_var compiler "$data_dir/summary")"
+   [ -n "$threading" ] && name_val "Threading" "$threading"
+   [ -n "$compiler"  ] && name_val "Compiler" "$compiler"
+
+   local getenforce="$(get_var getenforce "$data_dir/summary")"
+   [ -n "$getenforce" ] && name_val "SELinux" "${getenforce}";
+
+   name_val "Virtualized" "$(get_var "virt" "$data_dir/summary")"
+
+   # ########################################################################
+   # Processor/CPU, Memory, Swappiness, dmidecode
+   # ########################################################################
+   section_Processor "$platform" "$data_dir"
+
+   section_Memory    "$platform" "$data_dir"
 
    # ########################################################################
    # Disks, RAID, Filesystems
@@ -909,8 +920,8 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    fi
 
    if [ "${platform}" = "Linux" ]; then
-      section "Disk_Schedulers_And_Queue_Size"
 
+      section "Disk_Schedulers_And_Queue_Size"
       local disks="$( get_var disks "$data_dir/summary" )"
       for disk in ${disks}; do
          name_val "${disk}" "$( get_var "internal::${disk}" "$data_dir/summary" )"
@@ -929,8 +940,8 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    fi
 
    section "RAID_Controller"
-   local controller="$(get_var raid_controller "$data_dir/summary")"
-   name_val Controller "$controller"
+   local controller="$(get_var "raid_controller" "$data_dir/summary")"
+   name_val "Controller" "$controller"
    local key="$(get_var "internal::raid_opt" "$data_dir/summary")"
    case "$key" in
       0)
@@ -957,16 +968,16 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
          ;;
    esac
 
-   if echo "${PT_SUMMARY_SKIP}" | grep -v NETWORK >/dev/null; then
+   if [ "${OPT_SUMMARIZE_NETWORK}" ]; then
       # #####################################################################
       # Network stuff
       # #####################################################################
       if [ "${platform}" = "Linux" ]; then
-         section Network_Config
+         section "Network_Config"
          if [ -s "$data_dir/lspci_file" ]; then
             parse_ethernet_controller_lspci "$data_dir/lspci_file"
          fi
-         if grep net.ipv4.tcp_fin_timeout "$data_dir/sysctl" > /dev/null 2>&1; then
+         if grep "net.ipv4.tcp_fin_timeout" "$data_dir/sysctl" > /dev/null 2>&1; then
             name_val "FIN Timeout" "$(awk '/net.ipv4.tcp_fin_timeout/{print $NF}' "$data_dir/sysctl")"
             name_val "Port Range" "$(awk '/net.ipv4.ip_local_port_range/{print $NF}' "$data_dir/sysctl")"
          fi
@@ -977,12 +988,12 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       # in new kernels like Fedora 12?
 
       if [ -s "$data_dir/ip" ]; then
-         section Interface_Statistics
+         section "Interface_Statistics"
          parse_ip_s_link "$data_dir/ip"
       fi
 
-      if [ "${platform}" = "Linux" ] && [ -e "$data_dir/netstat" ]; then
-         section Network_Connections
+      if [ "${platform}" = "Linux" -a -e "$data_dir/netstat" ]; then
+         section "Network_Connections"
          parse_netstat "$data_dir/netstat"
       fi
    fi
@@ -990,12 +1001,16 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    # ########################################################################
    # Processes, load, etc
    # ########################################################################
-   processes_section "$data_dir/processes" "$data_dir/notable_procs" "$data_dir/vmstat" "$platform"
+   [ "$OPT_SUMMARIZE_PROCESSES" ] && processes_section           \
+                                       "$data_dir/processes"     \
+                                       "$data_dir/notable_procs" \
+                                       "$data_dir/vmstat"        \
+                                       "$platform"
 
    # ########################################################################
    # All done.  Signal the end so it's explicit.
    # ########################################################################
-   section The_End
+   section "The_End"
 }
 
 # ###########################################################################
