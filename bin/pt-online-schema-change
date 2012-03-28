@@ -3684,18 +3684,31 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(spec get_status sleep oktorun);
+   my @required_args = qw(max_spec get_status sleep oktorun);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
-   my $max_val_for = _parse_spec(%args);
+   PTDEBUG && _d('Parsing spec for max thresholds');
+   my $max_val_for = _parse_spec(
+      spec             => $args{max_spec},
+      get_status       => $args{get_status},
+      threshold_factor => 0.2, # +20%
+   );
+
+   PTDEBUG && _d('Parsing spec for critical thresholds');
+   my $critical_val_for = _parse_spec(
+      spec             => $args{critical_spec} || [],
+      get_status       => $args{get_status},
+      threshold_factor => 1.0, # double (x2; +100%)
+   );
 
    my $self = {
-      get_status  => $args{get_status},
-      sleep       => $args{sleep},
-      oktorun     => $args{oktorun},
-      max_val_for => $max_val_for,
+      get_status       => $args{get_status},
+      sleep            => $args{sleep},
+      oktorun          => $args{oktorun},
+      max_val_for      => $max_val_for,
+      critical_val_for => $critical_val_for,
    };
 
    return bless $self, $class;
@@ -3709,10 +3722,8 @@ sub _parse_spec {
    }
    my ($spec, $get_status) = @args{@required_args};
 
-   if ( !@$spec ) {
-      PTDEBUG && _d('No spec, disabling status var waits');
-      return;
-   }
+   return unless $spec && scalar @$spec;
+   my $threshold_factor = $args{threshold_factor} || 0.20;
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
@@ -3721,7 +3732,7 @@ sub _parse_spec {
       if ( !$val ) {
          my $init_val = $get_status->($var);
          PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * .20) + $init_val);
+         $val = int(($init_val * $threshold_factor) + $init_val);
       }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
       $max_val_for{$var} = $val;
@@ -3735,6 +3746,11 @@ sub max_values {
    return $self->{max_val_for};
 }
 
+sub critical_values {
+   my ($self) = @_;
+   return $self->{critical_val_for};
+}
+
 sub wait {
    my ( $self, %args ) = @_;
 
@@ -3745,7 +3761,7 @@ sub wait {
    my $oktorun    = $self->{oktorun};
    my $get_status = $self->{get_status};
    my $sleep      = $self->{sleep};
-   
+
    my %vals_too_high = %{$self->{max_val_for}};
    my $pr_callback;
    if ( $pr ) {
@@ -3769,6 +3785,12 @@ sub wait {
       foreach my $var ( sort keys %vals_too_high ) {
          my $val = $get_status->($var);
          PTDEBUG && _d($var, '=', $val);
+         if ( $val
+              && exists $self->{critical_val_for}->{$var}
+              && $val >= $self->{critical_val_for}->{$var} ) {
+            die "$var=$val exceeds its critical threshold "
+               . "$self->{critical_val_for}->{$var}\n";
+         }
          if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
@@ -5146,10 +5168,11 @@ sub main {
       }
 
       $sys_load = new MySQLStatusWaiter(
-         spec       => $o->get('max-load'),
-         get_status => $get_status,
-         oktorun    => sub { return $oktorun },
-         sleep      => $sleep,
+         max_spec      => $o->get('max-load'),
+         critical_spec => $o->get('critical-load'),
+         get_status    => $get_status,
+         oktorun       => sub { return $oktorun },
+         sleep         => $sleep,
       );
       
       if ( $o->get('progress') ) {
@@ -6547,7 +6570,7 @@ pt-online-schema-change - Perform online, non-blocking table schema changes.
 
 =head1 SYNOPSIS
 
-Usage: pt-online-schema-change [OPTION...] DSN
+Usage: pt-online-schema-change [OPTIONS] DSN
 
 BARON: NOTE we should say that you ought not to use 'rename' in --alter or the
 new table won't exist and the tool will fail.
@@ -6560,20 +6583,13 @@ Change the table's engine to InnoDB:
 
   pt-online-schema-change   \
     h=127.1,t=db.tbl        \
-    --alter "ENGINE=InnoDB" \
-    --drop-old-table
-
-Rebuild but do not alter the table, and keep the temporary table:
-
-  pt-online-schema-change h=127.1,t=db.tbl
+    --alter "ENGINE=InnoDB"
 
 Add column to parent table, update child table foreign key constraints:
 
   pt-online-schema-change          \
     h=127.1,D=db,t=parent          \
-    --alter "ADD COLUMN (foo INT)" \
-    --child-tables child1,child2   \
-    --update-foreign-keys-method drop_swap
+    --alter "ADD COLUMN (foo INT)"
 
 =head1 RISKS
 
@@ -6666,13 +6682,12 @@ Here are options related to each phase:
 
   1. --alter
   2. (none)
-  3. --chunk-size, --sleep
+  3. --chunk-size
   4. (none)
   5. --[no]swap-tables
-  6. --drop-old-table
+  6. --[no]drop-old-table
 
-Options L<"--check-tables-and-exit"> and L<"--print"> are helpful to see what
-the tool might do before actually doing it.
+L<"--print"> is helpful to see what the tool might do before actually doing it.
 
 =head1 REPLICATION
 
@@ -6771,14 +6786,6 @@ behavior of finding and continually monitoring replication lag on ALL connected
 replicas.  If you don't want to monitor ALL replicas, but you want more than
 just one replica to be monitored, then use the DSN option to the
 L<"--recursion-method"> option instead of this option.
-
-=item --check-tables-and-exit
-
-Check that the table can be altered then exit; do not alter the table.
-If you just want to see that the tool can/will work for the given table,
-specify this option.  Even if all checks pass, the tool may still encounter
-problems if, for example, one of the L<"--alter"> statements uses
-incorrect syntax.
 
 =item --child-tables
 
@@ -6885,6 +6892,18 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --critical-load
+
+type: Array; default: Threads_running=50; group: Throttle
+
+Examine SHOW GLOBAL STATUS after every chunk, and abort if any status variables
+are higher than the threshold.  The option accepts a comma-separated list of
+MySQL status variables to check for a threshold.  An optional C<=MAX_VALUE> (or
+C<:MAX_VALUE>) can follow each variable.  If not given, the tool determines a
+threshold by examining the current value and doubling it.
+
+See also L<"--max-load">.
+
 =item --defaults-file
 
 short form: -F; type: string
@@ -6903,7 +6922,7 @@ if there are no errors and the new table successfully takes it place.
 
 =item --dry-run
 
-Do not create triggers, copy rows, or L<"--swap-tables">.
+Do not create triggers, copy rows, or L<"--[no]swap-tables">.
 
 =item --execute
 
@@ -7069,16 +7088,6 @@ replication lag and checksum differences, insert the values C<h=10.10.1.16> and
 C<h=10.10.1.17> into the table. Currently, the DSNs are ordered by id, but id
 and parent_id are otherwise ignored.  
 
-=item --[no]swap-tables
-
-default: yes
-
-Swap the the original table and the new, altered table.  This step
-essentially completes the online schema change process by making the
-temporary table with the new schema take the place of the original table.
-The original tables becomes the "old table" and is dropped if
-L<"--[no]drop-old-table"> is specified.
-
 =item --retries
 
 type: int; default: 3
@@ -7098,6 +7107,17 @@ will be appended to SET and executed.
 short form: -S; type: string
 
 Socket file to use for connection.
+
+=item --[no]swap-tables
+
+default: yes
+
+Swap the the original table and the new, altered table.  This step
+essentially completes the online schema change process by making the
+temporary table with the new schema take the place of the original table.
+The original tables becomes the "old table" and is dropped if
+L<"--[no]drop-old-table"> is specified.
+
 
 =item --update-foreign-keys-method
 

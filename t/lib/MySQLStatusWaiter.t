@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 12;
+use Test::More tests => 14;
 
 use MySQLStatusWaiter;
 use PerconaTest;
@@ -72,7 +72,7 @@ my $sw = new MySQLStatusWaiter(
    oktorun    => \&oktorun,
    get_status => \&get_status,
    sleep      => \&sleep,
-   spec       => [qw(Threads_connected Threads_running)],
+   max_spec   => [qw(Threads_connected Threads_running)],
 );
 
 is_deeply(
@@ -136,7 +136,7 @@ $sw = new MySQLStatusWaiter(
    oktorun    => \&oktorun,
    get_status => \&get_status,
    sleep      => \&sleep,
-   spec       => [qw(Threads_connected=5 Threads_running=5)],
+   max_spec   => [qw(Threads_connected=5 Threads_running=5)],
 );
 
 is_deeply(
@@ -178,7 +178,7 @@ $sw = new MySQLStatusWaiter(
    oktorun    => \&oktorun,
    get_status => \&get_status,
    sleep      => \&sleep,
-   spec       => [],
+   max_spec   => [],
 );
 
 is(
@@ -202,6 +202,40 @@ is(
    $slept,
    0,
    "No spec, no sleep"
+);
+
+# ############################################################################
+# Critical thresholds (with static vals).
+# ############################################################################
+@vals = (
+   # first check, no wait
+   { Threads_running => 1, },
+   { Threads_running => 9, },
+);
+
+$sw = new MySQLStatusWaiter(
+   oktorun       => \&oktorun,
+   get_status    => \&get_status,
+   sleep         => \&sleep,
+   max_spec      => [qw(Threads_running=4)],
+   critical_spec => [qw(Threads_running=8)],
+
+);
+
+@checked = ();
+$slept   = 0;
+$sw->wait();
+
+is(
+   $slept,
+   0,
+   "Vals not critical, did not sleep"
+);
+
+throws_ok(
+   sub { $sw->wait(); },
+   qr/Threads_running=9 exceeds its critical threshold 8/,
+   "Die on critical threshold"
 );
 
 # #############################################################################
