@@ -145,7 +145,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   echo "$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
+   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { print substr($0, index($0,$2)) } }' "${file}"
 }
 
 # ###########################################################################

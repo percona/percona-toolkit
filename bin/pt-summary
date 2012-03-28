@@ -13,13 +13,6 @@ TOOL="pt-summary"
 POSIXLY_CORRECT=1
 export POSIXLY_CORRECT
 
-# Begin by setting the $PATH to include some common locations that are not
-# always in the $PATH, including the "sbin" locations, and some common
-# locations for proprietary management software, such as RAID controllers.
-export PATH="${PATH}:/usr/local/bin:/usr/bin:/bin:/usr/libexec"
-export PATH="${PATH}:/usr/local/sbin:/usr/sbin:/sbin"
-export PATH="${PATH}:/usr/StorMan/:/opt/MegaRAID/MegaCli/";
-
 # ###########################################################################
 # log_warn_die package
 # This package is a copy without comments from the original.  The original
@@ -643,7 +636,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   echo "$(awk "\$1 ~ /^${varname}$/ { if (length(\$2)) { print substr(\$0, index(\$0,\$2)) } }" "${file}")"
+   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { print substr($0, index($0,$2)) } }' "${file}"
 }
 
 # ###########################################################################
@@ -753,30 +746,32 @@ group_concat () {
 
 set -u
 
-CMD_SYSCTL="$(_which sysctl 2>/dev/null )"
-CMD_DMIDECODE="$(_which dmidecode 2>/dev/null )"
-CMD_ZONENAME="$(_which zonename 2>/dev/null )"
-CMD_DMESG="$(_which dmesg 2>/dev/null )"
-CMD_FILE="$(_which file 2>/dev/null )"
-CMD_LSPCI="$(_which lspci 2>/dev/null )"
-CMD_PRTDIAG="$(_which prtdiag 2>/dev/null )"
-CMD_SMBIOS="$(_which smbios 2>/dev/null )"
-CMD_GETENFORCE="$(_which getenforce 2>/dev/null )"
-CMD_PRTCONF="$(_which prtconf 2>/dev/null )"
-CMD_LVS="$(_which lvs 2>/dev/null)"
-CMD_VGS="$(_which vgs 2>/dev/null)"
-CMD_PRSTAT="$(_which prstat 2>/dev/null)"
-CMD_ISAINFO="$(_which isainfo 2>/dev/null)"
-CMD_TOP="$(_which top 2>/dev/null)"
-CMD_ARCCONF="$( _which arcconf 2>/dev/null )"
-CMD_HPACUCLI="$( _which hpacucli 2>/dev/null )"
-CMD_MEGACLI64="$( _which MegaCli64 2>/dev/null )"
-CMD_VMSTAT="$(_which vmstat 2>/dev/null)"
-CMD_IP="$( _which ip 2>/dev/null )"
-CMD_NETSTAT="$( _which netstat 2>/dev/null )"
-CMD_PSRINFO="$( _which psrinfo 2>/dev/null )"
-CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
-CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
+setup_commands () {
+   CMD_SYSCTL="$(_which sysctl 2>/dev/null )"
+   CMD_DMIDECODE="$(_which dmidecode 2>/dev/null )"
+   CMD_ZONENAME="$(_which zonename 2>/dev/null )"
+   CMD_DMESG="$(_which dmesg 2>/dev/null )"
+   CMD_FILE="$(_which file 2>/dev/null )"
+   CMD_LSPCI="$(_which lspci 2>/dev/null )"
+   CMD_PRTDIAG="$(_which prtdiag 2>/dev/null )"
+   CMD_SMBIOS="$(_which smbios 2>/dev/null )"
+   CMD_GETENFORCE="$(_which getenforce 2>/dev/null )"
+   CMD_PRTCONF="$(_which prtconf 2>/dev/null )"
+   CMD_LVS="$(_which lvs 2>/dev/null)"
+   CMD_VGS="$(_which vgs 2>/dev/null)"
+   CMD_PRSTAT="$(_which prstat 2>/dev/null)"
+   CMD_ISAINFO="$(_which isainfo 2>/dev/null)"
+   CMD_TOP="$(_which top 2>/dev/null)"
+   CMD_ARCCONF="$( _which arcconf 2>/dev/null )"
+   CMD_HPACUCLI="$( _which hpacucli 2>/dev/null )"
+   CMD_MEGACLI64="$( _which MegaCli64 2>/dev/null )"
+   CMD_VMSTAT="$(_which vmstat 2>/dev/null)"
+   CMD_IP="$( _which ip 2>/dev/null )"
+   CMD_NETSTAT="$( _which netstat 2>/dev/null )"
+   CMD_PSRINFO="$( _which psrinfo 2>/dev/null )"
+   CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
+   CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
+}
 
 collect_system_data () { local PTFUNCNAME=collect_system_data;
    local data_dir="$1"
@@ -2067,6 +2062,15 @@ main () { local PTFUNCNAME=main;
    trap sigtrap HUP INT TERM
 
    local RAN_WITH="--sleep=$OPT_SLEEP --save-samples=$OPT_SAVE_SAMPLES --read-samples=$OPT_READ_SAMPLES"
+
+   # Begin by setting the $PATH to include some common locations that are not
+   # always in the $PATH, including the "sbin" locations, and some common
+   # locations for proprietary management software, such as RAID controllers.
+   export PATH="${PATH}:/usr/local/bin:/usr/bin:/bin:/usr/libexec"
+   export PATH="${PATH}:/usr/local/sbin:/usr/sbin:/sbin"
+   export PATH="${PATH}:/usr/StorMan/:/opt/MegaRAID/MegaCli/"
+
+   setup_commands
 
    _d "Starting $0 $RAN_WITH"
 

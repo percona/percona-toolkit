@@ -30,7 +30,7 @@ file_count=$(ls "$p" | wc -l)
 
 is $file_count 12 "Creates the correct number of files (without --databases)"
 
-awk '{print $1}' "$p/percona-toolkit-mysqld-instances" > "$TMPDIR/collect_mysqld_instances1.test"
+awk '{print $1}' "$p/mysqld-instances" > "$TMPDIR/collect_mysqld_instances1.test"
 ps ww -p "$(_pidof mysqld | sed -e "s/ /,/g")" | awk '{print $1}' > "$TMPDIR/collect_mysqld_instances2.test"
 
 no_diff \
@@ -38,7 +38,7 @@ no_diff \
    "$TMPDIR/collect_mysqld_instances2.test" \
    "collect_mysql_info() finds the correct instances"
 
-collect_mysqld_instances "$TMPDIR/collect_mysqld_instances3.test"
+collect_mysqld_instances /dev/null > "$TMPDIR/collect_mysqld_instances3.test"
 
 awk '{print $1}' "$TMPDIR/collect_mysqld_instances3.test"> "$TMPDIR/collect_mysqld_instances4.test"
 
@@ -52,7 +52,7 @@ $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' > "$TMPDIR/collect_m
 
 
 # TODO This is still pretty fragile.
-awk '{print $1}' "$p/percona-toolkit-mysql-status" | sort > "$TMPDIR/collect_mysql_status_collect"
+awk '{print $1}' "$p/mysql-status" | sort > "$TMPDIR/collect_mysql_status_collect"
 awk '{print $1}' "$TMPDIR/collect_mysql_status" | sort  > "$TMPDIR/collect_mysql_status_manual"
 
 no_diff \
@@ -60,7 +60,7 @@ no_diff \
    "$TMPDIR/collect_mysql_status_manual"    \
    "collect_mysql_status works the same than if done manually"
 
-port="$(get_var port "$p/percona-toolkit-mysql-variables")"
+port="$(get_var port "$p/mysql-variables")"
 
 is \
    $port \
@@ -70,14 +70,14 @@ is \
 # collect_internal_vars
 pat='pt-summary-internal-user\|pt-summary-internal-FNV_64\|pt-summary-internal-trigger_count\|pt-summary-internal-symbols'
 
-collect_internal_vars "$TMPDIR/collect_internal_vars"
+collect_internal_vars > "$TMPDIR/collect_internal_vars"
 is \
-   "$( grep $pat "$p/percona-toolkit-mysql-variables" )" \
+   "$( grep $pat "$p/mysql-variables" )" \
    "$( grep $pat "$TMPDIR/collect_internal_vars" )" \
    "collect_internal_vars works"
 
 # find_my_cnf_file
-cnf_file=$(find_my_cnf_file "$p/percona-toolkit-mysqld-instances" ${port});
+cnf_file=$(find_my_cnf_file "$p/mysqld-instances" ${port});
 
 is \
    "$cnf_file" \
@@ -101,13 +101,13 @@ is "$res" "/var/lib/mysql/my.cnf" "ps-mysqld-004.txt with port"
 $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' > "$TMPDIR/mysql_collect_databases" 2>/dev/null
 
 no_diff \
-   "$p/percona-toolkit-mysql-databases" \
+   "$p/mysql-databases" \
    "$TMPDIR/mysql_collect_databases"       \
    "collect_mysql_databases works"
 
 $CMD_MYSQL $EXT_ARGV -ss -e 'CREATE DATABASE collect_mysql_databases_test;' 1>/dev/null 2>&1
 
-collect_mysql_databases "$TMPDIR/mysql_collect_databases"
+collect_mysql_databases > "$TMPDIR/mysql_collect_databases"
 
 $CMD_MYSQL $EXT_ARGV -ss -e 'DROP DATABASE collect_mysql_databases_test;'
 
@@ -117,12 +117,12 @@ cmd_ok \
 
 # collect_master_logs_status
 
-if [ -n "$(get_var log_bin "$p/percona-toolkit-mysql-variables")" ]; then
+if [ -n "$(get_var log_bin "$p/mysql-variables")" ]; then
    cmd_ok \
-      "test -e $p/percona-toolkit-mysql-master-logs" \
+      "test -e $p/mysql-master-logs" \
       "If we have a binlog, a file with the master logs should exist"
    cmd_ok \
-      "test -e $p/percona-toolkit-mysql-master-status" \
+      "test -e $p/mysql-master-status" \
       "And likewise for master status"
 else
    skip 1 2 "no binlog"
@@ -142,13 +142,13 @@ test_get_mysqldump_for () {
    cat <<EOF > "$TMPDIR/expected"
 --defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases --all-databases
 EOF
-   get_mysqldump_for "$dir/mysqldump_test_1" ''
+   get_mysqldump_for '' > "$dir/mysqldump_test_1"
    no_diff \
       "$dir/mysqldump_test_1" \
       "$TMPDIR/expected" \
       "get_mysqldump_for picks a name default"
 
-   get_mysqldump_for "$dir/mysqldump_test_2" '' '--all-databases'
+   get_mysqldump_for '' '--all-databases' > "$dir/mysqldump_test_2"
    no_diff \
       "$dir/mysqldump_test_2" \
       "$TMPDIR/expected" \
@@ -157,7 +157,7 @@ EOF
    cat <<EOF > "$TMPDIR/expected"
 --defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases a
 EOF
-   get_mysqldump_for "$dir/mysqldump_test_3" '' 'a'
+   get_mysqldump_for '' 'a' > "$dir/mysqldump_test_3"
    no_diff \
       "$dir/mysqldump_test_3" \
       "$TMPDIR/expected" \
@@ -166,7 +166,7 @@ EOF
    cat <<EOF > "$TMPDIR/expected"
 --defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases a b
 EOF
-   get_mysqldump_for "$dir/mysqldump_test_4" '' 'a,b'
+   get_mysqldump_for '' 'a,b' > "$dir/mysqldump_test_4"
    no_diff \
       "$dir/mysqldump_test_4" \
       "$TMPDIR/expected" \
@@ -177,7 +177,7 @@ EOF
       $CMD_MYSQL $EXT_ARGV -ss -e 'CREATE DATABASE collect_mysql_databases_test1;' 1>/dev/null 2>&1
       $CMD_MYSQL $EXT_ARGV -ss -e 'CREATE DATABASE collect_mysql_databases_test2;' 1>/dev/null 2>&1
 
-      get_mysqldump_for "$dir/mysqldump_test_5" '' "collect_mysql_databases_test1,collect_mysql_databases_test2"
+      get_mysqldump_for '' "collect_mysql_databases_test1,collect_mysql_databases_test2" > "$dir/mysqldump_test_5"
 
       like \
          "$(cat $dir/mysqldump_test_5)" \

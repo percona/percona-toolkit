@@ -30,8 +30,7 @@ CMD_MYSQLDUMP="${CMD_MYSQLDUMP:-""}"
 
 # Simply looks for instances of mysqld in the outof of ps.
 collect_mysqld_instances () {
-   local file="$1"
-   local variables_file="$2"
+   local variables_file="$1"
 
    local pids="$(_pidof mysqld)"
 
@@ -45,9 +44,9 @@ collect_mysqld_instances () {
       done
 
       pids="$(echo $pids | sed -e 's/ /,/g')"
-      ps ww -p "$pids" 2>/dev/null > "$file"
+      ps ww -p "$pids" 2>/dev/null
    else
-      echo "mysqld doesn't appear to be running" > "$file"
+      echo "mysqld doesn't appear to be running"
    fi
 
 }
@@ -85,43 +84,35 @@ find_my_cnf_file() {
 }
 
 collect_mysql_variables () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss  -e 'SHOW /*!40100 GLOBAL*/ VARIABLES' > "$file"
+   $CMD_MYSQL $EXT_ARGV -ss  -e 'SHOW /*!40100 GLOBAL*/ VARIABLES'
 }
 
 collect_mysql_status () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' > "$file"
+   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS'
 }
 
 collect_mysql_databases () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' 2>/dev/null
 }
 
 collect_mysql_plugins () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW PLUGINS' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW PLUGINS' 2>/dev/null
 }
 
 collect_mysql_slave_status () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW SLAVE STATUS' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW SLAVE STATUS' 2>/dev/null
 }
 
 collect_mysql_innodb_status () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW /*!50000 ENGINE*/ INNODB STATUS' 2>/dev/null
 }
 
 collect_mysql_processlist () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW FULL PROCESSLIST' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ssE -e 'SHOW FULL PROCESSLIST' 2>/dev/null
 }
 
 collect_mysql_users () {
-   local file="$1"
-   $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' > "$file" 2>/dev/null
+   $CMD_MYSQL $EXT_ARGV -ss -e 'SELECT COUNT(*), SUM(user=""), SUM(password=""), SUM(password NOT LIKE "*%") FROM mysql.user' 2>/dev/null
 }
 
 collect_master_logs_status () {
@@ -134,14 +125,11 @@ collect_master_logs_status () {
 # Somewhat different from the others, this one joins the status we got earlier
 collect_mysql_deferred_status () {
    local status_file="$1"
-   local defer_file="$2"
-   collect_mysql_status "$TMPDIR/defer_gatherer"
-   cat "$TMPDIR/defer_gatherer" | join "$status_file" - > "$defer_file"
+   collect_mysql_status > "$TMPDIR/defer_gatherer"
+   join "$status_file" "$TMPDIR/defer_gatherer"
 }
 
 collect_internal_vars () {
-   local file="$1"
-
    local FNV_64=""
    if $CMD_MYSQL $EXT_ARGV -e 'SELECT FNV_64("a")' >/dev/null 2>&1; then
       FNV_64="Enabled";
@@ -154,25 +142,24 @@ collect_internal_vars () {
    local trigger_count=$($CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null)
    local has_symbols="$(has_symbols "${CMD_MYSQL}")"
 
-   echo "pt-summary-internal-mysql_executable    $CMD_MYSQL" >> "$file"
-   echo "pt-summary-internal-now    $now" >> "$file"
-   echo "pt-summary-internal-user   $user" >> "$file"
-   echo "pt-summary-internal-FNV_64   $FNV_64" >> "$file"
-   echo "pt-summary-internal-trigger_count   $trigger_count" >> "$file"
-   echo "pt-summary-internal-symbols   $has_symbols" >> "$file"
+   echo "pt-summary-internal-mysql_executable    $CMD_MYSQL"
+   echo "pt-summary-internal-now    $now"
+   echo "pt-summary-internal-user   $user"
+   echo "pt-summary-internal-FNV_64   $FNV_64"
+   echo "pt-summary-internal-trigger_count   $trigger_count"
+   echo "pt-summary-internal-symbols   $has_symbols"
 }
 
 # Uses mysqldump and dumps the results to FILE.
 # args and dbtodump are passed to mysqldump.
 get_mysqldump_for () {
-   local file="$1"
-   local args="$2"
-   local dbtodump="${3:-"--all-databases"}"
+   local args="$1"
+   local dbtodump="${2:-"--all-databases"}"
 
    $CMD_MYSQLDUMP $EXT_ARGV --no-data --skip-comments \
       --skip-add-locks --skip-add-drop-table --compact \
       --skip-lock-all-tables --skip-lock-tables --skip-set-charset \
-      ${args} --databases $( local IFS=,; echo ${dbtodump}) >> "$file"
+      ${args} --databases $( local IFS=,; echo ${dbtodump})
 }
 
 # Returns a string with arguments to pass to mysqldump.
@@ -203,47 +190,46 @@ get_mysqldump_args () {
 
 collect_mysql_info () {
    local dir="$1"
-   local prefix="${2:-percona-toolkit}"
 
-   collect_mysql_variables "$dir/${prefix}-mysql-variables"
-   collect_mysql_status "$dir/${prefix}-mysql-status"
-   collect_mysql_databases "$dir/${prefix}-mysql-databases"
-   collect_mysql_plugins "$dir/${prefix}-mysql-plugins"
-   collect_mysql_slave_status "$dir/${prefix}-mysql-slave"
-   collect_mysql_innodb_status "$dir/${prefix}-innodb-status"
-   collect_mysql_processlist "$dir/${prefix}-mysql-processlist"   
-   collect_mysql_users "$dir/${prefix}-mysql-users"
+   collect_mysql_variables     > "$dir/mysql-variables"
+   collect_mysql_status        > "$dir/mysql-status"
+   collect_mysql_databases     > "$dir/mysql-databases"
+   collect_mysql_plugins       > "$dir/mysql-plugins"
+   collect_mysql_slave_status  > "$dir/mysql-slave"
+   collect_mysql_innodb_status > "$dir/innodb-status"
+   collect_mysql_processlist   > "$dir/mysql-processlist"   
+   collect_mysql_users         > "$dir/mysql-users"
 
-   collect_mysqld_instances "$dir/${prefix}-mysqld-instances" "$dir/${prefix}-mysql-variables"
+   collect_mysqld_instances "$dir/mysql-variables" > "$dir/mysqld-instances"
 
-   local binlog="$(get_var log_bin "$dir/${prefix}-mysql-variables")"
+   local binlog="$(get_var log_bin "$dir/mysql-variables")"
    if [ "${binlog}" ]; then
       # "Got a binlog, going to get MASTER LOGS and MASTER STATUS"
-      collect_master_logs_status "$dir/${prefix}-mysql-master-logs" "$dir/${prefix}-mysql-master-status"
+      collect_master_logs_status "$dir/mysql-master-logs" "$dir/mysql-master-status"
    fi
 
-   local uptime="$(get_var Uptime "$dir/${prefix}-mysql-status")"
+   local uptime="$(get_var Uptime "$dir/mysql-status")"
    local current_time="$($CMD_MYSQL $EXT_ARGV -ss -e \
                          "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
 
-   local port="$(get_var port "$dir/${prefix}-mysql-variables")"
-   local cnf_file=$(find_my_cnf_file "$dir/${prefix}-mysqld-instances" ${port});
+   local port="$(get_var port "$dir/mysql-variables")"
+   local cnf_file=$(find_my_cnf_file "$dir/mysqld-instances" ${port});
 
    # TODO: Do these require a file of their own?
-   echo "pt-summary-internal-current_time    $current_time" >> "$dir/${prefix}-mysql-variables"
-   echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/${prefix}-mysql-variables"
-   collect_internal_vars "$dir/${prefix}-mysql-variables"
+   echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
+   echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/mysql-variables"
+   collect_internal_vars  >> "$dir/mysql-variables"
 
    if [ -n "${OPT_DATABASES}" ]; then
       # "--dump-schemas passed in, dumping early"
-      local trg_arg="$( get_mysqldump_args "$dir/${prefix}-mysql-variables" )"
-      get_mysqldump_for "$dir/${prefix}-mysqldump" "${trg_arg}" "${OPT_DATABASES}"
+      local trg_arg="$( get_mysqldump_args "$dir/mysql-variables" )"
+      get_mysqldump_for "${trg_arg}" "${OPT_DATABASES}" > "$dir/mysqldump"
    fi
 
    # TODO: gather this data in the same format as normal: TS line, stats
    (
       sleep $OPT_SLEEP
-      collect_mysql_deferred_status "$dir/${prefix}-mysql-status" "$dir/${prefix}-mysql-status-defer"
+      collect_mysql_deferred_status "$dir/mysql-status" > "$dir/mysql-status-defer"
    ) &
    _d "Forked child is $!"
 }

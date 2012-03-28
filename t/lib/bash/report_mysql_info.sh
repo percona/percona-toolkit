@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 30
+plan 32
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -312,17 +312,17 @@ no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_mysqld_instances"
 # ###########################################################################
 NAME_VAL_LEN=20
 
-cp $samples/mysql-variables-001.txt $TMPDIR/percona-toolkit-mysql-variables
+cp $samples/mysql-variables-001.txt $TMPDIR/mysql-variables
 is \
-   $(get_mysql_timezone "$TMPDIR/percona-toolkit-mysql-variables") \
+   $(get_mysql_timezone "$TMPDIR/mysql-variables") \
    "EDT" \
    "get_mysql_timezone"
 
 cat <<EOF > $TMPDIR/expected
 2010-05-27 11:38 (up 0+02:08:52)
 EOF
-cp $samples/mysql-status-001.txt $TMPDIR/percona-toolkit-mysql-status
-uptime="$(get_var Uptime $TMPDIR/percona-toolkit-mysql-status)"
+cp $samples/mysql-status-001.txt $TMPDIR/mysql-status
+uptime="$(get_var Uptime $TMPDIR/mysql-status)"
 current_time="$(echo -e "2010-05-27 11:38\n")"
 get_mysql_uptime "${uptime}" "${current_time}" > $TMPDIR/got
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "get_mysql_uptime"
@@ -331,8 +331,8 @@ cat <<EOF > $TMPDIR/expected
              Version | 5.0.51a-24+lenny2 (Debian)
             Built On | debian-linux-gnu i486
 EOF
-cp "$samples/mysql-variables-001.txt" "$TMPDIR/percona-toolkit-mysql-variables"
-get_mysql_version "$TMPDIR/percona-toolkit-mysql-variables" > "$TMPDIR/got"
+cp "$samples/mysql-variables-001.txt" "$TMPDIR/mysql-variables"
+get_mysql_version "$TMPDIR/mysql-variables" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "get_mysql_version"
 
 # ###########################################################################
@@ -673,8 +673,8 @@ test_format_innodb () {
       Adaptive Checkpoint | estimate
 EOF
 
-   section_innodb "$samples/temp001/percona-toolkit-mysql-variables" $samples/temp001/percona-toolkit-mysql-status > $TMPDIR/got
-   no_diff $TMPDIR/expected $TMPDIR/got
+   section_innodb "$samples/temp001/mysql-variables" "$samples/temp001/mysql-status" > "$TMPDIR/got"
+   no_diff "$TMPDIR/expected" "$TMPDIR/got"
 }
 
 test_format_innodb
@@ -684,7 +684,7 @@ test_format_innodb
 # format_innodb_filters
 # ###########################################################################
 
-format_innodb_filters_test () {
+test_format_innodb_filters () {
    local NAME_VAL_LEN=20
 
    cat <<EOF > $TMPDIR/expected
@@ -692,11 +692,11 @@ format_innodb_filters_test () {
     binlog_ignore_db | mysql,test
 EOF
 
-   format_binlog_filters "$samples/mysql-show-master-status-001.txt" > $TMPDIR/got
+   format_binlog_filters "$samples/mysql-show-master-status-001.txt" > "$TMPDIR/got"
    no_diff "$TMPDIR/got" "$TMPDIR/expected"
 }
 
-format_innodb_filters_test
+test_format_innodb_filters
 
 # ###########################################################################
 # report_mysql_summary
@@ -706,13 +706,28 @@ OPT_SLEEP=1
 OPT_DATABASES=""
 OPT_READ_SAMPLES=""
 NAME_VAL_LEN=25
-_NO_FALSE_NEGATIVES=1
-report_mysql_summary "$samples/tempdir" "percona-toolkit" | tail -n+3 > "$TMPDIR/got"
+report_mysql_summary "$samples/tempdir" | tail -n+3 > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$samples/expected_result_report_summary.txt"
 
+_NO_FALSE_NEGATIVES=""
 OPT_SLEEP=10
-report_mysql_summary "$samples/temp002" "percona-toolkit" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$samples/expected_output_temp002.txt"
+report_mysql_summary "$samples/temp002" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+no_diff \
+   "$TMPDIR/got" \
+   "$samples/expected_output_temp002.txt" \
+   "report_mysql_summary, dir: temp002"
+
+report_mysql_summary "$samples/temp003" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+no_diff \
+   "$TMPDIR/got" \
+   "$samples/expected_output_temp003.txt" \
+   "report_mysql_summary, dir: temp003"
+
+report_mysql_summary "$samples/temp004" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+no_diff \
+   "$TMPDIR/got" \
+   "$samples/expected_output_temp004.txt" \
+   "report_mysql_summary, dir: temp004"
 
 # ###########################################################################
 # Done
