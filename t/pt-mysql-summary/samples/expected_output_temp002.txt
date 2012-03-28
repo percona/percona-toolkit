@@ -173,6 +173,10 @@ Uptime                                    90000           1           1
   performance_schema                                                            
 
 # Noteworthy Technologies ####################################
+       Full Text Indexing | No
+         Geospatial Types | No
+             Foreign Keys | No
+             Partitioning | No
                       SSL | No
      Explicit LOCK TABLES | No
            Delayed Insert | No

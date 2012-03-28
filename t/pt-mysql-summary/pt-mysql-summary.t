@@ -14,21 +14,22 @@ use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
-use Test::More tests => 3;
-use File::Temp qw( tempdir );
+use Test::More tests => 7;
+use File::Temp qw( tempfile tempdir );
 
 local $ENV{PTDEBUG} = "";
 
 #
-# --save-data
+# --save-samples
 #
+
 my $dir = tempdir( CLEANUP => 1 );
 
-`$trunk/bin/$tool --sleep 1 --save-data $dir`;
+`$trunk/bin/$tool --sleep 1 --save-samples $dir`;
 
 ok(
    -e $dir,
-   "Using --save-data doesn't mistakenly delete the target dir"
+   "Using --save-samples doesn't mistakenly delete the target dir"
 );
 
 my @files = glob("$dir/*");
@@ -39,18 +40,45 @@ is(
    "And leaves all files in there"
 );
 
+`$trunk/bin/$tool --sleep 1 --save-samples $dir`;
+
+open my $fh, "<", "$dir/mysql-variables" or die "Can't open file: $!";
+my $data = do { local $/; <$fh> };
+unlike(
+   $data,
+   qr/pt-summary-internal-symbols.*pt-summary-internal-symbols/s,
+   "--save-samples doesn't re-use files if they already exist"
+);
+close $fh;
+
 undef($dir);
 
 #
-# --dump-schemas
+# --databases
 #
 
-my $out = `$trunk/bin/$tool --sleep 1 --dump-schemas mysql 2>/dev/null`;
+my $out = `$trunk/bin/$tool --sleep 1 --databases mysql 2>/dev/null`;
 
 like(
    $out,
-   qr/Database Tables Views SPs Trigs Funcs   FKs Partn\s+\Q{chosen}\E/,
-   "--dump-schemas works"
+   qr/Database Tables Views SPs Trigs Funcs   FKs Partn\s+\Qmysql\E/,
+   "--databases works"
 );
+
+# --read-samples
+for my $i (2..4) {
+   ok(
+      no_diff(
+         sub {
+            local $ENV{_NO_FALSE_NEGATIVES} = 1;
+            print `$trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Skipping schema analysis/'`
+         },
+         "t/pt-mysql-summary/samples/expected_output_temp00$i.txt",
+      ),
+      "--read-samples works for t/pt-mysql-summary/temp00$i",
+   );
+
+   close $fh;
+}
 
 exit;
