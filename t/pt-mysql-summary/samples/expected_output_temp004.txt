@@ -86,8 +86,8 @@ Table_locks_immediate                      3500
 Threads_created                            4000                       1
 Uptime                                    90000           1           1
 # Table cache ################################################
-                     Size | 0
-                    Usage | 0%
+                     Size | 64
+                    Usage | 60%
 # Key Percona Server features ################################
       Table & Index Stats | Not Supported
      Multiple I/O Threads | Not Supported

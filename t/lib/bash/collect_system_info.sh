@@ -21,6 +21,8 @@ mkdir "$p"
 
 parse_options "$BIN_DIR/pt-summary" --sleep 1
 
+setup_commands
+
 collect_system_data "$p"
 
 cat <<EOF > "$TMPDIR/expected"

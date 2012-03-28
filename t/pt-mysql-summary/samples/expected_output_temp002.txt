@@ -111,8 +111,8 @@ Sort_scan                                    45
 Table_locks_immediate                        80                        
 Uptime                                    90000           1           1
 # Table cache ################################################
-                     Size | 0
-                    Usage | 0%
+                     Size | 400
+                    Usage | 10%
 # Key Percona Server features ################################
       Table & Index Stats | Not Supported
      Multiple I/O Threads | Enabled
