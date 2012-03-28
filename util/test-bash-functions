@@ -124,6 +124,18 @@ plan() {
 # The following subs are for the test files to call.
 #
 
+pass() {
+   local reason="${1:-""}"
+
+   result 0 "$reason"
+}
+
+fail() {
+   local reason="${1:-""}"
+
+   result 1 "$reason"
+}
+
 skip() {
    local skip="$1"
    local number_of_tests="$2"
