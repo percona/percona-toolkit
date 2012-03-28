@@ -28,6 +28,9 @@ my $slave_dbh  = $sb->get_dbh_for('slave1');
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( !$slave_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave';
+}
 else {
    plan tests => 55;
 }

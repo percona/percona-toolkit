@@ -5080,7 +5080,7 @@ sub main {
             }
             $msg .= "Please read the --check-replication-filters documentation "
                   . "to learn how to solve this problem.";
-            die ts($msg);
+            die $msg;
          }
       }
 
@@ -5538,6 +5538,7 @@ sub main {
 
             # Adjust chunk size.  This affects the next chunk.
             if ( $chunk_time ) {
+               # Calcuate a new chunk-size based on the rate of rows/s.
                $tbl->{chunk_size} = $tbl->{rate}->update(
                   $cnt,                # processed this many rows
                   $tbl->{nibble_time}, # is this amount of time
@@ -5549,20 +5550,19 @@ sub main {
                   $tbl->{chunk_size} = 1;
 
                   # This warning is printed once per table.
-                  if ( !$tbl->{warned_slow} && $o->get('quiet') < 2 ) {
-                     warn ts("Checksum queries for table "
-                        . "$tbl->{name} are executing very slowly.  "
+                  if ( !$tbl->{warned_slow} ) {
+                     warn "Rows are copying very slowly.  "
                         . "--chunk-size has been automatically reduced to 1.  "
                         . "Check that the server is not being overloaded, "
                         . "or increase --chunk-time.  The last chunk "
                         . "selected $cnt rows and took "
                         . sprintf('%.3f', $tbl->{nibble_time})
-                        . " seconds to execute.\n");
+                        . " seconds to execute.\n";
                      $tbl->{warned_slow} = 1;
                   }
                }
 
-               # Update chunk-size based on rows/s checksum rate.
+               # Update chunk-size based on the rate of rows/s.
                $nibble_iter->set_chunk_size($tbl->{chunk_size});
             }
 
@@ -6349,11 +6349,6 @@ sub drop_triggers {
    return $exit_status;
 }
 
-# BARON: in this subroutine we still have a lot of references to checksums, so
-# we can get error messages like this:
-# Error copying rows from `sbtest`.`sbtest` to `sbtest`.`_sbtest_new`: Error
-# executing checksum query: Checksum query for table sbtest.sbtest caused MySQL
-# error 1364:
 sub exec_nibble {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
@@ -6395,7 +6390,7 @@ sub exec_nibble {
       wait  => sub { return; },
       try   => sub {
          # ###################################################################
-         # Start timing the checksum query.
+         # Start timing the query.
          # ###################################################################
          my $t_start = time;        
 
@@ -6411,13 +6406,13 @@ sub exec_nibble {
 
          my $t_end = time;
          # ###################################################################
-         # End timing the checksum query.
+         # End timing the query.
          # ###################################################################
 
          # How many rows were inserted this time.  Used for auto chunk sizing.
          $tbl->{row_cnt} = $sth->{nibble}->rows();
 
-         # Check if checksum query caused any warnings.
+         # Check if query caused any warnings.
          my $sql_warn = 'SHOW WARNINGS';
          PTDEBUG && _d($sql_warn);
          my $warnings = $dbh->selectall_arrayref($sql_warn, { Slice => {} } );
@@ -6433,24 +6428,20 @@ sub exec_nibble {
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
                if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
-                  if ( $o->get('quiet') < 2 ) {
-                     warn "Checksum query for table $tbl->{db}.$tbl->{tbl} "
-                        . "caused MySQL error $code: "
-                        . ($warn_code{$code}->{message}
-                           ? $warn_code{$code}->{message}
-                           : $message)
-                        . "\n";
-                  }
+                  warn "Copying rows caused a MySQL error $code: "
+                     . ($warn_code{$code}->{message}
+                        ? $warn_code{$code}->{message}
+                        : $message)
+                     . "\nThis MySQL error is being ignored and further "
+                     . "occurrences of it will not be reported.\n";
                   $tbl->{"warned_code_$code"} = 1;
-                  $tbl->{checksum_results}->{errors}++;
                }
             }
             else {
                # This die will propagate to fail which will return 0
                # and propagate it to final_fail which will die with
-               # this error message.  (So don't wrap it in ts().)
-               die "Checksum query for table $tbl->{db}.$tbl->{tbl} "
-                  . "caused MySQL error $code:\n"
+               # this error message.
+               die "Copying rows caused a MySQL error $code:\n"
                   . "    Level: " . ($warning->{level}   || '') . "\n"
                   . "     Code: " . ($warning->{code}    || '') . "\n"
                   . "  Message: " . ($warning->{message} || '') . "\n"
@@ -6465,49 +6456,34 @@ sub exec_nibble {
          my (%args) = @_;
          my $error = $args{error};
 
+         # The query failed/caused an error.  If the error is one of these,
+         # then we can possibly retry.
          if (   $error =~ m/Lock wait timeout exceeded/
              || $error =~ m/Query execution was interrupted/
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
-            return 1;
+            return 1;  # try again
          }
          elsif (   $error =~ m/MySQL server has gone away/
                 || $error =~ m/Lost connection to MySQL server/
          ) {
             # The 2nd pattern means that MySQL itself died or was stopped.
             # The 3rd pattern means that our cxn was killed (KILL <id>).
-            eval { $dbh = $cxn->connect(); };
-            return 1 unless $EVAL_ERROR; # reconnected, retry checksum query
-            $oktorun = 0;                # failed to reconnect, exit tool
+            $dbh = $cxn->connect();  # connect or die trying
+            return 1;  # reconnected, try again
          }
 
          # At this point, either the error/warning cannot be retried,
-         # or we failed to reconnect.  So stop trying and call final_fail.
+         # or we failed to reconnect.  Don't retry; call final_fail.
          return 0;
       },
       final_fail => sub {
          my (%args) = @_;
-         my $error = $args{error};
-
-         if (   $error =~ /Lock wait timeout exceeded/
-             || $error =~ /Query execution was interrupted/
-         ) {
-            # These errors/warnings are not fatal but only cause this
-            # nibble to be skipped.
-            if ( $o->get('quiet') < 2 ) {
-               warn "$error\n";
-            }
-            return;  # skip this nibble
-         }
-
-         # This die will be caught by the eval inside the TABLE loop.
-         # Checksumming for this table will stop, which is probably
-         # good because by this point the error or warning indicates
-         # that something fundamental is broken or wrong.  Checksumming
-         # will continue with the next table, unless the fail code set
-         # oktorun=0, in which case the error/warning is fatal.
-         die "Error executing checksum query: $args{error}\n";
+         # This die should be caught by the caller.  Copying rows and
+         # the tool will stop, which is probably good because by this
+         # point the error or warning indicates that something is wrong.
+         die $args{error};
       }
    );
 }
