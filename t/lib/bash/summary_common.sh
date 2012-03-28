@@ -26,4 +26,3 @@ is \
    "$(get_var "test::1" "$p")" \
    "abcdef"                \
    "get_var works if the 'key' has colons"
-

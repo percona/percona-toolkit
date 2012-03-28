@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 17
+plan 19
 
 . "$LIB_DIR/report_formatting.sh"
 
@@ -89,6 +89,20 @@ is \
 
 is $(fuzz 11) "10" "fuzz 11"
 is $(fuzz 49) "50" "fuzz 49"
+
+# fuzzy_pct
+
+is \
+   "$( fuzzy_pct  28 64 )" \
+   "45%" \
+   "fuzzy_pct of 64 and 28 is 45"
+
+
+is \
+   "$( fuzzy_pct  40 400 )" \
+   "10%" \
+   "fuzzy_pct of 40 and 400 is 10"
+
 
 # ###########################################################################
 # Done

@@ -1959,7 +1959,7 @@ report_mysql_summary () {
 
    section Table_cache
    local open_tables=$(get_var Open_tables "$dir/mysql-status")
-   local table_cache=$(get_table_cache "$dir/mysql-status")
+   local table_cache=$(get_table_cache "$dir/mysql-variables")
    name_val Size  $table_cache
    name_val Usage "$(fuzzy_pct ${open_tables} ${table_cache})"
 
@@ -2014,7 +2014,7 @@ report_mysql_summary () {
          local dbtodump=""
          read dbtodump
          local trg_arg="$( get_mysqldump_args "$dir/mysql-variables" )"
-         get_mysqldump_for "$dir/mysqldump" "${trg_arg}" "${dbtodump}"
+         get_mysqldump_for "${trg_arg}" "${dbtodump}" > "$dir/mysqldump"
       fi
 
       if [ -e "$dir/mysqldump" -a -s "$dir/mysqldump" ] \
