@@ -4932,32 +4932,11 @@ sub main {
    else {
       # Parse DSN string and convert it to a DSN data struct.
       $dsn = $dp->parse($dsn, $dp->parse_options($o));
-
-      # If there isn't a D or t part, these errors will be handled later.
-      # For now, check if the t part is db-qualified.
-      if ( $dsn->{t} ) {
-         my ($qualified_db, $qualified_tbl) = $q->split_unquote($dsn->{t});
-         if ( $qualified_db ) {
-            # Qualfied-db take precedence over D=db.
-            $db  = $qualified_db;
-            $tbl = $qualified_tbl;
-         }
-         else {
-            $db  = $dsn->{D};
-            $tbl = $dsn->{t};  
-         }
-      }
+      $db  = $dsn->{D};
+      $tbl = $dsn->{t};  
    }
 
-   # The update fk method value can be like "drop swap", "drop-swap", or
-   # "drop_swap", to give the user some flexibility, but for our sanity
-   # we use only underscores.
-   # BARON: I hate that MySQL does this. Remember how hard it is to parse config
-   # files? I don't think that flexibility is good -- this looks like gold
-   # plating to me -- more code to maintain, more complexity, but not more
-   # beneficial. Ditto for the lc().
-   my $update_fk_method = lc($o->get('update-foreign-keys-method') || ''); 
-   $update_fk_method    =~ s/[ -]/_/g;
+   my $update_fk_method = $o->get('update-foreign-keys-method') || '';
    if ( $update_fk_method eq 'drop_swap' ) {
       $o->set('swap-tables',    0);
       $o->set('drop-old-table', 0),
@@ -4971,13 +4950,8 @@ sub main {
          $o->save_error('Specify only one DSN on the command line');
       }
 
-      if ( !$db ) {
-         $o->save_error("The DSN must specify a database (D) or "
-            . "a database-qualified table (t)");
-      }
-
-      if ( !$tbl ) {
-         $o->save_error('The DSN must specify a table (t)');
+      if ( !$db || !$tbl ) {
+         $o->save_error("The DSN must specify a database (D) and a table (t)");
       }
 
       if ( $o->get('progress') ) {
@@ -4985,14 +4959,6 @@ sub main {
          if ( $EVAL_ERROR ) {
             chomp $EVAL_ERROR;
             $o->save_error("--progress $EVAL_ERROR");
-         }
-      }
-
-      # BARON: I think we can remove this option now too, to simplify. Always
-      # auto-find; never let the user specify.
-      if ( my $children = $o->get('child-tables') ) {
-         if ( @$children == 0 ) {
-            $o->save_error("Specify at least one table for --child-tables");
          }
       }
 
@@ -5262,38 +5228,13 @@ sub main {
    # ########################################################################
    # Get child tables of the original table, if necessary.
    # ########################################################################
-   my $child_tables;
-   if ( $child_tables = $o->get('child-tables') ) {
-      # Convert the user's list of child tables into a list of standard
-      # table data structs.  Also db-qualify the table, presuming that
-      # the child table is in the same db as the orig table.
-      my @child_tables = map {
-         my ($db, $tbl) = $q->split_unquote($_);
-         $db ||= $orig_tbl->{db};
-         my $tbl_struct = {
-            db   => $db,
-            tbl  => $tbl,
-            name => $q->quote($db, $tbl),
-         };
-         $tbl_struct;
-      } @$child_tables;
-      $child_tables = \@child_tables;
-   }
-   else {
-      $child_tables = find_child_tables(
-         tbl    => $orig_tbl,
-         Cxn    => $cxn,
-         Quoter => $q,
-      );
-   }
-   if ( $child_tables && !@$child_tables ) {
-      # BARON: if we remove --child-tables then this error can just be silenced.
-      # If the user specifies --update-foreign-keys-method we can still
-      # highlight that it'll be ignored.
-      print "No child tables were found or specified."
-          . ($o->got('update-foreign-keys-method')
-               ? "  --update-foreign-keys-method will be ignored.\n"
-               : "\n");
+   my $child_tables = find_child_tables(
+      tbl    => $orig_tbl,
+      Cxn    => $cxn,
+      Quoter => $q,
+   );
+   if ( $o->got('update-foreign-keys-method') && ! @$child_tables ) {
+      warn "No foreign keys reference the table; ignoring --update-foreign-keys-method\n";
    }
    else {
       print "Child tables:\n";
@@ -6103,8 +6044,8 @@ sub check_orig_table {
    PTDEBUG && _d($sql);
    my $triggers = $dbh->selectall_arrayref($sql);
    if ( $triggers && @$triggers ) {
-      die "The original table $orig_tbl->{name} has triggers.  This tool "
-         . "needs to create its own triggers, so the original table cannot "
+      die "The table $orig_tbl->{name} has triggers.  This tool "
+         . "needs to create its own triggers, so the table cannot "
          . "already have triggers.\n";
    }
 
@@ -6269,32 +6210,42 @@ sub rebuild_constraints {
          next CHILD_TABLE;
       }
 
+      my @rebuilt_constraints;
       foreach my $constraint ( @constraints ) {
          PTDEBUG && _d('Rebuilding fk constraint:', $constraint);
 
-         # XXX This will fail if the fk name has spaces.
-         my ($fk) = $constraint =~ m/CONSTRAINT\s+(\S+)/;
+         # Remove trailing commas in case there are multiple constraints on the
+         # table.
+         $constraint =~ s/,$//;
 
-         # Drop the reference to the old table/renamed orig table.
-         # BARON: here we need to do the DROP and ADD in one step -- doing them
-         # separately is two full table rebuilds. You can "ALTER... DROP ..., ADD
-         # ..."
-         my $sql = "ALTER TABLE $child_tbl->{name} DROP FOREIGN KEY $fk";
-         print $sql, "\n" if $o->get('print');
-         if ( $o->get('execute') ) {
-            PTDEBUG && _d($sql);
-            $cxn->dbh()->do($sql);
-         }
+         # Find the constraint name. It will be quoted already.
+         my ($fk) = $constraint =~ m/CONSTRAINT\s+`([^`]+)`/;
 
-         # Make the child reference the new table, i.e. the table name it
-         # originally referenced instead of the old/renamed orig table.
+         # Drop the reference to the old table/renamed orig table, and add a new
+         # reference to the new table.  InnoDB will throw an error if the new
+         # constraint has the same name as the old one, so we must rename it.
+         # Example: after renaming sakila.actor to sakila.actor_old (for
+         # example), the foreign key on film_actor looks like this:
+         #   CONSTRAINT `fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES
+         #   `actor_old` (`actor_id`) ON UPDATE CASCADE
+         # We need it to look like this instead:
+         #   CONSTRAINT `_fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES
+         #   `actor` (`actor_id`) ON UPDATE CASCADE
+         # Reference the correct table name...
          $constraint =~ s/REFERENCES[^\(]+/REFERENCES $orig_tbl->{name} /;
-         $sql = "ALTER TABLE $child_tbl->{name} ADD $constraint"; 
-         print $sql, "\n" if $o->get('print');
-         if ( $o->get('execute') ) {
-            PTDEBUG && _d($sql);
-            $cxn->dbh()->do($sql);
-         }
+         # And rename the constraint to avoid conflict
+         $constraint =~ s/CONSTRAINT `$fk`/CONSTRAINT `_$fk`/;
+
+         my $sql = "DROP FOREIGN KEY `$fk`, "
+                 . "ADD $constraint";
+         push @rebuilt_constraints, $sql;
+      }
+      my $sql = "ALTER TABLE $child_tbl->{name} "
+              . join(', ', @rebuilt_constraints);
+      print $sql, "\n" if $o->get('print');
+      if ( $o->get('execute') ) {
+         PTDEBUG && _d($sql);
+         $cxn->dbh()->do($sql);
       }
    }
 
@@ -6363,16 +6314,14 @@ sub create_triggers {
    $prefix   =~ s/\W/_/g;
 
    # To be safe, the delete trigger must specify all the columns of the
-   # primary key/unique index.
-   # BARON: it's still not 100% safe because unique indexes can be nullable and
-   # we are using '='. We will need to use the (? IS NULL OR ? = ?) trick that
-   # Nibbler uses.
+   # primary key/unique index.  We use null-safe equals, because unique
+   # unique indexes can be nullable.
    my $tbl_struct     = $orig_tbl->{tbl_struct};
    my $del_index      = $orig_tbl->{del_index};
    my $del_index_cols = join(" AND ",
                            map {
                               my $col = $q->quote($_);
-                              "$new_tbl->{name}.$col = OLD.$col"
+                              "$new_tbl->{name}.$col <=> OLD.$col"
                            } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
@@ -6382,9 +6331,6 @@ sub create_triggers {
 
    # The insert and update triggers should only use values for columns
    # that exist in both tables.
-   # BARON: here we need to choose unique trigger names just like we create
-   # unique table names. There might be multiple runs of the tool happening at
-   # one time (on different tables, of course).
    my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
    my $insert_trigger
@@ -6675,30 +6621,25 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-online-schema-change - Perform online, non-blocking table schema changes.
+pt-online-schema-change - ALTER tables without locking them.
 
 =head1 SYNOPSIS
 
 Usage: pt-online-schema-change [OPTIONS] DSN
 
-BARON: NOTE we should say that you ought not to use 'rename' in --alter or the
-new table won't exist and the tool will fail.
+pt-online-schema-change alters a table's structure without blocking reads or
+writes to the table. You must specify the database and table to alter in the
+DSN. You should not use this tool before reading and understanding its
+documentation, and checking your backups carefully.
 
-pt-online-schema-change performs online, non-blocking schema changes to a table.
-The database and table to alter must be specified in by DSN like
-C<D=db,t=table>, or the table can be database-qualified like C<t=db.table>.
+Add a column to sakila.actor:
 
-Change the table's engine to InnoDB:
+  pt-online-schema-change --alter "ADD COLUMN c1 INT" D=sakila,t=actor
 
-  pt-online-schema-change   \
-    h=127.1,t=db.tbl        \
-    --alter "ENGINE=InnoDB"
+Change sakila.actor to InnoDB, effectively performing OPTIMIZE TABLE in a
+non-blocking fashion because it is already an InnoDB table:
 
-Add column to parent table, update child table foreign key constraints:
-
-  pt-online-schema-change          \
-    h=127.1,D=db,t=parent          \
-    --alter "ADD COLUMN (foo INT)"
+  pt-online-schema-change --alter "ENGINE=InnoDB" D=sakila,t=actor
 
 =head1 RISKS
 
@@ -6707,14 +6648,11 @@ whether known or unknown, of using this tool.  The two main categories of risks
 are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
-pt-online-schema-change alters tables and data, therefore it is a high-risk
-tool.  Although the tool is tested and is known to work, you should not use
-it in production until you have thoroughly tested it in your environment!
+pt-online-schema-change modifies data and structures. You should be careful with
+it, and test it before using it in production.  You should also ensure that you
+have recoverable backups before using this tool.
 
-This tool has not been tested with replication, and it can break replication
-if not used properly.  See L<"REPLICATION">.
-
-At the time of this release there are no known bugs that pose a serious risk.
+At the time of this release, we know of no bugs that could cause harm to users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -6725,104 +6663,74 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-online-schema-change performs online, non-blocking schema changes to tables.
-Only one table can be altered at a time because triggers are used to capture
-and synchronize changes between the table and the temporary table that
-will take its place once it has been altered.  Since triggers are used, this
-tool only works with MySQL 5.0.2 and newer.
+pt-online-schema-change emulates the way that MySQL alters tables internally,
+but it works on a copy of the table you wish to alter. This means that the
+original table is not locked, and clients may continue to read and change data
+in it.
 
-The table to alter is specified by the DSN C<t> part on the command line,
-as shown in the L<"SYNOPSIS"> examples.  A database must also be specified
-either by the DSN C<D> part or by qualifying the table with the database.
+pt-online-schema-change works by creating an empty copy of the table to alter,
+modifying it as desired, and then copying rows from the original table into the
+new table. When the copy is complete, it moves away the original table and puts
+the new, altered, table in its place.  By default, it also drops the original
+table when it is complete.
 
-If you're using replication, read L<"REPLICATION"> or else you may break
-replication.  Performing an online schema change in a replication environment
-requires extra planning and care.
+The data copy process is performed in small chunks of data, which are varied to
+attempt to make them execute in a specific amount of time (see
+L<"--chunk-time">).  This process is very similar to how other tools, such as
+pt-table-checksum, work.  Any modifications to data in the original tables
+during the copy will be reflected in the new table, because the tool creates
+triggers on the original table to update the corresponding rows in the new
+table.  The use of triggers means that the tool will not work if any triggers
+are already defined on the table.
 
-In brief, this tool works by creating a temporary table which is a copy of
-the original table (the one being altered).  (The temporary table is not
-created like C<CREATE TEMPORARY TABLE>; we call it temporary because it
-ultimately replaces the original table.)  The temporary table is altered,
-then triggers are defined on the original table to capture changes made on
-it and apply them to the temporary table.  This keeps the two tables in
-sync.  Then all rows are copied from the original table to the temporary
-table; this part can take awhile.  When done copying rows, the two tables
-are swapped by using C<RENAME TABLE>.  At this point there are two copies
-of the table: the old table which used to be the original table, and the
-new table which used to be the temporary table but now has the same name
-as the original table.  If L<"--[no]drop-old-table"> is specified, then the
-old table is dropped.
+When the tool finishes copying data into the new table, it uses an atomic
+C<RENAME TABLE> operation to simultaneously rename the original and new tables.
+After this is complete, the tool drops the original table.
 
-For example, if you alter table C<foo>, the tool will create table
-C<__tmp_foo>, alter it, define triggers on C<foo>, and then copy rows
-from C<foo> to C<__tmp_foo>.  Once all rows are copied, C<foo> is renamed
-to C<__old_foo> and C<__tmp_foo> is renamed to C<foo>.
-If L<"--[no]drop-old-table"> is specified, then C<__old_foo> is dropped.
+Foreign keys complicate the tool's operation and introduce additional risk.  The
+technique of atomically renaming the original and new tables does not work when
+foreign keys refer to the table. The tool must update foreign keys to refer to
+the new table after the schema change is complete. The tool supports two methods
+for accomplishing this, and will automatically choose the appropriate method
+unless you specify one explicitly. You can read more about this in the
+documentation for L<"--update-foreign-keys-method">.
 
-The tool preforms the following steps:
-
-  1. Sanity checks
-  2. Chunking
-  3. Online schema change
-
-The first two steps cannot be skipped.  The sanity checks help ensure that
-running the tool will work and not encounter problems half way through the
-whole process.  Chunk is required during the third step when rows from the
-old table are copied to the new table.  Currently, only table with a
-single-column unique index can be chunked.  If there is any problem in these
-two steps, the tool will die.
-
-Most of the tool's work is done in the third step which has 6 phases:
-
-  1. Create and alter temporary table
-  2. Capture changes from the table to the temporary table
-  3. Copy rows from the table to the temporary table
-  4. Synchronize the table and the temporary table
-  5. Swap/rename the table and the temporary table
-  6. Cleanup
-
-There are several ways to accomplish an online schema change which differ
-in how changes are captured and synced (phases 2 and 4), how rows are copied
-(phase 3), and how the tables are swapped (phase 5).  Currently, this tool
-employs synchronous triggers (Shlomi's method), C<INSERT-SELECT>, and
-C<RENAME TABLE> respectively for these phases.
-
-Here are options related to each phase:
-
-  1. --alter
-  2. (none)
-  3. --chunk-size
-  4. (none)
-  5. --[no]swap-tables
-  6. --[no]drop-old-table
-
-L<"--print"> is helpful to see what the tool might do before actually doing it.
-
-=head1 REPLICATION
-
-If you use pt-online-schema-change to alter a table on a server with slaves,
-be aware that:
+For safety, the tool does not modify the table unless you specify the
+L<"--execute"> option, which is not enabled by default.  The tool supports a
+variety of other measures to prevent unwanted load or other problems, including
+automatically detecting replicas, connecting to them, and using the following
+safety checks:
 
 =over
 
-=item * The tool is not tested with replication
+=item *
 
-=item * The tool can break replication if not used properly
+The tool refuses to operate if it detects replication filters. See
+L<"--[no]check-replication-filters"> for details.
 
-=item * Triggers which track changes to the table being altered still write statements to the binary log
+=item *
 
-=item * Replicaiton will break if you alter a table on a master that does not exist on a slave
+The tool pauses the data copy operation if it observes any replicas that are
+delayed in replication. See L<"--max-lag"> for details.
 
-=item * Update slaves first if columns are being added or removed
+=item *
 
-=item * Do not use this tool in production before testing it
+The tool pauses or aborts its operation if it detects too much load on the
+server. See L<"--max-load"> and L<"--critical-load"> for details.
+
+=item *
+
+The tool sets its lock wait timeout to 1 second so that it is more likely to be
+the victim of any lock contention, and less likely to disrupt other
+transactions. See L<"--lock-wait-timeout"> for details.
 
 =back
 
 =head1 OUTPUT
 
-Output to STDOUT is very verbose and should tell you everything that the
-tool is doing.  Warnings, errors, and L<"--progress"> are printed to STDERR.
+The tool prints information about its activities to STDOUT so that you can see
+what it is doing. During the data copy phase, it prints progress reports to
+STDERR.  You can get additional information with the L<"--print"> option.
 
 =head1 OPTIONS
 
@@ -6837,14 +6745,11 @@ L<"SYNOPSIS"> and usage information for details.
 
 type: string
 
-Semicolon-separated list of C<ALTER TABLE> statements to apply to the new table.
-The statements should not contain C<ALTER TABLE>, just what would follow that
-clause.  For example, if you want to C<ALTER TABLE ENGINE=InnoDB>, the value
-would be C<ENGINE=InnoDB>.
+The schema modification, without the ALTER TABLE keywords. You can perform
+multiple modifications to the table by specifying them with commas. Please refer
+to the MySQL manual for the syntax of ALTER TABLE.
 
-The value can also be a filename which contains statements, one per line
-with no blank lines and no trailing semicolons.  Each statement will be
-applied in the order it appears in the file.
+You cannot use the C<RENAME> clause to C<ALTER TABLE>, or the tool will fail.
 
 =item --ask-pass
 
@@ -6861,77 +6766,51 @@ without the utf8 layer, and runs SET NAMES after connecting to MySQL.
 
 =item --check-interval
 
-type: time; default: 1; group: Throttle
+type: time; default: 1
 
 Sleep time between checks for L<"--max-lag">.
 
 =item --[no]check-replication-filters
 
-default: yes; group: Safety
+default: yes
 
-Do not checksum if any replication filters are set on any replicas.
-The tool looks for server options that filter replication, such as
-binlog_ignore_db and replicate_do_db.  If it finds any such filters,
-it aborts with an error.
+Abort if any replication filter is set on any server.  The tool looks for
+server options that filter replication, such as binlog_ignore_db and
+replicate_do_db.  If it finds any such filters, it aborts with an error.
 
 If the replicas are configured with any filtering options, you should be careful
-not to checksum any databases or tables that exist on the master and not the
-replicas.  Changes to such tables might normally be skipped on the replicas
-because of the filtering options, but the checksum queries modify the contents
-of the table that stores the checksums, not the tables whose data you are
-checksumming.  Therefore, these queries will be executed on the replica, and if
-the table or database you're checksumming does not exist, the queries will cause
-replication to fail.  For more information on replication rules, see
-L<http://dev.mysql.com/doc/en/replication-rules.html>.
+not to modify any databases or tables that exist on the master and not the
+replicas, because it could cause replication to fail.  For more information on
+replication rules, see L<http://dev.mysql.com/doc/en/replication-rules.html>.
 
 =item --check-slave-lag
 
-type: string; group: Throttle
+type: string
 
-Pause checksumming until this replica's lag is less than L<"--max-lag">.  The
-value is a DSN that inherits properties from the master host and the connection
-options (L<"--port">, L<"--user">, etc.).  This option overrides the normal
-behavior of finding and continually monitoring replication lag on ALL connected
-replicas.  If you don't want to monitor ALL replicas, but you want more than
-just one replica to be monitored, then use the DSN option to the
-L<"--recursion-method"> option instead of this option.
-
-=item --child-tables
-
-type: array
-
-Foreign key constraints in these (child) tables reference the table.
-If the table being altered is a parent to tables which reference it with
-foreign key constraints, you must specify those child tables with this option
-so that the tool will update the foreign key constraints after renaming
-tables.  The list of child tables is comma-separated, not quoted, and not
-database-qualified (the database is assumed to be the same as the table)
-If you specify a table that doesn't exist, it is ignored.
-
-Or you can specify just C<auto_detect> and the tool will query the
-C<INFORMATION_SCHEMA> to auto-detect any foreign key constraints on the table.
-
-When specifying this option, you must also specify
-L<"--update-foreign-keys-method">.
+Pause the data copy until this replica's lag is less than L<"--max-lag">.  The
+value is a DSN that inherits properties from the the connection options
+(L<"--port">, L<"--user">, etc.).  This option overrides the normal behavior of
+finding and continually monitoring replication lag on ALL connected replicas.
+If you don't want to monitor ALL replicas, but you want more than just one
+replica to be monitored, then use the DSN option to the L<"--recursion-method">
+option instead of this option.
 
 =item --chunk-index
 
 type: string
 
-Prefer this index for chunking tables.  By default, pt-table-checksum chooses
-the most appropriate index for chunking.  This option lets you specify the index
-that you prefer.  If the index doesn't exist, then pt-table-checksum will fall
-back to its default behavior of choosing an index.  pt-table-checksum adds the
-index to the checksum SQL statements in a C<FORCE INDEX> clause.  Be careful
-when using this option; a poor choice of index could cause bad performance.
-This is probably best to use when you are checksumming only a single table, not
-an entire server.
+Prefer this index for chunking tables.  By default, the tool chooses the most
+appropriate index for chunking.  This option lets you specify the index that you
+prefer.  If the index doesn't exist, then the tool will fall back to its default
+behavior of choosing an index.  The tool adds the index to the SQL statements in
+a C<FORCE INDEX> clause.  Be careful when using this option; a poor choice of
+index could cause bad performance.
 
 =item --chunk-size
 
 type: size; default: 1000
 
-Number of rows to select for each checksum query.  Allowable suffixes are
+Number of rows to select for each chunk copied.  Allowable suffixes are
 k, M, G.
 
 This option can override the default behavior, which is to adjust chunk size
@@ -6950,49 +6829,40 @@ L<"--chunk-size-limit">.
 
 =item --chunk-size-limit
 
-type: float; default: 4.0; group: Safety
+type: float; default: 4.0
 
-Do not checksum chunks this much larger than the desired chunk size.
+Do not copy chunks this much larger than the desired chunk size.
 
 When a table has no unique indexes, chunk sizes can be inaccurate.  This option
 specifies a maximum tolerable limit to the inaccuracy.  The tool uses <EXPLAIN>
 to estimate how many rows are in the chunk.  If that estimate exceeds the
-desired chunk size times the limit (twice as large, by default), then the tool
-skips the chunk.
+desired chunk size times the limit, then the tool skips the chunk.
 
 The minimum value for this option is 1, which means that no chunk can be larger
 than L<"--chunk-size">.  You probably don't want to specify 1, because rows
 reported by EXPLAIN are estimates, which can be different from the real number
-of rows in the chunk.  If the tool skips too many chunks because they are
-oversized, you might want to specify a value larger than the default of 2.
+of rows in the chunk.  You can disable oversized chunk checking by specifying a
+value of 0.
 
-You can disable oversized chunk checking by specifying a value of 0.
+The tool also uses this option to determine how to handle foreign keys that
+reference the table to be altered. See L<"--update-foreign-keys-method"> for
+details.
 
 =item --chunk-time
 
 type: float; default: 0.5
 
-Adjust the chunk size dynamically so each checksum query takes this long to execute.
-
-The tool tracks the checksum rate (rows per second) for all tables and each
-table individually.  It uses these rates to adjust the chunk size after each
-checksum query, so that the next checksum query takes this amount of time (in
-seconds) to execute.
-
-The algorithm is as follows: at the beginning of each table, the chunk size is
-initialized from the overall average rows per second since the tool began
-working, or the value of L<"--chunk-size"> if the tool hasn't started working
-yet. For each subsequent chunk of a table, the tool adjusts the chunk size to
-try to make queries run in the desired amount of time.  It keeps an
-exponentially decaying moving average of queries per second, so that if the
-server's performance changes due to changes in server load, the tool adapts
-quickly.  This allows the tool to achieve predictably timed queries for each
-table, and for the server overall.
+Adjust the chunk size dynamically so each data-copy query takes this long to
+execute.  The tool tracks the copy rate (rows per second) and adjusts the chunk
+size after each data-copy query, so that the next query takes this amount of
+time (in seconds) to execute.  It keeps an exponentially decaying moving average
+of queries per second, so that if the server's performance changes due to
+changes in server load, the tool adapts quickly.
 
 If this option is set to zero, the chunk size doesn't auto-adjust, so query
-checksum times will vary, but query checksum sizes will not. Another way to do
-the same thing is to specify a value for L<"--chunk-size"> explicitly, instead
-of leaving it at the default.
+times will vary, but query chunk sizes will not. Another way to do the same
+thing is to specify a value for L<"--chunk-size"> explicitly, instead of leaving
+it at the default.
 
 =item --config
 
@@ -7003,15 +6873,17 @@ first option on the command line.
 
 =item --critical-load
 
-type: Array; default: Threads_running=50; group: Throttle
+type: Array; default: Threads_running=50
 
-Examine SHOW GLOBAL STATUS after every chunk, and abort if any status variables
-are higher than the threshold.  The option accepts a comma-separated list of
-MySQL status variables to check for a threshold.  An optional C<=MAX_VALUE> (or
-C<:MAX_VALUE>) can follow each variable.  If not given, the tool determines a
-threshold by examining the current value and doubling it.
+Examine SHOW GLOBAL STATUS after every chunk, and abort if the load is too high.
+The option accepts a comma-separated list of MySQL status variables and
+thresholds.  An optional C<=MAX_VALUE> (or C<:MAX_VALUE>) can follow each
+variable.  If not given, the tool determines a threshold by examining the
+current value at startup and doubling it.
 
-See also L<"--max-load">.
+See L<"--max-load"> for further details. These options work similarly, except
+that this option will abort the tool's operation instead of pausing it, and the
+default value is computed differently if you specify no threshold.
 
 =item --defaults-file
 
@@ -7024,21 +6896,23 @@ pathname.
 
 default: yes
 
-Drop the original table after it has been successfully altered and swapped out.
-After the original table is swapped with the new, altered table
-it becomes the "old table".  By default, the old table is dropped
-if there are no errors and the new table successfully takes it place.
+Drop the original table after renaming it. After the original table has been
+successfully renamed to let the new table take its place, and if there are no
+errors, the tool drops the original table by default. If there are any errors,
+the tool leaves the original table in place.
 
 =item --dry-run
 
-Do not create triggers, copy rows, or L<"--[no]swap-tables">.
+Create and alter the new table, but do not copy data into it.  Do not create
+triggers on the original table, or swap the original and new tables.
 
 =item --execute
 
-Alter the table.  This option must be specified to alter the table, else
-the tool will only check the table and exit.  This helps ensure that the
-user has read the documentation and is aware of the inherent risks of using
-this tool.
+Signify that you have read the documentation and want to alter the table.  You
+must specify this option to alter the table. If you do not, then the tool will
+only perform some safety checks and exit.  This helps ensure that you have read the
+documentation and understand how to use this tool.  If you have not read the
+documentation, then do not specify this option.
 
 =item --help
 
@@ -7054,30 +6928,30 @@ Connect to host.
 
 type: int; default: 1
 
-Set the session value of C<innodb_lock_wait_timeout> on the master host.
-This option helps guard against long lock waits if the checksum queries
-become slow for some reason.  Setting this option dynamically requires the
-InnoDB plugin, so this works only on newer InnoDB and MySQL versions.  If
-setting the value fails and the current server value is greater than the
-specified value, then a warning is printed; else, if the current server
-value is less than or equal to the specified value, no warning is printed.
+Set the session value of C<innodb_lock_wait_timeout>.  This option helps guard
+against long lock waits if the data-copy queries become slow for some reason.
+Setting this option dynamically requires the InnoDB plugin, so this works only
+on newer InnoDB and MySQL versions.  If the setting's current value is greater
+than the specified value, and the tool cannot set the value as desired, then it
+prints a warning. If the tool cannot set the value but the current value is less
+than or equal to the desired value, there is no error.
 
 =item --max-lag
 
-type: time; default: 1s; group: Throttle
+type: time; default: 1s
 
-Pause checksumming until all replicas' lag is less than this value.  After each
-checksum query (each chunk), pt-table-checksum looks at the replication lag of
+Pause the data copy until all replicas' lag is less than this value.  After each
+data-copy query (each chunk), the tool looks at the replication lag of
 all replicas to which it connects, using Seconds_Behind_Master. If any replica
-is lagging more than the value of this option, then pt-table-checksum will sleep
+is lagging more than the value of this option, then the tool will sleep
 for L<"--check-interval"> seconds, then check all replicas again.  If you
 specify L<"--check-slave-lag">, then the tool only examines that server for
 lag, not all servers.  If you want to control exactly which servers the tool
 monitors, use the DSN value to L<"--recursion-method">.
 
 The tool waits forever for replicas to stop lagging.  If any replica is
-stopped, the tool waits forever until the replica is started.  Checksumming
-continues once all replicas are running and not lagging too much.
+stopped, the tool waits forever until the replica is started.  The data copy
+continues when all replicas are running and not lagging too much.
 
 The tool prints progress reports while waiting.  If a replica is stopped, it
 prints a progress report immediately, then again at every progress report
@@ -7085,13 +6959,13 @@ interval.
 
 =item --max-load
 
-type: Array; default: Threads_running=25; group: Throttle
+type: Array; default: Threads_running=25
 
 Examine SHOW GLOBAL STATUS after every chunk, and pause if any status variables
-are higher than the threshold.  The option accepts a comma-separated list of
-MySQL status variables to check for a threshold.  An optional C<=MAX_VALUE> (or
-C<:MAX_VALUE>) can follow each variable.  If not given, the tool determines a
-threshold by examining the current value and increasing it by 20%.
+are higher than their thresholds.  The option accepts a comma-separated list of
+MySQL status variables.  An optional C<=MAX_VALUE> (or C<:MAX_VALUE>) can follow
+each variable.  If not given, the tool determines a threshold by examining the
+current value and increasing it by 20%.
 
 For example, if you want the tool to pause when Threads_connected gets too high,
 you can specify "Threads_connected", and the tool will check the current value
@@ -7101,12 +6975,12 @@ when it is below 120 again.  If you want to specify an explicit threshold, such
 as 110, you can use either "Threads_connected:110" or "Threads_connected=110".
 
 The purpose of this option is to prevent the tool from adding too much load to
-the server. If the checksum queries are intrusive, or if they cause lock waits,
+the server. If the data-copy queries are intrusive, or if they cause lock waits,
 then other queries on the server will tend to block and queue. This will
 typically cause Threads_running to increase, and the tool can detect that by
-running SHOW GLOBAL STATUS immediately after each checksum query finishes.  If
-you specify a threshold for this variable, then you can instruct the tool to
-wait until queries are running normally again.  This will not prevent queueing,
+running SHOW GLOBAL STATUS immediately after each query finishes.  If you
+specify a threshold for this variable, then you can instruct the tool to wait
+until queries are running normally again.  This will not prevent queueing,
 however; it will only give the server a chance to recover from the queueing.  If
 you notice queueing, it is best to decrease the chunk time.
 
@@ -7133,18 +7007,18 @@ Port number to use for connection.
 
 =item --print
 
-Print SQL statements to STDOUT instead of executing them.  Specifying this
-option allows you to see most of the statements that the tool would execute.
+Print SQL statements to STDOUT.  Specifying this option allows you to see most
+of the statements that the tool executes. You can use this option with
+L<"--dry-run">, for example.
 
 =item --progress
 
 type: array; default: time,30
 
-Print progress reports to STDERR while copying rows.
-
-The value is a comma-separated list with two parts.  The first part can be
-percentage, time, or iterations; the second part specifies how often an update
-should be printed, in percentage, seconds, or number of iterations.
+Print progress reports to STDERR while copying rows.  The value is a
+comma-separated list with two parts.  The first part can be percentage, time, or
+iterations; the second part specifies how often an update should be printed, in
+percentage, seconds, or number of iterations.
 
 =item --quiet
 
@@ -7193,16 +7067,17 @@ t.  The DSN table should have the following structure:
   );
 
 To make the tool monitor only the hosts 10.10.1.16 and 10.10.1.17 for
-replication lag and checksum differences, insert the values C<h=10.10.1.16> and
-C<h=10.10.1.17> into the table. Currently, the DSNs are ordered by id, but id
-and parent_id are otherwise ignored.  
+replication lag, insert the values C<h=10.10.1.16> and C<h=10.10.1.17> into the
+table. Currently, the DSNs are ordered by id, but id and parent_id are otherwise
+ignored.  
 
 =item --retries
 
 type: int; default: 3
 
 Retry a chunk this many times when there is a nonfatal error.  Nonfatal errors
-are problems such as a lock wait timeout or the query being killed.
+are problems such as a lock wait timeout or the query being killed. This option
+applies to the data copy operation.
 
 =item --set-vars
 
@@ -7221,66 +7096,57 @@ Socket file to use for connection.
 
 default: yes
 
-Swap the original table and the new, altered table.  This step
-essentially completes the online schema change process by making the
-temporary table with the new schema take the place of the original table.
-The original tables becomes the "old table" and is dropped if
-L<"--[no]drop-old-table"> is specified.
-
+Swap the original table and the new, altered table.  This step completes the
+online schema change process by making the table with the new schema take the
+place of the original table.  The original table becomes the "old table," and
+the tool drops it unless you disable L<"--[no]drop-old-table">.
 
 =item --update-foreign-keys-method
 
 type: string
 
-Method for updating foreign key constraints in L<"--child-tables">.  If
-L<"--child-tables"> is specified, the tool will need to ensure that foreign
-key constraints in those tables continue to reference the original table
-after it is renamed and/or dropped.  This is necessary because when a parent
-table is renamed, MySQL automatically updates all child table
-foreign key constraints that reference the renamed table so that the rename
-does not break foreign key constraints.  This poses a problem for this tool.
+How to ensure that foreign keys point to the new table.  Foreign keys that
+reference the table to be altered must be treated specially to ensure that they
+continue to reference the correct table. When the tool renames the original
+table to let the new one take its place, by default the foreign keys "follow"
+the renamed table, and must be changed to reference the new table instead.
 
-For example: if the table being altered is C<foo>, then C<foo> is renamed
-to C<__old_foo> when it is swapped with the new table.
-Any foreign key references to C<foo> before it is swapped/renamed are renamed
-automatically by MySQL to C<__old_foo>.  We do not want this; we want those
-foreign key references to continue to reference C<foo>.
-
-There are currently two methods to solve this problem:
+The tool supports two techniques to achieve this. It automatically finds "child
+tables" that reference the table to be altered, and chooses the best technique
+automatically, but you may specify one explicitly.
 
 =over
 
 =item rebuild_constraints
 
-Drop and re-add child table foreign key constraints to reference the new table.
-(The new table is the temporary table after being renamed/swapped.  To MySQL
-it's a new table because it does not know that it's a copy of the original
-table).  This method parses foreign key constraints referencing the original
-table from all child tables, drops them, then re-adds them referencing the
-new table.
+This method uses C<ALTER TABLE> to drop and re-add foreign key constraints that
+reference the new table.  This is the preferred technique, unless one or more of
+the child tables is so large that the C<ALTER> would take too long.  The tool
+determines that by comparing the number of rows in the child table to the rate
+at which the tool is able to copy rows from the old table to the new table. If
+the tool estimates that the child table can be altered in less time than the
+L<"--chunk-time">, then it will use this technique.  For purposes of estimating
+the time required to alter the child table, the tool multiplies the row-copying
+rate by L<"--chunk-size-limit">, because MySQL's C<ALTER TABLE> is typically
+much faster than the external process of copying rows.
 
-This method uses C<ALTER TABLE> which can by slow and blocking, but it is
-safer because the old table does not need to be dropped.  So if there's a
-problem with the new table and L<"--[no]drop-old-table"> was not specified,
-then the original table can be restored.
+Due to a limitation in MySQL, foreign keys will not have the same names after
+the ALTER that they did prior to it. The tool has to rename the foreign key when
+it redefines it, by adding a leading underscore.
 
 =item drop_swap
 
-Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table.
-This method bypasses MySQL's auto-renaming feature by disabling foreign key
-checks, dropping the original table, then renaming the temporary table with
-the same name.  Foreign key checks must be disabled to drop table because it is
-referenced by foreign key constraints.  Since the original table is not renamed,
-MySQL does not auto-rename references to it.  Then the temporary table is
-renamed to the same name so child table references are maintained.
-So this method requires L<"--[no]drop-old-table">.
+Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table
+before renaming the new table into its place. This is different from the normal
+method of swapping the old and new table, which uses an atomic C<RENAME> that is
+undetectable to client applications.
 
-This method is faster and does not block, but it is less safe for two reasons.
-One, for a very short time (between dropping the original table and renaming the
-temporary table) the child tables reference a non-existent table.  Two, more
-importantly, if for some reason the temporary table was not copied correctly,
-didn't capture all changes, etc., the original table cannot be recovered
-because it was dropped. 
+This method is faster and does not block, but it is riskier for two reasons.
+First, for a very short time between dropping the original table and renaming the
+temporary table, the table to be altered simply does not exist, and queries
+against it will result in an error.  Secondly, if there is an error and the new
+table cannot be renamed into the place of the old one, then it is too late to
+abort, because the old table is gone permanently.
 
 =back
 
@@ -7377,6 +7243,9 @@ of output.
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
 installed in any reasonably new version of Perl.
 
+This tool works only on MySQL 5.0.2 and newer versions, because earlier versions
+do not support triggers.
+
 =head1 BUGS
 
 For a list of known bugs, see L<http://www.percona.com/bugs/pt-online-schema-change>.
@@ -7427,20 +7296,10 @@ Baron Schwartz
 
 The "online schema change" concept was first implemented by Shlomi Noach
 in his tool C<oak-online-alter-table>, part of
-L<http://code.google.com/p/openarkkit/>.  Then engineers at Facebook built
-their version called C<OnlineSchemaChange.php> as explained by their blog
-post: L<http://tinyurl.com/32zeb86>.  Searching for "online schema change"
-will return other relevant pages about this concept.
-
-This implementation, C<pt-online-schema-change>, is a hybrid of Shlomi's
-and Facebook's approach.  Shlomi's code is a full-featured tool with command
-line options, documentation, etc., but its continued development/support is
-not assured.  Facebook's tool has certain technical advantages, but it's not
-a full-featured tool; it's more a custom job by Facebook for Facebook.  And
-neither of those tools is tested.  C<pt-online-schema-change> is a
-full-featured, tested tool with stable development and support.
-
-This tool was made possible by a generous client of Percona Inc.
+L<http://code.google.com/p/openarkkit/>.  Engineers at Facebook then built
+another version called C<OnlineSchemaChange.php> as explained by their blog
+post: L<http://tinyurl.com/32zeb86>. This tool is a hybrid of both approaches,
+with additional features and functionality not present in either.
 
 =head1 ABOUT PERCONA TOOLKIT
 
