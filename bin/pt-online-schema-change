@@ -5256,13 +5256,12 @@ sub main {
             = $alter_fk_method eq 'none' ? "not"
             : $alter_fk_method eq 'auto' ? "automatically choose the method to"
             :                              "use the $alter_fk_method method to";
-         print "Will $choice update child table foreign keys.\n";
+         print "Will $choice update foreign keys.\n";
       }
       else {
-         print "Exiting without altering $orig_tbl->{name} because there "
-             . "are child tables but --alter-foreign-keys-method was not "
-             . "specified.  Please read the tool's documentation carefully "
-             . "and specify --alter-foreign-keys-method.\n";
+         print "You did not specify --alter-foreign-keys-method, but there "
+             . "are foreign keys that reference the table. "
+             . "Please read the tool's documentation carefully.\n";
          return 1; 
       }
    }
@@ -5885,9 +5884,9 @@ sub main {
    if ( $child_tables ) {
       eval {
          if ( $alter_fk_method eq 'none' ) {
-            print "Not updating child table foreign keys because "
-               . "--alter-foreign-keys-method=none.  Child table foreign "
-               . "keys will be broken when the tool finishes.\n";
+            print "Not updating foreign keys because "
+               . "--alter-foreign-keys-method=none.  Foreign keys "
+               . "that reference the table will no longer work.\n";
          }
          elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
             rebuild_constraints(
@@ -6195,7 +6194,7 @@ sub determine_alter_fk_method {
    my ($child_tables, $max_rows, $cxn, $o) = @args{@required_args};
 
    if ( $o->get('dry-run') ) {
-      print "Not determining the method to update child table foreign keys "
+      print "Not determining the method to update foreign keys "
          . "because this is a dry run.\n";
       return '';  # $alter_fk_method can't be undef
    }
@@ -6205,7 +6204,7 @@ sub determine_alter_fk_method {
    my $method = 'rebuild_constraints';
    
    print "Max rows for the rebuild_constraints method: $max_rows\n",
-         "Determining the method to update child table foreign keys...\n";
+         "Determining the method to update foreign keys...\n";
    foreach my $child_tbl ( @$child_tables ) {
       print "  $child_tbl->{name}: ";
       my ($n_rows) = NibbleIterator::get_row_estimate(
@@ -6267,7 +6266,7 @@ sub rebuild_constraints {
       );
       my @constraints = $table_def =~ m/$constraint/g;
       if ( !@constraints ) {
-         warn "Child table $child_tbl->{name} does not have any foreign key "
+         warn "$child_tbl->{name} has no foreign key "
             . "constraints referencing $old_tbl->{name}.\n";
          next CHILD_TABLE;
       }
@@ -6691,9 +6690,8 @@ pt-online-schema-change - ALTER tables without locking them.
 Usage: pt-online-schema-change [OPTIONS] DSN
 
 pt-online-schema-change alters a table's structure without blocking reads or
-writes to the table. You must specify the database and table to alter in the
-DSN. You should not use this tool before reading and understanding its
-documentation, and checking your backups carefully.
+writes.  Specify the database and table in the DSN. Do not use this tool before
+reading its documentation and checking your backups carefully.
 
 Add a column to sakila.actor:
 
@@ -6733,9 +6731,8 @@ in it.
 
 pt-online-schema-change works by creating an empty copy of the table to alter,
 modifying it as desired, and then copying rows from the original table into the
-new table. When the copy is complete, it moves away the original table and puts
-the new, altered, table in its place.  By default, it also drops the original
-table when it is complete.
+new table. When the copy is complete, it moves away the original table and
+replaces it with the new one.  By default, it also drops the original table.
 
 The data copy process is performed in small chunks of data, which are varied to
 attempt to make them execute in a specific amount of time (see
@@ -6754,9 +6751,8 @@ Foreign keys complicate the tool's operation and introduce additional risk.  The
 technique of atomically renaming the original and new tables does not work when
 foreign keys refer to the table. The tool must update foreign keys to refer to
 the new table after the schema change is complete. The tool supports two methods
-for accomplishing this, and will automatically choose the appropriate method
-unless you specify one explicitly. You can read more about this in the
-documentation for L<"--alter-foreign-keys-method">.
+for accomplishing this. You can read more about this in the documentation for
+L<"--alter-foreign-keys-method">.
 
 For safety, the tool does not modify the table unless you specify the
 L<"--execute"> option, which is not enabled by default.  The tool supports a
@@ -6786,6 +6782,11 @@ server. See L<"--max-load"> and L<"--critical-load"> for details.
 The tool sets its lock wait timeout to 1 second so that it is more likely to be
 the victim of any lock contention, and less likely to disrupt other
 transactions. See L<"--lock-wait-timeout"> for details.
+
+=item *
+
+The tool refuses to alter the table if foreign key constraints reference it,
+unless you specify L<"--alter-foreign-keys-method">.
 
 =back
 
@@ -6818,29 +6819,28 @@ You cannot use the C<RENAME> clause to C<ALTER TABLE>, or the tool will fail.
 
 type: string
 
-How to ensure that foreign keys point to the new table.  Foreign keys that
+How to modify foreign keys so they reference the new table.  Foreign keys that
 reference the table to be altered must be treated specially to ensure that they
 continue to reference the correct table. When the tool renames the original
-table to let the new one take its place, by default the foreign keys "follow"
-the renamed table, and must be changed to reference the new table instead.
+table to let the new one take its place, the foreign keys "follow" the renamed
+table, and must be changed to reference the new table instead.
 
 The tool supports two techniques to achieve this. It automatically finds "child
-tables" that reference the table to be altered, and chooses the best technique
-automatically, but you may specify one explicitly.
+tables" that reference the table to be altered.
 
 =over
 
 =item auto
 
-Automatically determine whether to use C<rebuild_constraints> or
-C<drop_swap> based on the size of all child tables compared to the
-rate of rows copied per second.
+Automatically determine which method is best.  The tool uses
+C<rebuild_constraints> if possible (see the description of that method for
+details), and if not, then it uses C<drop_swap>. 
 
 =item rebuild_constraints
 
 This method uses C<ALTER TABLE> to drop and re-add foreign key constraints that
 reference the new table.  This is the preferred technique, unless one or more of
-the child tables is so large that the C<ALTER> would take too long.  The tool
+the "child" tables is so large that the C<ALTER> would take too long.  The tool
 determines that by comparing the number of rows in the child table to the rate
 at which the tool is able to copy rows from the old table to the new table. If
 the tool estimates that the child table can be altered in less time than the
@@ -6851,26 +6851,40 @@ much faster than the external process of copying rows.
 
 Due to a limitation in MySQL, foreign keys will not have the same names after
 the ALTER that they did prior to it. The tool has to rename the foreign key when
-it redefines it, by adding a leading underscore.
+it redefines it, which adds a leading underscore to the name.
 
 =item drop_swap
 
-Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table
+Disable foreign key checks (FOREIGN_KEY_CHECKS=0), then drop the original table
 before renaming the new table into its place. This is different from the normal
 method of swapping the old and new table, which uses an atomic C<RENAME> that is
 undetectable to client applications.
 
 This method is faster and does not block, but it is riskier for two reasons.
-First, for a very short time between dropping the original table and renaming
-the temporary table, the table to be altered simply does not exist, and queries
+First, for a short time between dropping the original table and renaming the
+temporary table, the table to be altered simply does not exist, and queries
 against it will result in an error.  Secondly, if there is an error and the new
 table cannot be renamed into the place of the old one, then it is too late to
 abort, because the old table is gone permanently.
 
 =item none
 
-This method is like C<drop_swap> without the "swap".  It leaves child table
-foreign keys broken.
+This method is like C<drop_swap> without the "swap".  Any foreign keys that
+referenced the original table will now reference a nonexistent table. This will
+typically cause foreign key violations that are visible in C<SHOW ENGINE INNODB
+STATUS>, similar to the following:
+
+   Trying to add to index `idx_fk_staff_id` tuple:
+   DATA TUPLE: 2 fields;
+   0: len 1; hex 05; asc  ;;
+   1: len 4; hex 80000001; asc     ;;
+   But the parent table `sakila`.`staff_old`
+   or its .ibd file does not currently exist!
+
+This is because the original table (in this case, sakila.staff) was renamed to
+sakila.staff_old and then dropped. This method of handling foreign key
+constraints is provided so that the database administrator can disable the
+tool's built-in functionality if desired.
 
 =back
 
@@ -7006,7 +7020,12 @@ current value at startup and doubling it.
 
 See L<"--max-load"> for further details. These options work similarly, except
 that this option will abort the tool's operation instead of pausing it, and the
-default value is computed differently if you specify no threshold.
+default value is computed differently if you specify no threshold.  The reason
+for this option is as a safety check in case the triggers on the original table
+add so much load to the server that it causes downtime.  There is probably no
+single value of Threads_running that is wrong for every server, but a default of
+50 seems likely to be unacceptably high for most servers, indicating that the
+operation should be canceled immediately.
 
 =item --defaults-file
 
@@ -7026,12 +7045,12 @@ the tool leaves the original table in place.
 
 =item --dry-run
 
-Create and alter the new table, but do not copy data into it.  Do not create
-triggers on the original table, or swap the original and new tables.
+Create and alter the new table, but do not create triggers, copy data, or
+replace the original table.
 
 =item --execute
 
-Signify that you have read the documentation and want to alter the table.  You
+Indicate that you have read the documentation and want to alter the table.  You
 must specify this option to alter the table. If you do not, then the tool will
 only perform some safety checks and exit.  This helps ensure that you have read the
 documentation and understand how to use this tool.  If you have not read the
