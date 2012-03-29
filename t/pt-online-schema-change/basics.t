@@ -32,7 +32,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 63;
+   plan tests => 83;
 }
 
 my $q      = new Quoter();
@@ -120,6 +120,11 @@ sub test_alter_table {
    my $orig_tbls = $master_dbh->selectall_arrayref(
       "SHOW TABLES FROM `$db`");
 
+   my $orig_max_id = $master_dbh->selectall_arrayref(
+      "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
+
+   my ($orig_auto_inc) = $ddl =~ m/\s+AUTO_INCREMENT=(\d+)\s+/;
+
    my $fk_method = $args{check_fks};
    my @orig_fks;
    if ( $fk_method ) {
@@ -143,7 +148,8 @@ sub test_alter_table {
       stderr => 1,
    );
 
-   my $fail = 0;
+   my $new_ddl = $tp->get_create_table($master_dbh, $db, $tbl);
+   my $fail    = 0;
 
    is(
       $exit,
@@ -166,21 +172,36 @@ sub test_alter_table {
       $orig_rows,
       "$name rows"
    ) or $fail = 1;
+  
+   my $new_max_id = $master_dbh->selectall_arrayref(
+      "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
+   is(
+      $orig_max_id->[0]->[0],
+      $new_max_id->[0]->[0],
+      "$name MAX(pk_col)"
+   ) or $fail = 1;
+
+   my ($new_auto_inc) = $new_ddl =~ m/\s+AUTO_INCREMENT=(\d+)\s+/;
+   is(
+      $orig_auto_inc,
+      $new_auto_inc,
+      "$name AUTO_INCREMENT=$orig_auto_inc"
+   ) or $fail = 1;
 
    # Check if the ALTER was actually done.
    if ( $test_type eq 'drop_col' ) {
       my $col = $q->quote($args{drop_col});
-      my $ddl = $tp->get_create_table($master_dbh, $db, $tbl);
+
       if ( grep { $_ eq '--dry-run' } @$cmds ) {
          like(
-            $ddl,
+            $new_ddl,
             qr/^\s+$col\s+/m,
             "$name ALTER DROP COLUMN=$args{drop_col} (dry run)"
          ) or $fail = 1;
       }
       else {
          unlike(
-            $ddl,
+            $new_ddl,
             qr/^\s+$col\s+/m,
             "$name ALTER DROP COLUMN=$args{drop_col}"
          ) or $fail = 1;
