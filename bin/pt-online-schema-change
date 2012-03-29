@@ -4826,6 +4826,55 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# CleanupTask package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/CleanupTask.pm
+#   t/lib/CleanupTask.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package CleanupTask;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, $task ) = @_;
+   die "I need a task parameter" unless $task;
+   die "The task parameter must be a coderef" unless ref $task eq 'CODE';
+   my $self = {
+      task => $task,
+   };
+   PTDEBUG && _d('Created cleanup task', $task);
+   return bless $self, $class;
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   my $task = $self->{task};
+   PTDEBUG && _d('Calling cleanup task', $task);
+   $task->();
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End CleanupTask package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -4846,7 +4895,10 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $oktorun = 1;
+use sigtrap 'handler', \&sig_int, 'normal-signals';
+
+my $exit_status = 0;
+my $oktorun     = 1;
 my @drop_trigger_sqls;
 
 $OUTPUT_AUTOFLUSH = 1;
@@ -4857,7 +4909,7 @@ sub main {
    $oktorun           = 1;
    @drop_trigger_sqls = ();
 
-   my $exit_status = 0;
+   $exit_status = 0;
 
    # ########################################################################
    # Get configuration information.
@@ -5114,13 +5166,12 @@ sub main {
          # may wait a very long time for slaves.
          my $dbh = $cxn->dbh();
          if ( !$dbh || !$dbh->ping() ) {
-            PTDEBUG && _d('Lost connection to master while waiting for slave lag');
             eval { $dbh = $cxn->connect() };  # connect or die trying
             if ( $EVAL_ERROR ) {
-               $oktorun = 0;  # Fatal error
+               $oktorun = 0;  # flag for cleanup tasks
                chomp $EVAL_ERROR;
-               die "Lost connection to master while waiting for replica lag "
-                  . "($EVAL_ERROR)";
+               die "Lost connection to " . $cxn->name() . " while waiting for "
+                  . "replica lag ($EVAL_ERROR)\n";
             }
          }
          $dbh->do("SELECT 'pt-online-schema-change keepalive'");
@@ -5132,14 +5183,12 @@ sub main {
          my ($cxn) = @_;
          my $dbh = $cxn->dbh();
          if ( !$dbh || !$dbh->ping() ) {
-            PTDEBUG && _d('Lost connection to slave', $cxn->name(),
-               'while waiting for slave lag');
             eval { $dbh = $cxn->connect() };  # connect or die trying
             if ( $EVAL_ERROR ) {
-               $oktorun = 0;  # Fatal error
+               $oktorun = 0;  # flag for cleanup tasks
                chomp $EVAL_ERROR;
                die "Lost connection to replica " . $cxn->name()
-                  . " while attempting to get its lag ($EVAL_ERROR)";
+                  . " while attempting to get its lag ($EVAL_ERROR)\n";
             }
          }
          return $ms->get_slave_lag($dbh);
@@ -5280,6 +5329,51 @@ sub main {
    }
 
    # ########################################################################
+   # Create a cleanup task object to undo changes (i.e. clean up) if the
+   # code dies, or we may call this explicitly at the end if all goes well.
+   # ########################################################################
+   my @cleanup_tasks;
+   my $cleanup = new CleanupTask(
+      sub {
+         my $original_error = $EVAL_ERROR;
+         foreach my $task ( reverse @cleanup_tasks ) {
+            eval {
+               $task->();
+            };
+            if ( $EVAL_ERROR ) {
+               warn "Error cleaning up: $EVAL_ERROR\n";
+            }
+         }
+         die $original_error if $original_error;  # rethrow original error
+         return;
+      }
+   );
+
+   # The last cleanup task is to report whether or not the orig table
+   # was altered.
+   push @cleanup_tasks, sub {
+      PTDEBUG && _d('Clean up done, report if orig table was altered');
+      if ( $o->get('dry-run') ) {
+         print "Dry run complete.  $orig_tbl->{name} was not altered.\n";
+      }
+      else {
+         if ( $orig_tbl->{swapped} ) {
+            if ( $orig_tbl->{success} ) {
+               print "Successfully altered $orig_tbl->{name}.\n";
+            }
+            else {
+               print "Altered $orig_tbl->{name} but there were errors "
+                  . "or warnings.\n";
+            }
+         }
+         else {
+            print "$orig_tbl->{name} was not altered.\n";
+         }
+      }
+      return;
+   };
+
+   # ########################################################################
    # Check and create PID file if user specified --pid.
    # ########################################################################
    my $daemon;
@@ -5290,7 +5384,7 @@ sub main {
    }
 
    # #####################################################################
-   # Create and alter the new table (but do not copy rows yet).
+   # Step 1: Create the new table.
    # #####################################################################
    my $new_tbl;
    eval {
@@ -5303,13 +5397,53 @@ sub main {
       );
    };
    if ( $EVAL_ERROR ) {
-      die "Error creating new table: $EVAL_ERROR\n"
-        . "$orig_tbl->{name} was not altered.\n";
+      die "Error creating new table: $EVAL_ERROR\n";
    }
-   my $drop_new_table_sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
 
-   # Alter the new, empty table.  This should be very quick, or die if
-   # the user specified a bad alter statement.
+   # If the new table still exists, drop it unless the tool was interrupted.
+   push @cleanup_tasks, sub {
+      PTDEBUG && _('Clean up new table');
+      my $new_tbl_exists = $tp->check_table(
+         dbh => $cxn->dbh(),
+         db  => $new_tbl->{db},
+         tbl => $new_tbl->{tbl},
+      );
+      PTDEBUG && _d('New table exists:', $new_tbl_exists ? 'yes' : 'no');
+      return unless $new_tbl_exists;
+
+      my $sql = "DROP TABLE IF EXISTS $new_tbl->{name};";
+      if ( !$oktorun ) {
+         # The tool was interrupted, so do not drop the new table
+         # in case the user wants to resume (once resume capability
+         # is implemented).
+         print "Not dropping the new table $new_tbl->{name} because "
+             . "the tool was interrupted.  To drop the new table, "
+             . "execute:\n$sql\n";
+      }
+      elsif ( $orig_tbl->{copied} && !$orig_tbl->{swapped} ) {
+         print "Not dropping the new table $new_tbl->{name} because "
+             . "--swap-tables failed.  To drop the new table, "
+             . "execute:\n$sql\n";
+      }
+      else {
+         print "Dropping new table...\n";
+         print $sql, "\n" if $o->get('print');
+         PTDEBUG && _d($sql);
+         eval {
+            $cxn->dbh()->do($sql);
+         };
+         if ( $EVAL_ERROR ) {
+            warn "Error dropping new table $new_tbl->{name}: $EVAL_ERROR\n"
+               . "To try dropping the new table again, execute:\n$sql\n";
+         }
+         print "Dropped new table OK.\n";
+      }
+   };
+
+   # #####################################################################
+   # Step 2: Alter the new, empty table.  This should be very quick,
+   # or die if the user specified a bad alter statement.
+   # #####################################################################
    if ( my $alter = $o->get('alter') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
@@ -5320,15 +5454,13 @@ sub main {
       };
       if ( $EVAL_ERROR ) {
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
-           . "Please verify the --alter statement and try again.  "
-           . "To drop the new table, execute: $drop_new_table_sql\n\n"
-           . "$orig_tbl->{name} was not altered.\n";
       }
-
       print "Altered $new_tbl->{name} OK.\n"
    }
 
-   # Get the new table struct.
+   # Get the new table struct.  This shouldn't die because
+   # we just created the table successfully so we know it's
+   # there.  But the ghost of Ryan is everywhere.
    my $ddl = $tp->get_create_table(
       $cxn->dbh(),
       $new_tbl->{db},
@@ -5336,9 +5468,15 @@ sub main {
    );
    $new_tbl->{tbl_struct} = $tp->parse($ddl);
 
-   # #####################################################################
-   # Determine what columns the original and new tables have in common.
-   # #####################################################################
+   # Determine what columns the original and new table share.
+   # If the user drops a col, that's easy: just don't copy it.  If they
+   # add a column, it must have a default value.  Other alterations
+   # may or may not affect the copy process--we'll know when we try!
+   # Note: we don't want to examine the --alter statement to see if the
+   # cols have changed because that's messy and prone to parsing errors.
+   # Col posn (position) is just for looks because user's like
+   # to see columns listed in their original order, not Perl's
+   # random hash key sorting.
    my $col_posn    = $orig_tbl->{tbl_struct}->{col_posn};
    my $orig_cols   = $orig_tbl->{tbl_struct}->{is_col};
    my $new_cols    = $new_tbl->{tbl_struct}->{is_col};
@@ -5347,18 +5485,60 @@ sub main {
                      keys %$orig_cols;
    PTDEBUG && _d('Common columns', @common_cols);
 
+   # ########################################################################
+   # Step 3: Create the triggers to capture changes on the original table and
+   # apply them to the new table.
+   # ########################################################################
+
+   # Drop the triggers.  We can save this cleanup task before
+   # adding the triggers because if adding them fails, this will be
+   # called which will drop whichever triggers were created.
+   push @cleanup_tasks, sub {
+      PTDEBUG && _d('Clean up triggers');
+      if ( $oktorun ) {
+         drop_triggers(
+            tbl          => $orig_tbl,
+            Cxn          => $cxn,
+            Quoter       => $q,
+            OptionParser => $o,
+         );
+      }
+      else {
+         print "Not dropping triggers because the tool was interrupted.  "
+             . "To drop the triggers, execute:\n"
+             . join("\n", @drop_trigger_sqls) . "\n";
+      }
+   };
+
+   eval {
+      create_triggers(
+         orig_tbl     => $orig_tbl,
+         new_tbl      => $new_tbl,
+         columns      => \@common_cols,
+         Cxn          => $cxn,
+         Quoter       => $q,
+         OptionParser => $o,
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      die "Error creating triggers: $EVAL_ERROR\n";
+   };
+
    # #####################################################################
-   # Make a nibble iterator to copys rows from the orig to new table.
+   # Step 4: Copy rows.
    # #####################################################################
+
+   # The hashref of callbacks below is what NibbleIterator calls internally
+   # to do all the copy work.  The callbacks do not need to eval their work
+   # because the higher call to $nibble_iter->next() is eval'ed which will
+   # catch any errors in the callbacks.
    my $total_rows = 0;
    my $total_time = 0;
    my $avg_rate   = 0;  # rows/second
-   my $limit      = $o->get('chunk-size-limit');
-   my $chunk_time = $o->get('chunk-time');
-   my $retry      = new Retry();
+   my $retry      = new Retry();  # for retrying to exec the copy statement
+   my $limit      = $o->get('chunk-size-limit');  # brevity
+   my $chunk_time = $o->get('chunk-time');        # brevity
 
-   # Callbacks for each table's nibble iterator.  All checksum work is done
-   # in these callbacks and the subs that they call.
    my $callbacks = {
       init => sub {
          my (%args) = @_;
@@ -5382,7 +5562,6 @@ sub main {
                   print $statements->{$sth}->{Statement}, "\n";
                }
             }
-
          }
 
          return unless $o->get('execute');
@@ -5443,7 +5622,6 @@ sub main {
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
          if (lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '')) {
-            PTDEBUG && _d('Cannot nibble next chunk, aborting table');
             my $msg
                = "Aborting copying table $tbl->{name} at chunk "
                . ($nibble_iter->nibble_number() + 1)
@@ -5454,7 +5632,7 @@ sub main {
                . ($expl->{key} ? "the $expl->{key}" : "no")
                . " index will be used.\n";
             die $msg;
-         }
+         } 
 
          # Once nibbling begins for a table, control does not return to this
          # tool until nibbling is done because, as noted above, all work is
@@ -5487,8 +5665,6 @@ sub main {
             # Ensure that MySQL is using the chunk index.
             if (   lc($expl->{key} || '')
                 ne lc($nibble_iter->nibble_index() || '') ) {
-               PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
-                  "$tbl->{db}.$tbl->{tbl} not using chunk index, skipping");
                my $msg
                   = "Aborting copying table $tbl->{name} at chunk "
                   . $nibble_iter->nibble_number()
@@ -5512,8 +5688,6 @@ sub main {
                     && $nibble_iter->identical_boundaries(
                           $boundary->{upper}, $boundary->{next_lower}) )
                {
-                  PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
-                     "$tbl->{db}.$tbl->{tbl} is too large, skipping");
                   my $msg
                      = "Aborting copying table $tbl->{name} at chunk "
                      . $nibble_iter->nibble_number()
@@ -5599,7 +5773,8 @@ sub main {
          $replica_lag_pr->start() if $replica_lag_pr;
          $replica_lag->wait(Progress => $replica_lag_pr);
 
-         # Wait forever for system load to abate.
+         # Wait forever for system load to abate.  wait() will die if
+         # --critical load is reached.
          $sys_load_pr->start() if $sys_load_pr;
          $sys_load->wait(Progress => $sys_load_pr);
 
@@ -5616,7 +5791,7 @@ sub main {
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
    my $dml    = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
               . "(" . join(', ', map { $q->quote($_) } @common_cols) . ") "
-              . "SELECT ";
+              . "SELECT";
    my $select = join(', ', map { $q->quote($_) } @common_cols);
 
    # The chunk size is auto-adjusted, so use --chunk-size as
@@ -5624,29 +5799,25 @@ sub main {
    # chunk size in the table data struct.
    $orig_tbl->{chunk_size} = $o->get('chunk-size');
 
-   my $nibble_iter;
-   eval {
-      $nibble_iter = new NibbleIterator(
-         Cxn          => $cxn,
-         tbl          => $orig_tbl,
-         chunk_size   => $orig_tbl->{chunk_size},
-         chunk_index  => $o->get('chunk-index'),
-         dml          => $dml,
-         select       => $select,
-         callbacks    => $callbacks,
-         OptionParser => $o,
-         Quoter       => $q,
-         TableParser  => $tp,
-         TableNibbler => new TableNibbler(TableParser => $tp, Quoter => $q),
-         comments     => {
-            bite   => "pt-online-schema-change $PID copy table",
-            nibble => "pt-online-schema-change $PID copy nibble",
-         },
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      die "Cannot chunk table $orig_tbl->{name}: $EVAL_ERROR\n";
-   }
+   # This won't (shouldn't) fail because we already verified in
+   # check_orig_table() table we can NibbleIterator::can_nibble().
+   my $nibble_iter = new NibbleIterator(
+      Cxn          => $cxn,
+      tbl          => $orig_tbl,
+      chunk_size   => $orig_tbl->{chunk_size},
+      chunk_index  => $o->get('chunk-index'),
+      dml          => $dml,
+      select       => $select,
+      callbacks    => $callbacks,
+      OptionParser => $o,
+      Quoter       => $q,
+      TableParser  => $tp,
+      TableNibbler => new TableNibbler(TableParser => $tp, Quoter => $q),
+      comments     => {
+         bite   => "pt-online-schema-change $PID copy table",
+         nibble => "pt-online-schema-change $PID copy nibble",
+      },
+   );
  
    # Init a new weighted avg rate calculator for the table.
    $orig_tbl->{rate} = new WeightedAvgRate(target_t => $chunk_time);
@@ -5665,68 +5836,21 @@ sub main {
       );
    }
 
-   # ########################################################################
-   # Create the triggers to capture changes on the original table and
-   # apply them to the new table.
-   # ########################################################################
-   eval {
-      create_triggers(
-         orig_tbl     => $orig_tbl,
-         new_tbl      => $new_tbl,
-         columns      => \@common_cols,
-         Cxn          => $cxn,
-         Quoter       => $q,
-         OptionParser => $o,
-      );
-   };
-   if ( $EVAL_ERROR ) {
-      warn "Error creating triggers: $EVAL_ERROR\n";
-
-      # Drop whatever triggers were recreated.
-      # This sub warns about its own errors.
-      drop_triggers(
-         tbl          => $orig_tbl,
-         Cxn          => $cxn,
-         Quoter       => $q,
-         OptionParser => $o,
-      );
-
-      warn "The new table $new_tbl->{name} has not been dropped.  "
-         . "To drop it, execute: $drop_new_table_sql\n\n"
-         . "$orig_tbl->{name} has not been modified.\n";
-
-      exit 1;
-   };
-
-   # #####################################################################
-   # Copy rows from new table to old table.
-   # #####################################################################
+   # Start copying rows.  This may take awhile, but --progress is on
+   # by default so there will be progress updates to stderr.
    eval {
       1 while $nibble_iter->next();
    };
    if ( $EVAL_ERROR ) {
-      warn "Error copying rows from $orig_tbl->{name} to "
-         . "$new_tbl->{name}: $EVAL_ERROR\n";
-
-      # Drop the triggers.  This warns about its own errors.
-      drop_triggers(
-         tbl          => $orig_tbl,
-         Cxn          => $cxn,
-         Quoter       => $q,
-         OptionParser => $o,
-      );
-
-      warn "The new table $new_tbl->{name} has not been dropped.  "
-         . "To drop it, execute: $drop_new_table_sql\n\n"
-         . "$orig_tbl->{name} has not been modified.\n";
-
-      exit 1;
+      die "Error copying rows from $orig_tbl->{name} to "
+        . "$new_tbl->{name}: $EVAL_ERROR\n";
    }
+   $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
    # #####################################################################
    # XXX
-   # Rename tables: orig -> old, new -> orig
-   # Past this point, the original table has been modified. This shouldn't
+   # Step 5: Rename tables: orig -> old, new -> orig
+   # Past this step, the original table has been altered. This shouldn't
    # fail, but if it does, the failure could be serious depending on what
    # state the tables are left in.
    # XXX
@@ -5747,14 +5871,14 @@ sub main {
          die "Error swapping the tables: $EVAL_ERROR\n"
            . "Verify that the original table $orig_tbl->{name} has not "
            . "been modified or renamed to the old table $old_tbl->{name}.  "
-           . "Then drop the new table $new_tbl->{name} if it exists "
-           . "by executing: $drop_new_table_sql\n";
+           . "Then drop the new table $new_tbl->{name} if it exists.\n";
       }
    }
+   $orig_tbl->{swapped} = 1;  # flag for cleanup tasks
    PTDEBUG && _d('Old table:', Dumper($old_tbl));
 
    # #####################################################################
-   # Update foreign key constraints if there are child tables.
+   # Step 6: Update foreign key constraints if there are child tables.
    # #####################################################################
    if ( $child_tables ) {
       eval {
@@ -5805,23 +5929,7 @@ sub main {
    }
 
    # ########################################################################
-   # Drop the triggers.
-   # ########################################################################
-   my $drop_triggers_errors = drop_triggers(
-         tbl          => $orig_tbl,
-         Cxn          => $cxn,
-         Quoter       => $q,
-         OptionParser => $o,
-   );
-   if ( $drop_triggers_errors ) {
-      # The sub has already warned about its own errors.
-      warn "To try to drop the triggers again, execute:\n"
-         . join("\n", @drop_trigger_sqls) . "\n\n"
-        . "$orig_tbl->{name} has been modified.\n";
-   }
-
-   # ########################################################################
-   # Drop the old table.
+   # Step 7: Drop the old table.
    # ########################################################################
    if ( $o->get('drop-old-table') ) {
       if ( $o->get('dry-run') ) {
@@ -5836,8 +5944,7 @@ sub main {
             $cxn->dbh()->do($sql);
          };
          if ( $EVAL_ERROR ) {
-            die "Error dropping the old table: $EVAL_ERROR\n"
-              . "$orig_tbl->{name} has been modified.\n";
+            die "Error dropping the old table: $EVAL_ERROR\n";
          }
          print "Dropped old table $old_tbl->{name} OK.\n";
       }
@@ -5846,25 +5953,8 @@ sub main {
    # ########################################################################
    # Done.
    # ########################################################################
-   if ( $o->get('dry-run') ) {
-      print "Dropping new table because this a dry run...\n";
-      print $drop_new_table_sql, "\n" if $o->get('print');
-      PTDEBUG && _d($drop_new_table_sql);
-      eval {
-         $cxn->dbh()->do($drop_new_table_sql);
-      };
-      if ( $EVAL_ERROR ) {
-         print "Error drop new table: $EVAL_ERROR\n";
-      }
-      else { 
-         print "Dropped new table $new_tbl->{name} OK.\n";
-      }
-      print "Dry run complete.  $orig_tbl->{name} was not altered.\n";
-   }
-   else {
-      # BARON: I think it's good to end with a clear indication of success.
-      print "Successfully altered $orig_tbl->{name}.\n";
-   }
+   $orig_tbl->{success} = 1;  # flag for cleanup tasks
+   $cleanup = undef;          # exec cleanup tasks
 
    return $exit_status;
 }
@@ -6032,6 +6122,7 @@ sub check_orig_table {
          Cxn          => $cxn,
          tbl          => $orig_tbl,
          chunk_size   => $o->get('chunk-size'),
+         chunk_indx   => $o->get('chunk-index'),
          OptionParser => $o,
          TableParser  => $tp,
       );
@@ -6319,7 +6410,8 @@ sub create_triggers {
       # (or faked to be created) so if the 2nd trigger
       # fails to create, we know to only drop the 1st.
       push @drop_trigger_sqls,
-         "DROP TRIGGER IF EXISTS " . $q->quote($orig_tbl->{db}, "pt_osc_$name");
+         "DROP TRIGGER IF EXISTS "
+         . $q->quote($orig_tbl->{db}, "pt_osc_$name") . ";";
    }
 
    if ( $o->get('execute') ) {
@@ -6337,8 +6429,6 @@ sub drop_triggers {
    }
    my ($tbl, $cxn, $q, $o) = @args{@required_args};
 
-   my $exit_status = 0;
-
    # This sub works for --dry-run and --execute, although --dry-run is
    # only interesting with --print so the user can see the drop trigger
    # statements for --execute.
@@ -6349,9 +6439,8 @@ sub drop_triggers {
       print "Dropping triggers...\n";
    }
 
-   # The statements are shifted/removed so that if one fails, the caller
-   # can report which triggers are left to drop manually.
-   while ( my $sql = shift @drop_trigger_sqls ) {
+   my @not_dropped;
+   foreach my $sql ( @drop_trigger_sqls ) {
       print $sql, "\n" if $o->get('print');
       if ( $o->get('execute') ) {
          PTDEBUG && _d($sql);
@@ -6360,16 +6449,23 @@ sub drop_triggers {
          };
          if ( $EVAL_ERROR ) {
             warn "Error dropping trigger: $EVAL_ERROR\n";
+            push @not_dropped, $sql;
             $exit_status = 1;
          }
       }
    }
 
-   if ( $o->get('execute') && $exit_status == 0) {
-      print "Dropped triggers OK.\n";
+   if ( $o->get('execute') ) {
+      if ( !@not_dropped ) {
+         print "Dropped triggers OK.\n";
+      }
+      else {
+         warn "To try dropping the triggers again, execute:\n"
+            . join("\n", @not_dropped) . "\n";
+      }
    }
 
-   return $exit_status;
+   return;
 }
 
 sub exec_nibble {
@@ -6542,6 +6638,14 @@ sub explain_statement {
    }
    PTDEBUG && _d('EXPLAIN plan:', Dumper($expl));
    return $expl;
+}
+
+# Catches signals so we can exit gracefully.
+sub sig_int {
+   my ( $signal ) = @_;
+   $oktorun = 0;  # flag for cleanup tasks
+   print STDERR "# Exiting on SIG$signal.\n";
+   exit 1;
 }
 
 sub _d {
@@ -7112,7 +7216,7 @@ Socket file to use for connection.
 
 default: yes
 
-Swap the the original table and the new, altered table.  This step
+Swap the original table and the new, altered table.  This step
 essentially completes the online schema change process by making the
 temporary table with the new schema take the place of the original table.
 The original tables becomes the "old table" and is dropped if
