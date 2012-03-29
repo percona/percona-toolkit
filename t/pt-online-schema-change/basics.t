@@ -32,7 +32,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 52;
+   plan tests => 59;
 }
 
 my $q      = new Quoter();
@@ -415,6 +415,31 @@ test_alter_table(
       '--alter', 'DROP COLUMN last_update',
    ],
 );
+
+SKIP: {
+   skip 'Sandbox master does not have the sakila database', 7
+   unless @{$master_dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+
+   # This test will use the drop_swap method because the child tables
+   # are large.  To prove this, change check_fks to rebuild_constraints
+   # and the test will fail.
+   test_alter_table(
+      name        => "sakila.staff",
+      table       => "sakila.staff",
+      pk_col      => "staff_id",
+      test_type   => "new_engine",
+      new_engine  => "InnoDB",
+      check_fks   => "drop_swap",
+      cmds        => [
+      qw(
+         --chunk-size 100
+         --execute
+         --alter-foreign-keys-method auto
+      ),
+         '--alter', 'ENGINE=InnoDB'
+      ],
+   );
+}
 
 # #############################################################################
 # Alter tables with columns with resvered words and spaces.
