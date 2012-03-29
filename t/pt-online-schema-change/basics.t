@@ -32,7 +32,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 55;
+   plan tests => 52;
 }
 
 my $q      = new Quoter();
@@ -52,7 +52,7 @@ $sb->load_file('master', "$sample/basic_no_fks.sql");
 PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
 
 $output = output(
-   sub { $exit = pt_online_schema_change::main(@args, "$dsn,t=pt_osc.t",
+   sub { $exit = pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
       '--alter', 'drop column id') }
 );
 
@@ -60,7 +60,7 @@ like(
    $output,
    qr/neither --dry-run nor --execute was specified/,
    "Doesn't run without --execute (bug 933232)"
-);
+) or warn $output;
 
 my $ddl = $master_dbh->selectrow_arrayref("show create table pt_osc.t");
 like(
@@ -71,8 +71,8 @@ like(
 
 is(
    $exit,
-   0,
-   "Exit 0"
+   1,
+   "Exit 1"
 );
 
 # #############################################################################
@@ -120,8 +120,9 @@ sub test_alter_table {
    my $orig_tbls = $master_dbh->selectall_arrayref(
       "SHOW TABLES FROM `$db`");
 
+   my $fk_method = $args{check_fks};
    my @orig_fks;
-   if ( $args{check_fks} ) {
+   if ( $fk_method ) {
       foreach my $tbl ( @$orig_tbls ) {
          my $fks = $tp->get_fks(
             $tp->get_create_table($master_dbh, $db, $tbl->[0]));
@@ -135,17 +136,20 @@ sub test_alter_table {
    $output = output(
       sub { $exit = pt_online_schema_change::main(
          @args,
+         '--print',
          "$dsn,D=$db,t=$tbl",
          @$cmds,
       )},
       stderr => 1,
    );
 
+   my $fail = 0;
+
    is(
       $exit,
       0,
       "$name exit 0"
-   );
+   ) or $fail = 1;
 
    # There should be no new or missing tables.
    my $new_tbls = $master_dbh->selectall_arrayref("SHOW TABLES FROM `$db`");  
@@ -153,7 +157,7 @@ sub test_alter_table {
       $new_tbls,
       $orig_tbls,
       "$name tables"
-   );
+   ) or $fail = 1;
 
    # Rows in the original and new table should be identical.
    my $new_rows = $master_dbh->selectall_arrayref("SELECT * FROM $table ORDER BY `$pk_col`");
@@ -161,7 +165,7 @@ sub test_alter_table {
       $new_rows,
       $orig_rows,
       "$name rows"
-   );
+   ) or $fail = 1;
 
    # Check if the ALTER was actually done.
    if ( $test_type eq 'drop_col' ) {
@@ -172,14 +176,14 @@ sub test_alter_table {
             $ddl,
             qr/^\s+$col\s+/m,
             "$name ALTER DROP COLUMN=$args{drop_col} (dry run)"
-         );
+         ) or $fail = 1;
       }
       else {
          unlike(
             $ddl,
             qr/^\s+$col\s+/m,
             "$name ALTER DROP COLUMN=$args{drop_col}"
-         );
+         ) or $fail = 1;
       }
    }
    elsif ( $test_type eq 'add_col' ) {
@@ -193,22 +197,54 @@ sub test_alter_table {
          lc($rows->{$tbl}->{engine}),
          $new_engine,
          "$name ALTER ENGINE=$args{new_engine}"
-      );
+      ) or $fail = 1;
 
    }
  
-   if ( $args{check_fks} ) {
+   if ( $fk_method ) {
       my @new_fks;
+      my $rebuild_method = 0;
+
       foreach my $tbl ( @$orig_tbls ) {
          my $fks = $tp->get_fks(
             $tp->get_create_table($master_dbh, $db, $tbl->[0]));
-         push @new_fks, $fks;
+
+         # The tool does not use the same/original fk name,
+         # it appends a single _.  So we need to strip this
+         # to compare the original fks to the new fks.
+         if ( $fk_method eq 'rebuild_constraints' ) {
+            my %new_fks = map {
+               my $real_fk_name = $_;
+               my $fk_name      = $_;
+               if ( $fk_name =~ s/^_// ) {
+                  $rebuild_method = 1;
+               }
+               $fks->{$real_fk_name}->{name} =~ s/^_//;
+               $fks->{$real_fk_name}->{ddl}  =~ s/`$real_fk_name`/`$fk_name`/;
+               $fk_name => $fks->{$real_fk_name};
+            } keys %$fks;
+            push @new_fks, \%new_fks;
+         }
+         else {
+            # drop_swap
+            push @new_fks, $fks;
+         }
       }
+
+      if ( grep { $_ eq '--execute' } @$cmds ) {
+         ok(
+              $fk_method eq 'rebuild_constraints' &&  $rebuild_method ? 1
+            : $fk_method eq 'drop_swap'           && !$rebuild_method ? 1
+            :                                                           0,
+            "$name FK $fk_method method"
+         );
+      }
+
       is_deeply(
          \@new_fks,
          \@orig_fks,
          "$name FK constraints"
-      );
+      ) or $fail = 1;
 
       # Go that extra mile and verify that the fks are actually
       # still functiona: i.e. that they'll prevent us from delete
@@ -221,7 +257,11 @@ sub test_alter_table {
          $EVAL_ERROR,
          qr/foreign key constraint fails/,
          "$name FK constraints still hold"
-      );
+      ) or $fail = 1;
+   }
+
+   if ( $fail ) {
+      diag("Output from failed test:\n$output");
    }
 
    return;
@@ -281,11 +321,11 @@ test_alter_table(
    wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
-   check_fks  => 1,
+   check_fks  => "rebuild_constraints",
    cmds       => [
    qw(
       --dry-run
-      --update-foreign-keys-method rebuild_constraints
+      --alter-foreign-keys-method rebuild_constraints
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
@@ -300,11 +340,11 @@ test_alter_table(
    # wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
-   check_fks  => 1,
+   check_fks  => "rebuild_constraints",
    cmds       => [
    qw(
       --execute
-      --update-foreign-keys-method rebuild_constraints
+      --alter-foreign-keys-method rebuild_constraints
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
@@ -316,25 +356,25 @@ test_alter_table(
 # Somewhat dangerous, but quick.  Downside: table doesn't exist for a moment.
 
 test_alter_table(
-   name       => "Basic FK drop-swap --dry-run",
+   name       => "Basic FK drop_swap --dry-run",
    table      => "pt_osc.country",
    pk_col     => "country_id",
    file       => "basic_with_fks.sql",
    wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
-   check_fks  => 1,
+   check_fks  => "drop_swap",
    cmds       => [
    qw(
       --dry-run
-      --update-foreign-keys-method drop_swap
+      --alter-foreign-keys-method drop_swap
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
 );
 
 test_alter_table(
-   name       => "Basic FK drop-swap --execute",
+   name       => "Basic FK drop_swap --execute",
    table      => "pt_osc.country",
    pk_col     => "country_id",
    # The previous test should not have modified the table.
@@ -342,48 +382,35 @@ test_alter_table(
    # wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
-   check_fks  => 1,
+   check_fks  => "drop_swap",
    cmds       => [
    qw(
       --execute
-      --update-foreign-keys-method drop_swap
+      --alter-foreign-keys-method drop_swap
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
 );
 
-# Let the tool auto-determine the fk update method.
+# Let the tool auto-determine the fk update method.  This should choose
+# the rebuild_constraints method because the tables are quite small.
+# This is tested by indicating the rebuild_constraints method, which
+# causes the test sub to verify that the fks have leading _; they won't
+# if drop_swap was used.  To verify this, change auto to drop_swap
+# and this test will fail.
 test_alter_table(
-   name       => "Basic FK auto --execute",
-   table      => "pt_osc.country",
-   pk_col     => "country_id",
-   file       => "basic_with_fks.sql",
-   wait       => ["pt_osc.address", "address_id=5"],
-   test_type  => "drop_col",
-   drop_col   => "last_update",
-   check_fks  => 1,
-   cmds       => [
+   name        => "Basic FK auto --execute",
+   table       => "pt_osc.country",
+   pk_col      => "country_id",
+   file        => "basic_with_fks.sql",
+   wait        => ["pt_osc.address", "address_id=5"],
+   test_type   => "drop_col",
+   drop_col    => "last_update",
+   check_fks   => "rebuild_constraints",
+   cmds        => [
    qw(
       --execute
-   ),
-      '--alter', 'DROP COLUMN last_update',
-   ],
-);
-
-# Specify the child tables manually.
-test_alter_table(
-   name       => "Basic FK with given child tables",
-   table      => "pt_osc.country",
-   pk_col     => "country_id",
-   file       => "basic_with_fks.sql",
-   wait       => ["pt_osc.address", "address_id=5"],
-   test_type  => "drop_col",
-   drop_col   => "last_update",
-   check_fks  => 1,
-   cmds       => [
-   qw(
-      --execute
-      --child-tables city
+      --alter-foreign-keys-method auto
    ),
       '--alter', 'DROP COLUMN last_update',
    ],
@@ -404,24 +431,31 @@ sub test_table {
 
    my $org_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
 
-   output(
+   $output = output(
       sub { $exit = pt_online_schema_change::main(@args,
-         "$dsn,D=osc,t=t", qw(--alter ENGINE=InnoDB)) },
+         "$dsn,D=osc,t=t", qw(--execute --alter ENGINE=InnoDB)) },
+      stderr => 1,
    );
 
    my $new_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
+
+   my $fail = 0;
 
    is_deeply(
       $new_rows,
       $org_rows,
       "$name rows"
-   );
+   ) or $fail = 1;
 
    is(
       $exit,
       0,
       "$name exit status 0"
-   );
+   ) or $fail = 1;
+   
+   if ( $fail ) {
+      diag("Output from failed test:\n$output");
+   }
 }
 
 test_table(
