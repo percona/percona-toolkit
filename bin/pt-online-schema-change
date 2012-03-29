@@ -5238,6 +5238,7 @@ sub main {
       if ( $alter_fk_method ) {
          warn "No foreign keys reference the table; ignoring "
             . "--alter-foreign-keys-method.\n";
+         $alter_fk_method = '';
       }
       # No child tables and --alter-fk-method wasn't specified,
       # so nothing to do.
