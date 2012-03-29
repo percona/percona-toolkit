@@ -4936,10 +4936,10 @@ sub main {
       $tbl = $dsn->{t};  
    }
 
-   my $update_fk_method = $o->get('update-foreign-keys-method') || '';
-   if ( $update_fk_method eq 'drop_swap' ) {
+   my $alter_fk_method = $o->get('alter-foreign-keys-method') || '';
+   if ( $alter_fk_method =~ m/^(?:drop_swap|none)/ ) {
       $o->set('swap-tables',    0);
-      $o->set('drop-old-table', 0),
+      $o->set('drop-old-table', 0);
    }
 
    # Explicit --chunk-size disable auto chunk sizing.
@@ -4964,11 +4964,13 @@ sub main {
 
       # See the "pod-based-option-value-validation" spec for how this may
       # be automagically validated.
-      if ( $update_fk_method
-           && $update_fk_method ne 'rebuild_constraints'
-           && $update_fk_method ne 'drop_swap' )
+      if ( $alter_fk_method
+           && $alter_fk_method ne 'auto'
+           && $alter_fk_method ne 'rebuild_constraints'
+           && $alter_fk_method ne 'drop_swap'
+           && $alter_fk_method ne 'none' )
       {
-         $o->save_error("Invalid --update-foreign-keys-method value: $update_fk_method");
+         $o->save_error("Invalid --alter-foreign-keys-method value: $alter_fk_method");
       }
    }
 
@@ -5233,18 +5235,37 @@ sub main {
       Cxn    => $cxn,
       Quoter => $q,
    );
-   if ( $o->got('update-foreign-keys-method') && ! @$child_tables ) {
-      warn "No foreign keys reference the table; ignoring --update-foreign-keys-method\n";
+   if ( !$child_tables ) {
+      if ( $alter_fk_method ) {
+         warn "No foreign keys reference the table; ignoring "
+            . "--alter-foreign-keys-method.\n";
+      }
+      # No child tables and --alter-fk-method wasn't specified,
+      # so nothing to do.
    }
    else {
       print "Child tables:\n";
-      print "  $_->{name}\n" for @$child_tables;
+      foreach my $child_table ( @$child_tables ) {
+         printf "  %s (approx. %s rows)\n",
+            $child_table->{name},
+            $child_table->{row_est} || '?';
+      }
 
-      # Let the user know how we're going to update the child table fk refs.
-      print "Will "
-         . ($update_fk_method ? "use the $update_fk_method"
-                              : "automatically determine the")
-         . " method to update child table foreign keys.\n";
+      if ( $alter_fk_method ) {
+         # Let the user know how we're going to update the child table fk refs.
+         my $choice
+            = $alter_fk_method eq 'none' ? "not"
+            : $alter_fk_method eq 'auto' ? "automatically choose the method to"
+            :                              "use the $alter_fk_method method to";
+         print "Will $choice update child table foreign keys.\n";
+      }
+      else {
+         print "Exiting without altering $orig_tbl->{name} because there "
+             . "are child tables but --alter-foreign-keys-method was not "
+             . "specified.  Please read the tool's documentation carefully "
+             . "and specify --alter-foreign-keys-method.\n";
+         return 1; 
+      }
    }
 
    # ########################################################################
@@ -5266,7 +5287,7 @@ sub main {
       print "Exiting without altering $orig_tbl->{name} because neither "
         . "--dry-run nor --execute was specified.  Please read the tool's "
         . "documentation carefully before using this tool.\n";
-      return $exit_status;
+      return 1;
    }
 
    # ########################################################################
@@ -5788,6 +5809,37 @@ sub main {
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
+
+   # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables 
+   # else everything will break because if drop_swap is chosen, then we
+   # most NOT rename tables or drop the old table.
+   if ( $alter_fk_method eq 'auto' ) {
+      # If chunk time is set, then use the average rate of rows/s
+      # from copying the orig table to determine the max size of
+      # a child table that can be altered within one chunk time.
+      # The limit is a fudge factor.  Chunk time won't be set if
+      # the user specified --chunk-size=N on the cmd line, in which
+      # case the max child table size is their specified chunk size
+      # times the fudge factor.
+      my $max_rows
+         = $o->get('dry-run') ? $o->get('chunk-size') * $limit
+         : $chunk_time        ? $avg_rate * $chunk_time * $limit
+         :                      $o->get('chunk-size') * $limit;
+      PTDEBUG && _d('Max allowed child table size:', $max_rows);
+
+      $alter_fk_method = determine_alter_fk_method(
+         child_tables => $child_tables,
+         max_rows     => $max_rows,
+         Cxn          => $cxn,
+         OptionParser => $o,
+      );
+
+      if ( $alter_fk_method eq 'drop_swap' ) {
+         $o->set('swap-tables',    0);
+         $o->set('drop-old-table', 0);
+      }
+   }
+
    # #####################################################################
    # XXX
    # Step 5: Rename tables: orig -> old, new -> orig
@@ -5823,27 +5875,12 @@ sub main {
    # #####################################################################
    if ( $child_tables ) {
       eval {
-         if ( !$update_fk_method ) {
-            # If chunk time is set, then use the average rate of rows/s
-            # from copying the orig table to determine the max size of
-            # a child table that can be altered within one chunk time.
-            # The limit is a fudge factor.  Chunk time won't be set if
-            # the user specified --chunk-size=N on the cmd line, in which
-            # case the max child table size is their specified chunk size
-            # times the fudge factor.
-            my $max_rows = $o->get('dry-run') ? $o->get('chunk-size') * $limit
-                         : $chunk_time        ? $avg_rate * $chunk_time * $limit
-                                              : $o->get('chunk-size') * $limit;
-            PTDEBUG && _d('Max allowed child table size:', $max_rows);
-            $update_fk_method = determine_update_fk_method(
-               child_tables => $child_tables,
-               max_rows     => $max_rows,
-               Cxn          => $cxn,
-               OptionParser => $o,
-            );
+         if ( $alter_fk_method eq 'none' ) {
+            print "Not updating child table foreign keys because "
+               . "--alter-foreign-keys-method=none.  Child table foreign "
+               . "keys will be broken when the tool finishes.\n";
          }
-
-         if ( ($update_fk_method || '') eq 'rebuild_constraints' ) {
+         elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
             rebuild_constraints(
                orig_tbl     => $orig_tbl,
                old_tbl      => $old_tbl,
@@ -5854,13 +5891,17 @@ sub main {
                TableParser  => $tp,
             );
          }
-         elsif ( ($update_fk_method || '') eq 'drop_swap' ) {
+         elsif ( $alter_fk_method eq 'drop_swap' ) {
             drop_swap(
                orig_tbl     => $orig_tbl,
                new_tbl      => $new_tbl,
                Cxn          => $cxn,
                OptionParser => $o,
             );
+         }
+         else {
+            # This should "never" happen because we check this var earlier.
+            die "Invalid --alter-foreign-keys-method: $alter_fk_method\n";
          }
       };
       if ( $EVAL_ERROR ) {
@@ -6106,25 +6147,37 @@ sub find_child_tables {
            . "WHERE constraint_schema='$tbl->{db}' "
            . "AND referenced_table_name='$tbl->{tbl}'";
    PTDEBUG && _d($sql);
-   my $child_tables = $cxn->dbh()->selectall_arrayref($sql);
-   if ( !$child_tables || !@$child_tables ) {
+   my $rows = $cxn->dbh()->selectall_arrayref($sql);
+   if ( !$rows || !@$rows ) {
       PTDEBUG && _d('No child tables found');
       return;
    }
 
-   my @child_tables = map {
+   my @child_tables;
+   foreach my $row ( @$rows ) {
       my $tbl = {
-         db   => $_->[0],
-         tbl  => $_->[1],
-         name => $q->quote(@$_),
+         db   => $row->[0],
+         tbl  => $row->[1],
+         name => $q->quote(@$row),
       };
-      $tbl;
-   } @$child_tables;
-   PTDEBUG && _d("Child tables:", @child_tables);
+
+      # Get row estimates for each child table so we can give the user
+      # some input on choosing an --alter-foreign-keys-method if they
+      # don't use "auto".
+      my ($n_rows) = NibbleIterator::get_row_estimate(
+         Cxn => $cxn,
+         tbl => $tbl,
+      );
+      $tbl->{row_est} = $n_rows;
+
+      push @child_tables, $tbl;
+   }
+
+   PTDEBUG && _d('Child tables:', Dumper(\@child_tables));
    return \@child_tables;
 }
 
-sub determine_update_fk_method {
+sub determine_alter_fk_method {
    my ( %args ) = @_;
    my @required_args = qw(child_tables max_rows Cxn OptionParser);
    foreach my $arg ( @required_args ) {
@@ -6135,7 +6188,7 @@ sub determine_update_fk_method {
    if ( $o->get('dry-run') ) {
       print "Not determining the method to update child table foreign keys "
          . "because this is a dry run.\n";
-      return;
+      return '';  # $alter_fk_method can't be undef
    }
 
    # The rebuild_constraints method is the default becuase it's safer
@@ -6160,7 +6213,7 @@ sub determine_update_fk_method {
       }
    }
 
-   return $method;
+   return $method || '';  # $alter_fk_method can't be undef
 }
 
 sub rebuild_constraints {
@@ -6226,10 +6279,10 @@ sub rebuild_constraints {
          # constraint has the same name as the old one, so we must rename it.
          # Example: after renaming sakila.actor to sakila.actor_old (for
          # example), the foreign key on film_actor looks like this:
-         #   CONSTRAINT `fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES
+         # CONSTRAINT `fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES
          #   `actor_old` (`actor_id`) ON UPDATE CASCADE
          # We need it to look like this instead:
-         #   CONSTRAINT `_fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES
+         # CONSTRAINT `_fk_film_actor_actor` FOREIGN KEY (`actor_id`) REFERENCES
          #   `actor` (`actor_id`) ON UPDATE CASCADE
          # Reference the correct table name...
          $constraint =~ s/REFERENCES[^\(]+/REFERENCES $orig_tbl->{name} /;
@@ -6240,6 +6293,7 @@ sub rebuild_constraints {
                  . "ADD $constraint";
          push @rebuilt_constraints, $sql;
       }
+
       my $sql = "ALTER TABLE $child_tbl->{name} "
               . join(', ', @rebuilt_constraints);
       print $sql, "\n" if $o->get('print');
@@ -6693,7 +6747,7 @@ foreign keys refer to the table. The tool must update foreign keys to refer to
 the new table after the schema change is complete. The tool supports two methods
 for accomplishing this, and will automatically choose the appropriate method
 unless you specify one explicitly. You can read more about this in the
-documentation for L<"--update-foreign-keys-method">.
+documentation for L<"--alter-foreign-keys-method">.
 
 For safety, the tool does not modify the table unless you specify the
 L<"--execute"> option, which is not enabled by default.  The tool supports a
@@ -6750,6 +6804,66 @@ multiple modifications to the table by specifying them with commas. Please refer
 to the MySQL manual for the syntax of ALTER TABLE.
 
 You cannot use the C<RENAME> clause to C<ALTER TABLE>, or the tool will fail.
+
+=item --alter-foreign-keys-method
+
+type: string
+
+How to ensure that foreign keys point to the new table.  Foreign keys that
+reference the table to be altered must be treated specially to ensure that they
+continue to reference the correct table. When the tool renames the original
+table to let the new one take its place, by default the foreign keys "follow"
+the renamed table, and must be changed to reference the new table instead.
+
+The tool supports two techniques to achieve this. It automatically finds "child
+tables" that reference the table to be altered, and chooses the best technique
+automatically, but you may specify one explicitly.
+
+=over
+
+=item auto
+
+Automatically determine whether to use C<rebuild_constraints> or
+C<drop_swap> based on the size of all child tables compared to the
+rate of rows copied per second.
+
+=item rebuild_constraints
+
+This method uses C<ALTER TABLE> to drop and re-add foreign key constraints that
+reference the new table.  This is the preferred technique, unless one or more of
+the child tables is so large that the C<ALTER> would take too long.  The tool
+determines that by comparing the number of rows in the child table to the rate
+at which the tool is able to copy rows from the old table to the new table. If
+the tool estimates that the child table can be altered in less time than the
+L<"--chunk-time">, then it will use this technique.  For purposes of estimating
+the time required to alter the child table, the tool multiplies the row-copying
+rate by L<"--chunk-size-limit">, because MySQL's C<ALTER TABLE> is typically
+much faster than the external process of copying rows.
+
+Due to a limitation in MySQL, foreign keys will not have the same names after
+the ALTER that they did prior to it. The tool has to rename the foreign key when
+it redefines it, by adding a leading underscore.
+
+=item drop_swap
+
+Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table
+before renaming the new table into its place. This is different from the normal
+method of swapping the old and new table, which uses an atomic C<RENAME> that is
+undetectable to client applications.
+
+This method is faster and does not block, but it is riskier for two reasons.
+First, for a very short time between dropping the original table and renaming
+the temporary table, the table to be altered simply does not exist, and queries
+against it will result in an error.  Secondly, if there is an error and the new
+table cannot be renamed into the place of the old one, then it is too late to
+abort, because the old table is gone permanently.
+
+=item none
+
+This method is like C<drop_swap> without the "swap".  It leaves child table
+foreign keys broken.
+
+=back
 
 =item --ask-pass
 
@@ -6845,7 +6959,7 @@ of rows in the chunk.  You can disable oversized chunk checking by specifying a
 value of 0.
 
 The tool also uses this option to determine how to handle foreign keys that
-reference the table to be altered. See L<"--update-foreign-keys-method"> for
+reference the table to be altered. See L<"--alter-foreign-keys-method"> for
 details.
 
 =item --chunk-time
@@ -7100,55 +7214,6 @@ Swap the original table and the new, altered table.  This step completes the
 online schema change process by making the table with the new schema take the
 place of the original table.  The original table becomes the "old table," and
 the tool drops it unless you disable L<"--[no]drop-old-table">.
-
-=item --update-foreign-keys-method
-
-type: string
-
-How to ensure that foreign keys point to the new table.  Foreign keys that
-reference the table to be altered must be treated specially to ensure that they
-continue to reference the correct table. When the tool renames the original
-table to let the new one take its place, by default the foreign keys "follow"
-the renamed table, and must be changed to reference the new table instead.
-
-The tool supports two techniques to achieve this. It automatically finds "child
-tables" that reference the table to be altered, and chooses the best technique
-automatically, but you may specify one explicitly.
-
-=over
-
-=item rebuild_constraints
-
-This method uses C<ALTER TABLE> to drop and re-add foreign key constraints that
-reference the new table.  This is the preferred technique, unless one or more of
-the child tables is so large that the C<ALTER> would take too long.  The tool
-determines that by comparing the number of rows in the child table to the rate
-at which the tool is able to copy rows from the old table to the new table. If
-the tool estimates that the child table can be altered in less time than the
-L<"--chunk-time">, then it will use this technique.  For purposes of estimating
-the time required to alter the child table, the tool multiplies the row-copying
-rate by L<"--chunk-size-limit">, because MySQL's C<ALTER TABLE> is typically
-much faster than the external process of copying rows.
-
-Due to a limitation in MySQL, foreign keys will not have the same names after
-the ALTER that they did prior to it. The tool has to rename the foreign key when
-it redefines it, by adding a leading underscore.
-
-=item drop_swap
-
-Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table
-before renaming the new table into its place. This is different from the normal
-method of swapping the old and new table, which uses an atomic C<RENAME> that is
-undetectable to client applications.
-
-This method is faster and does not block, but it is riskier for two reasons.
-First, for a very short time between dropping the original table and renaming the
-temporary table, the table to be altered simply does not exist, and queries
-against it will result in an error.  Secondly, if there is an error and the new
-table cannot be renamed into the place of the old one, then it is too late to
-abort, because the old table is gone permanently.
-
-=back
 
 =item --user
 

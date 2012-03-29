@@ -48,14 +48,14 @@ my $rows;
 # Of course, the orig database and table must exist.
 throws_ok(
    sub { pt_online_schema_change::main(@args,
-         "$dsn,t=nonexistent_db.t", qw(--dry-run)) },
-   qr/`nonexistent_db`.`t` does not exist/,
+         "$dsn,D=nonexistent_db,t=t", qw(--dry-run)) },
+   qr/Unknown database/,
    "Original database must exist"
 );
 
 throws_ok(
    sub { pt_online_schema_change::main(@args,
-         "$dsn,t=mysql.nonexistent_tbl", qw(--dry-run)) },
+         "$dsn,D=mysql,t=nonexistent_tbl", qw(--dry-run)) },
    qr/`mysql`.`nonexistent_tbl` does not exist/,
    "Original table must exist"
 );
@@ -69,7 +69,7 @@ $slave_dbh->do("USE pt_osc");
 $master_dbh->do("CREATE TRIGGER pt_osc.pt_osc_test AFTER DELETE ON pt_osc.t FOR EACH ROW DELETE FROM pt_osc.t WHERE 0");
 throws_ok(
    sub { pt_online_schema_change::main(@args,
-         "$dsn,t=pt_osc.t", qw(--dry-run)) },
+         "$dsn,D=pt_osc,t=t", qw(--dry-run)) },
    qr/`pt_osc`.`t` has triggers/,
    "Original table cannot have triggers"
 );
@@ -80,7 +80,7 @@ $master_dbh->do("ALTER TABLE pt_osc.t DROP COLUMN id");
 $master_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
 throws_ok(
    sub { pt_online_schema_change::main(@args,
-         "$dsn,t=pt_osc.t", qw(--dry-run)) },
+         "$dsn,D=pt_osc,t=t", qw(--dry-run)) },
    qr/`pt_osc`.`t` does not have a PRIMARY KEY or a unique index/,
    "Original table must have a PK or unique index"
 );
@@ -101,7 +101,7 @@ for my $i ( 1..10 ) {
 
 throws_ok(
    sub { pt_online_schema_change::main(@args,
-         "$dsn,t=pt_osc.t", qw(--quiet --dry-run)) },
+         "$dsn,D=pt_osc,t=t", qw(--quiet --dry-run)) },
    qr/Failed to find a unique new table name/,
    "Doesn't try forever to find a new table name"
 );
