@@ -1444,15 +1444,15 @@ parse_ethtool () {
 
 
    awk '
-      /^Setting for / {
-         device               = $3;
+      /^Settings for / {
+         device               = substr($3, 0, index($3, ":") ? index($3, ":")-1 : length($3));
          device_names[device] = device;
       }
-      /Speed:/  { devices[device, ",speed"]  = $2 }
-      /Duplex:/ { devices[device, ",duplex"] = $2 }
+      /Speed:/  { devices[device ",speed"]  = $2 }
+      /Duplex:/ { devices[device ",duplex"] = $2 }
       END {
          for ( device in device_names ) {
-            printf("  %-10s %-10s %-10s",
+            printf("  %-10s %-10s %-10s\n",
                device,
                devices[device ",speed"],
                devices[device ",duplex"]);
