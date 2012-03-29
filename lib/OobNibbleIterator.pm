@@ -58,7 +58,7 @@ sub new {
 
    my $q     = $self->{Quoter};
    my $o     = $self->{OptionParser};
-   my $where = $o->get('where');
+   my $where = $o->has('where') ? $o->get('where') : undef;
 
    # If it's not a single nibble table, init our special statements.
    if ( !$self->one_nibble() ) {

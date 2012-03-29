@@ -639,11 +639,6 @@ sub _get_bounds {
       $self->{no_more_boundaries} = 1;
    }
 
-   # Get the real last upper boundary, i.e. the last row of the table
-   # at this moment.  If rows are inserted after, we won't see them.
-   $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
-   PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
-
    return;
 }
 
@@ -699,25 +694,70 @@ sub _next_boundaries {
       }
    }
 
+   # Two boundaries are being fetched: the upper boundary for this nibble,
+   # i.e. the nibble the caller is trying to exec, and the next_lower boundary
+   # for the next nibble that the caller will try to exec.  For example,
+   # if chunking the alphabet, a-z, with chunk size 3, the first call will
+   # fetch:
+   #
+   #    a <- lower
+   #    b
+   #    c <- upper      ($boundary->[0])
+   #    d <- next_lower ($boundary->[1])
+   #
+   # Then the second call will fetch:
+   #
+   #    d <- lower
+   #    e
+   #    f <- upper
+   #    g <- next_lower
+   #
+   # Why fetch both upper and next_lower?  We wanted to keep nibbling simple,
+   # i.e. one nibble statment, not one for the first nibble, one for "middle"
+   # nibbles, and another for the end (this is how older code worked).  So the
+   # nibble statement is inclusive, but this requires both boundaries for
+   # reasons explained in a comment above my $ub_sql in new().
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
    if ( $boundary && @$boundary ) {
-      $self->{upper} = $boundary->[0]; # this nibble
+      # upper boundary for the current nibble.
+      $self->{upper} = $boundary->[0];
+
       if ( $boundary->[1] ) {
-         $self->{next_lower} = $boundary->[1]; # next nibble
+         # next_lower boundary for the next nibble (will become the lower
+         # boundary when that nibble becomes the current nibble).
+         $self->{next_lower} = $boundary->[1];
       }
       else {
+         # There's no next_lower boundary, so the upper boundary of
+         # the current nibble is the end of the table.  For example,
+         # if chunking a-z, then the upper boundary of the current
+         # nibble ($boundary->[0]) is z.
+         PTDEBUG && _d('End of table boundary:', Dumper($boundary->[0]));
          $self->{no_more_boundaries} = 1;  # for next call
-         PTDEBUG && _d('Last upper boundary:', Dumper($boundary->[0]));
+
+         # OobNibbleIterator needs to know the last upper boundary.
+         $self->{last_upper} = $boundary->[0];
       }
    }
    else {
-      $self->{no_more_boundaries} = 1;  # for next call
-      $self->{upper} = $self->{last_upper};
+      # This code is reached in cases like chunking a-z and the next_lower
+      # boundary ($boundary->[1]) falls on z.  When called again, no upper
+      # or next_lower is found past z so if($boundary && @$boundary) is false.
+      # But there's a problem: between the previous call that made next_lower=z
+      # and this call, rows might have been inserted, so maybe z is no longer
+      # the end of the table.  To handle this, we fetch the end of the table
+      # once and make the final nibble z-<whatever>.
+      my $dbh = $self->{Cxn}->dbh();
+      $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
+      $self->{no_more_boundaries} = 1;  # for next call
+      
+      # OobNibbleIterator needs to know the last upper boundary.
+      $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
 
