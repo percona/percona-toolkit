@@ -4936,7 +4936,7 @@ sub main {
    }
 
    my $alter_fk_method = $o->get('alter-foreign-keys-method') || '';
-   if ( $alter_fk_method =~ m/^(?:drop_swap|none)/ ) {
+   if ( $alter_fk_method eq 'drop_swap' ) {
       $o->set('swap-tables',    0);
       $o->set('drop-old-table', 0);
    }
@@ -5928,6 +5928,17 @@ sub main {
       }
       else {
          print "Dropping old table...\n";
+
+         if ( $alter_fk_method eq 'none' ) {
+            # Child tables still reference the old table, but the user
+            # has chosen to break fks, so we need to disable fk checks
+            # in order to drop the old table.
+            my $sql = "SET foreign_key_checks=0";
+            PTDEBUG && _d($sql);
+            print $sql, "\n" if $o->get('print');
+            $cxn->dbh()->do($sql);
+         }
+
          my $sql = "DROP TABLE IF EXISTS $old_tbl->{name}";
          print $sql, "\n" if $o->get('print');
          PTDEBUG && _d($sql); 
