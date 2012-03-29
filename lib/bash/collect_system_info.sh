@@ -54,6 +54,7 @@ setup_commands () {
    CMD_PSRINFO="$( _which psrinfo 2>/dev/null )"
    CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
    CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
+   CMD_ETHTOOL="$( _which ethtool 2>/dev/null )"
 }
 
 collect_system_data () { local PTFUNCNAME=collect_system_data;
@@ -73,15 +74,15 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    fi
 
    local platform="$(uname -s)"
-   echo "platform    $platform" >> "$data_dir/summary"
+   echo "platform    $platform"   >> "$data_dir/summary"
    echo "hostname    $(uname -n)" >> "$data_dir/summary"
    uptime >> "$data_dir/uptime"
 
    processor_info "$data_dir"
    find_release_and_kernel "$platform" >> "$data_dir/summary"
-   cpu_and_os_arch "$platform" >> "$data_dir/summary"
+   cpu_and_os_arch "$platform"         >> "$data_dir/summary"
    find_virtualization "$platform" "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
-   dmidecode_system_info >> "$data_dir/summary"
+   dmidecode_system_info               >> "$data_dir/summary"
 
    if [ "${platform}" = "SunOS" -a "${CMD_ZONENAME}" ]; then
       echo "zonename    $($CMD_ZONENAME)" >> "$data_dir/summary"
@@ -106,7 +107,10 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
 
    [ "${platform}" = "Linux" ] && linux_exclusive_collection "$data_dir"
 
-   [ "$CMD_IP" -a "$OPT_SUMMARIZE_NETWORK" ] && $CMD_IP -s link > "$data_dir/ip"
+   if [ "$CMD_IP" -a "$OPT_SUMMARIZE_NETWORK" ]; then
+      $CMD_IP -s link > "$data_dir/ip"
+      network_device_info "$data_dir/ip" > "$data_dir/network_devices"
+   fi
 
    [ "$CMD_SWAPCTL" ] && $CMD_SWAPCTL -s > "$data_dir/swapctl"
 
@@ -126,6 +130,13 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
          ) &
       fi
    fi
+
+   # Clean the data directory, don't leave empty files
+   for file in $data_dir/*; do
+      # The vmstat file gets special treatmeant, see above.
+      [ "$file" = "vmstat" ] && continue
+      [ ! -s "$file" ] && rm "$file"
+   done
 }
 
 linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
@@ -134,7 +145,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
    echo "threading    $(getconf GNU_LIBPTHREAD_VERSION)" >> "$data_dir/summary"
 
    local getenforce=""
-   [ "$CMD_GETENFORCE" ] && $CMD_GETENFORCE 2>&1
+   [ "$CMD_GETENFORCE" ] && getenforce="$($CMD_GETENFORCE 2>&1)"
    echo "getenforce    ${getenforce:-"No SELinux detected"}" >> "$data_dir/summary"
 
    echo "swappiness    $(awk '/vm.swappiness/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
@@ -156,13 +167,38 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
       echo "${file}    $(cat /proc/sys/fs/${file} 2>&1)" >> "$data_dir/summary"
    done
 
-   [ "$CMD_LVS" -a -x "$CMD_LVS" ] && $CMD_LVS 1>"$data_dir/lvs" 2>&1
+   [ "$CMD_LVS" -a -x "$CMD_LVS" ] && $CMD_LVS 1>"$data_dir/lvs" 2>"$data_dir/lvs.stderr"
 
    [ "$CMD_VGS" -a -x "$CMD_VGS" ] && \
       $CMD_VGS -o vg_name,vg_size,vg_free 2>/dev/null > "$data_dir/vgs"
 
    [ "$CMD_NETSTAT" -a "$OPT_SUMMARIZE_NETWORK" ] && \
       $CMD_NETSTAT -antp > "$data_dir/netstat" 2>/dev/null
+}
+
+network_device_info () {
+   local ip_minus_s_file="$1"
+
+   if [ "$CMD_ETHTOOL" ]; then
+      local tempfile="$TMPDIR/ethtool_output_temp"
+      # For each entry in the ip -s link dump, check if itu starts with a number.
+      # If it does, print the second field. Then remove the colon and everything
+      # following that. Then skip what are usually interfaces.
+      for device in $( awk '/^[1-9]/{ print $2 }'  "$ip_minus_s_file" \
+                        | awk -F: '{print $1}'     \
+                        | grep -v '^lo\|^in\|^gr'  \
+                        | sort -u ); do
+         # Call ethtool on what might be a device
+         ethtool $device > "$tempfile" 2>/dev/null
+
+         # If there isn't any information, we are most likely not dealing with
+         # a device at all, but an interface, so skip it, otherwise print
+         # ethtool's output.
+         if ! grep -q 'No data available' "$tempfile"; then
+            cat "$tempfile"
+         fi
+      done
+   fi
 }
 
 # Try to find all sorts of different files that say what the release is.

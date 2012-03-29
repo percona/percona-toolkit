@@ -183,6 +183,20 @@ cmd_ok() {
    result $? "$test_name"
 }
 
+dies_ok() {
+   local test_command=$1
+   local test_name=${2:-""}
+
+   local result=1
+   (
+      eval $test_command
+   ) 2>/dev/null &
+   wait $!
+   [ $? ] && result=0
+
+   result $result "$test_name"
+}
+
 # ############################################################################
 # Script starts here
 # ############################################################################

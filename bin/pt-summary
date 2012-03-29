@@ -625,6 +625,8 @@ setup_data_dir () {
    else
       if [ ! -d "$OPT_SAVE_DATA" ]; then
          mkdir "$OPT_SAVE_DATA" || die "Cannot mkdir $OPT_SAVE_DATA"
+      elif [ "$( ls "$OPT_SAVE_DATA" )" != "0" ]; then
+         die "--save-samples directory isn't empty, halting."
       fi
       touch "$OPT_SAVE_DATA/test" || die "Cannot write to $OPT_SAVE_DATA"
       rm "$OPT_SAVE_DATA/test"    || die "Cannot rm $OPT_SAVE_DATA/test"
@@ -771,6 +773,7 @@ setup_commands () {
    CMD_PSRINFO="$( _which psrinfo 2>/dev/null )"
    CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
    CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
+   CMD_ETHTOOL="$( _which ethtool 2>/dev/null )"
 }
 
 collect_system_data () { local PTFUNCNAME=collect_system_data;
@@ -787,15 +790,15 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
    fi
 
    local platform="$(uname -s)"
-   echo "platform    $platform" >> "$data_dir/summary"
+   echo "platform    $platform"   >> "$data_dir/summary"
    echo "hostname    $(uname -n)" >> "$data_dir/summary"
    uptime >> "$data_dir/uptime"
 
    processor_info "$data_dir"
    find_release_and_kernel "$platform" >> "$data_dir/summary"
-   cpu_and_os_arch "$platform" >> "$data_dir/summary"
+   cpu_and_os_arch "$platform"         >> "$data_dir/summary"
    find_virtualization "$platform" "$data_dir/dmesg_file" "$data_dir/lspci_file" >> "$data_dir/summary"
-   dmidecode_system_info >> "$data_dir/summary"
+   dmidecode_system_info               >> "$data_dir/summary"
 
    if [ "${platform}" = "SunOS" -a "${CMD_ZONENAME}" ]; then
       echo "zonename    $($CMD_ZONENAME)" >> "$data_dir/summary"
@@ -819,7 +822,10 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
 
    [ "${platform}" = "Linux" ] && linux_exclusive_collection "$data_dir"
 
-   [ "$CMD_IP" -a "$OPT_SUMMARIZE_NETWORK" ] && $CMD_IP -s link > "$data_dir/ip"
+   if [ "$CMD_IP" -a "$OPT_SUMMARIZE_NETWORK" ]; then
+      $CMD_IP -s link > "$data_dir/ip"
+      network_device_info "$data_dir/ip" > "$data_dir/network_devices"
+   fi
 
    [ "$CMD_SWAPCTL" ] && $CMD_SWAPCTL -s > "$data_dir/swapctl"
 
@@ -834,6 +840,11 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
          ) &
       fi
    fi
+
+   for file in $data_dir/*; do
+      [ "$file" = "vmstat" ] && continue
+      [ ! -s "$file" ] && rm "$file"
+   done
 }
 
 linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
@@ -842,7 +853,7 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
    echo "threading    $(getconf GNU_LIBPTHREAD_VERSION)" >> "$data_dir/summary"
 
    local getenforce=""
-   [ "$CMD_GETENFORCE" ] && $CMD_GETENFORCE 2>&1
+   [ "$CMD_GETENFORCE" ] && getenforce="$($CMD_GETENFORCE 2>&1)"
    echo "getenforce    ${getenforce:-"No SELinux detected"}" >> "$data_dir/summary"
 
    echo "swappiness    $(awk '/vm.swappiness/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
@@ -864,13 +875,31 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
       echo "${file}    $(cat /proc/sys/fs/${file} 2>&1)" >> "$data_dir/summary"
    done
 
-   [ "$CMD_LVS" -a -x "$CMD_LVS" ] && $CMD_LVS 1>"$data_dir/lvs" 2>&1
+   [ "$CMD_LVS" -a -x "$CMD_LVS" ] && $CMD_LVS 1>"$data_dir/lvs" 2>"$data_dir/lvs.stderr"
 
    [ "$CMD_VGS" -a -x "$CMD_VGS" ] && \
       $CMD_VGS -o vg_name,vg_size,vg_free 2>/dev/null > "$data_dir/vgs"
 
    [ "$CMD_NETSTAT" -a "$OPT_SUMMARIZE_NETWORK" ] && \
       $CMD_NETSTAT -antp > "$data_dir/netstat" 2>/dev/null
+}
+
+network_device_info () {
+   local ip_minus_s_file="$1"
+
+   if [ "$CMD_ETHTOOL" ]; then
+      local tempfile="$TMPDIR/ethtool_output_temp"
+      for device in $( awk '/^[1-9]/{ print $2 }'  "$ip_minus_s_file" \
+                        | awk -F: '{print $1}'     \
+                        | grep -v '^lo\|^in\|^gr'  \
+                        | sort -u ); do
+         ethtool $device > "$tempfile" 2>/dev/null
+
+         if ! grep -q 'No data available' "$tempfile"; then
+            cat "$tempfile"
+         fi
+      done
+   fi
 }
 
 find_release_and_kernel () { local PTFUNCNAME=find_release_and_kernel;
@@ -1405,6 +1434,34 @@ parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
    }" "$file"
 }
 
+parse_ethtool () {
+   local file="$1"
+
+   [ -e "$file" ] || return
+
+   echo "  Device    Speed     Duplex"
+   echo "  ========= ========= ========="
+
+
+   awk '
+      /^Setting for / {
+         device               = $3;
+         device_names[device] = device;
+      }
+      /Speed:/  { devices[device, ",speed"]  = $2 }
+      /Duplex:/ { devices[device, ",duplex"] = $2 }
+      END {
+         for ( device in device_names ) {
+            printf("  %-10s %-10s %-10s",
+               device,
+               devices[device ",speed"],
+               devices[device ",duplex"]);
+         }
+      }
+   ' "$file"
+
+}
+
 parse_netstat () { local PTFUNCNAME=parse_netstat;
    local file="$1"
 
@@ -1694,6 +1751,7 @@ parse_lsi_megaraid_bbu_status () { local PTFUNCNAME=parse_lsi_megaraid_bbu_statu
 format_lvs () { local PTFUNCNAME=format_lvs;
    local lvs_file="$1"
    local vgs_file="$2"
+   local lvs_errors="$3"
 
    if [ -e "$lvs_file" -a -e "$vgs_file" ]; then
       local header="$(head -n1 "$lvs_file")$(head -n1 "$vgs_file" | sed -e 's/^ *VG//')"
@@ -1713,6 +1771,9 @@ format_lvs () { local PTFUNCNAME=format_lvs;
    else
       if [ -e "$lvs_file" ]; then
          cat "$lvs_file"
+      elif [ -e "$lvs_errors" ]; then
+         echo "lvs didn't output anything and had the following errors:"
+         cat "$lvs_errors"
       else
          echo "Cannot execute 'lvs'";
       fi
@@ -1922,6 +1983,18 @@ section_Memory () {
    fi
 }
 
+parse_uptime () {
+   local file="$1"
+
+   awk ' / up / {
+            printf substr($0, index($0, " up ")+4 );
+         }
+         !/ up / {
+            printf $0;
+         }
+' "$file"
+}
+
 report_system_summary () { local PTFUNCNAME=report_system_summary;
    local data_dir="$1"
 
@@ -1934,7 +2007,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    local platform="$(get_var "platform" "$data_dir/summary")"
    name_val "Date" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
    name_val "Hostname" "$(get_var hostname "$data_dir/summary")"
-   name_val "Uptime" "$(cat "$data_dir/uptime")"
+   name_val "Uptime" "$(parse_uptime "$data_dir/uptime")"
 
    if [ "$(get_var "vendor" "$data_dir/summary")" ]; then
       name_val "System" "$(get_var "system" "$data_dir/summary")";
@@ -1988,7 +2061,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       done
 
       section "LVM_Volumes"
-      format_lvs "$data_dir/lvs" "$data_dir/vgs" 
+      format_lvs "$data_dir/lvs" "$data_dir/vgs" "$data_dir/lvs.stderr"
    fi
 
    section "RAID_Controller"
@@ -2033,6 +2106,11 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       if [ -s "$data_dir/ip" ]; then
          section "Interface_Statistics"
          parse_ip_s_link "$data_dir/ip"
+      fi
+
+      if [ -s "$data_dir/network_devices" ]; then
+         section "Network_Devices"
+         parse_ethtool "$data_dir/network_devices"
       fi
 
       if [ "${platform}" = "Linux" -a -e "$data_dir/netstat" ]; then
@@ -2113,6 +2191,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    if [ $po_status -ne 0 ]; then
       exit $po_status
    fi
+
    main "$@"
 fi
 
