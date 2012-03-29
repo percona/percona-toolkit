@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 42
+plan 44
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -1153,6 +1153,24 @@ cat <<EOF > "$TMPDIR/expected"
 EOF
 parse_arcconf "$samples/arcconf-003_900285.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "Bug 900285"
+
+# parse_uptime
+
+cat <<EOF > "$TMPDIR/in"
+ 15:10:14 up 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08
+EOF
+is \
+   "$( parse_uptime "$TMPDIR/in" )" \
+   "1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
+   "parse_uptime works with Ubuntu's uptime"
+
+cat <<EOF > "$TMPDIR/in"
+ some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08
+EOF
+is \
+   "$( parse_uptime "$TMPDIR/in" )" \
+   " some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
+   "parse_uptime returns uptime as-if if it doesn't contain an 'up'"
 
 # report_system_summary
 parse_options "$BIN_DIR/pt-summary"

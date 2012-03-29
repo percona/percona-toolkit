@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 8
+plan 9
 
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
@@ -58,3 +58,8 @@ is \
    "$(get_var "Open_tables" "$samples/temp002/mysql-status")" \
    "40"                \
    "get_var works on a status dump"
+
+
+dies_ok \
+   "setup_data_dir $PERCONA_TOOLKIT_BRANCH" \
+   "setup_data_dir dies if passed a populated directory" 2>/dev/null

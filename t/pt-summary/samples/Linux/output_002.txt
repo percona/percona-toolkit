@@ -1,5 +1,5 @@
     Hostname | localhost.localdomain
-      Uptime |  03:34:31 up 38 min,  1 user,  load average: 1.60, 1.03, 1.37
+      Uptime | 38 min,  1 user,  load average: 1.60, 1.03, 1.37
     Platform | Linux
      Release | CentOS release 5.7 (Final)
       Kernel | 2.6.18-274.el5

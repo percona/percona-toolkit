@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 39
+plan 40
 
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
@@ -24,6 +24,13 @@ parse_options "$BIN_DIR/pt-summary" --sleep 1
 setup_commands
 
 collect_system_data "$p"
+
+p2="$TMPDIR/collect_mysql_info2"
+mkdir "$p2"
+touch "$p2/some_empty_file"
+collect_system_data "$p2"
+
+cmd_ok "test ! -e \"$p2/some_empty_file\"" "collect_system_data removes empty files before exiting"
 
 cat <<EOF > "$TMPDIR/expected"
 Fusion-MPT SAS
@@ -181,7 +188,7 @@ test_linux_exclusive_collection () {
 
    is \
       "$(ls "${dir}/2" | grep 'lvs\|vgs\|netstat' | sort | xargs echo )" \
-      "lvs netstat vgs" \
+      "lvs lvs.stderr netstat vgs" \
       "linux_exclusive_collection: And works as expected if they are there"
 
    local i=1
