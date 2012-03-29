@@ -6357,6 +6357,11 @@ sub create_triggers {
       print "Creating triggers...\n";
    }
 
+   # Create a unique trigger name prefix based on the orig table name
+   # so multiple instances of the tool can run on different tables.
+   my $prefix = 'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
+   $prefix   =~ s/\W/_/g;
+
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.
    # BARON: it's still not 100% safe because unique indexes can be nullable and
@@ -6370,7 +6375,7 @@ sub create_triggers {
                               "$new_tbl->{name}.$col = OLD.$col"
                            } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
    my $delete_trigger
-      = "CREATE TRIGGER pt_osc_del AFTER DELETE ON $orig_tbl->{name} "
+      = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
@@ -6383,11 +6388,11 @@ sub create_triggers {
    my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
    my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
    my $insert_trigger
-      = "CREATE TRIGGER pt_osc_ins AFTER INSERT ON $orig_tbl->{name} "
+      = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
    my $update_trigger
-      = "CREATE TRIGGER pt_osc_upd AFTER UPDATE ON $orig_tbl->{name} "
+      = "CREATE TRIGGER `${prefix}_upd` AFTER UPDATE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "REPLACE INTO $new_tbl->{name} ($qcols) VALUES ($new_vals)";
 
@@ -6411,7 +6416,7 @@ sub create_triggers {
       # fails to create, we know to only drop the 1st.
       push @drop_trigger_sqls,
          "DROP TRIGGER IF EXISTS "
-         . $q->quote($orig_tbl->{db}, "pt_osc_$name") . ";";
+         . $q->quote($orig_tbl->{db}, "${prefix}_$name") . ";";
    }
 
    if ( $o->get('execute') ) {
