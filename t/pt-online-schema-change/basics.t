@@ -32,7 +32,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 83;
+   plan tests => 90;
 }
 
 my $q      = new Quoter();
@@ -158,7 +158,7 @@ sub test_alter_table {
    ) or $fail = 1;
 
    # There should be no new or missing tables.
-   my $new_tbls = $master_dbh->selectall_arrayref("SHOW TABLES FROM `$db`");  
+   my $new_tbls = $master_dbh->selectall_arrayref("SHOW TABLES FROM `$db`");
    is_deeply(
       $new_tbls,
       $orig_tbls,
@@ -479,6 +479,39 @@ SKIP: {
       ],
    );
 }
+
+# #############################################################################
+# --alther-foreign-keys-method=none.  This intentionally breaks fks because
+# they're not updated so they'll point to the old table that is dropped.
+# #############################################################################
+$sb->load_file('master', "$sample/basic_with_fks.sql");
+PerconaTest::wait_for_table($slave_dbh, "pt_osc.address", "address_id=5");
+
+# Specify --alter-foreign-keys-method for a table with no child tables.
+test_alter_table(
+   name         => "Update fk method none",
+   table        => "pt_osc.country",
+   pk_col       => "country_id",
+   file         => "basic_with_fks.sql",
+   wait         => ["pt_osc.address", "address_id=5"],
+   test_type    => "new_engine",
+   new_engine   => "innodb",
+   cmds         => [
+   qw(
+      --execute
+      --alter-foreign-keys-method none
+   ),
+      '--alter', 'ENGINE=INNODB',
+   ],
+);
+
+my $fks = $tp->get_fks(
+   $tp->get_create_table($master_dbh, "pt_osc", "city"));
+is(
+   $fks->{fk_city_country}->{parent_tbl}->{tbl},
+   "_country_old",
+   "--alter-foreign-keys-method=none"
+);
 
 # #############################################################################
 # Alter tables with columns with resvered words and spaces.
