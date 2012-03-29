@@ -3,9 +3,9 @@ CREATE DATABASE pt_osc;
 USE pt_osc;
 CREATE TABLE t (
   id int auto_increment primary key,
-  c  char(16),
+  c  char(32),
   d  date,
-  unique index (c(16))
+  unique index (c(32))
 ) ENGINE=MyISAM;
 INSERT INTO pt_osc.t VALUES
    (null, 'a', now()),

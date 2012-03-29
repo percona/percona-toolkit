@@ -191,7 +191,6 @@ $ni = make_nibble_iter(
    argv     => [qw(--databases test --chunk-size 8)],
 );
 
-
 $dbh->do("delete from test.t where c='a' or c='z'");
 
 @rows = ();
@@ -203,8 +202,6 @@ is_deeply(
    [['b'],['c'],['d'],['e'],['f'],['g'],['h'],['i']],
    'a-z nibble 1 with oob'
 ) or print Dumper(\@rows);
-
-$dbh->do("insert into test.t values ('a'), ('z')");
 
 @rows = ();
 for (1..8) {
@@ -226,6 +223,13 @@ is_deeply(
    'a-z nibble 3 with oob'
 ) or print Dumper(\@rows);
 
+# NibbleIterator is done (b-y), now insert a row on the low end (a),
+# and one on the high end (z), past what NibbleIterator originally
+# saw as the first and last boundaries.  OobNibbleIterator should kick
+# in and see a and z.
+$dbh->do("insert into test.t values ('a'), ('z')");
+
+# OobNibbleIterator checks the low end first.
 @rows = ();
 push @rows, $ni->next();
 is_deeply(
@@ -234,6 +238,7 @@ is_deeply(
    'a-z nibble 4 lower oob'
 ) or print Dumper(\@rows);
 
+# Then it checks the high end.
 @rows = ();
 push @rows, $ni->next();
 is_deeply(
