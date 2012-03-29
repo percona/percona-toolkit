@@ -5257,13 +5257,12 @@ sub main {
             = $alter_fk_method eq 'none' ? "not"
             : $alter_fk_method eq 'auto' ? "automatically choose the method to"
             :                              "use the $alter_fk_method method to";
-         print "Will $choice update child table foreign keys.\n";
+         print "Will $choice update foreign keys.\n";
       }
       else {
-         print "Exiting without altering $orig_tbl->{name} because there "
-             . "are child tables but --alter-foreign-keys-method was not "
-             . "specified.  Please read the tool's documentation carefully "
-             . "and specify --alter-foreign-keys-method.\n";
+         print "You did not specify --alter-foreign-keys-method, but there "
+             . "are foreign keys that reference the table. "
+             . "Please read the tool's documentation carefully.";
          return 1; 
       }
    }
@@ -5876,9 +5875,9 @@ sub main {
    if ( $child_tables ) {
       eval {
          if ( $alter_fk_method eq 'none' ) {
-            print "Not updating child table foreign keys because "
-               . "--alter-foreign-keys-method=none.  Child table foreign "
-               . "keys will be broken when the tool finishes.\n";
+            print "Not updating foreign keys because "
+               . "--alter-foreign-keys-method=none.  Foreign keys "
+               . "that reference the table will no longer work.\n";
          }
          elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
             rebuild_constraints(
@@ -6186,7 +6185,7 @@ sub determine_alter_fk_method {
    my ($child_tables, $max_rows, $cxn, $o) = @args{@required_args};
 
    if ( $o->get('dry-run') ) {
-      print "Not determining the method to update child table foreign keys "
+      print "Not determining the method to update foreign keys "
          . "because this is a dry run.\n";
       return '';  # $alter_fk_method can't be undef
    }
@@ -6196,7 +6195,7 @@ sub determine_alter_fk_method {
    my $method = 'rebuild_constraints';
    
    print "Max rows for the rebuild_constraints method: $max_rows\n",
-         "Determining the method to update child table foreign keys...\n";
+         "Determining the method to update foreign keys...\n";
    foreach my $child_tbl ( @$child_tables ) {
       print "  $child_tbl->{name}: ";
       my ($n_rows) = NibbleIterator::get_row_estimate(
@@ -6258,7 +6257,7 @@ sub rebuild_constraints {
       );
       my @constraints = $table_def =~ m/$constraint/g;
       if ( !@constraints ) {
-         warn "Child table $child_tbl->{name} does not have any foreign key "
+         warn "$child_tbl->{name} has no foreign key "
             . "constraints referencing $old_tbl->{name}.\n";
          next CHILD_TABLE;
       }
@@ -6832,7 +6831,7 @@ details), and if not, then it uses C<drop_swap>.
 
 This method uses C<ALTER TABLE> to drop and re-add foreign key constraints that
 reference the new table.  This is the preferred technique, unless one or more of
-the child tables is so large that the C<ALTER> would take too long.  The tool
+the "child" tables is so large that the C<ALTER> would take too long.  The tool
 determines that by comparing the number of rows in the child table to the rate
 at which the tool is able to copy rows from the old table to the new table. If
 the tool estimates that the child table can be altered in less time than the
