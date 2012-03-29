@@ -32,7 +32,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 59;
+   plan tests => 63;
 }
 
 my $q      = new Quoter();
@@ -413,6 +413,24 @@ test_alter_table(
       --alter-foreign-keys-method auto
    ),
       '--alter', 'DROP COLUMN last_update',
+   ],
+);
+
+# Specify --alter-foreign-keys-method for a table with no child tables.
+test_alter_table(
+   name        => "Child table",
+   table       => "pt_osc.address",
+   pk_col      => "address_id",
+   file        => "basic_with_fks.sql",
+   wait        => ["pt_osc.address", "address_id=5"],
+   test_type   => "new_engine",
+   new_engine  => "innodb",
+   cmds        => [
+   qw(
+      --execute
+      --alter-foreign-keys-method auto
+   ),
+      '--alter', 'ENGINE=INNODB',
    ],
 );
 
