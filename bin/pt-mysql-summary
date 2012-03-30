@@ -708,7 +708,7 @@ setup_data_dir () {
    else
       if [ ! -d "$OPT_SAVE_DATA" ]; then
          mkdir "$OPT_SAVE_DATA" || die "Cannot mkdir $OPT_SAVE_DATA"
-      elif [ "$( ls "$OPT_SAVE_DATA" )" != "0" ]; then
+      elif [ "$( ls "$OPT_SAVE_DATA" | wc -l )" != "0" ]; then
          die "--save-samples directory isn't empty, halting."
       fi
       touch "$OPT_SAVE_DATA/test" || die "Cannot write to $OPT_SAVE_DATA"
