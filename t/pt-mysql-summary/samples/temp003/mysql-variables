@@ -275,7 +275,7 @@ warning_count	0
 internal::nice_of_1529    0
 internal::oom_of_1529    0
 pt-summary-internal-current_time    2012-03-27 16:15
-pt-summary-internal-Config_File    /tmp/12345/my.sandbox.cnf
+pt-summary-internal-Config_File_path    /tmp/12345/my.sandbox.cnf
 pt-summary-internal-mysql_executable    /home/vagrant/mysql-5.1.49-barebones/bin/mysql
 pt-summary-internal-now    2012-03-27 16:33:46
 pt-summary-internal-user   msandbox@%

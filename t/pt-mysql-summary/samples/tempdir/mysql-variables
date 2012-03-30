@@ -277,7 +277,7 @@ warning_count	0
 pt-summary-internal-now    2012-02-22 06:24:23
 pt-summary-internal-current_time    2012-02-22 06:21
 pt-summary-internal-user   
-pt-summary-internal-Config_File   /etc/mysql/my.cnf
+pt-summary-internal-Config_File_path   /etc/mysql/my.cnf
 pt-summary-internal-FNV_64   Unknown
 pt-summary-internal-trigger_count   0
 pt-summary-internal-symbols   No
