@@ -148,16 +148,16 @@ collect() {
       $CMD_SYSCTL -a >> "$d/$p-sysctl" &
    fi
    if [ "$CMD_VMSTAT" ]; then
-      $CMD_VMSTAT 1 $OPT_INTERVAL   >> "$d/$p-vmstat"         &
-      $CMD_VMSTAT   $OPT_INTERVAL 2 >> "$d/$p-vmstat-overall" &
+      $CMD_VMSTAT 1 $OPT_RUN_TIME >> "$d/$p-vmstat"         &
+      $CMD_VMSTAT $OPT_RUN_TIME 2 >> "$d/$p-vmstat-overall" &
    fi
    if [ "$CMD_IOSTAT" ]; then
-      $CMD_IOSTAT -dx  1 $OPT_INTERVAL   >> "$d/$p-iostat"         &
-      $CMD_IOSTAT -dx    $OPT_INTERVAL 2 >> "$d/$p-iostat-overall" &
+      $CMD_IOSTAT -dx 1 $OPT_RUN_TIME >> "$d/$p-iostat"         &
+      $CMD_IOSTAT -dx $OPT_RUN_TIME 2 >> "$d/$p-iostat-overall" &
    fi
    if [ "$CMD_MPSTAT" ]; then
-      $CMD_MPSTAT -P ALL 1 $OPT_INTERVAL >> "$d/$p-mpstat"         &
-      $CMD_MPSTAT -P ALL $OPT_INTERVAL 1 >> "$d/$p-mpstat-overall" &
+      $CMD_MPSTAT -P ALL 1 $OPT_RUN_TIME >> "$d/$p-mpstat"         &
+      $CMD_MPSTAT -P ALL $OPT_RUN_TIME 1 >> "$d/$p-mpstat-overall" &
    fi
 
    # Collect multiple snapshots of the status variables.  We use

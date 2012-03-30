@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 25;
+   plan tests => 26;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -262,6 +262,17 @@ is(
    2,
    "Not stalking, collect ran for --run-time"
 );
+
+my $vmstat = `which vmstat 2>/dev/null`;
+SKIP: {
+   skip "vmstat is not installed", 1 unless $vmstat;
+   chomp(my $n=`awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$dest/nostalk-vmstat"`);
+   is(
+      $n,
+      "2",
+      "vmstat ran for --run-time seconds (bug 955860)"
+   );
+};
 
 is(
    `cat $dest/nostalk-hostname`,
