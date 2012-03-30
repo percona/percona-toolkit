@@ -1845,7 +1845,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-   
+
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -1911,9 +1911,9 @@ report_mysql_summary () {
    section Instances
    parse_mysqld_instances "$dir/mysqld-instances" "$dir/mysql-variables"
 
-   section MySQL_Executable
-   name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/mysql-variables" )"
-   name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/mysql-variables" )"
+   # TODO section MySQL_Executable
+   # TODO name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/mysql-variables" )"
+   # TODO name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/mysql-variables" )"
 
    local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
    local port="$(get_var port "$dir/mysql-variables")"
@@ -1969,6 +1969,7 @@ report_mysql_summary () {
    section_percona_server_features "$dir/mysql-variables"
 
    section Plugins
+   # TODO: what would be good is to show nonstandard plugins here.
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
    if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
@@ -2053,6 +2054,12 @@ report_mysql_summary () {
          name_val "Partitioning" "Yes"
       else
          name_val "Partitioning" "No"
+      fi
+      if grep -e 'ENGINE=InnoDB.*ROW_FORMAT' \
+         -e 'ENGINE=InnoDB.*KEY_BLOCK_SIZE' "$dir/mysqldump" > /dev/null; then
+         name_val "InnoDB Compression" "Yes"
+      else
+         name_val "InnoDB Compression" "No"
       fi
    fi
    local ssl="$(get_var Ssl_accepts "$dir/mysql-status")"
@@ -2265,7 +2272,7 @@ fi
 
 =head1 NAME
 
-pt-mysql-summary - Summarize MySQL information in a nice way.
+pt-mysql-summary - Summarize MySQL information nicely.
 
 =head1 SYNOPSIS
 
@@ -2286,8 +2293,7 @@ tools) and those created by bugs.
 
 pt-mysql-summary is a read-only tool.  It should be very low-risk.
 
-At the time of this release, we know of no bugs that could cause serious harm
-to users.
+At the time of this release, we know of no bugs that could harm users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -2303,29 +2309,386 @@ it for status and configuration information.  It saves these bits of data
 into files in a temporary directory, and then formats them neatly with awk
 and other scripting languages.
 
-To use, simply execute it.  Optionally add the same command-line options
-you would use to connect to MySQL, like  C<pt-mysql-summary --user=foo>.
+To use, simply execute it.  Optionally add a double dash and then the same
+command-line options you would use to connect to MySQL, such as the following:
+
+  pt-mysql-summary -- --user=root
 
 The tool interacts minimally with the server upon which it runs.  It assumes
 that you'll run it on the same server you're inspecting, and therefore it
-assumes that it will be able to find the my.cnf configuration file, for
-example.  However, it should degrade gracefully if this is not the case.
-Note, however, that its output does not indicate which information comes from
-the MySQL database and which comes from the host operating system, so it is
-possible for confusing output to be generated if you run the tool on one
-server and direct it to connect to a MySQL database server running on another
-server.
+assumes that it will be able to find the my.cnf configuration file, for example.
+However, it should degrade gracefully if this is not the case.  Note, however,
+that its output does not indicate which information comes from the MySQL
+database and which comes from the host operating system, so it is possible for
+confusing output to be generated if you run the tool on one server and connect
+to a MySQL database server running on another server.
 
-=head1 Fuzzy-Rounding
+=head1 OUTPUT
 
 Many of the outputs from this tool are deliberately rounded to show their
 magnitude but not the exact detail.  This is called fuzzy-rounding. The idea
-is that it doesn't matter whether a server is running 918 queries per second
+is that it does not matter whether a server is running 918 queries per second
 or 921 queries per second; such a small variation is insignificant, and only
 makes the output hard to compare to other servers.  Fuzzy-rounding rounds in
 larger increments as the input grows.  It begins by rounding to the nearest 5,
 then the nearest 10, nearest 25, and then repeats by a factor of 10 larger
 (50, 100, 250), and so on, as the input grows.
+
+The following is a sample of the report that the tool produces:
+
+  # Percona Toolkit MySQL Summary Report #######################
+                System time | 2012-03-30 18:46:05 UTC
+                              (local TZ: EDT -0400)
+  # Instances ##################################################
+    Port  Data Directory             Nice OOM Socket
+    ===== ========================== ==== === ======
+    12345 /tmp/12345/data            0    0   /tmp/12345.sock
+    12346 /tmp/12346/data            0    0   /tmp/12346.sock
+    12347 /tmp/12347/data            0    0   /tmp/12347.sock
+
+The first two sections show which server the report was generated on and which
+MySQL instances are running on the server. This is detected from the output of
+C<ps> and does not always detect all instances and parameters, but often works
+well.  From this point forward, the report will be focused on a single MySQL
+instance, although several instances may appear in the above paragraph.
+
+  # Report On Port 12345 #######################################
+                       User | msandbox@%
+                       Time | 2012-03-30 14:46:05 (EDT)
+                   Hostname | localhost.localdomain
+                    Version | 5.5.20-log MySQL Community Server (GPL)
+                   Built On | linux2.6 i686
+                    Started | 2012-03-28 23:33 (up 1+15:12:09)
+                  Databases | 4
+                    Datadir | /tmp/12345/data/
+                  Processes | 2 connected, 2 running
+                Replication | Is not a slave, has 1 slaves connected
+                    Pidfile | /tmp/12345/data/12345.pid (exists)
+
+This section is a quick summary of the MySQL instance: version, uptime, and
+other very basic parameters. The Time output is generated from the MySQL server,
+unlike the system date and time printed earlier, so you can see whether the
+database and operating system times match.
+
+  # Processlist ################################################
+  
+    Command                        COUNT(*) Working SUM(Time) MAX(Time)
+    ------------------------------ -------- ------- --------- ---------
+    Binlog Dump                           1       1    150000    150000
+    Query                                 1       1         0         0
+  
+    User                           COUNT(*) Working SUM(Time) MAX(Time)
+    ------------------------------ -------- ------- --------- ---------
+    msandbox                              2       2    150000    150000
+  
+    Host                           COUNT(*) Working SUM(Time) MAX(Time)
+    ------------------------------ -------- ------- --------- ---------
+    localhost                             2       2    150000    150000
+  
+    db                             COUNT(*) Working SUM(Time) MAX(Time)
+    ------------------------------ -------- ------- --------- ---------
+    NULL                                  2       2    150000    150000
+  
+    State                          COUNT(*) Working SUM(Time) MAX(Time)
+    ------------------------------ -------- ------- --------- ---------
+    Master has sent all binlog to         1       1    150000    150000
+    NULL                                  1       1         0         0
+
+This section is a summary of the output from SHOW PROCESSLIST. Each sub-section
+is aggregated by a different item, which is shown as the first column heading.
+When summarized by Command, every row in SHOW PROCESSLIST is included, but
+otherwise, rows whose Command is Sleep are excluded from the SUM and MAX
+columns, so they do not skew the numbers too much. In the example shown, the
+server is idle except for this tool itself, and one connected replica, which
+is executing Binlog Dump.
+
+The columns are the number of rows included, the number that are not in Sleep
+status, the sum of the Time column, and the maximum Time column. The numbers are
+fuzzy-rounded.
+
+  # Status Counters (Wait 10 Seconds) ##########################
+  Variable                            Per day  Per second     10 secs
+  Binlog_cache_disk_use                     4                        
+  Binlog_cache_use                         80                        
+  Bytes_received                     15000000         175         200
+  Bytes_sent                         15000000         175        2000
+  Com_admin_commands                        1                        
+  ...................(many lines omitted)............................
+  Threads_created                          40                       1
+  Uptime                                90000           1           1
+
+This section shows selected counters from two snapshots of SHOW GLOBAL STATUS,
+gathered approximately 10 seconds apart and fuzzy-rounded. It includes only
+items that are incrementing counters; it does not include absolute numbers such
+as the Threads_running status variable, which represents a current value, rather
+than an accumulated number over time.
+
+The first column is the variable name, and the second column is the counter from
+the first snapshot divided by 86400 (the number of seconds in a day), so you can
+see the magnitude of the counter's change per day. 86400 fuzzy-rounds to 90000,
+so the Uptime counter should always be about 90000.
+
+The third column is the value from the first snapshot, divided by Uptime and
+then fuzzy-rounded, so it represents approximately how quickly the counter is
+growing per-second over the uptime of the server.
+
+The third column is the incremental difference from the first and second
+snapshot, divided by the difference in uptime and then fuzzy-rounded. Therefore,
+it shows how quickly the counter is growing per second at the time the report
+was generated.
+
+  # Table cache ################################################
+                       Size | 400
+                      Usage | 15%
+
+This section shows the size of the table cache, followed by the percentage of
+the table cache in use. The usage is fuzzy-rounded.
+
+  # Key Percona Server features ################################
+        Table & Index Stats | Not Supported
+       Multiple I/O Threads | Enabled
+       Corruption Resilient | Not Supported
+        Durable Replication | Not Supported
+       Import InnoDB Tables | Not Supported
+       Fast Server Restarts | Not Supported
+           Enhanced Logging | Not Supported
+       Replica Perf Logging | Not Supported
+        Response Time Hist. | Not Supported
+            Smooth Flushing | Not Supported
+        HandlerSocket NoSQL | Not Supported
+             Fast Hash UDFs | Unknown
+
+This section shows features that are available in Percona Server and whether
+they are enabled or not. In the example shown, the server is standard MySQL, not
+Percona Server, so the features are generally not supported.
+
+  # Plugins ####################################################
+         InnoDB compression | ACTIVE
+
+This feature shows specific plugins and whether they are enabled.
+
+  # Query cache ################################################
+           query_cache_type | ON
+                       Size | 0.0
+                      Usage | 0%
+           HitToInsertRatio | 0%
+
+This section shows whether the query cache is enabled and its size, followed by
+the percentage of the cache in use and the hit-to-insert ratio. The latter two
+are fuzzy-rounded.
+
+  # Schema #####################################################
+  Would you like to mysqldump -d the schema and analyze it? y/n y
+  There are 4 databases.  Would you like to dump all, or just one?
+  Type the name of the database, or press Enter to dump all of them. 
+  
+    Database           Tables Views SPs Trigs Funcs   FKs Partn
+    mysql                  24                                  
+    performance_schema     17                                  
+    sakila                 16     7   3     6     3    22      
+  
+    Database           MyISAM CSV PERFORMANCE_SCHEMA InnoDB
+    mysql                  22   2                          
+    performance_schema                            17       
+    sakila                  8                            15
+  
+    Database           BTREE FULLTEXT
+    mysql                 31         
+    performance_schema               
+    sakila                63        1
+  
+                         c   t   s   e   l   d   i   t   m   v   s
+                         h   i   e   n   o   a   n   i   e   a   m
+                         a   m   t   u   n   t   t   n   d   r   a
+                         r   e       m   g   e       y   i   c   l
+                             s           b   t       i   u   h   l
+                             t           l   i       n   m   a   i
+                             a           o   m       t   t   r   n
+                             m           b   e           e       t
+                             p                           x        
+                                                         t        
+    Database           === === === === === === === === === === ===
+    mysql               61  10   6  78   5   4  26   3   4   5   3
+    performance_schema               5          16          33    
+    sakila               1  15   1   3       4   3  19      42  26
+
+If you select to dump the schema and analyze it, the tool will print the above
+section. This summarizes the number and type of objects in the database. It is
+generated by running C<mysqldump --no-data>, not by querying the
+INFORMATION_SCHEMA, which can freeze a busy server. You can use the
+L<"--databases"> option to specify which databases to examine.  If you do not,
+and you run the tool interactively, it will prompt you as shown.
+
+You can choose not to dump the schema, to dump all of the databases, or to dump
+only a single named one, by specifying the appropriate options. In the example
+above, we are dumping all databases.
+
+The first sub-report in the section is the count of objects by type in each
+database: tables, views, and so on. The second one shows how many tables use
+various storage engines in each database. The third sub-report shows the number
+of each type of indexes in each database.
+
+The last section shows the number of columns of various data types in each
+database. For compact display, the column headers are formatted vertically, so
+you need to read downwards from the top. In this example, the first column is
+C<char> and the second column is C<timestamp>. This example is truncated so it
+does not wrap on a terminal.
+
+All of the numbers in this portion of the output are exact, not fuzzy-rounded.
+
+  # Noteworthy Technologies ####################################
+         Full Text Indexing | Yes
+           Geospatial Types | No
+               Foreign Keys | Yes
+               Partitioning | No
+         InnoDB Compression | Yes
+                        SSL | No
+       Explicit LOCK TABLES | No
+             Delayed Insert | No
+            XA Transactions | No
+                NDB Cluster | No
+        Prepared Statements | No
+   Prepared statement count | 0
+
+This section shows some specific technologies used on this server. Some of them
+are detected from the schema dump performed for the previous sections; others
+can be detected by looking at SHOW GLOBAL STATUS.
+
+  # InnoDB #####################################################
+                    Version | 1.1.8
+           Buffer Pool Size | 16.0M
+           Buffer Pool Fill | 100%
+          Buffer Pool Dirty | 0%
+             File Per Table | OFF
+                  Page Size | 16k
+              Log File Size | 2 * 5.0M = 10.0M
+            Log Buffer Size | 8M
+               Flush Method | 
+        Flush Log At Commit | 1
+                 XA Support | ON
+                  Checksums | ON
+                Doublewrite | ON
+            R/W I/O Threads | 4 4
+               I/O Capacity | 200
+         Thread Concurrency | 0
+        Concurrency Tickets | 500
+         Commit Concurrency | 0
+        Txn Isolation Level | REPEATABLE-READ
+          Adaptive Flushing | ON
+        Adaptive Checkpoint | 
+             Checkpoint Age | 0
+               InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
+         Oldest Transaction | 0 Seconds
+           History List Len | 209
+                 Read Views | 1
+           Undo Log Entries | 1 transactions, 1 total undo, 1 max undo
+          Pending I/O Reads | 0 buf pool reads, 0 normal AIO,
+                              0 ibuf AIO, 0 preads
+         Pending I/O Writes | 0 buf pool (0 LRU, 0 flush list, 0 page);
+                              0 AIO, 0 sync, 0 log IO (0 log, 0 chkp);
+                              0 pwrites
+        Pending I/O Flushes | 0 buf pool, 0 log
+         Transaction States | 1xnot started
+
+This section shows important configuration variables for the InnoDB storage
+engine. The buffer pool fill percent and dirty percent are fuzzy-rounded. The
+last few lines are derived from the output of SHOW INNODB STATUS. It is likely
+that this output will change in the future to become more useful.
+
+  # MyISAM #####################################################
+                  Key Cache | 16.0M
+                   Pct Used | 10%
+                  Unflushed | 0%
+
+This section shows the size of the MyISAM key cache, followed by the percentage
+of the cache in use and percentage unflushed (fuzzy-rounded).
+
+  # Security ###################################################
+                      Users | 2 users, 0 anon, 0 w/o pw, 0 old pw
+              Old Passwords | OFF
+
+This section is generated from queries to tables in the mysql system database.
+It shows how many users exist, and various potential security risks such as
+old-style passwords and users without passwords.
+
+  # Binary Logging #############################################
+                    Binlogs | 1
+                 Zero-Sized | 0
+                 Total Size | 21.8M
+              binlog_format | STATEMENT
+           expire_logs_days | 0
+                sync_binlog | 0
+                  server_id | 12345
+               binlog_do_db | 
+           binlog_ignore_db | 
+
+This section shows configuration and status of the binary logs. If there are
+zero-sized binary logs, then it is possible that the binlog index is out of sync
+with the binary logs that actually exist on disk.
+
+  # Noteworthy Variables #######################################
+       Auto-Inc Incr/Offset | 1/1
+     default_storage_engine | InnoDB
+                 flush_time | 0
+               init_connect | 
+                  init_file | 
+                   sql_mode | 
+           join_buffer_size | 128k
+           sort_buffer_size | 2M
+           read_buffer_size | 128k
+       read_rnd_buffer_size | 256k
+         bulk_insert_buffer | 0.00
+        max_heap_table_size | 16M
+             tmp_table_size | 16M
+         max_allowed_packet | 1M
+               thread_stack | 192k
+                        log | OFF
+                  log_error | /tmp/12345/data/mysqld.log
+               log_warnings | 1
+           log_slow_queries | ON
+  log_queries_not_using_indexes | OFF
+          log_slave_updates | ON
+
+This section shows several noteworthy server configuration variables that might
+be important to know about when working with this server.
+
+  # Configuration File #########################################
+                Config File | /tmp/12345/my.sandbox.cnf
+  [client]
+  user                                = msandbox
+  password                            = msandbox
+  port                                = 12345
+  socket                              = /tmp/12345/mysql_sandbox12345.sock
+  [mysqld]
+  port                                = 12345
+  socket                              = /tmp/12345/mysql_sandbox12345.sock
+  pid-file                            = /tmp/12345/data/mysql_sandbox12345.pid
+  basedir                             = /home/baron/5.5.20
+  datadir                             = /tmp/12345/data
+  key_buffer_size                     = 16M
+  innodb_buffer_pool_size             = 16M
+  innodb_data_home_dir                = /tmp/12345/data
+  innodb_log_group_home_dir           = /tmp/12345/data
+  innodb_data_file_path               = ibdata1:10M:autoextend
+  innodb_log_file_size                = 5M
+  log-bin                             = mysql-bin
+  relay_log                           = mysql-relay-bin
+  log_slave_updates
+  server-id                           = 12345
+  report-host                         = 127.0.0.1
+  report-port                         = 12345
+  log-error                           = mysqld.log
+  innodb_lock_wait_timeout            = 3
+  # The End ####################################################
+
+This section shows a pretty-printed version of the my.cnf file, with comments
+removed and with whitespace added to align things for easy reading. The tool
+tries to detect the my.cnf file by looking at the output of ps, and if it does
+not find the location of the file there, it tries common locations until it
+finds a file. Note that this file might not actually correspond with the server
+from which the report was generated. This can happen when the tool isn't run on
+the same server it's reporting on, or when detecting the location of the
+configuration file fails.
 
 =head1 OPTIONS
 
@@ -2360,10 +2723,9 @@ Create a report from the files found in this directory.
 
 type: string
 
-Names of databases to dump through myslqdump. If you want all of them,
-you can use --all-databases; you can also pass in a comma-separated list
-of database names. If not provided, the program will ask you
-for manual input.
+Names of databases to summarize. If you want all of them, you can use the value
+C<--all-databases>; you can also pass in a comma-separated list of database
+names. If not provided, the program will ask you for manual input.
 
 =item --sleep
 
