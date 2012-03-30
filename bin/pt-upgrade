@@ -5437,10 +5437,11 @@ sub _chunk_char {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my $q         = $self->{Quoter};
-   my $db_tbl    = $q->quote($args{db}, $args{tbl});
-   my $dbh       = $args{dbh};
-   my $chunk_col = $args{chunk_col};
+   my $q          = $self->{Quoter};
+   my $db_tbl     = $q->quote($args{db}, $args{tbl});
+   my $dbh        = $args{dbh};
+   my $chunk_col  = $args{chunk_col};
+   my $qchunk_col = $q->quote($args{chunk_col});
    my $row;
    my $sql;
 
@@ -5498,9 +5499,9 @@ sub _chunk_char {
          $ins_char_sth->execute($char_code);
       }
 
-      $sql = "SELECT `$chunk_col` FROM $tmp_db_tbl "
-           . "WHERE `$chunk_col` BETWEEN ? AND ? "
-           . "ORDER BY `$chunk_col`";
+      $sql = "SELECT $qchunk_col FROM $tmp_db_tbl "
+           . "WHERE $qchunk_col BETWEEN ? AND ? "
+           . "ORDER BY $qchunk_col";
       PTDEBUG && _d($dbh, $sql);
       my $sel_char_sth = $dbh->prepare($sql);
       $sel_char_sth->execute($min_col, $max_col);
@@ -5515,9 +5516,9 @@ sub _chunk_char {
    PTDEBUG && _d("Base", $base, "chars:", @chars);
 
 
-   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl "
+   $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
         . ($args{where} ? "WHERE $args{where} " : "") 
-        . "ORDER BY `$chunk_col`";
+        . "ORDER BY $qchunk_col";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
    my $max_col_len = $row->[0];
@@ -5551,7 +5552,7 @@ sub _chunk_char {
    };
 
    return (
-      col         => $q->quote($chunk_col),
+      col         => $qchunk_col,
       start_point => 0,
       end_point   => $n_values,
       interval    => $interval,

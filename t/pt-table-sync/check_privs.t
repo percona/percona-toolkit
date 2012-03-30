@@ -47,6 +47,7 @@ my @args = ('h=127.1,P=12345,u=test_907,p=msandbox', 'P=12346,u=msandbox', qw(--
 $master_dbh->do('drop database if exists issue_907');
 $master_dbh->do('create database issue_907');
 $master_dbh->do('create table issue_907.t (i int)');
+PerconaTest::wait_for_table($slave_dbh, "issue_907.t");
 $slave_dbh->do('drop database if exists issue_907');
 $slave_dbh->do('create database issue_907');
 $slave_dbh->do('create table issue_907.t (i int)');

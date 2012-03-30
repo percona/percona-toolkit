@@ -530,10 +530,11 @@ sub _chunk_char {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my $q         = $self->{Quoter};
-   my $db_tbl    = $q->quote($args{db}, $args{tbl});
-   my $dbh       = $args{dbh};
-   my $chunk_col = $args{chunk_col};
+   my $q          = $self->{Quoter};
+   my $db_tbl     = $q->quote($args{db}, $args{tbl});
+   my $dbh        = $args{dbh};
+   my $chunk_col  = $args{chunk_col};
+   my $qchunk_col = $q->quote($args{chunk_col});
    my $row;
    my $sql;
 
@@ -610,9 +611,9 @@ sub _chunk_char {
       # returned like [a, B, c, d, é, ..., ü] then we have a base 42
       # system where 0=a, 1=B, 2=c, 3=d, 4=é, ... 41=ü.  count_base()
       # helps us count in arbitrary systems.
-      $sql = "SELECT `$chunk_col` FROM $tmp_db_tbl "
-           . "WHERE `$chunk_col` BETWEEN ? AND ? "
-           . "ORDER BY `$chunk_col`";
+      $sql = "SELECT $qchunk_col FROM $tmp_db_tbl "
+           . "WHERE $qchunk_col BETWEEN ? AND ? "
+           . "ORDER BY $qchunk_col";
       PTDEBUG && _d($dbh, $sql);
       my $sel_char_sth = $dbh->prepare($sql);
       $sel_char_sth->execute($min_col, $max_col);
@@ -639,9 +640,9 @@ sub _chunk_char {
    # [ant, apple, azur, boy].  We assume data is more evenly distributed
    # than not so we use the minimum number of characters to express a chunk
    # size.
-   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl "
+   $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
         . ($args{where} ? "WHERE $args{where} " : "") 
-        . "ORDER BY `$chunk_col`";
+        . "ORDER BY $qchunk_col";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
    my $max_col_len = $row->[0];
@@ -682,7 +683,7 @@ sub _chunk_char {
    };
 
    return (
-      col         => $q->quote($chunk_col),
+      col         => $qchunk_col,
       start_point => 0,
       end_point   => $n_values,
       interval    => $interval,
