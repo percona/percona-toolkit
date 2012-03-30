@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 42
+plan 46
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -37,6 +37,98 @@ EOF
 
 parse_proc_cpuinfo "$samples/proc_cpuinfo002.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_proc_cpuinfo, proc_cpuinfo002.txt"
+
+# parse_ethtool
+cat <<EOF > "$TMPDIR/in"
+Settings for eth0:
+   Supported ports: [ TP MII ]
+   Supported link modes:   10baseT/Half 10baseT/Full 
+                           100baseT/Half 100baseT/Full 
+   Supports auto-negotiation: Yes
+   Advertised link modes:  10baseT/Half 10baseT/Full 
+                           100baseT/Half 100baseT/Full 
+   Advertised pause frame use: Symmetric Receive-only
+   Advertised auto-negotiation: Yes
+   Speed: 10Mb/s
+   Duplex: Half
+   Port: MII
+   PHYAD: 0
+   Transceiver: internal
+   Auto-negotiation: on
+   Supports Wake-on: pumbg
+   Wake-on: d
+   Current message level: 0x00000033 (51)
+                drv probe ifdown ifup
+   Link detected: no
+EOF
+
+cat <<EOF > "$TMPDIR/expected"
+  Device    Speed     Duplex
+  ========= ========= =========
+  eth0       10Mb/s     Half      
+EOF
+
+parse_ethtool "$TMPDIR/in" > "$TMPDIR/got"
+no_diff \
+   "$TMPDIR/expected" \
+   "$TMPDIR/got" \
+   "parse_ethtool works"
+
+cat <<EOF > "$TMPDIR/in"
+Settings for eth0:
+   Supported ports: [ TP MII ]
+   Supported link modes:   10baseT/Half 10baseT/Full 
+                           100baseT/Half 100baseT/Full 
+   Supports auto-negotiation: Yes
+   Advertised link modes:  10baseT/Half 10baseT/Full 
+                           100baseT/Half 100baseT/Full 
+   Advertised pause frame use: Symmetric Receive-only
+   Advertised auto-negotiation: Yes
+   Speed: 10Mb/s
+   Duplex: Half
+   Port: MII
+   PHYAD: 0
+   Transceiver: internal
+   Auto-negotiation: on
+   Supports Wake-on: pumbg
+   Wake-on: d
+   Current message level: 0x00000033 (51)
+                drv probe ifdown ifup
+   Link detected: no
+Settings for eth4:
+   Supported ports: [ TP MII ]
+   Supported link modes:   10baseT/Half 10baseT/Full 
+                           100baseT/Half 100baseT/Full 
+   Supports auto-negotiation: Yes
+   Advertised link modes:  10baseT/Half 10baseT/Full 
+                           100baseT/Half 100baseT/Full 
+   Advertised pause frame use: Symmetric Receive-only
+   Advertised auto-negotiation: Yes
+   Speed: 100Mb/s
+   Duplex: Full
+   Port: MII
+   PHYAD: 0
+   Transceiver: internal
+   Auto-negotiation: on
+   Supports Wake-on: pumbg
+   Wake-on: d
+   Current message level: 0x00000033 (51)
+                drv probe ifdown ifup
+   Link detected: no
+EOF
+
+cat <<EOF > "$TMPDIR/expected"
+  Device    Speed     Duplex
+  ========= ========= =========
+  eth0       10Mb/s     Half      
+  eth4       100Mb/s    Full      
+EOF
+
+parse_ethtool "$TMPDIR/in" > "$TMPDIR/got"
+no_diff \
+   "$TMPDIR/expected" \
+   "$TMPDIR/got" \
+   "parse_ethtool works if there are multiple devices"
 
 # parse_netstat
 
@@ -1153,6 +1245,24 @@ cat <<EOF > "$TMPDIR/expected"
 EOF
 parse_arcconf "$samples/arcconf-003_900285.txt" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "Bug 900285"
+
+# parse_uptime
+
+cat <<EOF > "$TMPDIR/in"
+ 15:10:14 up 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08
+EOF
+is \
+   "$( parse_uptime "$TMPDIR/in" )" \
+   "1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
+   "parse_uptime works with Ubuntu's uptime"
+
+cat <<EOF > "$TMPDIR/in"
+ some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08
+EOF
+is \
+   "$( parse_uptime "$TMPDIR/in" )" \
+   " some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
+   "parse_uptime returns uptime as-if if it doesn't contain an 'up'"
 
 # report_system_summary
 parse_options "$BIN_DIR/pt-summary"
