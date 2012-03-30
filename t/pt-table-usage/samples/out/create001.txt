@@ -1,0 +1,5 @@
+Query_id: 0x9840C99F532C2E3F.1
+CREATE temp.5
+SELECT t
+WHERE t
+
