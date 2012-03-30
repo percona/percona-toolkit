@@ -268,6 +268,37 @@ parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
 }
 
 # ##############################################################################
+# Parse the output of 'ethtool DEVICE'
+# ##############################################################################
+parse_ethtool () {
+   local file="$1"
+
+   [ -e "$file" ] || return
+
+   echo "  Device    Speed     Duplex"
+   echo "  ========= ========= ========="
+
+
+   awk '
+      /^Settings for / {
+         device               = substr($3, 0, index($3, ":") ? index($3, ":")-1 : length($3));
+         device_names[device] = device;
+      }
+      /Speed:/  { devices[device ",speed"]  = $2 }
+      /Duplex:/ { devices[device ",duplex"] = $2 }
+      END {
+         for ( device in device_names ) {
+            printf("  %-10s %-10s %-10s\n",
+               device,
+               devices[device ",speed"],
+               devices[device ",duplex"]);
+         }
+      }
+   ' "$file"
+
+}
+
+# ##############################################################################
 # Parse the output of 'netstat -antp'
 # ##############################################################################
 parse_netstat () { local PTFUNCNAME=parse_netstat;
@@ -605,6 +636,7 @@ parse_lsi_megaraid_bbu_status () { local PTFUNCNAME=parse_lsi_megaraid_bbu_statu
 format_lvs () { local PTFUNCNAME=format_lvs;
    local lvs_file="$1"
    local vgs_file="$2"
+   local lvs_errors="$3"
 
    if [ -e "$lvs_file" -a -e "$vgs_file" ]; then
       local header="$(head -n1 "$lvs_file")$(head -n1 "$vgs_file" | sed -e 's/^ *VG//')"
@@ -624,6 +656,9 @@ format_lvs () { local PTFUNCNAME=format_lvs;
    else
       if [ -e "$lvs_file" ]; then
          cat "$lvs_file"
+      elif [ -e "$lvs_errors" ]; then
+         echo "lvs didn't output anything and had the following errors:"
+         cat "$lvs_errors"
       else
          echo "Cannot execute 'lvs'";
       fi
@@ -860,6 +895,18 @@ section_Memory () {
    fi
 }
 
+parse_uptime () {
+   local file="$1"
+
+   awk ' / up / {
+            printf substr($0, index($0, " up ")+4 );
+         }
+         !/ up / {
+            printf $0;
+         }
+' "$file"
+}
+
 # The sum of all of the above
 report_system_summary () { local PTFUNCNAME=report_system_summary;
    local data_dir="$1"
@@ -876,7 +923,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    local platform="$(get_var "platform" "$data_dir/summary")"
    name_val "Date" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
    name_val "Hostname" "$(get_var hostname "$data_dir/summary")"
-   name_val "Uptime" "$(cat "$data_dir/uptime")"
+   name_val "Uptime" "$(parse_uptime "$data_dir/uptime")"
 
    if [ "$(get_var "vendor" "$data_dir/summary")" ]; then
       name_val "System" "$(get_var "system" "$data_dir/summary")";
@@ -937,7 +984,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       done
 
       section "LVM_Volumes"
-      format_lvs "$data_dir/lvs" "$data_dir/vgs" 
+      format_lvs "$data_dir/lvs" "$data_dir/vgs" "$data_dir/lvs.stderr"
    fi
 
    section "RAID_Controller"
@@ -991,6 +1038,11 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       if [ -s "$data_dir/ip" ]; then
          section "Interface_Statistics"
          parse_ip_s_link "$data_dir/ip"
+      fi
+
+      if [ -s "$data_dir/network_devices" ]; then
+         section "Network_Devices"
+         parse_ethtool "$data_dir/network_devices"
       fi
 
       if [ "${platform}" = "Linux" -a -e "$data_dir/netstat" ]; then
