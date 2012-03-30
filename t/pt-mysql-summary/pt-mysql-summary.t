@@ -25,7 +25,7 @@ local $ENV{PTDEBUG} = "";
 
 my $dir = tempdir( CLEANUP => 1 );
 
-`$trunk/bin/$tool --sleep 1 --save-samples $dir`;
+`$trunk/bin/$tool --sleep 1 --save-samples $dir -- -P12345 -umsandbox -pmsandbox`;
 
 ok(
    -e $dir,
@@ -40,7 +40,9 @@ is(
    "And leaves all files in there"
 );
 
-`$trunk/bin/$tool --sleep 1 --save-samples $dir`;
+`rm -rf "$dir/"*`;
+
+`$trunk/bin/$tool --sleep 1 --save-samples $dir -- -P12345 -umsandbox -pmsandbox`;
 
 open my $fh, "<", "$dir/mysql-variables" or die "Can't open file: $!";
 my $data = do { local $/; <$fh> };
@@ -57,7 +59,7 @@ undef($dir);
 # --databases
 #
 
-my $out = `$trunk/bin/$tool --sleep 1 --databases mysql 2>/dev/null`;
+my $out = `$trunk/bin/$tool --sleep 1 --databases mysql -- -P12345 -umsandbox -pmsandbox 2>/dev/null`;
 
 like(
    $out,
