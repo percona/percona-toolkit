@@ -1,0 +1,6 @@
+Query_id: 0xF318E3D2483D370E.1
+SELECT temp.temp6
+JOIN temp.temp6
+JOIN n.type
+WHERE n.type
+

@@ -1,0 +1,5 @@
+Query_id: 0xF573BD7AD8CDDD7D.1
+JOIN d1.t1
+JOIN d2.t2
+JOIN d3.t3
+
