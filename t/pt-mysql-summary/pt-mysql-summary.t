@@ -14,8 +14,8 @@ use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
-use Test::More tests => 7;
-use File::Temp qw( tempfile tempdir );
+use Test::More tests => 6;
+use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
 
@@ -23,7 +23,7 @@ local $ENV{PTDEBUG} = "";
 # --save-samples
 #
 
-my $dir = tempdir( CLEANUP => 1 );
+my $dir = tempdir( "percona-testXXXXXXXX", CLEANUP => 1 );
 
 `$trunk/bin/$tool --sleep 1 --save-samples $dir -- -P12345 -umsandbox -pmsandbox`;
 
@@ -79,8 +79,6 @@ for my $i (2..4) {
       ),
       "--read-samples works for t/pt-mysql-summary/temp00$i",
    );
-
-   close $fh;
 }
 
 exit;

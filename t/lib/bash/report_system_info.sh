@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 46
+plan 49
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -1263,6 +1263,25 @@ is \
    "$( parse_uptime "$TMPDIR/in" )" \
    " some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
    "parse_uptime returns uptime as-if if it doesn't contain an 'up'"
+
+# parse_lvs
+
+is \
+   "$(format_lvs "" "" "")" \
+   "Cannot execute 'lvs'" \
+   "format_lvs has a meaningful error message if all goes wrong"
+
+echo "There was an error..." > "$TMPDIR/in"
+like \
+   "$(format_lvs "$TMPDIR/some_file_that_does_not_exist" "" "$TMPDIR/in")" \
+   "lvs didn't output anything and had the following errors:" \
+   "format_lvs shows the stderr of lvs if the lvs file doesn't exist"
+
+echo "Pretending to be an lvs dump" > "$TMPDIR/in"
+is \
+   "$(format_lvs "$TMPDIR/in" "" "")" \
+   "Pretending to be an lvs dump" \
+   "format_lvs has a meaningful error message if all goes wrong"
 
 # report_system_summary
 parse_options "$BIN_DIR/pt-summary"
