@@ -1,907 +1,907 @@
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 #   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
 #   InnoDB_rec_lock_wait: 1.000002  InnoDB_queue_wait: 0.200005
 #   InnoDB_pages_distinct: 24
 SELECT * FROM bar;
 # Query_time: 0.726052  Lock_time: 0.000091  Rows_sent: 0  Rows_examined: 62951
-# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Disk_tmp_table: No
-# Filesort: No  Disk_filesort: No  Merge_passes: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
 # No InnoDB statistics available for this query
 SELECT * FROM foo;
