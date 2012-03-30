@@ -2723,10 +2723,9 @@ Create a report from the files found in this directory.
 
 type: string
 
-Names of databases to dump through myslqdump. If you want all of them,
-you can use --all-databases; you can also pass in a comma-separated list
-of database names. If not provided, the program will ask you
-for manual input.
+Names of databases to summarize. If you want all of them, you can use the value
+C<--all-databases>; you can also pass in a comma-separated list of database
+names. If not provided, the program will ask you for manual input.
 
 =item --sleep
 
