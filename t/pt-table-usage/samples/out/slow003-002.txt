@@ -1,0 +1,8 @@
+Query_id: 0x7C6C08E1FA6D7E73.1
+SELECT sakila.country
+SELECT sakila.city
+JOIN sakila.city
+JOIN sakila.country
+WHERE sakila.city
+WHERE sakila.country
+
