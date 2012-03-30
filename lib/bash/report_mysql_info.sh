@@ -1058,9 +1058,9 @@ report_mysql_summary () {
    section Instances
    parse_mysqld_instances "$dir/mysqld-instances" "$dir/mysql-variables"
 
-   section MySQL_Executable
-   name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/mysql-variables" )"
-   name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/mysql-variables" )"
+   # TODO section MySQL_Executable
+   # TODO name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/mysql-variables" )"
+   # TODO name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/mysql-variables" )"
 
    # ########################################################################
    # General date, hostname, etc
