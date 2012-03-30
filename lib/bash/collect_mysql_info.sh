@@ -213,11 +213,13 @@ collect_mysql_info () {
                          "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
 
    local port="$(get_var port "$dir/mysql-variables")"
-   local cnf_file=$(find_my_cnf_file "$dir/mysqld-instances" ${port});
+   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port})"
+
+   cat "$cnf_file" > "$dir/mysql-config-file"
 
    # TODO: Do these require a file of their own?
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
-   echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/mysql-variables"
+   echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
    collect_internal_vars  >> "$dir/mysql-variables"
 
    if [ -n "${OPT_DATABASES}" ]; then

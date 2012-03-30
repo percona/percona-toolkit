@@ -1136,6 +1136,7 @@ report_mysql_summary () {
    # ########################################################################
    # Plugins
    # ########################################################################
+   # TODO: what would be good is to show nonstandard plugins here.
    section Plugins
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
@@ -1239,6 +1240,12 @@ report_mysql_summary () {
       else
          name_val "Partitioning" "No"
       fi
+      if grep -e 'ENGINE=InnoDB.*ROW_FORMAT' \
+         -e 'ENGINE=InnoDB.*KEY_BLOCK_SIZE' "$dir/mysqldump" > /dev/null; then
+         name_val "InnoDB Compression" "Yes"
+      else
+         name_val "InnoDB Compression" "No"
+      fi
    fi
    local ssl="$(get_var Ssl_accepts "$dir/mysql-status")"
    if [ -n "$ssl" -a "${ssl:-0}" -gt 0 ]; then
@@ -1338,10 +1345,10 @@ report_mysql_summary () {
    # If there is a my.cnf in a standard location, see if we can pretty-print it.
    # ########################################################################
    section Configuration_File
-   local cnf_file="$(get_var "pt-summary-internal-Config_File" "$dir/mysql-variables")"
+   local cnf_file="$(get_var "pt-summary-internal-Config_File_path" "$dir/mysql-variables")"
    if [ -n "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
-      pretty_print_cnf_file "${cnf_file}"
+      pretty_print_cnf_file "$dir/mysql-config-file"
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi

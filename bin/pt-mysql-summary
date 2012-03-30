@@ -911,10 +911,12 @@ collect_mysql_info () {
                          "SELECT LEFT(NOW() - INTERVAL ${uptime} SECOND, 16)")"
 
    local port="$(get_var port "$dir/mysql-variables")"
-   local cnf_file=$(find_my_cnf_file "$dir/mysqld-instances" ${port});
+   local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port})"
+
+   cat "$cnf_file" > "$dir/mysql-config-file"
 
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
-   echo "pt-summary-internal-Config_File    $cnf_file" >> "$dir/mysql-variables"
+   echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
    collect_internal_vars  >> "$dir/mysql-variables"
 
    if [ -n "${OPT_DATABASES}" ]; then
@@ -2139,10 +2141,10 @@ report_mysql_summary () {
    section_noteworthy_variables "$dir/mysql-variables"
 
    section Configuration_File
-   local cnf_file="$(get_var "pt-summary-internal-Config_File" "$dir/mysql-variables")"
+   local cnf_file="$(get_var "pt-summary-internal-Config_File_path" "$dir/mysql-variables")"
    if [ -n "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
-      pretty_print_cnf_file "${cnf_file}"
+      pretty_print_cnf_file "$data_dir/mysql-config-file"
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi

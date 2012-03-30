@@ -363,7 +363,7 @@ version_compile_machine	i686
 version_compile_os	Linux
 wait_timeout	28800
 pt-summary-internal-current_time    2012-03-22 18:50
-pt-summary-internal-Config_File    /etc/mysql/my.cnf
+pt-summary-internal-Config_File_path    /etc/mysql/my.cnf
 pt-summary-internal-now    2012-03-23 21:05:32
 pt-summary-internal-user   hugmeir@localhost
 pt-summary-internal-FNV_64   Unknown

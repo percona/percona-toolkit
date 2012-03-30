@@ -275,7 +275,7 @@ warning_count	0
 internal::nice_of_2837    0
 internal::oom_of_2837    0
 pt-summary-internal-current_time    2012-03-27 09:09
-pt-summary-internal-Config_File    /tmp/12345/my.sandbox.cnf
+pt-summary-internal-Config_File_path    /tmp/12345/my.sandbox.cnf
 pt-summary-internal-mysql_executable    /usr/bin/mysql
 pt-summary-internal-now    2012-03-27 09:16:44
 pt-summary-internal-user   msandbox@%
