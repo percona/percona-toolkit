@@ -774,6 +774,7 @@ setup_commands () {
    CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
    CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
    CMD_ETHTOOL="$( _which ethtool 2>/dev/null )"
+   CMD_GETCONF="$( _which getconf 2>/dev/null )"
 }
 
 collect_system_data () { local PTFUNCNAME=collect_system_data;
@@ -956,15 +957,15 @@ cpu_and_os_arch () { local PTFUNCNAME=cpu_and_os_arch;
    local CPU_ARCH='32-bit'
    local OS_ARCH='32-bit'
    if [ "${platform}" = "Linux" ]; then
-      if [ "$(grep -q ' lm ' /proc/cpuinfo)" ]; then
+      if grep -q ' lm ' /proc/cpuinfo; then
          CPU_ARCH='64-bit'
       fi
    elif [ "${platform}" = "FreeBSD" ] || [ "${platform}" = "NetBSD" ]; then
-      if $CMD_SYSCTL hw.machine_arch | grep -v 'i[36]86' >/dev/null; then
+      if $CMD_SYSCTL "hw.machine_arch" | grep -v 'i[36]86' >/dev/null; then
          CPU_ARCH='64-bit'
       fi
    elif [ "${platform}" = "OpenBSD" ]; then
-      if $CMD_SYSCTL hw.machine | grep -v 'i[36]86' >/dev/null; then
+      if $CMD_SYSCTL "hw.machine" | grep -v 'i[36]86' >/dev/null; then
          CPU_ARCH='64-bit'
       fi
    elif [ "${platform}" = "SunOS" ]; then
@@ -973,7 +974,11 @@ cpu_and_os_arch () { local PTFUNCNAME=cpu_and_os_arch;
       fi
    fi
    if [ -z "$CMD_FILE" ]; then
-      OS_ARCH='N/A'
+      if [ "$CMD_GETCONF" ] && $CMD_GETCONF LONG_BIT 1>/dev/null 2>&1; then
+         OS_ARCH="$($CMD_GETCONF LONG_BIT 2>/dev/null)-bit"
+      else
+         OS_ARCH='N/A'
+      fi
    elif $CMD_FILE /bin/sh | grep '64-bit' >/dev/null; then
        OS_ARCH='64-bit'
    fi

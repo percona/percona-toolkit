@@ -55,6 +55,7 @@ setup_commands () {
    CMD_SWAPCTL="$( _which swapctl 2>/dev/null )"
    CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
    CMD_ETHTOOL="$( _which ethtool 2>/dev/null )"
+   CMD_GETCONF="$( _which getconf 2>/dev/null )"
 }
 
 collect_system_data () { local PTFUNCNAME=collect_system_data;
@@ -238,7 +239,7 @@ find_release_and_kernel () { local PTFUNCNAME=find_release_and_kernel;
          || [ "${platform}" = "NetBSD"  ] \
          || [ "${platform}" = "OpenBSD" ]; then
       release="$(uname -r)"
-      kernel="$($CMD_SYSCTL -n kern.osrevision)"
+      kernel="$($CMD_SYSCTL -n "kern.osrevision")"
    elif [ "${platform}" = "SunOS" ]; then
       release="$(head -n1 /etc/release)"
       if [ -z "${release}" ]; then
@@ -256,15 +257,15 @@ cpu_and_os_arch () { local PTFUNCNAME=cpu_and_os_arch;
    local CPU_ARCH='32-bit'
    local OS_ARCH='32-bit'
    if [ "${platform}" = "Linux" ]; then
-      if [ "$(grep -q ' lm ' /proc/cpuinfo)" ]; then
+      if grep -q ' lm ' /proc/cpuinfo; then
          CPU_ARCH='64-bit'
       fi
    elif [ "${platform}" = "FreeBSD" ] || [ "${platform}" = "NetBSD" ]; then
-      if $CMD_SYSCTL hw.machine_arch | grep -v 'i[36]86' >/dev/null; then
+      if $CMD_SYSCTL "hw.machine_arch" | grep -v 'i[36]86' >/dev/null; then
          CPU_ARCH='64-bit'
       fi
    elif [ "${platform}" = "OpenBSD" ]; then
-      if $CMD_SYSCTL hw.machine | grep -v 'i[36]86' >/dev/null; then
+      if $CMD_SYSCTL "hw.machine" | grep -v 'i[36]86' >/dev/null; then
          CPU_ARCH='64-bit'
       fi
    elif [ "${platform}" = "SunOS" ]; then
@@ -273,7 +274,11 @@ cpu_and_os_arch () { local PTFUNCNAME=cpu_and_os_arch;
       fi
    fi
    if [ -z "$CMD_FILE" ]; then
-      OS_ARCH='N/A'
+      if [ "$CMD_GETCONF" ] && $CMD_GETCONF LONG_BIT 1>/dev/null 2>&1; then
+         OS_ARCH="$($CMD_GETCONF LONG_BIT 2>/dev/null)-bit"
+      else
+         OS_ARCH='N/A'
+      fi
    elif $CMD_FILE /bin/sh | grep '64-bit' >/dev/null; then
        OS_ARCH='64-bit'
    fi
@@ -354,17 +359,17 @@ find_virtualization_dmesg () { local PTFUNCNAME=find_virtualization_dmesg;
 # TODO: Maybe worth it to just dump dmidecode once and parse that?
 dmidecode_system_info () { local PTFUNCNAME=dmidecode_system_info;
    if [ "${CMD_DMIDECODE}" ]; then
-      local vendor="$($CMD_DMIDECODE -s system-manufacturer 2>/dev/null | sed 's/ *$//g')"
+      local vendor="$($CMD_DMIDECODE -s "system-manufacturer" 2>/dev/null | sed 's/ *$//g')"
       echo "vendor    ${vendor}"
       if [ "${vendor}" ]; then
-         local product="$($CMD_DMIDECODE -s system-product-name 2>/dev/null | sed 's/ *$//g')"
-         local version="$($CMD_DMIDECODE -s system-version 2>/dev/null | sed 's/ *$//g')"
-         local chassis="$($CMD_DMIDECODE -s chassis-type 2>/dev/null | sed 's/ *$//g')"
-         local servicetag="$($CMD_DMIDECODE -s system-serial-number 2>/dev/null | sed 's/ *$//g')"
+         local product="$($CMD_DMIDECODE -s "system-product-name" 2>/dev/null | sed 's/ *$//g')"
+         local version="$($CMD_DMIDECODE -s "system-version" 2>/dev/null | sed 's/ *$//g')"
+         local chassis="$($CMD_DMIDECODE -s "chassis-type" 2>/dev/null | sed 's/ *$//g')"
+         local servicetag="$($CMD_DMIDECODE -s "system-serial-number" 2>/dev/null | sed 's/ *$//g')"
          local system="${vendor}; ${product}; v${version} (${chassis})"
 
          echo "system    ${system}"
-         echo "servicetag    ${servicetag:-Not found}"
+         echo "servicetag    ${servicetag:-"Not found"}"
       fi
    fi
 }
