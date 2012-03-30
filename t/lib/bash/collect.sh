@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 20
+plan 21
 
 TMPFILE="$TEST_TMPDIR/parse-opts-output"
 TMPDIR="$TEST_TMPDIR"
@@ -142,6 +142,16 @@ collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
 iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "2" "2 iteration/2s run time"
+
+if [ -f "$p-vmstat" ]; then
+   n=$(awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$p-vmstat")
+   is \
+      "$n" \
+      "2" \
+      "vmstat runs for --run-time seconds (bug 955860)"
+else
+   is "1" "1" "SKIP vmstat not installed"
+fi
 
 # ############################################################################
 # Done
