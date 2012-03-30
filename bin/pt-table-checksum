@@ -7451,6 +7451,11 @@ contains checksum results.  It has checks that, if disabled, can potentially
 cause replication to fail when unsafe replication options are used.  In short,
 it is safe by default, but it permits you to turn off its safety checks.
 
+The tool presumes that schemas and tables are identical on the master and
+all replicas.  Replication will break if, for example, a replica does not
+have a schema that exists on the master (and that schema is checksummed),
+or if the structure of a table on a replica is different than on the master.
+
 At the time of this release, we know of no bugs that could cause harm to
 users.
 
