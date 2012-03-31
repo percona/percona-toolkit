@@ -88,10 +88,15 @@ sub new {
       $resume{tbl} = $tbl;
    }
 
+   my $engine_key
+      = $dbh && ($dbh->{FetchHashKeyName} || '') eq 'NAME_lc' ? 'engine'
+                                                              : 'Engine';
+
    my $self = {
       %args,
-      resume  => \%resume,
-      filters => _make_filters(%args),
+      resume     => \%resume,
+      filters    => _make_filters(%args),
+      engine_key => $engine_key,
    };
 
    return bless $self, $class;
@@ -376,7 +381,7 @@ sub _iterate_dbh {
       }
 
       if ( !$tbl_status
-           || $self->engine_is_allowed($tbl_status->{engine}) ) {
+           || $self->engine_is_allowed($tbl_status->{$self->{engine_key}}) ) {
          my $ddl;
          if ( my $tp = $self->{TableParser} ) {
             $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);

@@ -47,7 +47,7 @@ $master_dbh->do('create table test.foo (i int)');
 $output = `$trunk/bin/pt-table-sync --databases test --execute h=127.1,P=12345,u=msandbox,p=msandbox h=127.1,P=12348 2>&1`;
 like(
    $output,
-   qr/Unknown database 'test'/,
+   qr/Table test.foo does not exist on P=12348/,
    'Warn about --databases missing on dest host'
 );
 
