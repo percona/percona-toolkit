@@ -14,7 +14,7 @@ use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
-use Test::More tests => 6;
+use Test::More tests => 7;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
@@ -36,7 +36,7 @@ my @files = glob("$dir/*");
 
 is(
    scalar @files,
-   13,
+   14,
    "And leaves all files in there"
 );
 
@@ -55,7 +55,7 @@ like(
 );
 
 # --read-samples
-for my $i (2..4) {
+for my $i (2..5) {
    ok(
       no_diff(
          sub {

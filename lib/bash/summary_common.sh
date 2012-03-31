@@ -123,22 +123,22 @@ has_symbols () {
 }
 
 setup_data_dir () {
-   local OPT_SAVE_DATA="$1"
+   local existing_dir="$1"
    local data_dir=""
-   if [ -z "$OPT_SAVE_DATA" ]; then
+   if [ -z "$existing_dir" ]; then
       # User didn't specify a --save-data dir, so use a sub-dir in our tmpdir.
       mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
       data_dir="$TMPDIR/data"
    else
       # Check the user's --save-data dir.
-      if [ ! -d "$OPT_SAVE_DATA" ]; then
-         mkdir "$OPT_SAVE_DATA" || die "Cannot mkdir $OPT_SAVE_DATA"
-      elif [ "$( ls "$OPT_SAVE_DATA" | wc -l )" != "0" ]; then
+      if [ ! -d "$existing_dir" ]; then
+         mkdir "$existing_dir" || die "Cannot mkdir $existing_dir"
+      elif [ "$( ls -A "$existing_dir" )" ]; then
          die "--save-samples directory isn't empty, halting."
       fi
-      touch "$OPT_SAVE_DATA/test" || die "Cannot write to $OPT_SAVE_DATA"
-      rm "$OPT_SAVE_DATA/test"    || die "Cannot rm $OPT_SAVE_DATA/test"
-      data_dir="$OPT_SAVE_DATA"
+      touch "$existing_dir/test" || die "Cannot write to $existing_dir"
+      rm "$existing_dir/test"    || die "Cannot rm $existing_dir/test"
+      data_dir="$existing_dir"
    fi
    echo "$data_dir"
 }
@@ -147,7 +147,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { print substr($0, index($0,$2)) } }' "${file}"
+   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { len = length($1); print substr($0, len+index(substr($0, len+1), $2)) } }' "${file}"
 }
 
 # ###########################################################################

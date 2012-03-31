@@ -2,9 +2,6 @@
   Port  Data Directory             Nice OOM Socket
   ===== ========================== ==== === ======
   12345 /tmp/12345/data            0    0   /tmp/12345/mysql_sandbox12345.sock
-# MySQL Executable ###########################################
-       Path to executable | /usr/bin/mysql
-              Has symbols | No
 # Report On Port 12345 #######################################
                      User | msandbox@%
                      Time | 2012-03-27 09:16:44 (CEST)
