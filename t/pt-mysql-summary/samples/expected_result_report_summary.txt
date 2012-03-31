@@ -2,9 +2,6 @@
   Port  Data Directory             Nice OOM Socket
   ===== ========================== ==== === ======
    3306 /var/lib/mysql             ?    ?   /var/run/mysqld/mysqld.sock
-# MySQL Executable ###########################################
-       Path to executable | 
-              Has symbols | No
 # Report On Port 3306 ########################################
                      User | 
                      Time | 2012-02-22 06:24:23 (ART)
@@ -145,6 +142,7 @@ Uptime                                    90000           1           1
          Geospatial Types | No
              Foreign Keys | No
              Partitioning | No
+       InnoDB Compression | No
                       SSL | No
      Explicit LOCK TABLES | No
            Delayed Insert | No

@@ -130,6 +130,8 @@ collect_mysql_deferred_status () {
 }
 
 collect_internal_vars () {
+   local mysqld_executables="${1:-""}"
+
    local FNV_64=""
    if $CMD_MYSQL $EXT_ARGV -e 'SELECT FNV_64("a")' >/dev/null 2>&1; then
       FNV_64="Enabled";
@@ -140,14 +142,20 @@ collect_internal_vars () {
    local now="$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT NOW()')"
    local user="$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT CURRENT_USER()')"
    local trigger_count=$($CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null)
-   local has_symbols="$(has_symbols "${CMD_MYSQL}")"
 
    echo "pt-summary-internal-mysql_executable    $CMD_MYSQL"
    echo "pt-summary-internal-now    $now"
    echo "pt-summary-internal-user   $user"
    echo "pt-summary-internal-FNV_64   $FNV_64"
    echo "pt-summary-internal-trigger_count   $trigger_count"
-   echo "pt-summary-internal-symbols   $has_symbols"
+
+   if [ -e "$mysqld_executables" ]; then
+      local i=1
+      while read executable; do
+         echo "pt-summary-internal-mysqld_executable_${i}   $(has_symbols "$executable")"
+         i=$(($i + 1))
+      done < "$mysqld_executables"
+   fi
 }
 
 # Uses mysqldump and dumps the results to FILE.
@@ -188,6 +196,14 @@ get_mysqldump_args () {
    echo "${trg_arg}"
 }
 
+collect_mysqld_executables () {
+   local mysqld_instances="$1"
+
+   for pid in $( grep '/mysqld' "$mysqld_instances" | awk '/^ .*[0-9]/{print $1}' ); do
+      ps -o cmd -p $pid | sed -e 's/^\(.*mysqld\) .*/\1/' | grep -v '^CMD$'
+   done | sort -u
+}
+
 collect_mysql_info () {
    local dir="$1"
 
@@ -200,7 +216,8 @@ collect_mysql_info () {
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
 
-   collect_mysqld_instances "$dir/mysql-variables" > "$dir/mysqld-instances"
+   collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
+   collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
 
    local binlog="$(get_var log_bin "$dir/mysql-variables")"
    if [ "${binlog}" ]; then
@@ -220,7 +237,7 @@ collect_mysql_info () {
    # TODO: Do these require a file of their own?
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
    echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
-   collect_internal_vars  >> "$dir/mysql-variables"
+   collect_internal_vars "$dir/mysqld-executables" >> "$dir/mysql-variables"
 
    if [ -n "${OPT_DATABASES}" ]; then
       # "--dump-schemas passed in, dumping early"

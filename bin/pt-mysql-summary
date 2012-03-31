@@ -700,20 +700,20 @@ has_symbols () {
 }
 
 setup_data_dir () {
-   local OPT_SAVE_DATA="$1"
+   local existing_dir="$1"
    local data_dir=""
-   if [ -z "$OPT_SAVE_DATA" ]; then
+   if [ -z "$existing_dir" ]; then
       mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
       data_dir="$TMPDIR/data"
    else
-      if [ ! -d "$OPT_SAVE_DATA" ]; then
-         mkdir "$OPT_SAVE_DATA" || die "Cannot mkdir $OPT_SAVE_DATA"
-      elif [ "$( ls "$OPT_SAVE_DATA" | wc -l )" != "0" ]; then
+      if [ ! -d "$existing_dir" ]; then
+         mkdir "$existing_dir" || die "Cannot mkdir $existing_dir"
+      elif [ "$( ls -A "$existing_dir" )" ]; then
          die "--save-samples directory isn't empty, halting."
       fi
-      touch "$OPT_SAVE_DATA/test" || die "Cannot write to $OPT_SAVE_DATA"
-      rm "$OPT_SAVE_DATA/test"    || die "Cannot rm $OPT_SAVE_DATA/test"
-      data_dir="$OPT_SAVE_DATA"
+      touch "$existing_dir/test" || die "Cannot write to $existing_dir"
+      rm "$existing_dir/test"    || die "Cannot rm $existing_dir/test"
+      data_dir="$existing_dir"
    fi
    echo "$data_dir"
 }
@@ -721,7 +721,7 @@ setup_data_dir () {
 get_var () {
    local varname="$1"
    local file="$2"
-   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { print substr($0, index($0,$2)) } }' "${file}"
+   awk -v pattern="${varname}" '$1 == pattern { if (length($2)) { len = length($1); print substr($0, len+index(substr($0, len+1), $2)) } }' "${file}"
 }
 
 # ###########################################################################
@@ -838,6 +838,8 @@ collect_mysql_deferred_status () {
 }
 
 collect_internal_vars () {
+   local mysqld_executables="${1:-""}"
+
    local FNV_64=""
    if $CMD_MYSQL $EXT_ARGV -e 'SELECT FNV_64("a")' >/dev/null 2>&1; then
       FNV_64="Enabled";
@@ -848,14 +850,20 @@ collect_internal_vars () {
    local now="$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT NOW()')"
    local user="$($CMD_MYSQL $EXT_ARGV -ss -e 'SELECT CURRENT_USER()')"
    local trigger_count=$($CMD_MYSQL $EXT_ARGV -ss -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TRIGGERS" 2>/dev/null)
-   local has_symbols="$(has_symbols "${CMD_MYSQL}")"
 
    echo "pt-summary-internal-mysql_executable    $CMD_MYSQL"
    echo "pt-summary-internal-now    $now"
    echo "pt-summary-internal-user   $user"
    echo "pt-summary-internal-FNV_64   $FNV_64"
    echo "pt-summary-internal-trigger_count   $trigger_count"
-   echo "pt-summary-internal-symbols   $has_symbols"
+
+   if [ -e "$mysqld_executables" ]; then
+      local i=1
+      while read executable; do
+         echo "pt-summary-internal-mysqld_executable_${i}   $(has_symbols "$executable")"
+         i=$(($i + 1))
+      done < "$mysqld_executables"
+   fi
 }
 
 get_mysqldump_for () {
@@ -887,6 +895,14 @@ get_mysqldump_args () {
    echo "${trg_arg}"
 }
 
+collect_mysqld_executables () {
+   local mysqld_instances="$1"
+
+   for pid in $( grep '/mysqld' "$mysqld_instances" | awk '/^ .*[0-9]/{print $1}' ); do
+      ps -o cmd -p $pid | sed -e 's/^\(.*mysqld\) .*/\1/' | grep -v '^CMD$'
+   done | sort -u
+}
+
 collect_mysql_info () {
    local dir="$1"
 
@@ -899,7 +915,8 @@ collect_mysql_info () {
    collect_mysql_processlist   > "$dir/mysql-processlist"   
    collect_mysql_users         > "$dir/mysql-users"
 
-   collect_mysqld_instances "$dir/mysql-variables" > "$dir/mysqld-instances"
+   collect_mysqld_instances   "$dir/mysql-variables"  > "$dir/mysqld-instances"
+   collect_mysqld_executables "$dir/mysqld-instances" > "$dir/mysqld-executables"
 
    local binlog="$(get_var log_bin "$dir/mysql-variables")"
    if [ "${binlog}" ]; then
@@ -917,7 +934,7 @@ collect_mysql_info () {
 
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
    echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
-   collect_internal_vars  >> "$dir/mysql-variables"
+   collect_internal_vars "$dir/mysqld-executables" >> "$dir/mysql-variables"
 
    if [ -n "${OPT_DATABASES}" ]; then
       local trg_arg="$( get_mysqldump_args "$dir/mysql-variables" )"
@@ -1847,7 +1864,7 @@ _semi_sync_stats_for () {
          trace_extra="Unknown setting"
       fi
    fi
-
+   
    name_val "${target} semisync status" "${semisync_status}"
    name_val "${target} trace level" "${semisync_trace}, ${trace_extra}"
 
@@ -1902,6 +1919,21 @@ noncounters_pattern () {
    echo $noncounters_pattern
 }
 
+section_mysqld () {
+   local executables_file="$1"
+   local variables_file="$2"
+
+   [ -e "$executables_file" -a -e "$variables_file" ] || return
+
+   section MySQL_Executable
+   local i=1;
+   while read executable; do
+      name_val "Path to executable" "$executable"
+      name_val "Has symbols" "$( get_var "pt-summary-internal-mysqld_executable_${i}" "$variables_file" )"
+      i=$(($i + 1))
+   done < "$executables_file"
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -1913,9 +1945,7 @@ report_mysql_summary () {
    section Instances
    parse_mysqld_instances "$dir/mysqld-instances" "$dir/mysql-variables"
 
-   # TODO section MySQL_Executable
-   # TODO name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/mysql-variables" )"
-   # TODO name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/mysql-variables" )"
+   section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
 
    local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
    local port="$(get_var port "$dir/mysql-variables")"
@@ -1971,7 +2001,6 @@ report_mysql_summary () {
    section_percona_server_features "$dir/mysql-variables"
 
    section Plugins
-   # TODO: what would be good is to show nonstandard plugins here.
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
    if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
@@ -2144,7 +2173,7 @@ report_mysql_summary () {
    local cnf_file="$(get_var "pt-summary-internal-Config_File_path" "$dir/mysql-variables")"
    if [ -n "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
-      pretty_print_cnf_file "$data_dir/mysql-config-file"
+      pretty_print_cnf_file "$dir/mysql-config-file"
    else
       name_val "Config File" "Cannot autodetect or find, giving up"
    fi
@@ -2213,6 +2242,9 @@ main() {
 
    # Set DATA_DIR where we'll save collected data files.
    local data_dir="$(setup_data_dir "${OPT_SAVE_SAMPLES:-""}")"
+   if [ -z "$data_dir" ]; then
+      exit $?
+   fi
 
    if [ -n "$OPT_READ_SAMPLES" -a -d "$OPT_READ_SAMPLES" ]; then
       # --read-samples was set and is a directory, so the samples

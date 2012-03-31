@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 9
+plan 10
 
 TMPDIR="$TEST_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
@@ -59,7 +59,21 @@ is \
    "40"                \
    "get_var works on a status dump"
 
+cat <<EOF > "$p"
+internal::nice_of_2750    0
+internal::nice_of_2571    0
+internal::nice_of_2406    0
+
+EOF
+
+is \
+   "$(get_var "internal::nice_of_2750" "$p")" \
+   "0"                \
+   "get_var doesn't get confused if \$2 is also found inside \$1"
+
+# setup_data_dir
 
 dies_ok \
    "setup_data_dir $PERCONA_TOOLKIT_BRANCH" \
    "setup_data_dir dies if passed a populated directory" 2>/dev/null
+

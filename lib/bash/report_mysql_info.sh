@@ -1043,6 +1043,21 @@ noncounters_pattern () {
    echo $noncounters_pattern
 }
 
+section_mysqld () {
+   local executables_file="$1"
+   local variables_file="$2"
+
+   [ -e "$executables_file" -a -e "$variables_file" ] || return
+
+   section MySQL_Executable
+   local i=1;
+   while read executable; do
+      name_val "Path to executable" "$executable"
+      name_val "Has symbols" "$( get_var "pt-summary-internal-mysqld_executable_${i}" "$variables_file" )"
+      i=$(($i + 1))
+   done < "$executables_file"
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -1058,9 +1073,7 @@ report_mysql_summary () {
    section Instances
    parse_mysqld_instances "$dir/mysqld-instances" "$dir/mysql-variables"
 
-   section MySQL_Executable
-   name_val "Path to executable" "$( get_var pt-summary-internal-mysql_executable "$dir/mysql-variables" )"
-   name_val "Has symbols" "$( get_var "pt-summary-internal-symbols" "$dir/mysql-variables" )"
+   section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
 
    # ########################################################################
    # General date, hostname, etc
