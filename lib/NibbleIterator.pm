@@ -511,22 +511,15 @@ sub _get_index_cardinality {
 
 sub get_row_estimate {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl OptionParser TableParser Quoter);
-   my ($cxn, $tbl, $o, $tp, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl);
+   my ($cxn, $tbl) = @args{@required_args};
 
-   if ( $args{where} ) {
-      PTDEBUG && _d('WHERE clause, using explain plan for row estimate');
-      my $table = $q->quote(@{$tbl}{qw(db tbl)});
-      my $sql   = "EXPLAIN SELECT * FROM $table WHERE $args{where}";
-      PTDEBUG && _d($sql);
-      my $expl = $cxn->dbh()->selectrow_hashref($sql);
-      PTDEBUG && _d(Dumper($expl));
-      return ($expl->{rows} || 0), $expl->{key};
-   }
-   else {
-      PTDEBUG && _d('No WHERE clause, using table status for row estimate');
-      return $tbl->{tbl_status}->{rows} || 0;
-   }
+   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+           . "WHERE " . ($args{where} || '1=1');
+   PTDEBUG && _d($sql);
+   my $expl = $cxn->dbh()->selectrow_hashref($sql);
+   PTDEBUG && _d(Dumper($expl));
+   return ($expl->{rows} || 0), $expl->{key};
 }
 
 sub _prepare_sths {
