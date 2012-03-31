@@ -55,12 +55,10 @@ my $tbl_name     = qr{
 #   OptionParser - <OptionParser> object.  All filters are gotten from this
 #                  obj: --databases, --tables, etc.
 #   Quoter       - <Quoter> object.
+#   TableParser  - <TableParser> object get tbl_struct.
 #
 # Optional Arguments:
 #   Schema          - <Schema> object to initialize while iterating.
-#   TableParser     - <TableParser> object get tbl_struct.
-#   keep_ddl        - Keep SHOW CREATE TABLE (default false).
-#   keep_tbl_status - Keep SHOW TABLE STATUS (default false).
 #   resume          - Skip tables so first call to <next()> returns
 #                     this "db.table".
 #
@@ -68,7 +66,7 @@ my $tbl_name     = qr{
 #   SchemaIterator object
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(OptionParser Quoter);
+   my @required_args = qw(OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -88,15 +86,10 @@ sub new {
       $resume{tbl} = $tbl;
    }
 
-   my $engine_key
-      = $dbh && ($dbh->{FetchHashKeyName} || '') eq 'NAME_lc' ? 'engine'
-                                                              : 'Engine';
-
    my $self = {
       %args,
-      resume     => \%resume,
-      filters    => _make_filters(%args),
-      engine_key => $engine_key,
+      resume  => \%resume,
+      filters => _make_filters(%args),
    };
 
    return bless $self, $class;
@@ -227,25 +220,18 @@ sub next {
    }
 
    if ( $schema_obj ) {
-      if ( $schema_obj->{ddl} && $self->{TableParser} ) {
-         $schema_obj->{tbl_struct}
-            = $self->{TableParser}->parse($schema_obj->{ddl});
-      }
-
-      delete $schema_obj->{ddl} unless $self->{keep_ddl};
-      delete $schema_obj->{tbl_status} unless $self->{keep_tbl_status};
-
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
       }
-      PTDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
+      PTDEBUG && _d('Next schema object:',
+         $schema_obj->{db}, $schema_obj->{tbl});
    }
 
    return $schema_obj;
 }
 
 sub _iterate_files {
-   my ( $self ) = @_;
+   my ( $self ) = @_; 
 
    if ( !$self->{fh} ) {
       my ($fh, $file) = $self->{file_itr}->();
@@ -300,14 +286,14 @@ sub _iterate_files {
                next CHUNK;
             }
             $ddl =~ s/ \*\/;\Z/;/;  # remove end of version comment
-
-            my ($engine) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;   
-
-            if ( !$engine || $self->engine_is_allowed($engine) ) {
+            my $tbl_struct = $self->{TableParser}->parse($ddl);
+            if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
                return {
-                  db  => $self->{db},
-                  tbl => $tbl,
-                  ddl => $ddl,
+                  db         => $self->{db},
+                  tbl        => $tbl,
+                  name       => $self->{Quoter}->quote($self->{db}, $tbl),
+                  ddl        => $ddl,
+                  tbl_struct => $tbl_struct,
                };
             }
          }
@@ -326,6 +312,7 @@ sub _iterate_files {
 sub _iterate_dbh {
    my ( $self ) = @_;
    my $q   = $self->{Quoter};
+   my $tp  = $self->{TableParser};
    my $dbh = $self->{dbh};
    PTDEBUG && _d('Getting next schema object from dbh', $dbh);
 
@@ -365,33 +352,15 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      # If there are engine filters, we have to get the table status.
-      # Else, get it if the user wants to keep it since they'll expect
-      # it to be available.
-      my $tbl_status;
-      if ( $self->{filters}->{'engines'}
-           || $self->{filters}->{'ignore-engines'}
-           || $self->{keep_tbl_status} )
-      {
-         my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
-                 . " LIKE \'$tbl\'";
-         PTDEBUG && _d($sql);
-         $tbl_status = $dbh->selectrow_hashref($sql);
-         PTDEBUG && _d(Dumper($tbl_status));
-      }
-
-      if ( !$tbl_status
-           || $self->engine_is_allowed($tbl_status->{$self->{engine_key}}) ) {
-         my $ddl;
-         if ( my $tp = $self->{TableParser} ) {
-            $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
-         }
-
+      my $ddl        = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $tbl_struct = $tp->parse($ddl);
+      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
          return {
             db         => $self->{db},
             tbl        => $tbl,
+            name       => $q->quote($self->{db}, $tbl),
             ddl        => $ddl,
-            tbl_status => $tbl_status,
+            tbl_struct => $tbl_struct,
          };
       }
    }
@@ -507,7 +476,15 @@ sub table_is_allowed {
 
 sub engine_is_allowed {
    my ( $self, $engine ) = @_;
-   die "I need an engine argument" unless $engine;
+
+   if ( !$engine ) {
+      # This normally doesn't happen, but it can if the user
+      # is iterating a file of their own table dumps, i.e. that
+      # weren't created by mysqldump, so there's no ENGINE=
+      # on the CREATE TABLE.
+      PTDEBUG && _d('No engine specified; allowing the table');
+      return 1;
+   }
 
    $engine = lc $engine;
 
