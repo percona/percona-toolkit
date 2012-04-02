@@ -5864,12 +5864,12 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# MysqldumpParser package 7500
+# MysqldumpParser package
 # This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the SVN repository at,
-#   trunk/common/MysqldumpParser.pm
-#   trunk/common/t/MysqldumpParser.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/MysqldumpParser.pm
+#   t/lib/MysqldumpParser.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 package MysqldumpParser;
 
@@ -5968,12 +5968,12 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# SchemaQualifier package 7499
+# SchemaQualifier package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the SVN repository at,
-#   trunk/common/SchemaQualifier.pm
-#   trunk/common/t/SchemaQualifier.t
-# See http://code.google.com/p/maatkit/wiki/Developers for more information.
+#   lib/SchemaQualifier.pm
+#   t/lib/SchemaQualifier.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 package SchemaQualifier;
 
@@ -6680,24 +6680,22 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-table-usage - Read queries from a log and analyze how they use tables.
+pt-table-usage - Analyze how queries use tables.
 
 =head1 SYNOPSIS
 
 Usage: pt-table-usage [OPTIONS] [FILES]
 
-pt-table-usage reads queries from slow query logs and analyzes how they use
-tables.  If no FILE is specified, STDIN is read.  Table usage for every query
-is printed to STDOUT.
+pt-table-usage reads queries from a log and analyzes how they use tables.  If no
+FILE is specified, it reads STDIN.  It prints a report for each query.
 
 =head1 RISKS
 
-pt-table-use is very low risk because it only reads and examines queries from
-a log and executes C<EXPLAIN EXTENDED> if the L<"--explain-extended"> option
-is specified.
+pt-table-use is very low risk. By default, it simply reads queries from a log.
+It executes C<EXPLAIN EXTENDED> if you specify the L<"--explain-extended">
+option.
 
-At the time of this release, there are no known bugs that could cause serious
-harm to users.
+At the time of this release, we know of no bugs that could harm users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -6708,40 +6706,32 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-table-usage reads queries from slow query logs and analyzes how they use
-tables.  Table usage indicates more than just which tables are read from or
-written to by the query, it also indicates data flow: data in and data out.
-Data flow is determined by the contexts in which tables are used by the query.
-A single table can be used in several different contexts in the same query.
-The reported table usage for each query lists every context for every table.
-This CONTEXT-TABLE list tells how and where data flows, i.e. the query's table
-usage.  The L<"OUTPUT"> section lists the possible contexts and describes how
-to read a table usage report.
+pt-table-usage reads queries from a log and analyzes how they use tables.  The
+log should be in MySQL's slow query log format.
 
-Since this tool analyzes table usage, it's important that queries use
-table-qualified columns.  If a query uses only one table, then all columns
-must be from that table and there's no problem.  But if a query uses
-multiple tables and the columns are not table-qualified, then that creates a
-problem that can only be solved by knowing the query's database and specifying
-L<"--explain-extended">.  If the slow log does not specify the database
-used by the query, then you can specify a default database with L<"--database">.
-There is no other way to know or guess the database, so the query will be
-skipped.  Secondly, if the database is known, then specifying
-L<"--explain-extended"> causes pt-table-usage to do C<EXPLAIN EXTENDED ...>
-C<SHOW WARNINGS> to get the fully qualified query as reported by MySQL
-(i.e. all identifiers are fully database- and/or table-qualified).  For
-best results, you should specify L<"--explain-extended"> and
-L<"--database"> if you know that all queries use the same database.
+Table usage is more than simply an indication of which tables the query reads or
+writes.  It also indicates data flow: data in and data out.  The tool determines
+the data flow by the contexts in which tables appear.  A single query can use a
+table in several different contexts simultaneously.  The tool's output lists
+every context for every table.  This CONTEXT-TABLE list indicates how data flows
+between tables.  The L<"OUTPUT"> section lists the possible contexts and
+describes how to read a table usage report.
 
-Each query is identified in the output by either an MD5 hex checksum
-of the query's fingerprint or the query's value for the specified
-L<"--id-attribute">.  The query ID is for parsing and storing the table
-usage reports in a table that is keyed on the query ID.  See L<"OUTPUT">
-for more information.
+The tool analyzes data flow down to the level of individual columns, so it is
+helpful if columns are identified unambiguously in the query.  If a query uses
+only one table, then all columns must be from that table, and there's no
+difficulty.  But if a query uses multiple tables and the column names are not
+table-qualified, then it is necessary to use C<EXPLAIN EXTENDED>, followed by
+C<SHOW WARNINGS>, to determine to which tables the columns belong.
+
+If the tool does not know the query's default database, which can occur when the
+database is not printed in the log, then C<EXPLAIN EXTENDED> can fail. In this
+case, you can specify a default database with L<"--database">. You can also use
+the L<"--create-table-definitions"> option to help resolve ambiguities.
 
 =head1 OUTPUT
 
-The table usage report that is printed for each query looks similar to the
+The tool prints a usage report for each table in every query, similar to the
 following:
 
   Query_id: 0x1CD27577D202A339.1
@@ -6758,45 +6748,43 @@ following:
   JOIN t2
   WHERE t1
 
-Usage reports are separated by blank lines.  The first line is always the
-query ID: a unique ID that can be used to parse the output and store the
-usage reports in a table keyed on this ID.  The query ID has two parts
-separated by a period: the query ID and the target table number.
+The first line contains the query ID, which by default is the same as those
+shown in pt-query-digest reports. It is an MD5 checksum of the query's
+"fingerprint," which is what remains after removing literals, collapsing white
+space, and a variety of other transformations. The query ID has two parts
+separated by a period: the query ID and the table number. If you wish to use a
+different value to identify the query, you can specify the L<"--id-attribute">
+option.
 
-If L<"--id-attribute"> is not specified, then query IDs are automatically
-created by making an MD5 hex checksum of the query's fingerprint
-(as shown above, e.g. C<0x1CD27577D202A339>); otherwise, the query ID is the
-query's value for the given attribute.
-
-The target table number starts at 1 and increments by 1 for each table that
-the query affects.  Only multi-table UPDATE queries can affect
-multiple tables with a single query, so this number is 1 for all other types
-of queries.  (Multi-table DELETE queries are not supported.)
-The example output above is from this query:
+The previous example shows two paragraphs for a single query, not two queries.
+Note that the query ID is identical for the two, but the table number differs.
+The table number increments by 1 for each table that the query updates.  Only
+multi-table UPDATE queries can update multiple tables with a single query, so
+the table number is 1 for all other types of queries.  (The tool does not
+support multi-table DELETE queries.) The example output above is from this
+query:
 
   UPDATE t1 AS a JOIN t2 AS b USING (id)
   SET a.foo="bar", b.foo="bat"
   WHERE a.id=1;
 
-The C<SET> clause indicates that two tables are updated: C<a> aliased as C<t1>,
-and C<b> aliased as C<t2>.  So two usage reports are printed, one for each
-table, and this is indicated in the output by their common query ID but
-incrementing target table number.
+The C<SET> clause indicates that the query updates two tables: C<a> aliased as
+C<t1>, and C<b> aliased as C<t2>.
 
-After the first line is a variable number of CONTEXT-TABLE lines.  Possible
-contexts are:
+After the first line, the tool prints a variable number of CONTEXT-TABLE lines.
+Possible contexts are as follows:
 
 =over
 
 =item * SELECT
 
-SELECT means that data is taken out of the table for one of two reasons:
-to be returned to the user as part of a result set, or to be put into another
-table as part of an INSERT or UPDATE.  In the first case, since only SELECT
-queries return result sets, a SELECT context is always listed for SELECT
-queries.  In the second case, data from one table is used to insert or
-update rows in another table.  For example, the UPDATE query in the example
-above has the usage:
+SELECT means that the query retrieves data from the table for one of two
+reasons. The first is to be returned to the user as part of a result set. Only
+SELECT queries return result sets, so the report always shows a SELECT context
+for SELECT queries.  
+
+The second case is when data flows to another table as part of an INSERT or
+UPDATE.  For example, the UPDATE query in the example above has the usage:
 
   SELECT DUAL
 
@@ -6804,9 +6792,9 @@ This refers to:
 
   SET a.foo="bar", b.foo="bat"
 
-DUAL is used for any values that does not originate in a table, in this case the
-literal values "bar" and "bat".  If that C<SET> clause were C<SET a.foo=b.foo>
-instead, then the complete usage would be:
+The tool uses DUAL for any values that do not originate in a table, in this case
+the literal values "bar" and "bat".  If that C<SET> clause were C<SET
+a.foo=b.foo> instead, then the complete usage would be:
 
   Query_id: 0x1CD27577D202A339.1
   UPDATE t1
@@ -6820,20 +6808,15 @@ INSERT, indicates where the UPDATE or INSERT retrieves its data.  The example
 immediately above reflects an UPDATE query that updates rows in table C<t1>
 with data from table C<t2>.
 
-=item * Any other query type
+=item * Any other verb
 
-Any other query type, such as INSERT, UPDATE, DELETE, etc. may be a context.
-All these types indicate that the table is written or altered in some way.
-If a SELECT context follows one of these types, then data is read from the
-SELECT table and written to this table.  This happens, for example, with
-INSERT..SELECT or UPDATE queries that set column values using values from
-tables instead of constant values.
+Any other verb, such as INSERT, UPDATE, DELETE, etc. may be a context.  These
+verbs indicate that the query modifies data in some way.  If a SELECT context
+follows one of these verbs, then the query reads data from the SELECT table and
+writes it to this table.  This happens, for example, with INSERT..SELECT or
+UPDATE queries that use values from tables instead of constant values.
 
-These query types are not supported:
-
-  SET
-  LOAD
-  multi-table DELETE
+These query types are not supported: SET, LOAD, and multi-table DELETE.
 
 =item * JOIN
 
@@ -6853,14 +6836,14 @@ Results in:
   WHERE t1
   WHERE t2
 
-Only unique tables are listed; that is why table C<t1> is listed only once.
+The tool lists only distinct tables; that is why table C<t1> is listed only
+once.
 
 =item * TLIST
 
-The TLIST context lists tables that are accessed by the query but do not
-appear in any other context.  These tables are usually an implicit
-full cartesian join, so they should be avoided.  For example, the query
-C<SELECT * FROM t1, t2> results in:
+The TLIST context lists tables that the query accesses, but which do not appear
+in any other context.  These tables are usually an implicit cartesian join.  For
+example, the query C<SELECT * FROM t1, t2> results in:
 
   Query_id: 0xBDDEB6EDA41897A8.1
   SELECT t1
@@ -6871,7 +6854,7 @@ C<SELECT * FROM t1, t2> results in:
 First of all, there are two SELECT contexts, because C<SELECT *> selects
 rows from all tables; C<t1> and C<t2> in this case.  Secondly, the tables
 are implicitly joined, but without any kind of join condition, which results
-in a full cartesian join as indicated by the TLIST context for each.
+in a cartesian join as indicated by the TLIST context for each.
 
 =back
 
@@ -6911,24 +6894,23 @@ first option on the command line.
 
 type: string; default: DUAL
 
-Value to print for constant data.  Constant data means all data not
-from tables (or subqueries since subqueries are not supported).  For example,
-real constant values like strings ("foo") and numbers (42), and data from
-functions like C<NOW()>.  For example, in the query
-C<INSERT INTO t (c) VALUES ('a')>, the string 'a' is constant data, so the
-table usage report is:
+Table to print as the source for constant data (literals).  This is any data not
+retrieved from tables (or subqueries, because subqueries are not supported).
+This includes literal values such as strings ("foo") and numbers (42), or
+functions such as C<NOW()>.  For example, in the query C<INSERT INTO t (c)
+VALUES ('a')>, the string 'a' is constant data, so the table usage report is:
 
   INSERT t
   SELECT DUAL
 
-The first line indicates that data is inserted into table C<t> and the second
-line indicates that that data comes from some constant value.
+The first line indicates that the query inserts data into table C<t>, and the
+second line indicates that the inserted data comes from some constant value.
 
 =item --[no]continue-on-error
 
 default: yes
 
-Continue parsing even if there is an error.
+Continue to work even if there is an error.
 
 =item --create-table-definitions
 
@@ -6939,9 +6921,9 @@ If you cannot use L<"--explain-extended"> to fully qualify table and column
 names, you can save the output of C<mysqldump --no-data> to one or more files
 and specify those files with this option.  The tool will parse all
 C<CREATE TABLE> definitions from the files and use this information to
-qualify table and column names.  If a column name is used in multiple tables,
-or table name is used in multiple databases, these duplicates cannot be
-qualified.
+qualify table and column names.  If a column name appears in multiple tables,
+or a table name appears in multiple databases, the ambiguities cannot be
+resolved.
 
 =item --daemonize
 
@@ -6964,7 +6946,8 @@ Only read mysql options from the given file.  You must give an absolute pathname
 
 type: DSN
 
-EXPLAIN EXTENDED queries on this host to fully qualify table and column names.
+A server to execute EXPLAIN EXTENDED queries. This may be necessary to resolve
+ambiguous (unqualified) column and table names.
 
 =item --filter
 
@@ -6972,89 +6955,13 @@ type: string
 
 Discard events for which this Perl code doesn't return true.
 
-This option is a string of Perl code or a file containing Perl code that gets
-compiled into a subroutine with one argument: $event.  This is a hashref.
-If the given value is a readable file, then pt-table-usage reads the entire
-file and uses its contents as the code.  The file should not contain
-a shebang (#!/usr/bin/perl) line.
+This option is a string of Perl code or a file containing Perl code that is
+compiled into a subroutine with one argument: $event.  If the given value is a
+readable file, then pt-table-usage reads the entire file and uses its contents
+as the code.
 
-If the code returns true, the chain of callbacks continues; otherwise it ends.
-The code is the last statement in the subroutine other than C<return $event>. 
-The subroutine template is:
-
-  sub { $event = shift; filter && return $event; }
-
-Filters given on the command line are wrapped inside parentheses like like
-C<( filter )>.  For complex, multi-line filters, you must put the code inside
-a file so it will not be wrapped inside parentheses.  Either way, the filter
-must produce syntactically valid code given the template.  For example, an
-if-else branch given on the command line would not be valid:
-
-  --filter 'if () { } else { }'  # WRONG
-
-Since it's given on the command line, the if-else branch would be wrapped inside
-parentheses which is not syntactically valid.  So to accomplish something more
-complex like this would require putting the code in a file, for example
-filter.txt:
-
-  my $event_ok; if (...) { $event_ok=1; } else { $event_ok=0; } $event_ok
-
-Then specify C<--filter filter.txt> to read the code from filter.txt.
-
-If the filter code won't compile, pt-table-usage will die with an error.
-If the filter code does compile, an error may still occur at runtime if the
-code tries to do something wrong (like pattern match an undefined value).
-pt-table-usage does not provide any safeguards so code carefully!
-
-An example filter that discards everything but SELECT statements:
-
-  --filter '$event->{arg} =~ m/^select/i'
-
-This is compiled into a subroutine like the following:
-
-  sub { $event = shift; ( $event->{arg} =~ m/^select/i ) && return $event; }
-
-It is permissible for the code to have side effects (to alter C<$event>).
-
-You can find an explanation of the structure of $event at
-L<http://code.google.com/p/maatkit/wiki/EventAttributes>.
-
-Here are more examples of filter code:
-
-=over
-
-=item Host/IP matches domain.com
-
---filter '($event->{host} || $event->{ip} || "") =~ m/domain.com/'
-
-Sometimes MySQL logs the host where the IP is expected.  Therefore, we
-check both.
-
-=item User matches john
-
---filter '($event->{user} || "") =~ m/john/'
-
-=item More than 1 warning
-
---filter '($event->{Warning_count} || 0) > 1'
-
-=item Query does full table scan or full join
-
---filter '(($event->{Full_scan} || "") eq "Yes") || (($event->{Full_join} || "") eq "Yes")'
-
-=item Query was not served from query cache
-
---filter '($event->{QC_Hit} || "") eq "No"'
-
-=item Query is 1 MB or larger
-
---filter '$event->{bytes} >= 1_048_576'
-
-=back
-
-Since L<"--filter"> allows you to alter C<$event>, you can use it to do other
-things, like create new attributes.
-
+Filters are implemented in the same fashion as in the pt-query-digest tool, so
+please refer to its documentation for more information.
 
 =item --help
 
@@ -7070,9 +6977,8 @@ Connect to host.
 
 type: string
 
-Identify each event using this attribute.  If not ID attribute is given, then
-events are identified with the query's checksum: an MD5 hex checksum of the
-query's fingerprint.
+Identify each event using this attribute.  The default is to use a query ID,
+which is an MD5 checksum of the query's fingerprint.
 
 =item --log
 
@@ -7115,10 +7021,7 @@ number of iterations.
 
 type: string
 
-Analyze only this given query.  If you want to analyze the table usage of
-one simple query by providing on the command line instead of reading it
-from a slow log file, then specify that query with this option.  The default
-L<"--id-attribute"> will be used which is the query's checksum.
+Analyze the specified query instead of reading a log file.
 
 =item --read-timeout
 
@@ -7127,7 +7030,7 @@ type: time; default: 0
 Wait this long for an event from the input; 0 to wait forever.
 
 This option sets the maximum time to wait for an event from the input.  If an
-event is not received after the specified time, the script stops reading the
+event is not received after the specified time, the tool stops reading the
 input and prints its reports.
 
 This option requires the Perl POSIX module.
