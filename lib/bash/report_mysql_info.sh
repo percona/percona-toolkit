@@ -1049,13 +1049,29 @@ section_mysqld () {
 
    [ -e "$executables_file" -a -e "$variables_file" ] || return
 
-   section MySQL_Executable
+   section "MySQL Executable"
    local i=1;
    while read executable; do
       name_val "Path to executable" "$executable"
       name_val "Has symbols" "$( get_var "pt-summary-internal-mysqld_executable_${i}" "$variables_file" )"
       i=$(($i + 1))
    done < "$executables_file"
+}
+
+section_mysql_files () {
+   local variables_file="$1"
+
+   section "MySQL Files"
+   for file_name in pid_file slow_query_log_file general_log_file log_error; do
+      local file="$(get_var "${file_name}" "$variables_file")"
+      local name_out="$(echo "$file_name" | sed 'y/[a-z]/[A-Z]/')"
+      if [ -e "${file}" ]; then
+         name_val "$name_out" "$file"
+         name_val "${name_out} Size" "$(du "$file" | awk '{print $1}')"
+      else
+         name_val "$name_out" "(does not exist)"
+      fi
+   done
 }
 
 report_mysql_summary () {
@@ -1068,9 +1084,9 @@ report_mysql_summary () {
    # Header for the whole thing, table of discovered instances
    # ########################################################################
 
-   section Percona_Toolkit_MySQL_Summary_Report
+   section "Percona Toolkit MySQL Summary Report"
    name_val "System time" "`date -u +'%F %T UTC'` (local TZ: `date +'%Z %z'`)"
-   section Instances
+   section "Instances"
    parse_mysqld_instances "$dir/mysqld-instances" "$dir/mysql-variables"
 
    section_mysqld "$dir/mysqld-executables" "$dir/mysql-variables"
@@ -1081,7 +1097,7 @@ report_mysql_summary () {
    local user="$(get_var "pt-summary-internal-user" "$dir/mysql-variables")"
    local port="$(get_var port "$dir/mysql-variables")"
    local now="$(get_var "pt-summary-internal-now" "$dir/mysql-variables")"
-   section "Report_On_Port_${port}"
+   section "Report On Port ${port}"
    name_val User "${user}"
    name_val Time "${now} ($(get_mysql_timezone "$dir/mysql-variables"))"
    name_val Hostname "$(get_var hostname "$dir/mysql-variables")"
@@ -1107,9 +1123,10 @@ report_mysql_summary () {
 
    # TODO move this into a section with other files: error log, slow log and
    # show the sizes
-   local pid_file="$(get_var pid_file "$dir/mysql-variables")"
+   #   section_mysql_files "$dir/mysql-variables"
+   local pid_file="$(get_var "pid_file" "$dir/mysql-variables")"
    local PID_EXISTS=""
-   if [ -e "${pid_file}" ]; then
+   if [ "$( get_var "pt-summary-internal-pid_file_exists" "$dir/mysql-variables" )" ]; then
       PID_EXISTS="(exists)"
    else
       PID_EXISTS="(does not exist)"
@@ -1119,13 +1136,13 @@ report_mysql_summary () {
    # ########################################################################
    # Processlist, sliced several different ways
    # ########################################################################
-   section Processlist
+   section "Processlist"
    summarize_processlist "$dir/mysql-processlist"
 
    # ########################################################################
    # Queries and query plans
    # ########################################################################
-   section "Status_Counters_(Wait_${OPT_SLEEP}_Seconds)"
+   section "Status Counters (Wait ${OPT_SLEEP} Seconds)"
    # Wait for the child that was forked during collection.
    wait
    local noncounters_pattern="$(noncounters_pattern)"
@@ -1134,8 +1151,8 @@ report_mysql_summary () {
    # ########################################################################
    # Table cache
    # ########################################################################
-   section Table_cache
-   local open_tables=$(get_var Open_tables "$dir/mysql-status")
+   section "Table cache"
+   local open_tables=$(get_var "Open_tables" "$dir/mysql-status")
    local table_cache=$(get_table_cache "$dir/mysql-variables")
    name_val Size  $table_cache
    name_val Usage "$(fuzzy_pct ${open_tables} ${table_cache})"
@@ -1143,21 +1160,21 @@ report_mysql_summary () {
    # ########################################################################
    # Percona Server features
    # ########################################################################
-   section Key_Percona_Server_features
+   section "Key Percona Server features"
    section_percona_server_features "$dir/mysql-variables"
 
    # ########################################################################
    # Plugins
    # ########################################################################
    # TODO: what would be good is to show nonstandard plugins here.
-   section Plugins
+   section "Plugins"
    name_val "InnoDB compression" "$(get_plugin_status "$dir/mysql-plugins" "INNODB_CMP")"
 
    # ########################################################################
    # Query cache
    # ########################################################################
    if [ "$(get_var have_query_cache "$dir/mysql-variables")" ]; then
-      section Query_cache
+      section "Query cache"
       local query_cache_size=$(get_var query_cache_size "$dir/mysql-variables")
       local used=$(( ${query_cache_size} - $(get_var Qcache_free_memory "$dir/mysql-status") ))
       local hrat=$(fuzzy_pct $(get_var Qcache_hits "$dir/mysql-status") $(get_var Qcache_inserts "$dir/mysql-status"))
@@ -1167,9 +1184,9 @@ report_mysql_summary () {
       name_val HitToInsertRatio "${hrat}"
    fi
 
-   local semisync_enabled_master="$(get_var rpl_semi_sync_master_enabled "$dir/mysql-variables")"
+   local semisync_enabled_master="$(get_var "rpl_semi_sync_master_enabled" "$dir/mysql-variables")"
    if [ -n "${semisync_enabled_master}" ]; then
-      section Semisynchronous_Replication
+      section "Semisynchronous Replication"
       if [ "$semisync_enabled_master" = "OFF" -o "$semisync_enabled_master" = "0" -o -z "$semisync_enabled_master" ]; then
          name_val "Master" "Disabled"
       else
@@ -1186,7 +1203,7 @@ report_mysql_summary () {
    # ########################################################################
    # Schema, databases, data type, other analysis.
    # ########################################################################
-   section Schema
+   section "Schema"
    # Assume "no" if stdin or stdout is not a terminal, so this can be run and
    # put into a file, or piped into a pager, or something else like that.
    local reply="n"
@@ -1231,7 +1248,7 @@ report_mysql_summary () {
    # ########################################################################
    # Noteworthy Technologies
    # ########################################################################
-   section "Noteworthy_Technologies"
+   section "Noteworthy Technologies"
    if [ -s "$dir/mysqldump" ]; then
       if grep FULLTEXT "$dir/mysqldump" > /dev/null; then
          name_val "Full Text Indexing" "Yes"
@@ -1304,8 +1321,8 @@ report_mysql_summary () {
    # ########################################################################
    # InnoDB
    # ########################################################################
-   section InnoDB
-   local have_innodb="$(get_var have_innodb "$dir/mysql-variables")"
+   section "InnoDB"
+   local have_innodb="$(get_var "have_innodb" "$dir/mysql-variables")"
    if [ "${have_innodb}" = "YES" ]; then
       section_innodb "$dir/mysql-variables" "$dir/mysql-status"
 
@@ -1317,22 +1334,21 @@ report_mysql_summary () {
    # ########################################################################
    # MyISAM
    # ########################################################################
-   section MyISAM
+   section "MyISAM"
    section_myisam "$dir/mysql-variables" "$dir/mysql-status"
 
    # ########################################################################
    # Users & Security
    # ########################################################################
-   section Security
+   section "Security"
    local users="$( format_users "$dir/mysql-users" )"
-   # XXX TODO Give it a different formatting?
-   name_val Users "${users}"
+   name_val "Users" "${users}"
    name_val "Old Passwords" "$(get_var old_passwords "$dir/mysql-variables")"
 
    # ########################################################################
    # Binary Logging
    # ########################################################################
-   section Binary_Logging
+   section "Binary Logging"
 
    if    [ -s "$dir/mysql-master-logs" ] \
       || [ -s "$dir/mysql-master-status" ]; then
@@ -1351,13 +1367,13 @@ report_mysql_summary () {
    # ########################################################################
    # Interesting things that you just ought to know about.
    # ########################################################################
-   section Noteworthy_Variables
+   section "Noteworthy Variables"
    section_noteworthy_variables "$dir/mysql-variables"
 
    # ########################################################################
    # If there is a my.cnf in a standard location, see if we can pretty-print it.
    # ########################################################################
-   section Configuration_File
+   section "Configuration File"
    local cnf_file="$(get_var "pt-summary-internal-Config_File_path" "$dir/mysql-variables")"
    if [ -n "${cnf_file}" ]; then
       name_val "Config File" "${cnf_file}"
@@ -1367,7 +1383,7 @@ report_mysql_summary () {
    fi
 
    # Make sure that we signal the end of the tool's output.
-   section The_End
+   section "The End"
 }
 
 # ###########################################################################

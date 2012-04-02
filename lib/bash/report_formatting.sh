@@ -64,7 +64,12 @@ fuzzy_pct () {
 # with #'s and all underscores with spaces.
 section () {
    local str="$1"
-   local line="$(printf '#_%-60s' "${str}_" | sed -e 's/[[:space:]]/#/g' -e 's/_/ /g')"
+   local line="$(printf '# %-60s' "${str} _" | awk '{
+      i = index($0, "_");
+      x = substr($0, i);
+      gsub(/[_ \t]/, "#", x);
+      printf("%s%s\n", substr($0, 0, i-1), x);
+   }')"
    printf "%s\n" "${line}"
 }
 

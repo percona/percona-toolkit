@@ -234,6 +234,11 @@ collect_mysql_info () {
 
    cat "$cnf_file" > "$dir/mysql-config-file"
 
+   local pid_file="$(get_var "pid_file" "$dir/mysql-variables")"
+   local pid_file_exists=""
+   [ -e "${pid_file}" ] && pid_file_exists=1
+   echo "pt-summary-internal-pid_file_exists    $pid_file_exists" >> "$dir/mysql-variables"
+
    # TODO: Do these require a file of their own?
    echo "pt-summary-internal-current_time    $current_time" >> "$dir/mysql-variables"
    echo "pt-summary-internal-Config_File_path    $cnf_file" >> "$dir/mysql-variables"
