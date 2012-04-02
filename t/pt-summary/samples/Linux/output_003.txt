@@ -42,7 +42,9 @@ dentry-state | 9175	7239	45	0	0	0
      file-nr | 640	0	102187
     inode-nr | 5259	148
 # LVM Volumes ################################################
-Cannot execute 'lvs'
+Unable to collect information
+# LVM Volume Groups ##########################################
+Unable to collect information
 # RAID Controller ############################################
   Controller | No RAID controller detected
 # Network Config #############################################

@@ -634,34 +634,11 @@ parse_lsi_megaraid_bbu_status () { local PTFUNCNAME=parse_lsi_megaraid_bbu_statu
 # total and free space available to each volume.
 # ##############################################################################
 format_lvs () { local PTFUNCNAME=format_lvs;
-   local lvs_file="$1"
-   local vgs_file="$2"
-   local lvs_errors="$3"
-
-   if [ -e "$lvs_file" -a -e "$vgs_file" ]; then
-      local header="$(head -n1 "$lvs_file")$(head -n1 "$vgs_file" | sed -e 's/^ *VG//')"
-
-      echo "$header"
-      tail -n+2 "$lvs_file" | while read lvs_line; do
-         local current_vg="$(echo $lvs_line | awk '{print $2}')"
-         while read vgs_line; do
-            local current_vgs_vg="$(echo $vgs_line | awk '{print $1}' )"
-            if [ "$current_vg" = "$current_vgs_vg" ]; then
-               lvs_line="${lvs_line}$(echo $vgs_line | sed -e "s/^ *$current_vg//")"
-               break
-            fi
-         done < "$vgs_file"
-         echo $lvs_line
-      done
+   local file="$1"
+   if [ -e "$file" ]; then
+      grep -v "open failed" "$file"
    else
-      if [ -e "$lvs_file" ]; then
-         cat "$lvs_file"
-      elif [ -e "$lvs_errors" ]; then
-         echo "lvs didn't output anything and had the following errors:"
-         cat "$lvs_errors"
-      else
-         echo "Cannot execute 'lvs'";
-      fi
+      echo "Unable to collect information";
    fi
 }
 
@@ -984,7 +961,9 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       done
 
       section "LVM_Volumes"
-      format_lvs "$data_dir/lvs" "$data_dir/vgs" "$data_dir/lvs.stderr"
+      format_lvs "$data_dir/lvs"
+      section "LVM_Volume_Groups"
+      format_lvs "$data_dir/vgs"
    fi
 
    section "RAID_Controller"
