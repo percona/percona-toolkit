@@ -36,7 +36,7 @@ my @files = glob("$dir/*");
 
 is(
    scalar @files,
-   14,
+   15,
    "And leaves all files in there"
 );
 

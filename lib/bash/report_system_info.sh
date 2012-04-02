@@ -802,12 +802,12 @@ processes_section () { local PTFUNCNAME=processes_section;
    local vmstat_file="$3"
    local platform="$4"
 
-   section "Top_Processes"
+   section "Top Processes"
    cat "$top_process_file"
-   section "Notable_Processes"
+   section "Notable Processes"
    cat "$notable_procs_file"
    if [ -e "$vmstat_file" ]; then
-      section "Simplified_and_fuzzy_rounded_vmstat_(wait_please)"
+      section "Simplified and fuzzy rounded vmstat (wait please)"
       wait # For the process we forked that was gathering vmstat samples
       if [ "${platform}" = "Linux" ]; then
          format_vmstat "$vmstat_file"
@@ -888,7 +888,7 @@ parse_uptime () {
 report_system_summary () { local PTFUNCNAME=report_system_summary;
    local data_dir="$1"
 
-   section "Percona_Toolkit_System_Summary_Report"
+   section "Percona Toolkit System Summary Report"
 
    # ########################################################################
    # General date, time, load, etc
@@ -939,34 +939,34 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    # TODO: Add info about software RAID
 
    if [ -s "$data_dir/mounted_fs" ]; then
-      section "Mounted_Filesystems"
+      section "Mounted Filesystems"
       parse_filesystems "$data_dir/mounted_fs" "${platform}"
    fi
 
    if [ "${platform}" = "Linux" ]; then
 
-      section "Disk_Schedulers_And_Queue_Size"
+      section "Disk Schedulers And Queue Size"
       local disks="$( get_var "internal::disks" "$data_dir/summary" )"
       for disk in $disks; do
          local scheduler="$( get_var "internal::${disk}" "$data_dir/summary" )"
          name_val "${disk}" "${scheduler:-"UNREADABLE"}"
       done
 
-      section "Disk_Partioning"
+      section "Disk Partioning"
       parse_fdisk "$data_dir/partitioning"
 
-      section "Kernel_Inode_State"
+      section "Kernel Inode State"
       for file in dentry-state file-nr inode-nr; do
          name_val "${file}" "$(get_var "${file}" "$data_dir/summary")"
       done
 
-      section "LVM_Volumes"
+      section "LVM Volumes"
       format_lvs "$data_dir/lvs"
-      section "LVM_Volume_Groups"
+      section "LVM Volume Groups"
       format_lvs "$data_dir/vgs"
    fi
 
-   section "RAID_Controller"
+   section "RAID Controller"
    local controller="$(get_var "raid_controller" "$data_dir/summary")"
    name_val "Controller" "$controller"
    local key="$(get_var "internal::raid_opt" "$data_dir/summary")"
@@ -1000,7 +1000,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       # Network stuff
       # #####################################################################
       if [ "${platform}" = "Linux" ]; then
-         section "Network_Config"
+         section "Network Config"
          if [ -s "$data_dir/lspci_file" ]; then
             parse_ethernet_controller_lspci "$data_dir/lspci_file"
          fi
@@ -1015,17 +1015,17 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
       # in new kernels like Fedora 12?
 
       if [ -s "$data_dir/ip" ]; then
-         section "Interface_Statistics"
+         section "Interface Statistics"
          parse_ip_s_link "$data_dir/ip"
       fi
 
       if [ -s "$data_dir/network_devices" ]; then
-         section "Network_Devices"
+         section "Network Devices"
          parse_ethtool "$data_dir/network_devices"
       fi
 
       if [ "${platform}" = "Linux" -a -e "$data_dir/netstat" ]; then
-         section "Network_Connections"
+         section "Network Connections"
          parse_netstat "$data_dir/netstat"
       fi
    fi
@@ -1042,7 +1042,7 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    # ########################################################################
    # All done.  Signal the end so it's explicit.
    # ########################################################################
-   section "The_End"
+   section "The End"
 }
 
 # ###########################################################################

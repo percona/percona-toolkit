@@ -68,13 +68,13 @@ is \
 
 is \
    "$(section "A B C")" \
-   "# A#B#C ######################################################" \
-   "section replaces all spaces with #s"
+   "# A B C ######################################################" \
+   "section doesn't replaces spaces with #s"
 
 is \
    "$(section "A_B_C")" \
-   "# A B C ######################################################" \
-   "..and all underscores with spaces"
+   "# A#B#C#######################################################" \
+   "..but it does replace everything after and including the first underscore with #s"
 
 # name_val
 
