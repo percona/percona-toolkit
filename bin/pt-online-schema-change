@@ -5284,7 +5284,7 @@ sub main {
    # XXX
    # Ready to begin the alter!  Nothing has been changed on the server at
    # this point; we've just checked and looked for things.  Past this point,
-   # the code is live if --execute, else it's doing a --run-run.  Or, if
+   # the code is live if --execute, else it's doing a --dry-run.  Or, if
    # the user didn't read the docs, we may bail out here.
    # XXX
    # ########################################################################
