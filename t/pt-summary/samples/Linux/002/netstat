@@ -1,0 +1,6 @@
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address               Foreign Address             State       PID/Program name   
+tcp        0      0 0.0.0.0:966                 0.0.0.0:*                   LISTEN      2056/rpc.statd      
+tcp        0      0 0.0.0.0:111                 0.0.0.0:*                   LISTEN      2016/portmap        
+tcp        0      0 127.0.0.1:25                0.0.0.0:*                   LISTEN      2358/sendmail: acce 
+tcp        0      0 :::22                       :::*                        LISTEN      2333/sshd           

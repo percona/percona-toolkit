@@ -1,0 +1,19 @@
+processor	: 0
+vendor_id	: GenuineIntel
+cpu family	: 6
+model		: 3
+model name	: QEMU Virtual CPU version 0.14.1
+stepping	: 3
+cpu MHz		: 1662.701
+cache size	: 4096 KB
+fdiv_bug	: no
+hlt_bug		: no
+f00f_bug	: no
+coma_bug	: no
+fpu		: yes
+fpu_exception	: yes
+cpuid level	: 4
+wp		: yes
+flags		: fpu pse tsc msr pae mce cx8 apic pge cmov pat mmx fxsr sse sse2 up pni popcnt
+bogomips	: 3325.40
+

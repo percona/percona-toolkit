@@ -1,0 +1,423 @@
+kern.ostype=OpenBSD
+kern.osrelease=5.0
+kern.osrevision=201111
+kern.version=OpenBSD 5.0 (GENERIC) #43: Wed Aug 17 10:10:52 MDT 2011
+    deraadt@i386.openbsd.org:/usr/src/sys/arch/i386/compile/GENERIC
+
+kern.maxvnodes=5926
+kern.maxproc=1310
+kern.maxfiles=7030
+kern.argmax=262144
+kern.securelevel=1
+kern.hostname=openbsd.my.domain
+kern.hostid=0
+kern.clockrate=tick = 10000, tickadj = 40, hz = 100, profhz = 1024, stathz = 128
+kern.posix1version=199009
+kern.ngroups=16
+kern.job_control=1
+kern.saved_ids=1
+kern.boottime=Fri Mar 23 04:49:37 2012
+kern.domainname=
+kern.maxpartitions=16
+kern.rawpartition=2
+kern.osversion=GENERIC#43
+kern.somaxconn=128
+kern.sominconn=80
+kern.usermount=0
+kern.random=4510 5632 0 541070 11 0 0 0 0 0 0 0 555 45 9707 4 46 24 4 14 43 23 32 40 40 32 33 24 21 29 16 8 24 31 21 15 11 5 1 4 4 1 2 2 1 1 3 0 0 43 0 176 297 39 0 0 0 0 0 1902 2894 599 0 0
+kern.nosuidcoredump=1
+kern.fsync=1
+kern.sysvmsg=1
+kern.sysvsem=1
+kern.sysvshm=1
+kern.arandom=707436917
+kern.msgbufsize=16364
+kern.malloc.buckets=16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288
+kern.malloc.bucket.16=(calls = 63501 total_allocated = 2048 total_free = 1282 elements = 256 high watermark = 1280 could_free = 12)
+kern.malloc.bucket.32=(calls = 8664 total_allocated = 640 total_free = 167 elements = 128 high watermark = 640 could_free = 0)
+kern.malloc.bucket.64=(calls = 30537 total_allocated = 3584 total_free = 117 elements = 64 high watermark = 320 could_free = 1326)
+kern.malloc.bucket.128=(calls = 1505 total_allocated = 288 total_free = 54 elements = 32 high watermark = 160 could_free = 0)
+kern.malloc.bucket.256=(calls = 8450 total_allocated = 128 total_free = 27 elements = 16 high watermark = 80 could_free = 0)
+kern.malloc.bucket.512=(calls = 3003 total_allocated = 176 total_free = 23 elements = 8 high watermark = 40 could_free = 0)
+kern.malloc.bucket.1024=(calls = 693 total_allocated = 236 total_free = 6 elements = 4 high watermark = 20 could_free = 0)
+kern.malloc.bucket.2048=(calls = 564 total_allocated = 526 total_free = 3 elements = 2 high watermark = 10 could_free = 0)
+kern.malloc.bucket.4096=(calls = 279 total_allocated = 21 total_free = 1 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.8192=(calls = 15 total_allocated = 6 total_free = 1 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.16384=(calls = 5 total_allocated = 5 total_free = 0 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.32768=(calls = 5 total_allocated = 4 total_free = 0 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.65536=(calls = 3 total_allocated = 0 total_free = 0 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.131072=(calls = 3 total_allocated = 1 total_free = 0 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.262144=(calls = 0 total_allocated = 0 total_free = 0 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.bucket.524288=(calls = 0 total_allocated = 0 total_free = 0 elements = 1 high watermark = 5 could_free = 0)
+kern.malloc.kmemnames=free,,devbuf,debug,pcb,routetbl,,fragtbl,,ifaddr,soopts,sysctl,,,ioctlops,,,,,iov,mount,,NFS_req,NFS_mount,,vnodes,namecache,UFS_quota,UFS_mount,shm,VM_map,sem,dirhash,ACPI,VM_pmap,,,,file,file_desc,,proc,subproc,VFS_cluster,,,MFS_node,,,Export_Host,NFS_srvsock,,NFS_daemon,ip_moptions,in_multi,ether_multi,mrt,ISOFS_mount,ISOFS_node,MSDOSFS_mount,MSDOSFS_fat,MSDOSFS_node,ttys,exec,miscfs_mount,,,,,,,,,,pfkey_data,tdb,xform_data,,pagedep,inodedep,newblk,,,indirdep,,,,,,,,,VM_swap,,,,,RAIDframe_data,UVM_amap,UVM_aobj,,USB,USB_device,USB_HC,,memdesc,,,crypto_data,,IPsec_creds,packet_tags,,,emuldata,,,,,,,,,ip6_options,NDP,,,temp,NTFS_mount,NTFS_node,NTFS_fnode,NTFS_dir,NTFS_hash,NTFS_attr,NTFS_data,NTFS_decomp,NTFS_vrun,kqueue,bluetooth,bwmeter,UDF_mount,UDF_file_entry,UDF_file_id,Bluetooth_HID,AGP_Memory,DRM
+kern.malloc.kmemstat.free=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.devbuf=(inuse = 1158, calls = 2225, memuse = 1315K, limblocks = 0, mapblocks = 0, maxused = 1315K, limit = 39243K, spare = 0, sizes = (16,32,64,128,256,512,1024,2048,4096,8192,32768,65536))
+kern.malloc.kmemstat.debug=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.pcb=(inuse = 25, calls = 66, memuse = 5K, limblocks = 0, mapblocks = 0, maxused = 5K, limit = 39243K, spare = 0, sizes = (16,64,512))
+kern.malloc.kmemstat.routetbl=(inuse = 68, calls = 128, memuse = 5K, limblocks = 0, mapblocks = 0, maxused = 6K, limit = 39243K, spare = 0, sizes = (16,32,64,128,256,512))
+kern.malloc.kmemstat.fragtbl=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.ifaddr=(inuse = 41, calls = 41, memuse = 12K, limblocks = 0, mapblocks = 0, maxused = 12K, limit = 39243K, spare = 0, sizes = (32,128,256,512,4096))
+kern.malloc.kmemstat.soopts=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.sysctl=(inuse = 3, calls = 9, memuse = 2K, limblocks = 0, mapblocks = 0, maxused = 2K, limit = 39243K, spare = 0, sizes = (64,256,1024))
+kern.malloc.kmemstat.ioctlops=(inuse = 0, calls = 1453, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 4K, limit = 39243K, spare = 0, sizes = (256,512,1024,2048,4096))
+kern.malloc.kmemstat.iov=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.mount=(inuse = 12, calls = 14, memuse = 5K, limblocks = 0, mapblocks = 0, maxused = 5K, limit = 39243K, spare = 0, sizes = (128,1024))
+kern.malloc.kmemstat.NFS_req=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NFS_mount=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.vnodes=(inuse = 1285, calls = 1328, memuse = 81K, limblocks = 0, mapblocks = 0, maxused = 83K, limit = 39243K, spare = 0, sizes = (64,128))
+kern.malloc.kmemstat.namecache=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.UFS_quota=(inuse = 1, calls = 1, memuse = 16K, limblocks = 0, mapblocks = 0, maxused = 16K, limit = 39243K, spare = 0, sizes = (16384))
+kern.malloc.kmemstat.UFS_mount=(inuse = 13, calls = 13, memuse = 30K, limblocks = 0, mapblocks = 0, maxused = 30K, limit = 39243K, spare = 0, sizes = (16,512,2048,16384))
+kern.malloc.kmemstat.shm=(inuse = 2, calls = 2, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (256,512))
+kern.malloc.kmemstat.VM_map=(inuse = 2, calls = 2, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (256))
+kern.malloc.kmemstat.sem=(inuse = 2, calls = 2, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (32,64))
+kern.malloc.kmemstat.dirhash=(inuse = 24, calls = 27, memuse = 5K, limblocks = 0, mapblocks = 0, maxused = 5K, limit = 39243K, spare = 0, sizes = (16,32,64,512))
+kern.malloc.kmemstat.ACPI=(inuse = 2184, calls = 25703, memuse = 121K, limblocks = 0, mapblocks = 0, maxused = 204K, limit = 39243K, spare = 0, sizes = (16,32,64,128,512,1024))
+kern.malloc.kmemstat.VM_pmap=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.file=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.file_desc=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.proc=(inuse = 9, calls = 9, memuse = 5K, limblocks = 0, mapblocks = 0, maxused = 5K, limit = 39243K, spare = 0, sizes = (32,512,2048))
+kern.malloc.kmemstat.subproc=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.VFS_cluster=(inuse = 0, calls = 2, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (32))
+kern.malloc.kmemstat.MFS_node=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.Export_Host=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NFS_srvsock=(inuse = 1, calls = 1, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (64))
+kern.malloc.kmemstat.NFS_daemon=(inuse = 1, calls = 1, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (256))
+kern.malloc.kmemstat.ip_moptions=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.in_multi=(inuse = 24, calls = 24, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (16,32,64))
+kern.malloc.kmemstat.ether_multi=(inuse = 4, calls = 4, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (32))
+kern.malloc.kmemstat.mrt=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.ISOFS_mount=(inuse = 1, calls = 1, memuse = 16K, limblocks = 0, mapblocks = 0, maxused = 16K, limit = 39243K, spare = 0, sizes = (16384))
+kern.malloc.kmemstat.ISOFS_node=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.MSDOSFS_mount=(inuse = 2, calls = 4, memuse = 9K, limblocks = 0, mapblocks = 0, maxused = 9K, limit = 39243K, spare = 0, sizes = (512,8192))
+kern.malloc.kmemstat.MSDOSFS_fat=(inuse = 1, calls = 3, memuse = 124K, limblocks = 0, mapblocks = 0, maxused = 124K, limit = 39243K, spare = 0, sizes = (131072))
+kern.malloc.kmemstat.MSDOSFS_node=(inuse = 5, calls = 12, memuse = 2K, limblocks = 0, mapblocks = 0, maxused = 2K, limit = 39243K, spare = 0, sizes = (256))
+kern.malloc.kmemstat.ttys=(inuse = 408, calls = 408, memuse = 255K, limblocks = 0, mapblocks = 0, maxused = 255K, limit = 39243K, spare = 0, sizes = (128,512,1024))
+kern.malloc.kmemstat.exec=(inuse = 0, calls = 1090, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 2K, limit = 39243K, spare = 0, sizes = (16,256,512,1024))
+kern.malloc.kmemstat.miscfs_mount=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.pfkey_data=(inuse = 1, calls = 2, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (64))
+kern.malloc.kmemstat.tdb=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.xform_data=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.pagedep=(inuse = 1, calls = 1, memuse = 4K, limblocks = 0, mapblocks = 0, maxused = 4K, limit = 39243K, spare = 0, sizes = (4096))
+kern.malloc.kmemstat.inodedep=(inuse = 1, calls = 1, memuse = 16K, limblocks = 0, mapblocks = 0, maxused = 16K, limit = 39243K, spare = 0, sizes = (16384))
+kern.malloc.kmemstat.newblk=(inuse = 1, calls = 1, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (256))
+kern.malloc.kmemstat.indirdep=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.VM_swap=(inuse = 7, calls = 7, memuse = 11K, limblocks = 0, mapblocks = 0, maxused = 11K, limit = 39243K, spare = 0, sizes = (32,128,2048,4096))
+kern.malloc.kmemstat.RAIDframe_data=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.UVM_amap=(inuse = 610, calls = 76184, memuse = 40K, limblocks = 0, mapblocks = 0, maxused = 83K, limit = 39243K, spare = 0, sizes = (16,32,64,128,256,512,1024,2048,4096))
+kern.malloc.kmemstat.UVM_aobj=(inuse = 2, calls = 2, memuse = 2K, limblocks = 0, mapblocks = 0, maxused = 2K, limit = 39243K, spare = 0, sizes = (16,1024))
+kern.malloc.kmemstat.USB=(inuse = 31, calls = 50, memuse = 5K, limblocks = 0, mapblocks = 0, maxused = 5K, limit = 39243K, spare = 0, sizes = (16,32,64,128,256))
+kern.malloc.kmemstat.USB_device=(inuse = 3, calls = 3, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (16,64,256))
+kern.malloc.kmemstat.USB_HC=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.memdesc=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.crypto_data=(inuse = 1, calls = 1, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (1024))
+kern.malloc.kmemstat.IPsec_creds=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.packet_tags=(inuse = 0, calls = 1, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (16))
+kern.malloc.kmemstat.emuldata=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.ip6_options=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NDP=(inuse = 6, calls = 6, memuse = 1K, limblocks = 0, mapblocks = 0, maxused = 1K, limit = 39243K, spare = 0, sizes = (64,128))
+kern.malloc.kmemstat.temp=(inuse = 41, calls = 8394, memuse = 6K, limblocks = 0, mapblocks = 0, maxused = 14K, limit = 39243K, spare = 0, sizes = (16,32,64,128,256,512,1024,2048,4096,8192))
+kern.malloc.kmemstat.NTFS_mount=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_node=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_fnode=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_dir=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_hash=(inuse = 1, calls = 1, memuse = 16K, limblocks = 0, mapblocks = 0, maxused = 16K, limit = 39243K, spare = 0, sizes = (16384))
+kern.malloc.kmemstat.NTFS_attr=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_data=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_decomp=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.NTFS_vrun=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.kqueue=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.bluetooth=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.bwmeter=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.UDF_mount=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.UDF_file_entry=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.UDF_file_id=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.Bluetooth_HID=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.AGP_Memory=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.malloc.kmemstat.DRM=(inuse = 0, calls = 0, memuse = 0K, limblocks = 0, mapblocks = 0, maxused = 0K, limit = 39243K, spare = 0, sizes = (none))
+kern.cp_time=329,0,4122,446,562778
+kern.nchstats.good_hits=41002
+kern.nchstats.negative_hits=3634
+kern.nchstats.bad_hits=200
+kern.nchstats.false_hits=4
+kern.nchstats.misses=3565
+kern.nchstats.long_names=0
+kern.nchstats.pass2=38
+kern.nchstats.2passes=156
+kern.nchstats.ncs_revhits=23
+kern.nchstats.ncs_revmiss=0
+kern.nchstats.ncs_dothits=0
+kern.nchstats.nch_dotdothits=0
+kern.forkstat.forks=1500
+kern.forkstat.vforks=0
+kern.forkstat.rforks=0
+kern.forkstat.kthreads=13
+kern.forkstat.fork_pages=66785
+kern.forkstat.vfork_pages=0
+kern.forkstat.rfork_pages=0
+kern.forkstat.kthread_pages=0
+kern.nselcoll=0
+kern.tty.tk_nin=3288
+kern.tty.tk_nout=144347
+kern.tty.tk_rawcc=3233
+kern.tty.tk_cancc=55
+kern.tty.maxptys=992
+kern.tty.nptys=64
+kern.ccpu=1948
+kern.fscale=2048
+kern.nprocs=32
+kern.stackgap_random=262144
+kern.usercrypto=0
+kern.cryptodevallowsoft=0
+kern.splassert=1
+kern.nfiles=62
+kern.ttycount=68
+kern.numvnodes=1845
+kern.userasymcrypto=0
+kern.seminfo.semmni=10
+kern.seminfo.semmns=60
+kern.seminfo.semmnu=30
+kern.seminfo.semmsl=60
+kern.seminfo.semopm=100
+kern.seminfo.semume=10
+kern.seminfo.semusz=100
+kern.seminfo.semvmx=32767
+kern.seminfo.semaem=16384
+kern.shminfo.shmmax=33554432
+kern.shminfo.shmmin=1
+kern.shminfo.shmmni=128
+kern.shminfo.shmseg=128
+kern.shminfo.shmall=8192
+kern.emul.nemuls=1
+kern.emul.linux=0
+kern.maxclusters=6144
+kern.timecounter.tick=1
+kern.timecounter.timestepwarnings=0
+kern.timecounter.hardware=acpitimer0
+kern.timecounter.choice=i8254(0) acpitimer0(1000) dummy(-1000000)
+kern.maxlocksperuid=1024
+kern.bufcachepercent=20
+kern.rthreads=0
+kern.consdev=ttyC0
+kern.netlivelocks=1
+kern.pool_debug=0
+vm.loadavg=0.44 0.20 0.16
+vm.psstrings=0xcfbfdff0
+vm.swapencrypt.enable=1
+vm.swapencrypt.keyscreated=0
+vm.swapencrypt.keysdeleted=0
+vm.nkmempages=16351
+vm.anonmin=10
+vm.vtextmin=5
+vm.vnodemin=10
+fs.posix.setuid=1
+net.inet.ip.forwarding=0
+net.inet.ip.redirect=1
+net.inet.ip.ttl=64
+net.inet.ip.sourceroute=0
+net.inet.ip.directed-broadcast=0
+net.inet.ip.portfirst=1024
+net.inet.ip.portlast=49151
+net.inet.ip.porthifirst=49152
+net.inet.ip.porthilast=65535
+net.inet.ip.maxqueue=300
+net.inet.ip.encdebug=0
+net.inet.ip.ipsec-expire-acquire=30
+net.inet.ip.ipsec-invalid-life=60
+net.inet.ip.ipsec-pfs=1
+net.inet.ip.ipsec-soft-allocs=0
+net.inet.ip.ipsec-allocs=0
+net.inet.ip.ipsec-soft-bytes=0
+net.inet.ip.ipsec-bytes=0
+net.inet.ip.ipsec-timeout=86400
+net.inet.ip.ipsec-soft-timeout=80000
+net.inet.ip.ipsec-soft-firstuse=3600
+net.inet.ip.ipsec-firstuse=7200
+net.inet.ip.ipsec-enc-alg=aes
+net.inet.ip.ipsec-auth-alg=hmac-sha1
+net.inet.ip.mtudisc=1
+net.inet.ip.mtudisctimeout=600
+net.inet.ip.ipsec-comp-alg=deflate
+net.inet.ip.ifq.len=0
+net.inet.ip.ifq.maxlen=256
+net.inet.ip.ifq.drops=0
+net.inet.ip.mforwarding=0
+net.inet.ip.multipath=0
+net.inet.ip.mrtproto=19
+net.inet.ip.arpqueued=0
+net.inet.icmp.maskrepl=0
+net.inet.icmp.bmcastecho=0
+net.inet.icmp.errppslimit=100
+net.inet.icmp.rediraccept=0
+net.inet.icmp.redirtimeout=600
+net.inet.icmp.tstamprepl=1
+net.inet.ipip.allow=0
+net.inet.tcp.rfc1323=1
+net.inet.tcp.keepinittime=150
+net.inet.tcp.keepidle=14400
+net.inet.tcp.keepintvl=150
+net.inet.tcp.slowhz=2
+net.inet.tcp.baddynamic=1,7,9,11,13,15,17,18,19,20,21,22,23,25,37,42,43,53,57,67,68,70,77,79,80,87,88,95,101,102,103,104,105,107,109,110,111,113,115,117,119,123,129,135,137,138,139,143,152,163,164,177,178,179,191,194,199,201,202,204,206,210,213,220,372,389,427,433,443,445,464,465,468,512,513,514,515,521,526,530,531,532,540,543,544,545,548,554,556,587,631,636,646,706,749,750,751,754,760,782,871,873,888,993,995,1080,1109,1127,1433,1434,1524,1525,1723,1900,2049,2105,2106,2108,2110,2111,2112,2120,2121,2401,2627,2983,3031,3260,3306,3517,3689,4444,4500,5002,5060,5432,5680,6000,6001,6002,6003,6004,6005,6006,6007,6008,6009,6010,7326,8025,8026,10050,10051
+net.inet.tcp.sack=1
+net.inet.tcp.mssdflt=512
+net.inet.tcp.rstppslimit=100
+net.inet.tcp.ackonpush=0
+net.inet.tcp.ecn=0
+net.inet.tcp.syncachelimit=10255
+net.inet.tcp.synbucketlimit=105
+net.inet.tcp.rfc3390=1
+net.inet.tcp.reasslimit=3072
+net.inet.tcp.sackholelimit=32768
+net.inet.tcp.always_keepalive=0
+net.inet.udp.checksum=1
+net.inet.udp.baddynamic=7,9,13,18,19,22,37,39,53,67,68,69,70,80,88,105,107,109,110,111,123,129,135,137,138,139,143,161,162,163,164,177,178,179,191,194,199,201,202,204,206,210,213,220,372,389,427,445,464,468,500,512,513,514,517,518,520,525,533,548,554,587,623,631,636,646,664,706,749,750,751,993,995,1433,1434,1524,1525,1645,1646,1701,1723,1812,1813,1900,2049,2627,3031,3517,3689,4444,4500,5002,5060,7000,7001,7002,7003,7004,7005,7006,7007,7008,7009,8025,8067,10050,10051,26740
+net.inet.udp.recvspace=41600
+net.inet.udp.sendspace=9216
+net.inet.gre.allow=0
+net.inet.gre.wccp=0
+net.inet.esp.enable=1
+net.inet.esp.udpencap=1
+net.inet.esp.udpencap_port=4500
+net.inet.ah.enable=1
+net.inet.mobileip.allow=0
+net.inet.etherip.allow=0
+net.inet.ipcomp.enable=0
+net.inet.carp.allow=1
+net.inet.carp.preempt=0
+net.inet.carp.log=2
+net.inet.divert.recvspace=65636
+net.inet.divert.sendspace=65636
+net.inet6.ip6.forwarding=0
+net.inet6.ip6.redirect=1
+net.inet6.ip6.hlim=64
+net.inet6.ip6.mrtproto=103
+net.inet6.ip6.maxfragpackets=200
+net.inet6.ip6.accept_rtadv=0
+net.inet6.ip6.keepfaith=0
+net.inet6.ip6.log_interval=5
+net.inet6.ip6.hdrnestlimit=10
+net.inet6.ip6.dad_count=1
+net.inet6.ip6.auto_flowlabel=1
+net.inet6.ip6.defmcasthlim=1
+net.inet6.ip6.kame_version=OpenBSD-current
+net.inet6.ip6.use_deprecated=1
+net.inet6.ip6.rr_prune=5
+net.inet6.ip6.v6only=1
+net.inet6.ip6.maxfrags=200
+net.inet6.ip6.mforwarding=0
+net.inet6.ip6.multipath=0
+net.inet6.ip6.multicast_mtudisc=0
+net.inet6.ip6.neighborgcthresh=2048
+net.inet6.ip6.maxifprefixes=16
+net.inet6.ip6.maxifdefrouters=16
+net.inet6.ip6.maxdynroutes=4096
+net.inet6.ip6.dad_pending=0
+net.inet6.icmp6.rediraccept=0
+net.inet6.icmp6.redirtimeout=600
+net.inet6.icmp6.nd6_prune=1
+net.inet6.icmp6.nd6_delay=5
+net.inet6.icmp6.nd6_umaxtries=3
+net.inet6.icmp6.nd6_mmaxtries=3
+net.inet6.icmp6.nd6_useloopback=1
+net.inet6.icmp6.nodeinfo=1
+net.inet6.icmp6.errppslimit=100
+net.inet6.icmp6.nd6_maxnudhint=0
+net.inet6.icmp6.mtudisc_hiwat=1280
+net.inet6.icmp6.mtudisc_lowat=256
+net.inet6.icmp6.nd6_debug=0
+net.inet6.divert.recvspace=65636
+net.inet6.divert.sendspace=65636
+net.bpf.bufsize=32768
+net.bpf.maxbufsize=2097152
+net.mpls.ttl=255
+net.mpls.ifq.len=0
+net.mpls.ifq.maxlen=256
+net.mpls.ifq.drops=0
+net.mpls.maxloop_inkernel=16
+net.mpls.mapttl_ip=1
+net.mpls.mapttl_ip6=0
+net.pipex.enable=0
+hw.machine=i386
+hw.model=AMD Athlon(tm) 64 X2 Dual Core Processor 4000+ ("AuthenticAMD" 686-class, 512KB L2 cache)
+hw.ncpu=1
+hw.byteorder=1234
+hw.pagesize=4096
+hw.disknames=wd0:6efb56f4a4881126,cd0:,sd0:
+hw.diskcount=3
+hw.sensors.acpiac0.indicator0=On (power supply)
+hw.cpuspeed=2111
+hw.vendor=innotek GmbH
+hw.product=VirtualBox
+hw.version=1.2
+hw.serialno=0
+hw.uuid=65ccb28d-b0b0-4b72-ba00-dfb647ff14fa
+hw.physmem=267907072
+hw.usermem=267894784
+hw.ncpufound=1
+hw.allowpowerdown=1
+machdep.console_device=ttyC0
+machdep.bios.diskinfo.128=bootdev = 0xa0000200, cylinders = 520, heads = 128, sectors = 63
+machdep.bios.cksumlen=1
+machdep.allowaperture=0
+machdep.cpuvendor=AuthenticAMD
+machdep.cpuid=397233
+machdep.cpufeature=126614463
+machdep.apmwarn=10
+machdep.kbdreset=0
+machdep.apmhalt=0
+machdep.userldt=0
+machdep.osfxsr=1
+machdep.sse=1
+machdep.sse2=1
+machdep.xcrypt=0
+machdep.lidsuspend=0
+user.cs_path=/usr/bin:/bin:/usr/sbin:/sbin:/usr/X11R6/bin:/usr/local/bin
+user.bc_base_max=2147483647
+user.bc_dim_max=65535
+user.bc_scale_max=2147483647
+user.bc_string_max=2147483647
+user.coll_weights_max=2
+user.expr_nest_max=32
+user.line_max=2048
+user.re_dup_max=255
+user.posix2_version=199212
+user.posix2_c_bind=0
+user.posix2_c_dev=0
+user.posix2_char_term=0
+user.posix2_fort_dev=0
+user.posix2_fort_run=0
+user.posix2_localedef=0
+user.posix2_sw_dev=0
+user.posix2_upe=0
+user.stream_max=20
+user.tzname_max=255
+ddb.radix=16
+ddb.max_width=80
+ddb.max_line=24
+ddb.tab_stop_width=8
+ddb.panic=1
+ddb.console=0
+ddb.log=1
+ddb.trigger=0
+vfs.mounts.ffs has 3 mounted instances
+vfs.mounts.msdos has 1 mounted instance
+vfs.ffs.doclusterread=1
+vfs.ffs.doclusterwrite=1
+vfs.ffs.doreallocblks=1
+vfs.ffs.doasyncfree=1
+vfs.ffs.max_softdeps=23704
+vfs.ffs.sd_tickdelay=2
+vfs.ffs.sd_worklist_push=0
+vfs.ffs.sd_blk_limit_push=0
+vfs.ffs.sd_ino_limit_push=0
+vfs.ffs.sd_blk_limit_hit=0
+vfs.ffs.sd_ino_limit_hit=0
+vfs.ffs.sd_sync_limit_hit=0
+vfs.ffs.sd_indir_blk_ptrs=0
+vfs.ffs.sd_inode_bitmap=0
+vfs.ffs.sd_direct_blk_ptrs=0
+vfs.ffs.sd_dir_entry=0
+vfs.ffs.dirhash_dirsize=2560
+vfs.ffs.dirhash_maxmem=2097152
+vfs.ffs.dirhash_mem=30622
+vfs.nfs.iothreads=-1

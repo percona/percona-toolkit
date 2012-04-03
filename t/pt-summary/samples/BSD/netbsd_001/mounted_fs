@@ -1,0 +1,5 @@
+/dev/sd0e 3.8G 17M 3.7G 0% /mnt/usb on /mnt/usb type msdos (local)
+/dev/wd0a 1.8G 545M 1.2G 30% / on / type ffs (local)
+kernfs 1.0K 1.0K 0B 100% /kern on /kern type kernfs (local)
+procfs 4.0K 4.0K 0B 100% /proc on /proc type procfs (local)
+ptyfs 1.0K 1.0K 0B 100% /dev/pts on /dev/pts type ptyfs (local)
