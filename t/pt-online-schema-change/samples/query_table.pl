@@ -4,9 +4,10 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use DBI;
-use Time::HiRes qw(usleep);
+use Time::HiRes qw(usleep time);
 
-my ($host, $port, $db, $tbl, $pkcol, $sleep_time) = @ARGV;
+my ($host, $port, $db, $tbl, $pkcol, $stop_file, $sleep_time) = @ARGV;
+die "I need a stop_file argument" unless $stop_file;
 my $dbh = DBI->connect(
    "DBI:mysql:$db;host=$host;port=$port;mysql_read_default_group=client",
    'msandbox', 'msandbox',
@@ -23,7 +24,7 @@ my $start_xa = "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */";
 $dbh->do($start_xa);
 
 for my $i ( 1..5_000 ) {
-   last if -f '/tmp/query_table.stop';
+   last if -f $stop_file;
 
    eval {
       # We do roughly 25% DELETE, 25% UPDATE and 50% INSERT.
@@ -39,13 +40,15 @@ for my $i ( 1..5_000 ) {
       elsif ($x == 2) {
          my $id = int(rand(500)) || 1;
          if ( !grep { $_ == $id } @del ) {
-            $dbh->do("update $db.$tbl set c='updated' where $pkcol=$id");
+            my $t=time;
+            $dbh->do("update $db.$tbl set c='updated row $t' where $pkcol=$id");
             push @upd, $id;
          }
       }
       else {
          my $id = 500 + $i;
-         $dbh->do("insert ignore into $db.$tbl ($pkcol, c) values ($id, 'inserted')");
+         my $t=time;
+         $dbh->do("insert ignore into $db.$tbl ($pkcol, c) values ($id, 'new row $t')");
          push @ins, $id;
       }
 

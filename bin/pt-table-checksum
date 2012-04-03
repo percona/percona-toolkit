@@ -3527,48 +3527,46 @@ sub new {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
-   
-   my $where = $o->get('where');
-   my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
-   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
-                  : 0;
-   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
-   if ( $args{resume}
-        && !defined $args{resume}->{lower_boundary}
-        && !defined $args{resume}->{upper_boundary} ) {
-      PTDEBUG && _d('Resuming from one nibble table');
-      $one_nibble = 1;
+   my $nibble_params = can_nibble(%args);
+
+   my %comments = (
+      bite   => "bite table",
+      nibble => "nibble table",
+   );
+   if ( $args{comments} ) {
+      map  { $comments{$_} = $args{comments}->{$_} }
+      grep { defined $args{comments}->{$_}         }
+      keys %{$args{comments}};
    }
 
-   my $index = _find_best_index(%args, mysql_index => $mysql_index);
-   if ( !$index && !$one_nibble ) {
-      die "There is no good index and the table is oversized.";
-   }
-
+   my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
-   my $ignore_col = $o->get('ignore-columns') || {};
-   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my $ignore_col = $o->has('ignore-columns')
+                  ? ($o->get('ignore-columns') || {})
+                  : {};
+   my $all_cols   = $o->has('columns')
+                  ? ($o->get('columns') || $tbl_struct->{cols})
+                  : $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
-   if ( $one_nibble ) {
+   if ( $nibble_params->{one_nibble} ) {
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*checksum table*/";
+         . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*explain checksum table*/";
+         . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -3580,6 +3578,7 @@ sub new {
       };
    }
    else {
+      my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
 
       my $asc = $args{TableNibbler}->generate_asc_stmt(
@@ -3591,7 +3590,7 @@ sub new {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+      my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
       my $first_lb_sql
@@ -3649,7 +3648,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*checksum chunk*/";
+         . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -3661,7 +3660,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*explain checksum chunk*/";
+         . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
@@ -3688,7 +3687,7 @@ sub new {
       };
    }
 
-   $self->{row_est}    = $row_est;
+   $self->{row_est}    = $nibble_params->{row_est},
    $self->{nibbleno}   = 0;
    $self->{have_rows}  = 0;
    $self->{rowno}      = 0;
@@ -3851,6 +3850,44 @@ sub row_estimate {
    return $self->{row_est};
 }
 
+sub can_nibble {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+
+   my ($row_est, $mysql_index) = get_row_estimate(
+      Cxn   => $cxn,
+      tbl   => $tbl,
+      where => $o->has('where') ? $o->get('where') : '',
+   );
+
+   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
+                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
+                  : 0;
+   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
+
+   if ( $args{resume}
+        && !defined $args{resume}->{lower_boundary}
+        && !defined $args{resume}->{upper_boundary} ) {
+      PTDEBUG && _d('Resuming from one nibble table');
+      $one_nibble = 1;
+   }
+
+   my $index = _find_best_index(%args, mysql_index => $mysql_index);
+   if ( !$index && !$one_nibble ) {
+      die "There is no good index and the table is oversized.";
+   }
+
+   return {
+      row_est     => $row_est,      # nibble about this many rows
+      index       => $index,        # using this index
+      one_nibble  => $one_nibble,   # if the table fits in one nibble/chunk
+   };
+}
+
 sub _find_best_index {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl TableParser);
@@ -3924,14 +3961,18 @@ sub _find_best_index {
 
 sub _get_index_cardinality {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl index Quoter);
-   my ($cxn, $tbl, $index, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl index);
+   my ($cxn, $tbl, $index) = @args{@required_args};
 
-   my $sql = "SHOW INDEXES FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-           . " WHERE Key_name = '$index'";
+   my $sql = "SHOW INDEXES FROM $tbl->{name} "
+           . "WHERE Key_name = '$index'";
    PTDEBUG && _d($sql);
    my $cardinality = 1;
-   my $rows = $cxn->dbh()->selectall_hashref($sql, 'key_name');
+   my $dbh         = $cxn->dbh();
+   my $key_name    = $dbh && ($dbh->{FetchHashKeyName} || '') eq 'NAME_lc'
+                   ? 'key_name'
+                   : 'Key_name';
+   my $rows = $dbh->selectall_hashref($sql, $key_name);
    foreach my $row ( values %$rows ) {
       $cardinality *= $row->{cardinality} if $row->{cardinality};
    }
@@ -3942,6 +3983,9 @@ sub _get_index_cardinality {
 sub get_row_estimate {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
    my ($cxn, $tbl) = @args{@required_args};
 
    my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
@@ -4002,11 +4046,13 @@ sub _get_bounds {
 
    if ( !$self->{next_lower} ) {
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
+
+      $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
+      PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
+      $self->{no_more_boundaries} = 1;
+
       $self->{no_more_boundaries} = 1;
    }
-
-   $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
-   PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
 
    return;
 }
@@ -4063,19 +4109,25 @@ sub _next_boundaries {
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
    if ( $boundary && @$boundary ) {
-      $self->{upper} = $boundary->[0]; # this nibble
+      $self->{upper} = $boundary->[0];
+
       if ( $boundary->[1] ) {
-         $self->{next_lower} = $boundary->[1]; # next nibble
+         $self->{next_lower} = $boundary->[1];
       }
       else {
+         PTDEBUG && _d('End of table boundary:', Dumper($boundary->[0]));
          $self->{no_more_boundaries} = 1;  # for next call
-         PTDEBUG && _d('Last upper boundary:', Dumper($boundary->[0]));
+
+         $self->{last_upper} = $boundary->[0];
       }
    }
    else {
-      $self->{no_more_boundaries} = 1;  # for next call
-      $self->{upper} = $self->{last_upper};
+      my $dbh = $self->{Cxn}->dbh();
+      $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
+      $self->{no_more_boundaries} = 1;  # for next call
+      
+      $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
 
@@ -4156,7 +4208,7 @@ sub new {
 
    my $q     = $self->{Quoter};
    my $o     = $self->{OptionParser};
-   my $where = $o->get('where');
+   my $where = $o->has('where') ? $o->get('where') : undef;
 
    if ( !$self->one_nibble() ) {
       my $head_sql
@@ -4651,7 +4703,8 @@ sub next {
 }
 
 sub _iterate_files {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
+   my $q = $self->{Quoter};
 
    if ( !$self->{fh} ) {
       my ($fh, $file) = $self->{file_itr}->();
@@ -5571,18 +5624,31 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(spec get_status sleep oktorun);
+   my @required_args = qw(max_spec get_status sleep oktorun);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
-   my $max_val_for = _parse_spec(%args);
+   PTDEBUG && _d('Parsing spec for max thresholds');
+   my $max_val_for = _parse_spec(
+      spec             => $args{max_spec},
+      get_status       => $args{get_status},
+      threshold_factor => 0.2, # +20%
+   );
+
+   PTDEBUG && _d('Parsing spec for critical thresholds');
+   my $critical_val_for = _parse_spec(
+      spec             => $args{critical_spec} || [],
+      get_status       => $args{get_status},
+      threshold_factor => 1.0, # double (x2; +100%)
+   );
 
    my $self = {
-      get_status  => $args{get_status},
-      sleep       => $args{sleep},
-      oktorun     => $args{oktorun},
-      max_val_for => $max_val_for,
+      get_status       => $args{get_status},
+      sleep            => $args{sleep},
+      oktorun          => $args{oktorun},
+      max_val_for      => $max_val_for,
+      critical_val_for => $critical_val_for,
    };
 
    return bless $self, $class;
@@ -5596,10 +5662,8 @@ sub _parse_spec {
    }
    my ($spec, $get_status) = @args{@required_args};
 
-   if ( !@$spec ) {
-      PTDEBUG && _d('No spec, disabling status var waits');
-      return;
-   }
+   return unless $spec && scalar @$spec;
+   my $threshold_factor = $args{threshold_factor} || 0.20;
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
@@ -5608,7 +5672,7 @@ sub _parse_spec {
       if ( !$val ) {
          my $init_val = $get_status->($var);
          PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * .20) + $init_val);
+         $val = int(($init_val * $threshold_factor) + $init_val);
       }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
       $max_val_for{$var} = $val;
@@ -5622,6 +5686,11 @@ sub max_values {
    return $self->{max_val_for};
 }
 
+sub critical_values {
+   my ($self) = @_;
+   return $self->{critical_val_for};
+}
+
 sub wait {
    my ( $self, %args ) = @_;
 
@@ -5632,7 +5701,7 @@ sub wait {
    my $oktorun    = $self->{oktorun};
    my $get_status = $self->{get_status};
    my $sleep      = $self->{sleep};
-   
+
    my %vals_too_high = %{$self->{max_val_for}};
    my $pr_callback;
    if ( $pr ) {
@@ -5656,6 +5725,12 @@ sub wait {
       foreach my $var ( sort keys %vals_too_high ) {
          my $val = $get_status->($var);
          PTDEBUG && _d($var, '=', $val);
+         if ( $val
+              && exists $self->{critical_val_for}->{$var}
+              && $val >= $self->{critical_val_for}->{$var} ) {
+            die "$var=$val exceeds its critical threshold "
+               . "$self->{critical_val_for}->{$var}\n";
+         }
          if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
@@ -6174,7 +6249,7 @@ sub main {
       }
 
       $sys_load = new MySQLStatusWaiter(
-         spec       => $o->get('max-load'),
+         max_spec   => $o->get('max-load'),
          get_status => $get_status,
          oktorun    => sub { return $oktorun },
          sleep      => $sleep,
@@ -6720,6 +6795,10 @@ sub main {
                TableNibbler => $tn,
                TableParser  => $tp,
                RowChecksum  => $rc,
+               comments     => {
+                  bite   => "checksum table",
+                  nibble => "checksum chunk",
+               },
             );
          };
          if ( $EVAL_ERROR ) {

@@ -39,18 +39,31 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 #   MySQLStatusWaiter object 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(spec get_status sleep oktorun);
+   my @required_args = qw(max_spec get_status sleep oktorun);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
-   my $max_val_for = _parse_spec(%args);
+   PTDEBUG && _d('Parsing spec for max thresholds');
+   my $max_val_for = _parse_spec(
+      spec             => $args{max_spec},
+      get_status       => $args{get_status},
+      threshold_factor => 0.2, # +20%
+   );
+
+   PTDEBUG && _d('Parsing spec for critical thresholds');
+   my $critical_val_for = _parse_spec(
+      spec             => $args{critical_spec} || [],
+      get_status       => $args{get_status},
+      threshold_factor => 1.0, # double (x2; +100%)
+   );
 
    my $self = {
-      get_status  => $args{get_status},
-      sleep       => $args{sleep},
-      oktorun     => $args{oktorun},
-      max_val_for => $max_val_for,
+      get_status       => $args{get_status},
+      sleep            => $args{sleep},
+      oktorun          => $args{oktorun},
+      max_val_for      => $max_val_for,
+      critical_val_for => $critical_val_for,
    };
 
    return bless $self, $class;
@@ -73,10 +86,8 @@ sub _parse_spec {
    }
    my ($spec, $get_status) = @args{@required_args};
 
-   if ( !@$spec ) {
-      PTDEBUG && _d('No spec, disabling status var waits');
-      return;
-   }
+   return unless $spec && scalar @$spec;
+   my $threshold_factor = $args{threshold_factor} || 0.20;
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
@@ -85,7 +96,7 @@ sub _parse_spec {
       if ( !$val ) {
          my $init_val = $get_status->($var);
          PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * .20) + $init_val);
+         $val = int(($init_val * $threshold_factor) + $init_val);
       }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
       $max_val_for{$var} = $val;
@@ -99,6 +110,11 @@ sub _parse_spec {
 sub max_values {
    my ($self) = @_;
    return $self->{max_val_for};
+}
+
+sub critical_values {
+   my ($self) = @_;
+   return $self->{critical_val_for};
 }
 
 # Sub: wait
@@ -117,7 +133,7 @@ sub wait {
    my $oktorun    = $self->{oktorun};
    my $get_status = $self->{get_status};
    my $sleep      = $self->{sleep};
-   
+
    my %vals_too_high = %{$self->{max_val_for}};
    my $pr_callback;
    if ( $pr ) {
@@ -144,6 +160,12 @@ sub wait {
       foreach my $var ( sort keys %vals_too_high ) {
          my $val = $get_status->($var);
          PTDEBUG && _d($var, '=', $val);
+         if ( $val
+              && exists $self->{critical_val_for}->{$var}
+              && $val >= $self->{critical_val_for}->{$var} ) {
+            die "$var=$val exceeds its critical threshold "
+               . "$self->{critical_val_for}->{$var}\n";
+         }
          if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
