@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 
 BEGIN {
-   die "The MAATKIT_WORKING_COPY environment variable is not set.  See http://code.google.com/p/maatkit/wiki/Testing"
-      unless $ENV{MAATKIT_WORKING_COPY} && -d $ENV{MAATKIT_WORKING_COPY};
-   unshift @INC, "$ENV{MAATKIT_WORKING_COPY}/common";
+   die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
+      unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
+   unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
 };
 
 use strict;
@@ -11,7 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 34;
 
-use MaatkitTest;
+use PerconaTest;
 use QueryParser;
 use SQLParser;
 use TableUsage;
@@ -590,23 +590,22 @@ use Schema;
 use SchemaIterator;
 
 my $o  = new OptionParser(description => 'SchemaIterator');
-$o->get_specs("$trunk/mk-table-checksum/mk-table-checksum");
+$o->get_specs("$trunk/bin/pt-table-checksum");
 
 my $q          = new Quoter;
 my $tp         = new TableParser(Quoter => $q);
 my $fi         = new FileIterator();
-my $file_itr   = $fi->get_file_itr("$trunk/common/t/samples/mysqldump-no-data/dump001.txt");
+my $file_itr   = $fi->get_file_itr("$trunk/t/lib/samples/mysqldump-no-data/dump001.txt");
 my $schema     = new Schema();
 my $schema_itr = new SchemaIterator(
    file_itr     => $file_itr,
    OptionParser => $o,
    Quoter       => $q,
    TableParser  => $tp,
-   keep_ddl     => 1,
    Schema       => $schema,
 );
 # Init schema.
-1 while ($schema_itr->next_schema_object());
+1 while ($schema_itr->next());
 
 # Before, this is as correct as we can determine.  The WHERE access is missing
 # because c3 is not qualified and there's multiple tables, so the code can't
