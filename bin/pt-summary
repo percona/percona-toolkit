@@ -1439,7 +1439,7 @@ parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
          fuzzy_var = \$1; ${fuzzy_formula} tx_bytes   = fuzzy_var;
          fuzzy_var = \$2; ${fuzzy_formula} tx_packets = fuzzy_var;
          fuzzy_var = \$3; ${fuzzy_formula} tx_errors  = fuzzy_var;
-         printf \"  %-8s %10d %10d %10d %10d %10d %10d\\n\", save[\"iface\"], save[\"bytes\"], save[\"packs\"], save[\"errs\"], tx_bytes, tx_packets, tx_errors;
+         printf \"  %-8s %10.0f %10.0f %10.0f %10.0f %10.0f %10.0f\\n\", save[\"iface\"], save[\"bytes\"], save[\"packs\"], save[\"errs\"], tx_bytes, tx_packets, tx_errors;
       }
    }" "$file"
 }
