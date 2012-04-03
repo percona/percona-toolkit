@@ -130,7 +130,7 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => $sandbox_version eq '5.1' ? "$out/all-dbs-tbls.txt"
+      result    => $sandbox_version ge '5.1' ? "$out/all-dbs-tbls.txt"
                                              : "$out/all-dbs-tbls-5.0.txt",
       test_name => "Iterate all schema objects with dbh",
    );
@@ -373,7 +373,9 @@ is(
 # ############################################################################
 test_so(
    filters   => [qw(-d sakila)],
-   result    => "$out/resume-from-sakila-payment.txt",
+   result    => $sandbox_version ge '5.1'
+                ? "$out/resume-from-sakila-payment.txt"
+                : "$out/resume-from-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume"
 );
@@ -381,7 +383,9 @@ test_so(
 # Ignore the table being resumed from; resume from next table.
 test_so(
    filters   => [qw(-d sakila --ignore-tables sakila.payment)],
-   result    => "$out/resume-from-ignored-sakila-payment.txt",
+   result    => $sandbox_version ge '5.1'
+                ? "$out/resume-from-ignored-sakila-payment.txt"
+                : "$out/resume-from-ignored-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume from ignored table"
 );
