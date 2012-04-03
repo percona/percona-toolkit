@@ -5236,8 +5236,17 @@ sub main {
    );
    if ( !$child_tables ) {
       if ( $alter_fk_method ) {
-         warn "No foreign keys reference the table; ignoring "
+         warn "No foreign keys reference $orig_tbl->{name}; ignoring "
             . "--alter-foreign-keys-method.\n";
+
+         if ( $alter_fk_method eq 'drop_swap' ) {
+            # These opts are disabled at the start if the user specifies
+            # the drop_swap method, but now that we know there are no
+            # child tables, we must re-enable these to make the alter work.
+            $o->set('swap-tables',    1);
+            $o->set('drop-old-table', 1);
+         }
+
          $alter_fk_method = '';
       }
       # No child tables and --alter-fk-method wasn't specified,
@@ -5355,6 +5364,7 @@ sub main {
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
+         TableParser  => $tp,
       );
    };
    if ( $EVAL_ERROR ) {
@@ -5966,11 +5976,18 @@ sub main {
 # ############################################################################
 sub create_new_table{
    my (%args) = @_;
-   my @required_args = qw(orig_tbl Cxn Quoter OptionParser);
+   my @required_args = qw(orig_tbl Cxn Quoter OptionParser TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $cxn, $q, $o) = @args{@required_args};
+   my ($orig_tbl, $cxn, $q, $o, $tp) = @args{@required_args};
+
+   # Get the original table struct.
+   my $ddl = $tp->get_create_table(
+      $cxn->dbh(),
+      $orig_tbl->{db},
+      $orig_tbl->{tbl},
+   );
 
    my $tries      = $args{tries}  || 10;  # don't try forever
    my $prefix     = $args{prefix} || '_';
@@ -5982,8 +5999,22 @@ sub create_new_table{
    my @old_tables;
    while ( $tryno++ < $tries ) {
       $table_name = $prefix . $table_name;
-      my $sql     = "CREATE TABLE " . $q->quote($orig_tbl->{db}, $table_name)
-                  . " LIKE $orig_tbl->{name}";
+      my $quoted  = $q->quote($orig_tbl->{db}, $table_name);
+
+      # Generate SQL to create the new table.  We do not use CREATE TABLE LIKE
+      # because it doesn't preserve foreign key constraints. Here we need to
+      # rename the FK constraints, too. This is because FK constraints are
+      # internally stored as <database>.<constraint> and there cannot be
+      # duplicates.  If we don't rename the constraints, then InnoDB will throw
+      # error 121 (duplicate key violation) when we try to execute the CREATE
+      # TABLE.  TODO: this code isn't perfect. If we rename a constraint from
+      # foo to _foo and there is already a constraint with that name in this
+      # or another table, we can still have a collision. But if there are
+      # multiple FKs on this table, it's hard to know which one is causing the
+      # trouble. Should we generate random/UUID FK names or something instead?
+      my $sql    = $ddl;
+      $sql       =~ s/\ACREATE TABLE .*?\($/CREATE TABLE $quoted (/m;
+      $sql       =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
       PTDEBUG && _d($sql);
       eval {
          $cxn->dbh()->do($sql);
@@ -6766,6 +6797,11 @@ the new table after the schema change is complete. The tool supports two methods
 for accomplishing this. You can read more about this in the documentation for
 L<"--alter-foreign-keys-method">.
 
+Foreign keys also cause some side effects. The final table will have the same
+foreign keys and indexes as the original table (unless you specify differently
+in your ALTER statement), but the names of the objects may be changed slightly
+to avoid object name collisions in MySQL and InnoDB.
+
 For safety, the tool does not modify the table unless you specify the
 L<"--execute"> option, which is not enabled by default.  The tool supports a
 variety of other measures to prevent unwanted load or other problems, including
@@ -6862,8 +6898,9 @@ rate by L<"--chunk-size-limit">, because MySQL's C<ALTER TABLE> is typically
 much faster than the external process of copying rows.
 
 Due to a limitation in MySQL, foreign keys will not have the same names after
-the ALTER that they did prior to it. The tool has to rename the foreign key when
-it redefines it, which adds a leading underscore to the name.
+the ALTER that they did prior to it. The tool has to rename the foreign key
+when it redefines it, which adds a leading underscore to the name. In some
+cases, MySQL also automatically renames indexes required for the foreign key.
 
 =item drop_swap
 

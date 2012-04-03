@@ -32,7 +32,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 90;
+   plan tests => 105;
 }
 
 my $q      = new Quoter();
@@ -90,6 +90,7 @@ sub test_alter_table {
    my ($name, $table, $test_type, $cmds) = @args{@required_args};
 
    my ($db, $tbl) = $q->split_unquote($table);
+   my $table_name = $tbl;
    my $pk_col     = $args{pk_col} || 'id';
 
    if ( my $file = $args{file} ) {
@@ -233,11 +234,13 @@ sub test_alter_table {
          # The tool does not use the same/original fk name,
          # it appends a single _.  So we need to strip this
          # to compare the original fks to the new fks.
-         if ( $fk_method eq 'rebuild_constraints' ) {
+         # if ( $fk_method eq 'rebuild_constraints' ) {
+         if ( $fk_method eq 'rebuild_constraints'
+               || $table_name eq $tbl->[0] ) {
             my %new_fks = map {
                my $real_fk_name = $_;
                my $fk_name      = $_;
-               if ( $fk_name =~ s/^_// ) {
+               if ( $fk_name =~ s/^_// && $table_name ne $tbl->[0] ) {
                   $rebuild_method = 1;
                }
                $fks->{$real_fk_name}->{name} =~ s/^_//;
@@ -283,6 +286,9 @@ sub test_alter_table {
 
    if ( $fail ) {
       diag("Output from failed test:\n$output");
+   }
+   elsif ( $args{output} ) {
+      warn $output;
    }
 
    return;
@@ -455,6 +461,45 @@ test_alter_table(
    ],
 );
 
+# Use drop_swap to alter address, which no other table references,
+# so the tool should re-enable --swap-tables and --drop-old-table.
+test_alter_table(
+   name        => "Drop-swap child",
+   table       => "pt_osc.address",
+   pk_col      => "address_id",
+   file        => "basic_with_fks.sql",
+   wait        => ["pt_osc.address", "address_id=5"],
+   test_type   => "drop_col",
+   drop_col    => "last_update",
+   cmds        => [
+   qw(
+      --execute
+      --alter-foreign-keys-method drop_swap
+   ),
+      '--alter', 'DROP COLUMN last_update',
+   ],
+);
+
+# Alter city and verify that its fk to country still exists.
+# (https://bugs.launchpad.net/percona-toolkit/+bug/969726)
+test_alter_table(
+   name        => "Preserve all fks",
+   table       => "pt_osc.city",
+   pk_col      => "city_id",
+   file        => "basic_with_fks.sql",
+   wait        => ["pt_osc.address", "address_id=5"],
+   test_type   => "drop_col",
+   drop_col    => "last_update",
+   check_fks   => "rebuild_constraints",
+   cmds        => [
+   qw(
+      --execute
+      --alter-foreign-keys-method rebuild_constraints
+   ),
+      '--alter', 'DROP COLUMN last_update',
+   ],
+);
+
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 7
    unless @{$master_dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
@@ -478,6 +523,9 @@ SKIP: {
          '--alter', 'ENGINE=InnoDB'
       ],
    );
+
+   # Restore the original fks.
+   diag(`$trunk/sandbox/load-sakila-db 12345`);
 }
 
 # #############################################################################
@@ -549,7 +597,7 @@ sub test_table {
       0,
       "$name exit status 0"
    ) or $fail = 1;
-   
+
    if ( $fail ) {
       diag("Output from failed test:\n$output");
    }
