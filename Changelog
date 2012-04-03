@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.1 released 2012-04-03
+
   * Completely redesigned pt-online-schema-change
   * Completely redesigned pt-mysql-summary
   * Completely redesigned pt-summary

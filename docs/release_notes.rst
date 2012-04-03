@@ -1,6 +1,54 @@
 Release Notes
 *************
 
+v2.1.1 released 2012-04-03
+==========================
+
+Percona Toolkit 2.1.1 has been released.  This is the first release in the
+new 2.1 series which supersedes the 2.0 series.  We will continue to fix bugs
+in 2.0, but 2.1 is now the focus of development.
+
+2.1 introduces a lot of new code for:
+
+* pt-online-schema-change (completely redesigned)
+* pt-mysql-summary (completely redesigned)
+* pt-summary (completely redesigned)
+* pt-fingerprint (new tool)
+* pt-table-usage (new tool)
+
+There were also several bug fixes.
+
+The redesigned tools are meant to replace their 2.0 counterparts because
+the 2.1 versions have the same or more functionality and they are simpler
+and more reliable.  pt-online-schema-change was particularly enhanced to
+be as safe as possible given that the tool is inherently risky.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Completely redesigned pt-online-schema-change
+* Completely redesigned pt-mysql-summary
+* Completely redesigned pt-summary
+* Added new tool: pt-table-usage
+* Added new tool: pt-fingerprint
+* Fixed bug 955860: pt-stalk doesn't run vmstat, iostat, and mpstat for --run-time
+* Fixed bug 960513: SHOW TABLE STATUS is used needlessly
+* Fixed bug 969726: pt-online-schema-change loses foreign keys
+* Fixed bug 846028: pt-online-schema-change does not show progress until completed
+* Fixed bug 898695: pt-online-schema-change add useless ORDER BY
+* Fixed bug 952727: pt-diskstats shows incorrect wr_mb_s
+* Fixed bug 963225: pt-query-digest fails to set history columns for disk tmp tables and disk filesort
+* Fixed bug 967451: Char chunking doesn't quote column name
+* Fixed bug 972399: pt-table-checksum docs are not rendered right
+* Fixed bug 896553: Various documentation spelling fixes
+* Fixed bug 949154: pt-variable-advisor advice for relay-log-space-limit
+* Fixed bug 953461: pt-upgrade manual broken 'output' section
+* Fixed bug 949653: pt-table-checksum docs don't mention risks posed by inconsistent schemas
+
 v2.0.4 released 2012-03-07
 ==========================
 

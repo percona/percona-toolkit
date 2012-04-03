@@ -58,6 +58,10 @@ Split files and pipe lines to a fifo without really splitting.
 
 Find MySQL tables and execute actions, like GNU find.
 
+=item pt-fingerprint
+
+Convert queries into fingerprints.
+
 =item pt-fk-error-logger
 
 Extract and log MySQL foreign key errors.
@@ -88,11 +92,11 @@ Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
 =item pt-mysql-summary
 
-Summarize MySQL information in a nice way.
+Summarize MySQL information nicely.
 
 =item pt-online-schema-change
 
-Perform online, non-blocking table schema changes.
+ALTER tables without locking them.
 
 =item pt-pmp
 
@@ -132,7 +136,7 @@ Gather forensic data about MySQL when a problem occurs.
 
 =item pt-summary
 
-Summarize system information in a nice way.
+Summarize system information nicely.
 
 =item pt-table-checksum
 
@@ -141,6 +145,10 @@ Verify MySQL replication integrity.
 =item pt-table-sync
 
 Synchronize MySQL table data efficiently.
+
+=item pt-table-usage
+
+Analyze how queries use tables.
 
 =item pt-tcp-model
 
@@ -488,6 +496,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.0.4 released 2012-03-07
+Percona Toolkit v2.1.1 released 2012-04-03
 
 =cut

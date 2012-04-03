@@ -1,3 +1,26 @@
+percona-toolkit (2.1.1) unstable; urgency=low
+
+  * Completely redesigned pt-online-schema-change
+  * Completely redesigned pt-mysql-summary
+  * Completely redesigned pt-summary
+  * Added new tool: pt-table-usage
+  * Added new tool: pt-fingerprint
+  * Fixed bug 955860: pt-stalk doesn't run vmstat, iostat, and mpstat for --run-time
+  * Fixed bug 960513: SHOW TABLE STATUS is used needlessly
+  * Fixed bug 969726: pt-online-schema-change loses foreign keys
+  * Fixed bug 846028: pt-online-schema-change does not show progress until completed
+  * Fixed bug 898695: pt-online-schema-change add useless ORDER BY
+  * Fixed bug 952727: pt-diskstats shows incorrect wr_mb_s
+  * Fixed bug 963225: pt-query-digest fails to set history columns for disk tmp tables and disk filesort
+  * Fixed bug 967451: Char chunking doesn't quote column name
+  * Fixed bug 972399: pt-table-checksum docs are not rendered right
+  * Fixed bug 896553: Various documentation spelling fixes
+  * Fixed bug 949154: pt-variable-advisor advice for relay-log-space-limit
+  * Fixed bug 953461: pt-upgrade manual broken 'output' section
+  * Fixed bug 949653: pt-table-checksum docs don't mention risks posed by inconsistent schemas
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Tue, 03 Apr 2012 19:40:42 +0000
+
 percona-toolkit (2.0.4) unstable; urgency=low
 
   * Added --filter to pt-kill to allow arbitrary --group-by
