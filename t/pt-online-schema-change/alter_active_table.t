@@ -198,7 +198,7 @@ check_ids(qw(pt_osc t id), get_ids());
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`rm -rf $query_table_stop`);
-#diag(`rm -rf $query_table_output`);
-#$sb->wipe_clean($master_dbh);
+diag(`rm -rf $query_table_stop >/dev/null 2>&1`);
+diag(`rm -rf $query_table_output >/dev/null 2>&1`);
+$sb->wipe_clean($master_dbh);
 exit;
