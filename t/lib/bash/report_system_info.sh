@@ -1559,7 +1559,6 @@ Unable to collect information
 EOF
 
 report_system_summary "$samples/Linux/001" | tail -n +3 > "$TMPDIR/got"
-cp "$TMPDIR/got" yadda.txt
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from Linux (Ubuntu)"
 
 report_system_summary "$samples/Linux/002" | tail -n +3 > "$TMPDIR/got"
