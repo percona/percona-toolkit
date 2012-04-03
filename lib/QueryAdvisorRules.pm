@@ -189,7 +189,7 @@ sub get_rules {
          foreach my $pred ( @$where ) {
             my $val = $pred->{right_arg};
             next unless $val;
-            return 0 if $val =~ m/^\d+$/ && $orderby_col{lc $pred->{left_arg}};
+            return 0 if $val =~ m/^\d+$/ && $orderby_col{lc($pred->{left_arg} || '')};
          }
          return;
       },

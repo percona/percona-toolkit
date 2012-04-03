@@ -193,7 +193,7 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh} ) {
+   if ( $self->{dbh} && ref($self->{dbh}) ) {
       PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
