@@ -1,0 +1,14 @@
+processor	: 0
+vendor_id	: AuthenticAMD
+cpu family	: 15
+model		: 11
+model name	: AMD Athlon(tm) 64 X2 Dual Core Processor 4000+
+stepping	: 1
+cpu MHz		: 2178.48
+fdiv_bug	: no
+fpu		: yes
+fpu_exception	: yes
+cpuid level	: 1
+wp		: yes
+flags		: fpu vme de pse tsc msr mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 
+

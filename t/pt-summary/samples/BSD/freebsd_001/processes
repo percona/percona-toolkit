@@ -1,0 +1,10 @@
+  PID USERNAME  THR PRI NICE   SIZE    RES STATE    TIME   WCPU COMMAND
+23318 root        1  76    0  3632K  1744K wait     0:00  0.98% sh
+  447 root        1  44    0  1888K   584K select   0:00  0.00% devd
+  945 root        1  44    0  4672K  2336K pause    0:00  0.00% csh
+  556 root        1  44    0  3352K  1264K select   0:00  0.00% syslogd
+  848 root        1  44    0  6092K  3164K select   0:00  0.00% sendmail
+  859 root        1  44    0  3380K  1308K nanslp   0:00  0.00% cron
+  931 root        1  44    0  3816K  1724K wait     0:00  0.00% login
+  937 root        1  76    0  3352K  1096K ttyin    0:00  0.00% getty
+  934 root        1  76    0  3352K  1096K ttyin    0:00  0.00% getty

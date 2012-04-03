@@ -1,0 +1,10 @@
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 3000 hugmeir   17   0  2288  952  728 R 24.6  0.1   0:01.57 top
+ 2309 root      17   0 29432 1392 1068 S  2.2  0.1   0:01.20 automount
+  381 root      10  -5     0    0    0 S  0.9  0.0   0:02.98 kjournald
+ 2199 root      25   0 12824 1320  596 S  0.4  0.1   0:10.88 pcscd
+    1 root      15   0  2160  668  576 S  0.0  0.1   0:39.32 init
+    2 root      RT  -5     0    0    0 S  0.0  0.0   0:00.00 migration/0
+    3 root      34  19     0    0    0 S  0.0  0.0   0:00.01 ksoftirqd/0
+    4 root      RT  -5     0    0    0 S  0.0  0.0   0:00.00 watchdog/0
+    5 root      10  -5     0    0    0 S  0.0  0.0   0:01.63 events/0

@@ -1,0 +1,162 @@
+Controllers found: 1
+----------------------------------------------------------------------
+Controller information
+----------------------------------------------------------------------
+   Controller Status                        : Optimal
+   Channel description                      : SAS/SATA
+   Controller Model                         : Adaptec 5405Z
+   Controller Serial Number                 : 1B1811A16A3
+   Physical Slot                            : 1
+   Temperature                              : 77 C/ 170 F (Normal)
+   Installed memory                         : 512 MB
+   Copyback                                 : Disabled
+   Background consistency check             : Disabled
+   Automatic Failover                       : Enabled
+   Global task priority                     : High
+   Performance Mode                         : Default/Dynamic
+   Stayawake period                         : Disabled
+   Spinup limit internal drives             : 0
+   Spinup limit external drives             : 0
+   Defunct disk drive count                 : 0
+   Logical devices/Failed/Degraded          : 1/0/0
+   SSDs assigned to MaxIQ Cache pool        : 0
+   Maximum SSDs allowed in MaxIQ Cache pool : 8
+   MaxIQ Read Cache Pool Size               : 0.000 GB
+   MaxIQ cache fetch rate                   : 0
+   MaxIQ Cache Read, Write Balance Factor   : 3,1
+   NCQ status                               : Enabled
+   Statistics data collection mode          : Enabled
+   --------------------------------------------------------
+   Controller Version Information
+   --------------------------------------------------------
+   BIOS                                     : 5.2-0 (18252)
+   Firmware                                 : 5.2-0 (18252)
+   Driver                                   : 1.1-5 (24702)
+   Boot Flash                               : 5.2-0 (18252)
+   --------------------------------------------------------
+   Controller ZMM Information
+   --------------------------------------------------------
+   Status                                   : ZMM Optimal
+
+----------------------------------------------------------------------
+Logical device information
+----------------------------------------------------------------------
+Logical device number 0
+   Logical device name                      : RAID10-A
+   RAID level                               : 10
+   Status of logical device                 : Optimal
+   Size                                     : 571382 MB
+   Stripe-unit size                         : 256 KB
+   Read-cache mode                          : Enabled
+   MaxIQ preferred cache setting            : Disabled
+   MaxIQ cache setting                      : Disabled
+   Write-cache mode                         : Enabled (write-back)
+   Write-cache setting                      : Enabled (write-back) when protected by battery/ZMM
+   Partitioned                              : Yes
+   Protected by Hot-Spare                   : No
+   Bootable                                 : Yes
+   Failed stripes                           : No
+   Power settings                           : Disabled
+   --------------------------------------------------------
+   Logical device segment information
+   --------------------------------------------------------
+   Group 0, Segment 0                       : Present (0,1)      WD-WXL1E11WFZ23
+   Group 0, Segment 1                       : Present (0,0)      WD-WX11DB003670
+   Group 1, Segment 0                       : Present (0,2)      WD-WX11DB006532
+   Group 1, Segment 1                       : Present (0,3)      WD-WX11DB006553
+
+
+----------------------------------------------------------------------
+Physical Device information
+----------------------------------------------------------------------
+      Device #0
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,0(0:0)
+         Reported Location                  : Connector 0, Device 0
+         Vendor                             : WDC
+         Model                              : WD3000HLFS-0
+         Firmware                           : 04.04V06
+         Serial number                      : WD-WX11DB003670
+         Size                               : 286168 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+         S.M.A.R.T. warnings                : 0
+         Power State                        : Full rpm
+         Supported Power States             : Full rpm,Powered off
+         SSD                                : No
+         MaxIQ Cache Capable                : No
+         MaxIQ Cache Assigned               : No
+         NCQ status                         : Enabled
+      Device #1
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,1(1:0)
+         Reported Location                  : Connector 0, Device 1
+         Vendor                             : WDC
+         Model                              : WD3000HLFS-0
+         Firmware                           : 04.04V06
+         Serial number                      : WD-WXL1E11WFZ23
+         Size                               : 286168 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+         S.M.A.R.T. warnings                : 0
+         Power State                        : Full rpm
+         Supported Power States             : Full rpm,Powered off
+         SSD                                : No
+         MaxIQ Cache Capable                : No
+         MaxIQ Cache Assigned               : No
+         NCQ status                         : Enabled
+      Device #2
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,2(2:0)
+         Reported Location                  : Connector 0, Device 2
+         Vendor                             : WDC
+         Model                              : WD3000HLFS-0
+         Firmware                           : 04.04V06
+         Serial number                      : WD-WX11DB006532
+         Size                               : 286168 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+         S.M.A.R.T. warnings                : 0
+         Power State                        : Full rpm
+         Supported Power States             : Full rpm,Powered off
+         SSD                                : No
+         MaxIQ Cache Capable                : No
+         MaxIQ Cache Assigned               : No
+         NCQ status                         : Enabled
+      Device #3
+         Device is a Hard drive
+         State                              : Online
+         Supported                          : Yes
+         Transfer Speed                     : SATA 3.0 Gb/s
+         Reported Channel,Device(T:L)       : 0,3(3:0)
+         Reported Location                  : Connector 0, Device 3
+         Vendor                             : WDC
+         Model                              : WD3000HLFS-0
+         Firmware                           : 04.04V06
+         Serial number                      : WD-WX11DB006553
+         Size                               : 286168 MB
+         Write Cache                        : Enabled (write-back)
+         FRU                                : None
+         S.M.A.R.T.                         : No
+         S.M.A.R.T. warnings                : 0
+         Power State                        : Full rpm
+         Supported Power States             : Full rpm,Powered off
+         SSD                                : No
+         MaxIQ Cache Capable                : No
+         MaxIQ Cache Assigned               : No
+         NCQ status                         : Enabled
+
+
+Command completed successfully.

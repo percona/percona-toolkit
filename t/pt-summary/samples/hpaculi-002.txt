@@ -1,0 +1,354 @@
+Smart Array P410i in Slot 0 (Embedded)
+   Bus Interface: PCI
+   Slot: 0
+   Serial Number: 50123456789ABCDE
+   Cache Serial Number: PACCQ9VY24Q4
+   RAID 6 (ADG) Status: Disabled
+   Controller Status: OK
+   Chassis Slot: 
+   Hardware Revision: Rev C
+   Firmware Version: 2.74
+   Rebuild Priority: Medium
+   Expand Priority: Medium
+   Surface Scan Delay: 15 secs
+   Queue Depth: Automatic
+   Monitor and Performance Delay: 60 min
+   Elevator Sort: Enabled
+   Degraded Performance Optimization: Disabled
+   Inconsistency Repair Policy: Disabled
+   Wait for Cache Room: Disabled
+   Surface Analysis Inconsistency Notification: Disabled
+   Post Prompt Timeout: 0 secs
+   Cache Board Present: True
+   Cache Status: OK
+   Accelerator Ratio: 25% Read / 75% Write
+   Drive Write Cache: Disabled
+   Total Cache Size: 256 MB
+   No-Battery Write Cache: Disabled
+   Cache Backup Power Source: Batteries
+   Battery/Capacitor Count: 1
+   Battery/Capacitor Status: OK
+   SATA NCQ Supported: True
+
+   Array: A
+      Interface Type: SAS
+      Unused Space: 0 MB
+      Status: OK
+
+
+
+      Logical Drive: 1
+         Size: 410.1 GB
+         Fault Tolerance: RAID 1+0
+         Heads: 255
+         Sectors Per Track: 32
+         Cylinders: 65535
+         Stripe Size: 128 KB
+         Status: OK
+         Array Accelerator: Enabled
+         Unique Identifier: 600508B1001037383941424344450500
+         Disk Name: /dev/cciss/c0d0
+         Mount Points: /boot 101 MB
+         Logical Drive Label: A0050D9850123456789ABCDE8644
+         Mirror Group 0:
+            physicaldrive 1I:1:1 (port 1I:box 1:bay 1, SAS, 146 GB, OK)
+            physicaldrive 1I:1:2 (port 1I:box 1:bay 2, SAS, 146 GB, OK)
+            physicaldrive 1I:1:3 (port 1I:box 1:bay 3, SAS, 146 GB, OK)
+         Mirror Group 1:
+            physicaldrive 1I:1:4 (port 1I:box 1:bay 4, SAS, 146 GB, OK)
+            physicaldrive 2I:1:5 (port 2I:box 1:bay 5, SAS, 146 GB, OK)
+            physicaldrive 2I:1:6 (port 2I:box 1:bay 6, SAS, 146 GB, OK)
+
+      physicaldrive 1I:1:1
+         Port: 1I
+         Box: 1
+         Bay: 1
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 146 GB
+         Rotational Speed: 15000
+         Firmware Revision: HPDD
+         Serial Number: 3TB150EA00009027YKMS
+         Model: HP      EH0146FAWJB     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 1I:1:2
+         Port: 1I
+         Box: 1
+         Bay: 2
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 146 GB
+         Rotational Speed: 15000
+         Firmware Revision: HPDD
+         Serial Number: 3TB14QET00009027WXL8
+         Model: HP      EH0146FAWJB     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 1I:1:3
+         Port: 1I
+         Box: 1
+         Bay: 3
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 146 GB
+         Rotational Speed: 15000
+         Firmware Revision: HPDD
+         Serial Number: 3TB14RA100009027ZJYB
+         Model: HP      EH0146FAWJB     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 1I:1:4
+         Port: 1I
+         Box: 1
+         Bay: 4
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 146 GB
+         Rotational Speed: 15000
+         Firmware Revision: HPDD
+         Serial Number: 3TB12YKF00009027HME4
+         Model: HP      EH0146FAWJB     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2I:1:5
+         Port: 2I
+         Box: 1
+         Bay: 5
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 146 GB
+         Rotational Speed: 15000
+         Firmware Revision: HPDD
+         Serial Number: 3TB14ZJQ00009027ZGHF
+         Model: HP      EH0146FAWJB     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2I:1:6
+         Port: 2I
+         Box: 1
+         Bay: 6
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 146 GB
+         Rotational Speed: 15000
+         Firmware Revision: HPDD
+         Serial Number: 3TB1340600009027YPU1
+         Model: HP      EH0146FAWJB     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+
+
+Smart Array P800 in Slot 1
+   Bus Interface: PCI
+   Slot: 1
+   Serial Number: PAFGF0T9SYP0D2
+   Cache Serial Number: PA82B0A9SYRW9F
+   RAID 6 (ADG) Status: Enabled
+   Controller Status: OK
+   Chassis Slot: 
+   Hardware Revision: Rev E
+   Firmware Version: 5.22
+   Rebuild Priority: Medium
+   Expand Priority: Medium
+   Surface Scan Delay: 15 secs
+   Queue Depth: Automatic
+   Monitor and Performance Delay: 60 min
+   Elevator Sort: Enabled
+   Degraded Performance Optimization: Disabled
+   Inconsistency Repair Policy: Disabled
+   Post Prompt Timeout: 0 secs
+   Cache Board Present: True
+   Cache Status: OK
+   Accelerator Ratio: 25% Read / 75% Write
+   Drive Write Cache: Disabled
+   Total Cache Size: 512 MB
+   No-Battery Write Cache: Disabled
+   Cache Backup Power Source: Batteries
+   Battery/Capacitor Count: 2
+   Battery/Capacitor Status: OK
+   SATA NCQ Supported: True
+
+   Array: A
+      Interface Type: SAS
+      Unused Space: 0 MB
+      Status: OK
+      MultiDomain Status: OK
+
+
+
+      Logical Drive: 1
+         Size: 1.4 TB
+         Fault Tolerance: RAID 1+0
+         Heads: 255
+         Sectors Per Track: 32
+         Cylinders: 65535
+         Stripe Size: 128 KB
+         Status: OK
+         MultiDomain Status: OK
+         Array Accelerator: Enabled
+         Unique Identifier: 600508B1001054395359503044320000
+         Disk Name: /dev/cciss/c1d0
+         Mount Points: None
+         Logical Drive Label: A006EA79PAFGF0T9SYP0D2B18F
+         Mirror Group 0:
+            physicaldrive 2E:1:1 (port 2E:box 1:bay 1, SAS, 300 GB, OK)
+            physicaldrive 2E:1:2 (port 2E:box 1:bay 2, SAS, 300 GB, OK)
+            physicaldrive 2E:1:3 (port 2E:box 1:bay 3, SAS, 300 GB, OK)
+            physicaldrive 2E:1:4 (port 2E:box 1:bay 4, SAS, 300 GB, OK)
+            physicaldrive 2E:1:5 (port 2E:box 1:bay 5, SAS, 300 GB, OK)
+         Mirror Group 1:
+            physicaldrive 2E:1:6 (port 2E:box 1:bay 6, SAS, 300 GB, OK)
+            physicaldrive 2E:1:7 (port 2E:box 1:bay 7, SAS, 300 GB, OK)
+            physicaldrive 2E:1:8 (port 2E:box 1:bay 8, SAS, 300 GB, OK)
+            physicaldrive 2E:1:9 (port 2E:box 1:bay 9, SAS, 300 GB, OK)
+            physicaldrive 2E:1:10 (port 2E:box 1:bay 10, SAS, 300 GB, OK)
+
+      physicaldrive 2E:1:1
+         Port: 2E
+         Box: 1
+         Bay: 1
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 3SE1XVP000009039J108
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:2
+         Port: 2E
+         Box: 1
+         Bay: 2
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 6SE02LCY00009029S3UP
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:3
+         Port: 2E
+         Box: 1
+         Bay: 3
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 3SE22NJJ00009039MCVE
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:4
+         Port: 2E
+         Box: 1
+         Bay: 4
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 6SE02HN200009029WUSC
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:5
+         Port: 2E
+         Box: 1
+         Bay: 5
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 6SE029XD00009032YXKQ
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:6
+         Port: 2E
+         Box: 1
+         Bay: 6
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 6SE02L9P00009029SZSC
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:7
+         Port: 2E
+         Box: 1
+         Bay: 7
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 3SE1YT3500009037LJS3
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:8
+         Port: 2E
+         Box: 1
+         Bay: 8
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 3SE22SEB00009039LBR9
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:9
+         Port: 2E
+         Box: 1
+         Bay: 9
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 6SE02NAA00009032S26R
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+      physicaldrive 2E:1:10
+         Port: 2E
+         Box: 1
+         Bay: 10
+         Status: OK
+         Drive Type: Data Drive
+         Interface Type: SAS
+         Size: 300 GB
+         Rotational Speed: 10000
+         Firmware Revision: HPDD
+         Serial Number: 6SE02EQT00009032YZDJ
+         Model: HP      EG0300FAWHV     
+         PHY Count: 2
+         PHY Transfer Rate: 3.0GBPS, Unknown
+
+
