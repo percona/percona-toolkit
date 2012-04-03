@@ -68,7 +68,7 @@ section () {
       i = index($0, "_");
       x = substr($0, i);
       gsub(/[_ \t]/, "#", x);
-      printf("%s%s\n", substr($0, 0, i-1), x);
+      printf("%s%s\n", substr($0, 1, i-1), x);
    }')"
    printf "%s\n" "${line}"
 }
