@@ -251,7 +251,7 @@ sub get_rules {
          my $cols = $event->{query_struct}->{columns};
          return unless $cols;
          foreach my $col ( @$cols ) {
-            return 0 if $col->{col} eq '*';
+            return 0 if $col->{col} eq '*' && !$col->{func};
          }
          return;
       },
