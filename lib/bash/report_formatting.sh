@@ -64,13 +64,13 @@ fuzzy_pct () {
 # with #'s and all underscores with spaces.
 section () {
    local str="$1"
-   local line="$(printf '# %-60s' "${str} _" | awk '{
-      i = index($0, "_");
-      x = substr($0, i);
+   awk -v var="${str} _" 'BEGIN {
+      line = sprintf("# %-60s", var);
+      i = index(line, "_");
+      x = substr(line, i);
       gsub(/[_ \t]/, "#", x);
-      printf("%s%s\n", substr($0, 1, i-1), x);
-   }')"
-   printf "%s\n" "${line}"
+      printf("%s%s\n", substr(line, 1, i-1), x);
+   }'
 }
 
 NAME_VAL_LEN=12
