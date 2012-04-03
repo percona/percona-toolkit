@@ -1299,8 +1299,9 @@ sub parse_identifier {
    return unless $type && $ident;
    PTDEBUG && _d("Parsing", $type, "identifier:", $ident);
 
+   my ($func, $expr);
    if ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
-      my ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
+      ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
       PTDEBUG && _d('Function', $func, 'arg', $expr);
       return { col => $ident } unless $expr;  # NOW()
       $ident = $expr;  # col from MAX(col)
@@ -1338,6 +1339,10 @@ sub parse_identifier {
             $ident_struct{db} = $qtbl->[0];
          }
       }
+   }
+
+   if ( $func ) {
+      $ident_struct{func} = uc $func;
    }
 
    PTDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
