@@ -4514,6 +4514,8 @@ sub _next_boundaries {
       else {
          PTDEBUG && _d('End of table boundary:', Dumper($boundary->[0]));
          $self->{no_more_boundaries} = 1;  # for next call
+
+         $self->{last_upper} = $boundary->[0];
       }
    }
    else {
@@ -4521,6 +4523,8 @@ sub _next_boundaries {
       $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
       $self->{no_more_boundaries} = 1;  # for next call
+      
+      $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
 
