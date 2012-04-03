@@ -105,7 +105,7 @@ parse_sysctl_cpu_openbsd() { local PTFUNCNAME=parse_sysctl_cpu_openbsd;
 
    name_val "Processors" "$(awk -F= '/hw.ncpu=/{print $2}' "$file")"
    name_val "Speeds" "$(awk -F= '/hw.cpuspeed/{print $2}' "$file")"
-   name_val "Models" "$(awk -F= '/hw.model/{print substr($2, 0, index($2, " "))}' "$file")"
+   name_val "Models" "$(awk -F= '/hw.model/{print substr($2, 1, index($2, " "))}' "$file")"
 }
 
 # ##############################################################################
@@ -248,7 +248,7 @@ parse_ip_s_link () { local PTFUNCNAME=parse_ip_s_link;
    echo "  ========= ========= ========== ========== ========== ========== =========="
 
    awk "/^[1-9][0-9]*:/ {
-      save[\"iface\"] = substr(\$2, 0, index(\$2, \":\") - 1);
+      save[\"iface\"] = substr(\$2, 1, index(\$2, \":\") - 1);
       new = 1;
    }
    \$0 !~ /[^0-9 ]/ {
@@ -281,7 +281,7 @@ parse_ethtool () {
 
    awk '
       /^Settings for / {
-         device               = substr($3, 0, index($3, ":") ? index($3, ":")-1 : length($3));
+         device               = substr($3, 1, index($3, ":") ? index($3, ":")-1 : length($3));
          device_names[device] = device;
       }
       /Speed:/  { devices[device ",speed"]  = $2 }
@@ -308,7 +308,7 @@ parse_netstat () { local PTFUNCNAME=parse_netstat;
 
    echo "  Connections from remote IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
-      print substr($5, 0, index($5, ":") - 1);
+      print substr($5, 1, index($5, ":") - 1);
    }' "${file}" | sort | uniq -c \
       | awk "{
          fuzzy_var=\$1;
@@ -318,7 +318,7 @@ parse_netstat () { local PTFUNCNAME=parse_netstat;
       | sort -n -t . -k 1,1 -k 2,2 -k 3,3 -k 4,4
    echo "  Connections to local IP addresses"
    awk '$1 ~ /^tcp/ && $5 ~ /^[1-9]/ {
-      print substr($4, 0, index($4, ":") - 1);
+      print substr($4, 1, index($4, ":") - 1);
    }' "${file}" | sort | uniq -c \
       | awk "{
          fuzzy_var=\$1;
@@ -669,7 +669,7 @@ parse_lsi_megaraid_devices () { local PTFUNCNAME=parse_lsi_megaraid_devices;
          /Raw Size/                          {z=$3}
          END {
             printf("  %-10s %-4s %-7s %6s %-7s %-12s %-7s\n",
-               substr(d, 0, 10), t, s, me "/" oe "/" pe, v, m, z);
+               substr(d, 1, 10), t, s, me "/" oe "/" pe, v, m, z);
          }'
    done
 }
