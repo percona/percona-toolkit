@@ -549,6 +549,7 @@ sub _get_index_cardinality {
            . "WHERE Key_name = '$index'";
    PTDEBUG && _d($sql);
    my $cardinality = 1;
+   # XXX This will fail for the new Cxn which does not set NAME_lc by default.
    my $rows = $cxn->dbh()->selectall_hashref($sql, 'key_name');
    foreach my $row ( values %$rows ) {
       $cardinality *= $row->{cardinality} if $row->{cardinality};
