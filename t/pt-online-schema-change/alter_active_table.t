@@ -13,34 +13,37 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+require "$trunk/bin/pt-online-schema-change";
+
 use Time::HiRes qw(usleep);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-require "$trunk/bin/pt-online-schema-change";
 
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $dp         = new DSNParser(opts=>$dsn_opts);
+my $sb         = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave_dbh  = $sb->get_dbh_for('slave1');
 
-if ( !$dbh ) {
+if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
+}
+elsif ( !$slave_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
    plan tests => 7;
 }
 
-my $output  = "";
-my $cnf     = '/tmp/12345/my.sandbox.cnf';
-my @args    = ('-F', $cnf, '--execute');
-my $exit    = 0;
+my $output;
+my $master_dsn = "h=127.1,P=12345,u=msandbox,p=msandbox";
+my $sample     = "t/pt-online-schema-change/samples";
+my $exit;
 my $rows;
 
-my $query_table_stop   = '/tmp/query_table.stop';
-my $query_table_output = '/tmp/query_table.output';
-diag(`rm -rf $query_table_stop`);
-diag(`rm -rf $query_table_output`);
+my $query_table_stop   = "/tmp/query_table.$PID.stop";
+my $query_table_output = "/tmp/query_table.$PID.output";
 
 sub start_query_table {
    my ($db, $tbl, $pkcol) = @_;
@@ -48,8 +51,8 @@ sub start_query_table {
    diag(`rm -rf $query_table_stop`);
    diag(`echo > $query_table_output`);
 
-   my $cmd = "$trunk/t/pt-online-schema-change/samples/query_table.pl";
-   system("$cmd 127.1 12345 $db $tbl $pkcol >$query_table_output &");
+   my $cmd = "$trunk/$sample/query_table.pl";
+   system("$cmd 127.1 12345 $db $tbl $pkcol $query_table_stop >$query_table_output &");
 
    return;
 }
@@ -89,7 +92,7 @@ sub check_ids {
    $n_deleted++ if $n_deleted;
    $n_inserted++;
 
-   $rows = $dbh->selectrow_arrayref(
+   $rows = $master_dbh->selectrow_arrayref(
       "SELECT COUNT($pkcol) FROM $db.$tbl");
    is(
       $rows->[0],
@@ -97,7 +100,7 @@ sub check_ids {
       "New table row count: 500 original + $n_inserted inserted - $n_deleted deleted"
    ) or print Dumper($rows);
 
-   $rows = $dbh->selectall_arrayref(
+   $rows = $master_dbh->selectall_arrayref(
       "SELECT $pkcol FROM $db.$tbl WHERE $pkcol > 500 AND $pkcol NOT IN ($ids->{inserted})");
    is_deeply(
       $rows,
@@ -106,7 +109,7 @@ sub check_ids {
    ) or print Dumper($rows);
 
    if ( $n_deleted ) {
-      $rows = $dbh->selectall_arrayref(
+      $rows = $master_dbh->selectall_arrayref(
          "SELECT $pkcol FROM $db.$tbl WHERE $pkcol IN ($ids->{deleted})");
       is_deeply(
          $rows,
@@ -122,9 +125,9 @@ sub check_ids {
    };
 
    if ( $n_updated ) {
-      $rows = $dbh->selectall_arrayref(
-         "SELECT $pkcol FROM $db.$tbl WHERE $pkcol IN ($ids->{updated}) "
-         . "AND c <> 'updated'");
+      my $sql = "SELECT $pkcol FROM $db.$tbl WHERE $pkcol IN ($ids->{updated}) "
+              . "AND c NOT LIKE 'updated%'";
+      $rows = $master_dbh->selectall_arrayref($sql);
       is_deeply(
          $rows,
          [],
@@ -144,27 +147,39 @@ sub check_ids {
 # #############################################################################
 # Attempt to alter a table while another process is changing it.
 # #############################################################################
-$sb->load_file('master', "t/pt-online-schema-change/samples/small_table.sql");
-$dbh->do('use mkosc');
-$dbh->do('truncate table a');
-diag(`cp $trunk/t/pt-online-schema-change/samples/a.outfile /tmp/`);
-$dbh->do("load data local infile '/tmp/a.outfile' into table mkosc.a");
-diag(`rm -rf /tmp/a.outfile`);
 
-start_query_table(qw(mkosc a i));
+# Load 500 rows.
+$sb->load_file('master', "$sample/basic_no_fks.sql");
+PerconaTest::wait_for_table($slave_dbh, "pt_osc.t");
+$master_dbh->do("USE pt_osc");
+$master_dbh->do("TRUNCATE TABLE t");
+diag(`cp $trunk/t/pt-online-schema-change/samples/basic_no_fks.data /tmp`);
+$master_dbh->do("LOAD DATA LOCAL INFILE '/tmp/basic_no_fks.data' INTO TABLE pt_osc.t");
+diag(`rm -rf /tmp/basic_no_fks.data`);
+PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=500");
+$master_dbh->do("ANALYZE TABLE pt_osc.t");
+
+# Start inserting, updating, and deleting rows at random.
+start_query_table(qw(pt_osc t id));
+
+# While that's ^ happening, alter the table.
 $output = output(
-   sub { $exit = pt_online_schema_change::main(@args,
-      qw(--chunk-size 100),
-      'D=mkosc,t=a', qw(--alter ENGINE=InnoDB --drop-old-table)) },
+   sub { $exit = pt_online_schema_change::main(
+      "$master_dsn,D=pt_osc,t=t",
+      qw(--lock-wait-timeout 5),
+      qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB)) },
+   stderr => 1,
 );
+
+# Stop altering the table.
 stop_query_table();
 
-$rows = $dbh->selectall_hashref('show table status from mkosc', 'name');
+$rows = $master_dbh->selectall_hashref('SHOW TABLE STATUS FROM pt_osc', 'name');
 is(
-   $rows->{a}->{engine},
+   $rows->{t}->{engine},
    'InnoDB',
    "New table ENGINE=InnoDB"
-);
+) or warn Dumper($rows);
 
 is(
    scalar keys %$rows,
@@ -178,17 +193,12 @@ is(
    "Exit status 0"
 );
 
-check_ids('mkosc', 'a', 'i', get_ids());
-
-# ############################################################################
-# Alter an active table with foreign keys.
-# ############################################################################
-
+check_ids(qw(pt_osc t id), get_ids());
 
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`rm -rf $query_table_stop`);
-diag(`rm -rf $query_table_output`);
-$sb->wipe_clean($dbh);
+diag(`rm -rf $query_table_stop >/dev/null 2>&1`);
+diag(`rm -rf $query_table_output >/dev/null 2>&1`);
+$sb->wipe_clean($master_dbh);
 exit;

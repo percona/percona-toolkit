@@ -19,14 +19,21 @@ my $cmd     = "$trunk/bin/pt-online-schema-change";
 $output = `$cmd`;
 like(
    $output,
-   qr/A DSN with a t part must be specified/,
+   qr/DSN must be specified/,
    "Must specify a DSN with t part"
 );
 
-$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox`;
+$output = `$cmd h=127.1,P=12345,t=tbl`;
 like(
    $output,
-   qr/The DSN must specify a t/,
+   qr/DSN must specify a database \(D\) and a table \(t\)/,
+   "DSN must specify a D part"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox,D=mysql`;
+like(
+   $output,
+   qr/DSN must specify a database \(D\) and a table \(t\)/,
    "DSN must specify t part"
 );
 
@@ -35,13 +42,6 @@ like(
    $output,
    qr/Specify only one DSN/,
    "Only 1 DSN allowed"
-);
-
-$output = `$cmd h=127.1,P=12345,t=tbl`;
-like(
-   $output,
-   qr/No database was specified/,
-   "Either DSN D part or --database required"
 );
 
 $output = `$cmd --help`;

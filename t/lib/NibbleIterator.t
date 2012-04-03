@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 46;
+   plan tests => 48;
 }
 
 my $q   = new Quoter();
@@ -94,6 +94,7 @@ sub make_nibble_iter {
       one_nibble  => $args{one_nibble},
       resume      => $args{resume},
       order_by    => $args{order_by},
+      comments    => $args{comments},
       %common_modules,
    );
 
@@ -527,7 +528,7 @@ $ni = make_nibble_iter(
 $ni->next();
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*checksum chunk*/",
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*nibble table*/",
    "--ignore-columns"
 );
 
@@ -545,7 +546,7 @@ $ni->next();
 
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*checksum chunk*/",
+   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*nibble table*/",
    "Add ORDER BY to nibble SQL"
 );
 
@@ -722,7 +723,7 @@ $ni = make_nibble_iter(
 my $sql = $ni->statements()->{nibble}->{Statement};
 is(
    $sql,
-   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*checksum table*/",
+   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*bite table*/",
    "One nibble SQL with where"
 );
 
@@ -793,6 +794,43 @@ is_deeply(
    \@rows,
    [ ],
    "Resume from end"
+);
+
+# #############################################################################
+# Customize bite and nibble statement comments.
+# #############################################################################
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 10)],
+   comments => {
+      bite   => "my bite",
+      nibble => "my nibble",
+   }
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*my nibble*/",
+   "Custom nibble comment"
+);
+
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 1000)],
+   comments => {
+      bite   => "my bite",
+      nibble => "my nibble",
+   }
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` /*my bite*/",
+   "Custom bite comment"
 );
 
 # #############################################################################
