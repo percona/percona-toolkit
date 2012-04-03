@@ -49,8 +49,13 @@ sub new {
 sub DESTROY {
    my ($self) = @_;
    my $task = $self->{task};
-   PTDEBUG && _d('Calling cleanup task', $task);
-   $task->();
+   if ( ref $task ) {
+      PTDEBUG && _d('Calling cleanup task', $task);
+      $task->();
+   }
+   else {
+      warn "Lost cleanup task";
+   }
    return;
 }
 
