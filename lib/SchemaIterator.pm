@@ -232,7 +232,6 @@ sub next {
 
 sub _iterate_files {
    my ( $self ) = @_;
-   my $q = $self->{Quoter};
 
    if ( !$self->{fh} ) {
       my ($fh, $file) = $self->{file_itr}->();

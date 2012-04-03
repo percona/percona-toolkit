@@ -6897,7 +6897,7 @@ sub next {
 }
 
 sub _iterate_files {
-   my ( $self ) = @_; 
+   my ( $self ) = @_;
 
    if ( !$self->{fh} ) {
       my ($fh, $file) = $self->{file_itr}->();
