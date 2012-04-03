@@ -254,7 +254,7 @@ like(
    "Not stalking, collect triggered"
 );
 
-PerconaTest::wait_for_files("$dest/nostalk-df");
+PerconaTest::wait_for_files("$dest/nostalk-hostname");
 PerconaTest::wait_for_sh("test \$(grep -c '^TS' $dest/nostalk-df) -ge 2");
 chomp($output = `grep -c '^TS' $dest/nostalk-df`);
 is(
