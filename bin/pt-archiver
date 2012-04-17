@@ -4178,6 +4178,16 @@ sub main {
          commit($o, 1) if $commit_each;
          $get_sth = $get_next;
 
+         # Sleep between fetching the next chunk of rows.
+         if( my $sleep_time = $o->get('sleep') ) {
+            $sleep_time = $last_select_time * $o->get('sleep-coef')
+               if $o->get('sleep-coef');
+            PTDEBUG && _d('Sleeping', $sleep_time);
+            trace('sleep', sub {
+               sleep($sleep_time);
+            });
+         }
+
          PTDEBUG && _d('Fetching rows in next chunk');
          trace('select', sub {
             my $select_start = time;
@@ -4209,16 +4219,6 @@ sub main {
             sleep($o->get('check-interval'));
             $lag = $ms->get_slave_lag($lag_dbh);
          }
-      }
-
-      # Sleep between rows.
-      if( my $sleep_time = $o->get('sleep') ) {
-         $sleep_time = $last_select_time * $o->get('sleep-coef')
-            if $o->get('sleep-coef');
-         PTDEBUG && _d('Sleeping', $sleep_time);
-         trace('sleep', sub {
-            sleep($sleep_time);
-         });
       }
    }  # ROW 
    PTDEBUG && _d('Done fetching rows');
