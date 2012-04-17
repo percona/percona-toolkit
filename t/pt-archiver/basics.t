@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(time);
 
 use PerconaTest;
 use Sandbox;
@@ -36,7 +37,7 @@ if ( ($rows || 0) != 4 ) {
    plan skip_all => 'Failed to load tables1-4.sql';
 }
 else {
-   plan tests => 23;
+   plan tests => 25;
 }
 
 my @args = qw(--dry-run --where 1=1);
@@ -142,6 +143,47 @@ unlike($output, qr/>=/, '--no-delete implies strict ascending');
 $output = output(sub {pt_archiver::main(@args, qw(--no-delete --purge --source), "D=test,t=table_1,F=$cnf") });
 $output = `/tmp/12345/use -N -e "select count(*) from test.table_1"`;
 is($output + 0, 4, 'All 4 rows are still there');
+
+
+# #############################################################################
+# --sleep
+# #############################################################################
+# This table, gt_n.t1, is nothing special; it just has 19 rows and a PK.
+$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+
+# https://bugs.launchpad.net/percona-toolkit/+bug/979092
+# This shouldn't take more than 3 seconds because it only takes 2 SELECT
+# with limit 10 to get all 19 rows.  It should --sleep 1 between each fetch,
+# not between each row, which is the bug.
+
+my $t = time;
+$output = output(
+   sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
+      qw(--where 1=1 --purge --sleep 1 --no-check-charset --limit 10)) },
+);
+
+cmp_ok(
+   int(time - $t),
+   '<',
+   3,
+   "--sleep between SELECT (bug 979092)"
+);
+
+# Try again with --bulk-delete.  The tool should work the same.
+$sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
+$t = time;
+$output = output(
+   sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
+      qw(--where 1=1 --purge --sleep 1 --no-check-charset --limit 10),
+      qw(--bulk-delete)) },
+);
+
+cmp_ok(
+   int(time - $t),
+   '<',
+   3,
+   "--sleep between SELECT --bulk-delete (bug 979092)"
+);
 
 # #############################################################################
 # Done.
