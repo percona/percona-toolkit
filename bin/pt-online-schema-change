@@ -5387,7 +5387,7 @@ sub main {
 
    # If the new table still exists, drop it unless the tool was interrupted.
    push @cleanup_tasks, sub {
-      PTDEBUG && _('Clean up new table');
+      PTDEBUG && _d('Clean up new table');
       my $new_tbl_exists = $tp->check_table(
          dbh => $cxn->dbh(),
          db  => $new_tbl->{db},
