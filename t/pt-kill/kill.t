@@ -29,7 +29,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 20;
 }
 
 my $output;
@@ -56,8 +56,11 @@ ok(
 
 $output = output(
    sub { pt_kill::main('-F', $cnf, qw(--kill --print --run-time 1 --interval 1),
-      '--match-info', 'select sleep\(4\)') },
+            "--match-info", 'select sleep\(4\)',
+         )
+   },
 );
+
 like(
    $output,
    qr/KILL $pid /,
@@ -115,6 +118,133 @@ is(
    'select sleep(3)',
    'Connection is still alive'
 );
+
+# #############################################################################
+# Test that --log-dsn
+# #############################################################################
+
+$dbh->do("DROP DATABASE IF EXISTS `kill_test`");
+$dbh->do("CREATE DATABASE `kill_test`");
+
+my $sql = OptionParser->read_para_after(
+   "$trunk/bin/pt-kill", qr/MAGIC_create_log_table/);
+$sql =~ s/kill_log/`kill_test`.`log_table`/;
+
+$dbh->do($sql);
+
+{
+   system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null&");
+   sleep 0.5;
+   local $@;
+   eval {
+      pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1),
+         "--match-info", 'select sleep\(4\)',
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+      )
+   };
+   ok !$@, "--log-dsn works if the table exists and --create-log-table wasn't passed in."
+      or diag $@;
+
+   local $@;
+   my $results = eval { $dbh->selectall_arrayref("SELECT * FROM `kill_test`.`log_table`") };
+   ok !$@, "...and we can query the table"
+      or diag $@;
+
+   is @{$results}, 1, "...which contains one entry";
+   use Data::Dumper;
+   my $reason = $dbh->selectrow_array("SELECT reason FROM `kill_test`.`log_table` WHERE kill_id=1");
+   is $reason,
+      'Query matches Info spec',
+      'reason gets set to something sensible';
+
+   TODO: {
+      local $::TODO = "Time_ms currently isn't reported";
+      my $time_ms = $dbh->selectrow_array("SELECT Time_ms FROM `kill_test`.`log_table` WHERE kill_id=1");
+      ok $time_ms;
+   }
+
+   my $result = shift @$results;
+   $result->[6] =~ s/localhost:[0-9]+/localhost/;
+   is_deeply(
+      [ @{$result}[5..8, 10, 11] ],
+      [ 'msandbox', 'localhost', undef, 'Query', 'User sleep', 'select sleep(4)', ],
+      "...and was populated as expected",
+   );
+   
+   system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null&");
+   sleep 0.5;
+   local $@;
+   eval {
+      pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1 --create-log-table),
+         "--match-info", 'select sleep\(4\)',
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+      )
+   };
+   ok !$@, "--log-dsn works if the table exists and --create-log-table was passed in.";
+}
+
+{
+   $dbh->do("DROP TABLE `kill_test`.`log_table`");
+
+   system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null&");
+   sleep 0.5;
+   local $@;
+   eval {
+      pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1 --create-log-table),
+         "--match-info", 'select sleep\(4\)',
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+      )
+   };
+   ok !$@, "--log-dsn works if the table doesn't exists and --create-log-table was passed in.";
+}
+
+{
+   $dbh->do("DROP TABLE `kill_test`.`log_table`");
+
+   local $@;
+   eval {
+      pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1),
+         "--match-info", 'select sleep\(4\)',
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+      )
+   };
+   like $@,
+      qr/\QTable 'kill_test.log_table' doesn't exist\E/,       #'
+      "By default, --log-dsn doesn't autogenerate a table";
+}
+
+for my $dsn (
+   q!h=127.1,P=12345,u=msandbox,p=msandbox,t=log_table!,
+   q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test!,
+   q!h=127.1,P=12345,u=msandbox,p=msandbox!,
+) {
+   local $@;
+   eval {
+      pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1),
+         "--match-info", 'select sleep\(4\)',
+         "--log-dsn", $dsn,
+      )
+   };
+   like $@,
+      qr/\QThe DSN passed in for --log-dsn must have a database and table set\E/,
+      "--log-dsn croaks if t= or d= are absent";
+}
+
+# Run it twice
+for (1,2) {
+   system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null&");
+   sleep 0.5;
+   pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1 --create-log-table),
+      "--match-info", 'select sleep\(4\)',
+      "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+   );
+}
+
+my $results = $dbh->selectall_arrayref("SELECT * FROM `kill_test`.`log_table`");
+
+is @{$results}, 2, "Different --log-dsn runs reuse the same table.";
+
+$dbh->do("DROP DATABASE kill_test");
 
 # #############################################################################
 # Done.

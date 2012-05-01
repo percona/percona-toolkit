@@ -1969,6 +1969,7 @@ sub new {
       last_poll   => 0,
       active_cxn  => {},  # keyed off ID
       event_cache => [],
+      _reasons_for_matching => {},
    };
    return bless $self, $class;
 }
@@ -2178,7 +2179,9 @@ sub find {
             PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds busy time');
+         my $reason = 'Exceeds busy time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
 
@@ -2187,7 +2190,9 @@ sub find {
             PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds idle time');
+         my $reason = 'Exceeds idle time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
  
@@ -2204,7 +2209,9 @@ sub find {
                PTDEBUG && _d('Query does not match', $property, 'spec');
                next QUERY;
             }
-            PTDEBUG && _d('Query matches', $property, 'spec');
+            my $reason = 'Query matches ' . $property . ' spec';
+            PTDEBUG && _d($reason);
+            push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
             $matched++;
          }
       }
@@ -3658,6 +3665,40 @@ sub main {
       };
    }
 
+   my ($log_dbh, $log_sth, @processlist_columns);
+
+   if ( my $log_dsn = $o->get('log-dsn') ) {
+      my $db    = $log_dsn->{d};
+      my $table = $log_dsn->{t};
+      die "The DSN passed in for --log-dsn must have a database and table set"
+         unless defined $table && defined $db;
+      $log_dbh = get_cxn($dp, $log_dsn, 0);
+
+      my $sql = $o->read_para_after(
+         __FILE__, qr/MAGIC_create_log_table/);
+      $sql =~ s/kill_log/IF NOT EXISTS `$db`.`$table`/;
+
+      # Create the log-table table if desired
+      if ( $o->get('create-log-table') ) {
+         PTDEBUG && _d($sql);
+         $log_dbh->do($sql);
+      }
+
+      my $sth = $log_dbh->prepare("SHOW COLUMNS FROM `$db`.`$table`");
+      $sth->execute();
+      my (undef, @all_log_columns) = map @{$_}, @{$sth->fetchall_arrayref([0])};
+      $sth->finish();
+
+      local $LIST_SEPARATOR = ", ";
+      $log_sth = $log_dbh->prepare(
+         "INSERT INTO `$db`.`$table` (@all_log_columns) VALUES("
+       . join(", ", map { "?" } @all_log_columns)
+       . ")"
+      );
+
+      @processlist_columns = @all_log_columns[3 .. $#all_log_columns];
+   }
+
    # ########################################################################
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
    # ########################################################################
@@ -3866,6 +3907,14 @@ sub main {
                   msg("Error killing $query->{Id}: $EVAL_ERROR");
                }
                else {
+                  if ( $log_sth ) {
+                     my $sql     = 'SELECT @@SERVER_ID';
+                     PTDEBUG && _d($sql);
+                     my ($id)    = $dbh->selectrow_array($sql);
+                     my $ts      = Transformers::ts(localtime);
+                     my $reasons = join "\n", @{ $pl->{_reasons_for_matching}->{$query} };
+                     $log_sth->execute($id, $ts, $reasons, @{$query}{@processlist_columns} );
+                  }
                   msg("Killed $query->{Id}");
                }
             }
@@ -4155,6 +4204,13 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
+=item --create-log-table
+
+Create the L<"--log-dsn"> table if it does not exist.
+
+This option causes the table specified by L<"--log-dsn"> to be created with the
+default structure shown in the documentation for that option.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX operating systems
@@ -4258,6 +4314,35 @@ See also L<"--run-time">.
 type: string
 
 Print all output to this file when daemonized.
+
+=item --log-dsn
+
+type: DSN
+
+Store each query killed in this DSN.
+
+The argument specifies a table to store all killed queries.  The
+table must have at least the following columns.  You can add more columns for
+your own special purposes, but they won't be used by pt-kill.  The
+following CREATE TABLE definition is also used for L<"--create-log-table">.
+MAGIC_create_log_table:
+
+   CREATE TABLE kill_log (
+      kill_id     int(10) unsigned NOT NULL AUTO_INCREMENT,
+      server_id   bigint(4) NOT NULL DEFAULT '0',
+      timestamp   DATETIME,
+      reason      TEXT,
+      Id          bigint(4) NOT NULL DEFAULT '0',
+      User        varchar(16) NOT NULL DEFAULT '',
+      Host        varchar(64) NOT NULL DEFAULT '',
+      db          varchar(64) DEFAULT NULL,
+      Command     varchar(16) NOT NULL DEFAULT '',
+      Time        int(7) NOT NULL DEFAULT '0',
+      State       varchar(64) DEFAULT NULL,
+      Info        longtext,
+      Time_ms     bigint(21) DEFAULT '0', # NOTE, TODO: currently not used
+      PRIMARY KEY (kill_id)
+   ) DEFAULT CHARSET=utf8
 
 =item --password
 
@@ -4763,6 +4848,14 @@ Socket file to use for connection.
 dsn: user; copy: yes
 
 User for login if not current user.
+
+=item * t
+
+Table to log actions in, if passed through --log-dsn.
+
+=item * d
+
+Database to log actions in, if passed through --log-dsn.
 
 =back
 
