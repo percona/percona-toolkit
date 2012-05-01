@@ -1216,7 +1216,7 @@ sub parse {
    }
 
    foreach my $key ( keys %given_props ) {
-      die "Unknown DSN option '$key' in '$dsn'.  For more details, "
+      die "DSN option '$key' in '$dsn'.  For more details, "
             . "please use the --help option, or try 'perldoc $PROGRAM_NAME' "
             . "for complete documentation."
          unless exists $opts->{$key};
@@ -3126,6 +3126,125 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Quoter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Quoter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   return bless {}, $class;
+}
+
+sub quote {
+   my ( $self, @vals ) = @_;
+   foreach my $val ( @vals ) {
+      $val =~ s/`/``/g;
+   }
+   return join('.', map { '`' . $_ . '`' } @vals);
+}
+
+sub quote_val {
+   my ( $self, $val ) = @_;
+
+   return 'NULL' unless defined $val;          # undef = NULL
+   return "''" if $val eq '';                  # blank string = ''
+   return $val if $val =~ m/^0x[0-9a-fA-F]+$/;  # hex data
+
+   $val =~ s/(['\\])/\\$1/g;
+   return "'$val'";
+}
+
+sub split_unquote {
+   my ( $self, $db_tbl, $default_db ) = @_;
+   $db_tbl =~ s/`//g;
+   my ( $db, $tbl ) = split(/[.]/, $db_tbl);
+   if ( !$tbl ) {
+      $tbl = $db;
+      $db  = $default_db;
+   }
+   return ($db, $tbl);
+}
+
+sub literal_like {
+   my ( $self, $like ) = @_;
+   return unless $like;
+   $like =~ s/([%_])/\\$1/g;
+   return "'$like'";
+}
+
+sub join_quote {
+   my ( $self, $default_db, $db_tbl ) = @_;
+   return unless $db_tbl;
+   my ($db, $tbl) = split(/[.]/, $db_tbl);
+   if ( !$tbl ) {
+      $tbl = $db;
+      $db  = $default_db;
+   }
+   $db  = "`$db`"  if $db  && $db  !~ m/^`/;
+   $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
+   return $db ? "$db.$tbl" : $tbl;
+}
+
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
+1;
+}
+# ###########################################################################
+# End Quoter package
+# ###########################################################################
+
+# ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -3665,38 +3784,57 @@ sub main {
       };
    }
 
-   my ($log_dbh, $log_sth, @processlist_columns);
+   my ($log_sth, @processlist_columns);
 
    if ( my $log_dsn = $o->get('log-dsn') ) {
-      my $db    = $log_dsn->{d};
+      my $db    = $log_dsn->{D};
       my $table = $log_dsn->{t};
-      die "The DSN passed in for --log-dsn must have a database and table set"
+      die "--log-dsn does not specify a database (D) "
+        . "or a database-qualified table (t)"
          unless defined $table && defined $db;
-      $log_dbh = get_cxn($dp, $log_dsn, 0);
+      my $log_dbh = get_cxn($dp, $log_dsn, 0);
+      my $quoted_db = Quoter->quote($db);
+      my $log_table = Quoter->quote($db, $table);
 
-      my $sql = $o->read_para_after(
-         __FILE__, qr/MAGIC_create_log_table/);
-      $sql =~ s/kill_log/IF NOT EXISTS `$db`.`$table`/;
+      my $sql          = "SHOW TABLES FROM $quoted_db LIKE "
+                       . Quoter->quote_val($table);
+      PTDEBUG && _d($sql);
+      my @tables = $log_dbh->selectrow_array($sql);
 
       # Create the log-table table if desired
-      if ( $o->get('create-log-table') ) {
+      if ( @tables == 0 ) {
+         if ($o->get('create-log-table') ) {
+         $sql = $o->read_para_after(
+            __FILE__, qr/MAGIC_create_log_table/);
+         $sql =~ s/kill_log/IF NOT EXISTS $log_table/;
          PTDEBUG && _d($sql);
          $log_dbh->do($sql);
+         }
+         else {
+            die "--log-dsn table does not exist. Please create it or specify "
+            . "--create-log-table.";
+         }
       }
 
-      my $sth = $log_dbh->prepare("SHOW COLUMNS FROM `$db`.`$table`");
-      $sth->execute();
-      my (undef, @all_log_columns) = map @{$_}, @{$sth->fetchall_arrayref([0])};
-      $sth->finish();
-
-      local $LIST_SEPARATOR = ", ";
-      $log_sth = $log_dbh->prepare(
-         "INSERT INTO `$db`.`$table` (@all_log_columns) VALUES("
-       . join(", ", map { "?" } @all_log_columns)
-       . ")"
+      my @all_log_columns = qw(
+         server_id timestamp reason kill_error Id User Host
+         db Command Time State Info Time_ms
       );
+      # Grab the columns that come from processlist
+      @processlist_columns = @all_log_columns[4 .. $#all_log_columns];
 
-      @processlist_columns = @all_log_columns[3 .. $#all_log_columns];
+      $sql               = 'SELECT @@SERVER_ID';
+      PTDEBUG && _d($sql);
+      my ($server_id)    = $dbh->selectrow_array($sql);
+
+      $sql = do {
+         local $LIST_SEPARATOR = ", ";
+         "INSERT INTO $log_table (@all_log_columns) VALUES("
+         . join(", ", $server_id, ("?") x (@all_log_columns-1))
+         . ")"
+      };
+      PTDEBUG && _d($sql);
+      $log_sth = $log_dbh->prepare( $sql );
    }
 
    # ########################################################################
@@ -3902,19 +4040,16 @@ sub main {
                      . " seconds before kill");
                   sleep $o->get('wait-before-kill');
                }
+               local $@;
                eval { $kill_sth->execute($query->{Id}); };
                if ( $EVAL_ERROR ) {
+                  log_to_table($log_sth, $query, $pl, \@processlist_columns, $EVAL_ERROR)
+                     if $log_sth;
                   msg("Error killing $query->{Id}: $EVAL_ERROR");
                }
                else {
-                  if ( $log_sth ) {
-                     my $sql     = 'SELECT @@SERVER_ID';
-                     PTDEBUG && _d($sql);
-                     my ($id)    = $dbh->selectrow_array($sql);
-                     my $ts      = Transformers::ts(localtime);
-                     my $reasons = join "\n", @{ $pl->{_reasons_for_matching}->{$query} };
-                     $log_sth->execute($id, $ts, $reasons, @{$query}{@processlist_columns} );
-                  }
+                  log_to_table($log_sth, $query, $pl, \@processlist_columns, $EVAL_ERROR)
+                     if $log_sth;
                   msg("Killed $query->{Id}");
                }
             }
@@ -3986,6 +4121,16 @@ sub msg {
    print '# ', ts(time), " $msg\n" if $o->get('verbose');
    PTDEBUG && _d($msg);
    return;
+}
+
+sub log_to_table {
+   my ($log_sth, $query, $pl, $processlist_columns, $error) = @_;
+
+   my $ts      = Transformers::ts(localtime);
+   my $reasons = join "\n", map {
+         defined($_) ? $_ : "Unkown reason"
+      } @{ $pl->{_reasons_for_matching}->{$query} };
+   $log_sth->execute($ts, $reasons, $error, @{$query}{@$processlist_columns} );
 }
 
 sub group_queries {
@@ -4321,7 +4466,8 @@ type: DSN
 
 Store each query killed in this DSN.
 
-The argument specifies a table to store all killed queries.  The
+The argument specifies a table to store all killed queries.  The DSN
+passed in must have the databse (D) and table (t) options. The
 table must have at least the following columns.  You can add more columns for
 your own special purposes, but they won't be used by pt-kill.  The
 following CREATE TABLE definition is also used for L<"--create-log-table">.
@@ -4332,6 +4478,7 @@ MAGIC_create_log_table:
       server_id   bigint(4) NOT NULL DEFAULT '0',
       timestamp   DATETIME,
       reason      TEXT,
+      kill_error  TEXT,
       Id          bigint(4) NOT NULL DEFAULT '0',
       User        varchar(16) NOT NULL DEFAULT '',
       Host        varchar(64) NOT NULL DEFAULT '',
@@ -4852,10 +4999,6 @@ User for login if not current user.
 =item * t
 
 Table to log actions in, if passed through --log-dsn.
-
-=item * d
-
-Database to log actions in, if passed through --log-dsn.
 
 =back
 

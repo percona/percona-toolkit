@@ -139,7 +139,7 @@ $dbh->do($sql);
    eval {
       pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1),
          "--match-info", 'select sleep\(4\)',
-         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test,t=log_table!,
       )
    };
    ok !$@, "--log-dsn works if the table exists and --create-log-table wasn't passed in."
@@ -164,9 +164,9 @@ $dbh->do($sql);
    }
 
    my $result = shift @$results;
-   $result->[6] =~ s/localhost:[0-9]+/localhost/;
+   $result->[7] =~ s/localhost:[0-9]+/localhost/;
    is_deeply(
-      [ @{$result}[5..8, 10, 11] ],
+      [ @{$result}[6..9, 11, 12] ],
       [ 'msandbox', 'localhost', undef, 'Query', 'User sleep', 'select sleep(4)', ],
       "...and was populated as expected",
    );
@@ -177,7 +177,7 @@ $dbh->do($sql);
    eval {
       pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1 --create-log-table),
          "--match-info", 'select sleep\(4\)',
-         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test,t=log_table!,
       )
    };
    ok !$@, "--log-dsn works if the table exists and --create-log-table was passed in.";
@@ -192,7 +192,7 @@ $dbh->do($sql);
    eval {
       pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1 --create-log-table),
          "--match-info", 'select sleep\(4\)',
-         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test,t=log_table!,
       )
    };
    ok !$@, "--log-dsn works if the table doesn't exists and --create-log-table was passed in.";
@@ -205,17 +205,17 @@ $dbh->do($sql);
    eval {
       pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1),
          "--match-info", 'select sleep\(4\)',
-         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+         "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test,t=log_table!,
       )
    };
    like $@,
-      qr/\QTable 'kill_test.log_table' doesn't exist\E/,       #'
+      qr/\Q--log-dsn table does not exist. Please create it or specify\E/,
       "By default, --log-dsn doesn't autogenerate a table";
 }
 
 for my $dsn (
    q!h=127.1,P=12345,u=msandbox,p=msandbox,t=log_table!,
-   q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test!,
+   q!h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test!,
    q!h=127.1,P=12345,u=msandbox,p=msandbox!,
 ) {
    local $@;
@@ -226,8 +226,8 @@ for my $dsn (
       )
    };
    like $@,
-      qr/\QThe DSN passed in for --log-dsn must have a database and table set\E/,
-      "--log-dsn croaks if t= or d= are absent";
+      qr/\Q--log-dsn does not specify a database (D) or a database-qualified table (t)\E/,
+      "--log-dsn croaks if t= or D= are absent";
 }
 
 # Run it twice
@@ -236,7 +236,7 @@ for (1,2) {
    sleep 0.5;
    pt_kill::main('-F', $cnf, qw(--kill --run-time 1 --interval 1 --create-log-table),
       "--match-info", 'select sleep\(4\)',
-      "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,d=kill_test,t=log_table!,
+      "--log-dsn", q!h=127.1,P=12345,u=msandbox,p=msandbox,D=kill_test,t=log_table!,
    );
 }
 
