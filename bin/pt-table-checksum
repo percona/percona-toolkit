@@ -6015,7 +6015,7 @@ sub main {
          PTDEBUG && _d($dbh, $sql);
          my (undef, $curr_lwt) = $dbh->selectrow_array($sql);
          PTDEBUG && _d('innodb_lock_wait_timeout on server:', $curr_lwt);
-         if ( !$curr_lwt ) {
+         if ( !defined $curr_lwt ) {
             PTDEBUG && _d('innodb_lock_wait_timeout does not exist;',
                'InnoDB is probably disabled');
          }
