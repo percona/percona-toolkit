@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 10;
+   plan tests => 11;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -139,6 +139,22 @@ is(
    PerconaTest::count_checksum_results($output, 'rows'),
    13,
    "14 rows checksummed (bug 925855)"
+);
+
+# #############################################################################
+# Bug 978432: PK is ignored
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/not-using-pk-bug.sql");
+PerconaTest::wait_for_table($dbh, "test.multi_resource_apt", "apt_id=4 AND res_id=4");
+
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args,
+         qw(-t test.multi_resource_apt --chunk-size 2 --explain --explain))
+      },
+      "t/pt-table-checksum/samples/not-using-pk-bug.out",
+   ),
+   "Smarter chunk index selection (bug 978432)"
 );
 
 # #############################################################################
