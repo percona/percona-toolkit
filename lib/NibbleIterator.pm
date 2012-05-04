@@ -120,8 +120,11 @@ sub new {
    else {
       my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
+      my $order_by   = join(', ', map {$q->quote($_)} @{$index_cols});
+      my $limit      = $chunk_size - 1;
+      PTDEBUG && _d('Initial chunk size (LIMIT):', $limit);
 
-      # Figure out how to nibble the table with the index.
+      # Figure out how to nibble the table with the chosen index.
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
          tbl_struct => $tbl->{tbl_struct},
@@ -131,23 +134,71 @@ sub new {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      # Make SQL statements, prepared on first call to next().  FROM and
-      # ORDER BY are the same for all statements.  FORCE IDNEX and ORDER BY
-      # are needed to ensure deterministic nibbling.
-      my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
-      my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
-
-      # The real first row in the table.  Usually we start nibbling from
-      # this row.  Called once in _get_bounds().
+      # Get the real first lower boundary.  Using this plus the chosen index,
+      # we'll see what index MySQL wants to use to ascend the table.  This
+      # is only executed once, and the first lower boundary is saved so we
+      # can start nibbling from it later.
       my $first_lb_sql
          = "SELECT /*!40001 SQL_NO_CACHE */ "
          . join(', ', map { $q->quote($_) } @{$asc->{scols}})
-         . " FROM $from"
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
          . " ORDER BY $order_by"
          . " LIMIT 1"
          . " /*first lower boundary*/";
-      PTDEBUG && _d('First lower boundary statement:', $first_lb_sql);
+      PTDEBUG && _d($first_lb_sql);
+      my $first_lower = $cxn->dbh()->selectrow_arrayref($first_lb_sql);
+      PTDEBUG && _d('First lower boundary:', Dumper($first_lower));  
+
+      # If the user didn't request a --chunk-index or they did but
+      # it wasn't chosen, then check which index MySQL wants to use
+      # to ascend the table.
+      if ( !$args{chunk_index} || (lc($args{chunk_index}) ne lc($index)) ) {
+
+         # This statment must be identical to the (poorly named) ub_sql below
+         # (aka "next chunk boundary") because ub_sql is what ascends the table
+         # and therefore might cause a table scan.  The difference between this
+         # statement and the real ub_sql below is that here we do not add
+         # FORCE INDEX but let MySQL chose the index.
+         my $sql
+            = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ "
+            . join(', ', map { $q->quote($_) } @{$asc->{scols}})
+            . " FROM $tbl->{name}"
+            . " WHERE " . $asc->{boundaries}->{'>='}
+            . ($where ? " AND ($where)" : '')
+            . " ORDER BY $order_by"
+            . " LIMIT ?, 2"
+            . " /*get MySQL index*/";
+         my $sth         = $cxn->dbh()->prepare($sql);
+         my $mysql_index = _get_mysql_index(
+            Cxn    => $cxn,
+            sth    => $sth,
+            params => [@$first_lower, $limit],
+         );
+         PTDEBUG && _d('MySQL index:', $mysql_index);
+
+         if ( lc($index) ne lc($mysql_index) ) {
+            # Our chosen index and MySQL's chosen index are different.
+            # This probably happens due to a --where clause that we don't
+            # know anything about but MySQL can optimize for by using
+            # another index.  We use the MySQL instead of our chosen index
+            # because the MySQL optimizer should know best.
+            my $chosen_index_struct = $tbl->{tbl_struct}->{keys}->{$index};
+            my $mysql_index_struct  = $tbl->{tbl_struct}->{keys}->{$mysql_index};
+            warn "The best index for chunking $tbl->{name} is $index ("
+               . ($chosen_index_struct->{is_unique} ? "unique" : "not unique")
+               . ", covers " . scalar @{$chosen_index_struct->{cols}}
+               . " columns), but index $mysql_index ("
+               . ($mysql_index_struct->{is_unique} ? "unique" : "not unique")
+               . ", covers " . scalar @{$mysql_index_struct->{cols}}
+               . " columns) that MySQL chose will be used instead.\n";
+            $index = $mysql_index;
+         }
+      }
+
+      # All statements from here on will use FORCE INDEX now that we know
+      # which index is best.
+      my $from = "$tbl->{name} FORCE INDEX(`$index`)";
 
       # If we're resuming, this fetches the effective first row, which
       # should differ from the real first row.  Called once in _get_bounds().
@@ -224,14 +275,11 @@ sub new {
          . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
-      my $limit = $chunk_size - 1;
-      PTDEBUG && _d('Initial chunk size (LIMIT):', $limit);
-
       $self = {
          %args,
          index              => $index,
          limit              => $limit,
-         first_lb_sql       => $first_lb_sql,
+         first_lower        => $first_lower,
          last_ub_sql        => $last_ub_sql,
          ub_sql             => $ub_sql,
          nibble_sql         => $nibble_sql,
@@ -429,7 +477,7 @@ sub can_nibble {
    my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
 
    # About how many rows are there?
-   my ($row_est, $mysql_index) = get_row_estimate(
+   my $row_est = get_row_estimate(
       Cxn   => $cxn,
       tbl   => $tbl,
       where => $o->has('where') ? $o->get('where') : '',
@@ -452,7 +500,7 @@ sub can_nibble {
    }
 
    # Get an index to nibble by.  We'll order rows by the index's columns.
-   my $index = _find_best_index(%args, mysql_index => $mysql_index);
+   my $index = _find_best_index(%args);
    if ( !$index && !$one_nibble ) {
       die "There is no good index and the table is oversized.";
    }
@@ -561,6 +609,18 @@ sub _get_index_cardinality {
    return $cardinality;
 }
 
+sub _get_mysql_index {
+   my (%args) = @_;
+   my @required_args = qw(Cxn sth params);
+   my ($cxn, $sth, $params) = @args{@required_args};
+   PTDEBUG && _d($sth->{Statement}, 'params:', @$params); 
+   $sth->execute(@$params);
+   my $row = $sth->fetchrow_hashref();
+   $sth->finish();
+   PTDEBUG && _d(Dumper($row));
+   return $row->{key};
+}
+
 sub get_row_estimate {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl);
@@ -570,11 +630,11 @@ sub get_row_estimate {
    my ($cxn, $tbl) = @args{@required_args};
 
    my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
-           . "WHERE " . ($args{where} || '1=1');
+           . "WHERE " . ($args{where} || '1=1 /*get row estimate*/');
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
    PTDEBUG && _d(Dumper($expl));
-   return ($expl->{rows} || 0), $expl->{key};
+   return $expl->{rows} || 0;
 }
 
 sub _prepare_sths {
@@ -605,10 +665,6 @@ sub _get_bounds {
    }
 
    my $dbh = $self->{Cxn}->dbh();
-
-   # Get the real first lower boundary.
-   $self->{first_lower} = $dbh->selectrow_arrayref($self->{first_lb_sql});
-   PTDEBUG && _d('First lower boundary:', Dumper($self->{first_lower}));  
 
    # The next boundary is the first lower boundary.  If resuming,
    # this should be something > the real first lower boundary and
