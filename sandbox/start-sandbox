@@ -43,16 +43,21 @@ make_sandbox() {
    if [ -n "$GENLOG" ]; then
       echo "log=genlog" >> /tmp/$port/my.sandbox.cnf
    fi
+   if [ -n "$SKIP_INNODB" ]; then
+      echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
+   fi
 
    # Start the sandbox and check that it has InnoDB.
    /tmp/$port/start
    if [ $? -eq 0 ]; then
-      /tmp/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
-      # grep exits 0 if lines are found
-      if [ $? -ne 0 ]; then
-         echo "****** WARNING sandbox doesn't have a working InnoDB! ******" >&2
-         cat /tmp/$port/data/mysqld.log >&2
-         exit 1
+      if [ -z "$SKIP_INNODB" ]; then
+         /tmp/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
+         # grep exits 0 if lines are found
+         if [ $? -ne 0 ]; then
+            echo "****** WARNING sandbox doesn't have a working InnoDB! ******" >&2
+            cat /tmp/$port/data/mysqld.log >&2
+            exit 1
+         fi
       fi
    else
       echo "Sandbox $type $port failed to start." >&2
