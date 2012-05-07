@@ -32,6 +32,7 @@ cd "$cwd"
 
 BIN_DIR="$BRANCH/bin";
 LIB_DIR="$BRANCH/lib/bash";
+T_DIR="$BRANCH/t";
 T_LIB_DIR="$BRANCH/t/lib";
 SANDBOX_VERSION="$($BRANCH/sandbox/test-env version)"
 

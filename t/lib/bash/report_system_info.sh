@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 48
+plan 49
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -826,6 +826,18 @@ DirectMap2M:      897024 kB
 EOF
 parse_free_minus_b "$TMPDIR/in" > "$TMPDIR/got"
 no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_free_minus_b"
+
+# Bug 993436: Memory: Total reports M when it should say G
+cat <<EOF > "$TMPDIR/expected"
+       Total | 1010.5M
+        Free | 784.4M
+        Used | physical = 226.1M, swap allocated = 2.0G, swap used = 0.0, virtual = 226.1M
+     Buffers | 48.8M
+      Caches | 122.2M
+       Dirty | 152 kB
+EOF
+parse_free_minus_b "$T_DIR/pt-summary/samples/Linux/002/memory" > "$TMPDIR/got"
+no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_free_minus_b (bug 993436)"
 
 # parse_filesystems
 

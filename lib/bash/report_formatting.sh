@@ -82,7 +82,6 @@ name_val () {
 
 # Sub: shorten
 #   Shorten a value in bytes to another representation.
-# 
 shorten() {
    local num="$1"
    local prec="${2:-2}"
@@ -90,20 +89,20 @@ shorten() {
 
    echo "$num" | awk -v prec="$prec" -v div="$div" '
    {
-      size = 4;
-      val  = $1;
+      num = $1;
 
-      unit = val >= 1099511627776 ? "T" : val >= 1073741824 ? "G" : val >= 1048576 ? "M" : val >= 1024 ? "k" : "";
+      unit = num >= 1125899906842624 ? "P" \
+           : num >= 1099511627776    ? "T" \
+           : num >= 1073741824       ? "G" \
+           : num >= 1048576          ? "M" \
+           : num >= 1024             ? "k" \
+           :                           "";
 
-      while ( int(val) && !(val % 1024) ) {
-         val /= 1024;
+      while ( num >= div ) {
+         num /= div;
       }
 
-      while ( val > 1000 ) {
-         val /= div;
-      }
-
-      printf "%.*f%s", prec, val, unit;
+      printf "%.*f%s", prec, num, unit;
    }
    '
 }

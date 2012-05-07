@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 19
+plan 20
 
 . "$LIB_DIR/report_formatting.sh"
 
@@ -12,12 +12,12 @@ is                         \
 is                           \
    "$(shorten 3145728000 1)" \
    "2.9G"                 \
-   "10485760, 1 precision, default divisor => 2.9G"
+   "3145728000, 1 precision, default divisor => 2.9G"
 
 is                                \
    "$(shorten 3145728000 1 1000)" \
-   "3.0G"                         \
-   "Opt-in to the 2.1 behavior works"
+   "3.1G"                         \
+   "3145728000, 1 precision, divisor 1000 => 3.1G"
 
 is                  \
    "$(shorten 0 0)" \
@@ -31,8 +31,8 @@ is                           \
 
 is                           \
    "$(shorten 1572864000 1 1000)" \
-   "1.5G"                 \
-   "1572864000, 1 precision, divisor 1000 => 1.5G"
+   "1.6G"                 \
+   "1572864000, 1 precision, divisor 1000 => 1.6G"
 
 is                           \
    "$(shorten 364 0)" \
@@ -59,6 +59,10 @@ is                           \
    "6.5T"                 \
    "6492100000006, 1 precision, divisor 1000 => 6.5T"
 
+is "$(shorten 1059586048 1)" \
+   "1010.5M" \
+   "1059586048 => 1010.5M (bug 993436)"
+
 # section
 
 is \
@@ -74,7 +78,7 @@ is \
 is \
    "$(section "A_B_C")" \
    "# A#B#C#######################################################" \
-   "..but it does replace everything after and including the first underscore with #s"
+   "replace everything after and including first underscore with #s"
 
 # name_val
 
