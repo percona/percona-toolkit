@@ -6884,7 +6884,21 @@ The schema modification, without the ALTER TABLE keywords. You can perform
 multiple modifications to the table by specifying them with commas. Please refer
 to the MySQL manual for the syntax of ALTER TABLE.
 
-You cannot use the C<RENAME> clause to C<ALTER TABLE>, or the tool will fail.
+The following limitations apply which, if attempted, will cause the tool
+to fail in unpredictable ways:
+
+=over
+
+=item *
+
+The C<RENAME> clause cannot be used to rename the table.
+
+=item *
+
+Columns cannot be renamed by dropping and re-adding with the new name.
+The tool will not copy the original column's data to the new column.
+
+=back
 
 =item --alter-foreign-keys-method
 
