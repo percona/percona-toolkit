@@ -2524,7 +2524,7 @@ Replace C<TOOL> with the name of any tool.
 
 =head1 AUTHORS
 
-Baron Schwartz and Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+Baron Schwartz, Kevin van Zonneveld, and Brian Fraser
 
 =head1 ABOUT PERCONA TOOLKIT
 
