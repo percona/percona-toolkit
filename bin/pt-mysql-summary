@@ -576,22 +576,19 @@ shorten() {
    local div="${3:-1024}"
 
    echo "$num" | awk -v prec="$prec" -v div="$div" '
-   {
-      size = 4;
-      val  = $1;
-
-      unit = val >= 1099511627776 ? "T" : val >= 1073741824 ? "G" : val >= 1048576 ? "M" : val >= 1024 ? "k" : "";
-
-      while ( int(val) && !(val % 1024) ) {
-         val /= 1024;
+      {
+         num  = $1;
+         unit = num >= 1125899906842624 ? "P" \
+              : num >= 1099511627776    ? "T" \
+              : num >= 1073741824       ? "G" \
+              : num >= 1048576          ? "M" \
+              : num >= 1024             ? "k" \
+              :                           "";
+         while ( num >= div ) {
+            num /= div;
+         }
+         printf "%.*f%s", prec, num, unit;
       }
-
-      while ( val > 1000 ) {
-         val /= div;
-      }
-
-      printf "%.*f%s", prec, val, unit;
-   }
    '
 }
 
