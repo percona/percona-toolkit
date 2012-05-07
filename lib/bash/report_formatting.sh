@@ -87,23 +87,29 @@ shorten() {
    local prec="${2:-2}"
    local div="${3:-1024}"
 
+   # By default Mebibytes (MiB), Gigibytes (GiB), etc. are used because
+   # that's what MySQL uses.  This may create odd output for values like
+   # 1500M * 2 (bug 937793) because the base unit is MiB but the code
+   # see 1,572,864,000 * 2 = 3,145,728,000 which is > 1 GiB so it uses
+   # GiB as the unit, resulting in 2.9G instead of 3.0G that the user
+   # might expect to see.  There's no easy way to determine that
+   # 3,145,728,000 was actually a multiple of MiB and not some weird GiB
+   # value to begin with like 3.145G.  The Perl lib Transformers::shorten()
+   # uses MiB, GiB, etc. too.
    echo "$num" | awk -v prec="$prec" -v div="$div" '
-   {
-      num = $1;
-
-      unit = num >= 1125899906842624 ? "P" \
-           : num >= 1099511627776    ? "T" \
-           : num >= 1073741824       ? "G" \
-           : num >= 1048576          ? "M" \
-           : num >= 1024             ? "k" \
-           :                           "";
-
-      while ( num >= div ) {
-         num /= div;
+      {
+         num  = $1;
+         unit = num >= 1125899906842624 ? "P" \
+              : num >= 1099511627776    ? "T" \
+              : num >= 1073741824       ? "G" \
+              : num >= 1048576          ? "M" \
+              : num >= 1024             ? "k" \
+              :                           "";
+         while ( num >= div ) {
+            num /= div;
+         }
+         printf "%.*f%s", prec, num, unit;
       }
-
-      printf "%.*f%s", prec, num, unit;
-   }
    '
 }
 

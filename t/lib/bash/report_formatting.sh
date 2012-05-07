@@ -78,7 +78,7 @@ is \
 is \
    "$(section "A_B_C")" \
    "# A#B#C#######################################################" \
-   "replace everything after and including first underscore with #s"
+   "replace extra underscores with #s"
 
 # name_val
 
