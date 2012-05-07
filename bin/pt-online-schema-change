@@ -5235,50 +5235,59 @@ sub main {
    # ########################################################################
    # Get child tables of the original table, if necessary.
    # ########################################################################
-   my $child_tables = find_child_tables(
-      tbl    => $orig_tbl,
-      Cxn    => $cxn,
-      Quoter => $q,
-   );
-   if ( !$child_tables ) {
-      if ( $alter_fk_method ) {
-         warn "No foreign keys reference $orig_tbl->{name}; ignoring "
-            . "--alter-foreign-keys-method.\n";
-
-         if ( $alter_fk_method eq 'drop_swap' ) {
-            # These opts are disabled at the start if the user specifies
-            # the drop_swap method, but now that we know there are no
-            # child tables, we must re-enable these to make the alter work.
-            $o->set('swap-tables',    1);
-            $o->set('drop-old-table', 1);
-         }
-
-         $alter_fk_method = '';
-      }
-      # No child tables and --alter-fk-method wasn't specified,
-      # so nothing to do.
+   my $child_tables;
+   if ( ($alter_fk_method || '') eq 'none' ) {
+      print "Not updating foreign keys because "
+         . "--alter-foreign-keys-method=none.  Foreign keys "
+         . "that reference the table will no longer work.\n";
    }
    else {
-      print "Child tables:\n";
-      foreach my $child_table ( @$child_tables ) {
-         printf "  %s (approx. %s rows)\n",
-            $child_table->{name},
-            $child_table->{row_est} || '?';
-      }
+      $child_tables = find_child_tables(
+         tbl    => $orig_tbl,
+         Cxn    => $cxn,
+         Quoter => $q,
+      );
+      if ( !$child_tables ) {
+         if ( $alter_fk_method ) {
+            warn "No foreign keys reference $orig_tbl->{name}; ignoring "
+               . "--alter-foreign-keys-method.\n";
 
-      if ( $alter_fk_method ) {
-         # Let the user know how we're going to update the child table fk refs.
-         my $choice
+            if ( $alter_fk_method eq 'drop_swap' ) {
+               # These opts are disabled at the start if the user specifies
+               # the drop_swap method, but now that we know there are no
+               # child tables, we must re-enable these to make the alter work.
+               $o->set('swap-tables',    1);
+               $o->set('drop-old-table', 1);
+            }
+
+            $alter_fk_method = '';
+         }
+         # No child tables and --alter-fk-method wasn't specified,
+         # so nothing to do.
+      }
+      else {
+         print "Child tables:\n";
+         foreach my $child_table ( @$child_tables ) {
+            printf "  %s (approx. %s rows)\n",
+               $child_table->{name},
+               $child_table->{row_est} || '?';
+         }
+
+         if ( $alter_fk_method ) {
+            # Let the user know how we're going to update the child table
+            # fk refs.
+            my $choice
             = $alter_fk_method eq 'none' ? "not"
             : $alter_fk_method eq 'auto' ? "automatically choose the method to"
             :                              "use the $alter_fk_method method to";
-         print "Will $choice update foreign keys.\n";
-      }
-      else {
-         print "You did not specify --alter-foreign-keys-method, but there "
-             . "are foreign keys that reference the table. "
-             . "Please read the tool's documentation carefully.\n";
-         return 1; 
+            print "Will $choice update foreign keys.\n";
+         }
+         else {
+            print "You did not specify --alter-foreign-keys-method, but there "
+                . "are foreign keys that reference the table. "
+                . "Please read the tool's documentation carefully.\n";
+            return 1; 
+         }
       }
    }
 
@@ -5909,9 +5918,9 @@ sub main {
    if ( $child_tables ) {
       eval {
          if ( $alter_fk_method eq 'none' ) {
-            print "Not updating foreign keys because "
-               . "--alter-foreign-keys-method=none.  Foreign keys "
-               . "that reference the table will no longer work.\n";
+            # This shouldn't happen, but in case it does we should know.
+            warn "The tool detected child tables but "
+               . "--alter-foreign-keys-method=none";
          }
          elsif ( $alter_fk_method eq 'rebuild_constraints' ) {
             rebuild_constraints(
