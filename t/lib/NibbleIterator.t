@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 49;
+   plan tests => 50;
 }
 
 my $q   = new Quoter();
@@ -849,8 +849,14 @@ eval {
 };
 is(
    $EVAL_ERROR,
-   undef,
-   "Bug 995274: case-sensitive chunk index"
+   '',
+   "Bug 995274: no error creating nibble iter"
+);
+
+is_deeply(
+   $ni->next(),
+   ['450876', '3','691360'],
+   "Bug 995274: nibble iter works"
 );
 
 # #############################################################################
