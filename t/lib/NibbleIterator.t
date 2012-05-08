@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 48;
+   plan tests => 49;
 }
 
 my $q   = new Quoter();
@@ -86,7 +86,7 @@ sub make_nibble_iter {
 
    my $ni = new NibbleIterator(
       Cxn         => $cxn,
-      tbl         => $schema->get_table($args{db}, $args{tbl}),
+      tbl         => $schema->get_table(lc($args{db}), lc($args{tbl})),
       chunk_size  => $o->get('chunk-size'),
       chunk_index => $o->get('chunk-index'),
       callbacks   => $args{callbacks},
@@ -831,6 +831,26 @@ is(
    $ni->statements()->{nibble}->{Statement},
    "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` /*my bite*/",
    "Custom bite comment"
+);
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/995274
+# Index case-sensitivity.
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/undef-arrayref-bug-995274.sql");
+PerconaTest::wait_for_table($dbh, "test.GroupMembers", "id=493076");
+
+eval {
+   $ni = make_nibble_iter(
+      db   => 'test',
+      tbl  => 'GroupMembers',
+      argv => [qw(--databases test --chunk-size 100)],
+   );
+};
+is(
+   $EVAL_ERROR,
+   undef,
+   "Bug 995274: case-sensitive chunk index"
 );
 
 # #############################################################################

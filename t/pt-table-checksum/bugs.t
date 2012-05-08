@@ -57,8 +57,10 @@ my $sample  = "t/pt-table-checksum/samples/";
 $sb->load_file('master', "$sample/undef-arrayref-bug-995274.sql");
 PerconaTest::wait_for_table($slave_dbh, "test.GroupMembers", "id=493076");
 
+# Must chunk the table so an index is used.
 $output = output(
-   sub { $exit_status = pt_table_checksum::main(@args, qw(-d test)) },
+   sub { $exit_status = pt_table_checksum::main(@args,
+      qw(-d test --chunk-size 100)) },
    stderr => 1,
 );
 
