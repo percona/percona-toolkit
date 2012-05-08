@@ -587,7 +587,15 @@ sub get_row_estimate {
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
    PTDEBUG && _d(Dumper($expl));
-   return ($expl->{rows} || 0), $expl->{key};
+   # MySQL's chosen index must be lowercase because TableParser::parse()
+   # lowercases all idents (search in that module for \L) except for
+   # the PRIMARY KEY which it leaves uppercase.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/995274
+   my $mysql_index = $expl->{key} || '';
+   if ( $mysql_index ne 'PRIMARY' ) {
+      $mysql_index = lc($mysql_index);
+   }
+   return ($expl->{rows} || 0), $mysql_index;
 }
 
 sub _prepare_sths {
