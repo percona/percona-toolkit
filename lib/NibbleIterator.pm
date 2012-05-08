@@ -428,12 +428,25 @@ sub can_nibble {
    }
    my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
 
+   my $where = $o->has('where') ? $o->get('where') : '';
+
    # About how many rows are there?
    my ($row_est, $mysql_index) = get_row_estimate(
       Cxn   => $cxn,
       tbl   => $tbl,
-      where => $o->has('where') ? $o->get('where') : '',
+      where => $where,
    );
+
+   # MySQL's chosen index is only something we should prefer
+   # if --where is used.  Else, we can chose our own index
+   # and disregard the MySQL index from the row estimate.
+   # If there's a --where, however, then MySQL's chosen index
+   # is used because it tells us how MySQL plans to optimize
+   # for the --where.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/978432
+   if ( !$where ) {
+      $mysql_index = undef;
+   }
 
    # Can all those rows be nibbled in one chunk?  If one_nibble is defined,
    # then do as it says; else, look at the chunk size limit.
