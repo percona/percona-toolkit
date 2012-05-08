@@ -3993,7 +3993,11 @@ sub get_row_estimate {
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
    PTDEBUG && _d(Dumper($expl));
-   return ($expl->{rows} || 0), $expl->{key};
+   my $mysql_index = $expl->{key} || '';
+   if ( $mysql_index ne 'PRIMARY' ) {
+      $mysql_index = lc($mysql_index);
+   }
+   return ($expl->{rows} || 0), $mysql_index;
 }
 
 sub _prepare_sths {
