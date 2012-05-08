@@ -3858,11 +3858,17 @@ sub can_nibble {
    }
    my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
 
+   my $where = $o->has('where') ? $o->get('where') : '';
+
    my ($row_est, $mysql_index) = get_row_estimate(
       Cxn   => $cxn,
       tbl   => $tbl,
-      where => $o->has('where') ? $o->get('where') : '',
+      where => $where,
    );
+
+   if ( !$where ) {
+      $mysql_index = undef;
+   }
 
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
@@ -6387,9 +6393,6 @@ sub main {
                my $chunk_size_limit = $o->get('chunk-size-limit');
                my @too_large;
                foreach my $slave ( @$slaves ) {
-                  # get_row_estimate() returns (row_est, index), but
-                  # we only need the row_est.  Maybe in the future we'll
-                  # care what index MySQL will use on a slave.
                   my ($n_rows) = NibbleIterator::get_row_estimate(
                      Cxn   => $slave,
                      tbl   => $tbl,
