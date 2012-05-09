@@ -36,6 +36,9 @@ my $cmd;
 my $pid_file = "/tmp/pt-query-digest-mirror-test.pid";
 diag(`rm $pid_file 2>/dev/null`);
 
+my $pid_file = '/tmp/pt-query-digest.test.pid';
+`rm -rf $pid_file >/dev/null`;
+
 # ##########################################################################
 # Tests for swapping --processlist and --execute
 # ##########################################################################
