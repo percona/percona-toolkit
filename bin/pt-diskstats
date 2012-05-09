@@ -3938,12 +3938,13 @@ Print devices that match this Perl regex.
 
 =item --group-by
 
-type: string; default: disk
+type: string; default: all
 
-Group-by mode: disk, sample, or all.  In B<disk> mode, each line of output shows
-one disk device.  In B<sample> mode, each line of output shows one sample of
-statistics.  In B<all> mode, each line of output shows one sample and one disk
-device.
+Group-by mode: disk, sample, or all.  In B<disk> mode, each line of output
+shows one disk device, with the statistics computed since the tool started.  In
+B<sample> mode, each line of output shows one sample of statistics, with all
+disks averaged together.  In B<all> mode, each line of output shows one sample
+and one disk device.
 
 =item --headers
 
