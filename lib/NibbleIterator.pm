@@ -293,12 +293,14 @@ sub next {
       # the next nibble.
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
-         PTDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower}}, @{$self->{upper}})));
+         PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
+            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
          else {
+            # XXX This call and others like it are relying on a Perl oddity.
+            # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
             $self->{nibble_sth}->execute(@{$self->{lower}}, @{$self->{upper}});
             $self->{have_rows} = $self->{nibble_sth}->rows();
          }
@@ -449,9 +451,12 @@ sub can_nibble {
    }
 
    # Can all those rows be nibbled in one chunk?  If one_nibble is defined,
-   # then do as it says; else, look at the chunk size limit.
+   # then do as it says; else, look at the chunk size limit.  If the chunk
+   # size limit is disabled (=0), then use the chunk size because there
+   # always needs to be a limit to the one-chunk table.
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
+                  ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
@@ -654,6 +659,7 @@ sub _get_bounds {
       # This happens if we resume from the end of the table, or if the
       # last chunk for resuming isn't bounded.
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
+      $self->{no_more_boundaries} = 1;
 
       # Get the real last upper boundary, i.e. the last row of the table
       # at this moment.  If rows are inserted after, we won't see them.
@@ -662,9 +668,6 @@ sub _get_bounds {
       # boundary of the table (we already have the first).
       $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
-      $self->{no_more_boundaries} = 1;
-
-      $self->{no_more_boundaries} = 1;
    }
 
    return;
