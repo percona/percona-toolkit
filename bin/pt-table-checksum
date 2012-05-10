@@ -6495,6 +6495,9 @@ sub main {
          # boundary sql.  This check applies to the next nibble.  So if
          # the current nibble number is 5, then nibble 5 is already done
          # and we're checking nibble number 6.
+
+         # XXX This call and others like it are relying on a Perl oddity.
+         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
          my $expl = explain_statement(
             tbl  => $tbl,
             sth  => $sth->{explain_upper_boundary},
@@ -6544,6 +6547,8 @@ sub main {
                printf "%d 1=1\n", $chunk;
             }
             else {
+               # XXX This call and others like it are relying on a Perl oddity.
+               # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
                my $lb_quoted = join(
                   ',', map { defined $_ ? $_ : 'NULL'} @{$boundary->{lower}});
                my $ub_quoted = join(
@@ -6558,6 +6563,8 @@ sub main {
 
          # If the table is being chunk (i.e., it's not small enough to be
          # consumed by one nibble), then check index usage and chunk size.
+         # XXX This call and others like it are relying on a Perl oddity.
+         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
          if ( !$nibble_iter->one_nibble() ) {
             my $expl = explain_statement(
                tbl  => $tbl,
@@ -6936,6 +6943,8 @@ sub exec_nibble {
    my $dbh         = $cxn->dbh();
    my $sth         = $nibble_iter->statements();
    my $boundary    = $nibble_iter->boundaries();
+   # XXX This call and others like it are relying on a Perl oddity.
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
    my $lb_quoted   = $q->serialize_list(@{$boundary->{lower}});
    my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
@@ -6951,6 +6960,8 @@ sub exec_nibble {
          my $t_start = time;        
 
          # Execute the REPLACE...SELECT checksum query.
+         # XXX This call and others like it are relying on a Perl oddity.
+         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
          PTDEBUG && _d($sth->{nibble}->{Statement},
             'lower boundary:', @{$boundary->{lower}},
             'upper boundary:', @{$boundary->{upper}});
