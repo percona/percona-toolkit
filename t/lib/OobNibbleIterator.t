@@ -41,7 +41,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 15;
+   plan tests => 16;
 }
 
 my $q   = new Quoter();
@@ -250,6 +250,29 @@ is_deeply(
 ok(
    !$ni->more_boundaries(),
    "No more boundaries"
+);
+
+# #############################################################################
+# Empty table
+# https://bugs.launchpad.net/percona-toolkit/+bug/987393 
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/empty-table-bug-987393.sql");
+PerconaTest::wait_for_table($dbh, "test.test_full", "id=1");
+
+$ni = make_nibble_iter(
+   db       => 'test',
+   tbl      => 'test_empty',
+   argv     => [qw(--databases test --chunk-size-limit 0)],
+);
+
+@rows = ();
+for (1..5) {
+   push @rows, $ni->next();
+}
+is_deeply(
+   \@rows,
+   [],
+   "Empty table"
 );
 
 # #############################################################################
