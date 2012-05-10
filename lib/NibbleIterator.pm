@@ -693,12 +693,17 @@ sub _next_boundaries {
    # which will cause us to nibble further ahead and maybe get a new lower
    # boundary that isn't identical, but we can't detect this, and in any
    # case, if there's one infinite loop there will probably be others.
+
+
    if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       PTDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
       my $n_cols  = scalar @{$index->{cols}};
       my $chunkno = $self->{nibbleno};
+
+      # XXX This call and others like it are relying on a Perl oddity.
+      # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
       die "Possible infinite loop detected!  "
          . "The lower boundary for chunk $chunkno is "
          . "<" . join(', ', @{$self->{lower}}) . "> and the lower "
@@ -748,6 +753,9 @@ sub _next_boundaries {
    # nibbles, and another for the end (this is how older code worked).  So the
    # nibble statement is inclusive, but this requires both boundaries for
    # reasons explained in a comment above my $ub_sql in new().
+
+   # XXX This call and others like it are relying on a Perl oddity.
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
