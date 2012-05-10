@@ -505,35 +505,38 @@ for my $test (
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
       my $file_with_trunk = File::Spec->catfile( $trunk, $file );
 
-      my $expected = load_file( File::Spec->catfile( "t", "pt-diskstats", "expected", "${prefix}_$filename" ) );
+      my $expected = "t/pt-diskstats/expected/${prefix}_$filename";
 
-      my $got = output(
-         sub {
-            $obj->group_by(
-               filename => $file_with_trunk,
-            );
-         });
-      
-      is($got, $expected, "group_by $prefix: $filename via filename");
-   
-      $got = output(
-         sub {
-            open my $fh, "<", $file_with_trunk or die $!;
-            $obj->group_by(
-               filehandle => $fh,
-            );
-         });
-   
-      is($got, $expected, "group_by $prefix: $filename via filehandle");
-   
-      $got = output(
-         sub {
-            $obj->group_by(
-               data => "TS 1298130002.073935000\n" . load_file( $file ),
-            );
-         });
-   
-      is($got, $expected, "group_by $prefix: $filename with an extra TS at the top");
+      ok(
+         no_diff(
+            sub { $obj->group_by(filename => $file_with_trunk); },
+            $expected,
+         ),
+         "group_by $prefix: $filename via filename"
+      );
+
+      ok(
+         no_diff(
+            sub {
+               open my $fh, "<", $file_with_trunk or die $!;
+               $obj->group_by(filehandle => $fh);
+            },
+            $expected,
+         ),
+         "group_by $prefix: $filename via filehandle"
+      );
+
+      ok(
+         no_diff( 
+            sub {
+               $obj->group_by(
+                  data => "TS 1298130002.073935000\n" . load_file( $file ),
+               );
+            },
+            $expected,
+         ),
+         "group_by $prefix: $filename with an extra TS at the top"
+      );
    }
 
    my $data = <<'EOF';

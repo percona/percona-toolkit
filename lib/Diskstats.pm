@@ -1039,9 +1039,7 @@ sub print_deltas {
       $Diskstats::printed_lines--;
    }
 
-   if ( $self->automatic_headers()
-         && $Diskstats::printed_lines <= @stats
-         && !$self->isa("DiskstatsGroupByAll") ) {
+   if ( $self->automatic_headers() && $Diskstats::printed_lines <= @stats ) {
       $self->force_print_header( $header, "#ts", "device" );
    }
    else {
