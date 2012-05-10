@@ -38,7 +38,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 else {
-   plan tests => 2;
+   plan tests => 5;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -67,15 +67,52 @@ $output = output(
 is(
    $exit_status,
    0,
-   "Bug 995274: zero exit status"
+   "Bug 995274 (undef array): zero exit status"
 );
 
 cmp_ok(
    PerconaTest::count_checksum_results($output, 'rows'),
    '>',
    1,
-   "Bug 995274: checksummed rows"
+   "Bug 995274 (undef array): checksummed rows"
 );
+
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/987393
+# Empy tables cause "undefined value as an ARRAY" errors
+# #############################################################################
+$master_dbh->do("DROP DATABASE IF EXISTS percona");  # clear old checksums
+$sb->load_file('master', "$sample/empty-table-bug-987393.sql");
+PerconaTest::wait_for_table($slave_dbh, "test.test_full", "id=1");
+
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(
+      @args, qw(-d test --chunk-size-limit 0)) },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "Bug 987393 (empty table): zero exit status"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Bug 987393 (empty table): no errors"
+);
+
+my $rows = $master_dbh->selectall_arrayref("SELECT db, tbl, chunk, master_crc, master_cnt FROM percona.checksums ORDER BY db, tbl, chunk");
+is_deeply(
+   $rows,
+   [
+      ['test', 'test_empty', '1', '0',        '0'],  # empty
+      ['test', 'test_full',  '1', 'ac967054', '1'],  # row
+   ],
+   "Bug 987393 (empty table): checksums"
+) or print STDERR Dumper($rows);
 
 # #############################################################################
 # Done.
