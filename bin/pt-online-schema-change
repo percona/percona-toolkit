@@ -5419,6 +5419,12 @@ sub main {
              . "--swap-tables failed.  To drop the new table, "
              . "execute:\n$sql\n";
       }
+      elsif ( !$o->get('drop-new-table') ) {
+         # https://bugs.launchpad.net/percona-toolkit/+bug/998831
+         print "Not dropping the new table $new_tbl->{name} because "
+             . "--no-drop-new-table was specified.  To drop the new table, "
+             . "execute:\n$sql\n";
+      }
       else {
          print "Dropping new table...\n";
          print $sql, "\n" if $o->get('print');
@@ -7120,6 +7126,12 @@ short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --[no]drop-new-table
+
+default: yes
+
+Drop the new table if copying the original table fails.
 
 =item --[no]drop-old-table
 
