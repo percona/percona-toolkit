@@ -4894,7 +4894,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Time::HiRes qw(time);
+use Time::HiRes qw(time sleep);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
@@ -6585,7 +6585,7 @@ sub exec_nibble {
 
    return $retry->retry(
       tries => $o->get('retries'),
-      wait  => sub { return; },
+      wait  => sub { sleep 0.25; return; },
       try   => sub {
          # ###################################################################
          # Start timing the query.
@@ -6657,6 +6657,7 @@ sub exec_nibble {
          # The query failed/caused an error.  If the error is one of these,
          # then we can possibly retry.
          if (   $error =~ m/Lock wait timeout exceeded/
+             || $error =~ m/Deadlock found/
              || $error =~ m/Query execution was interrupted/
          ) {
             # These errors/warnings can be retried, so don't print
