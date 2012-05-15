@@ -2664,7 +2664,7 @@ sub remove_prefix_duplicates {
          }
          else {
             PTDEBUG && _d($right_name, 'not left-prefix of', $left_name);
-            next LEFT_KEY;
+            next RIGHT_KEY;
          }
       } # RIGHT_KEY
    } # LEFT_KEY
