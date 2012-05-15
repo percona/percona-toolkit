@@ -1112,6 +1112,7 @@ stalk() {
          # Done collecting.
          # ##################################################################
          ITER=$((ITER + 1))
+         cycles_true=0
          sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
       else
          # Trigger/check/value is ok, sleep until next check.
