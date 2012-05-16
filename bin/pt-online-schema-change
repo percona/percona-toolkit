@@ -2815,7 +2815,7 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh} ) {
+   if ( $self->{dbh} && ref($self->{dbh}) ) {
       PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
@@ -4126,8 +4126,8 @@ sub next {
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
-         PTDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower}}, @{$self->{upper}})));
+         PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
+            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
@@ -4257,14 +4257,21 @@ sub can_nibble {
    }
    my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
 
+   my $where = $o->has('where') ? $o->get('where') : '';
+
    my ($row_est, $mysql_index) = get_row_estimate(
       Cxn   => $cxn,
       tbl   => $tbl,
-      where => $o->has('where') ? $o->get('where') : '',
+      where => $where,
    );
 
+   if ( !$where ) {
+      $mysql_index = undef;
+   }
+
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
+                  ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
    PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
@@ -4392,7 +4399,11 @@ sub get_row_estimate {
    PTDEBUG && _d($sql);
    my $expl = $cxn->dbh()->selectrow_hashref($sql);
    PTDEBUG && _d(Dumper($expl));
-   return ($expl->{rows} || 0), $expl->{key};
+   my $mysql_index = $expl->{key} || '';
+   if ( $mysql_index ne 'PRIMARY' ) {
+      $mysql_index = lc($mysql_index);
+   }
+   return ($expl->{rows} || 0), $mysql_index;
 }
 
 sub _prepare_sths {
@@ -4445,12 +4456,10 @@ sub _get_bounds {
 
    if ( !$self->{next_lower} ) {
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
+      $self->{no_more_boundaries} = 1;
 
       $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
-      $self->{no_more_boundaries} = 1;
-
-      $self->{no_more_boundaries} = 1;
    }
 
    return;
@@ -4470,12 +4479,15 @@ sub _next_boundaries {
       return 1; # continue nibbling
    }
 
+
+
    if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       PTDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
       my $n_cols  = scalar @{$index->{cols}};
       my $chunkno = $self->{nibbleno};
+
       die "Possible infinite loop detected!  "
          . "The lower boundary for chunk $chunkno is "
          . "<" . join(', ', @{$self->{lower}}) . "> and the lower "
@@ -4501,6 +4513,7 @@ sub _next_boundaries {
          return; # stop nibbling
       }
    }
+
 
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
@@ -4860,8 +4873,13 @@ sub new {
 sub DESTROY {
    my ($self) = @_;
    my $task = $self->{task};
-   PTDEBUG && _d('Calling cleanup task', $task);
-   $task->();
+   if ( ref $task ) {
+      PTDEBUG && _d('Calling cleanup task', $task);
+      $task->();
+   }
+   else {
+      warn "Lost cleanup task";
+   }
    return;
 }
 
