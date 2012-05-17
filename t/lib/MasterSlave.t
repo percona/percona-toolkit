@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 47;
+use Test::More tests => 50;
 
 use MasterSlave;
 use DSNParser;
@@ -119,6 +119,96 @@ SKIP: {
       [],
       "get_slaves() by processlist"
    );
+
+   # ##########################################################################
+   # --recursion-method=none
+   # https://bugs.launchpad.net/percona-toolkit/+bug/987694
+   # ##########################################################################
+
+   # Create percona.checksums to make the privs happy.
+   diag(`/tmp/12345/use -e "create database if not exists percona"`);
+   diag(`/tmp/12345/use -e "create table if not exists percona.checksums (id int)"`);
+   
+   # Create a read-only checksum user that can't SHOW SLAVES HOSTS or much else.
+   diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
+
+   my $ro_dbh = DBI->connect(
+      "DBI:mysql:;host=127.0.0.1;port=12345", 'ro_checksum_user', 'msandbox',
+           { PrintError => 0, RaiseError => 1 });
+   my $ro_dsn = {
+      h => '127.1',
+      P => '12345',
+      u => 'ro_checksum_user',
+      p => 'ro_checksum_user',
+   };
+
+   @ARGV = ('--recursion-method', 'hosts');
+   $o->get_opts();
+   throws_ok(
+      sub {
+         $slaves = $ms->get_slaves(
+            OptionParser => $o,
+            DSNParser    => $dp,
+            Quoter       => $q,
+            dbh          => $ro_dbh,
+            dsn          => $ro_dsn,
+            make_cxn     => sub {
+               my $cxn = new Cxn(
+                  @_,
+                  DSNParser    => $dp,
+                  OptionParser => $o,
+               );
+               $cxn->connect();
+               return $cxn;
+            },
+         );
+      },
+      qr/Access denied/,
+      "Can't SHOW SLAVE HOSTS without privs (bug 987694)"
+   );
+
+   @ARGV = ('--recursion-method', 'none');
+   $o->get_opts();
+   $slaves = $ms->get_slaves(
+      OptionParser => $o,
+      DSNParser    => $dp,
+      Quoter       => $q,
+      dbh          => $ro_dbh,
+      dsn          => $ro_dsn,
+      make_cxn     => sub {
+         my $cxn = new Cxn(
+            @_,
+            DSNParser    => $dp,
+            OptionParser => $o,
+         );
+         $cxn->connect();
+         return $cxn;
+      },
+   );
+   is_deeply(
+      $slaves,
+      [],
+      "No privs needed for --recursion-method=none (bug 987694)"
+   );
+
+   my $recursed = 0;
+   $ms->recurse_to_slaves(
+      {  dsn_parser => $dp,
+         dbh        => $ro_dbh,
+         dsn        => $ro_dsn,
+         recurse    => 2,
+         callback   => sub { $recursed++ },
+         method     => 'none',
+      });
+   is(
+      $recursed,
+      0,
+      "recurse_to_slaves() doesn't recurse if method=none"
+   );
+
+   $ro_dbh->disconnect();
+   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
+
 }
 
 # #############################################################################
