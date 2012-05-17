@@ -8240,6 +8240,7 @@ Preferred recursion method for discovering replicas.  Possible methods are:
   processlist  SHOW PROCESSLIST
   hosts        SHOW SLAVE HOSTS
   dsn=DSN      DSNs from a table
+  none         Do not find slaves
 
 The processlist method is the default, because SHOW SLAVE HOSTS is not
 reliable.  However, the hosts method can work better if the server uses a

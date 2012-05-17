@@ -51,7 +51,7 @@ unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
 ok(-f '/tmp/pt-slave-restart.pid', 'PID file created');
 ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
-my ($pid) = $output =~ /\s+(\d+)\s+/;
+my ($pid) = $output =~ /^\s+\d+\s+(\d+)\s+/;
 $output = `cat /tmp/pt-slave-restart.pid`;
 is($output, $pid, 'PID file has correct PID');
 
