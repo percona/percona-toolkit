@@ -2485,6 +2485,9 @@ sub get_slaves {
          dsn_table_dsn => $dsn_table_dsn,
       );
    }
+   elsif ( $method =~ m/none/i ) {
+      PTDEBUG && _d('Not getting to slaves');
+   }
    else {
       die "Invalid --recursion-method: $method.  Valid values are: "
         . "dsn=DSN, hosts, or processlist.\n";
@@ -2498,6 +2501,11 @@ sub recurse_to_slaves {
    $level ||= 0;
    my $dp   = $args->{dsn_parser};
    my $dsn  = $args->{dsn};
+
+   if ( lc($args->{method} || '') eq 'none' ) {
+      PTDEBUG && _d('Not recursing to slaves');
+      return;
+   }
 
    my $dbh;
    eval {
@@ -4080,12 +4088,15 @@ sub _next_boundaries {
       return 1; # continue nibbling
    }
 
+
+
    if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       PTDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
       my $n_cols  = scalar @{$index->{cols}};
       my $chunkno = $self->{nibbleno};
+
       die "Possible infinite loop detected!  "
          . "The lower boundary for chunk $chunkno is "
          . "<" . join(', ', @{$self->{lower}}) . "> and the lower "
@@ -4111,6 +4122,7 @@ sub _next_boundaries {
          return; # stop nibbling
       }
    }
+
 
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
