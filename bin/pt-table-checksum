@@ -5886,6 +5886,30 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun      = 1;
 my $print_header = 1;
 
+# The following two hashes are used in exec_nibble().
+# They're static, so they do not need to be reset in main().
+# See also https://bugs.launchpad.net/percona-toolkit/+bug/919499
+
+# Completely ignore these error codes.
+my %ignore_code = (
+   # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
+   # Message: Statement may not be safe to log in statement format. 
+   # Ignore this warning because we have purposely set statement-based
+   # replication.
+   1592 => 1,
+);
+
+# Warn once per-table for these error codes if the error message
+# matches the pattern.
+my %warn_code = (
+   # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
+   # Message: Data truncated for column '%s' at row %ld
+   1265 => {
+      # any pattern
+      # use MySQL's message for this warning
+   },
+);
+
 sub main {
    # Reset global vars else tests will fail in strange ways.
    @ARGV         = @_;
@@ -6923,27 +6947,6 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
-{
-# Completely ignore these error codes.
-my %ignore_code = (
-   # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-   # Message: Statement may not be safe to log in statement format. 
-   # Ignore this warning because we have purposely set statement-based
-   # replication.
-   1592 => 1,
-);
-
-# Warn once per-table for these error codes if the error message
-# matches the pattern.
-my %warn_code = (
-   # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
-   # Message: Data truncated for column '%s' at row %ld
-   1265 => {
-      # any pattern
-      # use MySQL's message for this warning
-   },
-);
-
 sub exec_nibble {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
@@ -7088,7 +7091,6 @@ sub exec_nibble {
          die "Error executing checksum query: $args{error}\n";
       }
    );
-}
 }
 
 {
