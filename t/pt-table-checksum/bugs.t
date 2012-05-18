@@ -38,7 +38,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 else {
-   plan tests => 5;
+   plan tests => 7;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -113,6 +113,28 @@ is_deeply(
    ],
    "Bug 987393 (empty table): checksums"
 ) or print STDERR Dumper($rows);
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/919499
+# MySQL error 1592 with MySQL 5.5.18+ and Perl 5.8
+# #############################################################################
+$output = output(
+   sub {
+      print `$trunk/bin/pt-table-checksum $master_dsn -t sakila.country 2>&1`;
+   }
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'errors'),
+   0,
+   "Bug 987393 (Perl 5.8 scoping): no errors"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   109,
+   "Bug 987393 (Perl 5.8 scoping): checksummed table"
+);
 
 # #############################################################################
 # Done.
