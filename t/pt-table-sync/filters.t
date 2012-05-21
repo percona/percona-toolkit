@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 4;
+   plan tests => 6;
 }
 
 # Previous tests slave 12347 to 12346 which makes pt-table-checksum
@@ -103,6 +103,52 @@ is(
 # 0 0 0 0 Chunk 00:00:00 00:00:00 0 issue_806_2.t2
 ",
    "--replicate with --databases"
+);
+
+# #############################################################################
+# pt-table-sync --ignore-* options don't work with --replicate 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1002365
+# #############################################################################
+
+$master_dbh->do("DROP DATABASE IF EXISTS percona");
+$master_dbh->do("DROP DATABASE IF EXISTS test");
+
+$sb->load_file("master", "t/pt-table-sync/samples/simple-tbls.sql");
+PerconaTest::wait_for_table($slave_dbh, "test.mt1", "id=10");
+
+# Create a checksum diff in a table that we're going to ignore
+# when we sync.
+$slave_dbh->do("INSERT INTO test.empty_it VALUES (null,11,11,'eleven')");
+
+# Create the checksums.
+diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --lock-wait-timeout 3 --max-load ''`);
+
+# Make sure all the tables were checksummed.
+my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT db, tbl FROM percona.checksums ORDER BY db, tbl");
+is_deeply(
+   $rows,
+   [ [qw(test empty_it) ],
+     [qw(test empty_mt) ],
+     [qw(test it1) ],
+     [qw(test it2) ],
+     [qw(test mt1) ],
+     [qw(test mt2) ],
+   ],
+   "Six checksum tables (bug 1002365)"
+);
+
+# Sync the checksummed tables, but ignore the table with the diff we created.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master --replicate percona.checksums),
+      "--ignore-tables", "test.empty_it") },
+   stderr => 1,
+);
+
+is(
+   $output,
+   "",
+   "Table ignored, nothing to sync (bug 1002365)"
 );
 
 # #############################################################################
