@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 6;
+   plan tests => 8;
 }
 
 # Previous tests slave 12347 to 12346 which makes pt-table-checksum
@@ -109,9 +109,7 @@ is(
 # pt-table-sync --ignore-* options don't work with --replicate 
 # https://bugs.launchpad.net/percona-toolkit/+bug/1002365
 # #############################################################################
-
-$master_dbh->do("DROP DATABASE IF EXISTS percona");
-$master_dbh->do("DROP DATABASE IF EXISTS test");
+$sb->wipe_clean($master_dbh);
 
 $sb->load_file("master", "t/pt-table-sync/samples/simple-tbls.sql");
 PerconaTest::wait_for_table($slave_dbh, "test.mt1", "id=10");
@@ -121,7 +119,7 @@ PerconaTest::wait_for_table($slave_dbh, "test.mt1", "id=10");
 $slave_dbh->do("INSERT INTO test.empty_it VALUES (null,11,11,'eleven')");
 
 # Create the checksums.
-diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --lock-wait-timeout 3 --max-load ''`);
+diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --quiet --lock-wait-timeout 3 --max-load ''`);
 
 # Make sure all the tables were checksummed.
 my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT db, tbl FROM percona.checksums ORDER BY db, tbl");
@@ -149,6 +147,35 @@ is(
    $output,
    "",
    "Table ignored, nothing to sync (bug 1002365)"
+);
+
+# Sync the checksummed tables, but ignore the database.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master --replicate percona.checksums),
+      "--ignore-databases", "test") },
+   stderr => 1,
+);
+
+is(
+   $output,
+   "",
+   "Database ignored, nothing to sync (bug 1002365)"
+);
+
+# The same should work for just --sync-to-master.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master),
+      "--ignore-tables", "test.empty_it",
+      "--ignore-databases", "percona") },
+   stderr => 1,
+);
+
+unlike(
+   $output,
+   qr/empty_it/,
+   "Table ignored, nothing to sync-to-master (bug 1002365)"
 );
 
 # #############################################################################
