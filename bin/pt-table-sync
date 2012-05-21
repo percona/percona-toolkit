@@ -4248,10 +4248,9 @@ sub find_replication_differences {
       . "FROM $table "
       . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
       . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
-
    PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-   return @$diffs;
+   return $diffs;
 }
 
 sub _d {
@@ -7988,11 +7987,16 @@ sub sync_via_replication {
       tbl      => undef,  # set later
    };
 
-   # Filters for --databases and --tables.  We have to do these manually
-   # since we don't use MySQLFind for --replicate.
-   my $databases = $o->get('databases');
-   my $tables    = $o->get('tables');
+   # Used to filter which tables are synced.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1002365
+   my $schema_iter = new SchemaIterator(
+      dbh          => $src->{dbh},
+      OptionParser => $o,
+      TableParser  => $args{TableParser},
+      Quoter       => $args{Quoter},
+   );
 
+   my %skip_table;
    my $exit_status = 0;
 
    # Connect to the master and treat it as the source, then find
@@ -8008,30 +8012,29 @@ sub sync_via_replication {
 
       # First, check that the master (source) has no discrepancies itself,
       # and ignore tables that do.
-      my %skip_table;
-      map { $skip_table{$_->{db}}->{$_->{tbl}}++ }
-         $checksum->find_replication_differences(
-            $src->{dbh}, $o->get('replicate'));
+      my $src_diffs = $checksum->find_replication_differences(
+         $src->{dbh}, $o->get('replicate'));
+      map { $skip_table{lc $_->{db}}->{lc $_->{tbl}}++ } @$src_diffs;
 
       # Now check the slave for differences and sync them if necessary.
-      my @diffs =  filter_diffs(
-         \%skip_table,
-         $databases,
-         $tables,
-         $checksum->find_replication_differences(
-            $dst->{dbh}, $o->get('replicate'))
+      my $dst_diffs = $checksum->find_replication_differences(
+         $dst->{dbh}, $o->get('replicate'));
+      my $diffs = filter_diffs(
+         diffs          => $dst_diffs,
+         SchemaIterator => $schema_iter,
+         skip_table     => \%skip_table,
       );
 
       if ( $o->get('verbose') ) {
-         print_header("# Syncing via replication " . $dp->as_string($dst->{dsn})
+         print_header("# Syncing via replication " .$dp->as_string($dst->{dsn})
             . ($o->get('dry-run') ?
                ' in dry-run mode, without accessing or comparing data' : ''));
       }
 
-      if ( @diffs ) {
+      if ( $diffs && scalar @$diffs ) {
          lock_server(src => $src, dst => $dst, %args);
 
-         foreach my $diff ( @diffs ) {
+         foreach my $diff ( @$diffs ) {
             $src->{db}  = $dst->{db}  = $diff->{db};
             $src->{tbl} = $dst->{tbl} = $diff->{tbl};
 
@@ -8056,7 +8059,6 @@ sub sync_via_replication {
    # The DSN is the master.  Connect to each slave, find differences,
    # then sync them.
    else {
-      my %skip_table;
       $ms->recurse_to_slaves(
          {  dbh        => $src->{dbh},
             dsn        => $src->{dsn},
@@ -8064,20 +8066,20 @@ sub sync_via_replication {
             recurse    => 1,
             callback   => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
-               my @diffs = $checksum
-                  ->find_replication_differences($dbh, $o->get('replicate'));
+               my $all_diffs = $checksum->find_replication_differences(
+                  $dbh, $o->get('replicate'));
                if ( !$level ) {
                   # This is the master; don't sync any tables that are wrong
                   # here, for obvious reasons.
-                  map { $skip_table{$_->{db}}->{$_->{tbl}}++ } @diffs;
+                  map { $skip_table{lc $_->{db}}->{lc $_->{tbl}}++ }
+                     @$all_diffs;
                }
                else {
                   # This is a slave.
-                  @diffs = filter_diffs(
-                     \%skip_table,
-                     $databases,
-                     $tables,
-                     @diffs
+                  my $diffs = filter_diffs(
+                     diffs          => $all_diffs,
+                     SchemaIterator => $schema_iter,
+                     skip_table     => \%skip_table,
                   );
 
                   if ( $o->get('verbose') ) {
@@ -8089,7 +8091,7 @@ sub sync_via_replication {
                            : ''));
                   }
 
-                  if ( @diffs ) {
+                  if ( $diffs && scalar @$diffs ) {
                      my $dst = {
                         dsn      => $dsn,
                         dbh      => $dbh,
@@ -8100,7 +8102,7 @@ sub sync_via_replication {
 
                      lock_server(src => $src, dst => $dst, %args);
 
-                     foreach my $diff ( @diffs ) {
+                     foreach my $diff ( @$diffs ) {
                         $src->{db}  = $dst->{db}  = $diff->{db};
                         $src->{tbl} = $dst->{tbl} = $diff->{tbl};
 
@@ -8794,22 +8796,28 @@ sub ok_to_sync {
 #   filters.  This sub is called in <sync_via_replication()> to implement
 #   schema object filters like --databases and --tables.
 #
-# Parameters:
-#   $skip_table - Hashref of databases and tables to skip
-#   $databases  - Hashref of databases to skip
-#   $tables     - Hashref of tables to skip
-#   @diffs      - Array of hashrefs, one for each different slave table
-#
 # Returns:
-#   Array of different slave tables that pass the filters
+#   Arrayref of different slave tables that pass the filters
 sub filter_diffs {
-   my ( $skip_table, $databases, $tables, @diffs ) = @_;
-   return grep {
-      my ($db, $tbl) = $q->split_unquote($_->{table});
-      !$skip_table->{$db}->{$tbl}
-      && (!$databases ||  $databases->{$db})
-      && (!$tables    || ($tables->{$tbl} || $tables->{$_->{table}}))
-   } @diffs;
+   my ( %args ) = @_;
+   my @required_args = qw(diffs SchemaIterator skip_table);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($diffs, $si, $skip_table) = @args{@required_args};
+
+   my @filtered_diffs;
+   foreach my $diff ( @$diffs ) {
+      my $db  = lc $diff->{db};
+      my $tbl = lc $diff->{tbl};
+      if (   !$skip_table->{$db}->{$tbl}
+           && $si->database_is_allowed($db)
+           && $si->table_is_allowed($db, $tbl) ) {
+         push @filtered_diffs, $diff;
+      }
+   }
+
+   return \@filtered_diffs;
 }
 
 # Sub: disconnect
