@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 4;
+   plan tests => 8;
 }
 
 my $sample     = "t/pt-table-sync/samples";
@@ -55,33 +55,35 @@ is(
    "Bug 1003014 (wrong tbl_struct): 2 diffs"
 ) or print STDERR $output;
 
+my $checksums = [
+   [qw( test aaa 1 )],
+   [qw( test zzz 1 )],
+   [qw( test zzz 2 )],
+   [qw( test zzz 3 )],
+   [qw( test zzz 4 )],
+   [qw( test zzz 5 )],
+   [qw( test zzz 6 )],
+   [qw( test zzz 7 )],
+   [qw( test zzz 8 )],
+   [qw( test zzz 9 )],
+   [qw( test zzz 10 )],
+   [qw( test zzz 11 )],
+   [qw( test zzz 12 )],
+   [qw( test zzz 13 )],
+   [qw( test zzz 14 )],
+];
+
 my $rows = $master_dbh->selectall_arrayref("SELECT db, tbl, chunk FROM percona.checksums ORDER BY db, tbl, chunk");
 is_deeply(
    $rows,
-   [
-      [qw( test aaa 1 )],
-      [qw( test zzz 1 )],
-      [qw( test zzz 2 )],
-      [qw( test zzz 3 )],
-      [qw( test zzz 4 )],
-      [qw( test zzz 5 )],
-      [qw( test zzz 6 )],
-      [qw( test zzz 7 )],
-      [qw( test zzz 8 )],
-      [qw( test zzz 9 )],
-      [qw( test zzz 10 )],
-      [qw( test zzz 11 )],
-      [qw( test zzz 12 )],
-      [qw( test zzz 13 )],
-      [qw( test zzz 14 )],
-   ],
+   $checksums,
    "Bug 1003014 (wrong tbl_struct): checksums"
 );
 
 my $exit_status;
 $output = output(
    sub { $exit_status = pt_table_sync::main($slave_dsn,
-      qw(--replicate percona.checksums --sync-to-master --print),
+      qw(--replicate percona.checksums --sync-to-master --print --execute),
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
@@ -97,6 +99,54 @@ is_deeply(
    $rows,
    [ ['a'], ['a'], ['a'] ],
    "Bug 1003014 (wrong tbl_struct): synced rows"
+);
+
+# #########################################################################
+# Repeat the whole process without --sync-to-master so the second code path
+# in sync_via_replication() is tested.
+# #########################################################################
+
+$sb->wipe_clean($master_dbh);
+
+$sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
+PerconaTest::wait_for_table($slave_dbh, "test.zzz", "id=111");
+
+$slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
+$slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
+
+$output = `$trunk/bin/pt-table-checksum $master_dsn --lock-wait-timeout 3 --max-load '' -d test --chunk-size 10 2>&1`;
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   2,
+   "Bug 1003014 (wrong tbl_struct): 2 diffs (just replicate)"
+) or print STDERR $output;
+
+$rows = $master_dbh->selectall_arrayref("SELECT db, tbl, chunk FROM percona.checksums ORDER BY db, tbl, chunk");
+is_deeply(
+   $rows,
+   $checksums,
+   "Bug 1003014 (wrong tbl_struct): checksums (just replicate)"
+);
+
+$output = output(
+   sub { $exit_status = pt_table_sync::main($master_dsn,
+      qw(--replicate percona.checksums --print --execute),
+      "--tables", "test.aaa,test.zzz") },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   2,  # rows synced OK; 3=error (1) & rows synced (2)
+   "Bug 1003014 (wrong tbl_struct): 0 exit (just replicate)"
+) or diag($output);
+
+$rows = $slave_dbh->selectall_arrayref("SELECT c FROM test.zzz WHERE id IN (44,45,46)");
+is_deeply(
+   $rows,
+   [ ['a'], ['a'], ['a'] ],
+   "Bug 1003014 (wrong tbl_struct): synced rows (just replicate)"
 );
 
 # #############################################################################
