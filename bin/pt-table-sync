@@ -8035,6 +8035,16 @@ sub sync_via_replication {
          lock_server(src => $src, dst => $dst, %args);
 
          foreach my $diff ( @$diffs ) {
+            # Clear the tbl_struct if this is a new table.  The tbl_struct
+            # is fetched and parsed in ok_to_sync() if not set.  We only
+            # need to set it once per table to avoid doing this for every
+            # diff in the same table.
+            # https://bugs.launchpad.net/percona-toolkit/+bug/1003014
+            if (   ($src->{db}  || '') ne $diff->{db}
+                || ($src->{tbl} || '') ne $diff->{tbl} ) {
+               PTDEBUG && _d('New table:', $diff->{db}, $diff->{tbl});
+               $src->{tbl_struct} = undef;
+            }
             $src->{db}  = $dst->{db}  = $diff->{db};
             $src->{tbl} = $dst->{tbl} = $diff->{tbl};
 
@@ -8103,6 +8113,14 @@ sub sync_via_replication {
                      lock_server(src => $src, dst => $dst, %args);
 
                      foreach my $diff ( @$diffs ) {
+                        # Clear the tbl_struct if this is a new table.
+                        # See the same code block above.
+                        if (   ($src->{db}  || '') ne $diff->{db}
+                            || ($src->{tbl} || '') ne $diff->{tbl} ) {
+                           PTDEBUG && _d('New table:',
+                              $diff->{db}, $diff->{tbl});
+                           $src->{tbl_struct} = undef;
+                        }
                         $src->{db}  = $dst->{db}  = $diff->{db};
                         $src->{tbl} = $dst->{tbl} = $diff->{tbl};
 
