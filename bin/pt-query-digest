@@ -13239,6 +13239,11 @@ sub print_reports {
       );
 
       if ( $o->get('report') ) {
+         # XXX There's a bug here: --expected-range '','' will cause
+         # Use of uninitialized value in numeric lt (<)
+         # This bug is intentionally left unfixed at the moment because
+         # we exploit it to test a more serious bug: an infinite loop:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/888114
          my $expected_range = $o->get('expected-range');
          my $explain_why    = $expected_range
                             && (   @$worst < $expected_range->[0]
