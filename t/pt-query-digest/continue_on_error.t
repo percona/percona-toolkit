@@ -49,9 +49,9 @@ $output = output(
 
 like(
    $output,
-   qr/Query\s+1/,
-   "No infinite loop in report crashes (bug 888114)"
-);
+   qr/Argument \S+ isn't numeric/,
+   "Report crashed, but no infinite loop (bug 888114)"
+); 
 
 # #############################################################################
 # Done.
