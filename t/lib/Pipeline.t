@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 10;
+use Test::More tests => 11;
 
 use Time::HiRes qw(usleep);
 
@@ -206,11 +206,13 @@ is(
 $oktorun  = 1;
 $pipeline = new Pipeline(continue_on_error=>1);
 
-my @die = qw(1 0);
+my @called = ();
+my @die    = qw(1 0);
 $pipeline->add(
    name    => 'proc1',
    process => sub {
       my ( $args ) = @_;
+      push @called, 'proc1';
       die "I'm an error" if shift @die;
       return $args;
    },
@@ -218,7 +220,7 @@ $pipeline->add(
 $pipeline->add(
    name    => 'proc2',
    process => sub {
-      print "proc2";
+      push @called, 'proc2';
       $oktorun = 0;
       return;
    },
@@ -229,11 +231,47 @@ $output = output(
    stderr => 1,
 );
 
-like(
-   $output,
-   qr/0 \(proc1\) caused an error.+proc2/s,
+is_deeply(
+   \@called,
+   [qw(proc1 proc1 proc2)],
    "Continues on error"
 );
+
+# Override global for critical procs that must kill the pipeline if they die.
+$oktorun  = 1;
+$pipeline = new Pipeline(continue_on_error=>1);
+
+@called = ();
+$pipeline->add(
+   name    => 'proc1',
+   process => sub {
+      my ( $args ) = @_;
+      push @called, 'proc1';
+      $oktorun = 0 if @called > 8;
+      return $args;
+   },
+);
+$pipeline->add(
+   retry_on_error => 2,
+   name           => 'proc2',
+   process        => sub {
+      push @called, 'proc2';
+      die;
+   },
+);
+
+$output = output(
+   sub { $pipeline->execute(%args) },
+   stderr => 1,
+);
+
+is_deeply(
+   \@called,
+   [qw(proc1 proc2),  # first attempt
+    qw(proc1 proc2),  # retry 1/2
+    qw(proc1 proc2)], # retry 2/2
+   "Retry proc"
+) or diag($output);
 
 # #############################################################################
 # Done.
