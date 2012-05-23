@@ -11745,6 +11745,9 @@ sub add {
 
    push @{$self->{procs}}, $process;
    push @{$self->{names}}, $name;
+   if ( my $n = $args{retry_on_error} ) {
+      $self->{retries}->{$name} = $n;
+   }
    if ( $self->{instrument} ) {
       $self->{instrumentation}->{$name} = { time => 0, calls => 0 };
    }
@@ -11809,10 +11812,28 @@ sub execute {
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Pipeline process $procno ("
-            . ($self->{names}->[$procno] || "")
-            . ") caused an error: $EVAL_ERROR";
-         die $EVAL_ERROR unless $self->{continue_on_error};
+         my $name = $self->{names}->[$procno] || "";
+         my $msg  = "Pipeline process " . ($procno + 1)
+                  . " ($name) caused an error: "
+                  . $EVAL_ERROR;
+         if ( defined $self->{retries}->{$name} ) {
+            my $n = $self->{retries}->{$name};
+            if ( $n ) {
+               warn $msg . "Will retry pipeline process $procno ($name) "
+                  . "$n more " . ($n > 1 ? "times" : "time") . ".\n";
+               $self->{retries}->{$name}--;
+            }
+            else {
+               die $msg . "Terminating pipeline because process $procno "
+                  . "($name) caused too many errors.\n";
+            }
+         }
+         elsif ( !$self->{continue_on_error} ) {
+            die $msg;
+         }
+         else {
+            warn $msg;
+         }
       }
    }
 
@@ -12562,8 +12583,14 @@ sub main {
 
    { # iteration
       $pipeline->add(
-         name    => 'iteration',
-         process => sub {
+         # This is a critical proc: if we die here, we probably need
+         # to stop, else an infinite loop can develop:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/888114
+         # We'll retry twice in case the problem is just one bad
+         # query class, or something like that.
+         retry_on_error => 2,
+         name           => 'iteration',
+         process        => sub {
             my ( $args ) = @_;
 
             # Start the (next) iteration.
@@ -13239,6 +13266,11 @@ sub print_reports {
       );
 
       if ( $o->get('report') ) {
+         # XXX There's a bug here: --expected-range '','' will cause
+         # Use of uninitialized value in numeric lt (<)
+         # This bug is intentionally left unfixed at the moment because
+         # we exploit it to test a more serious bug: an infinite loop:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/888114
          my $expected_range = $o->get('expected-range');
          my $explain_why    = $expected_range
                             && (   @$worst < $expected_range->[0]
