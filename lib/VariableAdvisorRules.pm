@@ -56,6 +56,13 @@ sub get_rules {
       id   => 'concurrent_insert',
       code => sub {
          my ( %args ) = @_;
+         # MySQL 5.5 has named values.
+         # http://dev.mysql.com/doc/refman/5.5/en/server-system-variables.html
+         # https://bugs.launchpad.net/percona-toolkit/+bug/898138
+         if (    $args{variables}->{concurrent_insert}
+              && $args{variables}->{concurrent_insert} =~ m/[^\d]/ ) {
+            return $args{variables}->{concurrent_insert} eq 'ALWAYS' ? 1 : 0;
+         }
          return _var_gt($args{variables}->{concurrent_insert}, 1);
       },
    },

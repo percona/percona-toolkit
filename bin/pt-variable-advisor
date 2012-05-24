@@ -2259,6 +2259,10 @@ sub get_rules {
       id   => 'concurrent_insert',
       code => sub {
          my ( %args ) = @_;
+         if (    $args{variables}->{concurrent_insert}
+              && $args{variables}->{concurrent_insert} =~ m/[^\d]/ ) {
+            return $args{variables}->{concurrent_insert} eq 'ALWAYS' ? 1 : 0;
+         }
          return _var_gt($args{variables}->{concurrent_insert}, 1);
       },
    },
