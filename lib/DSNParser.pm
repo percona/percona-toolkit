@@ -34,14 +34,7 @@ $Data::Dumper::Quotekeys = 0;
 
 # Passwords may contain commas.
 # https://bugs.launchpad.net/percona-toolkit/+bug/886077
-my $dsn_sep = qr/        # Separate DSN parts by
-   ,                     # comma
-   (?=                   # followed by either
-      (?:\Z              # the end of the string, or
-        |[a-zA-Z]=       # start of another DSN part
-      )
-   )
-/x;
+my $dsn_sep = qr/(?<!\\),/;
 
 eval {
    require DBI;
@@ -140,6 +133,7 @@ sub parse {
    foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          # Handle the typical DSN parts like h=host, P=3306, etc.
+         $prop_val =~ s/\\,/,/g;
          $given_props{$prop_key} = $prop_val;
       }
       else {

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 33;
+use Test::More tests => 35;
 
 use DSNParser;
 use OptionParser;
@@ -483,7 +483,6 @@ SKIP: {
 # Passwords with commas don't work, expose part of password
 # https://bugs.launchpad.net/percona-toolkit/+bug/886077
 # #############################################################################
-$dp = new DSNParser(opts => $opts);
 
 sub test_password_comma {
    my ($dsn_string, $pass, $port, $name) = @_;
@@ -504,14 +503,41 @@ sub test_password_comma {
 }
 
 my @password_commas = (
-   ['u=a,p=foo,xxx,P=12345', 'foo,xxx', 12345, 'Pass with comma'],
-   ['u=a,p=foo,xxx',         'foo,xxx', undef, 'Pass with comma, last part'],
-   ['u=a,p=foo,,P=12345',    'foo,',    12345, 'Pass ends with comma'],
-   ['u=a,p=foo,,',           'foo,',    undef, 'Pass ends with comma, last part'],
-   ['u=a,p=,,P=12345',       ',',       12345, 'Pass is a comma'],
+   ['u=a,p=foo\,xxx,P=12345', 'foo,xxx', 12345, 'Pass with comma'],
+   ['u=a,p=foo\,xxx',         'foo,xxx', undef, 'Pass with comma, last part'],
+   ['u=a,p=foo\,,P=12345',    'foo,',    12345, 'Pass ends with comma'],
+   ['u=a,p=foo\,',            'foo,',    undef, 'Pass ends with comma, last part'],
+   ['u=a,p=\,,P=12345',       ',',       12345, 'Pass is a comma'],
 );
 foreach my $password_comma ( @password_commas ) {
    test_password_comma(@$password_comma);
+}
+
+sub test_password_comma_with_auto {
+   my ($dsn_string, $pass, $port, $name) = @_;
+   my $dsn = $dp->parse($dsn_string);
+   is_deeply(
+      $dsn,
+      {  u => undef,
+         p => $pass,
+         S => undef,
+         h => 'host',
+         P => $port,
+         F => undef,
+         D => undef,
+         A => undef,
+      },
+      "$name (bug 886077)"
+   ) or diag(Dumper($dsn));
+}
+
+@password_commas = (
+   ['host,p=a\,z,P=9', 'a,z', 9, 'Comma-pass with leading bareword host'],
+   ['p=a\,z,P=9,host', 'a,z', 9, 'Comma-pass with trailing bareword host'],
+
+);
+foreach my $password_comma ( @password_commas ) {
+   test_password_comma_with_auto(@$password_comma);
 }
 
 # #############################################################################
