@@ -131,9 +131,9 @@ sub parse {
 
    # Parse given props
    foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          # Handle the typical DSN parts like h=host, P=3306, etc.
-         $prop_val =~ s/\\,/,/g;
          $given_props{$prop_key} = $prop_val;
       }
       else {
