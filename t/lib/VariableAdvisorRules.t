@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 80;
+use Test::More tests => 83;
 
 use PodParser;
 use AdvisorRules;
@@ -62,6 +62,18 @@ my @cases = (
    },
    {  name   => "concurrent insert",
       vars   => [qw(concurrent_insert 2)],
+      advice => [qw(concurrent_insert)],
+   },
+   {  name   => "concurrent insert",
+      vars   => [qw(concurrent_insert NEVER)],
+      advice => [qw()],
+   },
+   {  name   => "concurrent insert",
+      vars   => [qw(concurrent_insert AUTO)],
+      advice => [qw()],
+   },
+   {  name   => "concurrent insert",
+      vars   => [qw(concurrent_insert ALWAYS)],
       advice => [qw(concurrent_insert)],
    },
    {  name   => "connect timeout",
