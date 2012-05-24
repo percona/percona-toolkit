@@ -9,11 +9,13 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 27;
+use Test::More tests => 33;
 
 use DSNParser;
 use OptionParser;
 use PerconaTest;
+
+use Data::Dumper;
 
 my $opts = [
    {
@@ -80,6 +82,20 @@ is_deeply(
       A => undef,
    },
    'Basic DSN'
+);
+
+is_deeply(
+   $dp->parse('S=/tmp/sock'),
+   {  u => undef,
+      p => undef,
+      S => '/tmp/sock',
+      h => undef,
+      P => undef,
+      F => undef,
+      D => undef,
+      A => undef,
+   },
+   'Basic DSN with one part'
 );
 
 is_deeply(
@@ -392,6 +408,8 @@ is_deeply(
    'Copy DSN and overwrite destination'
 );
 
+pop @$opts; # Remove t part.
+
 # #############################################################################
 # Issue 93: DBI error messages can include full SQL
 # #############################################################################
@@ -460,6 +478,41 @@ SKIP: {
    $dbh->disconnect();
    diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 };
+
+# #############################################################################
+# Passwords with commas don't work, expose part of password
+# https://bugs.launchpad.net/percona-toolkit/+bug/886077
+# #############################################################################
+$dp = new DSNParser(opts => $opts);
+
+sub test_password_comma {
+   my ($dsn_string, $pass, $port, $name) = @_;
+   my $dsn = $dp->parse($dsn_string);
+   is_deeply(
+      $dsn,
+      {  u => 'a',
+         p => $pass,
+         S => undef,
+         h => undef,
+         P => $port,
+         F => undef,
+         D => undef,
+         A => undef,
+      },
+      "$name (bug 886077)"
+   ) or diag(Dumper($dsn));
+}
+
+my @password_commas = (
+   ['u=a,p=foo,xxx,P=12345', 'foo,xxx', 12345, 'Pass with comma'],
+   ['u=a,p=foo,xxx',         'foo,xxx', undef, 'Pass with comma, last part'],
+   ['u=a,p=foo,,P=12345',    'foo,',    12345, 'Pass ends with comma'],
+   ['u=a,p=foo,,',           'foo,',    undef, 'Pass ends with comma, last part'],
+   ['u=a,p=,,P=12345',       ',',       12345, 'Pass is a comma'],
+);
+foreach my $password_comma ( @password_commas ) {
+   test_password_comma(@$password_comma);
+}
 
 # #############################################################################
 # Done.
