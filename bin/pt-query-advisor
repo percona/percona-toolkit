@@ -6549,20 +6549,13 @@ pt-query-advisor - Analyze queries and advise on possible problems.
 
 Usage: pt-query-advisor [OPTION...] [FILE]
 
-pt-query-advisor analyzes queries and advises on possible problems.
-Queries are given either by specifying slowlog files, --query, or --review.
+pt-query-advisor analyzes queries and advises on possible problems. It can read
+queries from several types of log files, or you can use the --query or --review
+options.
 
-Analyze all queries in a slow log:
+To analyze all queries in a MySQL slow query log file:
 
    pt-query-advisor /path/to/slow-query.log
-
-Analyze all queries in a general log:
-
-   pt-query-advisor --type genlog mysql.log
-
-Get queries from tcpdump using pt-query-digest:
-
-   pt-query-digest --type tcpdump.txt --print --no-report | pt-query-advisor
 
 =head1 RISKS
 
@@ -6572,10 +6565,8 @@ are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
 pt-query-advisor simply reads queries and examines them, and is thus
-very low risk.
-
-At the time of this release there is a bug that may cause an infinite (or
-very long) loop when parsing very large queries.
+very low risk. At the time of this release we know of no issues that could harm
+users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -6586,11 +6577,8 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-query-advisor examines queries and applies rules to them, trying to
-find queries that look bad according to the rules.  It reports on
-queries that match the rules, so you can find bad practices or hidden
-problems in your SQL.  By default, it accepts a MySQL slow query log
-as input.
+pt-query-advisor applies rules to queries, looking for potential problems.
+It prints a report of queries that match rules.
 
 =head1 RULES
 
@@ -6701,9 +6689,9 @@ GROUP BY or ORDER BY different tables will force a temp table and filesort.
 
 severity: warn
 
-ORDER BY different directions prevents index from being used. All tables
-in the ORDER BY clause must be either ASC or DESC, else MySQL cannot use
-an index.
+ORDER BY clauses that sort the results in different directions prevents indexes
+from being used. All expressions in the ORDER BY clause must be ordered either
+ASC or DESC so that MySQL can use an index.
 
 =item COL.001
 
@@ -6806,9 +6794,9 @@ severity: crit
 
 IN() and NOT IN() subqueries are poorly optimized.  MySQL executes the subquery
 as a dependent subquery for each row in the outer query.  This is a frequent
-cause of serious performance problems.  This might change version 6.0 of MySQL,
-but for versions 5.1 and older, the query should be rewritten as a JOIN or a
-LEFT OUTER JOIN, respectively.
+cause of serious performance problems.  This might improve in version 5.6 of
+MySQL, but for versions 5.1 and older, the query should be rewritten as a JOIN
+or a LEFT OUTER JOIN, respectively.
 
 =back
 
