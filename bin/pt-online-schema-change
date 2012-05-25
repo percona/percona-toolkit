@@ -4979,6 +4979,16 @@ sub main {
    # Explicit --chunk-size disable auto chunk sizing.
    $o->set('chunk-time', 0) if $o->got('chunk-size');
 
+   foreach my $opt ( qw(max-load critical-load) ) {
+      my $spec = $o->get($opt);
+      eval {
+         MySQLStatusWaiter::_parse_spec($o->get($spec));
+      };
+      if ( $EVAL_ERROR ) {
+         $o->save_error("Invalid --$opt: $spec");
+      }
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
