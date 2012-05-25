@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 10;
+use Test::More tests => 16;
 
 use PerconaTest;
 require "$trunk/bin/pt-table-usage";
@@ -131,6 +131,54 @@ ok(
    ),
    'Analysis for slow003.txt'
 );
+
+# #############################################################################
+# Process fingerprints.
+# #############################################################################
+my @queries = (
+   # [ original query, its fingerprint ],
+   [
+      "select * from t",
+      "select * from t",
+   ],
+   [
+      "select * from t1, t2 as x, t3 y, z",
+      "select * from t1, t2 as x, t3 y, z",
+   ],
+   [
+      "insert into t values (1, 2, 3)",
+      "insert into t values(?+)",
+   ],
+   [
+      "delete from t where id < 1000",
+      "delete from t where id < ?",
+   ],
+   [
+      "select * from a as t1, b as t2 where t1.id=t2.id",
+      "select * from a as t1, b as t2 where t1.id=t2.id",
+   ],
+   [
+      "replace into t set foo='bar'",
+      "replace into t set foo=?",
+   ],
+);
+
+foreach my $in ( @queries ) {
+   my $expected = output( 
+      sub { pt_table_usage::main(qw(--query), $in->[0]) },
+      stderr => 1,
+   );
+   my $got = output( 
+      sub { pt_table_usage::main(qw(--query), $in->[1]) },
+      stderr => 1,
+   );
+   is(
+      $got,
+      $expected,
+      "Fingerprint " . (length $in->[1] > 70 ? substr($in->[1], 0, 70)
+                                             : $in->[1])
+   );
+}
 
 # #############################################################################
 # Done.
