@@ -46,19 +46,23 @@ sub new {
 
    PTDEBUG && _d('Parsing spec for max thresholds');
    my $max_val_for = _parse_spec($args{max_spec});
-   _set_initial_vals(
-      vars             => $max_val_for,
-      get_status       => $args{get_status},
-      threshold_factor => 0.2, # +20%
-   );
+   if ( $max_val_for ) {
+      _check_and_set_vals(
+         vars             => $max_val_for,
+         get_status       => $args{get_status},
+         threshold_factor => 0.2, # +20%
+      );
+   }
 
    PTDEBUG && _d('Parsing spec for critical thresholds');
    my $critical_val_for = _parse_spec($args{critical_spec} || []);
-   _set_initial_vals(
-      vars             => $critical_val_for,
-      get_status       => $args{get_status},
-      threshold_factor => 1.0, # double (x2; +100%)
-   );
+   if ( $critical_val_for ) {
+      _check_and_set_vals(
+         vars             => $critical_val_for,
+         get_status       => $args{get_status},
+         threshold_factor => 1.0, # double (x2; +100%)
+      );
+   }
 
    my $self = {
       get_status       => $args{get_status},
@@ -87,15 +91,21 @@ sub _parse_spec {
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
+      die "Empty or undefined spec\n" unless $var_val;
+      $var_val =~ s/^\s+//;
+      $var_val =~ s/\s+$//g;
+
       my ($var, $val) = split /[:=]/, $var_val;
-      die "Invalid spec: $var_val" unless $var;
-      
+      die "$var_val does not contain a variable\n" unless $var;
+      die "$var is not a variable name\n" unless $var =~ m/^[a-zA-Z_]+$/;
+
       if ( !$val ) {
          PTDEBUG && _d('Will get intial value for', $var, 'later');
          $max_val_for{$var} = undef;
       }
       else {
-         PTDEBUG && _d('Wait if', $var, '>=', $val);
+         die "The value for $var must be a number\n"
+            unless $val =~ m/^[\d\.]+$/;
          $max_val_for{$var} = $val;
       }
    }
@@ -190,7 +200,7 @@ sub wait {
    return;
 }
 
-sub _set_initial_vals {
+sub _check_and_set_vals {
    my (%args) = @_;
    my @required_args = qw(vars get_status threshold_factor);
    foreach my $arg ( @required_args ) {
@@ -198,19 +208,22 @@ sub _set_initial_vals {
    }
    my ($vars, $get_status, $threshold_factor) = @args{@required_args};
 
-   PTDEBUG && _d('Setting initial values');
+   PTDEBUG && _d('Checking and setting values');
    return unless $vars && scalar %$vars;
 
    foreach my $var ( keys %$vars ) {
-      next if defined $vars->{$var};
-   
       my $init_val = $get_status->($var);
-      PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-      die "Variable does not exist or has undefined value: $var"
+      die "Variable $var does not exist or its value is undefined\n"
          unless defined $init_val;
-
-      my $val = int(($init_val * $threshold_factor) + $init_val);
-      $vars->{$var} = $val;
+      my $val;
+      if ( defined $vars->{$var} ) {
+         $val = $vars->{$var};
+      }
+      else {
+         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
+         $val = int(($init_val * $threshold_factor) + $init_val);
+         $vars->{$var} = $val;
+      }
       PTDEBUG && _d('Wait if', $var, '>=', $val);
    }
 }
