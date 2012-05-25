@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Time::HiRes qw(sleep);
 
 use PerconaTest;
 use Sandbox;
@@ -32,7 +33,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 105;
+   plan tests => 118;
 }
 
 my $q      = new Quoter();
@@ -95,6 +96,7 @@ sub test_alter_table {
 
    if ( my $file = $args{file} ) {
       $sb->load_file('master', "$sample/$file");
+      sleep 0.25;
       if ( my $wait = $args{wait} ) {
          PerconaTest::wait_for_table($slave_dbh, @$wait);
       }
@@ -136,6 +138,15 @@ sub test_alter_table {
       }
    }
 
+   # If --no-drop-new-table is given, then the new, altered table
+   # should still exist, but not yet, so add it to the list so
+   # is_deeply() against $new_tbls passes.  This only works for
+   # single-table tests.
+   my $new_tbl = "_${tbl}_new";
+   if ( grep { $_ eq '--no-drop-new-table' } @$cmds ) {
+      unshift @$orig_tbls, [$new_tbl];
+   }
+
    # TODO: output() is capturing if this call dies, so if a test
    # causes it to die, the tests just stop without saying why, i.e.
    # without re-throwing the error.
@@ -173,7 +184,17 @@ sub test_alter_table {
       $orig_rows,
       "$name rows"
    ) or $fail = 1;
-  
+
+   if ( grep { $_ eq '--no-drop-new-table' } @$cmds ) {
+      $new_rows = $master_dbh->selectall_arrayref(
+         "SELECT * FROM `$db`.`$new_tbl` ORDER BY `$pk_col`");
+      is_deeply(
+         $new_rows,
+         $orig_rows,
+         "$name new table rows"
+      ) or $fail = 1;
+   }
+
    my $new_max_id = $master_dbh->selectall_arrayref(
       "SELECT MAX(`$pk_col`) FROM `$db`.`$tbl`");
    is(
@@ -611,6 +632,31 @@ test_table(
 test_table(
    file => "tbl003.sql",
    name => "Space column",
+);
+
+# #############################################################################
+# --[no]swap-tables
+# #############################################################################
+
+test_alter_table(
+   name       => "--no-swap-tables",
+   table      => "pt_osc.t",
+   file       => "basic_no_fks.sql",
+   max_id     => 20,
+   test_type  => "new_engine",  # Engine doesn't actually change
+   new_engine => "MyISAM",      # because the tables aren't swapped
+   cmds       => [qw(--execute --alter ENGINE=InnoDB --no-swap-tables)],
+);
+
+test_alter_table(
+   name       => "--no-swap-tables --no-drop-new-table",
+   table      => "pt_osc.t",
+   file       => "basic_no_fks.sql",
+   max_id     => 20,
+   test_type  => "new_engine",  # Engine doesn't actually change
+   new_engine => "MyISAM",      # because the tables aren't swapped
+   cmds       => [qw(--execute --alter ENGINE=InnoDB --no-swap-tables),
+                  qw(--no-drop-new-table)],
 );
 
 # #############################################################################
