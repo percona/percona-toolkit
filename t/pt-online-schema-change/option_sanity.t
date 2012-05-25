@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 5;
+use Test::More tests => 6;
 
 use PerconaTest;
 
@@ -49,6 +49,13 @@ like(
    $output,
    qr/--execute\s+FALSE/,
    "--execute FALSE by default"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox --alter-foreign-keys-method drop_swap --no-drop-new-table`;
+like(
+   $output,
+   qr/--alter-foreign-keys-method=drop_swap does not work with --no-drop-new-table/,
+   "Cannot --alter-foreign-keys-method=drop_swap with --no-drop-new-table"
 );
 
 # #############################################################################

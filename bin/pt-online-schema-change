@@ -5006,6 +5006,10 @@ sub main {
       {
          $o->save_error("Invalid --alter-foreign-keys-method value: $alter_fk_method");
       }
+
+      if ( $alter_fk_method eq 'drop_swap' && !$o->get('drop-new-table') ) {
+         $o->save_error("--alter-foreign-keys-method=drop_swap does not work with --no-drop-new-table.");
+      }
    }
 
    $o->usage_or_errors(); 
@@ -5997,6 +6001,9 @@ sub main {
    if ( $o->get('drop-old-table') ) {
       if ( $o->get('dry-run') ) {
          print "Not dropping old table because this is a dry run.\n";
+      }
+      elsif ( !$old_tbl ) {
+         print "Not dropping old table because --no-swap-tables was specified.\n";
       }
       else {
          print "Dropping old table...\n";
@@ -6993,6 +7000,8 @@ against it will result in an error.  Secondly, if there is an error and the new
 table cannot be renamed into the place of the old one, then it is too late to
 abort, because the old table is gone permanently.
 
+This method forces C<--no-swap-tables> and C<--no-drop-old-table>.
+
 =item none
 
 This method is like C<drop_swap> without the "swap".  Any foreign keys that
@@ -7166,6 +7175,13 @@ default: yes
 
 Drop the new table if copying the original table fails.
 
+Specifying C<--no-drop-new-table> and C<--no-swap-tables> leaves the new,
+altered copy of the table without modifying the original table.  The new
+table name is like C<_TBL_new> where C<TBL> is the table name.
+
+L<--no-drop-new-table> does not work with
+C<alter-foreign-keys-method drop_swap>.
+
 =item --[no]drop-old-table
 
 default: yes
@@ -7174,6 +7190,8 @@ Drop the original table after renaming it. After the original table has been
 successfully renamed to let the new table take its place, and if there are no
 errors, the tool drops the original table by default. If there are any errors,
 the tool leaves the original table in place.
+
+If C<--no-swap-tables> is specified, then there is no old table to drop.
 
 =item --dry-run
 
