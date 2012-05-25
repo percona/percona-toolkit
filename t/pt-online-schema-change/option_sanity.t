@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 6;
+use Test::More tests => 8;
 
 use PerconaTest;
 
@@ -56,6 +56,20 @@ like(
    $output,
    qr/--alter-foreign-keys-method=drop_swap does not work with --no-drop-new-table/,
    "Cannot --alter-foreign-keys-method=drop_swap with --no-drop-new-table"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox,D=mysql,t=user --max-load 100 --alter "ENGINE=MyISAM" --dry-run`;
+like(
+   $output,
+   qr/Invalid --max-load/,
+   "Validates --max-load"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox,D=mysql,t=user --critical-load 100 --alter "ENGINE=MyISAM" --dry-run`;
+like(
+   $output,
+   qr/Invalid --critical-load/,
+   "Validates --critical-load"
 );
 
 # #############################################################################

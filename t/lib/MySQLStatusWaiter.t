@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 14;
+use Test::More tests => 17;
 
 use MySQLStatusWaiter;
 use PerconaTest;
@@ -39,11 +39,48 @@ sub sleep {
    return;
 }
 
+# #############################################################################
+# _parse_spec()
+# #############################################################################
+
+throws_ok(
+   sub { new MySQLStatusWaiter(
+      max_spec => [qw(100)],
+      get_status => \&get_status,
+      sleep      => \&sleep,
+      oktorun    => \&oktorun,
+   ) },
+   qr/100 is not a variable name/,
+   "Catch non-variable name"
+);
+
+throws_ok(
+   sub { new MySQLStatusWaiter(
+      max_spec => [qw(foo=bar)],
+      get_status => \&get_status,
+      sleep      => \&sleep,
+      oktorun    => \&oktorun,
+   ) },
+   qr/value for foo must be a number/,
+   "Catch non-number value"
+);
+
+throws_ok(
+   sub { new MySQLStatusWaiter(
+      max_spec => [qw(foo)],
+      get_status => \&get_status,
+      sleep      => \&sleep,
+      oktorun    => \&oktorun,
+   ) },
+   qr/foo does not exist/,
+   "Catch non-existent variable"
+);
+
 # ############################################################################
 # Use initial vals + 20%.
 # ############################################################################
 @vals = (
-   # initial values
+   # initial check for existence
    { Threads_connected => 10, },
    { Threads_running   => 5,  },
 
@@ -67,6 +104,8 @@ sub sleep {
    { Threads_connected => 10, },
    { Threads_running   => 5,  },
 );
+
+$oktorun = 1;
 
 my $sw = new MySQLStatusWaiter(
    oktorun    => \&oktorun,
@@ -127,6 +166,10 @@ is(
 # Use static vals.
 # ############################################################################
 @vals = (
+   # initial check for existence
+   { Threads_connected => 1, },
+   { Threads_running   => 1, },
+
    # first check, no wait
    { Threads_connected => 1, },
    { Threads_running   => 1, },
@@ -208,6 +251,10 @@ is(
 # Critical thresholds (with static vals).
 # ############################################################################
 @vals = (
+   # initial check for existence
+   { Threads_running => 1, },
+   { Threads_running => 9, },
+
    # first check, no wait
    { Threads_running => 1, },
    { Threads_running => 9, },
