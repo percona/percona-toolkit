@@ -4923,7 +4923,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Time::HiRes qw(time);
+use Time::HiRes qw(time sleep);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
@@ -5450,6 +5450,12 @@ sub main {
       elsif ( $orig_tbl->{copied} && !$orig_tbl->{swapped} ) {
          print "Not dropping the new table $new_tbl->{name} because "
              . "--swap-tables failed.  To drop the new table, "
+             . "execute:\n$sql\n";
+      }
+      elsif ( !$o->get('drop-new-table') ) {
+         # https://bugs.launchpad.net/percona-toolkit/+bug/998831
+         print "Not dropping the new table $new_tbl->{name} because "
+             . "--no-drop-new-table was specified.  To drop the new table, "
              . "execute:\n$sql\n";
       }
       else {
@@ -6618,7 +6624,7 @@ sub exec_nibble {
 
    return $retry->retry(
       tries => $o->get('retries'),
-      wait  => sub { return; },
+      wait  => sub { sleep 0.25; return; },
       try   => sub {
          # ###################################################################
          # Start timing the query.
@@ -6690,6 +6696,7 @@ sub exec_nibble {
          # The query failed/caused an error.  If the error is one of these,
          # then we can possibly retry.
          if (   $error =~ m/Lock wait timeout exceeded/
+             || $error =~ m/Deadlock found/
              || $error =~ m/Query execution was interrupted/
          ) {
             # These errors/warnings can be retried, so don't print
@@ -7152,6 +7159,12 @@ short form: -F; type: string
 
 Only read mysql options from the given file.  You must give an absolute
 pathname.
+
+=item --[no]drop-new-table
+
+default: yes
+
+Drop the new table if copying the original table fails.
 
 =item --[no]drop-old-table
 
