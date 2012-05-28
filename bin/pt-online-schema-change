@@ -6296,7 +6296,7 @@ sub check_orig_table {
    # Find a pk or unique index to use for the delete trigger.  can_nibble()
    # above returns an index, but NibbleIterator will use non-unique indexes,
    # so we have to do this again here.
-   my $indexes = $orig_tbl->{tbl_struct}->{indexes}; # brevity
+   my $indexes = $orig_tbl->{tbl_struct}->{keys}; # brevity
    foreach my $index ( $tp->sort_indexes($orig_tbl->{tbl_struct}) ) {
       if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
          PTDEBUG && _d('Delete trigger index:', Dumper($index));
