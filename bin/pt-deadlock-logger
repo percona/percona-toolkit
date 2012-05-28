@@ -1928,7 +1928,11 @@ sub main {
       )
    {
       my $text        = $dbh->selectrow_hashref("SHOW /*!40100 ENGINE*/ INNODB STATUS")->{Status};
-      my %txns        = %{parse_deadlocks($text)};
+      my $parse_deadlocks_options = {
+            'numeric-ip' => $o->got('numeric-ip'),
+            'collapse'   => $o->got('collapse'),
+      };
+      my %txns        = %{parse_deadlocks($text, $parse_deadlocks_options)};
       my $fingerprint = fingerprint(\%txns);
 
       if ( $ins_sth ) {
@@ -2018,7 +2022,8 @@ sub main {
 # ############################################################################
 
 sub parse_deadlocks {
-   my ( $text ) = @_;
+   my ( $text, $args ) = @_;
+   $args ||= {};
    # Pull out the deadlock section
    my $dl_text;
    my @matches = $text =~ m#\n(---+)\n([A-Z /]+)\n\1\n(.*?)(?=\n(---+)\n[A-Z /]+\n\4\n|$)#gs;
@@ -2055,12 +2060,10 @@ sub parse_deadlocks {
          # sql/ha_innodb.cc.
          my ( $thread_line ) = $body =~ m/^(MySQL thread id .*)$/m;
          my ($mysql_thread_id, $query_id, $hostname, $ip, $user, $query_status);
-
          if ( $thread_line ) {
             # These parts can always be gotten.
             ( $mysql_thread_id, $query_id )
-               = $thread_line =~ m/^MySQL thread id $d, query id $d/m;
-
+               = $thread_line =~ m/^MySQL thread id $d,.* query id $d/m;
             # If it's a master/slave thread, "Has (read|sent) all" may be the
             # thread's proc_info.  In these cases, there won't be any
             # host/ip/user info.
@@ -2098,7 +2101,7 @@ sub parse_deadlocks {
 
          my ( $query_text ) = $body =~ m/\nMySQL thread id .*\n((?s).*)/;
          $query_text =~ s/\s+$//;
-         $query_text =~ s/\s+/ /g if $o->got('collapse');
+         $query_text =~ s/\s+/ /g if $args->{'collapse'};
 
          @{$hash}{qw(thread hostname ip user query)}
             = ($mysql_thread_id, $hostname, $ip, $user, $query_text);
@@ -2142,7 +2145,7 @@ sub parse_deadlocks {
       $txn->{victim} = $txn->{id} == $victim ? 1 : 0;
       $txn->{ts}     = $ts;
       $txn->{server} = $source_dsn->{h} || '';
-      $txn->{ip}     = inet_aton($txn->{ip}) if $o->got('numeric-ip');
+      $txn->{ip}     = inet_aton($txn->{ip}) if $args->{'numeric-ip'};
    }
 
    return \%txns;
