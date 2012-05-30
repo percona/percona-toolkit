@@ -848,7 +848,8 @@ my $proc = {  'Time'    => undef,
 
 local $@;
 eval { $pl->find([$proc], %find_spec) };
-ok !$@;
+ok !$@,
+ "Bug 923896: NULL Time in processlist doesn't fail for busy_time+Command=Query";
 
 delete $find_spec{busy_time};
 $find_spec{idle_time} = 1;
@@ -856,7 +857,8 @@ $proc->{Command}   = 'Sleep';
 
 local $@;
 eval { $pl->find([$proc], %find_spec) };
-ok !$@;
+ok !$@,
+ "Bug 923896: NULL Time in processlist doesn't fail for idle_time+Command=Sleep";
 
 # #############################################################################
 # Done.
