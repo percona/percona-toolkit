@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 else {
-   plan tests => 3;
+   plan tests => 6;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -82,6 +82,34 @@ $output = output(
 unlike $output,
     qr/\QThe original table `test1002448`.`table_name` does not have a PRIMARY KEY or a unique index which is required for the DELETE trigger/,
     "Bug 1002448: mistakenly uses indexes instead of keys";
+
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1003315
+# ############################################################################
+$sb->load_file('master', "$sample/bug-1003315.sql");
+
+# Have to use full_output here, because the error message may happen during
+# cleanup, and so won't be caught by output().
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args,
+            "$master_dsn,D=test1003315,t=A",
+            "--alter", "ENGINE=InnoDB",
+            "--alter-foreign-keys-method", "auto",
+            "--dry-run",
+            qw(--chunk-size 2 --dry-run --print))
+        
+    },
+);
+
+is $exit_status, 0, "Bug 1003315: Correct exit value for a dry run";
+
+unlike $output,
+    qr/\QError updating foreign key constraints: Invalid --alter-foreign-keys-method:/,
+    "Bug 1003315: No error when combining --alter-foreign-keys-method auto and --dry-run";
+
+like $output,
+    qr/\QNot updating foreign key constraints because this is a dry run./,
+    "Bug 1003315: But now we do get an explanation from --dry-run";
 
 # #############################################################################
 # Done.

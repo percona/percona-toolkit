@@ -6044,6 +6044,13 @@ sub main {
                OptionParser => $o,
             );
          }
+         elsif ( !$alter_fk_method
+               && $o->has('alter-foreign-keys-method')
+               && ($o->get('alter-foreign-keys-method') || '') eq 'auto' ) {
+            # If --alter-foreign-keys-method is 'auto' and we are on a dry run,
+            # $alter_fk_method is left as an empty string.
+            print "Not updating foreign key constraints because this is a dry run.\n";
+         }
          else {
             # This should "never" happen because we check this var earlier.
             die "Invalid --alter-foreign-keys-method: $alter_fk_method\n";
