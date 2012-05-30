@@ -11974,6 +11974,18 @@ sub main {
       if ( $o->get('apdex-threshold') <= 0 ) {
          $o->save_error("Apdex threshold must be a positive decimal value");
       }
+      if ( my $patterns = $o->get('embedded-attributes') ) {
+         $o->save_error("--embedded-attributes should be passed two "
+           . "comma-separated patterns, got " . scalar(@$patterns) )
+           unless scalar(@$patterns) == 2;
+         for my $re (@$patterns) {
+            no re 'eval';
+            eval { qr/$re/ };
+            if ( $EVAL_ERROR ) {
+               $o->save_error("--embedded-attributes $EVAL_ERROR")
+            }
+         }
+      }
    }
 
    # Set an orderby for each groupby; use the default orderby if there
@@ -12416,8 +12428,8 @@ sub main {
       }  # get events from log file
 
       if ( my $patterns = $o->get('embedded-attributes') ) {
-         $misc->{embed}   = qr/$patterns->[0]/o;
-         $misc->{capture} = qr/$patterns->[1]/o;
+         $misc->{embed}   = qr/$patterns->[0]/;
+         $misc->{capture} = qr/$patterns->[1]/;
          PTDEBUG && _d('Patterns for embedded attributes:', $misc->{embed},
                $misc->{capture});
       }
