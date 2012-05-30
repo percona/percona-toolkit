@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -65,6 +65,23 @@ unlike(
    qr/FORCE INDEX\(`guest_language`\)/,
    "Bug 994002: doesn't choose non-PK"
 );
+
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1002448
+# ############################################################################
+$sb->load_file('master', "$sample/bug-1002448.sql");
+
+$output = output(
+    sub { pt_online_schema_change::main(@args,
+            "$master_dsn,D=test1002448,t=table_name",
+            "--alter", "add column (foo int)",
+            qw(--chunk-size 2 --dry-run --print)) },
+);
+
+
+unlike $output,
+    qr/\QThe original table `test1002448`.`table_name` does not have a PRIMARY KEY or a unique index which is required for the DELETE trigger/,
+    "Bug 1002448: mistakenly uses indexes instead of keys";
 
 # #############################################################################
 # Done.
