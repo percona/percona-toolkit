@@ -2688,6 +2688,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -2705,6 +2706,7 @@ our @EXPORT_OK   = qw(
    any_unix_timestamp
    make_checksum
    crc32
+   encode_json
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -2910,6 +2912,96 @@ sub crc32 {
       $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
    }
    return $crc ^ 0xFFFFFFFF;
+}
+
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
 }
 
 sub _d {
@@ -6195,8 +6287,10 @@ sub main {
       return $event;
    };
 
+   my $json = $o->get('report-type')->{json}
+            ? {} : undef;
    # Print info (advice) about each rule that matched this query.
-   if ( $groupby eq 'none' ) {
+   if ( $groupby eq 'none' || $json ) {
       push @pipeline, sub {
          my ( %args ) = @_;
          PTDEBUG && _d('callback: print advice');
@@ -6210,6 +6304,7 @@ sub main {
             severity_count => \%severity_count,
             verbose        => $o->get('verbose'),
             report_format  => $o->get('report-format'),
+            json           => $json,
             Advisor        => $adv,
          );
          return $event;
@@ -6322,7 +6417,7 @@ sub main {
    # ########################################################################
    # Aggregate and report items for group-by reports
    # ########################################################################
-   if ( $groupby ne 'none' ) {
+   if ( $groupby ne 'none' && !$json ) {
       print_grouped_report(
          advice_queue  => \%advice_queue,
          group_by      => $groupby,
@@ -6334,7 +6429,7 @@ sub main {
    # ########################################################################
    # Create and print profile of each items note/warn/crit count.
    # ########################################################################
-   if ( keys %severity_count ) {
+   if ( keys %severity_count && !$json ) {
       eval {
          my $profile = new ReportFormatter(
             long_last_column => 1,
@@ -6365,6 +6460,8 @@ sub main {
       };
    }
 
+   print Transformers::encode_json($json), "\n" if $json;
+
    return 0;
 }
 
@@ -6380,6 +6477,7 @@ sub print_advice {
    my $adv            = $args{Advisor};
    my $seen_id        = $args{seen_id};
    my $severity_count = $args{severity_count};
+   my $json           = $args{json};
 
    my $advice   = $event->{advice};
    my $near_pos = $event->{near_pos};
@@ -6388,7 +6486,9 @@ sub print_advice {
 
    # Header
    my $query_id = $event->{query_id} || "";
-   print "\n# Query ID 0x$query_id at byte " . ($event->{pos_in_log} || 0) . "\n";
+
+   print "\n# Query ID 0x$query_id at byte " . ($event->{pos_in_log} || 0) . "\n"
+      unless $json;
 
    # New check IDs and their descriptions
    foreach my $i ( 1..$n_advice ) {
@@ -6409,9 +6509,10 @@ sub print_advice {
                   : $verbose == 2 ? "$desc[0] $desc[1]"  # fuller
                   : $verbose >  2 ? $desc                # complete
                   :                 '';                  # none
-         print "# ", uc $info->{severity}, " $rule_id $desc\n";
+         print "# ", uc $info->{severity}, " $rule_id $desc\n"
+            unless $json;
 
-         if ( $pos ) {
+         if ( $pos && !$json ) {
             my $offset = $pos > POS_CONTEXT ? $pos - POS_CONTEXT : 0;
             print "#   matches near: ",
                substr($event->{arg}, $offset, ($pos - $offset) + POS_CONTEXT),
@@ -6419,14 +6520,24 @@ sub print_advice {
          }
       }
 
+      if ( $json ) {
+         my $info_for_json = {
+            rule => $rule_id,
+            %$info
+         };
+         push @{$json->{$query_id} ||= []}, $info_for_json;
+      }
+
       $severity_count->{$query_id}->{$info->{severity}}++;
    }
 
-   # Already seen check IDs
-   print "# Also: @seen_ids\n" if scalar @seen_ids;
-
-   # The query
-   print "$event->{arg}\n";
+   if ( !$json ) {
+      # Already seen check IDs
+      print "# Also: @seen_ids\n" if scalar @seen_ids;
+   
+      # The query
+      print "$event->{arg}\n";
+   }
 
    return;
 }
@@ -6475,7 +6586,6 @@ sub print_grouped_report {
    my ($advice_queue, $groupby) = @args{@required_args};
    my $verbose = $args{verbose} || 0;
    my %seen;
-
 
    foreach my $groupby_attrib ( sort keys %$advice_queue ) {
       print "\n" . ($groupby eq 'query_id' ? "0x" : "") . $groupby_attrib;
@@ -6648,14 +6758,16 @@ wildcard is potentially a bug in the SQL.
 
 severity: warn
 
-SELECT without WHERE.  The SELECT statement has no WHERE clause.
+SELECT without WHERE.  The SELECT statement has no WHERE clause and could
+examine many more rows than intended.
 
 =item CLA.002
 
 severity: note
 
 ORDER BY RAND().  ORDER BY RAND() is a very inefficient way to
-retrieve a random row from the results.
+retrieve a random row from the results, because it sorts the entire result
+and then throws most of it away.
 
 =item CLA.003
 
@@ -6663,7 +6775,8 @@ severity: note
 
 LIMIT with OFFSET.  Paginating a result set with LIMIT and OFFSET is
 O(n^2) complexity, and will cause performance problems as the data
-grows larger.
+grows larger.  Pagination techniques such as bookmarked scans are much more
+efficient.
 
 =item CLA.004
 
@@ -6677,13 +6790,16 @@ query is changed.
 
 severity: warn
 
-ORDER BY constant column.
+ORDER BY constant column.  This is probably a bug in your SQL; at best it is a
+useless operation that does not change the query results.
 
 =item CLA.006
 
 severity: warn
 
-GROUP BY or ORDER BY different tables will force a temp table and filesort.
+GROUP BY or ORDER BY on different tables. This will force the use of a temporary
+table and filesort, which can be a huge performance problem and can consume
+large amounts of memory and temporary space on disk.
 
 =item CLA.007
 
@@ -6723,8 +6839,9 @@ more efficient to store IP addresses as integers.
 
 severity: warn
 
-Unquoted date/time literal.  A query such as "WHERE col<2010-02-12"
-is valid SQL but is probably a bug; the literal should be quoted.
+Unquoted date/time literal.  A query such as "WHERE col<2010-02-12" is valid SQL
+but is probably a bug, because it will be interpreted as "WHERE col<1996"; the
+literal should be quoted.
 
 =item KWR.001
 
@@ -6739,23 +6856,25 @@ result screens.
 
 severity: crit
 
-Mixing comma and ANSI joins.  Mixing comma joins and ANSI joins
-is confusing to humans, and the behavior differs between some
-MySQL versions.
+Mixing comma and ANSI joins.  Mixing comma joins and ANSI joins is confusing to
+humans, and the behavior and precedence differs between some MySQL versions,
+which can introduce bugs.
 
 =item JOI.002
 
 severity: crit
 
 A table is joined twice.  The same table appears at least twice in the
-FROM clause.
+FROM clause in a manner that can be reduced to a single access to the table.
 
 =item JOI.003
 
 severity: warn
 
-Reference to outer table column in WHERE clause prevents OUTER JOIN,
-implicitly converts to INNER JOIN.
+OUTER JOIN defeated.  The reference to an outer table column in the WHERE clause
+prevents the OUTER JOIN from returning any non-matched rows, which implicitly
+converts the query to an INNER JOIN.  This is probably a bug in the query or a
+misunderstanding of how OUTER JOIN works.
 
 =item JOI.004
 
@@ -6786,7 +6905,8 @@ non-deterministic results, depending on the query execution plan.
 
 severity: note
 
-!= is non-standard.  Use the <> operator to test for inequality.
+The != operator is non-standard.  Use the <> operator to test for inequality
+instead.
 
 =item SUB.001
 
@@ -6862,11 +6982,11 @@ type: string; default: rule_id
 
 Group items in the report by this attribute.  Possible attributes are:
 
-   ATTRIBUTE GROUPS
-   ========= ==========================================================
-   rule_id   Items matching the same rule ID
-   query_id  Queries with the same ID (the same fingerprint)
-   none      No grouping, report each query and its advice individually
+  ATTRIBUTE GROUPS
+  ========= ========================================================
+  rule_id   Items matching the same rule ID
+  query_id  Queries with the same ID (the same fingerprint)
+  none      No grouping, report each query and its advice separately
 
 =item --help
 
@@ -6933,6 +7053,13 @@ Type of report format: full or compact.  In full mode, every query's
 report contains the description of the rules it matched, even if this
 information was previously displayed.  In compact mode, the repeated
 information is suppressed, and only the rule ID is displayed.
+
+=item --report-type
+
+type: Hash
+
+Alternative formats to output the report. Currently, only "json" is
+recognized -- anything else is ignored and the default behavior used.
 
 =item --review
 
