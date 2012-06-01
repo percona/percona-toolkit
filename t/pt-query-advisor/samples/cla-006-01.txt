@@ -1,7 +1,7 @@
 
 # Query ID 0xAED2E885BDADA166 at byte 0
 # WARN CLA.001 SELECT without WHERE.
-# WARN CLA.006 GROUP BY or ORDER BY different tables will force a temp table and filesort.
+# WARN CLA.006 GROUP BY or ORDER BY on different tables.
 select id from tbl1 join tbl2 using (a) group by tbl1.id, tbl2.id
 
 # Profile
