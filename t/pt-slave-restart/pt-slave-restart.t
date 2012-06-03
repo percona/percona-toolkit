@@ -43,7 +43,7 @@ like($output, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
 # Start an instance
 diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-$output = `ps -eaf | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
+$output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
 like($output, qr/pt-slave-restart --max/, 'It lives');
 
 unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
@@ -51,7 +51,7 @@ unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
 ok(-f '/tmp/pt-slave-restart.pid', 'PID file created');
 ok(-f '/tmp/pt-slave-restart.log', 'Log file created');
 
-my ($pid) = $output =~ /^\s+\d+\s+(\d+)\s+/;
+my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat /tmp/pt-slave-restart.pid`;
 is($output, $pid, 'PID file has correct PID');
 
