@@ -130,8 +130,9 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => $sandbox_version ge '5.1' ? "$out/all-dbs-tbls.txt"
-                                             : "$out/all-dbs-tbls-5.0.txt",
+      result    => $sandbox_version ge '5.5' ? "$out/all-dbs-tbls.txt"
+                 : $sandbox_version ge '5.1' ? "$out/all-dbs-tbls-5.1.txt"
+                 :                             "$out/all-dbs-tbls-5.0.txt",
       test_name => "Iterate all schema objects with dbh",
    );
 
@@ -190,7 +191,7 @@ SKIP: {
    # Filter by engines.  This also tests that --engines is case-insensitive
    test_so(
       filters   => ['-d', 'd1,d2,d3', '--engines', 'INNODB'],
-      result    => "d1.t2 ",
+      result    => ($sandbox_version ge '5.5' ? 'd1.t2 d2.t1 ' : "d1.t2 "),
       test_name => '--engines',
    );
 
