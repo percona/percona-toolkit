@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 20;
+   plan tests => 21;
 }
 
 my $output;
@@ -94,5 +94,6 @@ diag(`rm session-results-*.txt 2>/dev/null`);
 # #############################################################################
 diag(`rm -rf $tmpdir 2>/dev/null`);
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

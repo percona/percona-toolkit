@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to master sandbox";
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
 my $output = "";
@@ -70,5 +70,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

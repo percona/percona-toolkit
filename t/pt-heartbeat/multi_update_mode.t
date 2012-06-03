@@ -34,7 +34,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 29;
+   plan tests => 30;
 }
 
 $sb->create_dbs($master_dbh, ['test']);
@@ -250,5 +250,6 @@ foreach my $port (@ports) {
 # #############################################################################
 diag(`rm -rf /tmp/pt-heartbeat-sentinel >/dev/null`);
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

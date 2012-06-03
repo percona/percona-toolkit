@@ -28,7 +28,7 @@ elsif ( !$vp->version_ge($dbh, '5.1.0') ) {
    plan skip_all => 'Sandbox master version not >= 5.1';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 # #############################################################################
@@ -47,5 +47,6 @@ like(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

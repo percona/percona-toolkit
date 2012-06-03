@@ -43,7 +43,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => "Cannot connect to sandbox slave";
 }
 else {
-   plan tests => 56;
+   plan tests => 57;
 }
 
 Transformers->import(qw(make_checksum));
@@ -777,4 +777,5 @@ like(
 diag(`rm -rf $tmpdir`);
 diag(`rm -rf /tmp/*outfile.txt`);
 $sb->wipe_clean($dbh1);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -24,7 +24,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 1;
+   plan tests => 2;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -50,4 +50,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

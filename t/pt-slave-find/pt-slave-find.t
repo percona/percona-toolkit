@@ -33,7 +33,7 @@ elsif ( !$slave_2_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox slave';
 }
 else {
-   plan tests => 6;
+   plan tests => 7;
 }
 
 my @args = ('h=127.0.0.1,P=12345,u=msandbox,p=msandbox');
@@ -110,5 +110,6 @@ is(
 # Done.
 # #############################################################################
 diag(`rm -rf $outfile >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

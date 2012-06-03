@@ -28,7 +28,7 @@ if ( !@{ $dbh->selectall_arrayref('show databases like "sakila"') } ) {
    plan skip_all => "Sakila database is not loaded";
 }
 else {
-   plan tests => 18;
+   plan tests => 19;
 }
 
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
@@ -365,5 +365,6 @@ SKIP: {
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
