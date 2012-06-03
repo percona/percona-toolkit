@@ -87,7 +87,7 @@ like(
 # Sometimes the slave will be in a state of "reconnecting to master" that will
 # take a while. Help that along. But, we've disconnected $slave_dbh by doing
 # 'stop' on the sandbox above, so we need to reconnect.
-$slave_dbh  = $sb->get_dbh_for('slave1');
+$slave_dbh  = $sb->get_dbh_for('slave2');
 $slave_dbh->do('STOP SLAVE');
 $slave_dbh->do('START SLAVE');
 
