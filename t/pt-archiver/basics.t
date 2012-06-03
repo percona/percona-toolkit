@@ -36,7 +36,7 @@ if ( ($rows || 0) != 4 ) {
    plan skip_all => 'Failed to load tables1-4.sql';
 }
 else {
-   plan tests => 23;
+   plan tests => 24;
 }
 
 my @args = qw(--dry-run --where 1=1);
@@ -147,4 +147,5 @@ is($output + 0, 4, 'All 4 rows are still there');
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

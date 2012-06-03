@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 21;
+   plan tests => 22;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -243,4 +243,5 @@ diag(`cp $ENV{HOME}/.pt-stalk.conf.original $ENV{HOME}/.pt-stalk.conf 2>/dev/nul
 diag(`rm $pid_file 2>/dev/null`);
 diag(`rm $log_file 2>/dev/null`);
 diag(`rm -rf $dest 2>/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

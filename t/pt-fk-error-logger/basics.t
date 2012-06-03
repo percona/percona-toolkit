@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 8;
 }
 
 $sb->wipe_clean($dbh);
@@ -124,4 +124,5 @@ $dbh->do('DROP TABLE test.parent');
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

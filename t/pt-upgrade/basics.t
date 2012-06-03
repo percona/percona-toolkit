@@ -30,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 10;
+   plan tests => 11;
 }
 
 $sb->load_file('master', 't/pt-upgrade/samples/001/tables.sql');
@@ -142,4 +142,5 @@ is_deeply(
 diag(`rm /tmp/left-outfile.txt /tmp/right-outfile.txt 2>/dev/null`);
 $sb->wipe_clean($dbh1);
 $sb->wipe_clean($dbh2);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

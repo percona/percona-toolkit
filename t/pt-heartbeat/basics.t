@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 17;
+   plan tests => 18;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -140,4 +140,5 @@ like(
 # #############################################################################
 `rm $pid_file $sent_file 2>/dev/null`;
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

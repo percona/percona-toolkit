@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 12;
+   plan tests => 13;
 }
 
 my $cnf = '/tmp/12345/my.sandbox.cnf';
@@ -165,4 +165,5 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

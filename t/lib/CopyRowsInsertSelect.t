@@ -39,7 +39,7 @@ elsif ( !@{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')} ) {
    plan skip_all => "Sandbox master does not have the sakila database";
 }
 else {
-   plan tests => 14;
+   plan tests => 15;
 }
 
 my $q      = new Quoter();
@@ -216,4 +216,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

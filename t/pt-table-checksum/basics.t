@@ -41,7 +41,7 @@ elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 32;
+   plan tests => 33;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -424,4 +424,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

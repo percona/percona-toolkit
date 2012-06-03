@@ -42,7 +42,7 @@ if ( $EVAL_ERROR ) {
    plan skip_all => "No FNV_64 UDF lib"
 }
 else {
-   plan tests => 6;
+   plan tests => 7;
 }
 
 $sb->create_dbs($master_dbh, [qw(test)]);
@@ -111,4 +111,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

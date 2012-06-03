@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 14;
+   plan tests => 15;
 }
 
 $sb->create_dbs($master_dbh, ['test']);
@@ -134,4 +134,5 @@ is(
 diag(`rm -f /tmp/pt-slave-re*`);
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
