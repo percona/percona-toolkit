@@ -9,7 +9,7 @@ create table table_7(
    b int not null,
    c int not null,
    primary key(a, b)
-) type=innodb;
+) engine=innodb;
 
 drop table if exists table_8;
 create table table_8 like table_7;
@@ -19,7 +19,7 @@ create table table_9(
    a int not null primary key,
    b int not null,
    c int not null
-) type=innodb;
+) engine=innodb;
 
 insert into table_7(a, b, c) values
    (1, 2, 1),
