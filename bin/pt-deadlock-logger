@@ -1987,7 +1987,7 @@ sub main {
             PTDEBUG && _d($sql);
             eval { $dbh_child->do($sql); }; # Should block against parent.
             PTDEBUG && _d($EVAL_ERROR); # Parent inserted value 0.
-            $sql = "DROP TABLE $db_tbl";
+            $sql = "COMMIT";
             PTDEBUG && _d($sql);
             $dbh_child->do($sql);
             exit;
@@ -2001,6 +2001,9 @@ sub main {
          eval { $dbh->do($sql); };
          PTDEBUG && _d($EVAL_ERROR);
          waitpid($pid, 0);
+         $sql = "DROP TABLE $db_tbl";
+         PTDEBUG && _d($sql);
+         $dbh->do($sql);
       }
       
       # If there's an --interval argument, run forever or till specified.
