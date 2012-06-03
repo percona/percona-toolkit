@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 10;
+   plan tests => 9;
 }
 
 my $output;
