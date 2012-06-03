@@ -1773,7 +1773,7 @@ my $dest_dsn;
 
 # Some common patterns and variables
 my $d = qr/(\d+)/;                    # Digit
-my $t = qr/(\d+ \d+)/;                # Transaction ID
+my $t  = qr/((?:\d+ \d+)|(?:[A-Fa-f0-9]+))/;                # Transaction ID
 my $i = qr/((?:\d{1,3}\.){3}\d+)/;    # IP address
 my $n = qr/([^`\s]+)/;                # MySQL object name
 my $w = qr/(\w+)/;                    # Words
@@ -2030,6 +2030,7 @@ sub parse_deadlocks {
    while ( my ( $start, $name, $text, $end ) = splice(@matches, 0, 4) ) {
       next unless $name eq 'LATEST DETECTED DEADLOCK';
       $dl_text = $text;
+      last;
    }
 
    return {} unless $dl_text;
