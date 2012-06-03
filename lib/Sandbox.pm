@@ -158,6 +158,14 @@ sub _check_server {
 
 sub wipe_clean {
    my ( $self, $dbh ) = @_;
+   # If any other connections to the server are holding metadata locks, then
+   # the DROP commands will just hang forever.
+   my @cxns = @{$dbh->selectall_arrayref('SHOW FULL PROCESSLIST', {Slice => {}})};
+   foreach my $cxn ( @cxns ) {
+      if ( $cxn->{user} eq 'msandbox' && $cxn->{command} eq 'Sleep' ) {
+         $dbh->do("KILL $cxn->{id}");
+      }
+   }
    foreach my $db ( @{$dbh->selectcol_arrayref('SHOW DATABASES')} ) {
       next if $db eq 'mysql';
       next if $db eq 'information_schema';
