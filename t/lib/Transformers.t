@@ -12,7 +12,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 49;
+use Test::More tests => 50;
 
 use Transformers;
 use PerconaTest;
@@ -193,4 +193,5 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

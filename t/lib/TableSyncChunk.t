@@ -21,7 +21,7 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( $dbh ) {
-   plan tests => 34;
+   plan tests => 35;
 }
 else {
    plan skip_all => 'Cannot connect to MySQL';
@@ -403,4 +403,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

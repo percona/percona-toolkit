@@ -28,7 +28,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
 my $output;
@@ -108,4 +108,5 @@ diag(`rm $pid_file 2>/dev/null`);
 $dbh1->do('set global read_only=0');
 $dbh2->do('set global read_only=1');
 $sb->wipe_clean($dbh1);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

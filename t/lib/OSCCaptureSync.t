@@ -31,7 +31,7 @@ if ( !$dbh ) {
   
 }
 else {
-   plan tests => 10;
+   plan tests => 11;
 }
 
 my $q   = new Quoter(); 
@@ -128,4 +128,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
