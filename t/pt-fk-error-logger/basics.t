@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 9;
+   plan tests => 8;
 }
 
 $sb->wipe_clean($dbh);
