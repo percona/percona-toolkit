@@ -31,7 +31,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 3;
 }
 
 my @args = qw(-F /tmp/12345/my.sandbox.cnf --processlist h=127.1 --report-format query_report);

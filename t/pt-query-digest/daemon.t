@@ -10,7 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);
-use Test::More tests => 8;
+use Test::More tests => 7;
 
 use PerconaTest;
 use Sandbox;

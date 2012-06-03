@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 4;
+   plan tests => 3;
 }
 
 my $cnf = '/tmp/12345/my.sandbox.cnf';

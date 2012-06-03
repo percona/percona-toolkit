@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 7;
+use Test::More tests => 6;
 
 use PerconaTest;
 use Sandbox;

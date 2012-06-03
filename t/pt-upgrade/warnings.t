@@ -30,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 6;
 }
 
 $sb->load_file('master', 't/pt-upgrade/samples/001/tables.sql');

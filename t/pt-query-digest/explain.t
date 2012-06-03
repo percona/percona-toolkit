@@ -30,7 +30,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 7;
+   plan tests => 6;
 }
 
 my $sample = "t/pt-query-digest/samples/";

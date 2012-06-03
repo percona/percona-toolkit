@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 3;
+   plan tests => 2;
 }
 
 my $cnf    = "/tmp/12345/my.sandbox.cnf";

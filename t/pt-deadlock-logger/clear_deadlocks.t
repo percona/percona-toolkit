@@ -23,7 +23,7 @@ if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 5;
+   plan tests => 4;
 }
 
 my $output;
