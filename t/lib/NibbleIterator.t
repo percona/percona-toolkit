@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 51;
+   plan tests => 54;
 }
 
 my $q   = new Quoter();
@@ -453,36 +453,10 @@ $ni = make_nibble_iter(
 );
 $ni->next();
 $ni->next();
-is_deeply(
-   \@expl,
-   [
-      {
-         id            => '1',
-         key           => 'PRIMARY',
-         key_len       => '2',
-         possible_keys => 'PRIMARY',
-         ref           => undef,
-         rows          => '54',
-         select_type   => 'SIMPLE',
-         table         => 'country',
-         type          => 'range',
-         extra         => 'Using where',
-      },
-      {
-         id             => '1',
-         key            => 'PRIMARY',
-         key_len        => '2',
-         possible_keys  => 'PRIMARY',
-         ref            => undef,
-         rows           => '49',
-         select_type    => 'SIMPLE',
-         table          => 'country',
-         type           => 'range',
-         extra          => 'Using where',
-      },
-   ],
-'exec_nibble callbackup and explain_sth'
-) or print STDERR Dumper(\@expl);
+ok($expl[0]->{rows} > 40 && $expl[0]->{rows} < 80, 'Rows between 40-80');
+is($expl[0]->{key}, 'PRIMARY', 'Uses PRIMARY key');
+is($expl[0]->{key_len}, '2', 'Uses 2 bytes of index');
+is($expl[0]->{type} , 'range', 'Uses range type');
 
 # #########################################################################
 # film_actor, multi-column pk
