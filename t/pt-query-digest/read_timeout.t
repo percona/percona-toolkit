@@ -37,7 +37,7 @@ if ( $timeout ) {
 
 ok(
    $waited >= 2 && $waited <= 3,
-   "--read-timeout waited $waited seconds reading STDIN"
+   "--read-timeout 2 waited $waited seconds reading STDIN"
 );
 
 diag(`rm -rf /tmp/mqd.pid`);

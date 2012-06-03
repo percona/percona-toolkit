@@ -1,0 +1,6 @@
+Query_id: 110422 11:28:00.1
+SELECT country
+SELECT city
+JOIN city
+JOIN country
+

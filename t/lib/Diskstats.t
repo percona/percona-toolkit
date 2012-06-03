@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 107;
+use Test::More tests => 108;
 
 use PerconaTest;
 
@@ -449,6 +449,30 @@ is_deeply(
    "_calc_misc_stats works"
 );
 
+# Bug 928226: IOS IN PROGRESS can be negative due to kernel bugs,
+# which can eventually cause a division by zero if it happens to
+# be the negative of the number of ios.
+# The tool should return zero in that case, rather than dying.
+$deltas->{ios_in_progress} = -$deltas->{ios_requested};
+%misc_stats = $obj->_calc_misc_stats(
+   delta_for     => $deltas,
+   elapsed       => $curr->{TS} - $prev->{TS},
+   devs_in_group => 1,
+   stats         => { %write_stats, %read_stats },
+);
+
+is_deeply(
+   \%misc_stats,
+   {
+      busy => '0.6',
+      line_ts => '  0.0',
+      qtime => 0,
+      s_spent_doing_io => '28.5',
+      stime => '0.0364741641337386',
+   },
+   "_calc_misc_stats works around a negative the IOS IN PROGRESS"
+);
+
 $obj->clear_state();
 
 }
@@ -481,35 +505,38 @@ for my $test (
       my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
       my $file_with_trunk = File::Spec->catfile( $trunk, $file );
 
-      my $expected = load_file( File::Spec->catfile( "t", "pt-diskstats", "expected", "${prefix}_$filename" ) );
+      my $expected = "t/pt-diskstats/expected/${prefix}_$filename";
 
-      my $got = output(
-         sub {
-            $obj->group_by(
-               filename => $file_with_trunk,
-            );
-         });
-      
-      is($got, $expected, "group_by $prefix: $filename via filename");
-   
-      $got = output(
-         sub {
-            open my $fh, "<", $file_with_trunk or die $!;
-            $obj->group_by(
-               filehandle => $fh,
-            );
-         });
-   
-      is($got, $expected, "group_by $prefix: $filename via filehandle");
-   
-      $got = output(
-         sub {
-            $obj->group_by(
-               data => "TS 1298130002.073935000\n" . load_file( $file ),
-            );
-         });
-   
-      is($got, $expected, "group_by $prefix: $filename with an extra TS at the top");
+      ok(
+         no_diff(
+            sub { $obj->group_by(filename => $file_with_trunk); },
+            $expected,
+         ),
+         "group_by $prefix: $filename via filename"
+      );
+
+      ok(
+         no_diff(
+            sub {
+               open my $fh, "<", $file_with_trunk or die $!;
+               $obj->group_by(filehandle => $fh);
+            },
+            $expected,
+         ),
+         "group_by $prefix: $filename via filehandle"
+      );
+
+      ok(
+         no_diff( 
+            sub {
+               $obj->group_by(
+                  data => "TS 1298130002.073935000\n" . load_file( $file ),
+               );
+            },
+            $expected,
+         ),
+         "group_by $prefix: $filename with an extra TS at the top"
+      );
    }
 
    my $data = <<'EOF';

@@ -142,8 +142,23 @@ is(
 );
 
 # #############################################################################
+# Bug 978432: PK is ignored
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/not-using-pk-bug.sql");
+PerconaTest::wait_for_table($dbh, "test.multi_resource_apt", "apt_id=4 AND res_id=4");
+
+ok(
+   no_diff(
+      sub { pt_table_checksum::main(@args,
+         qw(-t test.multi_resource_apt --chunk-size 2 --explain --explain))
+      },
+      "t/pt-table-checksum/samples/not-using-pk-bug.out",
+   ),
+   "Smarter chunk index selection (bug 978432)"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

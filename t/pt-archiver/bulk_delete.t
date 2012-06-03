@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 14;
+   plan tests => 13;
 }
 
 my $output;
@@ -71,5 +71,4 @@ is($output + 0, 105, 'Bulk delete works OK with normal insert');
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

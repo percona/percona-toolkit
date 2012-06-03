@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 32;
+use Test::More tests => 29;
 
 use SchemaIterator;
 use FileIterator;
@@ -32,7 +32,7 @@ my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
-my $tp;
+my $tp = new TableParser(Quoter => $q);
 my $fi = new FileIterator();
 my $o  = new OptionParser(description => 'SchemaIterator');
 $o->get_specs("$trunk/bin/pt-table-checksum");
@@ -55,7 +55,6 @@ sub test_so {
       my $file_itr = $fi->get_file_itr(@{$args{files}});
       $si = new SchemaIterator(
          file_itr     => $file_itr,
-         keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
@@ -65,7 +64,6 @@ sub test_so {
    else {
       $si = new SchemaIterator(
          dbh          => $dbh,
-         keep_ddl     => defined $args{keep_ddl} ? $args{keep_ddl} : 1,
          resume       => $args{resume},
          OptionParser => $o,
          Quoter       => $q,
@@ -132,7 +130,7 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => $sandbox_version eq '5.1' ? "$out/all-dbs-tbls.txt"
+      result    => $sandbox_version ge '5.1' ? "$out/all-dbs-tbls.txt"
                                              : "$out/all-dbs-tbls-5.0.txt",
       test_name => "Iterate all schema objects with dbh",
    );
@@ -311,16 +309,12 @@ SKIP: {
    # ########################################################################
    # Getting CREATE TALBE (ddl).
    # ########################################################################
-   $tp = new TableParser(Quoter => $q);
    test_so(
       filters   => [qw(-t mysql.user)],
-      result    => $sandbox_version eq '5.1' ? "$out/mysql-user-ddl.txt"
+      result    => $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
                                              : "$out/mysql-user-ddl-5.0.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
-
-   # Kill the TableParser obj in case the next tests don't want to use it.
-   $tp = undef;
 
    $sb->wipe_clean($dbh);
 };
@@ -370,47 +364,8 @@ my $n_tbl_structs = grep { exists $_->{tbl_struct} } @$objs;
 
 is(
    $n_tbl_structs,
-   0,
-   'No tbl_struct without TableParser'
-);
-
-$tp = new TableParser(Quoter => $q);
-
-$objs = test_so(
-   files     => ["$in/dump001.txt"],
-   result      => "",  # hack to let return_objs work
-   test_name   => "",  # hack to let return_objs work
-   return_objs => 1,
-);
-
-$n_tbl_structs = grep { exists $_->{tbl_struct} } @$objs;
-
-is(
-   $n_tbl_structs,
    scalar @$objs,
    'Got tbl_struct for each schema object'
-);
-
-# Kill the TableParser obj in case the next tests don't want to use it.
-$tp = undef;
-
-# ############################################################################
-# keep_ddl
-# ############################################################################
-$objs = test_so(
-   files       => ["$in/dump001.txt"],
-   result      => "",  # hack to let return_objs work
-   test_name   => "",  # hack to let return_objs work
-   return_objs => 1,
-   keep_ddl    => 0,
-);
-
-my $n_ddls = grep { exists $_->{ddl} } @$objs;
-
-is(
-   $n_ddls,
-   0,
-   'DDL deleted unless keep_ddl'
 );
 
 # ############################################################################
@@ -418,7 +373,9 @@ is(
 # ############################################################################
 test_so(
    filters   => [qw(-d sakila)],
-   result    => "$out/resume-from-sakila-payment.txt",
+   result    => $sandbox_version ge '5.1'
+                ? "$out/resume-from-sakila-payment.txt"
+                : "$out/resume-from-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume"
 );
@@ -426,7 +383,9 @@ test_so(
 # Ignore the table being resumed from; resume from next table.
 test_so(
    filters   => [qw(-d sakila --ignore-tables sakila.payment)],
-   result    => "$out/resume-from-ignored-sakila-payment.txt",
+   result    => $sandbox_version ge '5.1'
+                ? "$out/resume-from-ignored-sakila-payment.txt"
+                : "$out/resume-from-ignored-sakila-payment-5.0.txt",
    resume    => 'sakila.payment',
    test_name => "Resume from ignored table"
 );
@@ -434,5 +393,4 @@ test_so(
 # #############################################################################
 # Done.
 # #############################################################################
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

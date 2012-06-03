@@ -95,6 +95,17 @@ ok(
    'No results for nonexistent db'
 );
 
+$dbh->do('create database test');
+$sb->load_file('master', 't/lib/samples/dupekeys/dupe-cluster-bug-894140.sql', 'test');
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
+      "$sample/bug-894140.txt",
+    ),
+   "Bug 894140"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################

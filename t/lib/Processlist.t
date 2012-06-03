@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 32;
+use Test::More tests => 34;
 
 use Processlist;
 use PerconaTest;
@@ -826,6 +826,39 @@ is_deeply(
    ],
    "Find all queries that aren't ignored"
 );
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/923896
+# #############################################################################
+
+%find_spec = (
+   busy_time => 1,
+   ignore    => {},
+   match     => {},
+);
+my $proc = {  'Time'    => undef,
+         'Command' => 'Query',
+         'db'      => undef,
+         'Id'      => '7',
+         'Info'    => undef,
+         'User'    => 'msandbox',
+         'State'   => '',
+         'Host'    => 'localhost'
+      };
+
+local $@;
+eval { $pl->find([$proc], %find_spec) };
+ok !$@,
+ "Bug 923896: NULL Time in processlist doesn't fail for busy_time+Command=Query";
+
+delete $find_spec{busy_time};
+$find_spec{idle_time} = 1;
+$proc->{Command}   = 'Sleep';
+
+local $@;
+eval { $pl->find([$proc], %find_spec) };
+ok !$@,
+ "Bug 923896: NULL Time in processlist doesn't fail for idle_time+Command=Sleep";
 
 # #############################################################################
 # Done.

@@ -10,7 +10,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 7;
+use Test::More tests => 6;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use IndexUsage;
@@ -250,5 +250,4 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

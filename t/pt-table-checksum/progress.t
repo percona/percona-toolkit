@@ -39,7 +39,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 4;
+   plan tests => 3;
 }
 
 # Must have empty checksums table for these tests.
@@ -101,5 +101,4 @@ is(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/test-env reset >/dev/null`);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

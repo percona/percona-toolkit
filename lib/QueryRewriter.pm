@@ -175,10 +175,30 @@ sub fingerprint {
    $query =~ s/\\["']//g;                # quoted strings
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
-   # This regex is extremely broad in its definition of what looks like a
-   # number.  That is for speed.
-   $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;# Anything vaguely resembling numbers
-   $query =~ s/[xb.+-]\?/?/g;            # Clean up leftovers
+
+   # MD5 checksums which are always 32 hex chars 
+   if ( $self->{match_md5_checksums} ) { 
+      $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
+   }
+
+   # Things resembling numbers/hex.
+   if ( !$self->{match_embedded_numbers} ) {
+      # For speed, this regex is extremely broad in its definition
+      # of what looks like a number.
+      $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+   else {
+      $query =~ s/\b[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+
+   # Clean up leftovers
+   if ( $self->{match_md5_checksums} ) {
+      $query =~ s/[xb+-]\?/?/g;                
+   }
+   else {
+      $query =~ s/[xb.+-]\?/?/g;
+   }
+
    $query =~ s/\A\s+//;                  # Chop off leading whitespace
    chomp $query;                         # Kill trailing whitespace
    $query =~ tr[ \n\t\r\f][ ]s;          # Collapse whitespace

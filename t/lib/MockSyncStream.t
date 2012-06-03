@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 6;
+use Test::More tests => 5;
 
 use MockSyncStream;
 use Quoter;
@@ -169,8 +169,8 @@ SKIP: {
          size => {
             id => undef,
             i  => undef,
-            f  => '(31,12)',
-            d  => $DBD::mysql::VERSION ge '4.001' ? '(7,2)' : '(7)',
+            f  => undef,
+            d  => undef,
             dt => undef,
             ts => undef,
             c  => '(1)',
@@ -199,5 +199,4 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

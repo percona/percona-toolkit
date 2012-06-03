@@ -24,6 +24,8 @@
 set -u
 
 # Global variables.
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
@@ -39,6 +41,10 @@ warn() {
 die() {
    warn "$*"
    exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
 }
 
 # ###########################################################################

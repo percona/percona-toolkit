@@ -28,6 +28,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -82,7 +84,8 @@ sub parse {
    my %final_props;
    my $opts = $self->{opts};
 
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          $given_props{$prop_key} = $prop_val;
       }
@@ -141,12 +144,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -1315,7 +1320,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1458,6 +1463,48 @@ sub join_quote {
    $db  = "`$db`"  if $db  && $db  !~ m/^`/;
    $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
    return $db ? "$db.$tbl" : $tbl;
+}
+
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
 }
 
 1;
@@ -2354,8 +2401,25 @@ sub fingerprint {
    $query =~ s/\\["']//g;                # quoted strings
    $query =~ s/".*?"/?/sg;               # quoted strings
    $query =~ s/'.*?'/?/sg;               # quoted strings
-   $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;# Anything vaguely resembling numbers
-   $query =~ s/[xb.+-]\?/?/g;            # Clean up leftovers
+
+   if ( $self->{match_md5_checksums} ) { 
+      $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
+   }
+
+   if ( !$self->{match_embedded_numbers} ) {
+      $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+   else {
+      $query =~ s/\b[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+
+   if ( $self->{match_md5_checksums} ) {
+      $query =~ s/[xb+-]\?/?/g;                
+   }
+   else {
+      $query =~ s/[xb.+-]\?/?/g;
+   }
+
    $query =~ s/\A\s+//;                  # Chop off leading whitespace
    chomp $query;                         # Kill trailing whitespace
    $query =~ tr[ \n\t\r\f][ ]s;          # Collapse whitespace
@@ -2624,6 +2688,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -2641,6 +2706,7 @@ our @EXPORT_OK   = qw(
    any_unix_timestamp
    make_checksum
    crc32
+   encode_json
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -2848,6 +2914,96 @@ sub crc32 {
    return $crc ^ 0xFFFFFFFF;
 }
 
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -2904,10 +3060,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -2918,13 +3075,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -2935,18 +3092,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -3431,7 +3591,7 @@ sub get_rules {
          foreach my $pred ( @$where ) {
             my $val = $pred->{right_arg};
             next unless $val;
-            return 0 if $val =~ m/^\d+$/ && $orderby_col{lc $pred->{left_arg}};
+            return 0 if $val =~ m/^\d+$/ && $orderby_col{lc($pred->{left_arg} || '')};
          }
          return;
       },
@@ -3490,7 +3650,7 @@ sub get_rules {
          my $cols = $event->{query_struct}->{columns};
          return unless $cols;
          foreach my $col ( @$cols ) {
-            return 0 if $col->{col} eq '*';
+            return 0 if $col->{col} eq '*' && !$col->{func};
          }
          return;
       },
@@ -4063,6 +4223,21 @@ my $column_ident = qr/(?:
    (?:$ident_alias)?                                  # optional alias
 )/xo;
 
+my $function_ident = qr/
+   \b
+   (
+      \w+      # function name
+      \(       # opening parenthesis
+      [^\)]+   # function args, if any
+      \)       # closing parenthesis
+   )
+/x;
+
+my %ignore_function = (
+   INDEX => 1,
+   KEY   => 1,
+);
+
 sub new {
    my ( $class, %args ) = @_;
    my $self = {
@@ -4081,6 +4256,7 @@ sub parse {
       |REPLACE
       |SELECT
       |UPDATE
+      |CREATE
    )/xi;
 
    $query = $self->clean_query($query);
@@ -4103,6 +4279,11 @@ sub parse {
       PTDEBUG && _d('Removing subqueries');
       @subqueries = $self->remove_subqueries($query);
       $query      = shift @subqueries;
+   }
+   elsif ( $type eq 'create' && $query =~ m/\s+SELECT/ ) {
+      PTDEBUG && _d('CREATE..SELECT');
+      ($subqueries[0]->{query}) = $query =~ m/\s+(SELECT .+)/;
+      $query =~ s/\s+SELECT.+//;
    }
 
    my $parse_func = "parse_$type";
@@ -4312,10 +4493,30 @@ sub parse_update {
 
 }
 
+sub parse_create {
+   my ($self, $query) = @_;
+   my ($obj, $name) = $query =~ m/
+      (\S+)\s+
+      (?:IF NOT EXISTS\s+)?
+      (\S+)
+   /xi;
+   return {
+      object  => lc $obj,
+      name    => $name,
+      unknown => undef,
+   };
+}
+
 sub parse_from {
    my ( $self, $from ) = @_;
    return unless $from;
    PTDEBUG && _d('Parsing FROM', $from);
+
+   my $using_cols;
+   ($from, $using_cols) = $self->remove_using_columns($from);
+
+   my $funcs;
+   ($from, $funcs) = $self->remove_functions($from);
 
    my $comma_join = qr/(?>\s*,\s*)/;
    my $ansi_join  = qr/(?>
@@ -4344,13 +4545,10 @@ sub parse_from {
 
          $join->{condition} = lc $join_condition_verb;
          if ( $join->{condition} eq 'on' ) {
-            my $where      = $self->parse_where($join_condition_value);
-            $join->{where} = $where; 
+            $join->{where} = $self->parse_where($join_condition_value, $funcs);
          }
          else { # USING
-            $join_condition_value =~ s/^\s*\(//;
-            $join_condition_value =~ s/\)\s*$//;
-            $join->{columns} = $self->_parse_csv($join_condition_value);
+            $join->{columns} = $self->_parse_csv(shift @$using_cols);
          }
       }
       elsif ( $thing =~ m/(?:,|JOIN)/i ) {
@@ -4429,13 +4627,13 @@ sub parse_table_reference {
 }
 
 sub parse_where {
-   my ( $self, $where ) = @_;
+   my ( $self, $where, $functions ) = @_;
    return unless $where;
    PTDEBUG && _d("Parsing WHERE", $where);
 
    my $op_symbol = qr/
       (?:
-       <=
+       <=(?:>)?
       |>=
       |<>
       |!=
@@ -4540,6 +4738,11 @@ sub parse_where {
 
       if ( $val =~ m/NULL|TRUE|FALSE/i ) {
          $val = lc $val;
+      }
+
+      if ( $functions ) {
+         $col = shift @$functions if $col =~ m/__FUNC\d+__/;
+         $val = shift @$functions if $val =~ m/__FUNC\d+__/;
       }
 
       push @predicates, {
@@ -4809,6 +5012,44 @@ sub remove_subqueries {
    return $query, @subqueries;
 }
 
+sub remove_using_columns {
+   my ($self, $from) = @_;
+   return unless $from;
+   PTDEBUG && _d('Removing cols from USING clauses');
+   my $using = qr/
+      \bUSING
+      \s*
+      \(
+         ([^\)]+)
+      \)
+   /xi;
+   my @cols;
+   $from =~ s/$using/push @cols, $1; "USING ($#cols)"/eg;
+   PTDEBUG && _d('FROM:', $from, Dumper(\@cols));
+   return $from, \@cols;
+}
+
+sub replace_function {
+   my ($func, $funcs) = @_;
+   my ($func_name) = $func =~ m/^(\w+)/;
+   if ( !$ignore_function{uc $func_name} ) {
+      my $n = scalar @$funcs;
+      push @$funcs, $func;
+      return "__FUNC${n}__";
+   }
+   return $func;
+}
+
+sub remove_functions {
+   my ($self, $clause) = @_;
+   return unless $clause;
+   PTDEBUG && _d('Removing functions from clause:', $clause);
+   my @funcs;
+   $clause =~ s/$function_ident/replace_function($1, \@funcs)/eg;
+   PTDEBUG && _d('Function-stripped clause:', $clause, Dumper(\@funcs));
+   return $clause, \@funcs;
+}
+
 sub parse_identifiers {
    my ( $self, $idents ) = @_;
    return unless $idents;
@@ -4850,6 +5091,14 @@ sub parse_identifier {
    return unless $type && $ident;
    PTDEBUG && _d("Parsing", $type, "identifier:", $ident);
 
+   my ($func, $expr);
+   if ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
+      ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
+      PTDEBUG && _d('Function', $func, 'arg', $expr);
+      return { col => $ident } unless $expr;  # NOW()
+      $ident = $expr;  # col from MAX(col)
+   }
+
    my %ident_struct;
    my @ident_parts = map { s/`//g; $_; } split /[.]/, $ident;
    if ( @ident_parts == 3 ) {
@@ -4882,6 +5131,10 @@ sub parse_identifier {
             $ident_struct{db} = $qtbl->[0];
          }
       }
+   }
+
+   if ( $func ) {
+      $ident_struct{func} = uc $func;
    }
 
    PTDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
@@ -4939,311 +5192,6 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# MySQLDump package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MySQLDump.pm
-#   t/lib/MySQLDump.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package MySQLDump;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-( our $before = <<'EOF') =~ s/^   //gm;
-   /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-   /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-   /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-   /*!40101 SET NAMES utf8 */;
-   /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-   /*!40103 SET TIME_ZONE='+00:00' */;
-   /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-   /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-   /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-   /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-EOF
-
-( our $after = <<'EOF') =~ s/^   //gm;
-   /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-   /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-   /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-   /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-   /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-   /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-   /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-   /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-EOF
-
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = {
-      cache => 0,  # Afaik no script uses this cache any longer because
-   };
-   return bless $self, $class;
-}
-
-sub dump {
-   my ( $self, $dbh, $quoter, $db, $tbl, $what ) = @_;
-
-   if ( $what eq 'table' ) {
-      my $ddl = $self->get_create_table($dbh, $quoter, $db, $tbl);
-      return unless $ddl;
-      if ( $ddl->[0] eq 'table' ) {
-         return $before
-            . 'DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . ";\n"
-            . $ddl->[1] . ";\n";
-      }
-      else {
-         return 'DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . ";\n"
-            . '/*!50001 DROP VIEW IF EXISTS '
-            . $quoter->quote($tbl) . "*/;\n/*!50001 "
-            . $self->get_tmp_table($dbh, $quoter, $db, $tbl) . "*/;\n";
-      }
-   }
-   elsif ( $what eq 'triggers' ) {
-      my $trgs = $self->get_triggers($dbh, $quoter, $db, $tbl);
-      if ( $trgs && @$trgs ) {
-         my $result = $before . "\nDELIMITER ;;\n";
-         foreach my $trg ( @$trgs ) {
-            if ( $trg->{sql_mode} ) {
-               $result .= qq{/*!50003 SET SESSION SQL_MODE='$trg->{sql_mode}' */;;\n};
-            }
-            $result .= "/*!50003 CREATE */ ";
-            if ( $trg->{definer} ) {
-               my ( $user, $host )
-                  = map { s/'/''/g; "'$_'"; }
-                    split('@', $trg->{definer}, 2);
-               $result .= "/*!50017 DEFINER=$user\@$host */ ";
-            }
-            $result .= sprintf("/*!50003 TRIGGER %s %s %s ON %s\nFOR EACH ROW %s */;;\n\n",
-               $quoter->quote($trg->{trigger}),
-               @{$trg}{qw(timing event)},
-               $quoter->quote($trg->{table}),
-               $trg->{statement});
-         }
-         $result .= "DELIMITER ;\n\n/*!50003 SET SESSION SQL_MODE=\@OLD_SQL_MODE */;\n\n";
-         return $result;
-      }
-      else {
-         return undef;
-      }
-   }
-   elsif ( $what eq 'view' ) {
-      my $ddl = $self->get_create_table($dbh, $quoter, $db, $tbl);
-      return '/*!50001 DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
-         . '/*!50001 DROP VIEW IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
-         . '/*!50001 ' . $ddl->[1] . "*/;\n";
-   }
-   else {
-      die "You didn't say what to dump.";
-   }
-}
-
-sub _use_db {
-   my ( $self, $dbh, $quoter, $new ) = @_;
-   if ( !$new ) {
-      PTDEBUG && _d('No new DB to use');
-      return;
-   }
-   my $sql = 'USE ' . $quoter->quote($new);
-   PTDEBUG && _d($dbh, $sql);
-   $dbh->do($sql);
-   return;
-}
-
-sub get_create_table {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   if ( !$self->{cache} || !$self->{tables}->{$db}->{$tbl} ) {
-      my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-         . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-         . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      PTDEBUG && _d($sql);
-      eval { $dbh->do($sql); };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-      $self->_use_db($dbh, $quoter, $db);
-      $sql = "SHOW CREATE TABLE " . $quoter->quote($db, $tbl);
-      PTDEBUG && _d($sql);
-      my $href;
-      eval { $href = $dbh->selectrow_hashref($sql); };
-      if ( $EVAL_ERROR ) {
-         warn "Failed to $sql.  The table may be damaged.\nError: $EVAL_ERROR";
-         return;
-      }
-
-      $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      PTDEBUG && _d($sql);
-      $dbh->do($sql);
-      my ($key) = grep { m/create table/i } keys %$href;
-      if ( $key ) {
-         PTDEBUG && _d('This table is a base table');
-         $self->{tables}->{$db}->{$tbl} = [ 'table', $href->{$key} ];
-      }
-      else {
-         PTDEBUG && _d('This table is a view');
-         ($key) = grep { m/create view/i } keys %$href;
-         $self->{tables}->{$db}->{$tbl} = [ 'view', $href->{$key} ];
-      }
-   }
-   return $self->{tables}->{$db}->{$tbl};
-}
-
-sub get_columns {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   PTDEBUG && _d('Get columns for', $db, $tbl);
-   if ( !$self->{cache} || !$self->{columns}->{$db}->{$tbl} ) {
-      $self->_use_db($dbh, $quoter, $db);
-      my $sql = "SHOW COLUMNS FROM " . $quoter->quote($db, $tbl);
-      PTDEBUG && _d($sql);
-      my $cols = $dbh->selectall_arrayref($sql, { Slice => {} });
-
-      $self->{columns}->{$db}->{$tbl} = [
-         map {
-            my %row;
-            @row{ map { lc $_ } keys %$_ } = values %$_;
-            \%row;
-         } @$cols
-      ];
-   }
-   return $self->{columns}->{$db}->{$tbl};
-}
-
-sub get_tmp_table {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   my $result = 'CREATE TABLE ' . $quoter->quote($tbl) . " (\n";
-   $result .= join(",\n",
-      map { '  ' . $quoter->quote($_->{field}) . ' ' . $_->{type} }
-      @{$self->get_columns($dbh, $quoter, $db, $tbl)});
-   $result .= "\n)";
-   PTDEBUG && _d($result);
-   return $result;
-}
-
-sub get_triggers {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   if ( !$self->{cache} || !$self->{triggers}->{$db} ) {
-      $self->{triggers}->{$db} = {};
-      my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-         . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-         . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      PTDEBUG && _d($sql);
-      eval { $dbh->do($sql); };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-      $sql = "SHOW TRIGGERS FROM " . $quoter->quote($db);
-      PTDEBUG && _d($sql);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute();
-      if ( $sth->rows ) {
-         my $trgs = $sth->fetchall_arrayref({});
-         foreach my $trg (@$trgs) {
-            my %trg;
-            @trg{ map { lc $_ } keys %$trg } = values %$trg;
-            push @{ $self->{triggers}->{$db}->{ $trg{table} } }, \%trg;
-         }
-      }
-      $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      PTDEBUG && _d($sql);
-      $dbh->do($sql);
-   }
-   if ( $tbl ) {
-      return $self->{triggers}->{$db}->{$tbl};
-   }
-   return values %{$self->{triggers}->{$db}};
-}
-
-sub get_databases {
-   my ( $self, $dbh, $quoter, $like ) = @_;
-   if ( !$self->{cache} || !$self->{databases} || $like ) {
-      my $sql = 'SHOW DATABASES';
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      my $sth = $dbh->prepare($sql);
-      PTDEBUG && _d($sql, @params);
-      $sth->execute( @params );
-      my @dbs = map { $_->[0] } @{$sth->fetchall_arrayref()};
-      $self->{databases} = \@dbs unless $like;
-      return @dbs;
-   }
-   return @{$self->{databases}};
-}
-
-sub get_table_status {
-   my ( $self, $dbh, $quoter, $db, $like ) = @_;
-   if ( !$self->{cache} || !$self->{table_status}->{$db} || $like ) {
-      my $sql = "SHOW TABLE STATUS FROM " . $quoter->quote($db);
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      PTDEBUG && _d($sql, @params);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute(@params);
-      my @tables = @{$sth->fetchall_arrayref({})};
-      @tables = map {
-         my %tbl; # Make a copy with lowercased keys
-         @tbl{ map { lc $_ } keys %$_ } = values %$_;
-         $tbl{engine} ||= $tbl{type} || $tbl{comment};
-         delete $tbl{type};
-         \%tbl;
-      } @tables;
-      $self->{table_status}->{$db} = \@tables unless $like;
-      return @tables;
-   }
-   return @{$self->{table_status}->{$db}};
-}
-
-sub get_table_list {
-   my ( $self, $dbh, $quoter, $db, $like ) = @_;
-   if ( !$self->{cache} || !$self->{table_list}->{$db} || $like ) {
-      my $sql = "SHOW /*!50002 FULL*/ TABLES FROM " . $quoter->quote($db);
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      PTDEBUG && _d($sql, @params);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute(@params);
-      my @tables = @{$sth->fetchall_arrayref()};
-      @tables = map {
-         my %tbl = (
-            name   => $_->[0],
-            engine => ($_->[1] || '') eq 'VIEW' ? 'VIEW' : '',
-         );
-         \%tbl;
-      } @tables;
-      $self->{table_list}->{$db} = \@tables unless $like;
-      return @tables;
-   }
-   return @{$self->{table_list}->{$db}};
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End MySQLDump package
-# ###########################################################################
-
-# ###########################################################################
 # TableParser package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -5274,19 +5222,58 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
+
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
+      return;
+   }
+
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
+
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
+   }
+
+   return $href->{$key};
+}
+
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -5593,41 +5580,31 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         my $key_def = $_->{ddl};
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      PTDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {
@@ -6087,7 +6064,6 @@ sub main {
    my $qr = new QueryRewriter( QueryParser => $qp );
    my $sp = new SQLParser();
    my $tp = new TableParser(Quoter => $q);
-   my $du = new MySQLDump();
    my %common_modules = (
       DSNParser     => $dp,
       Quoter        => $q,
@@ -6096,7 +6072,6 @@ sub main {
       QueryRewriter => $qr,
       SQLParser     => $sp,
       TableParser   => $tp,
-      MySQLDump     => $du,
    );
 
    # #########################################################################
@@ -6282,8 +6257,8 @@ sub main {
                if ( !$tbl_structs->{$db}->{$tbl} ) {
                   my $tbl_struct;
                   eval {
-                     $tbl_struct
-                        = $tp->parse($du->get_create_table($dbh, $q, $db, $tbl));
+                     $tbl_struct = $tp->parse(
+                        $tp->get_create_table($dbh, $db, $tbl));
                   };
                   if ( $EVAL_ERROR ) {
                      warn "Failed to get SHOW CREATE TABLE for $db.$tbl: "
@@ -6312,8 +6287,10 @@ sub main {
       return $event;
    };
 
+   my $json = $o->get('report-type')->{json}
+            ? {} : undef;
    # Print info (advice) about each rule that matched this query.
-   if ( $groupby eq 'none' ) {
+   if ( $groupby eq 'none' || $json ) {
       push @pipeline, sub {
          my ( %args ) = @_;
          PTDEBUG && _d('callback: print advice');
@@ -6327,6 +6304,7 @@ sub main {
             severity_count => \%severity_count,
             verbose        => $o->get('verbose'),
             report_format  => $o->get('report-format'),
+            json           => $json,
             Advisor        => $adv,
          );
          return $event;
@@ -6439,7 +6417,7 @@ sub main {
    # ########################################################################
    # Aggregate and report items for group-by reports
    # ########################################################################
-   if ( $groupby ne 'none' ) {
+   if ( $groupby ne 'none' && !$json ) {
       print_grouped_report(
          advice_queue  => \%advice_queue,
          group_by      => $groupby,
@@ -6451,7 +6429,7 @@ sub main {
    # ########################################################################
    # Create and print profile of each items note/warn/crit count.
    # ########################################################################
-   if ( keys %severity_count ) {
+   if ( keys %severity_count && !$json ) {
       eval {
          my $profile = new ReportFormatter(
             long_last_column => 1,
@@ -6482,6 +6460,8 @@ sub main {
       };
    }
 
+   print Transformers::encode_json($json), "\n" if $json;
+
    return 0;
 }
 
@@ -6497,6 +6477,7 @@ sub print_advice {
    my $adv            = $args{Advisor};
    my $seen_id        = $args{seen_id};
    my $severity_count = $args{severity_count};
+   my $json           = $args{json};
 
    my $advice   = $event->{advice};
    my $near_pos = $event->{near_pos};
@@ -6505,7 +6486,9 @@ sub print_advice {
 
    # Header
    my $query_id = $event->{query_id} || "";
-   print "\n# Query ID 0x$query_id at byte " . ($event->{pos_in_log} || 0) . "\n";
+
+   print "\n# Query ID 0x$query_id at byte " . ($event->{pos_in_log} || 0) . "\n"
+      unless $json;
 
    # New check IDs and their descriptions
    foreach my $i ( 1..$n_advice ) {
@@ -6526,9 +6509,10 @@ sub print_advice {
                   : $verbose == 2 ? "$desc[0] $desc[1]"  # fuller
                   : $verbose >  2 ? $desc                # complete
                   :                 '';                  # none
-         print "# ", uc $info->{severity}, " $rule_id $desc\n";
+         print "# ", uc $info->{severity}, " $rule_id $desc\n"
+            unless $json;
 
-         if ( $pos ) {
+         if ( $pos && !$json ) {
             my $offset = $pos > POS_CONTEXT ? $pos - POS_CONTEXT : 0;
             print "#   matches near: ",
                substr($event->{arg}, $offset, ($pos - $offset) + POS_CONTEXT),
@@ -6536,14 +6520,24 @@ sub print_advice {
          }
       }
 
+      if ( $json ) {
+         my $info_for_json = {
+            rule => $rule_id,
+            %$info
+         };
+         push @{$json->{$query_id} ||= []}, $info_for_json;
+      }
+
       $severity_count->{$query_id}->{$info->{severity}}++;
    }
 
-   # Already seen check IDs
-   print "# Also: @seen_ids\n" if scalar @seen_ids;
-
-   # The query
-   print "$event->{arg}\n";
+   if ( !$json ) {
+      # Already seen check IDs
+      print "# Also: @seen_ids\n" if scalar @seen_ids;
+   
+      # The query
+      print "$event->{arg}\n";
+   }
 
    return;
 }
@@ -6592,7 +6586,6 @@ sub print_grouped_report {
    my ($advice_queue, $groupby) = @args{@required_args};
    my $verbose = $args{verbose} || 0;
    my %seen;
-
 
    foreach my $groupby_attrib ( sort keys %$advice_queue ) {
       print "\n" . ($groupby eq 'query_id' ? "0x" : "") . $groupby_attrib;
@@ -6666,20 +6659,13 @@ pt-query-advisor - Analyze queries and advise on possible problems.
 
 Usage: pt-query-advisor [OPTION...] [FILE]
 
-pt-query-advisor analyzes queries and advises on possible problems.
-Queries are given either by specifying slowlog files, --query, or --review.
+pt-query-advisor analyzes queries and advises on possible problems. It can read
+queries from several types of log files, or you can use the --query or --review
+options.
 
-Analyze all queries in a slow log:
+To analyze all queries in a MySQL slow query log file:
 
    pt-query-advisor /path/to/slow-query.log
-
-Analyze all queires in a general log:
-
-   pt-query-advisor --type genlog mysql.log
-
-Get queries from tcpdump using pt-query-digest:
-
-   pt-query-digest --type tcpdump.txt --print --no-report | pt-query-advisor
 
 =head1 RISKS
 
@@ -6689,10 +6675,8 @@ are those created by the nature of the tool (e.g. read-only tools vs. read-write
 tools) and those created by bugs.
 
 pt-query-advisor simply reads queries and examines them, and is thus
-very low risk.
-
-At the time of this release there is a bug that may cause an infinite (or
-very long) loop when parsing very large queries.
+very low risk. At the time of this release we know of no issues that could harm
+users.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
@@ -6703,11 +6687,8 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-query-advisor examines queries and applies rules to them, trying to
-find queries that look bad according to the rules.  It reports on
-queries that match the rules, so you can find bad practices or hidden
-problems in your SQL.  By default, it accepts a MySQL slow query log
-as input.
+pt-query-advisor applies rules to queries, looking for potential problems.
+It prints a report of queries that match rules.
 
 =head1 RULES
 
@@ -6777,14 +6758,16 @@ wildcard is potentially a bug in the SQL.
 
 severity: warn
 
-SELECT without WHERE.  The SELECT statement has no WHERE clause.
+SELECT without WHERE.  The SELECT statement has no WHERE clause and could
+examine many more rows than intended.
 
 =item CLA.002
 
 severity: note
 
 ORDER BY RAND().  ORDER BY RAND() is a very inefficient way to
-retrieve a random row from the results.
+retrieve a random row from the results, because it sorts the entire result
+and then throws most of it away.
 
 =item CLA.003
 
@@ -6792,7 +6775,8 @@ severity: note
 
 LIMIT with OFFSET.  Paginating a result set with LIMIT and OFFSET is
 O(n^2) complexity, and will cause performance problems as the data
-grows larger.
+grows larger.  Pagination techniques such as bookmarked scans are much more
+efficient.
 
 =item CLA.004
 
@@ -6806,21 +6790,24 @@ query is changed.
 
 severity: warn
 
-ORDER BY constant column.
+ORDER BY constant column.  This is probably a bug in your SQL; at best it is a
+useless operation that does not change the query results.
 
 =item CLA.006
 
 severity: warn
 
-GROUP BY or ORDER BY different tables will force a temp table and filesort.
+GROUP BY or ORDER BY on different tables. This will force the use of a temporary
+table and filesort, which can be a huge performance problem and can consume
+large amounts of memory and temporary space on disk.
 
 =item CLA.007
 
 severity: warn
 
-ORDER BY different directions prevents index from being used. All tables
-in the ORDER BY clause must be either ASC or DESC, else MySQL cannot use
-an index.
+ORDER BY clauses that sort the results in different directions prevents indexes
+from being used. All expressions in the ORDER BY clause must be ordered either
+ASC or DESC so that MySQL can use an index.
 
 =item COL.001
 
@@ -6852,8 +6839,9 @@ more efficient to store IP addresses as integers.
 
 severity: warn
 
-Unquoted date/time literal.  A query such as "WHERE col<2010-02-12"
-is valid SQL but is probably a bug; the literal should be quoted.
+Unquoted date/time literal.  A query such as "WHERE col<2010-02-12" is valid SQL
+but is probably a bug, because it will be interpreted as "WHERE col<1996"; the
+literal should be quoted.
 
 =item KWR.001
 
@@ -6868,23 +6856,25 @@ result screens.
 
 severity: crit
 
-Mixing comma and ANSI joins.  Mixing comma joins and ANSI joins
-is confusing to humans, and the behavior differs between some
-MySQL versions.
+Mixing comma and ANSI joins.  Mixing comma joins and ANSI joins is confusing to
+humans, and the behavior and precedence differs between some MySQL versions,
+which can introduce bugs.
 
 =item JOI.002
 
 severity: crit
 
 A table is joined twice.  The same table appears at least twice in the
-FROM clause.
+FROM clause in a manner that can be reduced to a single access to the table.
 
 =item JOI.003
 
 severity: warn
 
-Reference to outer table column in WHERE clause prevents OUTER JOIN,
-implicitly converts to INNER JOIN.
+OUTER JOIN defeated.  The reference to an outer table column in the WHERE clause
+prevents the OUTER JOIN from returning any non-matched rows, which implicitly
+converts the query to an INNER JOIN.  This is probably a bug in the query or a
+misunderstanding of how OUTER JOIN works.
 
 =item JOI.004
 
@@ -6915,7 +6905,8 @@ non-deterministic results, depending on the query execution plan.
 
 severity: note
 
-!= is non-standard.  Use the <> operator to test for inequality.
+The != operator is non-standard.  Use the <> operator to test for inequality
+instead.
 
 =item SUB.001
 
@@ -6923,9 +6914,9 @@ severity: crit
 
 IN() and NOT IN() subqueries are poorly optimized.  MySQL executes the subquery
 as a dependent subquery for each row in the outer query.  This is a frequent
-cause of serious performance problems.  This might change version 6.0 of MySQL,
-but for versions 5.1 and older, the query should be rewritten as a JOIN or a
-LEFT OUTER JOIN, respectively.
+cause of serious performance problems.  This might improve in version 5.6 of
+MySQL, but for versions 5.1 and older, the query should be rewritten as a JOIN
+or a LEFT OUTER JOIN, respectively.
 
 =back
 
@@ -6991,11 +6982,11 @@ type: string; default: rule_id
 
 Group items in the report by this attribute.  Possible attributes are:
 
-   ATTRIBUTE GROUPS
-   ========= ==========================================================
-   rule_id   Items matching the same rule ID
-   query_id  Queries with the same ID (the same fingerprint)
-   none      No grouping, report each query and its advice individually
+  ATTRIBUTE GROUPS
+  ========= ========================================================
+  rule_id   Items matching the same rule ID
+  query_id  Queries with the same ID (the same fingerprint)
+  none      No grouping, report each query and its advice separately
 
 =item --help
 
@@ -7062,6 +7053,13 @@ Type of report format: full or compact.  In full mode, every query's
 report contains the description of the rules it matched, even if this
 information was previously displayed.  In compact mode, the repeated
 information is suppressed, and only the rule ID is displayed.
+
+=item --report-type
+
+type: Hash
+
+Alternative formats to output the report. Currently, only "json" is
+recognized -- anything else is ignored and the default behavior used.
 
 =item --review
 
@@ -7289,6 +7287,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-advisor 2.0.3
+pt-query-advisor 2.1.1
 
 =cut

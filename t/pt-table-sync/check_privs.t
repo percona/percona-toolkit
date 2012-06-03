@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 3;
+   plan tests => 2;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -47,6 +47,7 @@ my @args = ('h=127.1,P=12345,u=test_907,p=msandbox', 'P=12346,u=msandbox', qw(--
 $master_dbh->do('drop database if exists issue_907');
 $master_dbh->do('create database issue_907');
 $master_dbh->do('create table issue_907.t (i int)');
+PerconaTest::wait_for_table($slave_dbh, "issue_907.t");
 $slave_dbh->do('drop database if exists issue_907');
 $slave_dbh->do('create database issue_907');
 $slave_dbh->do('create table issue_907.t (i int)');
@@ -87,5 +88,4 @@ $master_dbh->do('DROP USER \'test_907\'@\'localhost\'');
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

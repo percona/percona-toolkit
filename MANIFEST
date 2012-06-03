@@ -12,6 +12,7 @@ bin/pt-diskstats
 bin/pt-duplicate-key-checker
 bin/pt-fifo-split
 bin/pt-find
+bin/pt-fingerprint
 bin/pt-fk-error-logger
 bin/pt-heartbeat
 bin/pt-index-usage
@@ -33,6 +34,7 @@ bin/pt-stalk
 bin/pt-summary
 bin/pt-table-checksum
 bin/pt-table-sync
+bin/pt-table-usage
 bin/pt-tcp-model
 bin/pt-trend
 bin/pt-upgrade

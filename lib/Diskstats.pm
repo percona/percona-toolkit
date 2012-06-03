@@ -818,9 +818,17 @@ sub _calc_misc_stats {
                             + $delta_for->{ms_spent_writing};
 
    if ( $number_of_ios ) {
-      $extra_stats{qtime} =
-         $delta_for->{ms_weighted} / ($number_of_ios + $delta_for->{ios_in_progress})
-            - $delta_for->{ms_spent_doing_io} / $number_of_ios;
+      my $average_ios = $number_of_ios + $delta_for->{ios_in_progress};
+      if ( $average_ios ) {
+         $extra_stats{qtime} =  $delta_for->{ms_weighted} / $average_ios
+                           - $delta_for->{ms_spent_doing_io} / $number_of_ios;
+      }
+      else {
+         PTDEBUG && _d("IOS_IN_PROGRESS is [", $delta_for->{ios_in_progress},
+                       "], and the number of ios is [", $number_of_ios,
+                       "], going to use 0 as qtime.");
+         $extra_stats{qtime} = 0;
+      }
       $extra_stats{stime}
          = $delta_for->{ms_spent_doing_io} / $number_of_ios;
    }
@@ -1031,9 +1039,7 @@ sub print_deltas {
       $Diskstats::printed_lines--;
    }
 
-   if ( $self->automatic_headers()
-         && $Diskstats::printed_lines <= @stats
-         && !$self->isa("DiskstatsGroupByAll") ) {
+   if ( $self->automatic_headers() && $Diskstats::printed_lines <= @stats ) {
       $self->force_print_header( $header, "#ts", "device" );
    }
    else {

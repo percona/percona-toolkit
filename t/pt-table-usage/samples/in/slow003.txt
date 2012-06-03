@@ -1,0 +1,3 @@
+# Time: 110422 11:28:00
+# Query_time: 0.000300 Lock_time: 0.000000  Rows_sent: 1  Rows_examined: 1
+select country.country, city.city from city join country using (country_id) where country = 'Brazil' and city like 'A%' limit 1;

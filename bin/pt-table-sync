@@ -959,7 +959,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1172,6 +1172,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -1226,7 +1228,8 @@ sub parse {
    my %final_props;
    my $opts = $self->{opts};
 
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          $given_props{$prop_key} = $prop_val;
       }
@@ -1285,12 +1288,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -1741,19 +1746,58 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
+
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
+      return;
+   }
+
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
+
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
+   }
+
+   return $href->{$key};
+}
+
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -2060,41 +2104,31 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         my $key_def = $_->{ddl};
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      PTDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {
@@ -3231,10 +3265,11 @@ sub _chunk_char {
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
-   my $q         = $self->{Quoter};
-   my $db_tbl    = $q->quote($args{db}, $args{tbl});
-   my $dbh       = $args{dbh};
-   my $chunk_col = $args{chunk_col};
+   my $q          = $self->{Quoter};
+   my $db_tbl     = $q->quote($args{db}, $args{tbl});
+   my $dbh        = $args{dbh};
+   my $chunk_col  = $args{chunk_col};
+   my $qchunk_col = $q->quote($args{chunk_col});
    my $row;
    my $sql;
 
@@ -3292,9 +3327,9 @@ sub _chunk_char {
          $ins_char_sth->execute($char_code);
       }
 
-      $sql = "SELECT `$chunk_col` FROM $tmp_db_tbl "
-           . "WHERE `$chunk_col` BETWEEN ? AND ? "
-           . "ORDER BY `$chunk_col`";
+      $sql = "SELECT $qchunk_col FROM $tmp_db_tbl "
+           . "WHERE $qchunk_col BETWEEN ? AND ? "
+           . "ORDER BY $qchunk_col";
       PTDEBUG && _d($dbh, $sql);
       my $sel_char_sth = $dbh->prepare($sql);
       $sel_char_sth->execute($min_col, $max_col);
@@ -3309,9 +3344,9 @@ sub _chunk_char {
    PTDEBUG && _d("Base", $base, "chars:", @chars);
 
 
-   $sql = "SELECT MAX(LENGTH($chunk_col)) FROM $db_tbl "
+   $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
         . ($args{where} ? "WHERE $args{where} " : "") 
-        . "ORDER BY `$chunk_col`";
+        . "ORDER BY $qchunk_col";
    PTDEBUG && _d($dbh, $sql);
    $row = $dbh->selectrow_arrayref($sql);
    my $max_col_len = $row->[0];
@@ -3345,7 +3380,7 @@ sub _chunk_char {
    };
 
    return (
-      col         => $q->quote($chunk_col),
+      col         => $qchunk_col,
       start_point => 0,
       end_point   => $n_values,
       interval    => $interval,
@@ -4216,10 +4251,9 @@ sub find_replication_differences {
       . "FROM $table "
       . "WHERE master_cnt <> this_cnt OR master_crc <> this_crc "
       . "OR ISNULL(master_crc) <> ISNULL(this_crc)";
-
    PTDEBUG && _d($sql);
    my $diffs = $dbh->selectall_arrayref($sql, { Slice => {} });
-   return @$diffs;
+   return $diffs;
 }
 
 sub _d {
@@ -5444,11 +5478,12 @@ sub lock_and_wait {
 
    eval {
       if ( my $timeout = $args{wait} ) {
-         my $wait  = $args{wait_retry_args}->{wait}  || 10;
+         my $ms    = $self->{MasterSlave};
          my $tries = $args{wait_retry_args}->{tries} || 3;
+         my $wait;
          $self->{Retry}->retry(
-            wait  => sub { sleep $wait; },
             tries => $tries,
+            wait  => sub { sleep $args{wait_retry_args}->{wait}  || 10 },
             try   => sub {
                my ( %args ) = @_;
 
@@ -5456,12 +5491,18 @@ sub lock_and_wait {
                   warn "Retrying MASTER_POS_WAIT() for --wait $timeout...";
                }
 
-               my $ms   = $self->{MasterSlave};
-               my $wait = $ms->wait_for_master(
+               $wait = $ms->wait_for_master(
                   master_status => $ms->get_master_status($src->{misc_dbh}),
                   slave_dbh     => $dst->{dbh},
                   timeout       => $timeout,
                );
+               if ( defined $wait->{result} && $wait->{result} != -1 ) {
+                  return;  # slave caught up
+               }
+               die; # call fail
+            },
+            fail => sub {
+               my (%args) = @_;
                if ( !defined $wait->{result} ) {
                   my $msg;
                   if ( $wait->{waited}  ) {
@@ -5476,20 +5517,14 @@ sub lock_and_wait {
                      $msg .= "  Sleeping $wait seconds then retrying "
                            . ($tries - $args{tryno}) . " more times.";
                   }
-                  warn $msg;
-                  return;
+                  warn "$msg\n";
+                  return 1; # call wait, call try
                }
                elsif ( $wait->{result} == -1 ) {
-                  die "Slave did not catch up to its master after waiting "
-                     . "$timeout seconds with MASTER_POS_WAIT.  Try inceasing "
-                     . "the --wait time, or disable this feature by specifying "
-                     . "--wait 0.";
-               }
-               else {
-                  return $result;  # slave caught up
+                  return 0;  # call final_fail
                }
             },
-            on_failure => sub {
+            final_fail => sub {
                die "Slave did not catch up to its master after $tries attempts "
                   . "of waiting $timeout seconds with MASTER_POS_WAIT.  "
                   . "Check that the slave is running, increase the --wait "
@@ -5602,23 +5637,21 @@ sub generate_asc_stmt {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($tbl_struct, $index) = @args{@required_args};
-   my @cols = $args{cols}  ? @{$args{cols}} : @{$tbl_struct->{cols}};
+   my @cols = $args{cols} ? @{$args{cols}} : @{$tbl_struct->{cols}};
    my $q    = $self->{Quoter};
 
    die "Index '$index' does not exist in table"
       unless exists $tbl_struct->{keys}->{$index};
+   PTDEBUG && _d('Will ascend index', $index);  
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
-   my @asc_slice;
-
-   @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
-   PTDEBUG && _d('Will ascend index', $index);
-   PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
    if ( $args{asc_first} ) {
       @asc_cols = $asc_cols[0];
       PTDEBUG && _d('Ascending only first column');
    }
+   PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 
+   my @asc_slice;
    my %col_posn = do { my $i = 0; map { $_ => $i++ } @cols };
    foreach my $col ( @asc_cols ) {
       if ( !exists $col_posn{$col} ) {
@@ -5893,6 +5926,9 @@ sub get_slaves {
          dsn_table_dsn => $dsn_table_dsn,
       );
    }
+   elsif ( $method =~ m/none/i ) {
+      PTDEBUG && _d('Not getting to slaves');
+   }
    else {
       die "Invalid --recursion-method: $method.  Valid values are: "
         . "dsn=DSN, hosts, or processlist.\n";
@@ -5906,6 +5942,11 @@ sub recurse_to_slaves {
    $level ||= 0;
    my $dp   = $args->{dsn_parser};
    my $dsn  = $args->{dsn};
+
+   if ( lc($args->{method} || '') eq 'none' ) {
+      PTDEBUG && _d('Not recursing to slaves');
+      return;
+   }
 
    my $dbh;
    eval {
@@ -6570,10 +6611,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -6584,13 +6626,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -6601,18 +6643,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -6715,292 +6760,427 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# SchemaIterator r7141
-# Don't update this package!
+# SchemaIterator package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/SchemaIterator.pm
+#   t/lib/SchemaIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
 package SchemaIterator;
 
 use strict;
 use warnings FATAL => 'all';
-
 use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+my $open_comment = qr{/\*!\d{5} };
+my $tbl_name     = qr{
+   CREATE\s+
+   (?:TEMPORARY\s+)?
+   TABLE\s+
+   (?:IF NOT EXISTS\s+)?
+   ([^\(]+)
+}x;
+
 
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter) ) {
+   my @required_args = qw(OptionParser TableParser Quoter);
+   foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
+
+   my ($file_itr, $dbh) = @args{qw(file_itr dbh)};
+   die "I need either a dbh or file_itr argument"
+      if (!$dbh && !$file_itr) || ($dbh && $file_itr);
+
+   my %resume;
+   if ( my $table = $args{resume} ) {
+      PTDEBUG && _d('Will resume from or after', $table);
+      my ($db, $tbl) = $args{Quoter}->split_unquote($table);
+      die "Resume table must be database-qualified: $table"
+         unless $db && $tbl;
+      $resume{db}  = $db;
+      $resume{tbl} = $tbl;
+   }
+
    my $self = {
       %args,
-      filter => undef,
-      dbs    => [],
+      resume  => \%resume,
+      filters => _make_filters(%args),
    };
+
    return bless $self, $class;
 }
 
-sub make_filter {
-   my ( $self, $o ) = @_;
-   my @lines = (
-      'sub {',
-      '   my ( $dbh, $db, $tbl ) = @_;',
-      '   my $engine = undef;',
-   );
-
-
-   my @permit_dbs = _make_filter('unless', '$db', $o->get('databases'))
-      if $o->has('databases');
-   my @reject_dbs = _make_filter('if', '$db', $o->get('ignore-databases'))
-      if $o->has('ignore-databases');
-   my @dbs_regex;
-   if ( $o->has('databases-regex') && (my $p = $o->get('databases-regex')) ) {
-      push @dbs_regex, "      return 0 unless \$db && (\$db =~ m/$p/o);";
-   }
-   my @reject_dbs_regex;
-   if ( $o->has('ignore-databases-regex')
-        && (my $p = $o->get('ignore-databases-regex')) ) {
-      push @reject_dbs_regex, "      return 0 if \$db && (\$db =~ m/$p/o);";
-   }
-   if ( @permit_dbs || @reject_dbs || @dbs_regex || @reject_dbs_regex ) {
-      push @lines,
-         '   if ( $db ) {',
-            (@permit_dbs        ? @permit_dbs       : ()),
-            (@reject_dbs        ? @reject_dbs       : ()),
-            (@dbs_regex         ? @dbs_regex        : ()),
-            (@reject_dbs_regex  ? @reject_dbs_regex : ()),
-         '   }';
-   }
-
-   if ( $o->has('tables') || $o->has('ignore-tables')
-        || $o->has('ignore-tables-regex') ) {
-
-      my $have_qtbl       = 0;
-      my $have_only_qtbls = 0;
-      my %qtbls;
-
-      my @permit_tbls;
-      my @permit_qtbls;
-      my %permit_qtbls;
-      if ( $o->get('tables') ) {
-         my %tbls;
-         map {
-            if ( $_ =~ m/\./ ) {
-               $permit_qtbls{$_} = 1;
-            }
-            else {
-               $tbls{$_} = 1;
-            }
-         } keys %{ $o->get('tables') };
-         @permit_tbls  = _make_filter('unless', '$tbl', \%tbls);
-         @permit_qtbls = _make_filter('unless', '$qtbl', \%permit_qtbls);
-
-         if ( @permit_qtbls ) {
-            push @lines,
-               '   my $qtbl   = ($db ? "$db." : "") . ($tbl ? $tbl : "");';
-            $have_qtbl = 1;
-         }
-      }
-
-      my @reject_tbls;
-      my @reject_qtbls;
-      my %reject_qtbls;
-      if ( $o->get('ignore-tables') ) {
-         my %tbls;
-         map {
-            if ( $_ =~ m/\./ ) {
-               $reject_qtbls{$_} = 1;
-            }
-            else {
-               $tbls{$_} = 1;
-            }
-         } keys %{ $o->get('ignore-tables') };
-         @reject_tbls= _make_filter('if', '$tbl', \%tbls);
-         @reject_qtbls = _make_filter('if', '$qtbl', \%reject_qtbls);
-
-         if ( @reject_qtbls && !$have_qtbl ) {
-            push @lines,
-               '   my $qtbl   = ($db ? "$db." : "") . ($tbl ? $tbl : "");';
-         }
-      }
-
-      if ( keys %permit_qtbls  && !@permit_dbs ) {
-         my $dbs = {};
-         map {
-            my ($db, undef) = split(/\./, $_);
-            $dbs->{$db} = 1;
-         } keys %permit_qtbls;
-         PTDEBUG && _d('Adding restriction "--databases',
-               (join(',', keys %$dbs) . '"'));
-         if ( keys %$dbs ) {
-            $o->set('databases', $dbs);
-            return $self->make_filter($o);
-         }
-      }
-
-      my @tbls_regex;
-      if ( $o->has('tables-regex') && (my $p = $o->get('tables-regex')) ) {
-         push @tbls_regex, "      return 0 unless \$tbl && (\$tbl =~ m/$p/o);";
-      }
-      my @reject_tbls_regex;
-      if ( $o->has('ignore-tables-regex')
-           && (my $p = $o->get('ignore-tables-regex')) ) {
-         push @reject_tbls_regex,
-            "      return 0 if \$tbl && (\$tbl =~ m/$p/o);";
-      }
-
-      my @get_eng;
-      my @permit_engs;
-      my @reject_engs;
-      if ( ($o->has('engines') && $o->get('engines'))
-           || ($o->has('ignore-engines') && $o->get('ignore-engines')) ) {
-         push @get_eng,
-            '      my $sql = "SHOW TABLE STATUS "',
-            '              . ($db ? "FROM `$db`" : "")',
-            '              . " LIKE \'$tbl\'";',
-            '      PTDEBUG && _d($sql);',
-            '      eval {',
-            '         $engine = $dbh->selectrow_hashref($sql)->{engine};',
-            '      };',
-            '      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);',
-            '      PTDEBUG && _d($tbl, "uses engine", $engine);',
-            '      $engine = lc $engine if $engine;',
-         @permit_engs
-            = _make_filter('unless', '$engine', $o->get('engines'), 1);
-         @reject_engs
-            = _make_filter('if', '$engine', $o->get('ignore-engines'), 1)
-      }
-
-      if ( @permit_tbls || @permit_qtbls || @reject_tbls || @tbls_regex
-           || @reject_tbls_regex || @permit_engs || @reject_engs ) {
-         push @lines,
-            '   if ( $tbl ) {',
-               (@permit_tbls       ? @permit_tbls        : ()),
-               (@reject_tbls       ? @reject_tbls        : ()),
-               (@tbls_regex        ? @tbls_regex         : ()),
-               (@reject_tbls_regex ? @reject_tbls_regex  : ()),
-               (@permit_qtbls      ? @permit_qtbls       : ()),
-               (@reject_qtbls      ? @reject_qtbls       : ()),
-               (@get_eng           ? @get_eng            : ()),
-               (@permit_engs       ? @permit_engs        : ()),
-               (@reject_engs       ? @reject_engs        : ()),
-            '   }';
-      }
-   }
-
-   push @lines,
-      '   PTDEBUG && _d(\'Passes filters:\', $db, $tbl, $engine, $dbh);',
-      '   return 1;',  '}';
-
-   my $code = join("\n", @lines);
-   PTDEBUG && _d('filter sub:', $code);
-   my $filter_sub= eval $code
-      or die "Error compiling subroutine code:\n$code\n$EVAL_ERROR";
-
-   return $filter_sub;
-}
-
-sub set_filter {
-   my ( $self, $filter_sub ) = @_;
-   $self->{filter} = $filter_sub;
-   PTDEBUG && _d('Set filter sub');
-   return;
-}
-
-sub get_db_itr {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh);
+sub _make_filters {
+   my ( %args ) = @_;
+   my @required_args = qw(OptionParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh) = @args{@required_args};
+   my ($o, $q) = @args{@required_args};
 
-   my $filter = $self->{filter};
-   my @dbs;
-   eval {
+   my %filters;
+
+
+   my @simple_filters = qw(
+      databases         tables         engines
+      ignore-databases  ignore-tables  ignore-engines);
+   FILTER:
+   foreach my $filter ( @simple_filters ) {
+      if ( $o->has($filter) ) {
+         my $objs = $o->get($filter);
+         next FILTER unless $objs && scalar keys %$objs;
+         my $is_table = $filter =~ m/table/ ? 1 : 0;
+         foreach my $obj ( keys %$objs ) {
+            die "Undefined value for --$filter" unless $obj;
+            $obj = lc $obj;
+            if ( $is_table ) {
+               my ($db, $tbl) = $q->split_unquote($obj);
+               $db ||= '*';
+               PTDEBUG && _d('Filter', $filter, 'value:', $db, $tbl);
+               $filters{$filter}->{$tbl} = $db;
+            }
+            else { # database
+               PTDEBUG && _d('Filter', $filter, 'value:', $obj);
+               $filters{$filter}->{$obj} = 1;
+            }
+         }
+      }
+   }
+
+   my @regex_filters = qw(
+      databases-regex         tables-regex
+      ignore-databases-regex  ignore-tables-regex);
+   REGEX_FILTER:
+   foreach my $filter ( @regex_filters ) {
+      if ( $o->has($filter) ) {
+         my $pat = $o->get($filter);
+         next REGEX_FILTER unless $pat;
+         $filters{$filter} = qr/$pat/;
+         PTDEBUG && _d('Filter', $filter, 'value:', $filters{$filter});
+      }
+   }
+
+   PTDEBUG && _d('Schema object filters:', Dumper(\%filters));
+   return \%filters;
+}
+
+sub next {
+   my ( $self ) = @_;
+
+   if ( !$self->{initialized} ) {
+      $self->{initialized} = 1;
+      if ( $self->{resume}->{tbl}
+           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+         PTDEBUG && _d('Will resume after',
+            join('.', @{$self->{resume}}{qw(db tbl)}));
+         $self->{resume}->{after} = 1;
+      }
+   }
+
+   my $schema_obj;
+   if ( $self->{file_itr} ) {
+      $schema_obj= $self->_iterate_files();
+   }
+   else { # dbh
+      $schema_obj= $self->_iterate_dbh();
+   }
+
+   if ( $schema_obj ) {
+      if ( my $schema = $self->{Schema} ) {
+         $schema->add_schema_object($schema_obj);
+      }
+      PTDEBUG && _d('Next schema object:',
+         $schema_obj->{db}, $schema_obj->{tbl});
+   }
+
+   return $schema_obj;
+}
+
+sub _iterate_files {
+   my ( $self ) = @_;
+
+   if ( !$self->{fh} ) {
+      my ($fh, $file) = $self->{file_itr}->();
+      if ( !$fh ) {
+         PTDEBUG && _d('No more files to iterate');
+         return;
+      }
+      $self->{fh}   = $fh;
+      $self->{file} = $file;
+   }
+   my $fh = $self->{fh};
+   PTDEBUG && _d('Getting next schema object from', $self->{file});
+
+   local $INPUT_RECORD_SEPARATOR = '';
+   CHUNK:
+   while (defined(my $chunk = <$fh>)) {
+      if ($chunk =~ m/Database: (\S+)/) {
+         my $db = $1; # XXX
+         $db =~ s/^`//;  # strip leading `
+         $db =~ s/`$//;  # and trailing `
+         if ( $self->database_is_allowed($db)
+              && $self->_resume_from_database($db) ) {
+            $self->{db} = $db;
+         }
+      }
+      elsif ($self->{db} && $chunk =~ m/CREATE TABLE/) {
+         if ($chunk =~ m/DROP VIEW IF EXISTS/) {
+            PTDEBUG && _d('Table is a VIEW, skipping');
+            next CHUNK;
+         }
+
+         my ($tbl) = $chunk =~ m/$tbl_name/;
+         $tbl      =~ s/^\s*`//;
+         $tbl      =~ s/`\s*$//;
+         if ( $self->_resume_from_table($tbl)
+              && $self->table_is_allowed($self->{db}, $tbl) ) {
+            my ($ddl) = $chunk =~ m/^(?:$open_comment)?(CREATE TABLE.+?;)$/ms;
+            if ( !$ddl ) {
+               warn "Failed to parse CREATE TABLE from\n" . $chunk;
+               next CHUNK;
+            }
+            $ddl =~ s/ \*\/;\Z/;/;  # remove end of version comment
+            my $tbl_struct = $self->{TableParser}->parse($ddl);
+            if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
+               return {
+                  db         => $self->{db},
+                  tbl        => $tbl,
+                  name       => $self->{Quoter}->quote($self->{db}, $tbl),
+                  ddl        => $ddl,
+                  tbl_struct => $tbl_struct,
+               };
+            }
+         }
+      }
+   }  # CHUNK
+
+   PTDEBUG && _d('No more schema objects in', $self->{file});
+   close $self->{fh};
+   $self->{fh} = undef;
+
+   return $self->_iterate_files();
+}
+
+sub _iterate_dbh {
+   my ( $self ) = @_;
+   my $q   = $self->{Quoter};
+   my $tp  = $self->{TableParser};
+   my $dbh = $self->{dbh};
+   PTDEBUG && _d('Getting next schema object from dbh', $dbh);
+
+   if ( !defined $self->{dbs} ) {
       my $sql = 'SHOW DATABASES';
       PTDEBUG && _d($sql);
-      @dbs =  grep {
-         my $ok = $filter ? $filter->($dbh, $_, undef) : 1;
-         $ok = 0 if $_ =~ m/information_schema|performance_schema|lost\+found/;
-         $ok;
-      } @{ $dbh->selectcol_arrayref($sql) };
+      my @dbs = grep { $self->database_is_allowed($_) }
+                @{$dbh->selectcol_arrayref($sql)};
       PTDEBUG && _d('Found', scalar @dbs, 'databases');
-   };
-
-   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-   my $iterator = sub {
-      return shift @dbs;
-   };
-
-   if (wantarray) {
-      return ($iterator, scalar @dbs);
+      $self->{dbs} = \@dbs;
    }
-   else {
-      return $iterator;
+
+   if ( !$self->{db} ) {
+      do {
+         $self->{db} = shift @{$self->{dbs}};
+      } until $self->_resume_from_database($self->{db});
+      PTDEBUG && _d('Next database:', $self->{db});
+      return unless $self->{db};
    }
+
+   if ( !defined $self->{tbls} ) {
+      my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM ' . $q->quote($self->{db});
+      PTDEBUG && _d($sql);
+      my @tbls = map {
+         $_->[0];  # (tbl, type)
+      }
+      grep {
+         my ($tbl, $type) = @$_;
+         (!$type || ($type ne 'VIEW'))
+         && $self->_resume_from_table($tbl)
+         && $self->table_is_allowed($self->{db}, $tbl);
+      }
+      @{$dbh->selectall_arrayref($sql)};
+      PTDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
+      $self->{tbls} = \@tbls;
+   }
+
+   while ( my $tbl = shift @{$self->{tbls}} ) {
+      my $ddl        = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $tbl_struct = $tp->parse($ddl);
+      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
+         return {
+            db         => $self->{db},
+            tbl        => $tbl,
+            name       => $q->quote($self->{db}, $tbl),
+            ddl        => $ddl,
+            tbl_struct => $tbl_struct,
+         };
+      }
+   }
+
+   PTDEBUG && _d('No more tables in database', $self->{db});
+   $self->{db}   = undef;
+   $self->{tbls} = undef;
+
+   return $self->_iterate_dbh();
 }
 
-sub get_tbl_itr {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(dbh db);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($dbh, $db, $views) = @args{@required_args, 'views'};
+sub database_is_allowed {
+   my ( $self, $db ) = @_;
+   die "I need a db argument" unless $db;
 
-   my $filter = $self->{filter};
-   my @tbls;
-   if ( $db ) {
-      eval {
-         my $sql = 'SHOW /*!50002 FULL*/ TABLES FROM '
-                 . $self->{Quoter}->quote($db);
-         PTDEBUG && _d($sql);
-         @tbls = map {
-            $_->[0]
-         }
-         grep {
-            my ($tbl, $type) = @$_;
-            my $ok = $filter ? $filter->($dbh, $db, $tbl) : 1;
-            if ( !$views ) {
-               $ok = 0 if ($type || '') eq 'VIEW';
-            }
-            $ok;
-         }
-         @{ $dbh->selectall_arrayref($sql) };
-         PTDEBUG && _d('Found', scalar @tbls, 'tables in', $db);
-      };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-   }
-   else {
-      PTDEBUG && _d('No db given so no tables');
+   $db = lc $db;
+
+   my $filter = $self->{filters};
+
+   if ( $db =~ m/information_schema|performance_schema|lost\+found/ ) {
+      PTDEBUG && _d('Database', $db, 'is a system database, ignoring');
+      return 0;
    }
 
-   my $iterator = sub {
-      return shift @tbls;
-   };
+   if ( $self->{filters}->{'ignore-databases'}->{$db} ) {
+      PTDEBUG && _d('Database', $db, 'is in --ignore-databases list');
+      return 0;
+   }
 
-   if ( wantarray ) {
-      return ($iterator, scalar @tbls);
+   if ( $filter->{'ignore-databases-regex'}
+        && $db =~ $filter->{'ignore-databases-regex'} ) {
+      PTDEBUG && _d('Database', $db, 'matches --ignore-databases-regex');
+      return 0;
    }
-   else {
-      return $iterator;
+
+   if ( $filter->{'databases'}
+        && !$filter->{'databases'}->{$db} ) {
+      PTDEBUG && _d('Database', $db, 'is not in --databases list, ignoring');
+      return 0;
    }
+
+   if ( $filter->{'databases-regex'}
+        && $db !~ $filter->{'databases-regex'} ) {
+      PTDEBUG && _d('Database', $db, 'does not match --databases-regex, ignoring');
+      return 0;
+   }
+
+   return 1;
 }
 
-sub _make_filter {
-   my ( $cond, $var_name, $objs, $lc ) = @_;
-   my @lines;
-   if ( scalar keys %$objs ) {
-      my $test = join(' || ',
-         map { "$var_name eq '" . ($lc ? lc $_ : $_) ."'" } keys %$objs);
-      push @lines, "      return 0 $cond $var_name && ($test);",
+sub table_is_allowed {
+   my ( $self, $db, $tbl ) = @_;
+   die "I need a db argument"  unless $db;
+   die "I need a tbl argument" unless $tbl;
+
+   $db  = lc $db;
+   $tbl = lc $tbl;
+
+   my $filter = $self->{filters};
+
+   if ( $db eq 'mysql' && ($tbl eq 'general_log' || $tbl eq 'slow_log') ) {
+      return 0;
    }
-   return @lines;
+
+   if ( $filter->{'ignore-tables'}->{$tbl}
+        && ($filter->{'ignore-tables'}->{$tbl} eq '*'
+            || $filter->{'ignore-tables'}->{$tbl} eq $db) ) {
+      PTDEBUG && _d('Table', $tbl, 'is in --ignore-tables list');
+      return 0;
+   }
+
+   if ( $filter->{'ignore-tables-regex'}
+        && $tbl =~ $filter->{'ignore-tables-regex'} ) {
+      PTDEBUG && _d('Table', $tbl, 'matches --ignore-tables-regex');
+      return 0;
+   }
+
+   if ( $filter->{'tables'}
+        && !$filter->{'tables'}->{$tbl} ) { 
+      PTDEBUG && _d('Table', $tbl, 'is not in --tables list, ignoring');
+      return 0;
+   }
+
+   if ( $filter->{'tables-regex'}
+        && $tbl !~ $filter->{'tables-regex'} ) {
+      PTDEBUG && _d('Table', $tbl, 'does not match --tables-regex, ignoring');
+      return 0;
+   }
+
+   if ( $filter->{'tables'}
+        && $filter->{'tables'}->{$tbl}
+        && $filter->{'tables'}->{$tbl} ne '*'
+        && $filter->{'tables'}->{$tbl} ne $db ) {
+      PTDEBUG && _d('Table', $tbl, 'is only allowed in database',
+         $filter->{'tables'}->{$tbl});
+      return 0;
+   }
+
+   return 1;
+}
+
+sub engine_is_allowed {
+   my ( $self, $engine ) = @_;
+
+   if ( !$engine ) {
+      PTDEBUG && _d('No engine specified; allowing the table');
+      return 1;
+   }
+
+   $engine = lc $engine;
+
+   my $filter = $self->{filters};
+
+   if ( $filter->{'ignore-engines'}->{$engine} ) {
+      PTDEBUG && _d('Engine', $engine, 'is in --ignore-databases list');
+      return 0;
+   }
+
+   if ( $filter->{'engines'}
+        && !$filter->{'engines'}->{$engine} ) {
+      PTDEBUG && _d('Engine', $engine, 'is not in --engines list, ignoring');
+      return 0;
+   }
+
+   return 1;
+}
+
+sub _resume_from_database {
+   my ($self, $db) = @_;
+
+   return 1 unless $self->{resume}->{db};
+
+   if ( $db eq $self->{resume}->{db} ) {
+      PTDEBUG && _d('At resume db', $db);
+      delete $self->{resume}->{db};
+      return 1;
+   }
+
+   return 0;
+}
+
+sub _resume_from_table {
+   my ($self, $tbl) = @_;
+
+   return 1 unless $self->{resume}->{tbl};
+
+   if ( $tbl eq $self->{resume}->{tbl} ) {
+      if ( !$self->{resume}->{after} ) {
+         PTDEBUG && _d('Resuming from table', $tbl);
+         delete $self->{resume}->{tbl};
+         return 1;
+      }
+      else {
+         PTDEBUG && _d('Resuming after table', $tbl);
+         delete $self->{resume}->{tbl};
+      }
+   }
+
+   return 0;
 }
 
 sub _d {
@@ -7012,7 +7192,7 @@ sub _d {
 }
 
 1;
-
+}
 # ###########################################################################
 # End SchemaIterator package
 # ###########################################################################
@@ -7299,48 +7479,42 @@ sub new {
 
 sub retry {
    my ( $self, %args ) = @_;
-   my @required_args = qw(try wait);
+   my @required_args = qw(try fail final_fail);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    };
-   my ($try, $wait) = @args{@required_args};
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
    my $tries = $args{tries} || 3;
 
+   my $last_error;
    my $tryno = 0;
+   TRY:
    while ( ++$tryno <= $tries ) {
-      PTDEBUG && _d("Retry", $tryno, "of", $tries);
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
       my $result;
       eval {
          $result = $try->(tryno=>$tryno);
       };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
 
-      if ( defined $result ) {
-         PTDEBUG && _d("Try code succeeded");
-         if ( my $on_success = $args{on_success} ) {
-            PTDEBUG && _d("Calling on_success code");
-            $on_success->(tryno=>$tryno, result=>$result);
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
          }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
          return $result;
       }
-
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d("Try code died:", $EVAL_ERROR);
-         die $EVAL_ERROR unless $args{retry_on_die};
-      }
-
-      if ( $tryno < $tries ) {
-         PTDEBUG && _d("Try code failed, calling wait code");
-         $wait->(tryno=>$tryno);
-      }
    }
 
-   PTDEBUG && _d("Try code did not succeed");
-   if ( my $on_failure = $args{on_failure} ) {
-      PTDEBUG && _d("Calling on_failure code");
-      $on_failure->();
-   }
-
-   return;
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
 }
 
 sub _d {
@@ -7816,11 +7990,16 @@ sub sync_via_replication {
       tbl      => undef,  # set later
    };
 
-   # Filters for --databases and --tables.  We have to do these manually
-   # since we don't use MySQLFind for --replicate.
-   my $databases = $o->get('databases');
-   my $tables    = $o->get('tables');
+   # Used to filter which tables are synced.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1002365
+   my $schema_iter = new SchemaIterator(
+      dbh          => $src->{dbh},
+      OptionParser => $o,
+      TableParser  => $args{TableParser},
+      Quoter       => $args{Quoter},
+   );
 
+   my %skip_table;
    my $exit_status = 0;
 
    # Connect to the master and treat it as the source, then find
@@ -7836,30 +8015,39 @@ sub sync_via_replication {
 
       # First, check that the master (source) has no discrepancies itself,
       # and ignore tables that do.
-      my %skip_table;
-      map { $skip_table{$_->{db}}->{$_->{tbl}}++ }
-         $checksum->find_replication_differences(
-            $src->{dbh}, $o->get('replicate'));
+      my $src_diffs = $checksum->find_replication_differences(
+         $src->{dbh}, $o->get('replicate'));
+      map { $skip_table{lc $_->{db}}->{lc $_->{tbl}}++ } @$src_diffs;
 
       # Now check the slave for differences and sync them if necessary.
-      my @diffs =  filter_diffs(
-         \%skip_table,
-         $databases,
-         $tables,
-         $checksum->find_replication_differences(
-            $dst->{dbh}, $o->get('replicate'))
+      my $dst_diffs = $checksum->find_replication_differences(
+         $dst->{dbh}, $o->get('replicate'));
+      my $diffs = filter_diffs(
+         diffs          => $dst_diffs,
+         SchemaIterator => $schema_iter,
+         skip_table     => \%skip_table,
       );
 
       if ( $o->get('verbose') ) {
-         print_header("# Syncing via replication " . $dp->as_string($dst->{dsn})
+         print_header("# Syncing via replication " .$dp->as_string($dst->{dsn})
             . ($o->get('dry-run') ?
                ' in dry-run mode, without accessing or comparing data' : ''));
       }
 
-      if ( @diffs ) {
+      if ( $diffs && scalar @$diffs ) {
          lock_server(src => $src, dst => $dst, %args);
 
-         foreach my $diff ( @diffs ) {
+         foreach my $diff ( @$diffs ) {
+            # Clear the tbl_struct if this is a new table.  The tbl_struct
+            # is fetched and parsed in ok_to_sync() if not set.  We only
+            # need to set it once per table to avoid doing this for every
+            # diff in the same table.
+            # https://bugs.launchpad.net/percona-toolkit/+bug/1003014
+            if (   ($src->{db}  || '') ne $diff->{db}
+                || ($src->{tbl} || '') ne $diff->{tbl} ) {
+               PTDEBUG && _d('New table:', $diff->{db}, $diff->{tbl});
+               $src->{tbl_struct} = undef;
+            }
             $src->{db}  = $dst->{db}  = $diff->{db};
             $src->{tbl} = $dst->{tbl} = $diff->{tbl};
 
@@ -7884,7 +8072,6 @@ sub sync_via_replication {
    # The DSN is the master.  Connect to each slave, find differences,
    # then sync them.
    else {
-      my %skip_table;
       $ms->recurse_to_slaves(
          {  dbh        => $src->{dbh},
             dsn        => $src->{dsn},
@@ -7892,20 +8079,20 @@ sub sync_via_replication {
             recurse    => 1,
             callback   => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
-               my @diffs = $checksum
-                  ->find_replication_differences($dbh, $o->get('replicate'));
+               my $all_diffs = $checksum->find_replication_differences(
+                  $dbh, $o->get('replicate'));
                if ( !$level ) {
                   # This is the master; don't sync any tables that are wrong
                   # here, for obvious reasons.
-                  map { $skip_table{$_->{db}}->{$_->{tbl}}++ } @diffs;
+                  map { $skip_table{lc $_->{db}}->{lc $_->{tbl}}++ }
+                     @$all_diffs;
                }
                else {
                   # This is a slave.
-                  @diffs = filter_diffs(
-                     \%skip_table,
-                     $databases,
-                     $tables,
-                     @diffs
+                  my $diffs = filter_diffs(
+                     diffs          => $all_diffs,
+                     SchemaIterator => $schema_iter,
+                     skip_table     => \%skip_table,
                   );
 
                   if ( $o->get('verbose') ) {
@@ -7917,7 +8104,7 @@ sub sync_via_replication {
                            : ''));
                   }
 
-                  if ( @diffs ) {
+                  if ( $diffs && scalar @$diffs ) {
                      my $dst = {
                         dsn      => $dsn,
                         dbh      => $dbh,
@@ -7928,7 +8115,15 @@ sub sync_via_replication {
 
                      lock_server(src => $src, dst => $dst, %args);
 
-                     foreach my $diff ( @diffs ) {
+                     foreach my $diff ( @$diffs ) {
+                        # Clear the tbl_struct if this is a new table.
+                        # See the same code block above.
+                        if (   ($src->{db}  || '') ne $diff->{db}
+                            || ($src->{tbl} || '') ne $diff->{tbl} ) {
+                           PTDEBUG && _d('New table:',
+                              $diff->{db}, $diff->{tbl});
+                           $src->{tbl_struct} = undef;
+                        }
                         $src->{db}  = $dst->{db}  = $diff->{db};
                         $src->{tbl} = $dst->{tbl} = $diff->{tbl};
 
@@ -8001,27 +8196,20 @@ sub sync_all {
       tbl      => undef,  # set later
    };
 
-   my $si = new SchemaIterator(
-      Quoter => $args{Quoter},
+   my $schema_iter = new SchemaIterator(
+      dbh          => $src->{dbh},
+      OptionParser => $o,
+      TableParser  => $args{TableParser},
+      Quoter       => $args{Quoter},
    );
-   $si->set_filter($si->make_filter($o));
 
    # Make a list of all dbs.tbls on the source.  It's more efficient this
    # way because it avoids open/closing a dbh for each tbl and dsn, unless
    # we pre-opened the dsn.  It would also cause confusing verbose output.
    my @dbs_tbls;
-   my $next_db = $si->get_db_itr(dbh => $src->{dbh});
-   while ( my $db = $next_db->() ) {
-      PTDEBUG && _d('Getting tables from', $db);
-      my $next_tbl = $si->get_tbl_itr(
-         dbh   => $src->{dbh},
-         db    => $db,
-         views => 0,
-      );
-      while ( my $tbl = $next_tbl->() ) {
-         PTDEBUG && _d('Got table', $tbl);
-         push @dbs_tbls, { db => $db, tbl => $tbl };
-      }
+   while ( my $tbl = $schema_iter->next() ) {
+      PTDEBUG && _d('Got table', $tbl->{db}, $tbl->{tbl});
+      push @dbs_tbls, $tbl;
    }
 
    my $exit_status = 0;
@@ -8043,6 +8231,7 @@ sub sync_all {
       lock_server(src => $src, dst => $dst, %args);
 
       foreach my $db_tbl ( @dbs_tbls ) {
+         $src->{tbl_struct} = $db_tbl->{tbl_struct};
          $src->{db}  = $dst->{db}  = $db_tbl->{db};
          $src->{tbl} = $dst->{tbl} = $db_tbl->{tbl};
 
@@ -8189,8 +8378,9 @@ sub sync_a_table {
       $start_ts = get_server_time($src->{dbh}) if $o->get('verbose');
 
       # This will either die if there's a problem or return the tbl struct.
-      my $tbl_struct = ok_to_sync($src, $dst, %args);
-      
+      ok_to_sync($src, $dst, %args);
+      my $tbl_struct = $src->{tbl_struct};
+
       if ( my $diff = $args{diff} ) {
          PTDEBUG && _d('Converting checksum diff to WHERE:', Dumper($diff));
          $args{where} = diff_where(
@@ -8563,35 +8753,30 @@ sub ok_to_sync {
    }
    my ($src, $dst, $dp, $q, $vp, $tp, $du, $syncer, $o) = @args{@required_args};
 
-   # First things first: check that the src and dst dbs and tbls exist.
-   # This can fail in cases like h=host,D=bad,t=also_bad (i.e. simple
-   # user error).  It can also fail when syncing all dbs/tbls with sync_all()
-   # because the dst db/tbl is assumed to be the same as the src but
-   # this isn't always the case.
-   my $src_tbl_ddl;
-   eval {
-      # FYI: get_create_table() does USE db but doesn't eval it.
-      $src->{dbh}->do("USE `$src->{db}`");
-      $src_tbl_ddl = $du->get_create_table($src->{dbh}, $q,
-         $src->{db}, $src->{tbl});
-   };
-   die $EVAL_ERROR if $EVAL_ERROR;
+   if ( !$src->{tbl_struct} ) {
+      eval {
+         $src->{ddl} = $tp->get_create_table(
+            $src->{dbh}, $src->{db}, $src->{tbl});
+         $src->{tbl_struct} = $tp->parse($src->{ddl});
 
-   my $dst_tbl_ddl;
-   eval {
-      # FYI: get_create_table() does USE db but doesn't eval it.
-      $dst->{dbh}->do("USE `$dst->{db}`");
-      $dst_tbl_ddl = $du->get_create_table($dst->{dbh}, $q,
-         $dst->{db}, $dst->{tbl});
-   };
-   die $EVAL_ERROR if $EVAL_ERROR;
+      };
+      if ( $EVAL_ERROR ) {
+         die "Error getting table structure for $src->{db}.$src->{tbl} on "
+            . $dp->as_string($src->{dsn}) . "$EVAL_ERROR\nEnsure that "
+            . "the table exists and is accessible.\n";
+      }
+   }
 
-   # This doesn't work at the moment when syncing different table names.
-   # Check that src.db.tbl has the exact same schema as dst.db.tbl.
-   # if ( $o->get('check-schema') && ($src_tbl_ddl ne $dst_tbl_ddl) ) {
-   #   die "Source and destination tables have different schemas";
-   # }
-   my $tbl_struct = $tp->parse($src_tbl_ddl);
+   # Check that the dst has the table.
+   my $dst_has_table = $tp->check_table(
+      dbh => $dst->{dbh},
+      db  => $dst->{db},
+      tbl => $dst->{tbl},
+   );
+   if ( !$dst_has_table ) {
+      die "Table $dst->{db}.$dst->{tbl} does not exist on "
+         . $dp->as_string($dst->{dsn}) . "\n";
+   }
 
    # Check that the user has all the necessary privs on the tbls.
    if ( $o->get('check-privileges') ) {
@@ -8624,7 +8809,7 @@ sub ok_to_sync {
       }
    }
 
-   return $tbl_struct;
+   return;
 }
 
 # Sub: filter_diffs
@@ -8632,22 +8817,28 @@ sub ok_to_sync {
 #   filters.  This sub is called in <sync_via_replication()> to implement
 #   schema object filters like --databases and --tables.
 #
-# Parameters:
-#   $skip_table - Hashref of databases and tables to skip
-#   $databases  - Hashref of databases to skip
-#   $tables     - Hashref of tables to skip
-#   @diffs      - Array of hashrefs, one for each different slave table
-#
 # Returns:
-#   Array of different slave tables that pass the filters
+#   Arrayref of different slave tables that pass the filters
 sub filter_diffs {
-   my ( $skip_table, $databases, $tables, @diffs ) = @_;
-   return grep {
-      my ($db, $tbl) = $q->split_unquote($_->{table});
-      !$skip_table->{$db}->{$tbl}
-      && (!$databases ||  $databases->{$db})
-      && (!$tables    || ($tables->{$tbl} || $tables->{$_->{table}}))
-   } @diffs;
+   my ( %args ) = @_;
+   my @required_args = qw(diffs SchemaIterator skip_table);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($diffs, $si, $skip_table) = @args{@required_args};
+
+   my @filtered_diffs;
+   foreach my $diff ( @$diffs ) {
+      my $db  = lc $diff->{db};
+      my $tbl = lc $diff->{tbl};
+      if (   !$skip_table->{$db}->{$tbl}
+           && $si->database_is_allowed($db)
+           && $si->table_is_allowed($db, $tbl) ) {
+         push @filtered_diffs, $diff;
+      }
+   }
+
+   return \@filtered_diffs;
 }
 
 # Sub: disconnect
@@ -9896,9 +10087,10 @@ Preferred recursion method used to find slaves.
 Possible methods are:
 
   METHOD       USES
-  ===========  ================
+  ===========  ==================
   processlist  SHOW PROCESSLIST
   hosts        SHOW SLAVE HOSTS
+  none         Do not find slaves
 
 The processlist method is preferred because SHOW SLAVE HOSTS is not reliable.
 However, the hosts method is required if the server uses a non-standard
@@ -10302,6 +10494,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 2.0.3
+pt-table-sync 2.1.1
 
 =cut

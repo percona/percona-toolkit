@@ -1,0 +1,3 @@
+/dev/hda1 99M 13M 82M 13% /boot on /boot type ext3 (rw)
+/dev/mapper/VolGroup00-LogVol00 5.7G 1.1G 4.4G 20% / on / type ext3 (rw)
+tmpfs 506M 0 506M 0% /dev/shm on /dev/shm type tmpfs (rw)

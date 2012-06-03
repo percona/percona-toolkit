@@ -32,6 +32,10 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+# Passwords may contain commas.
+# https://bugs.launchpad.net/percona-toolkit/+bug/886077
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -126,7 +130,8 @@ sub parse {
    my $opts = $self->{opts};
 
    # Parse given props
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          # Handle the typical DSN parts like h=host, P=3306, etc.
          $given_props{$prop_key} = $prop_val;

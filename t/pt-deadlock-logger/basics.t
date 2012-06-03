@@ -81,7 +81,7 @@ foreach my $child ( keys %children ) {
 }
 
 # Test that there is a deadlock
-$output = $dbh1->selectrow_hashref('show innodb status')->{status};
+$output = $dbh1->selectrow_hashref('show /*!40101 engine*/ innodb status')->{status};
 like($output, qr/WE ROLL BACK/, 'There was a deadlock');
 
 $output = `$cmd --print`;

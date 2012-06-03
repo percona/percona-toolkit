@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More tests => 8;
 
 use PerconaTest;
 
@@ -19,14 +19,21 @@ my $cmd     = "$trunk/bin/pt-online-schema-change";
 $output = `$cmd`;
 like(
    $output,
-   qr/A DSN with a t part must be specified/,
+   qr/DSN must be specified/,
    "Must specify a DSN with t part"
 );
 
-$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox`;
+$output = `$cmd h=127.1,P=12345,t=tbl`;
 like(
    $output,
-   qr/The DSN must specify a t/,
+   qr/DSN must specify a database \(D\) and a table \(t\)/,
+   "DSN must specify a D part"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox,D=mysql`;
+like(
+   $output,
+   qr/DSN must specify a database \(D\) and a table \(t\)/,
    "DSN must specify t part"
 );
 
@@ -37,11 +44,32 @@ like(
    "Only 1 DSN allowed"
 );
 
-$output = `$cmd h=127.1,P=12345,t=tbl`;
+$output = `$cmd --help`;
 like(
    $output,
-   qr/No database was specified/,
-   "Either DSN D part or --database required"
+   qr/--execute\s+FALSE/,
+   "--execute FALSE by default"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox --alter-foreign-keys-method drop_swap --no-drop-new-table`;
+like(
+   $output,
+   qr/--alter-foreign-keys-method=drop_swap does not work with --no-drop-new-table/,
+   "Cannot --alter-foreign-keys-method=drop_swap with --no-drop-new-table"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox,D=mysql,t=user --max-load 100 --alter "ENGINE=MyISAM" --dry-run`;
+like(
+   $output,
+   qr/Invalid --max-load/,
+   "Validates --max-load"
+);
+
+$output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox,D=mysql,t=user --critical-load 100 --alter "ENGINE=MyISAM" --dry-run`;
+like(
+   $output,
+   qr/Invalid --critical-load/,
+   "Validates --critical-load"
 );
 
 # #############################################################################

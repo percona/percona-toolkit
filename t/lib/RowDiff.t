@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 27;
+use Test::More tests => 26;
 
 use MockSync;
 use RowDiff;
@@ -549,5 +549,4 @@ SKIP: {
    $sb->wipe_clean($slave_dbh);
 }
 
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -23,6 +23,8 @@ my $in2    = "$trunk/t/pt-tcp-model/samples/in/";
 my $out    = "t/pt-tcp-model/samples/out/";
 my $output = '';
 
+$ENV{TZ}='MST7MDT';
+
 # ############################################################################
 # Basic queries that parse without problems.
 # ############################################################################

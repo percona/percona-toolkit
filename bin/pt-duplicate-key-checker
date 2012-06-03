@@ -199,19 +199,58 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
+
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
+      return;
+   }
+
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
+
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
+   }
+
+   return $href->{$key};
+}
+
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
    if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
       die "Cannot parse table definition; is ANSI quoting "
@@ -518,41 +557,31 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         my $key_def = $_->{ddl};
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      PTDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
-
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
 }
 
 sub _d {
@@ -894,6 +923,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -948,7 +979,8 @@ sub parse {
    my %final_props;
    my $opts = $self->{opts};
 
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          $given_props{$prop_key} = $prop_val;
       }
@@ -1007,12 +1039,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -2635,7 +2669,7 @@ sub remove_prefix_duplicates {
          }
          else {
             PTDEBUG && _d($right_name, 'not left-prefix of', $left_name);
-            next LEFT_KEY;
+            next RIGHT_KEY;
          }
       } # RIGHT_KEY
    } # LEFT_KEY
@@ -2818,10 +2852,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -2832,13 +2867,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -2849,18 +2884,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -3191,7 +3229,7 @@ my $tbl_name     = qr{
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(OptionParser Quoter);
+   my @required_args = qw(OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -3200,8 +3238,19 @@ sub new {
    die "I need either a dbh or file_itr argument"
       if (!$dbh && !$file_itr) || ($dbh && $file_itr);
 
+   my %resume;
+   if ( my $table = $args{resume} ) {
+      PTDEBUG && _d('Will resume from or after', $table);
+      my ($db, $tbl) = $args{Quoter}->split_unquote($table);
+      die "Resume table must be database-qualified: $table"
+         unless $db && $tbl;
+      $resume{db}  = $db;
+      $resume{tbl} = $tbl;
+   }
+
    my $self = {
       %args,
+      resume  => \%resume,
       filters => _make_filters(%args),
    };
 
@@ -3262,8 +3311,18 @@ sub _make_filters {
    return \%filters;
 }
 
-sub next_schema_object {
+sub next {
    my ( $self ) = @_;
+
+   if ( !$self->{initialized} ) {
+      $self->{initialized} = 1;
+      if ( $self->{resume}->{tbl}
+           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+         PTDEBUG && _d('Will resume after',
+            join('.', @{$self->{resume}}{qw(db tbl)}));
+         $self->{resume}->{after} = 1;
+      }
+   }
 
    my $schema_obj;
    if ( $self->{file_itr} ) {
@@ -3274,19 +3333,13 @@ sub next_schema_object {
    }
 
    if ( $schema_obj ) {
-      if ( $schema_obj->{ddl} && $self->{TableParser} ) {
-         $schema_obj->{tbl_struct}
-            = $self->{TableParser}->parse($schema_obj->{ddl});
-      }
-
-      delete $schema_obj->{ddl} unless $self->{keep_ddl};
-
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
       }
+      PTDEBUG && _d('Next schema object:',
+         $schema_obj->{db}, $schema_obj->{tbl});
    }
 
-   PTDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
    return $schema_obj;
 }
 
@@ -3312,7 +3365,8 @@ sub _iterate_files {
          my $db = $1; # XXX
          $db =~ s/^`//;  # strip leading `
          $db =~ s/`$//;  # and trailing `
-         if ( $self->database_is_allowed($db) ) {
+         if ( $self->database_is_allowed($db)
+              && $self->_resume_from_database($db) ) {
             $self->{db} = $db;
          }
       }
@@ -3325,21 +3379,22 @@ sub _iterate_files {
          my ($tbl) = $chunk =~ m/$tbl_name/;
          $tbl      =~ s/^\s*`//;
          $tbl      =~ s/`\s*$//;
-         if ( $self->table_is_allowed($self->{db}, $tbl) ) {
+         if ( $self->_resume_from_table($tbl)
+              && $self->table_is_allowed($self->{db}, $tbl) ) {
             my ($ddl) = $chunk =~ m/^(?:$open_comment)?(CREATE TABLE.+?;)$/ms;
             if ( !$ddl ) {
                warn "Failed to parse CREATE TABLE from\n" . $chunk;
                next CHUNK;
             }
             $ddl =~ s/ \*\/;\Z/;/;  # remove end of version comment
-
-            my ($engine) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;   
-
-            if ( !$engine || $self->engine_is_allowed($engine) ) {
+            my $tbl_struct = $self->{TableParser}->parse($ddl);
+            if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
                return {
-                  db  => $self->{db},
-                  tbl => $tbl,
-                  ddl => $ddl,
+                  db         => $self->{db},
+                  tbl        => $tbl,
+                  name       => $self->{Quoter}->quote($self->{db}, $tbl),
+                  ddl        => $ddl,
+                  tbl_struct => $tbl_struct,
                };
             }
          }
@@ -3356,6 +3411,7 @@ sub _iterate_files {
 sub _iterate_dbh {
    my ( $self ) = @_;
    my $q   = $self->{Quoter};
+   my $tp  = $self->{TableParser};
    my $dbh = $self->{dbh};
    PTDEBUG && _d('Getting next schema object from dbh', $dbh);
 
@@ -3369,7 +3425,9 @@ sub _iterate_dbh {
    }
 
    if ( !$self->{db} ) {
-      $self->{db} = shift @{$self->{dbs}};
+      do {
+         $self->{db} = shift @{$self->{dbs}};
+      } until $self->_resume_from_database($self->{db});
       PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
@@ -3382,8 +3440,9 @@ sub _iterate_dbh {
       }
       grep {
          my ($tbl, $type) = @$_;
-         $self->table_is_allowed($self->{db}, $tbl)
-            && (!$type || ($type ne 'VIEW'));
+         (!$type || ($type ne 'VIEW'))
+         && $self->_resume_from_table($tbl)
+         && $self->table_is_allowed($self->{db}, $tbl);
       }
       @{$dbh->selectall_arrayref($sql)};
       PTDEBUG && _d('Found', scalar @tbls, 'tables in database', $self->{db});
@@ -3391,27 +3450,15 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $engine;
-      if ( $self->{filters}->{'engines'}
-           || $self->{filters}->{'ignore-engines'} ) {
-         my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
-                 . " LIKE \'$tbl\'";
-         PTDEBUG && _d($sql);
-         $engine = $dbh->selectrow_hashref($sql)->{engine};
-         PTDEBUG && _d($tbl, 'uses', $engine, 'engine');
-      }
-
-
-      if ( !$engine || $self->engine_is_allowed($engine) ) {
-         my $ddl;
-         if ( my $du = $self->{MySQLDump} ) {
-            $ddl = $du->get_create_table($dbh, $q, $self->{db}, $tbl)->[1];
-         }
-
+      my $ddl        = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $tbl_struct = $tp->parse($ddl);
+      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
          return {
-            db  => $self->{db},
-            tbl => $tbl,
-            ddl => $ddl,
+            db         => $self->{db},
+            tbl        => $tbl,
+            name       => $q->quote($self->{db}, $tbl),
+            ddl        => $ddl,
+            tbl_struct => $tbl_struct,
          };
       }
    }
@@ -3472,6 +3519,10 @@ sub table_is_allowed {
 
    my $filter = $self->{filters};
 
+   if ( $db eq 'mysql' && ($tbl eq 'general_log' || $tbl eq 'slow_log') ) {
+      return 0;
+   }
+
    if ( $filter->{'ignore-tables'}->{$tbl}
         && ($filter->{'ignore-tables'}->{$tbl} eq '*'
             || $filter->{'ignore-tables'}->{$tbl} eq $db) ) {
@@ -3511,7 +3562,11 @@ sub table_is_allowed {
 
 sub engine_is_allowed {
    my ( $self, $engine ) = @_;
-   die "I need an engine argument" unless $engine;
+
+   if ( !$engine ) {
+      PTDEBUG && _d('No engine specified; allowing the table');
+      return 1;
+   }
 
    $engine = lc $engine;
 
@@ -3529,6 +3584,40 @@ sub engine_is_allowed {
    }
 
    return 1;
+}
+
+sub _resume_from_database {
+   my ($self, $db) = @_;
+
+   return 1 unless $self->{resume}->{db};
+
+   if ( $db eq $self->{resume}->{db} ) {
+      PTDEBUG && _d('At resume db', $db);
+      delete $self->{resume}->{db};
+      return 1;
+   }
+
+   return 0;
+}
+
+sub _resume_from_table {
+   my ($self, $tbl) = @_;
+
+   return 1 unless $self->{resume}->{tbl};
+
+   if ( $tbl eq $self->{resume}->{tbl} ) {
+      if ( !$self->{resume}->{after} ) {
+         PTDEBUG && _d('Resuming from table', $tbl);
+         delete $self->{resume}->{tbl};
+         return 1;
+      }
+      else {
+         PTDEBUG && _d('Resuming after table', $tbl);
+         delete $self->{resume}->{tbl};
+      }
+   }
+
+   return 0;
 }
 
 sub _d {
@@ -3640,11 +3729,10 @@ sub main {
       MySQLDump    => $du,
       TableParser  => $tp,
       Schema       => $schema,
-      keep_ddl     => 1,
    );
    TABLE:
-   while ( my $tbl = $schema_itr->next_schema_object() ) {
-      $tbl->{engine} = $tp->get_engine($tbl->{ddl});
+   while ( my $tbl = $schema_itr->next() ) {
+      $tbl->{engine} = $tbl->{tbl_struct}->{engine};
 
       my ($keys, $clustered_key, $fks);
       if ( $get_keys ) {
@@ -4270,6 +4358,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-duplicate-key-checker 2.0.3
+pt-duplicate-key-checker 2.1.1
 
 =cut

@@ -425,7 +425,7 @@ mk_tmpdir() {
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXX` \
+      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXXX` \
          || die "Cannot make secure tmpdir"
    fi
 }
@@ -1037,7 +1037,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-ioprofile 2.0.3
+pt-ioprofile 2.1.1
 
 =cut
 

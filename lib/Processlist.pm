@@ -470,6 +470,7 @@ sub find {
 
       # Match special busy_time.
       if ( $find_spec{busy_time} && ($query->{Command} || '') eq 'Query' ) {
+         next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{busy_time} ) {
             PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
@@ -480,6 +481,7 @@ sub find {
 
       # Match special idle_time.
       if ( $find_spec{idle_time} && ($query->{Command} || '') eq 'Sleep' ) {
+         next QUERY unless defined($query->{Time});
          if ( $query->{Time} < $find_spec{idle_time} ) {
             PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;

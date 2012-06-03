@@ -1,0 +1,20 @@
+--
+-- test.multi_resource_apt
+--
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*) AS cnt, COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS('#', `apt_id`, `res_id`)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM `test`.`multi_resource_apt` FORCE INDEX(`PRIMARY`) WHERE ((`apt_id` > ?) OR (`apt_id` = ? AND `res_id` >= ?)) AND ((`apt_id` < ?) OR (`apt_id` = ? AND `res_id` <= ?)) /*checksum chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `test`.`multi_resource_apt` FORCE INDEX(`PRIMARY`) WHERE ((`apt_id` < ?) OR (`apt_id` = ? AND `res_id` < ?)) ORDER BY `apt_id`, `res_id` /*past lower chunk*/
+
+REPLACE INTO `percona`.`checksums` (db, tbl, chunk, chunk_index, lower_boundary, upper_boundary, this_cnt, this_crc) SELECT ?, ?, ?, ?, ?, ?, COUNT(*), '0' FROM `test`.`multi_resource_apt` FORCE INDEX(`PRIMARY`) WHERE ((`apt_id` > ?) OR (`apt_id` = ? AND `res_id` > ?)) ORDER BY `apt_id`, `res_id` /*past upper chunk*/
+
+SELECT /*!40001 SQL_NO_CACHE */ `apt_id`, `apt_id`, `res_id` FROM `test`.`multi_resource_apt` FORCE INDEX(`PRIMARY`) WHERE ((`apt_id` > ?) OR (`apt_id` = ? AND `res_id` >= ?)) ORDER BY `apt_id`, `res_id` LIMIT ?, 2 /*next chunk boundary*/
+
+1 1,1,1 2,2,1
+2 2,2,2 3,3,1
+3 3,3,2 3,3,3
+4 4,4,1 4,4,2
+5 4,4,3 4,4,4
+6  1,1,1
+7 4,4,4 
+

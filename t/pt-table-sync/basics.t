@@ -28,7 +28,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 22;
+   plan tests => 21;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -223,6 +223,7 @@ like(
    "--replicate with uc index (bug 927771)"
 );
 
+PerconaTest::wait_for_table($slave_dbh, "test.t", "id=10 AND c='j'");
 my $rows = $slave_dbh->selectall_arrayref("select id, c from test.t where id>8 order by id");
 is_deeply(
    $rows,
@@ -238,5 +239,4 @@ is_deeply(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
