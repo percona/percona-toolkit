@@ -178,7 +178,7 @@ sub master_is_ok {
 }
 
 sub slave_is_ok {
-   my ($self, $slave, $master) = @_;
+   my ($self, $slave, $master, $ro) = @_;
 
    my $slave_dbh = $self->get_dbh_for($slave);
    if ( !$slave_dbh ) {
@@ -198,6 +198,23 @@ sub slave_is_ok {
       warn "Sandbox $slave " . $port_for{$slave} . " is broken: "
          . $status->[0]->{last_error} . "\n";
       return 1;
+   }
+
+   foreach my $thd ( qw(slave_io_running slave_sql_running) ) {
+      if ( $status->[0]->{$thd} ne 'Yes' ) {
+         warn "Sandbox $slave " . $port_for{$slave} . " $thd thread "
+            . "is not running\n";
+         return 1;
+      }
+   }
+
+   if ( $ro ) {
+      my $row = $slave_dbh->selectrow_arrayref(
+         "SHOW VARIABLES LIKE 'read_only'");
+      if ( !$row || $row->[1] ne 'ON' ) {
+         warn "Sandbox $slave " . $port_for{$slave} . " is not read-only\n";
+         return 1;
+      }
    }
 
    if ( !defined $status->[0]->{seconds_behind_master} ) {
@@ -239,7 +256,7 @@ sub ok {
    my ($self) = @_;
    return 0 unless $self->master_is_ok('master');
    return 0 unless $self->slave_is_ok('slave1', 'master');
-   return 0 unless $self->slave_is_ok('slave2', 'slave1');
+   return 0 unless $self->slave_is_ok('slave2', 'slave1', 1);
    return 0 if $self->leftover_servers();
    return 1;
 }
