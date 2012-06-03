@@ -32,7 +32,7 @@ elsif ( !$vp->version_ge($master_dbh, '5.0.2') ) {
    plan skip_all => 'Sever does not support triggers (< 5.0.2)';
 }
 else {
-   plan tests => 11;
+   plan tests => 10;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -147,5 +147,4 @@ is(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

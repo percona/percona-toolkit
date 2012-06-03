@@ -1,0 +1,4 @@
+root      7306  0.0  0.0   5808  1668 pts/1    S+   Mar22   0:00 sudo bin/mysqld_safe
+root      7307  0.0  0.0   2048   596 pts/1    S+   Mar22   0:00 /bin/sh bin/mysqld_safe
+mysql     7615  0.1  1.7 333480 36432 pts/1    Sl+  Mar22   1:43 /home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-Server-5.5/bin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/home/hugmeir/mysql5/mysqlbrew/mysqls/Percona-Server-5.5/lib/mysql/plugin --user=mysql --log-error=/var/log/mysql/error.log --pid-file=/var/lib/mysql/hugmeir.pid --socket=/var/run/mysqld/mysqld.sock --port=3306
+hugmeir  19009  0.0  0.0   4456   776 pts/0    S+   21:05   0:00 grep mysqld

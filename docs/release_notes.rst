@@ -1,6 +1,99 @@
 Release Notes
 *************
 
+v2.1.1 released 2012-04-03
+==========================
+
+Percona Toolkit 2.1.1 has been released.  This is the first release in the
+new 2.1 series which supersedes the 2.0 series.  We will continue to fix bugs
+in 2.0, but 2.1 is now the focus of development.
+
+2.1 introduces a lot of new code for:
+
+* pt-online-schema-change (completely redesigned)
+* pt-mysql-summary (completely redesigned)
+* pt-summary (completely redesigned)
+* pt-fingerprint (new tool)
+* pt-table-usage (new tool)
+
+There were also several bug fixes.
+
+The redesigned tools are meant to replace their 2.0 counterparts because
+the 2.1 versions have the same or more functionality and they are simpler
+and more reliable.  pt-online-schema-change was particularly enhanced to
+be as safe as possible given that the tool is inherently risky.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Completely redesigned pt-online-schema-change
+* Completely redesigned pt-mysql-summary
+* Completely redesigned pt-summary
+* Added new tool: pt-table-usage
+* Added new tool: pt-fingerprint
+* Fixed bug 955860: pt-stalk doesn't run vmstat, iostat, and mpstat for --run-time
+* Fixed bug 960513: SHOW TABLE STATUS is used needlessly
+* Fixed bug 969726: pt-online-schema-change loses foreign keys
+* Fixed bug 846028: pt-online-schema-change does not show progress until completed
+* Fixed bug 898695: pt-online-schema-change add useless ORDER BY
+* Fixed bug 952727: pt-diskstats shows incorrect wr_mb_s
+* Fixed bug 963225: pt-query-digest fails to set history columns for disk tmp tables and disk filesort
+* Fixed bug 967451: Char chunking doesn't quote column name
+* Fixed bug 972399: pt-table-checksum docs are not rendered right
+* Fixed bug 896553: Various documentation spelling fixes
+* Fixed bug 949154: pt-variable-advisor advice for relay-log-space-limit
+* Fixed bug 953461: pt-upgrade manual broken 'output' section
+* Fixed bug 949653: pt-table-checksum docs don't mention risks posed by inconsistent schemas
+
+v2.0.4 released 2012-03-07
+==========================
+
+Percona Toolkit 2.0.4 has been released.  23 bugs were fixed in this release,
+and three new features were implemented.  First, --filter was added to pt-kill
+which allows for arbitrary --group-by.  Second, pt-online-schema-change now
+requires that its new --execute option be given, else the tool will just check
+the tables and exit.  This is a safeguard to encourage users to read the
+documentation, particularly when replication is involved.  Third, pt-stalk
+also received a new option: --[no]stalk.  To collect immediately without
+stalking, specify --no-stalk and the tool will collect once and exit.
+
+This release is completely backwards compatible with previous 2.0 releases.
+Given the number of bug fixes, it's worth upgrading to 2.0.4.
+
+Changelog
+---------
+
+* Added --filter to pt-kill to allow arbitrary --group-by
+* Added --[no]stalk to pt-stalk (bug 932331)
+* Added --execute to pt-online-schema-change (bug 933232)
+* Fixed bug 873598: pt-online-schema-change doesn't like reserved words in column names
+* Fixed bug 928966: pt-pmp still uses insecure /tmp
+* Fixed bug 933232: pt-online-schema-change can break replication
+* Fixed bug 941225: Use of qw(...) as parentheses is deprecated at pt-kill line 3511
+* Fixed bug 821694: pt-query-digest doesn't recognize hex InnoDB txn IDs
+* Fixed bug 894255: pt-kill shouldn't check if STDIN is a tty when --daemonize is given
+* Fixed bug 916999: pt-table-checksum error: DBD::mysql::st execute failed: called with 2 bind variables when 6 are needed
+* Fixed bug 926598: DBD::mysql bug causes pt-upgrade to use wrong precision (M) and scale (D)
+* Fixed bug 928226: pt-diskstats illegal division by zero
+* Fixed bug 928415: Typo in pt-stalk doc: --trigger should be --function
+* Fixed bug 930317: pt-archiver doc refers to nonexistent pt-query-profiler
+* Fixed bug 930533: pt-sift looking for *-processlist1; broken compatibility with pt-stalk
+* Fixed bug 932331: pt-stalk cannot collect without stalking
+* Fixed bug 932442: pt-table-checksum error when column name has two spaces
+* Fixed bug 932883: File Debian bug after each release
+* Fixed bug 940503: pt-stalk disk space checks wrong on 32bit platforms
+* Fixed bug 944420: --daemonize doesn't always close STDIN
+* Fixed bug 945834: pt-sift invokes pt-diskstats with deprecated argument
+* Fixed bug 945836: pt-sift prints awk error if there are no stack traces to aggregate
+* Fixed bug 945842: pt-sift generates wrong state sum during processlist analysis
+* Fixed bug 946438: pt-query-digest should print a better message when an unsupported log format is specified
+* Fixed bug 946776: pt-table-checksum ignores --lock-wait-timeout
+* Fixed bug 940440: Bad grammar in pt-kill docs
+
 v2.0.3 released 2012-02-03
 ==========================
 

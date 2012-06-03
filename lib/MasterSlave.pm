@@ -76,6 +76,10 @@ sub get_slaves {
          dsn_table_dsn => $dsn_table_dsn,
       );
    }
+   elsif ( $method =~ m/none/i ) {
+      # https://bugs.launchpad.net/percona-toolkit/+bug/987694
+      PTDEBUG && _d('Not getting to slaves');
+   }
    else {
       die "Invalid --recursion-method: $method.  Valid values are: "
         . "dsn=DSN, hosts, or processlist.\n";
@@ -109,6 +113,12 @@ sub recurse_to_slaves {
    $level ||= 0;
    my $dp   = $args->{dsn_parser};
    my $dsn  = $args->{dsn};
+
+   if ( lc($args->{method} || '') eq 'none' ) {
+      # https://bugs.launchpad.net/percona-toolkit/+bug/987694
+      PTDEBUG && _d('Not recursing to slaves');
+      return;
+   }
 
    my $dbh;
    eval {

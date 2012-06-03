@@ -26,7 +26,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 92;
+   plan tests => 93;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -1202,7 +1202,7 @@ is(
 );
 
 # #############################################################################
-# Issue Bug #897758: TableChunker dies from an uninit value
+# Bug #897758: TableChunker dies from an uninit value
 # #############################################################################
 
 @chunks = $c->calculate_chunks(
@@ -1311,8 +1311,50 @@ is(
 #);
 
 # #############################################################################
+# Bug 967451: Char chunking doesn't quote column name
+# #############################################################################
+$sb->load_file('master', "t/lib/samples/char-chunking/ascii.sql", 'test');
+$dbh->do("ALTER TABLE test.ascii CHANGE COLUMN c `key` char(64) NOT NULL");
+$t = $tp->parse( $tp->get_create_table($dbh, 'test', 'ascii') );
+
+%params = $c->get_range_statistics(
+   dbh        => $dbh,
+   db         => 'test',
+   tbl        => 'ascii',
+   chunk_col  => 'key',
+   tbl_struct => $t,
+);
+is_deeply(
+   \%params,
+   {
+      min           => '',
+      max           => 'ZESUS!!!',
+      rows_in_range => '142',
+   },
+   "Range stats for `key` col (bug 967451)"
+);
+
+@chunks = $c->calculate_chunks(
+   dbh        => $dbh,
+   db         => 'test',
+   tbl        => 'ascii',
+   tbl_struct => $t,
+   chunk_col  => 'key',
+   chunk_size => '50',
+   %params,
+);
+is_deeply(
+   \@chunks,
+   [
+      "`key` < '5'",
+      "`key` >= '5' AND `key` < 'I'",
+      "`key` >= 'I'",
+   ],
+   "Caclulate chunks for `key` col (bug 967451)"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

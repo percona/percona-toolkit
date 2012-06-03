@@ -58,6 +58,10 @@ Split files and pipe lines to a fifo without really splitting.
 
 Find MySQL tables and execute actions, like GNU find.
 
+=item pt-fingerprint
+
+Convert queries into fingerprints.
+
 =item pt-fk-error-logger
 
 Extract and log MySQL foreign key errors.
@@ -88,11 +92,11 @@ Look at many samples of MySQL C<SHOW GLOBAL STATUS> side-by-side.
 
 =item pt-mysql-summary
 
-Summarize MySQL information in a nice way.
+Summarize MySQL information nicely.
 
 =item pt-online-schema-change
 
-Perform online, non-blocking table schema changes.
+ALTER tables without locking them.
 
 =item pt-pmp
 
@@ -132,7 +136,7 @@ Gather forensic data about MySQL when a problem occurs.
 
 =item pt-summary
 
-Summarize system information in a nice way.
+Summarize system information nicely.
 
 =item pt-table-checksum
 
@@ -141,6 +145,10 @@ Verify MySQL replication integrity.
 =item pt-table-sync
 
 Synchronize MySQL table data efficiently.
+
+=item pt-table-usage
+
+Analyze how queries use tables.
 
 =item pt-tcp-model
 
@@ -305,6 +313,20 @@ provide defaults for all DSNs that do not specify the option's corresponding
 key part.  For example, if DSN C<h=host1> and option C<--port=12345> are
 specified, then the tool automatically adds C<P=12345> to DSN.
 
+=head2 ESCAPING VALUES
+
+DSNs are usually specified on the command line, so shell quoting and escaping
+must be taken into account.  Special characters, like asterisk (C<*>), need
+to be quoted and/or escaped properly to be passed as literal characters in
+DSN values.
+
+Since DSN parts are separated by commas, literal commas in DSN values must
+be escaped with a single backslash (C<\>).  And since a backslash is
+the escape character for most shells, two backslashes are required to pass
+a literal backslash.  For example, if the username is literally C<my,name>,
+it must be specified as C<my\\,name> on most shells.  This applies to DSNs
+and DSN-related options like C<--user>.
+
 =head2 KEY PARTS
 
 Many of the tools add more parts to DSNs for special purposes, and sometimes
@@ -464,7 +486,7 @@ see L<"ENVIRONMENT">.
 =head1 AUTHORS
 
 Percona Toolkit is primarily developed by Baron Schwartz and Daniel Nichter,
-both of whom are employed by Percona Inc.  See each program's documenation
+both of whom are employed by Percona Inc.  See each program's documentation
 for details.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
@@ -474,7 +496,7 @@ See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -488,6 +510,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-Percona Toolkit v2.0.3 released 2012-02-03
+Percona Toolkit v2.1.1 released 2012-04-03
 
 =cut

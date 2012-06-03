@@ -32,7 +32,7 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
 else {
-   plan tests => 17;
+   plan tests => 16;
 }
 
 $dbh->do('use sakila');
@@ -574,5 +574,4 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

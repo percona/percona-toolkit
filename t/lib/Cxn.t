@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 17;
+use Test::More tests => 16;
 
 use Sandbox;
 use OptionParser;
@@ -208,7 +208,6 @@ is(
    $hostname,
    'name() uses @@hostname'
 );
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
 # ############################################################################
 # Default cxn, should be equivalent to 'h=localhost'.
@@ -256,5 +255,4 @@ $o->get_opts();
 # Done.
 # #############################################################################
 $master_dbh->disconnect() if $master_dbh;
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

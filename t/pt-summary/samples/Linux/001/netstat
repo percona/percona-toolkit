@@ -1,0 +1,6 @@
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      7615/mysqld     
+tcp        0      0 192.168.122.1:53        0.0.0.0:*               LISTEN      1185/dnsmasq    
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      883/cupsd       
+tcp6       0      0 ::1:631                 :::*                    LISTEN      883/cupsd       

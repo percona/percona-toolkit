@@ -27,7 +27,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 7;
+   plan tests => 6;
 }
 
 $sb->wipe_clean($dbh);
@@ -100,5 +100,4 @@ is_deeply(
 # #############################################################################
 $sb->wipe_clean($dbh);
 $sb->wipe_clean($dbh2);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

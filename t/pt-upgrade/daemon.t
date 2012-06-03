@@ -16,12 +16,12 @@ use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
 # This runs immediately if the server is already running, else it starts it.
-diag(`$trunk/sandbox/start-sandbox master 12347 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh1 = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('slave2');
+my $dbh2 = $sb->get_dbh_for('master1');
 
 if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -33,7 +33,7 @@ else {
    plan tests => 2;
 }
 
-my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12347 --compare results,warnings --zero-query-times";
+my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12348 --compare results,warnings --zero-query-times";
 
 # Issue 391: Add --pid option to all scripts
 `touch /tmp/mk-script.pid`;

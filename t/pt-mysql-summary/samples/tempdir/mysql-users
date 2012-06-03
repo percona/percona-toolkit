@@ -1,0 +1,5 @@
+*************************** 1. row ***************************
+                   COUNT(*): 6
+               SUM(user=""): 0
+           SUM(password=""): 1
+SUM(password NOT LIKE "*%"): 1

@@ -28,6 +28,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -82,7 +84,8 @@ sub parse {
    my %final_props;
    my $opts = $self->{opts};
 
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          $given_props{$prop_key} = $prop_val;
       }
@@ -1510,7 +1513,7 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh} ) {
+   if ( $self->{dbh} && ref($self->{dbh}) ) {
       PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
@@ -2485,6 +2488,9 @@ sub get_slaves {
          dsn_table_dsn => $dsn_table_dsn,
       );
    }
+   elsif ( $method =~ m/none/i ) {
+      PTDEBUG && _d('Not getting to slaves');
+   }
    else {
       die "Invalid --recursion-method: $method.  Valid values are: "
         . "dsn=DSN, hosts, or processlist.\n";
@@ -2498,6 +2504,11 @@ sub recurse_to_slaves {
    $level ||= 0;
    my $dp   = $args->{dsn_parser};
    my $dsn  = $args->{dsn};
+
+   if ( lc($args->{method} || '') eq 'none' ) {
+      PTDEBUG && _d('Not recursing to slaves');
+      return;
+   }
 
    my $dbh;
    eval {
@@ -3527,48 +3538,46 @@ sub new {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($cxn, $tbl, $chunk_size, $o, $q) = @args{@required_args};
-   
-   my $where = $o->get('where');
-   my ($row_est, $mysql_index) = get_row_estimate(%args, where => $where);
-   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
-                  ? $row_est <= $chunk_size * $o->get('chunk-size-limit')
-                  : 0;
-   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
 
-   if ( $args{resume}
-        && !defined $args{resume}->{lower_boundary}
-        && !defined $args{resume}->{upper_boundary} ) {
-      PTDEBUG && _d('Resuming from one nibble table');
-      $one_nibble = 1;
+   my $nibble_params = can_nibble(%args);
+
+   my %comments = (
+      bite   => "bite table",
+      nibble => "nibble table",
+   );
+   if ( $args{comments} ) {
+      map  { $comments{$_} = $args{comments}->{$_} }
+      grep { defined $args{comments}->{$_}         }
+      keys %{$args{comments}};
    }
 
-   my $index = _find_best_index(%args, mysql_index => $mysql_index);
-   if ( !$index && !$one_nibble ) {
-      die "There is no good index and the table is oversized.";
-   }
-
+   my $where      = $o->has('where') ? $o->get('where') : '';
    my $tbl_struct = $tbl->{tbl_struct};
-   my $ignore_col = $o->get('ignore-columns') || {};
-   my $all_cols   = $o->get('columns') || $tbl_struct->{cols};
+   my $ignore_col = $o->has('ignore-columns')
+                  ? ($o->get('ignore-columns') || {})
+                  : {};
+   my $all_cols   = $o->has('columns')
+                  ? ($o->get('columns') || $tbl_struct->{cols})
+                  : $tbl_struct->{cols};
    my @cols       = grep { !$ignore_col->{$_} } @$all_cols;
    my $self;
-   if ( $one_nibble ) {
+   if ( $nibble_params->{one_nibble} ) {
       my $nibble_sql
          = ($args{dml} ? "$args{dml} " : "SELECT ")
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*checksum table*/";
+         . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql
          = "EXPLAIN SELECT "
          . ($args{select} ? $args{select}
                           : join(', ', map { $q->quote($_) } @cols))
-         . " FROM " . $q->quote(@{$tbl}{qw(db tbl)})
+         . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
-         . " /*explain checksum table*/";
+         . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
       $self = {
@@ -3580,6 +3589,7 @@ sub new {
       };
    }
    else {
+      my $index      = $nibble_params->{index}; # brevity
       my $index_cols = $tbl->{tbl_struct}->{keys}->{$index}->{cols};
 
       my $asc = $args{TableNibbler}->generate_asc_stmt(
@@ -3591,7 +3601,7 @@ sub new {
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
-      my $from     = $q->quote(@{$tbl}{qw(db tbl)}) . " FORCE INDEX(`$index`)";
+      my $from     = "$tbl->{name} FORCE INDEX(`$index`)";
       my $order_by = join(', ', map {$q->quote($_)} @{$index_cols});
 
       my $first_lb_sql
@@ -3649,7 +3659,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*checksum chunk*/";
+         . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
       my $explain_nibble_sql 
@@ -3661,7 +3671,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
-         . " /*explain checksum chunk*/";
+         . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
       my $limit = $chunk_size - 1;
@@ -3688,7 +3698,7 @@ sub new {
       };
    }
 
-   $self->{row_est}    = $row_est;
+   $self->{row_est}    = $nibble_params->{row_est},
    $self->{nibbleno}   = 0;
    $self->{have_rows}  = 0;
    $self->{rowno}      = 0;
@@ -3728,8 +3738,8 @@ sub next {
    while ( $self->{have_rows} || $self->_next_boundaries() ) {
       if ( !$self->{have_rows} ) {
          $self->{nibbleno}++;
-         PTDEBUG && _d($self->{nibble_sth}->{Statement}, 'params:',
-            join(', ', (@{$self->{lower}}, @{$self->{upper}})));
+         PTDEBUG && _d('Nibble:', $self->{nibble_sth}->{Statement}, 'params:',
+            join(', ', (@{$self->{lower} || []}, @{$self->{upper} || []})));
          if ( my $callback = $self->{callbacks}->{exec_nibble} ) {
             $self->{have_rows} = $callback->(%callback_args);
          }
@@ -3851,6 +3861,51 @@ sub row_estimate {
    return $self->{row_est};
 }
 
+sub can_nibble {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl chunk_size OptionParser TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $chunk_size, $o) = @args{@required_args};
+
+   my $where = $o->has('where') ? $o->get('where') : '';
+
+   my ($row_est, $mysql_index) = get_row_estimate(
+      Cxn   => $cxn,
+      tbl   => $tbl,
+      where => $where,
+   );
+
+   if ( !$where ) {
+      $mysql_index = undef;
+   }
+
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
+   my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
+                  ? $row_est <= $chunk_size * $chunk_size_limit
+                  : 0;
+   PTDEBUG && _d('One nibble:', $one_nibble ? 'yes' : 'no');
+
+   if ( $args{resume}
+        && !defined $args{resume}->{lower_boundary}
+        && !defined $args{resume}->{upper_boundary} ) {
+      PTDEBUG && _d('Resuming from one nibble table');
+      $one_nibble = 1;
+   }
+
+   my $index = _find_best_index(%args, mysql_index => $mysql_index);
+   if ( !$index && !$one_nibble ) {
+      die "There is no good index and the table is oversized.";
+   }
+
+   return {
+      row_est     => $row_est,      # nibble about this many rows
+      index       => $index,        # using this index
+      one_nibble  => $one_nibble,   # if the table fits in one nibble/chunk
+   };
+}
+
 sub _find_best_index {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl TableParser);
@@ -3924,14 +3979,18 @@ sub _find_best_index {
 
 sub _get_index_cardinality {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl index Quoter);
-   my ($cxn, $tbl, $index, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl index);
+   my ($cxn, $tbl, $index) = @args{@required_args};
 
-   my $sql = "SHOW INDEXES FROM " . $q->quote(@{$tbl}{qw(db tbl)})
-           . " WHERE Key_name = '$index'";
+   my $sql = "SHOW INDEXES FROM $tbl->{name} "
+           . "WHERE Key_name = '$index'";
    PTDEBUG && _d($sql);
    my $cardinality = 1;
-   my $rows = $cxn->dbh()->selectall_hashref($sql, 'key_name');
+   my $dbh         = $cxn->dbh();
+   my $key_name    = $dbh && ($dbh->{FetchHashKeyName} || '') eq 'NAME_lc'
+                   ? 'key_name'
+                   : 'Key_name';
+   my $rows = $dbh->selectall_hashref($sql, $key_name);
    foreach my $row ( values %$rows ) {
       $cardinality *= $row->{cardinality} if $row->{cardinality};
    }
@@ -3941,22 +4000,22 @@ sub _get_index_cardinality {
 
 sub get_row_estimate {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl OptionParser TableParser Quoter);
-   my ($cxn, $tbl, $o, $tp, $q) = @args{@required_args};
+   my @required_args = qw(Cxn tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl) = @args{@required_args};
 
-   if ( $args{where} ) {
-      PTDEBUG && _d('WHERE clause, using explain plan for row estimate');
-      my $table = $q->quote(@{$tbl}{qw(db tbl)});
-      my $sql   = "EXPLAIN SELECT * FROM $table WHERE $args{where}";
-      PTDEBUG && _d($sql);
-      my $expl = $cxn->dbh()->selectrow_hashref($sql);
-      PTDEBUG && _d(Dumper($expl));
-      return ($expl->{rows} || 0), $expl->{key};
+   my $sql = "EXPLAIN SELECT * FROM $tbl->{name} "
+           . "WHERE " . ($args{where} || '1=1');
+   PTDEBUG && _d($sql);
+   my $expl = $cxn->dbh()->selectrow_hashref($sql);
+   PTDEBUG && _d(Dumper($expl));
+   my $mysql_index = $expl->{key} || '';
+   if ( $mysql_index ne 'PRIMARY' ) {
+      $mysql_index = lc($mysql_index);
    }
-   else {
-      PTDEBUG && _d('No WHERE clause, using table status for row estimate');
-      return $tbl->{tbl_status}->{rows} || 0;
-   }
+   return ($expl->{rows} || 0), $mysql_index;
 }
 
 sub _prepare_sths {
@@ -4010,10 +4069,10 @@ sub _get_bounds {
    if ( !$self->{next_lower} ) {
       PTDEBUG && _d('At end of table, or no more boundaries to resume');
       $self->{no_more_boundaries} = 1;
-   }
 
-   $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
-   PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
+      $self->{last_upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
+      PTDEBUG && _d('Last upper boundary:', Dumper($self->{last_upper}));
+   }
 
    return;
 }
@@ -4032,12 +4091,15 @@ sub _next_boundaries {
       return 1; # continue nibbling
    }
 
+
+
    if ( $self->identical_boundaries($self->{lower}, $self->{next_lower}) ) {
       PTDEBUG && _d('Infinite loop detected');
       my $tbl     = $self->{tbl};
       my $index   = $tbl->{tbl_struct}->{keys}->{$self->{index}};
       my $n_cols  = scalar @{$index->{cols}};
       my $chunkno = $self->{nibbleno};
+
       die "Possible infinite loop detected!  "
          . "The lower boundary for chunk $chunkno is "
          . "<" . join(', ', @{$self->{lower}}) . "> and the lower "
@@ -4064,25 +4126,32 @@ sub _next_boundaries {
       }
    }
 
+
    PTDEBUG && _d($self->{ub_sth}->{Statement}, 'params:',
       join(', ', @{$self->{lower}}), $self->{limit});
    $self->{ub_sth}->execute(@{$self->{lower}}, $self->{limit});
    my $boundary = $self->{ub_sth}->fetchall_arrayref();
    PTDEBUG && _d('Next boundary:', Dumper($boundary));
    if ( $boundary && @$boundary ) {
-      $self->{upper} = $boundary->[0]; # this nibble
+      $self->{upper} = $boundary->[0];
+
       if ( $boundary->[1] ) {
-         $self->{next_lower} = $boundary->[1]; # next nibble
+         $self->{next_lower} = $boundary->[1];
       }
       else {
+         PTDEBUG && _d('End of table boundary:', Dumper($boundary->[0]));
          $self->{no_more_boundaries} = 1;  # for next call
-         PTDEBUG && _d('Last upper boundary:', Dumper($boundary->[0]));
+
+         $self->{last_upper} = $boundary->[0];
       }
    }
    else {
-      $self->{no_more_boundaries} = 1;  # for next call
-      $self->{upper} = $self->{last_upper};
+      my $dbh = $self->{Cxn}->dbh();
+      $self->{upper} = $dbh->selectrow_arrayref($self->{last_ub_sql});
       PTDEBUG && _d('Last upper boundary:', Dumper($self->{upper}));
+      $self->{no_more_boundaries} = 1;  # for next call
+      
+      $self->{last_upper} = $self->{upper};
    }
    $self->{ub_sth}->finish();
 
@@ -4163,7 +4232,7 @@ sub new {
 
    my $q     = $self->{Quoter};
    my $o     = $self->{OptionParser};
-   my $where = $o->get('where');
+   my $where = $o->has('where') ? $o->get('where') : undef;
 
    if ( !$self->one_nibble() ) {
       my $head_sql
@@ -4362,10 +4431,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -4376,13 +4446,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -4393,18 +4463,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -4539,7 +4612,7 @@ my $tbl_name     = qr{
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(OptionParser Quoter);
+   my @required_args = qw(OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -4643,18 +4716,11 @@ sub next {
    }
 
    if ( $schema_obj ) {
-      if ( $schema_obj->{ddl} && $self->{TableParser} ) {
-         $schema_obj->{tbl_struct}
-            = $self->{TableParser}->parse($schema_obj->{ddl});
-      }
-
-      delete $schema_obj->{ddl} unless $self->{keep_ddl};
-      delete $schema_obj->{tbl_status} unless $self->{keep_tbl_status};
-
       if ( my $schema = $self->{Schema} ) {
          $schema->add_schema_object($schema_obj);
       }
-      PTDEBUG && _d('Next schema object:', $schema_obj->{db}, $schema_obj->{tbl});
+      PTDEBUG && _d('Next schema object:',
+         $schema_obj->{db}, $schema_obj->{tbl});
    }
 
    return $schema_obj;
@@ -4704,14 +4770,14 @@ sub _iterate_files {
                next CHUNK;
             }
             $ddl =~ s/ \*\/;\Z/;/;  # remove end of version comment
-
-            my ($engine) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;   
-
-            if ( !$engine || $self->engine_is_allowed($engine) ) {
+            my $tbl_struct = $self->{TableParser}->parse($ddl);
+            if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
                return {
-                  db  => $self->{db},
-                  tbl => $tbl,
-                  ddl => $ddl,
+                  db         => $self->{db},
+                  tbl        => $tbl,
+                  name       => $self->{Quoter}->quote($self->{db}, $tbl),
+                  ddl        => $ddl,
+                  tbl_struct => $tbl_struct,
                };
             }
          }
@@ -4728,6 +4794,7 @@ sub _iterate_files {
 sub _iterate_dbh {
    my ( $self ) = @_;
    my $q   = $self->{Quoter};
+   my $tp  = $self->{TableParser};
    my $dbh = $self->{dbh};
    PTDEBUG && _d('Getting next schema object from dbh', $dbh);
 
@@ -4766,30 +4833,15 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $tbl_status;
-      if ( $self->{filters}->{'engines'}
-           || $self->{filters}->{'ignore-engines'}
-           || $self->{keep_tbl_status} )
-      {
-         my $sql = "SHOW TABLE STATUS FROM " . $q->quote($self->{db})
-                 . " LIKE \'$tbl\'";
-         PTDEBUG && _d($sql);
-         $tbl_status = $dbh->selectrow_hashref($sql);
-         PTDEBUG && _d(Dumper($tbl_status));
-      }
-
-      if ( !$tbl_status
-           || $self->engine_is_allowed($tbl_status->{engine}) ) {
-         my $ddl;
-         if ( my $tp = $self->{TableParser} ) {
-            $ddl = $tp->get_create_table($dbh, $self->{db}, $tbl);
-         }
-
+      my $ddl        = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $tbl_struct = $tp->parse($ddl);
+      if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
          return {
             db         => $self->{db},
             tbl        => $tbl,
+            name       => $q->quote($self->{db}, $tbl),
             ddl        => $ddl,
-            tbl_status => $tbl_status,
+            tbl_struct => $tbl_struct,
          };
       }
    }
@@ -4893,7 +4945,11 @@ sub table_is_allowed {
 
 sub engine_is_allowed {
    my ( $self, $engine ) = @_;
-   die "I need an engine argument" unless $engine;
+
+   if ( !$engine ) {
+      PTDEBUG && _d('No engine specified; allowing the table');
+      return 1;
+   }
 
    $engine = lc $engine;
 
@@ -5591,47 +5647,66 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(spec get_status sleep oktorun);
+   my @required_args = qw(max_spec get_status sleep oktorun);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
 
-   my $max_val_for = _parse_spec(%args);
+   PTDEBUG && _d('Parsing spec for max thresholds');
+   my $max_val_for = _parse_spec($args{max_spec});
+   if ( $max_val_for ) {
+      _check_and_set_vals(
+         vars             => $max_val_for,
+         get_status       => $args{get_status},
+         threshold_factor => 0.2, # +20%
+      );
+   }
+
+   PTDEBUG && _d('Parsing spec for critical thresholds');
+   my $critical_val_for = _parse_spec($args{critical_spec} || []);
+   if ( $critical_val_for ) {
+      _check_and_set_vals(
+         vars             => $critical_val_for,
+         get_status       => $args{get_status},
+         threshold_factor => 1.0, # double (x2; +100%)
+      );
+   }
 
    my $self = {
-      get_status  => $args{get_status},
-      sleep       => $args{sleep},
-      oktorun     => $args{oktorun},
-      max_val_for => $max_val_for,
+      get_status       => $args{get_status},
+      sleep            => $args{sleep},
+      oktorun          => $args{oktorun},
+      max_val_for      => $max_val_for,
+      critical_val_for => $critical_val_for,
    };
 
    return bless $self, $class;
 }
 
 sub _parse_spec {
-   my ( %args ) = @_;
-   my @required_args = qw(spec get_status);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($spec, $get_status) = @args{@required_args};
+   my ($spec) = @_;
 
-   if ( !@$spec ) {
-      PTDEBUG && _d('No spec, disabling status var waits');
-      return;
-   }
+   return unless $spec && scalar @$spec;
 
    my %max_val_for;
    foreach my $var_val ( @$spec ) {
+      die "Empty or undefined spec\n" unless $var_val;
+      $var_val =~ s/^\s+//;
+      $var_val =~ s/\s+$//g;
+
       my ($var, $val) = split /[:=]/, $var_val;
-      die "Invalid spec: $var_val" unless $var;
+      die "$var_val does not contain a variable\n" unless $var;
+      die "$var is not a variable name\n" unless $var =~ m/^[a-zA-Z_]+$/;
+
       if ( !$val ) {
-         my $init_val = $get_status->($var);
-         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
-         $val = int(($init_val * .20) + $init_val);
+         PTDEBUG && _d('Will get intial value for', $var, 'later');
+         $max_val_for{$var} = undef;
       }
-      PTDEBUG && _d('Wait if', $var, '>=', $val);
-      $max_val_for{$var} = $val;
+      else {
+         die "The value for $var must be a number\n"
+            unless $val =~ m/^[\d\.]+$/;
+         $max_val_for{$var} = $val;
+      }
    }
 
    return \%max_val_for; 
@@ -5640,6 +5715,11 @@ sub _parse_spec {
 sub max_values {
    my ($self) = @_;
    return $self->{max_val_for};
+}
+
+sub critical_values {
+   my ($self) = @_;
+   return $self->{critical_val_for};
 }
 
 sub wait {
@@ -5652,7 +5732,7 @@ sub wait {
    my $oktorun    = $self->{oktorun};
    my $get_status = $self->{get_status};
    my $sleep      = $self->{sleep};
-   
+
    my %vals_too_high = %{$self->{max_val_for}};
    my $pr_callback;
    if ( $pr ) {
@@ -5676,6 +5756,12 @@ sub wait {
       foreach my $var ( sort keys %vals_too_high ) {
          my $val = $get_status->($var);
          PTDEBUG && _d($var, '=', $val);
+         if ( $val
+              && exists $self->{critical_val_for}->{$var}
+              && $val >= $self->{critical_val_for}->{$var} ) {
+            die "$var=$val exceeds its critical threshold "
+               . "$self->{critical_val_for}->{$var}\n";
+         }
          if ( !$val || $val >= $self->{max_val_for}->{$var} ) {
             $vals_too_high{$var} = $val;
          }
@@ -5698,6 +5784,34 @@ sub wait {
 
    PTDEBUG && _d('All var vals are low enough');
    return;
+}
+
+sub _check_and_set_vals {
+   my (%args) = @_;
+   my @required_args = qw(vars get_status threshold_factor);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   my ($vars, $get_status, $threshold_factor) = @args{@required_args};
+
+   PTDEBUG && _d('Checking and setting values');
+   return unless $vars && scalar %$vars;
+
+   foreach my $var ( keys %$vars ) {
+      my $init_val = $get_status->($var);
+      die "Variable $var does not exist or its value is undefined\n"
+         unless defined $init_val;
+      my $val;
+      if ( defined $vars->{$var} ) {
+         $val = $vars->{$var};
+      }
+      else {
+         PTDEBUG && _d('Initial', $var, 'value:', $init_val);
+         $val = int(($init_val * $threshold_factor) + $init_val);
+         $vars->{$var} = $val;
+      }
+      PTDEBUG && _d('Wait if', $var, '>=', $val);
+   }
 }
 
 sub _d {
@@ -5811,6 +5925,30 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun      = 1;
 my $print_header = 1;
 
+# The following two hashes are used in exec_nibble().
+# They're static, so they do not need to be reset in main().
+# See also https://bugs.launchpad.net/percona-toolkit/+bug/919499
+
+# Completely ignore these error codes.
+my %ignore_code = (
+   # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
+   # Message: Statement may not be safe to log in statement format. 
+   # Ignore this warning because we have purposely set statement-based
+   # replication.
+   1592 => 1,
+);
+
+# Warn once per-table for these error codes if the error message
+# matches the pattern.
+my %warn_code = (
+   # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
+   # Message: Data truncated for column '%s' at row %ld
+   1265 => {
+      # any pattern
+      # use MySQL's message for this warning
+   },
+);
+
 sub main {
    # Reset global vars else tests will fail in strange ways.
    @ARGV         = @_;
@@ -5837,6 +5975,18 @@ sub main {
    $o->set('ignore-tables', \%ignore_tables);
 
    $o->set('chunk-time', 0) if $o->got('chunk-size');
+
+   foreach my $opt ( qw(max-load critical-load) ) {
+      next unless $o->has($opt);
+      my $spec = $o->get($opt);
+      eval {
+         MySQLStatusWaiter::_parse_spec($o->get($opt));
+      };
+      if ( $EVAL_ERROR ) {
+         chomp $EVAL_ERROR;
+         $o->save_error("Invalid --$opt: $EVAL_ERROR");
+      }
+   }
 
    if ( !$o->get('help') ) {
       if ( @ARGV > 1 ) {
@@ -5940,29 +6090,41 @@ sub main {
             . "level to REPEATABLE-READ.\n";
       }
 
-      # We set innodb_lock_wait_timeout=1 so that if this tool happens to cause
-      # some locking, it will be more likely to be the victim than other
-      # connections to the server, and thus disrupt the server less.
-      $sql = 'SHOW SESSION VARIABLES LIKE "innodb_lock_wait_timeout"';
-      PTDEBUG && _d($dbh, $sql);
-      my (undef, $lock_wait_timeout) = $dbh->selectrow_array($sql);
-      PTDEBUG && _d('innodb_lock_wait_timeout', $lock_wait_timeout);
-      if ( ($lock_wait_timeout || 0) > $o->get('lock-wait-timeout') ) {
-         $sql = 'SET SESSION innodb_lock_wait_timeout=1';
-         eval {
-            PTDEBUG && _d($dbh, $sql);
-            $dbh->do($sql);
-         };
-         if ( $EVAL_ERROR ) {
-            warn "Failed to $sql: $EVAL_ERROR\n"
+      # We set innodb_lock_wait_timeout=1 (the option's default value)
+      # so that if this tool happens to cause some locking, it will more
+      # likely be the victim than other connections and thus avoid disrupting
+      # the server.  The var is only dynamic with the InnoDB plugin, so
+      # if setting it fails we only warn if the server's value is greater
+      # than the desired value.  E.g. if user does --lock-wait-timeout 5
+      # and the set fails but the server's value is 1, then that's ok, but
+      # if the server's value is 10, then that's not ok.
+      my $lock_wait_timeout = $o->get('lock-wait-timeout');
+      my $set_lwt = "SET SESSION innodb_lock_wait_timeout=$lock_wait_timeout";
+      PTDEBUG && _d($dbh, $set_lwt);
+      eval {
+         $dbh->do($set_lwt);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         # Get the server's current value.
+         $sql = "SHOW SESSION VARIABLES LIKE 'innodb_lock_wait_timeout'";
+         PTDEBUG && _d($dbh, $sql);
+         my (undef, $curr_lwt) = $dbh->selectrow_array($sql);
+         PTDEBUG && _d('innodb_lock_wait_timeout on server:', $curr_lwt);
+         if ( !defined $curr_lwt ) {
+            PTDEBUG && _d('innodb_lock_wait_timeout does not exist;',
+               'InnoDB is probably disabled');
+         }
+         elsif ( $curr_lwt > $lock_wait_timeout ) { 
+            warn "Failed to $set_lwt: $EVAL_ERROR\n"
                . "The current innodb_lock_wait_timeout value "
-               . "$lock_wait_timeout is higher than the --lock-wait-timeout "
-               . "value " . $o->get('lock-wait-timeout') . " and the variable "
-               . "cannot be changed.  innodb_lock_wait_timeout is only dynamic "
-               . "when using the InnoDB plugin.  To prevent this warning, either "
-               . "specify --lock-wait-time=$lock_wait_timeout, or manually "
-               . "set innodb_lock_wait_timeout to a value less than or equal "
-               . "to " . $o->get('lock-wait-timeout') . " and restart MySQL.\n";
+               . "$curr_lwt is greater than the --lock-wait-timeout "
+               . "value $lock_wait_timeout and the variable cannot be "
+               . "changed.  innodb_lock_wait_timeout is only dynamic when "
+               . "using the InnoDB plugin.  To prevent this warning, either "
+               . "specify --lock-wait-time=$curr_lwt, or manually set "
+               . "innodb_lock_wait_timeout to a value less than or equal "
+               . "to $lock_wait_timeout and restart MySQL.\n";
          }
       }
    };
@@ -6185,12 +6347,22 @@ sub main {
          };
       }
 
-      $sys_load = new MySQLStatusWaiter(
-         spec       => $o->get('max-load'),
-         get_status => $get_status,
-         oktorun    => sub { return $oktorun },
-         sleep      => $sleep,
-      );
+      eval {
+         $sys_load = new MySQLStatusWaiter(
+            max_spec   => $o->get('max-load'),
+            get_status => $get_status,
+            oktorun    => sub { return $oktorun },
+            sleep      => $sleep,
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         chomp $EVAL_ERROR;
+         die "Error checking --max-load: $EVAL_ERROR.  "
+            . "Check that the variables specified for --max-load "
+            . "are spelled correctly and exist in "
+            . "SHOW GLOBAL STATUS.  Current value for this option is:\n"
+            . "  --max-load " . (join(',', @{$o->get('max-load')})) . "\n";
+      }
       
       if ( $o->get('progress') ) {
          $replica_lag_pr = new Progress(
@@ -6241,13 +6413,12 @@ sub main {
    }
 
    my $schema_iter = new SchemaIterator(
-      dbh             => $master_dbh,
-      resume          => $last_chunk ? $q->quote(@{$last_chunk}{qw(db tbl)})
-                                     : "",
-      keep_tbl_status => 1,
-      OptionParser    => $o,
-      TableParser     => $tp,
-      Quoter          => $q,
+      dbh          => $master_dbh,
+      resume       => $last_chunk ? $q->quote(@{$last_chunk}{qw(db tbl)})
+                                  : "",
+      OptionParser => $o,
+      TableParser  => $tp,
+      Quoter       => $q,
    );
 
    if ( $last_chunk &&
@@ -6263,9 +6434,27 @@ sub main {
    my $total_rows = 0;
    my $total_time = 0;
    my $total_rate = 0;
-   my $limit      = $o->get('chunk-size-limit');
    my $tn         = new TableNibbler(TableParser => $tp, Quoter => $q);
    my $retry      = new Retry();
+   
+   # --chunk-size-limit has two purposes.  The 1st, as documented, is
+   # to prevent oversized chunks when the chunk index is not unique.
+   # The 2nd is to determine if the table can be processed in one chunk
+   # (WHERE 1=1 instead of nibbling).  This creates a problem when
+   # the user does --chunk-size-limit=0 to disable the 1st, documented
+   # purpose because, apparently, they're using non-unique indexes and
+   # they don't care about potentially large chunks.  But disabling the
+   # 1st purpose adversely affects the 2nd purpose becuase 0 * the chunk size
+   # will always be zero, so tables will only be single-chunked if EXPLAIN
+   # says there are 0 rows, but sometimes EXPLAIN says there is 1 row
+   # even when the table is empty.  This wouldn't matter except that nibbling
+   # an empty table doesn't currently work becuase there are no boundaries,
+   # so no checksum is written for the empty table.  To fix this and
+   # preserve the two purposes of this option, usages of the 2nd purpose
+   # do || 1 so the limit is never 0 and empty tables are single-chunked.
+   # See: https://bugs.launchpad.net/percona-toolkit/+bug/987393
+   # This is used for the 1st purpose of --chunk-size-limit:
+   my $limit = $o->get('chunk-size-limit');
 
    # ########################################################################
    # Callbacks for each table's nibble iterator.  All checksum work is done
@@ -6319,16 +6508,20 @@ sub main {
          else {
             if ( $nibble_iter->one_nibble() ) {
                PTDEBUG && _d('Getting table row estimate on replicas');
-               my $chunk_size_limit = $o->get('chunk-size-limit');
+
+               # This is used for the 2nd purpose for --chunkr-size-limit;
+               # see the large comment block above near my $limit = $o->...
+               my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
+
                my @too_large;
                foreach my $slave ( @$slaves ) {
+                  # TODO: This duplicates NibbleIterator::can_nibble();
+                  # probably best to have 1 code path to determine if
+                  # a given table is oversized on a given host.
                   my ($n_rows) = NibbleIterator::get_row_estimate(
-                     Cxn          => $slave,
-                     tbl          => $tbl,
-                     where        => $o->get('where') || "1=1",
-                     OptionParser => $o,
-                     TableParser  => $tp,
-                     Quoter       => $q,
+                     Cxn   => $slave,
+                     tbl   => $tbl,
+                     where => $o->get('where'),
                   );
                   PTDEBUG && _d('Table on', $slave->name(),
                      'has', $n_rows, 'rows');
@@ -6399,6 +6592,9 @@ sub main {
          # boundary sql.  This check applies to the next nibble.  So if
          # the current nibble number is 5, then nibble 5 is already done
          # and we're checking nibble number 6.
+
+         # XXX This call and others like it are relying on a Perl oddity.
+         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
          my $expl = explain_statement(
             tbl  => $tbl,
             sth  => $sth->{explain_upper_boundary},
@@ -6448,6 +6644,8 @@ sub main {
                printf "%d 1=1\n", $chunk;
             }
             else {
+               # XXX This call and others like it are relying on a Perl oddity.
+               # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
                my $lb_quoted = join(
                   ',', map { defined $_ ? $_ : 'NULL'} @{$boundary->{lower}});
                my $ub_quoted = join(
@@ -6462,6 +6660,8 @@ sub main {
 
          # If the table is being chunk (i.e., it's not small enough to be
          # consumed by one nibble), then check index usage and chunk size.
+         # XXX This call and others like it are relying on a Perl oddity.
+         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
          if ( !$nibble_iter->one_nibble() ) {
             my $expl = explain_statement(
                tbl  => $tbl,
@@ -6733,6 +6933,10 @@ sub main {
                TableNibbler => $tn,
                TableParser  => $tp,
                RowChecksum  => $rc,
+               comments     => {
+                  bite   => "checksum table",
+                  nibble => "checksum chunk",
+               },
             );
          };
          if ( $EVAL_ERROR ) {
@@ -6804,27 +7008,6 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
-{
-# Completely ignore these error codes.
-my %ignore_code = (
-   # Error: 1592 SQLSTATE: HY000  (ER_BINLOG_UNSAFE_STATEMENT)
-   # Message: Statement may not be safe to log in statement format. 
-   # Ignore this warning because we have purposely set statement-based
-   # replication.
-   1592 => 1,
-);
-
-# Warn once per-table for these error codes if the error message
-# matches the pattern.
-my %warn_code = (
-   # Error: 1265 SQLSTATE: 01000 (WARN_DATA_TRUNCATED)
-   # Message: Data truncated for column '%s' at row %ld
-   1265 => {
-      # any pattern
-      # use MySQL's message for this warning
-   },
-);
-
 sub exec_nibble {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
@@ -6836,6 +7019,8 @@ sub exec_nibble {
    my $dbh         = $cxn->dbh();
    my $sth         = $nibble_iter->statements();
    my $boundary    = $nibble_iter->boundaries();
+   # XXX This call and others like it are relying on a Perl oddity.
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
    my $lb_quoted   = $q->serialize_list(@{$boundary->{lower}});
    my $ub_quoted   = $q->serialize_list(@{$boundary->{upper}});
    my $chunk       = $nibble_iter->nibble_number();
@@ -6851,6 +7036,8 @@ sub exec_nibble {
          my $t_start = time;        
 
          # Execute the REPLACE...SELECT checksum query.
+         # XXX This call and others like it are relying on a Perl oddity.
+         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
          PTDEBUG && _d($sth->{nibble}->{Statement},
             'lower boundary:', @{$boundary->{lower}},
             'upper boundary:', @{$boundary->{upper}});
@@ -6965,7 +7152,6 @@ sub exec_nibble {
          die "Error executing checksum query: $args{error}\n";
       }
    );
-}
 }
 
 {
@@ -7383,6 +7569,18 @@ sub _d {
 # ############################################################################
 # Run the program.
 # ############################################################################
+
+# https://bugs.launchpad.net/percona-toolkit/+bug/916999
+# http://www.mysqlperformanceblog.com/2012/02/21/dbd-mysql-4-014-breaks-pt-table-checksum-2-0/
+eval {
+   require DBD::mysql;
+};
+if ( !$EVAL_ERROR && $DBD::mysql::VERSION eq "4.014" ) {
+   die "DBD::mysql v4.014 is installed, but it has as bug which causes "
+     . "pt-table-checksum to fail.  Please upgrade DBD::mysql to any "
+     . "newer version.\n"
+}
+
 if ( !caller ) { exit main(@ARGV); }
 
 1; # Because this is a module as well as a script.
@@ -7426,6 +7624,11 @@ safeguards to prevent this.  It inserts a small amount of data into a table that
 contains checksum results.  It has checks that, if disabled, can potentially
 cause replication to fail when unsafe replication options are used.  In short,
 it is safe by default, but it permits you to turn off its safety checks.
+
+The tool presumes that schemas and tables are identical on the master and
+all replicas.  Replication will break if, for example, a replica does not
+have a schema that exists on the master (and that schema is checksummed),
+or if the structure of a table on a replica is different than on the master.
 
 At the time of this release, we know of no bugs that could cause harm to
 users.
@@ -7977,10 +8180,13 @@ Ignore tables whose names match the Perl regex.
 
 type: int; default: 1
 
-Set the session value of the innodb_lock_wait_timeout variable on the master host.
-Setting this option dynamically requires the InnoDB plugin, so this works only
-on newer InnoDB and MySQL versions.  This option helps guard against long lock
-waits if the checksum queries become slow for some reason.
+Set the session value of C<innodb_lock_wait_timeout> on the master host.
+This option helps guard against long lock waits if the checksum queries
+become slow for some reason.  Setting this option dynamically requires the
+InnoDB plugin, so this works only on newer InnoDB and MySQL versions.  If
+setting the value fails and the current server value is greater than the
+specified value, then a warning is printed; else, if the current server
+value is less than or equal to the specified value, no warning is printed.
 
 =item --max-lag
 
@@ -8097,6 +8303,7 @@ Preferred recursion method for discovering replicas.  Possible methods are:
   processlist  SHOW PROCESSLIST
   hosts        SHOW SLAVE HOSTS
   dsn=DSN      DSNs from a table
+  none         Do not find slaves
 
 The processlist method is the default, because SHOW SLAVE HOSTS is not
 reliable.  However, the hosts method can work better if the server uses a
@@ -8192,7 +8399,7 @@ and replicate_ignore_db.  However, replication filters can create a situation
 where there simply is no one right way to do things.  Some statements might not
 be replicated, and others might cause replication to fail.  In such cases, you
 can use this option to specify a default database that pt-table-checksum selects
-with USE, and never changes.  See also <L"--[no]check-replication-filters">.
+with USE, and never changes.  See also L<"--[no]check-replication-filters">.
 
 =item --resume
 
@@ -8439,6 +8646,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.0.3
+pt-table-checksum 2.1.1
 
 =cut

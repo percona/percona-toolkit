@@ -71,6 +71,9 @@ sub add {
 
    push @{$self->{procs}}, $process;
    push @{$self->{names}}, $name;
+   if ( my $n = $args{retry_on_error} ) {
+      $self->{retries}->{$name} = $n;
+   }
    if ( $self->{instrument} ) {
       $self->{instrumentation}->{$name} = { time => 0, calls => 0 };
    }
@@ -156,10 +159,28 @@ sub execute {
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Pipeline process $procno ("
-            . ($self->{names}->[$procno] || "")
-            . ") caused an error: $EVAL_ERROR";
-         die $EVAL_ERROR unless $self->{continue_on_error};
+         my $name = $self->{names}->[$procno] || "";
+         my $msg  = "Pipeline process " . ($procno + 1)
+                  . " ($name) caused an error: "
+                  . $EVAL_ERROR;
+         if ( defined $self->{retries}->{$name} ) {
+            my $n = $self->{retries}->{$name};
+            if ( $n ) {
+               warn $msg . "Will retry pipeline process $procno ($name) "
+                  . "$n more " . ($n > 1 ? "times" : "time") . ".\n";
+               $self->{retries}->{$name}--;
+            }
+            else {
+               die $msg . "Terminating pipeline because process $procno "
+                  . "($name) caused too many errors.\n";
+            }
+         }
+         elsif ( !$self->{continue_on_error} ) {
+            die $msg;
+         }
+         else {
+            warn $msg;
+         }
       }
    }
 

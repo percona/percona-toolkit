@@ -35,6 +35,7 @@ use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 use Test::More;
 use Time::HiRes qw(sleep time);
+use File::Temp qw(tempfile);
 use POSIX qw(signal_h);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -47,6 +48,7 @@ our %EXPORT_TAGS = ();
 our @EXPORT_OK   = qw();
 our @EXPORT      = qw(
    output
+   full_output
    load_data
    load_file
    parse_file
@@ -293,6 +295,16 @@ sub wait_for_files {
       },
    );
 }
+
+sub wait_for_sh {
+   my ($cmd) = @_;
+   return wait_until(
+      sub {
+         my $retval = system("$cmd 2>/dev/null");
+         return $retval >> 8 == 0 ? 1 : 0;
+      }
+   );
+};
 
 sub _read {
    my ( $fh ) = @_;
@@ -633,6 +645,36 @@ sub _d {
         @_;
    my $t = sprintf '%.3f', time;
    print STDERR "# $package:$line $PID $t ", join(' ', @_), "\n";
+}
+
+# Like output(), but forks a process to execute the coderef.
+# This is because otherwise, errors thrown during cleanup
+# would be skipped.
+sub full_output {
+   my ( $code ) = @_;
+   die "I need a code argument" unless $code;
+
+   my (undef, $file) = tempfile();
+   open *output_fh, '>', $file
+         or die "Cannot open file $file: $OS_ERROR";
+   local *STDOUT = *output_fh;
+
+   *STDERR = *STDOUT;
+
+   my $status;
+   warn $file;
+   if (my $pid = fork) {
+      waitpid($pid, 0);
+      $status = $?;
+   }
+   else {
+      $code->();
+      exit 0;
+   }
+   close *output_fh;
+   my $output = do { local $/; open my $fh, "<", $file or die $!; <$fh> };
+
+   return ($output, $status);
 }
 
 1;

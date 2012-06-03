@@ -28,6 +28,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -82,7 +84,8 @@ sub parse {
    my %final_props;
    my $opts = $self->{opts};
 
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          $given_props{$prop_key} = $prop_val;
       }
@@ -141,12 +144,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -4725,9 +4730,9 @@ sub write {
 
    if ( $percona_patched ) {
       printf $fh
-         "# QC_Hit: %s  Full_scan: %s  Full_join: %s  Tmp_table: %s  Disk_tmp_table: %s\n# Filesort: %s  Disk_filesort: %s  Merge_passes: %d\n",
+         "# QC_Hit: %s  Full_scan: %s  Full_join: %s  Tmp_table: %s  Tmp_table_on_disk: %s\n# Filesort: %s  Filesort_on_disk: %s  Merge_passes: %d\n",
          map { $_ || 0 }
-            @{$event}{qw(QC_Hit Full_scan Full_join Tmp_table Disk_tmp_table Filesort Disk_filesort Merge_passes)};
+            @{$event}{qw(QC_Hit Full_scan Full_join Tmp_table Tmp_table_on_disk Filesort Filesort_on_disk Merge_passes)};
 
       if ( exists $event->{InnoDB_IO_r_ops} ) {
          printf $fh
@@ -8747,10 +8752,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -8761,13 +8767,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -8778,18 +8784,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -11741,6 +11750,9 @@ sub add {
 
    push @{$self->{procs}}, $process;
    push @{$self->{names}}, $name;
+   if ( my $n = $args{retry_on_error} ) {
+      $self->{retries}->{$name} = $n;
+   }
    if ( $self->{instrument} ) {
       $self->{instrumentation}->{$name} = { time => 0, calls => 0 };
    }
@@ -11805,10 +11817,28 @@ sub execute {
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Pipeline process $procno ("
-            . ($self->{names}->[$procno] || "")
-            . ") caused an error: $EVAL_ERROR";
-         die $EVAL_ERROR unless $self->{continue_on_error};
+         my $name = $self->{names}->[$procno] || "";
+         my $msg  = "Pipeline process " . ($procno + 1)
+                  . " ($name) caused an error: "
+                  . $EVAL_ERROR;
+         if ( defined $self->{retries}->{$name} ) {
+            my $n = $self->{retries}->{$name};
+            if ( $n ) {
+               warn $msg . "Will retry pipeline process $procno ($name) "
+                  . "$n more " . ($n > 1 ? "times" : "time") . ".\n";
+               $self->{retries}->{$name}--;
+            }
+            else {
+               die $msg . "Terminating pipeline because process $procno "
+                  . "($name) caused too many errors.\n";
+            }
+         }
+         elsif ( !$self->{continue_on_error} ) {
+            die $msg;
+         }
+         else {
+            warn $msg;
+         }
       }
    }
 
@@ -11943,6 +11973,18 @@ sub main {
 
       if ( $o->get('apdex-threshold') <= 0 ) {
          $o->save_error("Apdex threshold must be a positive decimal value");
+      }
+      if ( my $patterns = $o->get('embedded-attributes') ) {
+         $o->save_error("--embedded-attributes should be passed two "
+           . "comma-separated patterns, got " . scalar(@$patterns) )
+           unless scalar(@$patterns) == 2;
+         for my $re (@$patterns) {
+            no re 'eval';
+            eval { qr/$re/ };
+            if ( $EVAL_ERROR ) {
+               $o->save_error("--embedded-attributes $EVAL_ERROR")
+            }
+         }
       }
    }
 
@@ -12350,6 +12392,11 @@ sub main {
                );
             };
             if ( $EVAL_ERROR ) {
+               if ( $EVAL_ERROR =~ m/perhaps you forgot to load/ ) {
+                  # There is no module to handle --type, so wrong --type
+                  die "'$module' is not a valid input type. "
+                     . "Please check the documentation for --type.\n";
+               }
                die "Failed to load $module module: $EVAL_ERROR";
             }
             
@@ -12381,8 +12428,8 @@ sub main {
       }  # get events from log file
 
       if ( my $patterns = $o->get('embedded-attributes') ) {
-         $misc->{embed}   = qr/$patterns->[0]/o;
-         $misc->{capture} = qr/$patterns->[1]/o;
+         $misc->{embed}   = qr/$patterns->[0]/;
+         $misc->{capture} = qr/$patterns->[1]/;
          PTDEBUG && _d('Patterns for embedded attributes:', $misc->{embed},
                $misc->{capture});
       }
@@ -12553,8 +12600,14 @@ sub main {
 
    { # iteration
       $pipeline->add(
-         name    => 'iteration',
-         process => sub {
+         # This is a critical proc: if we die here, we probably need
+         # to stop, else an infinite loop can develop:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/888114
+         # We'll retry twice in case the problem is just one bad
+         # query class, or something like that.
+         retry_on_error => 2,
+         name           => 'iteration',
+         process        => sub {
             my ( $args ) = @_;
 
             # Start the (next) iteration.
@@ -13092,14 +13145,15 @@ sub main {
       # Create an EventAggregator for this groupby attrib and
       # add it to callbacks.
       my $type_for = {
-         val          => 'string',
-         key_print    => 'string',
-         Status_code  => 'string',
-         Statement_id => 'string',
-         Error_no     => 'string',
-         Last_errno   => 'string',
-         Thread_id    => 'string',
-         Killed       => 'bool',
+         val           => 'string',
+         key_print     => 'string',
+         Status_code   => 'string',
+         Statement_id  => 'string',
+         Error_no      => 'string',
+         Last_errno    => 'string',
+         Thread_id     => 'string',
+         InnoDB_trx_id => 'string',
+         Killed        => 'bool',
       };
 
       my $ea = new EventAggregator(
@@ -13229,6 +13283,11 @@ sub print_reports {
       );
 
       if ( $o->get('report') ) {
+         # XXX There's a bug here: --expected-range '','' will cause
+         # Use of uninitialized value in numeric lt (<)
+         # This bug is intentionally left unfixed at the moment because
+         # we exploit it to test a more serious bug: an infinite loop:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/888114
          my $expected_range = $o->get('expected-range');
          my $explain_why    = $expected_range
                             && (   @$worst < $expected_range->[0]
@@ -15049,12 +15108,12 @@ table definition is used for L<"--create-review-history-table">:
    Full_join_sum       FLOAT,
    Tmp_table_cnt       FLOAT,
    Tmp_table_sum       FLOAT,
-   Disk_tmp_table_cnt  FLOAT,
-   Disk_tmp_table_sum  FLOAT,
-   Filesort_cnt        FLOAT,
-   Filesort_sum        FLOAT,
-   Disk_filesort_cnt   FLOAT,
-   Disk_filesort_sum   FLOAT,
+   Tmp_table_on_disk_cnt FLOAT,
+   Tmp_table_on_disk_sum FLOAT,
+   Filesort_cnt          FLOAT,
+   Filesort_sum          FLOAT,
+   Filesort_on_disk_cnt  FLOAT,
+   Filesort_on_disk_sum  FLOAT,
    PRIMARY KEY(checksum, ts_min, ts_max)
  );
 
@@ -15716,6 +15775,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.0.3
+pt-query-digest 2.1.1
 
 =cut

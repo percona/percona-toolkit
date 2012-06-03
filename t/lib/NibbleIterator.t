@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 47;
+   plan tests => 50;
 }
 
 my $q   = new Quoter();
@@ -86,7 +86,7 @@ sub make_nibble_iter {
 
    my $ni = new NibbleIterator(
       Cxn         => $cxn,
-      tbl         => $schema->get_table($args{db}, $args{tbl}),
+      tbl         => $schema->get_table(lc($args{db}), lc($args{tbl})),
       chunk_size  => $o->get('chunk-size'),
       chunk_index => $o->get('chunk-index'),
       callbacks   => $args{callbacks},
@@ -94,6 +94,7 @@ sub make_nibble_iter {
       one_nibble  => $args{one_nibble},
       resume      => $args{resume},
       order_by    => $args{order_by},
+      comments    => $args{comments},
       %common_modules,
    );
 
@@ -527,7 +528,7 @@ $ni = make_nibble_iter(
 $ni->next();
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*checksum chunk*/",
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*nibble table*/",
    "--ignore-columns"
 );
 
@@ -545,7 +546,7 @@ $ni->next();
 
 is(
    $ni->statements()->{nibble}->{Statement},
-   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*checksum chunk*/",
+   "SELECT `actor_id`, `film_id`, `last_update` FROM `sakila`.`film_actor` FORCE INDEX(`PRIMARY`) WHERE ((`actor_id` > ?) OR (`actor_id` = ? AND `film_id` >= ?)) AND ((`actor_id` < ?) OR (`actor_id` = ? AND `film_id` <= ?)) ORDER BY `actor_id`, `film_id` /*nibble table*/",
    "Add ORDER BY to nibble SQL"
 );
 
@@ -722,7 +723,7 @@ $ni = make_nibble_iter(
 my $sql = $ni->statements()->{nibble}->{Statement};
 is(
    $sql,
-   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*checksum table*/",
+   "SELECT `c` FROM `test`.`t` WHERE c>'m' /*bite table*/",
    "One nibble SQL with where"
 );
 
@@ -796,6 +797,69 @@ is_deeply(
 );
 
 # #############################################################################
+# Customize bite and nibble statement comments.
+# #############################################################################
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 10)],
+   comments => {
+      bite   => "my bite",
+      nibble => "my nibble",
+   }
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` FORCE INDEX(`PRIMARY`) WHERE ((`address_id` >= ?)) AND ((`address_id` <= ?)) /*my nibble*/",
+   "Custom nibble comment"
+);
+
+$ni = make_nibble_iter(
+   db       => 'sakila',
+   tbl      => 'address',
+   argv     => [qw(--tables sakila.address --chunk-size 1000)],
+   comments => {
+      bite   => "my bite",
+      nibble => "my nibble",
+   }
+);
+
+$ni->next();
+is(
+   $ni->statements()->{nibble}->{Statement},
+   "SELECT `address_id`, `address`, `address2`, `district`, `city_id`, `postal_code`, `phone`, `last_update` FROM `sakila`.`address` /*my bite*/",
+   "Custom bite comment"
+);
+
+# #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/995274
+# Index case-sensitivity.
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/undef-arrayref-bug-995274.sql");
+PerconaTest::wait_for_table($dbh, "test.GroupMembers", "id=493076");
+
+eval {
+   $ni = make_nibble_iter(
+      db   => 'test',
+      tbl  => 'GroupMembers',
+      argv => [qw(--databases test --chunk-size 100)],
+   );
+};
+is(
+   $EVAL_ERROR,
+   '',
+   "Bug 995274: no error creating nibble iter"
+);
+
+is_deeply(
+   $ni->next(),
+   ['450876', '3','691360'],
+   "Bug 995274: nibble iter works"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 {
@@ -809,5 +873,4 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -1,0 +1,30 @@
+
+
+Disk /dev/sda: 500.1 GB, 500107862016 bytes
+255 heads, 63 sectors/track, 60801 cylinders, total 976773168 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0xd8b339dd
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048      206847      102400    7  HPFS/NTFS/exFAT
+/dev/sda2          206848    12494847     6144000    7  HPFS/NTFS/exFAT
+/dev/sda3        12494848   207808587    97656870    7  HPFS/NTFS/exFAT
+/dev/sda4       207810558   976771071   384480257    5  Extended
+/dev/sda5       207810560   259807667    25998554   83  Linux
+/dev/sda6       972603392   976771071     2083840   82  Linux swap / Solaris
+/dev/sda7       259809280   968421375   354306048   83  Linux
+/dev/sda8       968423424   972591103     2083840   82  Linux swap / Solaris
+
+Partition table entries are not in disk order
+
+Disk /dev/sdb: 4041 MB, 4041211904 bytes
+128 heads, 63 sectors/track, 978 cylinders, total 7892992 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x04dd5721
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdb1   *          63     7892991     3946464+   b  W95 FAT32

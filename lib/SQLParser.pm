@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -77,6 +77,21 @@ my $column_ident = qr/(?:
    (?:$ident_alias)?                                  # optional alias
 )/xo;
 
+my $function_ident = qr/
+   \b
+   (
+      \w+      # function name
+      \(       # opening parenthesis
+      [^\)]+   # function args, if any
+      \)       # closing parenthesis
+   )
+/x;
+
+my %ignore_function = (
+   INDEX => 1,
+   KEY   => 1,
+);
+
 # Sub: new
 #   Create a SQLParser object.
 #
@@ -132,6 +147,7 @@ sub parse {
       |REPLACE
       |SELECT
       |UPDATE
+      |CREATE
    )/xi;
 
    # Flatten and clean query.
@@ -159,6 +175,11 @@ sub parse {
       PTDEBUG && _d('Removing subqueries');
       @subqueries = $self->remove_subqueries($query);
       $query      = shift @subqueries;
+   }
+   elsif ( $type eq 'create' && $query =~ m/\s+SELECT/ ) {
+      PTDEBUG && _d('CREATE..SELECT');
+      ($subqueries[0]->{query}) = $query =~ m/\s+(SELECT .+)/;
+      $query =~ s/\s+SELECT.+//;
    }
 
    # Parse raw text parts from query.  The parse_TYPE subs only do half
@@ -442,6 +463,20 @@ sub parse_update {
 
 }
 
+sub parse_create {
+   my ($self, $query) = @_;
+   my ($obj, $name) = $query =~ m/
+      (\S+)\s+
+      (?:IF NOT EXISTS\s+)?
+      (\S+)
+   /xi;
+   return {
+      object  => lc $obj,
+      name    => $name,
+      unknown => undef,
+   };
+}
+
 # Sub: parse_from
 #   Parse a FROM clause, a.k.a. the table references.  Does not handle
 #   nested joins.  See http://dev.mysql.com/doc/refman/5.1/en/join.html
@@ -485,6 +520,14 @@ sub parse_from {
    return unless $from;
    PTDEBUG && _d('Parsing FROM', $from);
 
+   # Extract the column list from USING(col, ...) clauses else
+   # the inner commas will be captured by $comma_join.
+   my $using_cols;
+   ($from, $using_cols) = $self->remove_using_columns($from);
+
+   my $funcs;
+   ($from, $funcs) = $self->remove_functions($from);
+
    # Table references in a FROM clause are separated either by commas
    # (comma/theta join, implicit INNER join) or the JOIN keyword (ansi
    # join).  JOIN can be preceded by other keywords like LEFT, RIGHT,
@@ -525,16 +568,13 @@ sub parse_from {
          if ( $join->{condition} eq 'on' ) {
             # The value for ON can be, as the MySQL manual says, is just
             # like a WHERE clause.
-            my $where      = $self->parse_where($join_condition_value);
-            $join->{where} = $where; 
+            $join->{where} = $self->parse_where($join_condition_value, $funcs);
          }
          else { # USING
             # Although calling parse_columns() works, it's overkill.
             # This is not a columns def as in "SELECT col1, col2", it's
             # a simple csv list of column names without aliases, etc.
-            $join_condition_value =~ s/^\s*\(//;
-            $join_condition_value =~ s/\)\s*$//;
-            $join->{columns} = $self->_parse_csv($join_condition_value);
+            $join->{columns} = $self->_parse_csv(shift @$using_cols);
          }
       }
       elsif ( $thing =~ m/(?:,|JOIN)/i ) {
@@ -694,7 +734,7 @@ sub parse_table_reference {
 # Invalid predicates, or valid ones that we can't parse,  will cause
 # the sub to die.
 sub parse_where {
-   my ( $self, $where ) = @_;
+   my ( $self, $where, $functions ) = @_;
    return unless $where;
    PTDEBUG && _d("Parsing WHERE", $where);
 
@@ -705,7 +745,7 @@ sub parse_where {
    # not interested in weird stuff like that.
    my $op_symbol = qr/
       (?:
-       <=
+       <=(?:>)?
       |>=
       |<>
       |!=
@@ -825,6 +865,11 @@ sub parse_where {
 
       if ( $val =~ m/NULL|TRUE|FALSE/i ) {
          $val = lc $val;
+      }
+
+      if ( $functions ) {
+         $col = shift @$functions if $col =~ m/__FUNC\d+__/;
+         $val = shift @$functions if $val =~ m/__FUNC\d+__/;
       }
 
       push @predicates, {
@@ -1164,6 +1209,44 @@ sub remove_subqueries {
    return $query, @subqueries;
 }
 
+sub remove_using_columns {
+   my ($self, $from) = @_;
+   return unless $from;
+   PTDEBUG && _d('Removing cols from USING clauses');
+   my $using = qr/
+      \bUSING
+      \s*
+      \(
+         ([^\)]+)
+      \)
+   /xi;
+   my @cols;
+   $from =~ s/$using/push @cols, $1; "USING ($#cols)"/eg;
+   PTDEBUG && _d('FROM:', $from, Dumper(\@cols));
+   return $from, \@cols;
+}
+
+sub replace_function {
+   my ($func, $funcs) = @_;
+   my ($func_name) = $func =~ m/^(\w+)/;
+   if ( !$ignore_function{uc $func_name} ) {
+      my $n = scalar @$funcs;
+      push @$funcs, $func;
+      return "__FUNC${n}__";
+   }
+   return $func;
+}
+
+sub remove_functions {
+   my ($self, $clause) = @_;
+   return unless $clause;
+   PTDEBUG && _d('Removing functions from clause:', $clause);
+   my @funcs;
+   $clause =~ s/$function_ident/replace_function($1, \@funcs)/eg;
+   PTDEBUG && _d('Function-stripped clause:', $clause, Dumper(\@funcs));
+   return $clause, \@funcs;
+}
+
 # Sub: parse_identifiers
 #   Parse an arrayref of identifiers into their parts.  Identifiers can be
 #   column names (optionally qualified), expressions, or constants.
@@ -1216,6 +1299,14 @@ sub parse_identifier {
    return unless $type && $ident;
    PTDEBUG && _d("Parsing", $type, "identifier:", $ident);
 
+   my ($func, $expr);
+   if ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
+      ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
+      PTDEBUG && _d('Function', $func, 'arg', $expr);
+      return { col => $ident } unless $expr;  # NOW()
+      $ident = $expr;  # col from MAX(col)
+   }
+
    my %ident_struct;
    my @ident_parts = map { s/`//g; $_; } split /[.]/, $ident;
    if ( @ident_parts == 3 ) {
@@ -1248,6 +1339,10 @@ sub parse_identifier {
             $ident_struct{db} = $qtbl->[0];
          }
       }
+   }
+
+   if ( $func ) {
+      $ident_struct{func} = uc $func;
    }
 
    PTDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));

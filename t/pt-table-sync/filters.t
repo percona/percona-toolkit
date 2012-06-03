@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 5;
+   plan tests => 8;
 }
 
 # Previous tests slave 12347 to 12346 which makes pt-table-checksum
@@ -106,8 +106,80 @@ is(
 );
 
 # #############################################################################
+# pt-table-sync --ignore-* options don't work with --replicate 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1002365
+# #############################################################################
+$sb->wipe_clean($master_dbh);
+
+$sb->load_file("master", "t/pt-table-sync/samples/simple-tbls.sql");
+PerconaTest::wait_for_table($slave_dbh, "test.mt1", "id=10");
+
+# Create a checksum diff in a table that we're going to ignore
+# when we sync.
+$slave_dbh->do("INSERT INTO test.empty_it VALUES (null,11,11,'eleven')");
+
+# Create the checksums.
+diag(`$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox -d test --quiet --quiet --lock-wait-timeout 3 --max-load ''`);
+
+# Make sure all the tables were checksummed.
+my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT db, tbl FROM percona.checksums ORDER BY db, tbl");
+is_deeply(
+   $rows,
+   [ [qw(test empty_it) ],
+     [qw(test empty_mt) ],
+     [qw(test it1) ],
+     [qw(test it2) ],
+     [qw(test mt1) ],
+     [qw(test mt2) ],
+   ],
+   "Six checksum tables (bug 1002365)"
+);
+
+# Sync the checksummed tables, but ignore the table with the diff we created.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master --replicate percona.checksums),
+      "--ignore-tables", "test.empty_it") },
+   stderr => 1,
+);
+
+is(
+   $output,
+   "",
+   "Table ignored, nothing to sync (bug 1002365)"
+);
+
+# Sync the checksummed tables, but ignore the database.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master --replicate percona.checksums),
+      "--ignore-databases", "test") },
+   stderr => 1,
+);
+
+is(
+   $output,
+   "",
+   "Database ignored, nothing to sync (bug 1002365)"
+);
+
+# The same should work for just --sync-to-master.
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--print --sync-to-master),
+      "--ignore-tables", "test.empty_it",
+      "--ignore-databases", "percona") },
+   stderr => 1,
+);
+
+unlike(
+   $output,
+   qr/empty_it/,
+   "Table ignored, nothing to sync-to-master (bug 1002365)"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

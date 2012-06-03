@@ -1454,6 +1454,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 0;
 $Data::Dumper::Quotekeys = 0;
 
+my $dsn_sep = qr/(?<!\\),/;
+
 eval {
    require DBI;
 };
@@ -1508,7 +1510,8 @@ sub parse {
    my %final_props;
    my $opts = $self->{opts};
 
-   foreach my $dsn_part ( split(/,/, $dsn) ) {
+   foreach my $dsn_part ( split($dsn_sep, $dsn) ) {
+      $dsn_part =~ s/\\,/,/g;
       if ( my ($prop_key, $prop_val) = $dsn_part =~  m/^(.)=(.*)$/ ) {
          $given_props{$prop_key} = $prop_val;
       }
@@ -1567,12 +1570,14 @@ sub parse_options {
 sub as_string {
    my ( $self, $dsn, $props ) = @_;
    return $dsn unless ref $dsn;
-   my %allowed = $props ? map { $_=>1 } @$props : ();
+   my @keys = $props ? @$props : sort keys %$dsn;
    return join(',',
-      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_})  }
-      grep { defined $dsn->{$_} && $self->{opts}->{$_} }
-      grep { !$props || $allowed{$_}                   }
-      sort keys %$dsn );
+      map  { "$_=" . ($_ eq 'p' ? '...' : $dsn->{$_}) }
+      grep {
+         exists $self->{opts}->{$_}
+         && exists $dsn->{$_}
+         && defined $dsn->{$_}
+      } @keys);
 }
 
 sub usage {
@@ -2556,10 +2561,11 @@ sub daemonize {
    PTDEBUG && _d('About to fork and daemonize');
    defined (my $pid = fork()) or die "Cannot fork: $OS_ERROR";
    if ( $pid ) {
-      PTDEBUG && _d('I am the parent and now I die');
+      PTDEBUG && _d('Parent PID', $PID, 'exiting after forking child PID',$pid);
       exit;
    }
 
+   PTDEBUG && _d('Daemonizing child PID', $PID);
    $self->{PID_owner} = $PID;
    $self->{child}     = 1;
 
@@ -2570,13 +2576,13 @@ sub daemonize {
 
    $OUTPUT_AUTOFLUSH = 1;
 
-   if ( -t STDIN ) {
-      close STDIN;
-      open  STDIN, '/dev/null'
-         or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
-   }
+   PTDEBUG && _d('Redirecting STDIN to /dev/null');
+   close STDIN;
+   open  STDIN, '/dev/null'
+      or die "Cannot reopen STDIN to /dev/null: $OS_ERROR";
 
    if ( $self->{log_file} ) {
+      PTDEBUG && _d('Redirecting STDOUT and STDERR to', $self->{log_file});
       close STDOUT;
       open  STDOUT, '>>', $self->{log_file}
          or die "Cannot open log file $self->{log_file}: $OS_ERROR";
@@ -2587,18 +2593,21 @@ sub daemonize {
    }
    else {
       if ( -t STDOUT ) {
+         PTDEBUG && _d('No log file and STDOUT is a terminal;',
+            'redirecting to /dev/null');
          close STDOUT;
          open  STDOUT, '>', '/dev/null'
             or die "Cannot reopen STDOUT to /dev/null: $OS_ERROR";
       }
       if ( -t STDERR ) {
+         PTDEBUG && _d('No log file and STDERR is a terminal;',
+            'redirecting to /dev/null');
          close STDERR;
          open  STDERR, '>', '/dev/null'
             or die "Cannot reopen STDERR to /dev/null: $OS_ERROR";
       }
    }
 
-   PTDEBUG && _d('I am the child and now I live daemonized');
    return;
 }
 
@@ -3953,18 +3962,30 @@ sub main {
    # Open the file and print the header to it. 
    if ( $archive_file ) { 
       my $need_hdr = $o->get('header') && !-f $archive_file; 
-      my $charset  = lc $o->get('charset'); 
-      if ( $charset ) { 
-          $archive_fh = IO::File->new($archive_file, ">>:$charset") 
-             or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
-      } 
-      else { 
-          $archive_fh = IO::File->new($archive_file, ">>") 
-             or die "Cannot open $archive_file: $OS_ERROR\n"; 
-      } 
+      my $charset  = $o->get('charset') || '';
+      if ($charset eq 'utf8') {
+         $charset = ":$charset";
+      }
+      elsif ($charset) {
+         eval { require Encode }
+            or (PTDEBUG &&
+               _d("Couldn't load Encode: ", $EVAL_ERROR,
+                  "Going to try using the charset ",
+                  "passed in without checking it."));
+         # No need to punish a user if they did their
+         # homework and passed in an official charset,
+         # rather than an alias.
+         $charset = ":encoding("
+                  . (defined &Encode::resolve_alias
+                     ? Encode::resolve_alias($charset) || $charset
+                     : $charset)
+                  . ")";
+      }
+      $archive_fh = IO::File->new($archive_file, ">>$charset") 
+         or die "Cannot open $charset $archive_file: $OS_ERROR\n"; 
       $archive_fh->autoflush(1) unless $o->get('buffer'); 
       if ( $need_hdr ) { 
-         print $archive_fh '', escape(\@sel_cols), "\n" 
+         print { $archive_fh } '', escape(\@sel_cols), "\n" 
             or die "Cannot write to $archive_file: $OS_ERROR\n"; 
       } 
    } 
@@ -4174,6 +4195,16 @@ sub main {
          commit($o, 1) if $commit_each;
          $get_sth = $get_next;
 
+         # Sleep between fetching the next chunk of rows.
+         if( my $sleep_time = $o->get('sleep') ) {
+            $sleep_time = $last_select_time * $o->get('sleep-coef')
+               if $o->get('sleep-coef');
+            PTDEBUG && _d('Sleeping', $sleep_time);
+            trace('sleep', sub {
+               sleep($sleep_time);
+            });
+         }
+
          PTDEBUG && _d('Fetching rows in next chunk');
          trace('select', sub {
             my $select_start = time;
@@ -4205,16 +4236,6 @@ sub main {
             sleep($o->get('check-interval'));
             $lag = $ms->get_slave_lag($lag_dbh);
          }
-      }
-
-      # Sleep between rows.
-      if( my $sleep_time = $o->get('sleep') ) {
-         $sleep_time = $last_select_time * $o->get('sleep-coef')
-            if $o->get('sleep-coef');
-         PTDEBUG && _d('Sleeping', $sleep_time);
-         trace('sleep', sub {
-            sleep($sleep_time);
-         });
       }
    }  # ROW 
    PTDEBUG && _d('Done fetching rows');
@@ -5722,6 +5743,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-archiver 2.0.3
+pt-archiver 2.1.1
 
 =cut

@@ -16,12 +16,12 @@ use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
 # This runs immediately if the server is already running, else it starts it.
-diag(`$trunk/sandbox/start-sandbox master 12347 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh1 = $sb->get_dbh_for('master');
-my $dbh2 = $sb->get_dbh_for('slave2');
+my $dbh2 = $sb->get_dbh_for('master1');
 
 if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox master';
@@ -34,10 +34,10 @@ else {
 }
 
 $sb->load_file('master', 't/pt-upgrade/samples/001/tables.sql');
-$sb->load_file('slave2', 't/pt-upgrade/samples/001/tables.sql');
+$sb->load_file('master1', 't/pt-upgrade/samples/001/tables.sql');
 
 my $output;
-my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12347 --compare results,warnings --zero-query-times --compare-results-method rows --limit 10";
+my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12348 --compare results,warnings --zero-query-times --compare-results-method rows --limit 10";
 
 # This test really deals with,
 #   http://code.google.com/p/maatkit/issues/detail?id=754
@@ -63,7 +63,7 @@ diag(`$cmd $trunk/t/pt-upgrade/samples/001/one-error.log >/dev/null 2>&1`);
 $output = `$cmd $trunk/t/pt-upgrade/samples/001/one-error.log`;
 like(
    $output,
-   qr/# 3B323396273BC4C7-1 127.1:12347 Failed to execute query.+Unknown column 'borked' in 'field list' \[for Statement "select borked"\] at .+?\n\n/,
+   qr/# 3B323396273BC4C7-1 127.1:12348 Failed to execute query.+Unknown column 'borked' in 'field list' \[for Statement "select borked"\] at .+?\n\n/,
    '--clear-warnings',
 );
 
@@ -79,7 +79,7 @@ like(
 $output = `$cmd --no-clear-warnings $trunk/t/pt-upgrade/samples/001/one-error.log`;
 like(
    $output,
-   qr/# 3B323396273BC4C7-1 127.1:12347 Failed to execute query.+Unknown column 'borked' in 'field list' \[for Statement "select borked"\] at .+?\n\n/,
+   qr/# 3B323396273BC4C7-1 127.1:12348 Failed to execute query.+Unknown column 'borked' in 'field list' \[for Statement "select borked"\] at .+?\n\n/,
    '--no-clear-warnings'
 );
 

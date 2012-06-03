@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 18;
+use Test::More tests => 19;
 
 use PerconaTest;
 shift @INC;  # our unshift (above)
@@ -154,6 +154,17 @@ like(
    $output,
    qr/chunk-size-limit must be >= 1 or 0 to disable/,
    "--chunk-size-limit must be >= 1 or 0"
+);
+
+# #############################################################################
+# --max-load
+# #############################################################################
+
+$output = `$trunk/bin/pt-table-checksum h=127.1,P=12345 --max-load 100`;
+like(
+   $output,
+   qr/Invalid --max-load/,
+   "Validates --max-load"
 );
 
 # #############################################################################

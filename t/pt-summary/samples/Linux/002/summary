@@ -1,0 +1,19 @@
+platform    Linux
+hostname    localhost.localdomain
+kernel    2.6.18-274.el5
+release    CentOS release 5.7 (Final)
+CPU_ARCH    32-bit
+OS_ARCH    32-bit
+virt    QEmu
+compiler    GNU CC version 4.1.2 20080704 (Red Hat 4.1.2-51).
+rss    66236416
+raid_controller    No RAID controller detected
+threading    NPTL 2.5
+getenforce    No SELinux detected
+swappiness    
+internal::disks    dm-0 dm-1 hda hdc md0
+internal::hda    [cfq] 128
+internal::hdc    [cfq] 128
+dentry-state    9392	7451	45	0	0	0
+file-nr    640	0	102187
+inode-nr    5431	148

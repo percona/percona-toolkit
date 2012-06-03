@@ -30,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 1;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -47,7 +47,7 @@ $master_dbh->do('create table test.foo (i int)');
 $output = `$trunk/bin/pt-table-sync --databases test --execute h=127.1,P=12345,u=msandbox,p=msandbox h=127.1,P=12348 2>&1`;
 like(
    $output,
-   qr/Unknown database 'test'/,
+   qr/Table test.foo does not exist on P=12348/,
    'Warn about --databases missing on dest host'
 );
 
@@ -57,5 +57,4 @@ like(
 $sb->wipe_clean($master_dbh);
 diag(`/tmp/12348/stop >/dev/null`);
 diag(`rm -rf /tmp/12348 >/dev/null`);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
