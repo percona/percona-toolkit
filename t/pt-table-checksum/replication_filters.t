@@ -273,6 +273,16 @@ is(
 );
 
 # #############################################################################
+# Stop and start slaves to avoid sandbox breakage caused by restarting servers.
+# #############################################################################
+$slave1_dbh = $sb->get_dbh_for('slave1');
+$slave2_dbh = $sb->get_dbh_for('slave2');
+$slave1_dbh->do('STOP SLAVE');
+$slave2_dbh->do('STOP SLAVE');
+$slave1_dbh->do('START SLAVE');
+$slave2_dbh->do('START SLAVE');
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
