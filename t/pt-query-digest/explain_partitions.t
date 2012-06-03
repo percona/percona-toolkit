@@ -28,7 +28,7 @@ elsif ( !$vp->version_ge($dbh, '5.1.0') ) {
    plan skip_all => 'Sandbox master version not >= 5.1';
 }
 else {
-   plan tests => 3;
+   plan tests => 2;
 }
 
 # #############################################################################

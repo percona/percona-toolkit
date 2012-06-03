@@ -34,7 +34,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 30;
+   plan tests => 29;
 }
 
 $sb->create_dbs($master_dbh, ['test']);

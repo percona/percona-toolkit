@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 19;
+   plan tests => 18;
 }
 
 $sb->create_dbs($dbh, ['test']);

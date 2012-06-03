@@ -28,7 +28,7 @@ if ( !@{ $dbh->selectall_arrayref('show databases like "sakila"') } ) {
    plan skip_all => "Sakila database is not loaded";
 }
 else {
-   plan tests => 10;
+   plan tests => 9;
 }
 
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
