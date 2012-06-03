@@ -32,6 +32,8 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -197,13 +199,15 @@ sub slave_is_ok {
    if ( $status->[0]->{last_error} ) {
       warn "Sandbox $slave " . $port_for{$slave} . " is broken: "
          . $status->[0]->{last_error} . "\n";
+      warn Dumper($status);
       return 0;
    }
 
    foreach my $thd ( qw(slave_io_running slave_sql_running) ) {
-      if ( $status->[0]->{$thd} ne 'Yes' ) {
+      if ( ($status->[0]->{$thd} || 'No') eq 'No' ) {
          warn "Sandbox $slave " . $port_for{$slave} . " $thd thread "
             . "is not running\n";
+         warn Dumper($status);
          return 0;
       }
    }
@@ -217,11 +221,7 @@ sub slave_is_ok {
       }
    }
 
-   if ( !defined $status->[0]->{seconds_behind_master} ) {
-      warn "Sandbox $slave " . $port_for{$slave} . " is stopped\n";
-      return 0;
-   }
-   elsif ( $status->[0]->{seconds_behind_master} > 0 ) {
+   if ( ($status->[0]->{seconds_behind_master} || 0) > 0 ) {
       my $sleep_t = 0.25;
       my $total_t = 0;
       while ( defined $status->[0]->{seconds_behind_master}
