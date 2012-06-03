@@ -230,9 +230,9 @@ sub slave_is_ok {
          $total_t += $sleep_t;
          $status = $slave_dbh->selectall_arrayref(
             "SHOW SLAVE STATUS", { Slice => {} });
-         if ( !($total_t % 5) ) {
+         if ( $total_t == 5 ) {
             Test::More::diag("Waiting for sandbox $slave " . $port_for{$slave}
-               . "to catch up...");
+               . " to catch up...");
          }
       }
    }
