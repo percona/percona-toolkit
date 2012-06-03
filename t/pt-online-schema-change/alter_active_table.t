@@ -33,7 +33,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 7;
+   plan tests => 8;
 }
 
 my $output;
@@ -201,4 +201,5 @@ check_ids(qw(pt_osc t id), get_ids());
 diag(`rm -rf $query_table_stop >/dev/null 2>&1`);
 diag(`rm -rf $query_table_output >/dev/null 2>&1`);
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

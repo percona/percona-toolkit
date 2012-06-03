@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 9;
+use Test::More tests => 10;
 
 use PerconaTest;
 use Sandbox;
@@ -118,5 +118,6 @@ SKIP: {
 # #############################################################################
 diag(`rm $out 2>/dev/null`);
 $sb->wipe_clean($master_dbh) if $master_dbh;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

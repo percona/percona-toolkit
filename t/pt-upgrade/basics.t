@@ -30,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 12;
+   plan tests => 13;
 }
 
 my @host_args = ('h=127.1,P=12345', 'P=12348');
@@ -184,4 +184,5 @@ like(
 diag(`rm /tmp/left-outfile.txt /tmp/right-outfile.txt 2>/dev/null`);
 $sb->wipe_clean($dbh1);
 $sb->wipe_clean($dbh2);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

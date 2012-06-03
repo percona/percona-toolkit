@@ -39,7 +39,7 @@ elsif ( !$r1_dbh ) {
 
 }
 else {
-   plan tests => 22;
+   plan tests => 23;
 }
 
 my $output;
@@ -536,4 +536,5 @@ SKIP: {
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null`);
 diag(`$trunk/sandbox/stop-sandbox 2901 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 50;
+use Test::More tests => 51;
 
 use MasterSlave;
 use DSNParser;
@@ -702,4 +702,5 @@ diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
 diag(`$trunk/sandbox/test-env reset`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

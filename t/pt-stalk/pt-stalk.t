@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 26;
+   plan tests => 27;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -293,4 +293,5 @@ is(
 diag(`rm $pid_file 2>/dev/null`);
 diag(`rm $log_file 2>/dev/null`);
 diag(`rm -rf $dest 2>/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

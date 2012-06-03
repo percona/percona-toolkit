@@ -35,7 +35,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave 12349';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -69,4 +69,5 @@ is(
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 12349 >/dev/null`);
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
