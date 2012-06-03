@@ -72,5 +72,4 @@ ok(
 $sb->wipe_clean($dbh1);
 $sb->wipe_clean($dbh2);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
