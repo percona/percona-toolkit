@@ -78,10 +78,11 @@ my $all_sakila_tables =  [
 # ############################################################################
 
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
+   sub { pt_table_checksum::main(@args, qw(-d sakila --resume --chunk-size 10000)) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
+
 is_deeply(
    $row,
    $all_sakila_tables,
@@ -131,7 +132,7 @@ is_deeply(
 );
 
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
+   sub { pt_table_checksum::main(@args, qw(-d sakila --resume --chunk-size 10000)) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
