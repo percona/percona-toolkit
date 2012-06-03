@@ -42,7 +42,7 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 eval {
-   require IO::Uncompress::Inflate;
+   require IO::Uncompress::Inflate; # yum: perl-IO-Compress-Zlib
    IO::Uncompress::Inflate->import(qw(inflate $InflateError));
 };
 
