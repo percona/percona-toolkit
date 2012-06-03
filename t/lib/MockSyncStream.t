@@ -78,9 +78,11 @@ is_deeply(
 # Test online stuff, e.g. get_cols_and_struct().
 # #############################################################################
 use DSNParser;
+use VersionParser;
 use Sandbox;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $vp  = new VersionParser;
 my $dbh = $sb->get_dbh_for('master');
 
 SKIP: {
@@ -170,7 +172,7 @@ SKIP: {
             id => undef,
             i  => undef,
             f  => undef,
-            d  => undef,
+            d  => ($vp->version_ge($dbh, '5.5.1') ? '(7)' : undef),
             dt => undef,
             ts => undef,
             c  => '(1)',
