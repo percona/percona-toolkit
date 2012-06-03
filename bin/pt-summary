@@ -1375,7 +1375,7 @@ parse_memory_sysctl_netbsd() { local PTFUNCNAME=parse_memory_sysctl_netbsd;
 
    [ -e "$file" -a -e "$swapctl_file" ] || return
 
-   local swap_mem="$(echo "$(awk '{print $2;}' "$swapctl_file")*512" | bc -l)"
+   local swap_mem="$(awk '{print $2*512}' "$swapctl_file")"
    name_val "Total"   $(shorten "$(awk '/hw.physmem /{print $NF}' "$file")" 1)
    name_val "User"    $(shorten "$(awk '/hw.usermem /{print $NF}' "$file")" 1)
    name_val "Swap"    $(shorten ${swap_mem} 1)
@@ -1387,7 +1387,7 @@ parse_memory_sysctl_openbsd() { local PTFUNCNAME=parse_memory_sysctl_openbsd;
 
    [ -e "$file" -a -e "$swapctl_file" ] || return
 
-   local swap_mem="$(echo "$(awk '{print $2;}' "$swapctl_file")*512" | bc -l)"
+   local swap_mem="$(awk '{print $2*512}' "$swapctl_file")"
    name_val "Total"   $(shorten "$(awk -F= '/hw.physmem/{print $2}' "$file")" 1)
    name_val "User"    $(shorten "$(awk -F= '/hw.usermem/{print $2}' "$file")" 1)
    name_val "Swap"    $(shorten ${swap_mem} 1)
