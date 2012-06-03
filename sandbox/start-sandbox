@@ -47,6 +47,11 @@ make_sandbox() {
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
    fi
 
+   # If the sandbox is a slave, set it read_only.
+   if [ "$type" = "slave" ]; then
+      echo "read_only" >> /tmp/$port/my.sandbox.cnf
+   fi
+
    # Start the sandbox and check that it has InnoDB.
    /tmp/$port/start
    if [ $? -eq 0 ]; then
@@ -63,6 +68,12 @@ make_sandbox() {
       echo "Sandbox $type $port failed to start." >&2
       cat /tmp/$port/data/mysqld.log >&2
       exit 1
+   fi
+
+   # If the sandbox is a slave, start the slave.
+   if [ "$type" = "slave" ]; then
+      /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
+      /tmp/$port/use -e "start slave"
    fi
 
    return 0
@@ -149,13 +160,7 @@ if [ -f $PIDFILE ]; then
    echo "Sandbox $port already started (found pid file $PIDFILE)"
 else
    make_sandbox
-
-   # If the sandbox is a slave, start the slave.
-   if [ "$type" = "slave" ]; then
-      /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
-      /tmp/$port/use -e "start slave"
-      /tmp/$port/use -e "set global read_only=1"
-   fi
+   # make_sandbox has started slave and set read_only if necessary.
 
    # If the sandbox is a master-master, start the second master and slave the
    # two together.
