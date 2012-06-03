@@ -208,8 +208,7 @@ is(
    $hostname,
    'name() uses @@hostname'
 );
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
 # ############################################################################
 # Default cxn, should be equivalent to 'h=localhost'.
 # ############################################################################
