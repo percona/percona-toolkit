@@ -162,7 +162,10 @@ sub wipe_clean {
    # the DROP commands will just hang forever.
    my @cxns = @{$dbh->selectall_arrayref('SHOW FULL PROCESSLIST', {Slice => {}})};
    foreach my $cxn ( @cxns ) {
-      if ( $cxn->{user} eq 'msandbox' && $cxn->{command} eq 'Sleep' ) {
+      if (
+         (($cxn->{user}||'') eq 'msandbox' && ($cxn->{command}||'') eq 'Sleep')
+      || (($cxn->{User}||'') eq 'msandbox' && ($cxn->{Command}||'') eq 'Sleep')
+      ) {
          $dbh->do("KILL $cxn->{id}");
       }
    }
