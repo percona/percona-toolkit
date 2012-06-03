@@ -155,10 +155,8 @@ is(
    "Collect ran for --run-time"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk --iterations 1'`;
-is(
-   $output,
-   "",
+ok(
+   PerconaTest::not_running("pt-stalk --iterations 1"),
    "pt-stalk is not running"
 );
 
@@ -202,10 +200,8 @@ ok(
    "No files collected"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk --no-collect'`;
-is(
-   $output,
-   "",
+ok(
+   PerconaTest::not_running("pt-stalk --no-collect"),
    "pt-stalk is not running"
 );
 
@@ -280,10 +276,8 @@ is(
    "Not stalking, collect gathered data"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk --no-stalk'`;
-is(
-   $output,
-   "",
+ok(
+   PerconaTest::not_running("pt-stalk --no-stalk"),
    "Not stalking, pt-stalk is not running"
 );
 

@@ -222,7 +222,7 @@ sub parse_file {
 # Wait until code returns true.
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
-   $t     ||= .25;
+   $t     ||= .20;
    $max_t ||= 5;
 
    my $slept = 0;
@@ -305,6 +305,19 @@ sub wait_for_sh {
       }
    );
 };
+
+sub not_running {
+   my ($cmd) = @_;
+   PTDEVDEBUG && _d('Wait until not running:', $cmd);
+   return wait_until(
+      sub {
+         my $output = `ps x | grep -v grep | grep "$cmd"`;
+         PTDEVDEBUG && _d($output);
+         return 1 unless $output;
+         return 0;
+      }
+   );
+}
 
 sub _read {
    my ( $fh ) = @_;
