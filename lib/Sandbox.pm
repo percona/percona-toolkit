@@ -31,6 +31,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use Time::HiRes qw(sleep);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -43,6 +44,8 @@ my %port_for = (
    master2 => 12349, # master-master
    master3 => 2900,
    master4 => 2901,
+   master5 => 2902,
+   master6 => 2903,
 );
 
 sub new {
@@ -161,6 +164,84 @@ sub wipe_clean {
       $dbh->do("DROP DATABASE IF EXISTS `$db`");
    }
    return;
+}
+
+sub master_is_ok {
+   my ($self, $master) = @_;
+   my $master_dbh = $self->get_dbh_for($master);
+   if ( !$master_dbh ) {
+      warn "Sandbox $master " . $port_for{$master} . " is down\n";
+      return 0;
+   }
+   $master_dbh->disconnect();
+   return 1;
+}
+
+sub slave_is_ok {
+   my ($self, $slave, $master) = @_;
+
+   my $slave_dbh = $self->get_dbh_for($slave);
+   if ( !$slave_dbh ) {
+      warn "Sandbox $slave " . $port_for{$slave} . " is down\n";
+      return 0;
+   }
+
+   my $master_port = $port_for{$master};
+   my $status = $slave_dbh->selectall_arrayref(
+      "SHOW SLAVE STATUS", { Slice => {} });
+   if ( !$status || !@$status ) {
+      warn "Sandbox $slave " . $port_for{$slave} . " is not a slave\n";
+      return 1;
+   }
+
+   if ( $status->[0]->{last_error} ) {
+      warn "Sandbox $slave " . $port_for{$slave} . " is broken: "
+         . $status->[0]->{last_error} . "\n";
+      return 1;
+   }
+
+   if ( !defined $status->[0]->{seconds_behind_master} ) {
+      warn "Sandbox $slave " . $port_for{$slave} . " is stopped\n";
+      return 1;
+   }
+   elsif ( $status->[0]->{seconds_behind_master} > 0 ) {
+      warn "Waiting for sandbox $slave " . $port_for{$slave}
+         . "to catch up...\n";
+      while ( defined $status->[0]->{seconds_behind_master}
+              &&  $status->[0]->{seconds_behind_master} > 0 ) {
+         sleep 0.25;
+         $status = $slave_dbh->selectall_arrayref(
+            "SHOW SLAVE STATUS", { Slice => {} });
+      }
+   }
+
+   $slave_dbh->disconnect();
+   return 1;
+}
+
+sub leftover_servers {
+   my ($self);
+   return 0;
+   my $leftovers = 0;
+   foreach my $serverno ( 1..6 ) {
+      my $server = "master$serverno";
+      my $dbh = $self->get_dbh_for($server);
+      if ( !$dbh ) {
+         warn "Sandbox $server " . $port_for{$server} . " was left up\n";
+         $dbh->disconnect();
+         $leftovers = 1;
+      }
+   }
+   return $leftovers;
+}
+
+sub ok {
+   my ($self) = @_;
+   return 0 unless $self->master_is_ok('master');
+   return 0 unless $self->slave_is_ok('slave1', 'master');
+   return 0 unless $self->slave_is_ok('slave2', 'slave1');
+   return 0 if $self->leftover_servers();
+   return 1;
 }
 
 sub _d {
