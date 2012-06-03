@@ -258,7 +258,7 @@ EOF
 is \
    "$(get_plugin_status $TMPDIR/plugins "INNODB_CMP" )"  \
    "ACTIVE"                                              \
-   "Doesn't get confused by multiple plugins with the same prefix"
+   "Multiple plugins with the same prefix"
 
 # ###########################################################################
 # parse_mysqld_instances
@@ -499,9 +499,6 @@ no_diff \
 # format_innodb_status
 # ###########################################################################
 
-# ############################################################################
-TEST_NAME="innodb-status.001.txt"
-# ############################################################################
 cat <<EOF > $TMPDIR/expected
       Checkpoint Age | 619k
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
@@ -551,11 +548,8 @@ Mutexes/Locks Waited For
 EOF
 
 format_innodb_status $samples/innodb-status.001.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.001.txt"
 
-# ############################################################################
-TEST_NAME="innodb-status.002.txt"
-# ############################################################################
 cat <<'EOF' > $TMPDIR/expected
       Checkpoint Age | 348M
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
@@ -588,11 +582,8 @@ Mutexes/Locks Waited For
 EOF
 
 format_innodb_status $samples/innodb-status.002.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.002.txt"
 
-# ############################################################################
-TEST_NAME="innodb-status.003.txt"
-# ############################################################################
 cat <<'EOF' > $TMPDIR/expected
       Checkpoint Age | 0
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
@@ -609,11 +600,8 @@ Tables Locked
 EOF
 
 format_innodb_status $samples/innodb-status.003.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.003.txt"
 
-# ############################################################################
-TEST_NAME="innodb-status.004.txt" 
-# ############################################################################
 cat <<'EOF' > $TMPDIR/expected
       Checkpoint Age | 93M
         InnoDB Queue | 9 queries inside InnoDB, 0 queries in queue
@@ -640,8 +628,7 @@ Mutexes/Locks Waited For
 EOF
 
 format_innodb_status $samples/innodb-status.004.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
-
+no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.004.txt" 
 
 # ###########################################################################
 # section_innodb
@@ -656,7 +643,7 @@ test_format_innodb () {
         Buffer Pool Dirty | 0%
            File Per Table | OFF
                 Page Size | 16k
-            Log File Size | 2 * 1.5G = 3.0G
+            Log File Size | 2 * 1.5G = 2.9G
           Log Buffer Size | 8M
              Flush Method | 
       Flush Log At Commit | 1
@@ -674,11 +661,10 @@ test_format_innodb () {
 EOF
 
    section_innodb "$samples/temp001/mysql-variables" "$samples/temp001/mysql-status" > "$TMPDIR/got"
-   no_diff "$TMPDIR/expected" "$TMPDIR/got"
+   no_diff "$TMPDIR/got" "$TMPDIR/expected" "Format InnoDB"
 }
 
 test_format_innodb
-
 
 # ###########################################################################
 # format_innodb_filters
@@ -693,7 +679,7 @@ test_format_innodb_filters () {
 EOF
 
    format_binlog_filters "$samples/mysql-show-master-status-001.txt" > "$TMPDIR/got"
-   no_diff "$TMPDIR/got" "$TMPDIR/expected"
+   no_diff "$TMPDIR/got" "$TMPDIR/expected" "Format InnoDB filters"
 }
 
 test_format_innodb_filters
