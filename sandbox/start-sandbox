@@ -11,10 +11,8 @@ die() {
 
 make_sandbox() {
    # Make the sandbox dir and extract the base files.
-   mkdir /tmp/$port
-   if [ $? -ne 0 ]; then
-      die "mkdir /tmp/$port failed"
-   fi
+   rm -rf /tmp/$port || die "can't rm /tmp/$port"
+   mkdir /tmp/$port || die "mkdir /tmp/$port failed"
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
