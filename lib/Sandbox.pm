@@ -191,20 +191,20 @@ sub slave_is_ok {
       "SHOW SLAVE STATUS", { Slice => {} });
    if ( !$status || !@$status ) {
       warn "Sandbox $slave " . $port_for{$slave} . " is not a slave\n";
-      return 1;
+      return 0;
    }
 
    if ( $status->[0]->{last_error} ) {
       warn "Sandbox $slave " . $port_for{$slave} . " is broken: "
          . $status->[0]->{last_error} . "\n";
-      return 1;
+      return 0;
    }
 
    foreach my $thd ( qw(slave_io_running slave_sql_running) ) {
       if ( $status->[0]->{$thd} ne 'Yes' ) {
          warn "Sandbox $slave " . $port_for{$slave} . " $thd thread "
             . "is not running\n";
-         return 1;
+         return 0;
       }
    }
 
@@ -213,22 +213,27 @@ sub slave_is_ok {
          "SHOW VARIABLES LIKE 'read_only'");
       if ( !$row || $row->[1] ne 'ON' ) {
          warn "Sandbox $slave " . $port_for{$slave} . " is not read-only\n";
-         return 1;
+         return 0;
       }
    }
 
    if ( !defined $status->[0]->{seconds_behind_master} ) {
       warn "Sandbox $slave " . $port_for{$slave} . " is stopped\n";
-      return 1;
+      return 0;
    }
    elsif ( $status->[0]->{seconds_behind_master} > 0 ) {
-      warn "Waiting for sandbox $slave " . $port_for{$slave}
-         . "to catch up...\n";
+      my $sleep_t = 0.25;
+      my $total_t = 0;
       while ( defined $status->[0]->{seconds_behind_master}
               &&  $status->[0]->{seconds_behind_master} > 0 ) {
-         sleep 0.25;
+         sleep $sleep_t;
+         $total_t += $sleep_t;
          $status = $slave_dbh->selectall_arrayref(
             "SHOW SLAVE STATUS", { Slice => {} });
+         if ( !($total_t % 5) ) {
+            Test::More::diag("Waiting for sandbox $slave " . $port_for{$slave}
+               . "to catch up...");
+         }
       }
    }
 
