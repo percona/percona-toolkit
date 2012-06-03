@@ -14,14 +14,14 @@ create table table_1(
    c int not null,
    d varchar(50),
    key(b)
-) type=innodb;
+) engine=innodb;
 
 create table table_2(
    a int not null primary key auto_increment,
    b int,
    c int not null,
    d varchar(50)
-) type=innodb;
+) engine=innodb;
 
 create table table_3(
    a int not null,
@@ -29,11 +29,11 @@ create table table_3(
    c int not null,
    d varchar(50),
    primary key(a, c)
-) type=innodb;
+) engine=innodb;
 
 create table table_4(
    a int
-) type=innodb;
+) engine=innodb;
 
 insert into table_1 values
    (1, 2,    3, 4),
