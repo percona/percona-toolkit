@@ -168,7 +168,7 @@ sub wipe_clean {
          (($cxn->{user}||'') eq 'msandbox' && ($cxn->{command}||'') eq 'Sleep')
       || (($cxn->{User}||'') eq 'msandbox' && ($cxn->{Command}||'') eq 'Sleep')
       ) {
-         $dbh->do("KILL $cxn->{id}");
+         eval { $dbh->do("KILL $cxn->{id}"); };
       }
    }
    foreach my $db ( @{$dbh->selectcol_arrayref('SHOW DATABASES')} ) {
