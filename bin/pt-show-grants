@@ -1719,7 +1719,7 @@ sub main {
 
       if ( $o->get('separate') ) { # List each grant separately.
          @grants = map {
-            my ( $grants, $on_what ) = $_ =~ m/GRANT (.*?) ON ((?:`|\*).*)$/;
+            my ( $grants, $on_what ) = $_ =~ m/GRANT (.*?) ON (.*)$/;
             map { "GRANT $_ ON $on_what" } split(', ', $grants);
          } @grants;
          my $count;
@@ -1753,15 +1753,9 @@ sub main {
             my $grant = $_;
             PTDEBUG && _d($grant);
             my ( $grants, $on_what, $user ) = $grant
-               =~ m/GRANT (.*?) ON ((?:`|\*).*?) TO ('[^']*'\@'[^']+')?/;
+               =~ m/GRANT (.*?) ON (.*?) TO ('[^']*'\@'[^']*')/;
             PTDEBUG && _d('grants:', $grants, 'on_what:', $on_what,
                'user:', $user);
-
-            if ( !$user ) {
-               # Anonymous user: ''@'' (issue 445).
-               PTDEBUG && _d('Anonymous user');
-               $user = "''\@''";
-            }
 
             my @result;
             if ( $o->get('separate') ) {
