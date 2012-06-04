@@ -33,7 +33,7 @@ elsif ( !$slave_2_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox slave';
 }
 else {
-   plan tests => 6;
+   plan tests => 9;
 }
 
 my @args = ('h=127.0.0.1,P=12345,u=msandbox,p=msandbox');
@@ -94,16 +94,44 @@ $output = output(
    sub { pt_slave_find::main(@args) },
    file => $outfile,
 );
-diag(`sed -i -e 's/Version.*/Version/g' $outfile`);
-diag(`sed -i -e 's/Uptime.*/Uptime/g' $outfile`);
-diag(`sed -i -e 's/[0-9]* seconds/0 seconds/g' $outfile`);
+
+open my $fh, "<", $outfile or die $!;
+
+my $result = do { local $/; <$fh> }; #"
+
+$result =~ s/Version.*/Version/g;
+$result =~ s/Uptime.*/Uptime/g;
+$result =~ s/[0-9]* seconds/0 seconds/g;
+
+my $innodb_re = qr/InnoDB version\s+(.*)/;
+my (@innodb_versions) = $result =~ /$innodb_re/g;
+$result =~ s/$innodb_re/InnoDB version  BUILTIN/g;
+
+my $vp = new VersionParser;
 
 is(
-   ($sandbox_version ge '5.1'
-      ? `diff $outfile $trunk/t/pt-slave-find/samples/summary001.txt`
-      : `diff $outfile $trunk/t/pt-slave-find/samples/summary001-5.0.txt`),
-   "",
-   "Summary report format"
+   $innodb_versions[0],
+   $vp->innodb_version($master_dbh),
+   "pt-slave-find gets the right InnoDB version for the master"
+);
+
+is(
+   $innodb_versions[1],
+   $vp->innodb_version($slave_dbh),
+   "...and for the first slave"
+);
+
+is(
+   $innodb_versions[2],
+   $vp->innodb_version($slave_2_dbh),
+   "...and for the first slave"
+);
+
+ok(
+   no_diff($result, ($sandbox_version ge '5.1'
+      ? "t/pt-slave-find/samples/summary001.txt"
+      : "t/pt-slave-find/samples/summary001-5.0.txt"), cmd_output => 1),
+   "Summary report format",
 );
 
 # #############################################################################
