@@ -61,6 +61,7 @@ sub reset_repl_db {
    $master_dbh->do("use $repl_db");
 }
 
+diag(`$trunk/sandbox/test-env reset >/dev/null`);
 $sb->wipe_clean($master_dbh);
 diag(`rm $outfile >/dev/null 2>&1`);
 

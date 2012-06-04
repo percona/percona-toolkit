@@ -236,6 +236,26 @@ sub wait_until {
    return 0;
 }
 
+sub wait_until_no_lag {
+   my (@dbhs) = @_;
+   foreach my $dbh (@dbhs) {
+      PTDEVDEBUG && _d('Waiting for no slave lag');
+      wait_until(  # slaves aren't lagging
+         sub {
+            my $row = $dbh->selectrow_hashref('SHOW SLAVE STATUS');
+            my $lag = exists $row->{Seconds_Behind_Master}
+                    ? $row->{Seconds_Behind_Master}
+                    : $row->{seconds_behind_master};
+            PTDEVDEBUG && _d('Slave lag:', $lag);
+            if ( !defined $lag ) {
+               BAIL_OUT("Slave is stopped: " . Dumper($row));
+            }
+            return $lag ? 0 : 1;
+         }
+      );
+   }
+}
+
 # Wait t seconds for code to return.
 sub wait_for {
    my ( $code, $t ) = @_;
