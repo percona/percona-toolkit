@@ -93,14 +93,10 @@ sub test_so {
    }
 
    return \@objs if $args{return_objs};
-
    if ( $result_file ) {
-      ok(
-         no_diff(
-            $res,
-            $args{result},
-            cmd_output    => 1,
-         ),
+      is(
+         sort_query_output($res),
+         sort_query_output(do { local $/; open(my $fh, "<", $args{result}); <$fh>}),
          $args{test_name},
       );
    }
@@ -120,6 +116,17 @@ sub test_so {
    }
 
    return;
+}
+
+sub sort_query_output {
+   my $queries = shift;
+   my @queries = split /\n\n/, $queries;
+   
+   my $sorted;
+   for my $query (@queries) {
+      $sorted .= join "\n", sort split /\n/, $query;
+   }
+   return $sorted;
 }
 
 SKIP: {
