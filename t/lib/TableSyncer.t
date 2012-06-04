@@ -990,7 +990,7 @@ my $idb_status = $src_dbh->selectrow_hashref("SHOW /*!40100 ENGINE*/ INNODB STAT
 $src_dbh->commit();
 like(
    $idb_status->{status},
-   qr/MySQL thread id $cid, query id \d+/,
+   qr/MySQL thread id $cid, .*?query id \d+/,
    "Open transaction"
 );
 
