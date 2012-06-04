@@ -1,6 +1,6 @@
 use test;
 drop table if exists stat_test;
-create table stat_test(a int);
+create table stat_test(a int)engine=myisam; -- required b/c test plugin does not commit txn
 DROP TABLE IF EXISTS `table_5`;
 DROP TABLE IF EXISTS `table_5_dest`;
 DROP TABLE IF EXISTS `table_5_copy`;
