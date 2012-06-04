@@ -182,7 +182,7 @@ like(
 # Done.
 # #############################################################################
 diag(`rm /tmp/left-outfile.txt /tmp/right-outfile.txt 2>/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 $sb->wipe_clean($dbh1);
-$sb->wipe_clean($dbh2);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
