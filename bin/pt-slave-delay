@@ -2117,44 +2117,43 @@ sub main {
 
       $now = time();
 
-      # TODO: this is a race condition. See 0xdeadbeef below.
-      if ( !$slave_dbh || !$slave_dbh->ping() ) {
-         # Try 10 times, for about 2 minutes, to reconnect to the slave,
-         # increasing wait time from 3 to 15 seconds.
-         $o->set('ask-pass', 0);  # don't ask again
-         my $tries = 10;
-         my $rt    = new Retry();
-         $rt->retry(
-            tries        => $tries,
-            retry_on_die => 1,
-            wait         => sub {
-               my ( %args ) = @_;
-               return unless $oktorun;
-               my $t = min($args{tryno} * 3, 15);
-               info("Could not reconnect to slave, sleeping $t seconds "
-                  . "and trying " . ($tries-$args{tryno}) . " more times")
-                     if $tries - $args{tryno};
-               sleep $t;
-            },
-            try          => sub {
-               return unless $oktorun;
-               info("Lost connection to slave, trying to reconnect");
+      # If the database connection is gone, we must live on!
+      # Try 10 times, for about 2 minutes, to reconnect to the slave,
+      # increasing wait time from 3 to 15 seconds.
+      $o->set('ask-pass', 0);  # don't ask again
+      my $tries = 10;
+      my $rt    = new Retry();
+      $rt->retry(
+         tries        => $tries,
+         retry_on_die => 1,
+         wait         => sub {
+            my ( %args ) = @_;
+            return unless $oktorun;
+            my $t = min($args{tryno} * 3, 15);
+            info("Lost connection, sleeping $t seconds "
+               . "and trying " . ($tries-$args{tryno}) . " more times")
+                  if $tries - $args{tryno};
+            sleep $t;
+            info("Trying to reconnect");
+            eval {
                $slave_dbh = get_dbh($dp, $slave_dsn);
-               return $slave_dbh;
-            },
-            on_success   => sub {
-               info("Reconnected to slave");
-            },
-            on_failure   => sub {
-               return unless $oktorun;
-               die "Failed to reconnect to slave";
-            },
-         );
-         last unless $oktorun;  # might have gotten interrupt while waiting
-      }
-      # 0xdeadbeef (see above): just because we reconnected in the above Retry
-      # does not mean we have a connection here!
-      $status = $slave_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+            };
+         },
+         try          => sub {
+            return unless $oktorun;
+            $status = $slave_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+            return $status;
+         },
+         on_success   => sub {
+            info("Reconnected to slave");
+         },
+         on_failure   => sub {
+            return unless $oktorun;
+            die "Failed to reconnect to slave";
+         },
+      );
+      last unless $oktorun;  # might have gotten interrupt while waiting
+
       if ( !$status || ! %$status ) {
          die "No SLAVE STATUS found";
       }
