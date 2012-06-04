@@ -61,12 +61,13 @@ for my $port ( qw(12346 12347) ) {
 }
 $slave1_dbh = $sb->get_dbh_for('slave1');
 $slave2_dbh = $sb->get_dbh_for('slave2');
+$sb->ok() or BAIL_OUT("Sandbox is broken");
 
 my $pos = PerconaTest::get_master_binlog_pos($master_dbh);
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.country)) },
-   stderr => 1,
+   #stderr => 1,
 );
 
 is(
@@ -91,7 +92,7 @@ like(
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.country),
       qw(--no-check-replication-filters)) },
-   stderr => 1,
+   #stderr => 1,
 );
 
 like(
@@ -133,6 +134,7 @@ diag(`/tmp/12345/start >/dev/null`);
 diag(`/tmp/12346/start >/dev/null`);
 $master_dbh = $sb->get_dbh_for('master');
 $slave1_dbh = $sb->get_dbh_for('slave1');
+$sb->ok() or BAIL_OUT("Sandbox is broken");
 
 # Checksum the tables again in 1 chunk.  Since db percona isn't being
 # ignored, deleting old results in the repl table should replicate.
@@ -180,12 +182,13 @@ diag(`/tmp/12346/start >/dev/null`);
 
 $master_dbh = $sb->get_dbh_for('master');
 $slave1_dbh = $sb->get_dbh_for('slave1');
+$sb->ok() or BAIL_OUT("Sandbox is broken");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(--no-check-replication-filters),
       qw(-d mysql -t user))
    },
-   stderr => 1,
+   #stderr => 1,
 );
 
 # Because we did not use --replicate-database, pt-table-checksum should
@@ -245,6 +248,7 @@ diag(`$trunk/sandbox/test-env reset`);
 
 $master_dbh = $sb->get_dbh_for('master');
 $slave1_dbh = $sb->get_dbh_for('slave1');
+$sb->ok() or BAIL_OUT("Sandbox is broken");
 
 pt_table_checksum::main(@args, qw(--quiet));
 
@@ -275,12 +279,12 @@ is(
 # #############################################################################
 # Stop and start slaves to avoid sandbox breakage caused by restarting servers.
 # #############################################################################
-$slave1_dbh = $sb->get_dbh_for('slave1');
-$slave2_dbh = $sb->get_dbh_for('slave2');
-$slave1_dbh->do('STOP SLAVE');
-$slave2_dbh->do('STOP SLAVE');
-$slave1_dbh->do('START SLAVE');
-$slave2_dbh->do('START SLAVE');
+#$slave1_dbh = $sb->get_dbh_for('slave1');
+#$slave2_dbh = $sb->get_dbh_for('slave2');
+#$slave1_dbh->do('STOP SLAVE');
+#$slave2_dbh->do('STOP SLAVE');
+#$slave1_dbh->do('START SLAVE');
+#$slave2_dbh->do('START SLAVE');
 
 # #############################################################################
 # Done.
