@@ -42,8 +42,6 @@ else {
    plan tests => 4;
 }
 
-# Must have empty checksums table for these tests.
-$master_dbh->do('drop table if exists percona.checksums');
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
@@ -58,15 +56,12 @@ my $scripts = "$trunk/t/pt-table-checksum/scripts/";
 # ############################################################################
 # Tool should check all slaves' lag, so slave2, not just slave1.
 # ############################################################################
-wait_until(  # slaves aren't lagging
-   sub {
-      $row = $slave1_dbh->selectrow_hashref('show slave status');
-      return 0 if $row->{Seconds_Behind_Master};
-      $row = $slave2_dbh->selectrow_hashref('show slave status');
-      return 0 if $row->{Seconds_Behind_Master};
-      return 1;
-   }
-) or die "Slaves are still lagging";
+
+# Must have empty checksums table for these tests.
+$master_dbh->do('drop table if exists percona.checksums');
+
+# Must not be lagging.
+PerconaTest::wait_until_no_lag($slave1_dbh, $slave2_dbh);
 
 # This big fancy command waits until it sees the checksum for sakila.city
 # in the repl table on the master, then it stops slave2 for 2 seconds,
@@ -100,6 +95,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-diag(`$trunk/sandbox/test-env reset >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

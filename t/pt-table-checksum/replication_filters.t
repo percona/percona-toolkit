@@ -52,22 +52,36 @@ my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '');
 my $output;
 my $row;
 
+# You must call this sub if the master 12345 or slave1 12346 is restarted,
+# else a slave might notice that its master went away and enter the "trying
+# to reconnect" state, and then replication will break as the tests continue.
+sub reset_slaves {
+   $slave1_dbh->do('STOP SLAVE');
+   $slave2_dbh->do('STOP SLAVE');
+   $slave1_dbh->do('START SLAVE');
+   $slave2_dbh->do('START SLAVE');
+}
+
+# #############################################################################
+# Repl filters on all slaves, at all depths, should be found.
+# #############################################################################
+
 # Add a replication filter to the slaves.
+diag(`/tmp/12347/stop >/dev/null`);
+diag(`/tmp/12346/stop >/dev/null`);
 for my $port ( qw(12346 12347) ) {
-   diag(`/tmp/$port/stop >/dev/null`);
    diag(`cp /tmp/$port/my.sandbox.cnf /tmp/$port/orig.cnf`);
    diag(`echo "replicate-ignore-db=foo" >> /tmp/$port/my.sandbox.cnf`);
    diag(`/tmp/$port/start >/dev/null`);
 }
 $slave1_dbh = $sb->get_dbh_for('slave1');
 $slave2_dbh = $sb->get_dbh_for('slave2');
-$sb->ok() or BAIL_OUT("Sandbox is broken");
 
 my $pos = PerconaTest::get_master_binlog_pos($master_dbh);
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.country)) },
-   #stderr => 1,
+   stderr => 1,
 );
 
 is(
@@ -92,7 +106,7 @@ like(
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.country),
       qw(--no-check-replication-filters)) },
-   #stderr => 1,
+   stderr => 1,
 );
 
 like(
@@ -102,8 +116,9 @@ like(
 );
 
 # Remove the replication filter from the slave.
+diag(`/tmp/12347/stop >/dev/null`);
+diag(`/tmp/12346/stop >/dev/null`);
 for my $port ( qw(12346 12347) ) {
-   diag(`/tmp/$port/stop >/dev/null`);
    diag(`mv /tmp/$port/orig.cnf /tmp/$port/my.sandbox.cnf`);
    diag(`/tmp/$port/start >/dev/null`);
 }
@@ -120,21 +135,14 @@ pt_table_checksum::main(@args, qw(--chunk-time 0 --chunk-size 100),
    '-t', 'mysql.user,sakila.city', qw(--quiet));
 PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', "db='sakila' and tbl='city' and chunk=6");
 
+# Add a replication filter to the master: ignore db mysql.
 $master_dbh->disconnect();
-$slave1_dbh->disconnect();
-
-# Add a replication filter to the slave: ignore db mysql.
-diag(`/tmp/12346/stop >/dev/null`);
 diag(`/tmp/12345/stop >/dev/null`);
-
 diag(`cp /tmp/12345/my.sandbox.cnf /tmp/12345/orig.cnf`);
 diag(`echo "binlog-ignore-db=mysql" >> /tmp/12345/my.sandbox.cnf`);
-
 diag(`/tmp/12345/start >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
+reset_slaves();
 $master_dbh = $sb->get_dbh_for('master');
-$slave1_dbh = $sb->get_dbh_for('slave1');
-$sb->ok() or BAIL_OUT("Sandbox is broken");
 
 # Checksum the tables again in 1 chunk.  Since db percona isn't being
 # ignored, deleting old results in the repl table should replicate.
@@ -157,38 +165,30 @@ $master_dbh->do("use percona");
 $master_dbh->do("truncate table percona.checksums");
 wait_until(
    sub {
-      $row = $slave1_dbh->selectall_arrayref("select * from percona.checksums");
+      $row=$slave1_dbh->selectall_arrayref("select * from percona.checksums");
       return !@$row;
    }
 );
-
-$master_dbh->disconnect();
-$slave1_dbh->disconnect();
-
-# Restore original config.
-diag(`/tmp/12346/stop >/dev/null`);
-diag(`/tmp/12345/stop >/dev/null`);
-diag(`cp /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 
 # #############################################################################
 # Test --replicate-database which resulted from this issue.
 # #############################################################################
 
-# Add a binlog-do-db filter so master will only replicate
-# statements when USE mysql is in effect.
+# Restore original config.  Then add a binlog-do-db filter so master
+# will only replicate statements when USE mysql is in effect.
+$master_dbh->disconnect();
+diag(`/tmp/12345/stop >/dev/null`);
+diag(`cp /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 diag(`echo "binlog-do-db=mysql" >> /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
-
 $master_dbh = $sb->get_dbh_for('master');
-$slave1_dbh = $sb->get_dbh_for('slave1');
-$sb->ok() or BAIL_OUT("Sandbox is broken");
+reset_slaves();
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(--no-check-replication-filters),
       qw(-d mysql -t user))
    },
-   #stderr => 1,
+   stderr => 1,
 );
 
 # Because we did not use --replicate-database, pt-table-checksum should
@@ -208,7 +208,7 @@ $master_dbh->do("use mysql");
 $master_dbh->do("truncate table percona.checksums");
 wait_until(
    sub {
-      $row = $slave1_dbh->selectall_arrayref("select * from percona.checksums");
+      $row=$slave1_dbh->selectall_arrayref("select * from percona.checksums");
       return !@$row;
    }
 );
@@ -233,22 +233,18 @@ is(
 );
 
 # #############################################################################
-# Restore original config.
+# Check that only the expected dbs are used.
 # #############################################################################
-$master_dbh->disconnect();
-$slave1_dbh->disconnect();
 
-diag(`/tmp/12346/stop >/dev/null`);
+# Restore the original config.
+$master_dbh->disconnect();
 diag(`/tmp/12345/stop >/dev/null`);
 diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
-
-diag(`$trunk/sandbox/test-env reset`);
-
 $master_dbh = $sb->get_dbh_for('master');
-$slave1_dbh = $sb->get_dbh_for('slave1');
-$sb->ok() or BAIL_OUT("Sandbox is broken");
+
+# Reset the slaves and clear the binlogs.
+diag(`$trunk/sandbox/test-env reset`);
 
 pt_table_checksum::main(@args, qw(--quiet));
 
@@ -264,6 +260,7 @@ use sakila/*!*/;
    "USE each table's database (binlog dump)"
 );
 
+# Clear the binlogs.
 diag(`$trunk/sandbox/test-env reset`);
 
 pt_table_checksum::main(@args, qw(--quiet --replicate-database percona));
@@ -275,16 +272,6 @@ is(
 ",
    "USE only --replicate-database (binlog dump)"
 );
-
-# #############################################################################
-# Stop and start slaves to avoid sandbox breakage caused by restarting servers.
-# #############################################################################
-#$slave1_dbh = $sb->get_dbh_for('slave1');
-#$slave2_dbh = $sb->get_dbh_for('slave2');
-#$slave1_dbh->do('STOP SLAVE');
-#$slave2_dbh->do('STOP SLAVE');
-#$slave1_dbh->do('START SLAVE');
-#$slave2_dbh->do('START SLAVE');
 
 # #############################################################################
 # Done.
