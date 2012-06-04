@@ -22,6 +22,10 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( $DBD::mysql::VERSION lt '4' ) {
+   plan skip_all => "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
+	. "See https://bugs.launchpad.net/percona-toolkit/+bug/932327";
+}
 else {
    plan tests => 3;
 }

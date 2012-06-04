@@ -194,11 +194,17 @@ SKIP: {
 					  . "]";
       $flat_string =~ s/\n/\\n/g;
 
-      is_deeply(
-         [ $q->deserialize_list($selsth->fetchrow_array()) ],
-         $serialize_tests[$test_index],
-         "Serialize $flat_string"
-      );
+      # diag($test_index);
+      SKIP: {
+         skip "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
+	    . "See https://bugs.launchpad.net/percona-toolkit/+bug/932327",
+            1 if $DBD::mysql::VERSION lt '4' && $test_index == 9;
+         is_deeply(
+            [ $q->deserialize_list($selsth->fetchrow_array()) ],
+            $serialize_tests[$test_index],
+            "Serialize $flat_string"
+         );
+      }
    }
 
    $sth->finish();
