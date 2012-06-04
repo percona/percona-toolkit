@@ -52,5 +52,6 @@ ok(
 # #############################################################################
 $sb->wipe_clean($dbh1);
 $sb->wipe_clean($dbh2);
+diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
