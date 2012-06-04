@@ -308,6 +308,7 @@ sub save_results {
       }
    }
 
+   $dbh->commit;
    return;
 }
 
