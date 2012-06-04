@@ -208,15 +208,16 @@ kill_sandbox() {
       mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
+      sleep 1
 
       # See if the sandbox server is still running.
       sandbox_is_running $p 
       if [ $? -eq 0 ]; then
          # Kill both mysqld_safe and mysqld.
-         pid1=`ps axw | grep mysqld_safe | grep /tmp/$p | awk '{print $1}'`
-         pid2=`ps axw | grep mysqld | grep -v mysqld_safe | grep /tmp/$p | awk '{print $1}'`
-         kill -9 $pid1  # Die, damn you, die!
-         kill -9 $pid2
+         pid1=`ps xw | grep -v grep | grep mysqld_safe | grep /tmp/$p | awk '{print $1}'`
+         pid2=`ps xw | grep -v grep | grep -v mysqld_safe | grep mysqld | grep /tmp/$p | awk '{print $1}'`
+         [ "$pid1" ] && kill -9 $pid1  # Die, damn you, die!
+         [ "$pid2" ] && kill -9 $pid2
          sleep 1
 
          # Third and finaly check if the sandbox server is running.
@@ -334,7 +335,7 @@ case $opt in
    kill)
       # This is a blunt approach for killing the entire mk test env
       # when a polite stop fails.  It uses kill -9 as a last resort.
-      for port in 12345 12346 12347 12348 12349 2900 2901 2902 2903; do
+      for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
          kill_sandbox $port
       done
       ;;
