@@ -168,7 +168,9 @@ test_linux_exclusive_collection () {
    local PT_SUMMARY_SKIP=""
 
    mkdir "$dir/1"
-   cp "$dir/sysctl" "$dir/1/"
+   if [ -e "$dir/sysctl" ]; then
+      cp "$dir/sysctl" "$dir/1/"
+   fi
    linux_exclusive_collection "$dir/1"
 
    is \
@@ -183,7 +185,9 @@ test_linux_exclusive_collection () {
    done
    
    mkdir "$dir/2"
-   cp "$dir/sysctl" "$dir/2/"
+   if [ -e "$dir/sysctl" ]; then
+      cp "$dir/sysctl" "$dir/2/"
+   fi
    linux_exclusive_collection "$dir/2"
 
    is \
@@ -205,8 +209,11 @@ platform="$(get_var platform "$p/summary")"
 
 if [ "$platform" = "Linux" ]; then
    mkdir "$TMPDIR/linux_data"
-   cp "$p/sysctl" "$TMPDIR/linux_data/sysctl"
+   if [ -e "$p/sysctl" ]; then
+      cp "$p/sysctl" "$TMPDIR/linux_data/sysctl"
+   fi
    test_linux_exclusive_collection "$TMPDIR/linux_data"
+   rm -rf "$TMPDIR/linux_data"
 else
    skip 1 5 "Tests exclusive for Linux"
 fi
