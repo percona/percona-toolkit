@@ -13,10 +13,7 @@ use Test::More tests => 1;
 
 use PerconaTest;
 
-TODO: {
-   local $TODO = "Test pt-sift";
-   ok(1, 'ok');
-};
+pass();
 
 # #############################################################################
 # Done.
