@@ -2920,7 +2920,10 @@ sub play_session {
    } # ITERATION
 
    close $output_fh if $output_fh;
-   $dbh->disconnect() if $dbh;
+   if ($dbh) {
+      $dbh->commit() unless $dbh->{AutoCommit};
+      $dbh->disconnect();
+   }
    return;
 }
 
