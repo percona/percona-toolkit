@@ -43,6 +43,7 @@ collect_mysqld_instances () {
          echo "internal::oom_of_$pid    $oom" >> "$variables_file"
       done
 
+      pids="$pids"
       pids="$(echo $pids | sed -e 's/ /,/g')"
       ps ww -p "$pids" 2>/dev/null
    else
