@@ -521,8 +521,9 @@ SKIP: {
       chunk_size     => 5,
       avg_row_length => 1,
    );
+   # diag('size ', $size || 'undef', 'avg ', $avg || 'undef');
    ok(
-      $size == 5 && ($avg >= 173 && $avg <= 206),
+      $size == 5 && ($avg >= 150 && $avg <= 280),
       'size_to_rows() gets avg row length if asked'
    );
 
