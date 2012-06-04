@@ -41,7 +41,7 @@ diag(`rm -rf $dest 2>/dev/null`);
 # Test that it won't run if can't connect to MySQL.
 # ###########################################################################
 
-my $retval = system("$trunk/bin/pt-stalk >$log_file 2>&1");
+my $retval = system("$trunk/bin/pt-stalk -- --no-defaults --protocol socket --socket /dev/null  >$log_file 2>&1");
 my $output = `cat $log_file`;
 
 like(
@@ -148,10 +148,11 @@ like(
    "Collect triggered"
 );
 
+# There is some nondeterminism here. Sometimes it'll run for 2 samples because
+# the samples may not be precisely 1 second apart.
 chomp($output = `cat $dest/*-df | grep -c '^TS'`);
-is(
-   $output,
-   2,
+ok(
+   $output >= 1 && $output <= 2,
    "Collect ran for --run-time"
 );
 
