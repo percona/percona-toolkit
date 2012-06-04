@@ -308,7 +308,7 @@ sub save_results {
       }
    }
 
-   $dbh->commit;
+   $dbh->commit unless $dbh->{AutoCommit};
    return;
 }
 
