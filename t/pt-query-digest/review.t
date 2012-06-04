@@ -29,6 +29,14 @@ else {
    plan tests => 18;
 }
 
+sub normalize_numbers {
+   use Scalar::Util qw(looks_like_number);
+   my $AoH = shift;
+   for my $h (@$AoH) {
+      $_ = sprintf("%.8f", $_) for grep { looks_like_number($_) } values %$h;
+   }
+}
+
 my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/slowlogs/";
 my $output;
 my $cmd;
@@ -56,9 +64,8 @@ $cmd = "${run_with}slow006.txt --review h=127.1,u=msandbox,p=msandbox,P=12345,D=
 $output = `$cmd`;
 my $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review',
    { Slice => {} } );
-is_deeply(
-   $res,
-   [  {  checksum    => '11676753765851784517',
+
+my $expected =    [  {  checksum    => '11676753765851784517',
          reviewed_by => undef,
          reviewed_on => undef,
          last_seen   => '2007-12-18 11:49:30',
@@ -76,7 +83,14 @@ is_deeply(
          fingerprint => 'select col from bar_tbl',
          comments    => undef,
       },
-   ],
+   ];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+   
+is_deeply(
+   $res,
+   $expected,
    'Adds/updates queries to query review table'
 );
 
@@ -95,9 +109,7 @@ FORMAT(rows_examined_pct_95, 6) AS rows_examined_pct_95, rows_sent_max,
 FORMAT(query_time_median, 6) AS query_time_median, lock_time_sum FROM
 test.query_review_history', { Slice => {} } );
 
-is_deeply(
-   $res,
-   [  {  lock_time_median     => '0',
+$expected =   [  {  lock_time_median     => '0',
          lock_time_stddev     => '0',
          query_time_sum       => '0.000036',
          checksum             => '11676753765851784517',
@@ -157,7 +169,14 @@ is_deeply(
          query_time_median    => '0.000012',
          lock_time_sum        => '0'
       }
-   ],
+   ];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+
+is_deeply(
+   $res,
+   $expected,
    'Adds/updates queries to query review history table'
 );
 
@@ -257,9 +276,7 @@ $dbh->do('truncate table test.query_review_history');
 $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
    { Slice => {} } );
 
-is_deeply(
-   $res,
-   [
+$expected =    [
       {
          sample => "UPDATE foo.bar
 SET    biz = '91848182522'",
@@ -354,8 +371,15 @@ SET    biz = '91848182522'",
          ts_max => '2007-12-18 11:48:27',
          ts_min => '2007-12-18 11:48:27',
       },
-   ],
-   "Review history has Percona extended slowlog attribs (issue 1149)"
+   ];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+
+is_deeply(
+   $res,
+   $expected,
+   "Review history has Percona extended slowlog attribs (issue 1149)",
 );
 
 
