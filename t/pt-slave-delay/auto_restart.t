@@ -45,10 +45,11 @@ my $output;
 # the child should restart the slave, and the tool should report
 # that it reconnected and did some work, ending with "Setting slave
 # to run normally".
+diag('Running...');
 my $pid = fork();
 if ( $pid ) {
    # parent
-   $output = `$cmd --interval 1 --run-time 8 2>&1`;
+   $output = `$cmd --interval 1 --run-time 4 2>&1`;
    like(
       $output,
       qr/Lost connection.+?Reconnected to slave.+Setting slave to run/ms,
@@ -71,11 +72,11 @@ waitpid ($pid, 0);
 $pid = fork();
 if ( $pid ) {
    # parent. Note the --database mysql
-   $output = `$cmd --database mysql --interval 1 --run-time 8 2>&1`;
+   $output = `$cmd --database mysql --interval 1 --run-time 4 2>&1`;
    like(
       $output,
       qr/Lost connection.+?Reconnected to slave.+Setting slave to run/ms,
-      "Reconnect to slave"
+      "Reconnect to slave when KILL'ed"
    );
 }
 else {
