@@ -43,6 +43,7 @@ make_sandbox() {
    fi
    if [ -n "$SKIP_INNODB" ]; then
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
+      echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
    fi
 
    # If the sandbox is a slave, set it read_only.
