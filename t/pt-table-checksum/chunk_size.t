@@ -94,7 +94,8 @@ is_deeply(
 # ############################################################################
 # Sub-second chunk-time.
 # ############################################################################
-
+SKIP: {
+   skip "Too slow", 1;
 $output = output(
    sub { pt_table_checksum::main(@args,
       qw(--quiet --chunk-time .001 -d mysql)) },
@@ -106,7 +107,7 @@ unlike(
    qr/Cannot checksum table/,
    "Very small --chunk-time doesn't cause zero --chunk-size"
 );
-
+}
 # #############################################################################
 # Bug 921700: pt-table-checksum doesn't add --where to chunk-oversize test
 # on replicas

@@ -33,7 +33,9 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);
 use Data::Dumper;
-$Data::Dumper::Indent = 1;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Quotekeys = 0;
+$Data::Dumper::Sortkeys  = 1;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -192,6 +194,8 @@ sub master_is_ok {
 
 sub slave_is_ok {
    my ($self, $slave, $master, $ro) = @_;
+   PTDEBUG && _d('Checking if slave', $slave, $port_for{$slave},
+      'to', $master, $port_for{$master}, 'is ok');
 
    my $slave_dbh = $self->get_dbh_for($slave);
    if ( !$slave_dbh ) {
@@ -232,34 +236,34 @@ sub slave_is_ok {
       }
    }
 
-   if ( ($status->[0]->{seconds_behind_master} || 0) > 0 ) {
-      my $sleep_t = 0.25;
-      my $total_t = 0;
-      while ( defined $status->[0]->{seconds_behind_master}
-              &&  $status->[0]->{seconds_behind_master} > 0 ) {
-         sleep $sleep_t;
-         $total_t += $sleep_t;
-         $status = $slave_dbh->selectall_arrayref(
-            "SHOW SLAVE STATUS", { Slice => {} });
-         if ( $total_t == 5 ) {
-            Test::More::diag("Waiting for sandbox $slave " . $port_for{$slave}
-               . " to catch up...");
-         }
+   my $sleep_t = 0.25;
+   my $total_t = 0;
+   while ( defined $status->[0]->{seconds_behind_master}
+           &&  $status->[0]->{seconds_behind_master} > 0 ) {
+      PTDEBUG && _d('Slave lag:', $status->[0]->{seconds_behind_master});
+      sleep $sleep_t;
+      $total_t += $sleep_t;
+      $status = $slave_dbh->selectall_arrayref(
+         "SHOW SLAVE STATUS", { Slice => {} });
+      if ( $total_t == 5 ) {
+         Test::More::diag("Waiting for sandbox $slave " . $port_for{$slave}
+            . " to catch up...");
       }
    }
 
+   PTDEBUG && _d('Slave', $slave, $port_for{$slave}, 'is ok');
    $slave_dbh->disconnect();
    return 1;
 }
 
 sub leftover_servers {
-   my ($self);
-   return 0;
+   my ($self) = @_;
+   PTDEBUG && _d('Checking for leftover servers');
    my $leftovers = 0;
    foreach my $serverno ( 1..6 ) {
       my $server = "master$serverno";
       my $dbh = $self->get_dbh_for($server);
-      if ( !$dbh ) {
+      if ( $dbh ) {
          warn "Sandbox $server " . $port_for{$server} . " was left up\n";
          $dbh->disconnect();
          $leftovers = 1;
