@@ -2117,6 +2117,7 @@ sub main {
 
       $now = time();
 
+      # TODO: this is a race condition. See 0xdeadbeef below.
       if ( !$slave_dbh || !$slave_dbh->ping() ) {
          # Try 10 times, for about 2 minutes, to reconnect to the slave,
          # increasing wait time from 3 to 15 seconds.
@@ -2151,6 +2152,8 @@ sub main {
          );
          last unless $oktorun;  # might have gotten interrupt while waiting
       }
+      # 0xdeadbeef (see above): just because we reconnected in the above Retry
+      # does not mean we have a connection here!
       $status = $slave_dbh->selectrow_hashref("SHOW SLAVE STATUS");
       if ( !$status || ! %$status ) {
          die "No SLAVE STATUS found";
@@ -2455,6 +2458,12 @@ C<pt-slave-delay> with Control-C.
 
 Fork to the background and detach from the shell.  POSIX
 operating systems only.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
 
 =item --defaults-file
 
