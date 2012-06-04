@@ -36,7 +36,9 @@ export PATH="$PATH:/usr/sbin:$PWD/mysql-${MYSQL}-barebones/bin"
 # Check and start test env. #
 #############################
 sandbox/test-env checkconfig || exit 1
-sandbox/test-env restart     || exit 1
+sandbox/test-env stop        || exit 1
+sandbox/text-env kill
+sandbox/test-env start       || exit 1
 
 #######################
 # Set debug env vars. #
