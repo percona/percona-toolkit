@@ -69,7 +69,10 @@ ok(
    'Table on host2 not changed'
 );
 
+# #############################################################################
+# Done.
+# #############################################################################
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 $sb->wipe_clean($dbh1);
-$sb->wipe_clean($dbh2);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

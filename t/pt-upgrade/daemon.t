@@ -48,5 +48,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
