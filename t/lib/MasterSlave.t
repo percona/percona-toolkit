@@ -336,8 +336,12 @@ $res = $ms->wait_for_master(
 ok($res->{result} >= 0, 'Wait was successful');
 
 $ms->stop_slave($slaves[0]);
-$dbh->do('drop database if exists test'); # Any stmt will do
-diag(`(sleep 3; echo "start slave" | /tmp/$port_for{slave0}/use)&`);
+$dbh->do('drop database if exists test');
+$dbh->do('create database test');
+$dbh->do('create table test.t(a int)');
+$dbh->do('insert into test.t(a) values(1)');
+$dbh->do('update test.t set a=sleep(5)');
+diag(`(/tmp/$port_for{slave0}/use -e 'start slave')&`);
 eval {
    $res = $ms->wait_for_master(
       master_status => $ms->get_master_status($dbh),
