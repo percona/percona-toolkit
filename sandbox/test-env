@@ -7,6 +7,13 @@
 # Exist 0 on success/no errors, or 1 on any warnings or errors.
 
 err() {
+   echo "MySQL processes:" >&2
+   ps x | grep mysql >&2
+
+   echo "Sandbox servers:" >&2
+   ls /tmp/1234? >&2
+   ls /tmp/290? >&2
+
    echo
    for msg; do
       echo "$msg" >&2
@@ -186,7 +193,7 @@ sandbox_status() {
 
 sandbox_is_running() {
    local p=$1
-   ps axw | grep mysqld | grep -v grep | grep /tmp/$p >/dev/null
+   ps xw | grep mysqld | grep -v grep | grep /tmp/$p >/dev/null
 }
 
 kill_sandbox() {
@@ -288,21 +295,20 @@ case $opt in
    start)
       cd $PERCONA_TOOLKIT_BRANCH/sandbox
       ./start-sandbox master 12345
-      exit_status=$?
+      exit_status=$((exit_status | $?))
       if [ $exit_status -eq 0 ]; then
          ./start-sandbox slave 12346 12345
+         exit_status=$((exit_status | $?))
          ./start-sandbox slave 12347 12346
-         exit_status=$?
-         if [ "$version" != "4.0" ] && [ "$version" != "4.1" ]; then
-            if [ $? -eq 0 ]; then
-               echo -n "Loading sakila database... "
-               ./load-sakila-db 12345
-               exit_status=$?
-               if [ $? -ne 0 ]; then
-                  echo "FAILED"
-               else
-                  echo "OK"
-               fi
+         exit_status=$((exit_status | $?))
+         if [ $? -eq 0 -a "$version" != "4.0" -a "$version" != "4.1" ]; then
+            echo -n "Loading sakila database... "
+            ./load-sakila-db 12345
+            exit_status=$((exit_status | $?)) 
+            if [ $? -ne 0 ]; then
+               echo "FAILED"
+            else
+               echo "OK"
             fi
          fi
       fi
