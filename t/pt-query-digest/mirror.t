@@ -49,7 +49,7 @@ $cmd  = "$trunk/bin/pt-query-digest "
 $ENV{PTDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
 
-$ENV{MKDEBUG}=0;
+$ENV{PTDEBUG}=0;
 sleep 3;
 
 $dbh1->do('select sleep(1)');

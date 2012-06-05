@@ -47,7 +47,7 @@ package res_fk;
 
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG  => $ENV{MKDEBUG};
+use constant PTDEBUG  => $ENV{PTDEBUG};
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
@@ -63,26 +63,26 @@ sub new {
    my $sql = "INSERT INTO $dst_db.`user` "
         . "SELECT * FROM $src_db.`user` "
         . 'WHERE comp_id=?';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $archive_users_sth = $dbh->prepare($sql);
 
    $sql = "DELETE FROM $src_db.`user` WHERE comp_id=?";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $delete_users_sth = $dbh->prepare($sql);
 
    # Prepare statements for prod table.
    $sql = "INSERT INTO $dst_db.`prod` "
         . "SELECT * FROM $src_db.`prod` "
         . 'WHERE comp_id=?';
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $archive_prods_sth = $dbh->prepare($sql);
 
    $sql = "SELECT DISTINCT `id` FROM $src_db.`prod` WHERE comp_id=?";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $get_prods_sth = $dbh->prepare($sql);
 
    $sql = "DELETE FROM $src_db.`prod` WHERE comp_id=?";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    my $delete_prods_sth = $dbh->prepare($sql);
 
    my $self = {
@@ -129,13 +129,13 @@ sub is_archivable {
 # tables with INSERT SELECT ($archive_*_sth).
 sub before_delete {
    my ( $self, %args ) = @_;
-   MKDEBUG && _d('before delete');
+   PTDEBUG && _d('before delete');
    my $dbh     = $self->{dbh};
    my $src_db  = $self->{src_db};
    my $dst_db  = $self->{dst_db};
    my $comp_id = $args{row}->[0];  # id is first column
    my $sql;
-   MKDEBUG && _d('row:', Dumper($args{row}));
+   PTDEBUG && _d('row:', Dumper($args{row}));
 
    # Archive rows from prod then user, in that order because
    # user referenes prod.
@@ -149,11 +149,11 @@ sub before_delete {
    $self->{get_prods_sth}->execute($comp_id);
    my $prod_ids     = $self->{get_prods_sth}->fetchall_arrayref();
    my $all_prod_ids = join(',', map { $_->[0]; } @$prod_ids);
-   MKDEBUG && _d('prod ids:', $all_prod_ids);
+   PTDEBUG && _d('prod ids:', $all_prod_ids);
    my $sql = "INSERT INTO $dst_db.`prod_details` "
            . "SELECT * FROM $src_db.`prod_details` "
            . "WHERE prod_id IN ($all_prod_ids)";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    $dbh->do($sql);
 
    # Now we can delete the rows from user, prod_details then prod
@@ -161,7 +161,7 @@ sub before_delete {
    $self->{delete_users_sth}->execute($comp_id);
    $sql = "DELETE FROM $src_db.`prod_details` "
         . "WHERE prod_id IN ($all_prod_ids)";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    $dbh->do($sql);
    $self->{delete_prods_sth}->execute($comp_id);
 

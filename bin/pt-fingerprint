@@ -6,7 +6,7 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # ###########################################################################
 # OptionParser package
@@ -1843,7 +1843,7 @@ use Data::Dumper;
 $Data::Dumper::Indent = 1;
 $OUTPUT_AUTOFLUSH     = 1;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub main {
    @ARGV    = @_;  # set global ARGV for this package
