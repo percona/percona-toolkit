@@ -1,0 +1,27 @@
+#!/bin/sh
+
+die() {
+   echo "$*" >&2
+   exit 1
+}
+
+port="$1"
+shift
+[ "$port" ] || die "Usage: $0 PORT TABLES"
+
+for table in "$@"; do
+   /tmp/$port/use -e "SELECT * FROM $table" > /tmp/$table-after
+done
+
+$PERCONA_TOOLKIT_BRANCH/sandbox/test-env restart
+
+for table in "$@"; do
+   /tmp/$port/use -e "SELECT * FROM $table" > /tmp/$table-before
+   echo "# diff -u /tmp/$table-before /tmp/$table-after"
+   echo -n "# columns: "
+   head -n 1 /tmp/$table-before
+   diff -u /tmp/$table-before /tmp/$table-after
+   echo
+done
+
+exit 0
