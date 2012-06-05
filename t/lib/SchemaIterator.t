@@ -183,13 +183,13 @@ SKIP: {
 
    # Ignore some dbs and tbls.
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3'],
+      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test'],
       result    => "d2.t1 ",
       test_name => '--ignore-databases',
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3',
+      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test',
                     '--ignore-tables', 't1,t2'],
       result    => "d1.t3 ",
       test_name => '--ignore-databases and --ignore-tables',
@@ -223,7 +223,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila)',
+      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test)',
                     '--ignore-tables-regex', 't[^23]'],
       result    => "d1.t2 d1.t3 ",
       test_name => '--ignore-databases-regex',
@@ -281,7 +281,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila',
+      filters   => ['--ignore-databases', 'mysql,sakila,percona_test',
                     '--ignore-tables', 'd1.t1'],
       result    => "d1.t2 d1.t3 d2.t1 ",
       test_name => '--ignore-databases and --ignore-tables d1.t1 (issue 806)',
