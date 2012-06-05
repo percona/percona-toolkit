@@ -284,6 +284,7 @@ case $opt in
          if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
             echo -n "Loading sakila database... "
             ./load-sakila-db 12345
+            ../util/checksum-test-dataset
             exit_status=$((exit_status | $?)) 
             if [ $? -ne 0 ]; then
                echo "FAILED"

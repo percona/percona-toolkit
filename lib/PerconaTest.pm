@@ -64,6 +64,7 @@ our @EXPORT      = qw(
    throws_ok
    remove_traces
    test_bash_tool
+   verify_test_data_integrity
    $trunk
    $dsn_opts
    $sandbox_version
