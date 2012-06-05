@@ -102,6 +102,7 @@ ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
       "$sample/bug-894140.txt",
+      sed => [ "-e 's/  */ /g'" ],
     ),
    "Bug 894140"
 );

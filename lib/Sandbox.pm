@@ -34,8 +34,8 @@ use English qw(-no_match_vars);
 use Time::HiRes qw(sleep);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
-$Data::Dumper::Quotekeys = 0;
 $Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -164,11 +164,17 @@ sub wipe_clean {
    # the DROP commands will just hang forever.
    my @cxns = @{$dbh->selectall_arrayref('SHOW FULL PROCESSLIST', {Slice => {}})};
    foreach my $cxn ( @cxns ) {
-      if (
+      if (( 
          (($cxn->{user}||'') eq 'msandbox' && ($cxn->{command}||'') eq 'Sleep')
       || (($cxn->{User}||'') eq 'msandbox' && ($cxn->{Command}||'') eq 'Sleep')
+         ) && $cxn->{db} 
       ) {
-         eval { $dbh->do("KILL $cxn->{id}"); };
+         my $id  = $cxn->{id} ? $cxn->{id} : $cxn->{Id};
+         my $sql = "KILL $id /* db: $cxn->{db} */";
+         Test::More::diag($sql);
+         eval { $dbh->do($sql); };
+         Test::More::diag("Error executing $sql in Sandbox::wipe_clean(): "
+            . $EVAL_ERROR) if $EVAL_ERROR;
       }
    }
    foreach my $db ( @{$dbh->selectcol_arrayref('SHOW DATABASES')} ) {
