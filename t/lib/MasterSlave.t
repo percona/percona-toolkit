@@ -230,13 +230,13 @@ my %port_for = (
 );
 foreach my $port ( values %port_for ) {
    if ( -d "/tmp/$port" ) {
-      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null`);
+      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null 2>&1`);
    }
 }
-diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2903 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2901 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2902 2901 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null 2>&1`);
+diag(`$trunk/sandbox/start-sandbox slave 2903 2900 >/dev/null 2>&1`);
+diag(`$trunk/sandbox/start-sandbox slave 2901 2900 >/dev/null 2>&1`);
+diag(`$trunk/sandbox/start-sandbox slave 2902 2901 >/dev/null 2>&1`);
 
 # I discovered something weird while updating this test. Above, you see that
 # slave2 is started first, then the others. Before, slave2 was started last,
@@ -607,14 +607,14 @@ SKIP: {
    $master_dbh->disconnect();
    $slave_dbh->disconnect();
 
-   diag(`/tmp/12346/stop >/dev/null`);
-   diag(`/tmp/12345/stop >/dev/null`);
+   diag(`/tmp/12346/stop >/dev/null 2>&1`);
+   diag(`/tmp/12345/stop >/dev/null 2>&1`);
    diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/orig.cnf`);
    diag(`cp /tmp/12345/my.sandbox.cnf /tmp/12345/orig.cnf`);
    diag(`echo "replicate-ignore-db=foo" >> /tmp/12346/my.sandbox.cnf`);
    diag(`echo "binlog-ignore-db=bar" >> /tmp/12345/my.sandbox.cnf`);
-   diag(`/tmp/12345/start >/dev/null`);
-   diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12345/start >/dev/null 2>&1`);
+   diag(`/tmp/12346/start >/dev/null 2>&1`);
    
    $master_dbh = $sb->get_dbh_for('master');
    $slave_dbh  = $sb->get_dbh_for('slave1');
@@ -635,12 +635,12 @@ SKIP: {
       "Slave replication filter"
    );
    
-   diag(`/tmp/12346/stop >/dev/null`);
-   diag(`/tmp/12345/stop >/dev/null`);
+   diag(`/tmp/12346/stop >/dev/null 2>&1`);
+   diag(`/tmp/12345/stop >/dev/null 2>&1`);
    diag(`mv /tmp/12346/orig.cnf /tmp/12346/my.sandbox.cnf`);
    diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
-   diag(`/tmp/12345/start >/dev/null`);
-   diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12345/start >/dev/null 2>&1`);
+   diag(`/tmp/12346/start >/dev/null 2>&1`);
 };
 
 is(
@@ -702,9 +702,9 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
+diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null 2>&1`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
-diag(`$trunk/sandbox/test-env reset`);
+diag(`$trunk/sandbox/test-env reset >/dev/null 2>&1`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
