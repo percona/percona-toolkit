@@ -29,7 +29,7 @@ elsif ( !@{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')} ) {
    plan skip_all => 'sakila db not loaded';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 my $cnf = '/tmp/12346/my.sandbox.cnf';
@@ -99,4 +99,5 @@ waitpid ($pid, 0);
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
