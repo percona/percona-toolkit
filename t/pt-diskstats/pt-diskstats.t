@@ -92,6 +92,8 @@ sub test_diskstats_file {
          no_diff(
             sub {
                tie local *STDIN, TestInteractive => @commands;
+               local $PerconaTest::DONT_RESTORE_STDIN =
+                     $PerconaTest::DONT_RESTORE_STDIN = 1;
                pt_diskstats::main(
                   @options,
                   '--group-by', $groupby,
