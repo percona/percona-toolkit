@@ -255,6 +255,7 @@ is(
    $output,
 "use mysql/*!*/;
 use percona/*!*/;
+use percona_test/*!*/;
 use sakila/*!*/;
 ",
    "USE each table's database (binlog dump)"
