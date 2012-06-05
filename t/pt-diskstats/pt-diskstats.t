@@ -16,6 +16,10 @@ use File::Temp ();
 use PerconaTest;
 require "$trunk/bin/pt-diskstats";
 
+# Re-open STDIN to /dev/null before the tieing magic, to avoid
+# a bug in older Perls.
+open STDIN, "<", "/dev/null";
+
 # pt-diskstats is an interactive-only tool.  It waits for user input
 # (i.e. menu commands) via STDIN.  So we cannot just run it with input,
 # get ouput, then test that output.  We have to tie STDIN to these subs
