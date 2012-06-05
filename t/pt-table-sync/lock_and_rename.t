@@ -33,20 +33,20 @@ else {
 }
 
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 $sb->create_dbs($master_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 363: lock and rename.
 # #############################################################################
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
+PerconaTest::wait_for_table($slave_dbh, "test.test2");
 
 $output = `$trunk/bin/pt-table-sync --lock-and-rename h=127.1,P=12345 P=12346 2>&1`;
 like($output, qr/requires exactly two/,
    '--lock-and-rename error when DSNs do not specify table');
 
-# It's hard to tell exactly which table is which, and the tables are going to be
-# "swapped", so we'll put a marker in each table to test the swapping.
+# It's hard to tell exactly which table is which, and the tables are going
+# to be "swapped", so we'll put a marker in each table to test the swapping.
 `/tmp/12345/use -e "alter table test.test1 comment='test1'"`;
 
 $output = `$trunk/bin/pt-table-sync --execute --lock-and-rename h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test1 t=test2 2>&1`;
@@ -59,6 +59,5 @@ like($output, qr/COMMENT='test1'/, '--lock-and-rename worked');
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
