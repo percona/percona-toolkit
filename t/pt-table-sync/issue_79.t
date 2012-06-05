@@ -32,16 +32,16 @@ else {
 }
 
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
+PerconaTest::wait_for_table($slave_dbh, "test.test4", "id=15034");
 
 # #############################################################################
 # Issue 79: mk-table-sync with --replicate doesn't honor --tables
 # #############################################################################
 
 $master_dbh->do('create table test.messages (i int)');
-sleep 1;
+PerconaTest::wait_for_table($slave_dbh, "test.messages", "i=3");
 $slave_dbh->do('insert into test.messages values (1), (2), (3)');
 
 # The previous test should have left test.messages on the slave (12346)
@@ -81,6 +81,5 @@ like($output,   qr/test2/,    '--replicate honors --tables (4/4)');
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
