@@ -617,8 +617,13 @@ sub no_diff {
    `rm -f $tmp_file $tmp_file_orig /tmp/pt-test-outfile-trf >/dev/null 2>&1`
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
 
-   1 while unlink $res_file;
-   1 while unlink $cmp_file;
+   if ( $res_file ne $tmp_file ) {
+      1 while unlink $res_file;
+   }
+
+   if ( $cmp_file ne $expected_output ) {
+      1 while unlink $cmp_file;
+   }
 
    return !$retval;
 }
