@@ -22,6 +22,9 @@ my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 
+if ( $vp->version_le($master_dbh, '5.5') ) {
+   plan skip_all => "This functionality doesn't work correctly on MySQLs earlier than 5.5";
+}
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
@@ -59,5 +62,5 @@ like($output, qr/COMMENT='test1'/, '--lock-and-rename worked');
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+is($sb->ok(), '', "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
