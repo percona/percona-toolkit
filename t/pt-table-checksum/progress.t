@@ -45,10 +45,13 @@ else {
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
-# And --max-load "" prevents waiting for status variables.
+# And --max-load "" prevents waiting for status variables. Setting
+# --chunk-size may help prevent the tool from running too fast and finishing
+# before the TEST_WISHLIST job below finishes. (Or, it might just make things
+# worse. This is a random stab in the dark. There is a problem either way.)
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--lock-wait-timeout 3),
-                  '--progress', 'time,1', '--max-load', ''); 
+                  '--progress', 'time,1', '--max-load', '', '--chunk-size', '500'); 
 my $output;
 my $row;
 my $scripts = "$trunk/t/pt-table-checksum/scripts/";
@@ -61,11 +64,13 @@ my $scripts = "$trunk/t/pt-table-checksum/scripts/";
 $master_dbh->do('drop table if exists percona.checksums');
 
 # Must not be lagging.
-PerconaTest::wait_until_no_lag($slave1_dbh, $slave2_dbh);
+wait_until_no_lag($slave1_dbh, $slave2_dbh);
 
 # This big fancy command waits until it sees the checksum for sakila.city
 # in the repl table on the master, then it stops slave2 for 2 seconds,
 # then starts it again.
+# TEST_WISHLIST PLUGIN_WISHLIST: do this with a plugin to the tool itself,
+# not in this unreliable fashion.
 system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 2 \"start slave sql_thread\"' 3 >/dev/null &");
 
 $output = output(
@@ -90,6 +95,9 @@ is(
    0,
    "No errors after waiting for slave lag"
 );
+
+# Now wait until the SQL thread is started again.
+wait_until_slave_running($slave1_dbh, $slave2_dbh);
 
 # #############################################################################
 # Done.
