@@ -91,12 +91,19 @@ sub test_so {
          }
       }
    }
-
+   
    return \@objs if $args{return_objs};
+
    if ( $result_file ) {
-      is(
-         sort_query_output($res),
-         sort_query_output(do { local $/; open(my $fh, "<", $args{result}); <$fh>}),
+      my $transform = sub { print sort_query_output(slurp_file(shift)) };
+      ok(
+         no_diff(
+            $res,
+            $args{result},
+            cmd_output => 1,
+            transform_result => $transform,
+            transform_sample => $transform,
+         ),
          $args{test_name},
       );
    }
