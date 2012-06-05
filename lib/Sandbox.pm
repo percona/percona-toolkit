@@ -1,4 +1,4 @@
-# This program is copyright 2008-2011 Percona Inc.
+# This program is copyright 2008-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -280,8 +280,10 @@ sub ok {
    push @errors, $self->slave_is_ok('slave1', 'master');
    push @errors, $self->slave_is_ok('slave2', 'slave1', 1);
    push @errors, $self->leftover_servers();
-   push @errors, $self->verify_test_data_integrity();
-   return join(' ', grep { $_ ne '' } @errors);
+   push @errors, $self->verify_test_data();
+
+   @errors = grep { warn "ERROR: ", $_, "\n" if $_; $_; } @errors;
+   return !@errors;
 }
 
 sub _d {
@@ -295,7 +297,7 @@ sub _d {
 # Verifies that master, slave1, and slave2 have a faithful copy of the mysql and
 # sakila databases. The reference data is inserted into percona_test.checksums
 # by util/checksum-test-dataset when sandbox/test-env starts the environment.
-sub verify_test_data_integrity {
+sub verify_test_data {
    my ($self) = @_;
    my $master = $self->get_dbh_for('master');
    my $ref    = $master->selectall_hashref(
@@ -323,7 +325,7 @@ sub verify_test_data_integrity {
    }
    $master->disconnect;
    if ( @diffs ) {
-      return "Tables with differences: " . join(', ', @diffs);
+      return "Tables are different: " . join(', ', @diffs);
    }
    return '';
 }
