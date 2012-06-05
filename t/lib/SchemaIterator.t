@@ -131,7 +131,7 @@ sub sort_query_output {
    
    my $sorted;
    for my $query (@queries) {
-      $sorted .= join "\n", sort split /\n/, $query;
+      $sorted .= join "\n", sort map { my $c = $_; $c =~ s/,$//; $c } split /\n/, $query;
    }
    return $sorted;
 }
