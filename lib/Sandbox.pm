@@ -178,26 +178,24 @@ sub wipe_clean {
       }
    }
    foreach my $db ( @{$dbh->selectcol_arrayref('SHOW DATABASES')} ) {
-      next if $db eq 'mysql';
-      next if $db eq 'information_schema';
-      next if $db eq 'performance_schema';
-      next if $db eq 'sakila';
+      next if $db =~ m/(mysql|information_schema|sakila|performance_schema|percona_test)$/;
       $dbh->do("DROP DATABASE IF EXISTS `$db`");
    }
    return;
 }
 
+# Returns a string if there is a problem with the master.
 sub master_is_ok {
    my ($self, $master) = @_;
    my $master_dbh = $self->get_dbh_for($master);
    if ( !$master_dbh ) {
-      warn "Sandbox $master " . $port_for{$master} . " is down\n";
-      return 0;
+      return "Sandbox $master " . $port_for{$master} . " is down.";
    }
    $master_dbh->disconnect();
-   return 1;
+   return '';
 }
 
+# Returns a string if there is a problem with the slave.
 sub slave_is_ok {
    my ($self, $slave, $master, $ro) = @_;
    PTDEBUG && _d('Checking if slave', $slave, $port_for{$slave},
@@ -205,31 +203,27 @@ sub slave_is_ok {
 
    my $slave_dbh = $self->get_dbh_for($slave);
    if ( !$slave_dbh ) {
-      warn "Sandbox $slave " . $port_for{$slave} . " is down\n";
-      return 0;
+      return  "Sandbox $slave " . $port_for{$slave} . " is down.";
    }
 
    my $master_port = $port_for{$master};
    my $status = $slave_dbh->selectall_arrayref(
       "SHOW SLAVE STATUS", { Slice => {} });
    if ( !$status || !@$status ) {
-      warn "Sandbox $slave " . $port_for{$slave} . " is not a slave\n";
-      return 0;
+      return "Sandbox $slave " . $port_for{$slave} . " is not a slave.";
    }
 
    if ( $status->[0]->{last_error} ) {
-      warn "Sandbox $slave " . $port_for{$slave} . " is broken: "
-         . $status->[0]->{last_error} . "\n";
       warn Dumper($status);
-      return 0;
+      return "Sandbox $slave " . $port_for{$slave} . " is broken: "
+         . $status->[0]->{last_error} . ".";
    }
 
    foreach my $thd ( qw(slave_io_running slave_sql_running) ) {
       if ( ($status->[0]->{$thd} || 'No') eq 'No' ) {
-         warn "Sandbox $slave " . $port_for{$slave} . " $thd thread "
-            . "is not running\n";
          warn Dumper($status);
-         return 0;
+         return "Sandbox $slave " . $port_for{$slave} . " $thd thread "
+            . "is not running.";
       }
    }
 
@@ -237,8 +231,7 @@ sub slave_is_ok {
       my $row = $slave_dbh->selectrow_arrayref(
          "SHOW VARIABLES LIKE 'read_only'");
       if ( !$row || $row->[1] ne 'ON' ) {
-         warn "Sandbox $slave " . $port_for{$slave} . " is not read-only\n";
-         return 0;
+         return "Sandbox $slave " . $port_for{$slave} . " is not read-only.";
       }
    }
 
@@ -259,32 +252,36 @@ sub slave_is_ok {
 
    PTDEBUG && _d('Slave', $slave, $port_for{$slave}, 'is ok');
    $slave_dbh->disconnect();
-   return 1;
+   return '';
 }
 
+# Returns a string if any leftoever servers were left running.
 sub leftover_servers {
    my ($self) = @_;
    PTDEBUG && _d('Checking for leftover servers');
-   my $leftovers = 0;
    foreach my $serverno ( 1..6 ) {
       my $server = "master$serverno";
       my $dbh = $self->get_dbh_for($server);
       if ( $dbh ) {
-         warn "Sandbox $server " . $port_for{$server} . " was left up\n";
          $dbh->disconnect();
-         $leftovers = 1;
+         return "Sandbox $server " . $port_for{$server} . " was left up.";
       }
    }
-   return $leftovers;
+   return '';
 }
 
+# This returns an empty string if all servers and data are OK. If it returns
+# anything but empty string, there is a problem, and the string indicates what
+# the problem is.
 sub ok {
    my ($self) = @_;
-   return 0 unless $self->master_is_ok('master');
-   return 0 unless $self->slave_is_ok('slave1', 'master');
-   return 0 unless $self->slave_is_ok('slave2', 'slave1', 1);
-   return 0 if $self->leftover_servers();
-   return 1;
+   my @errors;
+   push @errors, $self->master_is_ok('master');
+   push @errors, $self->slave_is_ok('slave1', 'master');
+   push @errors, $self->slave_is_ok('slave2', 'slave1', 1);
+   push @errors, $self->leftover_servers();
+   push @errors, $self->verify_test_data_integrity();
+   return join(' ', grep { $_ ne '' } @errors);
 }
 
 sub _d {
@@ -293,6 +290,42 @@ sub _d {
         map { defined $_ ? $_ : 'undef' }
         @_;
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+# Verifies that master, slave1, and slave2 have a faithful copy of the mysql and
+# sakila databases. The reference data is inserted into percona_test.checksums
+# by util/checksum-test-dataset when sandbox/test-env starts the environment.
+sub verify_test_data_integrity {
+   my ($self) = @_;
+   my $master = $self->get_dbh_for('master');
+   my $ref    = $master->selectall_hashref(
+      'SELECT * FROM percona_test.checksums',
+      'db_tbl');
+   my @tables_in_mysql  = @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
+   my @tables_in_sakila = qw( actor address category city country customer
+                              film film_actor film_category film_text inventory
+                              language payment rental staff store );
+   my $sql = "CHECKSUM TABLES "
+           . join(", ", map { "mysql.$_" } @tables_in_mysql)
+           . ", "
+           . join(", ", map { "sakila.$_" } @tables_in_sakila);
+
+   my @diffs;
+   foreach my $inst (qw(master slave1 slave2)) {
+      my $dbh = $self->get_dbh_for($inst);
+      my @checksums = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
+      foreach my $c ( @checksums ) {
+         if ( $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
+            push @diffs, $c->{table};
+         }
+      }
+      $dbh->disconnect;
+   }
+   $master->disconnect;
+   if ( @diffs ) {
+      return "Tables with differences: " . join(', ', @diffs);
+   }
+   return '';
 }
 
 1;

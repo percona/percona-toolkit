@@ -461,5 +461,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+is($sb->ok(), '', "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

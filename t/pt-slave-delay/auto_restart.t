@@ -107,5 +107,5 @@ waitpid ($pid, 0);
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+is($sb->verify_test_data_integrity(), '', "Sandbox dataset undefiled");
 exit;
