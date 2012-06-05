@@ -97,20 +97,11 @@ like(
 # #############################################################################
 
 $sb->load_file('master', 't/pt-table-sync/samples/issue_367.sql');
-my $i = 0;
-PerconaTest::wait_until(
-   sub {
-      my $r;
-      eval {
-         $r = $slave_dbh->selectrow_arrayref('SHOW TABLES FROM db1');
-      };
-      return 1 if ($r->[0] || '') eq 't1';
-      diag('Waiting for slave...') unless $i++;
-      return 0;
-   },
-   0.5,
-   30,
-);
+PerconaTest::wait_for_table(
+   $slave_dbh,
+   "$_.t1",
+   "id > 4"
+) for qw( db1 db2 );
 
 # Make slave db1.t1 and db2.t1 differ from master.
 $slave_dbh->do('INSERT INTO db1.t1 VALUES (9)');
