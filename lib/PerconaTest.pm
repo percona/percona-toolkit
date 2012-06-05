@@ -55,6 +55,8 @@ our @EXPORT      = qw(
    parse_file
    wait_until
    wait_for
+   wait_until_slave_running
+   wait_until_no_lag
    test_log_parser
    test_protocol_parser
    test_packet_parser
@@ -241,6 +243,22 @@ sub wait_until {
       PTDEVDEBUG && _d('wait_until slept', $slept, 'of', $max_t);
    }
    return 0;
+}
+
+sub wait_until_slave_running {
+   my (@dbhs) = @_;
+   foreach my $dbh (@dbhs) {
+      PTDEVDEBUG && _d('Waiting for slaves to be running');
+      wait_until(
+         sub {
+            my $row = $dbh->selectrow_hashref('SHOW SLAVE STATUS');
+            my $sqlt = $row->{slave_sql_running} || $row->{Slave_SQL_Running} || 'NULL';
+            my $iot  = $row->{Slave_IO_Running}  || $row->{slave_io_running}  || 'NULL';
+            PTDEVDEBUG && _d('Slave SQL:', $sqlt, 'Slave IO:', $iot);
+            return $sqlt eq 'Yes' && $iot eq 'Yes';
+         }
+      );
+   }
 }
 
 sub wait_until_no_lag {
