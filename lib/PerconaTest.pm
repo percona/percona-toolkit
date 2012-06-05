@@ -743,7 +743,7 @@ sub _d {
 # This is because otherwise, errors thrown during cleanup
 # would be skipped.
 sub full_output {
-   my ( $code ) = @_;
+   my ( $code, %args ) = @_;
    die "I need a code argument" unless $code;
 
    my (undef, $file) = tempfile();
@@ -756,6 +756,19 @@ sub full_output {
    my $status;
    warn $file;
    if (my $pid = fork) {
+      if ( my $t = $args{wait_for} ) {
+         # Wait for t seconds then kill the child.
+         sleep $t;
+         my $tries = 3;
+         # Most tools require 2 interrupts to make them stop.
+         while ( kill(0, $pid) && $tries-- ) {
+            kill SIGTERM, $pid;
+            sleep 0.10;
+         }
+         # Child didn't respond to SIGTERM?  Then kill -9 it.
+         kill SIGKILL, $pid if kill(0, $pid);
+         sleep 0.25;
+      }
       waitpid($pid, 0);
       $status = $?;
    }
