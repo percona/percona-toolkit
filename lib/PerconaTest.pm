@@ -51,6 +51,7 @@ our @EXPORT      = qw(
    full_output
    load_data
    load_file
+   slurp_file
    parse_file
    wait_until
    wait_for
@@ -191,10 +192,16 @@ sub load_data {
 sub load_file {
    my ( $file, %args ) = @_;
    $file = "$trunk/$file";
+   my $contents = slurp_file($file);
+   chomp $contents if $args{chomp_contents};
+   return $contents;
+}
+
+sub slurp_file {
+   my ($file) = @_;
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
-   chomp $contents if $args{chomp_contents};
    return $contents;
 }
 
@@ -515,6 +522,11 @@ sub test_packet_parser {
 #   * args                hash: (optional) may include
 #       update_sample            overwrite expected_output with cmd/code output
 #       keep_output              keep last cmd/code output file
+#       transform_result         transform the code to be compared but do not
+#                                reflect these changes on the original file
+#                                if update_sample is passed in
+#       transform_sample         similar to the above, but with the sample
+#                                file
 #   *   trf                      transform cmd/code output before diff
 # The sub dies if cmd or code dies.  STDERR is not captured.
 sub no_diff {
@@ -567,14 +579,34 @@ sub no_diff {
       `mv $tmp_file-2 $tmp_file`;
    }
 
+   my $res_file = $tmp_file;
+   if ( $args{transform_result} ) {
+      (undef, $res_file) = tempfile();
+      output(
+         sub { $args{transform_result}->($tmp_file) },
+         file => $res_file,
+      );
+   }
+
+   my $cmp_file = $expected_output;
+   if ( $args{transform_sample} ) {
+      (undef, $cmp_file) = tempfile();
+      output(
+         sub { $args{transform_sample}->($expected_output) },
+         file => $cmp_file,
+      );
+   }
+
    # diff the outputs.
-   my $retval = system("diff $tmp_file $expected_output");
+   my $out = `diff $res_file $cmp_file`;
+   my $retval = $?;
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
    $retval = $retval >> 8; 
 
    if ( $retval ) {
+      diag($out);
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
          `cat $tmp_file > $expected_output`;
          print STDERR "Updated $expected_output\n";
@@ -584,6 +616,9 @@ sub no_diff {
    # Remove our tmp files.
    `rm -f $tmp_file $tmp_file_orig /tmp/pt-test-outfile-trf >/dev/null 2>&1`
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
+
+   1 while unlink $res_file;
+   1 while unlink $cmp_file;
 
    return !$retval;
 }
