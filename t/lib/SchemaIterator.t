@@ -326,7 +326,8 @@ SKIP: {
    # ########################################################################
    test_so(
       filters   => [qw(-t mysql.user)],
-      result    => $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
+      result    => $sandbox_version ge '5.5' ? "$out/mysql-user-ddl-5.5.txt"
+                 : $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
                                              : "$out/mysql-user-ddl-5.0.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
