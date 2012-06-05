@@ -20,7 +20,8 @@ require "$trunk/bin/pt-slave-delay";
 
 my $dp  = DSNParser->new(opts => $dsn_opts);
 my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('slave1');
+my $master_dbh = $sb->get_dbh_for('master');
+my $dbh        = $sb->get_dbh_for('slave1');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to MySQL slave.';
@@ -62,7 +63,10 @@ else {
    diag(`/tmp/12346/stop >/dev/null`);
    sleep 1;
    diag(`/tmp/12346/start >/dev/null`);
-   diag(`/tmp/12346/use -e "set global read_only=1"`);
+   # Ensure we don't break the sandbox -- instance 12347 will be disconnected
+   # when its master gets rebooted
+   diag("Restarting slave on instance 12347 after restarting instance 12346");
+   diag(`/tmp/12347/use -e "stop slave; start slave"`);
    exit;
 }
 # Reap the child.
@@ -87,7 +91,10 @@ else {
    foreach my $c ( @cxn ) {
       # The parent's connection:
       # {command => 'Sleep',db => 'mysql',host => 'localhost',id => '5',info => undef,state => '',time => '1',user => 'msandbox'}
-      if ( ($c->{db} || '') eq 'mysql' && ($c->{user} || '') eq 'msandbox' ) {
+      if ( ($c->{db} || '') eq 'mysql' && ($c->{user} || '') eq 'msandbox'
+         && ($c->{command} || '') ne 'Binlog Dump' # Don't kill the slave threads from 12347 or others!
+      ) {
+         diag("Killing connection on slave1: $c->{id} ($c->{command})");
          $c_dbh->do("KILL $c->{id}");
       }
    }
@@ -99,5 +106,6 @@ waitpid ($pid, 0);
 # #############################################################################
 # Done.
 # #############################################################################
+$sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
