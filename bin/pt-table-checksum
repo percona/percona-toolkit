@@ -6274,6 +6274,7 @@ sub main {
          check_repl_table(
             dbh          => $master_dbh,
             repl_table   => $repl_table,
+            slaves       => $slaves,
             OptionParser => $o,
             TableParser  => $tp,
             Quoter       => $q,
@@ -7210,11 +7211,11 @@ sub print_checksum_diffs {
 
 sub check_repl_table {
    my ( %args ) = @_;
-   my @required_args = qw(dbh repl_table OptionParser TableParser Quoter);
+   my @required_args = qw(dbh repl_table slaves OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dbh, $repl_table, $o, $tp, $q) = @args{@required_args};
+   my ($dbh, $repl_table, $slaves, $o, $tp, $q) = @args{@required_args};
    PTDEBUG && _d('Checking --replicate table', $repl_table);
 
    # If the repl db doesn't exit, auto-create it, maybe.
@@ -7263,6 +7264,43 @@ sub check_repl_table {
       );
       die "User does not have all privileges on --replicate table "
          . "$repl_table.\n" unless $have_tbl_privs;
+   }
+
+   # Check and wait for the repl table to appear on all slaves.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1008778
+   if ( scalar @$slaves ) {
+      my $waiting_for;
+      my $pr;
+      if ( $o->get('progress') ) {
+         $pr = new Progress(
+            jobsize  => scalar @$slaves,
+            spec     => $o->get('progress'),
+            callback => sub {
+               print STDERR "Waiting for the --replicate table to replicate to "
+                  . $waiting_for->name() . "...\n";
+            },
+         );
+         $pr->start();
+      }
+
+      foreach my $slave ( @$slaves ) {
+         PTDEBUG && _d('Checking if', $slave->name(), 'has repl table');
+         $waiting_for = $slave;
+         my $slave_has_repl_table = $tp->check_table(
+               dbh => $slave->dbh(),
+               db  => $db,
+               tbl => $tbl,
+         );
+         while ( !$slave_has_repl_table ) {
+            $pr->update(sub { return 0; }) if $pr;
+            sleep 0.5;
+            $slave_has_repl_table = $tp->check_table(
+               dbh => $slave->dbh(),
+               db  => $db,
+               tbl => $tbl,
+            );
+         }
+      }
    }
 
    return;  # success, repl table is ready to go
