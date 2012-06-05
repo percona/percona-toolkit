@@ -192,7 +192,7 @@ sub master_is_ok {
       return "Sandbox $master " . $port_for{$master} . " is down.";
    }
    $master_dbh->disconnect();
-   return '';
+   return;
 }
 
 # Returns a string if there is a problem with the slave.
@@ -252,7 +252,7 @@ sub slave_is_ok {
 
    PTDEBUG && _d('Slave', $slave, $port_for{$slave}, 'is ok');
    $slave_dbh->disconnect();
-   return '';
+   return;
 }
 
 # Returns a string if any leftoever servers were left running.
@@ -267,7 +267,7 @@ sub leftover_servers {
          return "Sandbox $server " . $port_for{$server} . " was left up.";
       }
    }
-   return '';
+   return;
 }
 
 # This returns an empty string if all servers and data are OK. If it returns
@@ -280,7 +280,9 @@ sub ok {
    push @errors, $self->slave_is_ok('slave1', 'master');
    push @errors, $self->slave_is_ok('slave2', 'slave1', 1);
    push @errors, $self->leftover_servers();
-   push @errors, $self->verify_test_data();
+   push @errors, $self->verify_test_data('master');
+   push @errors, $self->verify_test_data('slave1');
+   push @errors, $self->verify_test_data('slave2');
 
    @errors = grep { warn "ERROR: ", $_, "\n" if $_; $_; } @errors;
    return !@errors;
@@ -298,36 +300,41 @@ sub _d {
 # sakila databases. The reference data is inserted into percona_test.checksums
 # by util/checksum-test-dataset when sandbox/test-env starts the environment.
 sub verify_test_data {
-   my ($self) = @_;
+   my ($self, $host) = @_;
+
+   # Get the known-good checksums from the master.
    my $master = $self->get_dbh_for('master');
-   my $ref    = $master->selectall_hashref(
-      'SELECT * FROM percona_test.checksums',
-      'db_tbl');
+   my $ref    = $self->{checksum_ref} || $master->selectall_hashref(
+         'SELECT * FROM percona_test.checksums',
+         'db_tbl');
+   $self->{checksum_ref} = $ref unless $self->{checksum_ref};
    my @tables_in_mysql  = @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
-   my @tables_in_sakila = qw( actor address category city country customer
-                              film film_actor film_category film_text inventory
-                              language payment rental staff store );
+   my @tables_in_sakila = qw(actor address category city country customer
+                             film film_actor film_category film_text inventory
+                             language payment rental staff store);
+   $master->disconnect;
+
+   # Get the current checksums on the host.
+   my $dbh = $self->get_dbh_for($host);
    my $sql = "CHECKSUM TABLES "
            . join(", ", map { "mysql.$_" } @tables_in_mysql)
            . ", "
            . join(", ", map { "sakila.$_" } @tables_in_sakila);
+   my @checksums = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
 
+   # Diff the two sets of checksums: host to master (ref).
    my @diffs;
-   foreach my $inst (qw(master slave1 slave2)) {
-      my $dbh = $self->get_dbh_for($inst);
-      my @checksums = @{$dbh->selectall_arrayref($sql, {Slice => {} })};
-      foreach my $c ( @checksums ) {
-         if ( $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
-            push @diffs, $c->{table};
-         }
+   foreach my $c ( @checksums ) {
+      if ( $c->{checksum} ne $ref->{$c->{table}}->{checksum} ) {
+         push @diffs, $c->{table};
       }
-      $dbh->disconnect;
    }
-   $master->disconnect;
+   $dbh->disconnect;
+
    if ( @diffs ) {
-      return "Tables are different: " . join(', ', @diffs);
+      return "Tables are different on $host: " . join(', ', @diffs);
    }
-   return '';
+   return;
 }
 
 1;
