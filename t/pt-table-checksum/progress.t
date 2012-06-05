@@ -39,9 +39,8 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
-
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
@@ -98,6 +97,40 @@ is(
 
 # Now wait until the SQL thread is started again.
 wait_until_slave_running($slave1_dbh, $slave2_dbh);
+
+# #############################################################################
+# Wait for --replicate table to replicate.
+# https://bugs.launchpad.net/percona-toolkit/+bug/1008778
+# #############################################################################
+$master_dbh->do("DROP DATABASE IF EXISTS percona");
+wait_until(sub {
+   my $dbs = $slave2_dbh->selectall_arrayref("SHOW DATABASES");
+   return !grep { $_->[0] eq 'percona' } @$dbs;
+});
+
+$sb->load_file('master', "t/pt-table-checksum/samples/dsn-table.sql");
+
+$slave2_dbh->do("STOP SLAVE");
+wait_until(sub {
+   my $ss = $slave2_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+   return $ss->{slave_io_running} eq 'Yes';
+});
+
+($output) = PerconaTest::full_output(
+   sub { pt_table_checksum::main(@args, qw(-t sakila.country),
+      "--recursion-method", "dsn=F=/tmp/12345/my.sandbox.cnf,t=dsns.dsns");
+   },
+   wait_for => 3,  # wait this many seconds then kill that ^
+);
+
+like(
+   $output,
+   qr/Waiting for the --replicate table to replicate to h=127.1,P=12347/,
+   "--progress for --replicate table (bug 1008778)"
+);
+
+$slave2_dbh->do("START SLAVE");
+wait_until_slave_running($slave2_dbh);
 
 # #############################################################################
 # Done.
