@@ -73,7 +73,7 @@ our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
 
 our $sandbox_version = '';
 eval {
-   chomp(my $v = `$trunk/sandbox/test-env version`);
+   chomp(my $v = `$trunk/sandbox/test-env version 2>/dev/null`);
    $sandbox_version = $v if $v;
 };
 
