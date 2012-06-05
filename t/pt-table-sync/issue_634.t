@@ -39,6 +39,7 @@ $sb->create_dbs($master_dbh, [qw(test)]);
 # Issue 634: Cannot nibble table because MySQL chose no index
 # #############################################################################
 diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_634.sql`);
+PerconaTest::wait_for_table($slave_dbh, 'issue_634.t', '1=1' );
 $slave_dbh->do('insert into issue_634.t values (1)');
 $output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_634 --execute --algorithms Nibble 2>&1`;
 unlike(
