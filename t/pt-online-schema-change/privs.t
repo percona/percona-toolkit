@@ -19,13 +19,17 @@ require "$trunk/bin/pt-online-schema-change";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
+elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
+}
+elsif ( !$slave2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave2';
 }
 elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
    plan skip_all => 'sakila database is not loaded';
@@ -48,10 +52,10 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # https://bugs.launchpad.net/percona-toolkit/+bug/987694
 # ############################################################################
 diag(`/tmp/12345/use -u root < $trunk/$sample/osc-user.sql`);
-PerconaTest::wait_for_table($slave_dbh, "mysql.tables_priv", "user='osc_user'");
+PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='osc_user'");
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
+PerconaTest::wait_for_table($slave1_dbh, "pt_osc.t", "id=20");
 
 $output = output(
    sub { $exit_status = pt_online_schema_change::main(@args,
@@ -78,6 +82,12 @@ like(
 );
 
 diag(`/tmp/12345/use -u root -e "drop user 'osc_user'\@'%'"`);
+wait_until(
+   sub {
+      my $rows=$slave2_dbh->selectall_arrayref("SELECT user FROM mysql.user");
+      return !grep { ($_->[0] || '') ne 'osc_user' } @$rows;
+   }
+);
 
 # #############################################################################
 # Done.
