@@ -144,8 +144,7 @@ sub load_file {
    if ( $EVAL_ERROR ) {
       die "Failed to execute $file on $server: $EVAL_ERROR";
    }
-
-   return;
+   $self->wait_for_slaves();
 }
 
 sub _use_for {
