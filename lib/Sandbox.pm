@@ -315,7 +315,7 @@ sub wait_for_slaves {
    my $self = shift;
    my $master_dbh = $self->get_dbh_for('master');
    my $slave2_dbh = $self->get_dbh_for('slave2');
-   my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND() + NOW())");
+   my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND())");
    $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
    PerconaTest::wait_until(
       sub {

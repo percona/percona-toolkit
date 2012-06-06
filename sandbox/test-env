@@ -291,7 +291,7 @@ case $opt in
                echo "OK"
             fi
             ../util/checksum-test-dataset
-            ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND() + NOW())")
+            ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
             /tmp/12345/use -e "create table percona_test.sentinel(id int primary key, ping varchar(64) not null default '')"
             /tmp/12345/use -e "insert into percona_test.sentinel(id, ping) values(1, '$ping')";
             echo -n "Waiting for replication to finish..."
