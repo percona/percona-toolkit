@@ -52,6 +52,8 @@ my %port_for = (
    master6 => 2903,
 );
 
+my $test_dbs = qr/^(?:mysql|information_schema|sakila|performance_schema|percona_test)$/;
+
 sub new {
    my ( $class, %args ) = @_;
    foreach my $arg ( qw(basedir DSNParser) ) {
@@ -178,7 +180,7 @@ sub wipe_clean {
       }
    }
    foreach my $db ( @{$dbh->selectcol_arrayref('SHOW DATABASES')} ) {
-      next if $db =~ m/(mysql|information_schema|sakila|performance_schema|percona_test)$/;
+      next if $db =~ m/$test_dbs/;
       $dbh->do("DROP DATABASE IF EXISTS `$db`");
    }
    return;
@@ -270,6 +272,19 @@ sub leftover_servers {
    return;
 }
 
+sub leftover_databases {
+   my ($self, $host) = @_;
+   PTDEBUG && _d('Checking for leftover databases');
+   my $dbh = $self->get_dbh_for($host);
+   my $dbs = $dbh->selectall_arrayref("SHOW DATABASES");
+   $dbh->disconnect();
+   my @leftover_dbs = map { $_->[0] } grep { $_->[0] !~ m/$test_dbs/ } @$dbs;
+   if ( @leftover_dbs ) {
+      return "Databases are left on $host: " . join(', ', @leftover_dbs);
+   }
+   return;
+}
+
 # This returns an empty string if all servers and data are OK. If it returns
 # anything but empty string, there is a problem, and the string indicates what
 # the problem is.
@@ -280,9 +295,10 @@ sub ok {
    push @errors, $self->slave_is_ok('slave1', 'master');
    push @errors, $self->slave_is_ok('slave2', 'slave1', 1);
    push @errors, $self->leftover_servers();
-   push @errors, $self->verify_test_data('master');
-   push @errors, $self->verify_test_data('slave1');
-   push @errors, $self->verify_test_data('slave2');
+   foreach my $host ( qw(master slave1 slave2) ) {
+      push @errors, $self->leftover_databases($host);
+      push @errors, $self->verify_test_data($host);
+   }
 
    @errors = grep { warn "ERROR: ", $_, "\n" if $_; $_; } @errors;
    return !@errors;
