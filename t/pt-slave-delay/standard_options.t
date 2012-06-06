@@ -47,7 +47,7 @@ is($output, $pid, 'PID file has correct PID');
 
 # Kill it
 diag(`kill $pid`);
-sleep 1;
+wait_until(sub{!kill 0, $pid});
 ok(! -f '/tmp/mk-slave-delay.pid', 'PID file removed');
 
 # #############################################################################
