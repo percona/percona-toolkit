@@ -71,8 +71,8 @@ $master_dbh->do("COMMIT");
 
 # NOTE: $sb->wait_for_slaves() won't work! Hence we do our own way...
 $master_dbh->do('USE test1');
-$master_dbh->do('INSERT INTO test2.foo(i) VALUES(10)');
-PerconaTest::wait_for_table($slave2_dbh, "test2.foo", "i=9");
+$master_dbh->do('INSERT INTO test1.foo(i) VALUES(10)');
+PerconaTest::wait_for_table($slave2_dbh, "test1.foo", "i=10");
 
 # Prove that the slave (12347, not 12346) still has i=2 in test2.foo, and the
 # master doesn't. That is, both test1 and test2 are out-of-sync on the slave.
@@ -88,12 +88,23 @@ is_deeply( $r, [[2]], 'slave2 has test2.foo.i=2');
 # Now we sync, and if pt-table-sync USE's the db it's syncing, then test1 should
 # be in sync afterwards, and test2 shouldn't.
 
+my $procs = $master_dbh->selectcol_arrayref('show processlist');
+diag('MySQL processes on master: ', join(', ', @$procs));
+
 my $output = output(
    sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
       qw(--sync-to-master --execute --no-check-triggers),
       "--databases", "test1,test2") },
    stderr => 1,
 );
+
+# NOTE: $sb->wait_for_slaves() won't work! Hence we do our own way...
+$master_dbh->do('USE test1');
+$master_dbh->do('INSERT INTO test1.foo(i) VALUES(11)');
+PerconaTest::wait_for_table($slave2_dbh, "test1.foo", "i=11");
+
+$procs = $master_dbh->selectcol_arrayref('show processlist');
+diag('MySQL processes on master: ', join(', ', @$procs));
 
 $r = $slave2_dbh->selectall_arrayref('select * from test1.foo where i=2');
 is_deeply( $r, [], 'slave2 has NO test1.foo.i=2 after sync');
