@@ -1,5 +1,9 @@
 #!/usr/bin/env perl
 
+# This test's purpose: determine whether the SQL that pt-table-sync executes has
+# distinct marker comments in it to identify the DML statements for DBAs to
+# recognize. This is important for diagnosing what's in your binary log.
+
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -36,28 +40,28 @@ else {
    plan tests => 2;
 }
 
-my $output;
-my @args = ('h=127.0.0.1,P=12346,u=msandbox,p=msandbox', qw(--sync-to-master --execute -t onlythisdb.t));
-
-diag(`$trunk/sandbox/test-env reset`);
+# We execute the test by changing a table so pt-table-sync will find something
+# to modify.  Then we examine the binary log to find the SQL in it, and check
+# that.
 $sb->load_file('master', "t/pt-table-sync/samples/issue_533.sql");
-sleep 1;
+my $pos = $master_dbh->selectrow_hashref('show master status');
+diag("Master position: $pos->{file} / $pos->{position}");
 
-$slave_dbh->do('insert into onlythisdb.t values (5)');
-
+my @args = ('h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=t1', 't=t2', '--execute');
 output(
    sub { pt_table_sync::main(@args) },
 );
 
-my $binlog = $master_dbh->selectrow_arrayref('show master logs');
-
-$output = `$mysqlbinlog /tmp/12345/data/$binlog->[0] | grep 'percona-toolkit'`;
-$output =~ s/pid:\d+/pid:0/ if $output;
-$output =~ s/host:\S+?\*/host:-*/ if $output;
-is(
+# The statement really ought to look like this:
+# "DELETE FROM `test`.`t2` WHERE `i`='5' LIMIT 1 /*percona-toolkit
+# src_db:test src_tbl:t1 src_dsn:P=12345,h=127.0.0.1,p=...,u=msandbox
+# dst_db:test dst_tbl:t2 dst_dsn:P=12346,h=127.0.0.1,p=...,u=msandbox
+# lock:1 transaction:0 changing_src:1 replicate:0 bidirectional:0 pid:0
+# user:$ENV{USER} host:-*/
+my $output = `$mysqlbinlog /tmp/12345/data/$pos->{file} --start-position=$pos->{position} | grep 'percona-toolkit'`;
+like(
    $output,
-"DELETE FROM `onlythisdb`.`t` WHERE `i`='5' LIMIT 1 /*percona-toolkit src_db:onlythisdb src_tbl:t src_dsn:P=12345,h=127.0.0.1,p=...,u=msandbox dst_db:onlythisdb dst_tbl:t dst_dsn:P=12346,h=127.0.0.1,p=...,u=msandbox lock:1 transaction:0 changing_src:1 replicate:0 bidirectional:0 pid:0 user:$ENV{USER} host:-*/
-",
+   qr/DELETE FROM.*test`.`t2.*percona-toolkit src_db:test.*user:$ENV{USER}/,
    "Trace message appended to change SQL"
 );
 
