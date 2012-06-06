@@ -36,7 +36,8 @@ use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use constant PTDEBUG    => $ENV{PTDEBUG}    || 0;
+use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
 
@@ -183,6 +184,28 @@ sub wipe_clean {
       next if $db =~ m/$test_dbs/;
       $dbh->do("DROP DATABASE IF EXISTS `$db`");
    }
+
+   my $slave2_dbh = $self->get_dbh_for('slave2');
+   my $ok = PerconaTest::wait_until(
+      sub {
+         my $dbs = $slave2_dbh->selectall_arrayref("SHOW DATABASES");
+         if ( grep { $_->[0] !~ m/$test_dbs/ } @$dbs ) {
+            PTDEVDEBUG && _d('Waiting for databases to drop', Dumper($dbs));
+            return 0;
+         }
+         return 1;
+      }
+   );
+   $slave2_dbh->disconnect;
+   if ( !$ok ) {
+      # If this happen, chances are ok() is going to throw
+      # ERROR: Databases are left on slave1: foo
+      # Or maybe not if by chance the DROP statement replicates
+      # between now and then.
+      diag("WARNING: Timeout in Sandbox::wipe_clean() waiting for "
+         . "databases to drop");
+   }
+
    return;
 }
 

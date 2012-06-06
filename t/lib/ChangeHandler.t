@@ -19,7 +19,7 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts => $dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
 my $slave1_dbh = $sb->get_dbh_for('slave1');
 
 throws_ok(
@@ -201,9 +201,9 @@ is_deeply(\@rows,
 # Test fetch_back().
 # #############################################################################
 SKIP: {
-   skip 'Cannot connect to sandbox master', 1 unless $dbh;
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
 
-   $dbh->do('CREATE DATABASE IF NOT EXISTS test');
+   $master_dbh->do('CREATE DATABASE IF NOT EXISTS test');
 
    $ch = new ChangeHandler(
       Quoter    => $q,
@@ -218,7 +218,7 @@ SKIP: {
 
    @rows = ();
    $ch->{queue} = 0;
-   $ch->fetch_back($dbh);
+   $ch->fetch_back($master_dbh);
    `/tmp/12345/use < $trunk/t/lib/samples/before-TableSyncChunk.sql`;
    # This should cause it to fetch the row from test.test1 where a=1
    $ch->change('UPDATE', { a => 1, __foo => 'bar' }, [qw(a)] );
@@ -309,13 +309,13 @@ is(
 delete $row->{other_col};
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 3 unless $dbh;
+   skip 'Cannot connect to sandbox master', 3 unless $master_dbh;
 
-   $dbh->do('DROP TABLE IF EXISTS test.issue_371');
-   $dbh->do('CREATE TABLE test.issue_371 (id INT, foo varchar(16), bar char)');
-   $dbh->do('INSERT INTO test.issue_371 VALUES (1,"foo","a"),(2,"bar","b")');
+   $master_dbh->do('DROP TABLE IF EXISTS test.issue_371');
+   $master_dbh->do('CREATE TABLE test.issue_371 (id INT, foo varchar(16), bar char)');
+   $master_dbh->do('INSERT INTO test.issue_371 VALUES (1,"foo","a"),(2,"bar","b")');
 
-   $ch->fetch_back($dbh);
+   $ch->fetch_back($master_dbh);
 
    is(
       $ch->make_INSERT($row, [qw(id foo)]),
@@ -409,7 +409,7 @@ is(
 # #############################################################################
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 1 unless $dbh;
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
    $sb->load_file('master', "t/lib/samples/issue_641.sql");
 
    @rows = ();
@@ -429,7 +429,7 @@ SKIP: {
       queue      => 0,
       tbl_struct => $tbl_struct,
    );
-   $ch->fetch_back($dbh);
+   $ch->fetch_back($master_dbh);
 
    $ch->change('UPDATE', {id=>1}, [qw(id)] );
    $ch->change('INSERT', {id=>1}, [qw(id)] );
@@ -471,7 +471,7 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh);
+$sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

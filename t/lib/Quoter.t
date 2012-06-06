@@ -211,7 +211,7 @@ SKIP: {
    $selsth->finish();
 
    $dbh->do("DROP DATABASE serialize_test");
-
+   $sb->wipe_clean($dbh);
    $dbh->disconnect();
 };
 
