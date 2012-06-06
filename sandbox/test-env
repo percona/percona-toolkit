@@ -284,13 +284,26 @@ case $opt in
          if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
             echo -n "Loading sakila database... "
             ./load-sakila-db 12345
-            ../util/checksum-test-dataset
             exit_status=$((exit_status | $?)) 
-            if [ $? -ne 0 ]; then
+            if [ $exit_status -ne 0 ]; then
                echo "FAILED"
             else
                echo "OK"
             fi
+            ../util/checksum-test-dataset
+            now=$(date +%s);
+            /tmp/12345/use -e 'create table percona_test.sentinel(id int primary key, a int unsigned)';
+            /tmp/12345/use -e "insert into percona_test.sentinel(id, a) values(1, $now)";
+            echo -n "Waiting for replication to finish..."
+            while true; do
+               found=$(/tmp/12347/use -ss -e 'select a from percona_test.sentinel where id = 1' 2>/dev/null)
+               if [ "$found" = "$now" ]; then
+                  break
+               fi
+               echo -n '.'
+               sleep 1
+            done
+            echo ' OK'
          fi
       fi
       if [ $exit_status -eq 0 ]; then
