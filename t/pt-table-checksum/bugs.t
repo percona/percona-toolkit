@@ -68,7 +68,7 @@ is(
    $exit_status,
    0,
    "Bug 995274 (undef array): zero exit status"
-);
+) or diag($output);
 
 cmp_ok(
    PerconaTest::count_checksum_results($output, 'rows'),

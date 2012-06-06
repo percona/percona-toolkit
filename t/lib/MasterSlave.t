@@ -207,8 +207,7 @@ SKIP: {
    );
 
    $ro_dbh->disconnect();
-   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
-
+   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`); 
 }
 
 # #############################################################################
@@ -635,12 +634,16 @@ SKIP: {
       "Slave replication filter"
    );
    
-   diag(`/tmp/12346/stop >/dev/null 2>&1`);
-   diag(`/tmp/12345/stop >/dev/null 2>&1`);
+   diag(`/tmp/12346/stop >/dev/null`);
+   diag(`/tmp/12345/stop >/dev/null`);
    diag(`mv /tmp/12346/orig.cnf /tmp/12346/my.sandbox.cnf`);
    diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
-   diag(`/tmp/12345/start >/dev/null 2>&1`);
-   diag(`/tmp/12346/start >/dev/null 2>&1`);
+   diag(`/tmp/12345/start >/dev/null`);
+   diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12347/use -e "STOP SLAVE; START SLAVE;" >/dev/null`);
+
+   $master_dbh = $sb->get_dbh_for('master');
+   $slave_dbh  = $sb->get_dbh_for('slave1');
 };
 
 is(
@@ -702,6 +705,7 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
+$sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null 2>&1`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
