@@ -233,7 +233,7 @@ sub parse_file {
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
    $t     ||= .20;
-   $max_t ||= 5;
+   $max_t ||= 30;
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
