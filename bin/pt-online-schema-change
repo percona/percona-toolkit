@@ -5680,6 +5680,18 @@ sub main {
             PTDEBUG && _d('Getting table row estimate on replicas');
             my @too_large;
             foreach my $slave ( @$slaves ) {
+               PTDEBUG && _d('Waiting until', $slave->name(),
+                             'replicates the table');
+               my $slave_has_repl_table;
+               do {
+                  sleep 0.5;
+                  $slave_has_repl_table = $tp->check_table(
+                     dbh => $slave->dbh(),
+                     db  => $tbl->{db},
+                     tbl => $tbl->{tbl}
+                  );
+               } while ( !$slave_has_repl_table );
+
                my ($n_rows) = NibbleIterator::get_row_estimate(
                   Cxn   => $slave,
                   tbl   => $tbl,
