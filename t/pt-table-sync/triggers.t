@@ -96,6 +96,7 @@ like(
 #  Issue 367: mk-table-sync incorrectly advises --ignore-triggers
 # #############################################################################
 
+diag('Loading file and waiting for replication');
 $sb->load_file('master', 't/pt-table-sync/samples/issue_367.sql');
 PerconaTest::wait_for_table(
    $slave_dbh,
@@ -126,6 +127,7 @@ unlike(
    "Doesn't warn about trigger on db1 (issue 367)"
 );
 
+$sb->wait_for_slaves();
 my $r = $slave_dbh->selectrow_array('SELECT * FROM db2.t1 WHERE i = 5');
 is(
    $r,
