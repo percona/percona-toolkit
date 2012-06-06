@@ -5546,6 +5546,16 @@ sub main {
       }
    };
 
+   for my $slave (@$slaves) {
+      PTDEBUG && _d('Waiting until', $slave->name(),
+                     'replicates the table');
+      sleep 0.5 while ! $tp->check_table(
+                           dbh => $slave->dbh(),
+                           db  => $new_tbl->{db},
+                           tbl => $new_tbl->{tbl}
+                      );
+   }
+
    # #####################################################################
    # Step 2: Alter the new, empty table.  This should be very quick,
    # or die if the user specified a bad alter statement.
