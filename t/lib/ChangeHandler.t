@@ -20,6 +20,7 @@ use PerconaTest;
 my $dp  = new DSNParser(opts => $dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
 
 throws_ok(
    sub { new ChangeHandler() },
@@ -471,5 +472,6 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+$sb->wipe_clean($slave1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
