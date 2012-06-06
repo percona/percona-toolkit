@@ -125,7 +125,7 @@ sub check_PID_file {
    PTDEBUG && _d('Checking PID file', $PID_file);
    if ( $PID_file && -f $PID_file ) {
       my $pid;
-      eval { chomp($pid = `cat $PID_file`); };
+      eval { chomp($pid = slurp_file($PID_file)); };
       die "Cannot cat $PID_file: $OS_ERROR" if $EVAL_ERROR;
       PTDEBUG && _d('PID file exists; it contains PID', $pid);
       if ( $pid ) {
@@ -219,6 +219,12 @@ sub DESTROY {
    $self->_remove_PID_file() if ($self->{PID_owner} || 0) == $PID;
 
    return;
+}
+
+sub slurp_file {
+   my ($file) = @_;
+   open my $fh, "<", $file or die "Couldn't slurp file: $!";
+   return do { local $/; <$fh> };
 }
 
 sub _d {
