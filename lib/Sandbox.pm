@@ -202,8 +202,8 @@ sub wipe_clean {
       # ERROR: Databases are left on slave1: foo
       # Or maybe not if by chance the DROP statement replicates
       # between now and then.
-      diag("WARNING: Timeout in Sandbox::wipe_clean() waiting for "
-         . "databases to drop");
+      Test::More::diag("WARNING: Timeout in Sandbox::wipe_clean() "
+         . "waiting for databases to drop");
    }
 
    return;
