@@ -2713,9 +2713,11 @@ package Cxn;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
 
 sub new {
    my ( $class, %args ) = @_;
@@ -2818,7 +2820,9 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh} && ref($self->{dbh}) ) {
+   if ( $self->{dbh}
+         && blessed($self->{dbh})
+         && $self->{dbh}->can("disconnect") ) {
       PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }
@@ -5438,6 +5442,11 @@ sub main {
          return;
       }
    );
+
+   local $SIG{__DIE__} = sub {
+      local $EVAL_ERROR = $_[0];
+      undef $cleanup;
+   };
 
    # The last cleanup task is to report whether or not the orig table
    # was altered.
