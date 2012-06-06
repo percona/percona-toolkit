@@ -340,6 +340,7 @@ case $opt in
       # don't replicate to new sandbox servers.  This makes creating new
       # sandbox servers a lot faster.  There's no check if this works or
       # not, so... yeah.
+      echo "RESETTING SLAVE. This is DANGEROUS and DOESN'T WORK. FIXME." >&2
       /tmp/12347/use -e "STOP SLAVE; FLUSH SLAVE;"
       /tmp/12346/use -e "STOP SLAVE; FLUSH SLAVE; FLUSH MASTER;"
       /tmp/12345/use -e "FLUSH MASTER"
