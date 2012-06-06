@@ -546,6 +546,7 @@ SKIP: {
    );
 
    # Restore the original fks.
+   diag('Restoring original Sakila foreign keys...');
    diag(`$trunk/sandbox/load-sakila-db 12345`);
 }
 
@@ -553,6 +554,7 @@ SKIP: {
 # --alther-foreign-keys-method=none.  This intentionally breaks fks because
 # they're not updated so they'll point to the old table that is dropped.
 # #############################################################################
+diag('Loading file and waiting for replication...');
 $sb->load_file('master', "$sample/basic_with_fks.sql");
 PerconaTest::wait_for_table($slave_dbh, "pt_osc.address", "address_id=5");
 
