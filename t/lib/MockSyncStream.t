@@ -172,7 +172,7 @@ SKIP: {
             id => undef,
             i  => undef,
             f  => undef,
-            d  => ($vp->version_ge($dbh, '5.5.1') ? '(7)' : undef),
+            d  => $DBD::mysql::VERSION ge '4.001' ? undef : '(7)',
             dt => undef,
             ts => undef,
             c  => '(1)',
