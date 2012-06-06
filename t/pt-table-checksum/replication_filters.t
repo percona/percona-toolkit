@@ -263,6 +263,8 @@ $master_dbh->disconnect();
 diag(`/tmp/12345/stop >/dev/null`);
 diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
+# Restart the slaves so they reconnect immediately.
+restart_slave_threads();
 $master_dbh = $sb->get_dbh_for('master');
 
 # Get the master's binlog pos so we can check its binlogs for USE statements
