@@ -40,7 +40,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Sub: new
 #
@@ -103,7 +103,7 @@ sub get_table_usage {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($query) = @args{@required_args};
-   MKDEBUG && _d('Getting table access for',
+   PTDEBUG && _d('Getting table access for',
       substr($query, 0, 100), (length $query > 100 ? '...' : ''));
 
    $self->{errors}          = [];
@@ -121,7 +121,7 @@ sub get_table_usage {
       $query_struct = $self->{SQLParser}->parse($query);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d('Failed to parse query with SQLParser:', $EVAL_ERROR);
+      PTDEBUG && _d('Failed to parse query with SQLParser:', $EVAL_ERROR);
       if ( $EVAL_ERROR =~ m/Cannot parse/ ) {
          # SQLParser can't parse this type of query, so it's probably some
          # data definition statement with just a table list.  Use QueryParser
@@ -142,7 +142,7 @@ sub get_table_usage {
       );
    }
 
-   MKDEBUG && _d('Query table usage:', Dumper($tables));
+   PTDEBUG && _d('Query table usage:', Dumper($tables));
    return $tables;
 }
 
@@ -158,7 +158,7 @@ sub _get_tables_used_from_query_parser {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($query) = @args{@required_args};
-   MKDEBUG && _d('Getting tables used from query parser');
+   PTDEBUG && _d('Getting tables used from query parser');
 
    $query = $self->{QueryParser}->clean_query($query);
    my ($query_type) = $query =~ m/^\s*(\w+)\s+/;
@@ -193,15 +193,15 @@ sub _get_tables_used_from_query_struct {
    }
    my ($query_struct) = @args{@required_args};
 
-   MKDEBUG && _d('Getting table used from query struct');
+   PTDEBUG && _d('Getting table used from query struct');
 
    my $query_type = uc $query_struct->{type};
 
    if ( $query_type eq 'CREATE' ) {
-      MKDEBUG && _d('CREATE query');
+      PTDEBUG && _d('CREATE query');
       my $sel_tables;
       if ( my $sq_struct = $query_struct->{subqueries}->[0] ) {
-         MKDEBUG && _d('CREATE query with SELECT');
+         PTDEBUG && _d('CREATE query with SELECT');
          $sel_tables = $self->_get_tables_used_from_query_struct(
             %args,
             query        => $sq_struct->{query},
@@ -221,7 +221,7 @@ sub _get_tables_used_from_query_struct {
 
    my $tables     = $self->_get_tables($query_struct);
    if ( !$tables || @$tables == 0 ) {
-      MKDEBUG && _d("Query does not use any tables");
+      PTDEBUG && _d("Query does not use any tables");
       return [
          [ { context => $query_type, table => $self->{constant_data_value} } ]
       ];
@@ -237,17 +237,17 @@ sub _get_tables_used_from_query_struct {
       );
 
       if ( $ambig && $self->{dbh} && !$self->{query_reparsed} ) {
-         MKDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
+         PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
          if ( $self->_reparse_query(%args) ) {
             return $self->_get_tables_used_from_query_struct(%args);
          } 
-         MKDEBUG && _d('Failed to disambiguate columns');
+         PTDEBUG && _d('Failed to disambiguate columns');
       }
    }
 
    my @tables_used;
    if ( $query_type eq 'UPDATE' && @{$query_struct->{tables}} > 1 ) {
-      MKDEBUG && _d("Multi-table UPDATE");
+      PTDEBUG && _d("Multi-table UPDATE");
       # UPDATE queries with multiple tables are a special case.  The query
       # reads from each referenced table and writes only to tables referenced
       # in the SET clause.  Each written table is like its own query, so
@@ -265,7 +265,7 @@ sub _get_tables_used_from_query_struct {
             context => 'JOIN',
             table   => $table,
          };
-         MKDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
+         PTDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
          push @join_tables, $table_usage;
       }
       if ( $where && $where->{joined_tables} ) {
@@ -274,7 +274,7 @@ sub _get_tables_used_from_query_struct {
                context => $query_type,
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from WHERE (implicit join):",
+            PTDEBUG && _d("Table usage from WHERE (implicit join):",
                Dumper($table_usage));
             push @join_tables, $table_usage;
          }
@@ -287,7 +287,7 @@ sub _get_tables_used_from_query_struct {
                context => 'WHERE',
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
             push @where_tables, $table_usage;
          }
       }
@@ -308,7 +308,7 @@ sub _get_tables_used_from_query_struct {
                table   => $table->{value},
             },
          );
-         MKDEBUG && _d("Table usage from UPDATE SET:", Dumper(\@table_usage));
+         PTDEBUG && _d("Table usage from UPDATE SET:", Dumper(\@table_usage));
          push @tables_used, [
             @table_usage,
             @join_tables,
@@ -329,11 +329,11 @@ sub _get_tables_used_from_query_struct {
          );
 
          if ( $ambig && $self->{dbh} && !$self->{query_reparsed} ) {
-            MKDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
+            PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
             if ( $self->_reparse_query(%args) ) {
                return $self->_get_tables_used_from_query_struct(%args);
             } 
-            MKDEBUG && _d('Failed to disambiguate columns');
+            PTDEBUG && _d('Failed to disambiguate columns');
          }
 
          foreach my $table ( @$clist_tables ) {
@@ -341,7 +341,7 @@ sub _get_tables_used_from_query_struct {
                context => 'SELECT',
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from CLIST:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from CLIST:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -360,7 +360,7 @@ sub _get_tables_used_from_query_struct {
             if ( $table->{join} && $table->{join}->{condition} ) {
                 $context = 'JOIN';
                if ( $table->{join}->{condition} eq 'using' ) {
-                  MKDEBUG && _d("Table joined with USING condition");
+                  PTDEBUG && _d("Table joined with USING condition");
                   my $joined_table  = $self->_qualify_table_name(
                      %args,
                      tables => $tables,
@@ -375,22 +375,22 @@ sub _get_tables_used_from_query_struct {
                   );
                }
                elsif ( $table->{join}->{condition} eq 'on' ) {
-                  MKDEBUG && _d("Table joined with ON condition");
+                  PTDEBUG && _d("Table joined with ON condition");
                   my ($on_tables, $ambig) = $self->_get_tables_used_in_where(
                      %args,
                      tables => $tables,
                      where  => $table->{join}->{where},
                      clause => 'JOIN condition',  # just for debugging
                   );
-                  MKDEBUG && _d("JOIN ON tables:", Dumper($on_tables));
+                  PTDEBUG && _d("JOIN ON tables:", Dumper($on_tables));
 
                   if ( $ambig && $self->{dbh} && !$self->{query_reparsed} ) {
-                     MKDEBUG && _d("Using EXPLAIN EXTENDED",
+                     PTDEBUG && _d("Using EXPLAIN EXTENDED",
                         "to disambiguate columns");
                      if ( $self->_reparse_query(%args) ) {
                         return $self->_get_tables_used_from_query_struct(%args);
                      } 
-                     MKDEBUG && _d('Failed to disambiguate columns'); 
+                     PTDEBUG && _d('Failed to disambiguate columns'); 
                   }
 
                   foreach my $joined_table ( @{$on_tables->{joined_tables}} ) {
@@ -412,14 +412,14 @@ sub _get_tables_used_from_query_struct {
                context => $context,
                table   => $qualified_table,
             };
-            MKDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
 
       if ( $where && $where->{joined_tables} ) {
          foreach my $joined_table ( @{$where->{joined_tables}} ) {
-            MKDEBUG && _d("Table joined implicitly in WHERE:", $joined_table);
+            PTDEBUG && _d("Table joined implicitly in WHERE:", $joined_table);
             $self->_change_context(
                tables      => $tables,
                table       => $joined_table,
@@ -432,7 +432,7 @@ sub _get_tables_used_from_query_struct {
 
       if ( $query_type =~ m/(?:INSERT|REPLACE)/ ) {
          if ( $query_struct->{select} ) {
-            MKDEBUG && _d("Getting tables used in INSERT-SELECT");
+            PTDEBUG && _d("Getting tables used in INSERT-SELECT");
             my $select_tables = $self->_get_tables_used_from_query_struct(
                %args,
                query_struct => $query_struct->{select},
@@ -444,7 +444,7 @@ sub _get_tables_used_from_query_struct {
                context => 'SELECT',
                table   => $self->{constant_data_value},
             };
-            MKDEBUG && _d("Table usage from SET/VALUES:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from SET/VALUES:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -460,7 +460,7 @@ sub _get_tables_used_from_query_struct {
                table   => $table->{value_is_table} ? $table->{table}
                         :                            $self->{constant_data_value},
             };
-            MKDEBUG && _d("Table usage from SET:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from SET:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -471,7 +471,7 @@ sub _get_tables_used_from_query_struct {
                context => 'WHERE',
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -488,13 +488,13 @@ sub _get_tables_used_in_columns {
    }
    my ($tables, $columns) = @args{@required_args};
 
-   MKDEBUG && _d("Getting tables used in CLIST");
+   PTDEBUG && _d("Getting tables used in CLIST");
    my @tables;
    my $ambig = 0;  # found any ambiguous columns?
    if ( @$tables == 1 ) {
       # SELECT a, b FROM t WHERE ... -- one table so cols a and b must
       # be from that table.
-      MKDEBUG && _d("Single table SELECT:", $tables->[0]->{tbl});
+      PTDEBUG && _d("Single table SELECT:", $tables->[0]->{tbl});
       my $table = $self->_qualify_table_name(
          %args,
          db  => $tables->[0]->{db},
@@ -505,7 +505,7 @@ sub _get_tables_used_in_columns {
    elsif ( @$columns == 1 && $columns->[0]->{col} eq '*' ) {
       if ( $columns->[0]->{tbl} ) {
          # SELECT t1.* FROM ... -- selecting only from table t1
-         MKDEBUG && _d("SELECT all columns from one table");
+         PTDEBUG && _d("SELECT all columns from one table");
          my $table = $self->_qualify_table_name(
             %args,
             db  => $columns->[0]->{db},
@@ -515,7 +515,7 @@ sub _get_tables_used_in_columns {
       }
       else {
          # SELECT * FROM ... -- selecting from all tables
-         MKDEBUG && _d("SELECT all columns from all tables");
+         PTDEBUG && _d("SELECT all columns from all tables");
          foreach my $table ( @$tables ) {
             my $table = $self->_qualify_table_name(
                %args,
@@ -530,14 +530,14 @@ sub _get_tables_used_in_columns {
    else {
       # SELECT x, y FROM t1, t2 -- have to determine from which table each
       # column is.
-      MKDEBUG && _d(scalar @$tables, "table SELECT");
+      PTDEBUG && _d(scalar @$tables, "table SELECT");
       my %seen;
       my $colno = 0;
       COLUMN:
       foreach my $column ( @$columns ) {
-         MKDEBUG && _d('Getting table for column', Dumper($column));
+         PTDEBUG && _d('Getting table for column', Dumper($column));
          if ( $column->{col} eq '*' && !$column->{tbl} ) {
-            MKDEBUG && _d('Ignoring FUNC(*) column');
+            PTDEBUG && _d('Ignoring FUNC(*) column');
             $colno++;
             next;
          }
@@ -547,7 +547,7 @@ sub _get_tables_used_in_columns {
             n_cols => scalar @$columns,
          );
          if ( !$column->{tbl} ) {
-            MKDEBUG && _d("Column", $column->{col}, "is not table-qualified;",
+            PTDEBUG && _d("Column", $column->{col}, "is not table-qualified;",
                "and query has multiple tables; cannot determine its table");
             $ambig++;
             next COLUMN;
@@ -574,14 +574,14 @@ sub _get_tables_used_in_where {
    my ($tables, $where) = @args{@required_args};
    my $sql_parser = $self->{SQLParser};
 
-   MKDEBUG && _d("Getting tables used in", $args{clause} || 'WHERE');
+   PTDEBUG && _d("Getting tables used in", $args{clause} || 'WHERE');
 
    my %filter_tables;
    my %join_tables;
    my $ambig = 0;  # found any ambiguous tables?
    CONDITION:
    foreach my $cond ( @$where ) {
-      MKDEBUG && _d("Condition:", Dumper($cond));
+      PTDEBUG && _d("Condition:", Dumper($cond));
       my @tables;  # tables used in this condition
       my $n_vals        = 0;
       my $is_constant   = 0;
@@ -589,13 +589,13 @@ sub _get_tables_used_in_where {
       ARG:
       foreach my $arg ( qw(left_arg right_arg) ) {
          if ( !defined $cond->{$arg} ) {
-            MKDEBUG && _d($arg, "is a constant value");
+            PTDEBUG && _d($arg, "is a constant value");
             $is_constant = 1;
             next ARG;
          }
 
          if ( $sql_parser->is_identifier($cond->{$arg}) ) {
-            MKDEBUG && _d($arg, "is an identifier");
+            PTDEBUG && _d($arg, "is an identifier");
             my $ident_struct = $sql_parser->parse_identifier(
                'column',
                $cond->{$arg}
@@ -606,12 +606,12 @@ sub _get_tables_used_in_where {
             );
             if ( !$ident_struct->{tbl} ) {
                if ( @$tables == 1 ) {
-                  MKDEBUG && _d("Condition column is not table-qualified; ",
+                  PTDEBUG && _d("Condition column is not table-qualified; ",
                      "using query's only table:", $tables->[0]->{tbl});
                   $ident_struct->{tbl} = $tables->[0]->{tbl};
                }
                else {
-                  MKDEBUG && _d("Condition column is not table-qualified and",
+                  PTDEBUG && _d("Condition column is not table-qualified and",
                      "query has multiple tables; cannot determine its table");
                   if (  $cond->{$arg} !~ m/\w+\(/       # not a function
                      && $cond->{$arg} !~ m/^[\d.]+$/) { # not a number
@@ -623,7 +623,7 @@ sub _get_tables_used_in_where {
             }
 
             if ( !$ident_struct->{db} && @$tables == 1 && $tables->[0]->{db} ) {
-               MKDEBUG && _d("Condition column is not database-qualified; ",
+               PTDEBUG && _d("Condition column is not database-qualified; ",
                   "using its table's database:", $tables->[0]->{db});
                $ident_struct->{db} = $tables->[0]->{db};
             }
@@ -637,29 +637,29 @@ sub _get_tables_used_in_where {
             }
          }
          else {
-            MKDEBUG && _d($arg, "is a value");
+            PTDEBUG && _d($arg, "is a value");
             $n_vals++;
          }
       }  # ARG
 
       if ( $is_constant || $n_vals == 2 ) {
-         MKDEBUG && _d("Condition is a constant or two values");
+         PTDEBUG && _d("Condition is a constant or two values");
          $filter_tables{$self->{constant_data_value}} = undef;
       }
       else {
          if ( @tables == 1 ) {
             if ( $unknown_table ) {
-               MKDEBUG && _d("Condition joins table",
+               PTDEBUG && _d("Condition joins table",
                   $tables[0], "to column from unknown table");
                $join_tables{$tables[0]} = undef;
             }
             else {
-               MKDEBUG && _d("Condition filters table", $tables[0]);
+               PTDEBUG && _d("Condition filters table", $tables[0]);
                $filter_tables{$tables[0]} = undef;
             }
          }
          elsif ( @tables == 2 ) {
-            MKDEBUG && _d("Condition joins tables",
+            PTDEBUG && _d("Condition joins tables",
                $tables[0], "and", $tables[1]);
             $join_tables{$tables[0]} = undef;
             $join_tables{$tables[1]} = undef;
@@ -686,7 +686,7 @@ sub _get_tables_used_in_set {
    my ($tables, $set) = @args{@required_args};
    my $sql_parser = $self->{SQLParser};
 
-   MKDEBUG && _d("Getting tables used in SET");
+   PTDEBUG && _d("Getting tables used in SET");
 
    my @tables;
    if ( @$tables == 1 ) {
@@ -748,13 +748,13 @@ sub _get_real_table_name {
    foreach my $table ( @$tables ) {
       if ( lc($table->{tbl}) eq $name
            || lc($table->{alias} || "") eq $name ) {
-         MKDEBUG && _d("Real table name for", $name, "is", $table->{tbl});
+         PTDEBUG && _d("Real table name for", $name, "is", $table->{tbl});
          return $table->{tbl};
       }
    }
    # The named thing isn't referenced as a table by the query, so it's
    # probably a function or something else.
-   MKDEBUG && _d("Table", $name, "does not exist in query");
+   PTDEBUG && _d("Table", $name, "does not exist in query");
    return;
 }
 
@@ -766,7 +766,7 @@ sub _qualify_table_name {
    }
    my ($tables, $table) = @args{@required_args};
 
-   MKDEBUG && _d("Qualifying table with database:", $table);
+   PTDEBUG && _d("Qualifying table with database:", $table);
 
    my ($tbl, $db) = reverse split /[.]/, $table;
 
@@ -804,12 +804,12 @@ sub _qualify_table_name {
 
       # Can't db-qualify the table, so return just the real table name.
       if ( !$db_tbl ) {
-         MKDEBUG && _d("Cannot determine database for table", $tbl);
+         PTDEBUG && _d("Cannot determine database for table", $tbl);
          $db_tbl = $tbl;
       }
    }
 
-   MKDEBUG && _d("Table qualified with database:", $db_tbl);
+   PTDEBUG && _d("Table qualified with database:", $db_tbl);
    return $db_tbl;
 }
 
@@ -820,7 +820,7 @@ sub _change_context {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tables_used, $table, $old_context, $new_context) = @args{@required_args};
-   MKDEBUG && _d("Change context of table", $table, "from", $old_context,
+   PTDEBUG && _d("Change context of table", $table, "from", $old_context,
       "to", $new_context);
    foreach my $used_table ( @$tables_used ) {
       if (    $used_table->{table}   eq $table
@@ -829,7 +829,7 @@ sub _change_context {
          return;
       }
    }
-   MKDEBUG && _d("Table", $table, "is not used; cannot set its context");
+   PTDEBUG && _d("Table", $table, "is not used; cannot set its context");
    return;
 }
 
@@ -840,18 +840,18 @@ sub _explain_query {
    my $sql;
    if ( $db ) {
       $sql = "USE `$db`";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
 
    $sql = "EXPLAIN EXTENDED $query";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);  # don't need the result
    };
    if ( $EVAL_ERROR ) {
       if ( $EVAL_ERROR =~ m/No database/i ) {
-         MKDEBUG && _d($EVAL_ERROR);
+         PTDEBUG && _d($EVAL_ERROR);
          push @{$self->{errors}}, 'NO_DB_SELECTED';
          return;
       }
@@ -859,9 +859,9 @@ sub _explain_query {
    }
 
    $sql = "SHOW WARNINGS";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my $warning = $dbh->selectrow_hashref($sql);
-   MKDEBUG && _d(Dumper($warning));
+   PTDEBUG && _d(Dumper($warning));
    if (    ($warning->{level} || "") !~ m/Note/i
         || ($warning->{code}  || 0)  != 1003 ) {
       die "EXPLAIN EXTENDED failed:\n"
@@ -890,7 +890,7 @@ sub _reparse_query {
    my ($self, %args) = @_;
    my @required_args = qw(query query_struct);
    my ($query, $query_struct) = @args{@required_args};
-   MKDEBUG && _d("Reparsing query with EXPLAIN EXTENDED");
+   PTDEBUG && _d("Reparsing query with EXPLAIN EXTENDED");
 
    # Set this first so if there's an error we won't re-explain,
    # re-error, and repeat.
@@ -938,7 +938,7 @@ sub _ex_qualify_column {
    return $col unless $self->{ex_query_struct};
    my $ex = $self->{ex_query_struct};
 
-   MKDEBUG && _d('Qualifying column',$col->{col},'with EXPLAIN EXTENDED query');
+   PTDEBUG && _d('Qualifying column',$col->{col},'with EXPLAIN EXTENDED query');
 
    # Nothing to qualify.
    return unless $col;
@@ -950,7 +950,7 @@ sub _ex_qualify_column {
 
    if ( !$col->{tbl} ) {
       if ( $where_arg ) {
-         MKDEBUG && _d('Searching WHERE conditions for column');
+         PTDEBUG && _d('Searching WHERE conditions for column');
          # A col in WHERE without a table must be unique in one table,
          # so search for it in the WHERE conditions in the explained
          # extended struct.
@@ -976,16 +976,16 @@ sub _ex_qualify_column {
       elsif ( defined $colno
            && $ex->{columns}->[$colno]
            && lc($ex->{columns}->[$colno]->{col}) eq $colname ) {
-         MKDEBUG && _d('Exact match by col name and number');
+         PTDEBUG && _d('Exact match by col name and number');
          $col = $ex->{columns}->[$colno];
       }
       elsif ( defined $colno
               && scalar @{$ex->{columns}} == $n_cols ) {
-         MKDEBUG && _d('Match by column number in CLIST');
+         PTDEBUG && _d('Match by column number in CLIST');
          $col = $ex->{columns}->[$colno];
       }
       else {
-         MKDEBUG && _d('Searching for unique column in every db.tbl');
+         PTDEBUG && _d('Searching for unique column in every db.tbl');
          my ($uniq_db, $uniq_tbl);
          my $colcnt  = 0;
          my $schemas = $self->{schemas};
@@ -1008,14 +1008,14 @@ sub _ex_qualify_column {
    }
 
    if ( !$col->{db} && $col->{tbl} ) {
-      MKDEBUG && _d('Column has table, needs db');
+      PTDEBUG && _d('Column has table, needs db');
       if ( my $real_tbl = $self->{table_for}->{lc $col->{tbl}} ) {
-         MKDEBUG && _d('Table is an alias');
+         PTDEBUG && _d('Table is an alias');
          $col->{db}  = $real_tbl->{db};
          $col->{tbl} = $real_tbl->{tbl};
       }
       else {
-         MKDEBUG && _d('Searching for unique table in every db');
+         PTDEBUG && _d('Searching for unique table in every db');
          my $real_tbl = $self->_get_real_table_name(
             tables => $ex->{from},
             name   => $col->{tbl},
@@ -1040,7 +1040,7 @@ sub _ex_qualify_column {
       }
    }
 
-   MKDEBUG && _d('Qualified column:', Dumper($col));
+   PTDEBUG && _d('Qualified column:', Dumper($col));
    return $col;
 }
 
