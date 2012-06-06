@@ -32,7 +32,6 @@ else {
 }
 
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 $sb->create_dbs($master_dbh, [qw(test)]);
 
 # #############################################################################
@@ -47,6 +46,7 @@ unlike(
    qr/Cannot nibble/,
    "Doesn't say it can't nibble the 1-row table (issue 634)"
 );
+$sb->wait_for_slaves();
 is_deeply(
    $slave_dbh->selectall_arrayref('select * from issue_634.t'),
    [],
