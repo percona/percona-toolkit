@@ -6,8 +6,13 @@ use English qw(-no_match_vars);
 use DBI;
 use Time::HiRes qw(usleep time);
 
-my ($host, $port, $db, $tbl, $pkcol, $stop_file, $sleep_time) = @ARGV;
-die "I need a stop_file argument" unless $stop_file;
+my ($host, $port, $db, $tbl, $pkcol, $stop_file, $pid_file, $sleep_time) = @ARGV;
+
+die "I need a pid_file argument" unless $pid_file;
+open my $fh, '>', $pid_file or die $OS_ERROR;
+print $fh $PID;
+close $fh;
+
 my $dbh = DBI->connect(
    "DBI:mysql:$db;host=$host;port=$port;mysql_read_default_group=client",
    'msandbox', 'msandbox',
