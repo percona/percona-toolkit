@@ -185,9 +185,8 @@ sub wipe_clean {
       $dbh->do("DROP DATABASE IF EXISTS `$db`");
    }
 
-   my $slave2_dbh = $self->get_dbh_for('slave2');
    $self->wait_for_slaves();
-   $slave2_dbh->disconnect;
+
    return;
 }
 
@@ -311,8 +310,7 @@ sub ok {
    return !@errors;
 }
 
-# Dings a heartbeat on the master, and waits until the slave catches up fully to
-# that.
+# Dings a heartbeat on the master, and waits until the slave catches up fully.
 sub wait_for_slaves {
    my $self = shift;
    my $now = time();
@@ -324,7 +322,7 @@ sub wait_for_slaves {
          my $then = $slave2_dbh->selectall_arrayref(
             "select a from percona_test.sentinel where id = 1")->[0]->[0];
          return $now == $then;
-      }, undef, 1000
+      }, undef, 300
    );
 }
 
