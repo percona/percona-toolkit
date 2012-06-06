@@ -470,6 +470,6 @@ is_deeply(
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($dbh) if $dbh;
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
