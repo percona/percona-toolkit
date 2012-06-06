@@ -186,26 +186,8 @@ sub wipe_clean {
    }
 
    my $slave2_dbh = $self->get_dbh_for('slave2');
-   my $ok = PerconaTest::wait_until(
-      sub {
-         my $dbs = $slave2_dbh->selectall_arrayref("SHOW DATABASES");
-         if ( grep { $_->[0] !~ m/$test_dbs/ } @$dbs ) {
-            PTDEVDEBUG && _d('Waiting for databases to drop', Dumper($dbs));
-            return 0;
-         }
-         return 1;
-      }
-   );
+   $self->wait_for_slaves();
    $slave2_dbh->disconnect;
-   if ( !$ok ) {
-      # If this happen, chances are ok() is going to throw
-      # ERROR: Databases are left on slave1: foo
-      # Or maybe not if by chance the DROP statement replicates
-      # between now and then.
-      Test::More::diag("WARNING: Timeout in Sandbox::wipe_clean() "
-         . "waiting for databases to drop");
-   }
-
    return;
 }
 
@@ -314,6 +296,8 @@ sub leftover_databases {
 sub ok {
    my ($self) = @_;
    my @errors;
+   # First, wait for all slaves to be caught up to their masters.
+   $self->wait_for_slaves();
    push @errors, $self->master_is_ok('master');
    push @errors, $self->slave_is_ok('slave1', 'master');
    push @errors, $self->slave_is_ok('slave2', 'slave1', 1);
@@ -325,6 +309,23 @@ sub ok {
 
    @errors = grep { warn "ERROR: ", $_, "\n" if $_; $_; } @errors;
    return !@errors;
+}
+
+# Dings a heartbeat on the master, and waits until the slave catches up fully to
+# that.
+sub wait_for_slaves {
+   my $self = shift;
+   my $now = time();
+   my $master_dbh = $self->get_dbh_for('master');
+   my $slave2_dbh = $self->get_dbh_for('slave2');
+   $master_dbh->do("update percona_test.sentinel set a=$now where id = 1");
+   PerconaTest::wait_until(
+      sub {
+         my $then = $slave2_dbh->selectall_arrayref(
+            "select a from percona_test.sentinel where id = 1")->[0]->[0];
+         return $now == $then;
+      }, undef, 1000
+   );
 }
 
 sub _d {

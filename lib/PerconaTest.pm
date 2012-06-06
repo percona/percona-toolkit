@@ -730,6 +730,13 @@ sub get_master_binlog_pos {
    return $ms->{position};
 }
 
+sub get_slave_pos_relative_to_master {
+   my ($dbh) = @_;
+   my $sql = "SHOW SLAVE STATUS";
+   my $ss  = $dbh->selectrow_hashref($sql);
+   return $ss->{exec_master_log_pos};
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
