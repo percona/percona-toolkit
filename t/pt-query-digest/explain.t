@@ -48,8 +48,9 @@ ok(
    no_diff(
       sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
-      ($sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
-                                 : "$sample/slow007_explain_1.txt")
+      ( $sandbox_version ge '5.5' ? "$sample/slow007_explain_1-55.txt"
+      : $sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
+      :                             "$sample/slow007_explain_1.txt")
    ),
    'Analysis for slow007 with --explain, no rows',
 );
