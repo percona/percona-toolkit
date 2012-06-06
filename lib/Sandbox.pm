@@ -313,15 +313,15 @@ sub ok {
 # Dings a heartbeat on the master, and waits until the slave catches up fully.
 sub wait_for_slaves {
    my $self = shift;
-   my $now = time();
    my $master_dbh = $self->get_dbh_for('master');
    my $slave2_dbh = $self->get_dbh_for('slave2');
-   $master_dbh->do("update percona_test.sentinel set a=$now where id = 1");
+   my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND() + NOW())");
+   $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
    PerconaTest::wait_until(
       sub {
-         my $then = $slave2_dbh->selectall_arrayref(
-            "select a from percona_test.sentinel where id = 1")->[0]->[0];
-         return $now == $then;
+         my ($pong) = $slave2_dbh->selectrow_array(
+            "SELECT ping FROM percona_test.sentinel WHERE id=1");
+         return $ping eq $pong;
       }, undef, 300
    );
 }

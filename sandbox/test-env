@@ -291,15 +291,13 @@ case $opt in
                echo "OK"
             fi
             ../util/checksum-test-dataset
-            now=$(date +%s);
-            /tmp/12345/use -e 'create table percona_test.sentinel(id int primary key, a int unsigned)';
-            /tmp/12345/use -e "insert into percona_test.sentinel(id, a) values(1, $now)";
+            ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND() + NOW())")
+            /tmp/12345/use -e "create table percona_test.sentinel(id int primary key, ping varchar(64) not null default '')"
+            /tmp/12345/use -e "insert into percona_test.sentinel(id, ping) values(1, '$ping')";
             echo -n "Waiting for replication to finish..."
             while true; do
-               found=$(/tmp/12347/use -ss -e 'select a from percona_test.sentinel where id = 1' 2>/dev/null)
-               if [ "$found" = "$now" ]; then
-                  break
-               fi
+               pong=$(/tmp/12347/use -ss -e 'select ping from percona_test.sentinel where id=1' 2>/dev/null)
+               [ "$ping" = "$pong" ] && break
                echo -n '.'
                sleep 1
             done

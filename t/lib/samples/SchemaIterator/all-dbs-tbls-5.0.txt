@@ -243,6 +243,13 @@ CREATE TABLE `checksums` (
   PRIMARY KEY  (`db_tbl`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 
+percona_test.sentinel
+CREATE TABLE `sentinel` (
+  `id` int(11) NOT NULL,
+  `a` int(10) unsigned default NULL,
+  PRIMARY KEY  (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1
+
 sakila.actor
 CREATE TABLE `actor` (
   `actor_id` smallint(5) unsigned NOT NULL auto_increment,
