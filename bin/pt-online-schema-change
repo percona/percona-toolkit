@@ -5549,15 +5549,11 @@ sub main {
    for my $slave (@$slaves) {
       PTDEBUG && _d('Waiting until', $slave->name(),
                      'replicates the table');
-      my $slave_has_repl_table;
-      do {
-         $slave_has_repl_table = $tp->check_table(
-            dbh => $slave->dbh(),
-            db  => $new_tbl->{db},
-            tbl => $new_tbl->{tbl},
-         );
-         sleep 0.5 unless $slave_has_repl_table;
-      } while ( !$slave_has_repl_table );
+      sleep 0.5 while ! $tp->check_table(
+                           dbh => $slave->dbh(),
+                           db  => $new_tbl->{db},
+                           tbl => $new_tbl->{tbl}
+                      );
    }
 
    # #####################################################################
