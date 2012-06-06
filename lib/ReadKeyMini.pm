@@ -37,7 +37,7 @@ BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw( :termios_h );
 use Fcntl qw( F_SETFL F_GETFL );
