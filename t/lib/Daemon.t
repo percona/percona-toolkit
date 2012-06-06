@@ -24,8 +24,8 @@ my $d = new Daemon(o=>$o);
 my $pid_file = '/tmp/daemonizes.pl.pid';
 my $log_file = '/tmp/daemonizes.output'; 
 sub rm_tmp_files() {
-   1 while unlink $pid_file;
-   1 while unlink $log_file;
+   -e $pid_file && (unlink $pid_file || die "Error removing $pid_file");
+   -e $log_file && (unlink $log_file || die "Error removing $log_file");
 }
 
 # ############################################################################
@@ -124,8 +124,8 @@ SKIP: {
       'Reopens STDIN to /dev/null'
    );
 
-   TODO: {
-      local $::TODO = "?";
+   SKIP: {
+      skip "-t is not reliable", 1;
       rm_tmp_files();
       system("echo foo | $cmd 5 --daemonize --pid $pid_file --log $log_file");
       PerconaTest::wait_for_files($pid_file, $log_file);
@@ -169,29 +169,35 @@ ok(
 my (undef, $tempfile) = tempfile();
 
 system("$cmd 5 --daemonize --log $log_file --pid $pid_file 2>$tempfile");
-PerconaTest::wait_for_files($log_file);
+PerconaTest::wait_for_files($log_file, $pid_file);
+
 $output = `ps wx | grep '$cmd 5' | grep -v grep`;
 chomp(my $new_pid = slurp_file($pid_file));
-sleep 1;
+
 like(
    $output,
    qr/$cmd/,
    'Runs when PID file exists but old process is dead (issue 419)'
 );
+
 like(
    slurp_file($tempfile),
    qr/$pid, is not running/,
    'Says that old PID is not running (issue 419)'
 );
+
 ok(
    $pid != $new_pid,
    'Overwrites PID file with new PID (issue 419)'
 );
+
+PerconaTest::wait_until(sub { !-e $pid_file });
 ok(
    !-f $pid_file,
    'Re-used PID file still removed (issue 419)'
 );
-diag(`rm -rf /tmp/pre-daemonizes`);
+
+diag(`rm $tempfile >/dev/null`);
  
 # ############################################################################
 # Check that it actually checks the running process.
