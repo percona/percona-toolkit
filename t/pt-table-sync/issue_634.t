@@ -31,9 +31,6 @@ else {
    plan tests => 4;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
-
 # #############################################################################
 # Issue 634: Cannot nibble table because MySQL chose no index
 # #############################################################################
@@ -46,6 +43,7 @@ $output = output(
    },
    stderr => 1,
 );
+$sb->wait_for_slaves();
 
 like(
    $output,
