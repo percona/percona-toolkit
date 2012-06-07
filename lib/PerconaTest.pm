@@ -725,7 +725,6 @@ sub full_output {
    *STDERR = *STDOUT;
 
    my $status;
-   warn $file;
    if (my $pid = fork) {
       if ( my $t = $args{wait_for} ) {
          # Wait for t seconds then kill the child.
@@ -741,11 +740,10 @@ sub full_output {
          sleep 0.25;
       }
       waitpid($pid, 0);
-      $status = $?;
+      $status = $? >> 8;
    }
    else {
-      $code->();
-      exit 0;
+      exit $code->();
    }
    close *output_fh;
    my $output = do { local $/; open my $fh, "<", $file or die $!; <$fh> };
