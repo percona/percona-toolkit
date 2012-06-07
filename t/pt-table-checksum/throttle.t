@@ -58,7 +58,7 @@ pt_table_checksum::main(@args, qw(-t sakila.city --quiet));
 # ############################################################################
 
 # Stop slave1.
-PerconaTest::wait_until_no_lag($slave1_dbh, $slave2_dbh);
+$sb->wait_for_slaves();
 $slave1_dbh->do('stop slave sql_thread');
 wait_until(sub {
    my $ss = $slave1_dbh->selectrow_hashref("SHOW SLAVE STATUS");
@@ -98,7 +98,7 @@ is(
 $slave1_dbh->do('START SLAVE sql_thread');
 $slave2_dbh->do('STOP SLAVE');
 $slave2_dbh->do('START SLAVE');
-PerconaTest::wait_until_slave_running($slave1_dbh, $slave2_dbh);
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Done.
