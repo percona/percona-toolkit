@@ -38,12 +38,17 @@ PerconaTest::wait_for_table($slave_dbh, 'test.t');
 # Bust replication
 $slave_dbh->do('DROP TABLE test.t');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
-my $output = `/tmp/12346/use -e 'show slave status'`;
-like($output, qr/Table 'test.t' doesn't exist'/, 'It is busted');
+wait_until(
+   sub {
+      ! $slave_dbh->selectrow_hashref('show slave status')->{slave_sql_running};
+   }
+);
+my $r = $slave_dbh->selectrow_hashref('show slave status');
+like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
 # Start an instance
 diag(`$trunk/bin/pt-slave-restart --max-sleep .25 -h 127.0.0.1 -P 12346 -u msandbox -p msandbox --daemonize --pid /tmp/pt-slave-restart.pid --log /tmp/pt-slave-restart.log`);
-$output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
+my $output = `ps x | grep 'pt-slave-restart \-\-max\-sleep ' | grep -v grep | grep -v pt-slave-restart.t`;
 like($output, qr/pt-slave-restart --max/, 'It lives');
 
 unlike($output, qr/Table 'test.t' doesn't exist'/, 'It is not busted');
