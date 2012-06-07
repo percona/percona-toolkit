@@ -46,8 +46,8 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # ############################################################################
 $sb->load_file('master', "$sample/pk-bug-994002.sql");
 
-$output = output(
-   sub { $exit_status = pt_online_schema_change::main(@args,
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=test,t=t",
       "--alter", "add column (foo int)",
       qw(--chunk-size 2 --dry-run --print)) },
@@ -71,7 +71,7 @@ unlike(
 # ############################################################################
 $sb->load_file('master', "$sample/bug-1002448.sql");
 
-$output = output(
+($output, $exit_status) = full_output(
     sub { pt_online_schema_change::main(@args,
             "$master_dsn,D=test1002448,t=table_name",
             "--alter", "add column (foo int)",
