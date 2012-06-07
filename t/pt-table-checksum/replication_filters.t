@@ -271,8 +271,15 @@ $master_dbh = $sb->get_dbh_for('master');
 $row = $master_dbh->selectrow_hashref('show master status');
 
 pt_table_checksum::main(@args, qw(--quiet));
+my $mysqlbinlog = `which mysqlbinlog`;
+if ( $mysqlbinlog ) {
+   chomp $mysqlbinlog;
+}
+elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
+   $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
+}
 
-$output = `$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u`;
 
 is(
    $output,
@@ -289,7 +296,7 @@ $row = $master_dbh->selectrow_hashref('show master status');
 
 pt_table_checksum::main(@args, qw(--quiet --replicate-database percona));
 
-$output = `$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning'`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning'`;
 is(
    $output,
 "use percona/*!*/;
