@@ -51,7 +51,6 @@ SKIP: {
 
    # Bug 932442: column with 2 spaces
    $sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
-   PerconaTest::wait_for_table($dbh, "test.t");
    $ddl = $tp->get_create_table($dbh, qw(test t));
    like(
       $ddl,

@@ -55,7 +55,6 @@ diag(`/tmp/12345/use -u root < $trunk/$sample/osc-user.sql`);
 PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='osc_user'");
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave1_dbh, "pt_osc.t", "id=20");
 
 $output = output(
    sub { $exit_status = pt_online_schema_change::main(@args,

@@ -61,7 +61,6 @@ throws_ok(
 );
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
 $master_dbh->do("USE pt_osc");
 $slave_dbh->do("USE pt_osc");
 
@@ -90,7 +89,6 @@ throws_ok(
 # #############################################################################
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
 $master_dbh->do("USE pt_osc");
 $slave_dbh->do("USE pt_osc");
 

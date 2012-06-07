@@ -98,11 +98,6 @@ like(
 
 diag('Loading file and waiting for replication');
 $sb->load_file('master', 't/pt-table-sync/samples/issue_367.sql');
-PerconaTest::wait_for_table(
-   $slave_dbh,
-   "$_.t1",
-   "id > 4"
-) for qw( db1 db2 );
 
 # Make slave db1.t1 and db2.t1 differ from master.
 $slave_dbh->do('INSERT INTO db1.t1 VALUES (9)');

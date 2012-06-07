@@ -55,7 +55,6 @@ my $sample  = "t/pt-table-checksum/samples/";
 # line 2206
 # ############################################################################
 $sb->load_file('master', "$sample/undef-arrayref-bug-995274.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.GroupMembers", "id=493076");
 
 # Must chunk the table so an index is used.
 $output = output(
@@ -84,7 +83,6 @@ cmp_ok(
 # #############################################################################
 $master_dbh->do("DROP DATABASE IF EXISTS percona");  # clear old checksums
 $sb->load_file('master', "$sample/empty-table-bug-987393.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.test_full", "id=1");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(

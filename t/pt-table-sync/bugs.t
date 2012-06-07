@@ -41,7 +41,6 @@ my $slave_dsn  = "h=127.1,P=12346,u=msandbox,p=msandbox";
 # #############################################################################
 
 $sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.zzz", "id=111");
 
 # Make a diff in each table.
 $slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
@@ -107,9 +106,7 @@ is_deeply(
 # #########################################################################
 
 $sb->wipe_clean($master_dbh);
-
 $sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.zzz", "id=111");
 
 $slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
 $slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");

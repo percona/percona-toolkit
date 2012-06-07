@@ -257,7 +257,6 @@ ok(
 # https://bugs.launchpad.net/percona-toolkit/+bug/987393 
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/empty-table-bug-987393.sql");
-PerconaTest::wait_for_table($dbh, "test.test_full", "id=1");
 
 $ni = make_nibble_iter(
    db       => 'test',

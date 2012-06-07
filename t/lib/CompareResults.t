@@ -106,7 +106,6 @@ sub get_id {
 # #############################################################################
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
-PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'checksum',
@@ -313,7 +312,6 @@ my $tmpdir = '/tmp/mk-upgrade-res';
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
-PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'rows',

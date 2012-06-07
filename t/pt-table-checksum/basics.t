@@ -260,7 +260,6 @@ is(
 # ############################################################################
 $master_dbh->do('truncate table percona.checksums');
 $sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
-PerconaTest::wait_for_table($slave1_dbh, 'test.t3', "id=26");
 
 $master_dbh->do('set sql_log_bin=0');
 $master_dbh->do('truncate table test.t1');
@@ -405,7 +404,6 @@ like(
 # Bug 932442: column with 2 spaces
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
-PerconaTest::wait_for_table($master_dbh, "test.t", "id=10");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
@@ -429,7 +427,6 @@ is(
 # Bug 821675: can't parse column names containing periods
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/dot.sql");
-PerconaTest::wait_for_table($master_dbh, "test.t", "`No.`='ten'");
 
 ok(
    no_diff(

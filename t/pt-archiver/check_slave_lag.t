@@ -42,7 +42,6 @@ my $cmd = "$trunk/bin/pt-archiver";
 # Issue 758: Make mk-archiver wait for a slave
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_758.sql');
-PerconaTest::wait_for_table($dbh2, "issue_758.t");
 
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
