@@ -32,7 +32,6 @@ my $output;
 # Issue 1152: mk-archiver columns option resulting in null archived table data
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
-PerconaTest::wait_for_table($dbh, 'issue_1225.t', "i=3");
 
 $dbh->do('set names "utf8"');
 my $original_rows = $dbh->selectall_arrayref('select * from issue_1225.t where i in (1, 2)');
@@ -70,7 +69,6 @@ ok(
 );
 
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
-PerconaTest::wait_for_table($dbh, 'issue_1225.t', "i=3");
 
 $output = output(
    sub { pt_archiver::main(

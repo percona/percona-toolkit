@@ -85,7 +85,6 @@ SKIP: {
 
    # This test will achive rows from dbh:test.table_1 to dbh2:test.table_2.
    $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
-   PerconaTest::wait_for_table($dbh2, 'test.table_2');
 
    # Change passwords so defaults files won't work.
    $dbh->do('SET PASSWORD FOR msandbox = PASSWORD("foo")');

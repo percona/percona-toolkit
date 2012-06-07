@@ -35,14 +35,11 @@ else {
    plan tests => 3;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
-
 # #############################################################################
 # Issue 363: lock and rename.
 # #############################################################################
+$sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-sync/samples/before.sql');
-PerconaTest::wait_for_table($slave_dbh, "test.test2");
 
 $output = `$trunk/bin/pt-table-sync --lock-and-rename h=127.1,P=12345 P=12346 2>&1`;
 like($output, qr/requires exactly two/,

@@ -117,7 +117,6 @@ $master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-table-checksum/samples/600c
 $master_dbh->do("SET SQL_LOG_BIN=0");
 $master_dbh->do("DELETE FROM test.t WHERE id > 100");
 $master_dbh->do("SET SQL_LOG_BIN=1");
-PerconaTest::wait_for_table($slave_dbh, "test.t", "id=600");
 
 # Now there are 100 rows on the master and 600 on the slave.
 $output = output(

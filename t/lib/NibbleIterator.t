@@ -812,7 +812,6 @@ is(
 # Index case-sensitivity.
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/undef-arrayref-bug-995274.sql");
-PerconaTest::wait_for_table($dbh, "test.GroupMembers", "id=493076");
 
 eval {
    $ni = make_nibble_iter(

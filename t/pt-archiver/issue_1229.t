@@ -40,7 +40,6 @@ my $file = "/tmp/mk-archiver-file.txt";
 # archive to file
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
-PerconaTest::wait_for_table($dbh, 'issue_1225.t', "i=2");
 
 $dbh->do('set names "utf8"');
 my $original_rows = $dbh->selectall_arrayref('select * from issue_1225.t where i in (1, 2)');

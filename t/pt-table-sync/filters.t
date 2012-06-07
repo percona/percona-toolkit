@@ -110,9 +110,7 @@ is(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1002365
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-
 $sb->load_file("master", "t/pt-table-sync/samples/simple-tbls.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.mt1", "id=10");
 
 # Create a checksum diff in a table that we're going to ignore
 # when we sync.

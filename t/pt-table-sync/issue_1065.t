@@ -42,7 +42,6 @@ my @args = ('--sync-to-master', 'h=127.1,P=12346,u=msandbox,p=msandbox',
 # Issue 1065: mk-table-sync --algorithm seems to be case-sensitive
 # #############################################################################
 $sb->load_file('master', "t/pt-table-sync/samples/simple-tbls.sql");
-PerconaTest::wait_for_table($slave1_dbh, "test.it1", "id=10");
 
 $slave1_dbh->do("delete from test.it1 where id=1 limit 1");
 

@@ -50,7 +50,6 @@ my $rows;
 # #############################################################################
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
 
 $output = output(
    sub { $exit = pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
@@ -96,13 +95,6 @@ sub test_alter_table {
 
    if ( my $file = $args{file} ) {
       $sb->load_file('master', "$sample/$file");
-      sleep 0.25;
-      if ( my $wait = $args{wait} ) {
-         PerconaTest::wait_for_table($slave_dbh, @$wait);
-      }
-      else {
-         PerconaTest::wait_for_table($slave_dbh, $table, "`$pk_col`=$args{max_id}");
-      }
       $master_dbh->do("USE `$db`");
       $slave_dbh->do("USE `$db`");
    }
@@ -366,7 +358,6 @@ test_alter_table(
    table      => "pt_osc.country",
    pk_col     => "country_id",
    file       => "basic_with_fks.sql",
-   wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "rebuild_constraints",
@@ -383,9 +374,6 @@ test_alter_table(
    name       => "Basic FK rebuild --execute",
    table      => "pt_osc.country",
    pk_col     => "country_id",
-   # The previous test should not have modified the table.
-   # file       => "basic_with_fks.sql",
-   # wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "rebuild_constraints",
@@ -408,7 +396,6 @@ test_alter_table(
    table      => "pt_osc.country",
    pk_col     => "country_id",
    file       => "basic_with_fks.sql",
-   wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "drop_swap",
@@ -425,9 +412,6 @@ test_alter_table(
    name       => "Basic FK drop_swap --execute",
    table      => "pt_osc.country",
    pk_col     => "country_id",
-   # The previous test should not have modified the table.
-   # file       => "basic_with_fks.sql",
-   # wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "drop_swap",
@@ -451,7 +435,6 @@ test_alter_table(
    table       => "pt_osc.country",
    pk_col      => "country_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "drop_col",
    drop_col    => "last_update",
    check_fks   => "rebuild_constraints",
@@ -470,7 +453,6 @@ test_alter_table(
    table       => "pt_osc.address",
    pk_col      => "address_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "new_engine",
    new_engine  => "innodb",
    cmds        => [
@@ -489,7 +471,6 @@ test_alter_table(
    table       => "pt_osc.address",
    pk_col      => "address_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "drop_col",
    drop_col    => "last_update",
    cmds        => [
@@ -508,7 +489,6 @@ test_alter_table(
    table       => "pt_osc.city",
    pk_col      => "city_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "drop_col",
    drop_col    => "last_update",
    check_fks   => "rebuild_constraints",
@@ -556,7 +536,6 @@ SKIP: {
 # #############################################################################
 diag('Loading file and waiting for replication...');
 $sb->load_file('master', "$sample/basic_with_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.address", "address_id=5");
 
 # Specify --alter-foreign-keys-method for a table with no child tables.
 test_alter_table(
@@ -564,7 +543,6 @@ test_alter_table(
    table        => "pt_osc.country",
    pk_col       => "country_id",
    file         => "basic_with_fks.sql",
-   wait         => ["pt_osc.address", "address_id=5"],
    test_type    => "new_engine",
    new_engine   => "innodb",
    cmds         => [
@@ -592,8 +570,6 @@ sub test_table {
    my ($file, $name) = @args{qw(file name)};
 
    $sb->load_file('master', "t/lib/samples/osc/$file");
-   PerconaTest::wait_for_table($master_dbh, "osc.t", "id=5");
-   PerconaTest::wait_for_table($master_dbh, "osc.__new_t");
    $master_dbh->do('use osc');
    $master_dbh->do("DROP TABLE IF EXISTS osc.__new_t");
 

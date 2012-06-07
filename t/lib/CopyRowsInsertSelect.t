@@ -58,7 +58,6 @@ sub test_copy_table {
    my ($tbl, $col, $expect) = @args{qw(tbl col expect)};
 
    $sb->load_file("master", "t/lib/samples/osc/$tbl");
-   PerconaTest::wait_for_table($dbh, "osc.t", "id=5");
    $dbh->do("USE osc");
 
    $osc->copy(

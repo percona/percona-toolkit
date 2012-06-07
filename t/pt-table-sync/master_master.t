@@ -31,7 +31,6 @@ my $master2_dbh = $sb->get_dbh_for('master2');
 # Load some tables and data (on both, since they're master-master).
 $master1_dbh->do("CREATE DATABASE test");
 $sb->load_file("master1", "t/pt-table-sync/samples/before.sql");
-PerconaTest::wait_for_table($master2_dbh, "test.test1", "a=2");
 
 # Make master2 different from master1.  So master2 has the _correct_ data,
 # and the sync below will make master1 have that data too.
