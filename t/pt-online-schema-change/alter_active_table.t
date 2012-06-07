@@ -170,8 +170,8 @@ diag('Binlog position before altering table: ', $rows->{file}, '/', $rows->{posi
 start_query_table(qw(pt_osc t id));
 
 # While that's ^ happening, alter the table.
-$output = output(
-   sub { $exit = pt_online_schema_change::main(
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
       qw(--lock-wait-timeout 5),
       qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB)) },
@@ -188,7 +188,7 @@ is(
    $rows->{t}->{engine},
    'InnoDB',
    "New table ENGINE=InnoDB"
-) or warn Dumper($rows);
+) or BAIL_OUT("Something went terribly wrong");
 
 is(
    scalar keys %$rows,

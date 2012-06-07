@@ -56,7 +56,7 @@ PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='osc_user'")
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
 
-$output = output(
+($output, $exit_status) = full_output(
    sub { $exit_status = pt_online_schema_change::main(@args,
       "$master_dsn,u=osc_user,D=pt_osc,t=t", '--alter', 'drop column id',
       qw(--execute),

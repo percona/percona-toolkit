@@ -51,8 +51,8 @@ my $rows;
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
 
-$output = output(
-   sub { $exit = pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
       '--alter', 'drop column id') }
 );
 
@@ -139,11 +139,8 @@ sub test_alter_table {
       unshift @$orig_tbls, [$new_tbl];
    }
 
-   # TODO: output() is capturing if this call dies, so if a test
-   # causes it to die, the tests just stop without saying why, i.e.
-   # without re-throwing the error.
-   $output = output(
-      sub { $exit = pt_online_schema_change::main(
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(
          @args,
          '--print',
          "$dsn,D=$db,t=$tbl",
@@ -575,8 +572,8 @@ sub test_table {
 
    my $org_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
 
-   $output = output(
-      sub { $exit = pt_online_schema_change::main(@args,
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(@args,
          "$dsn,D=osc,t=t", qw(--execute --alter ENGINE=InnoDB)) },
       stderr => 1,
    );
