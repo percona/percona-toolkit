@@ -39,6 +39,10 @@ SKIP: {
    );
 
    my $ddl = $tp->get_create_table($dbh, 'sakila', 'actor');
+   if ( $ddl =~ m/TABLE "actor"/ ) { # It's ANSI quoting, compensate
+      $ddl = $tp->ansi_to_legacy($ddl);
+      $ddl = "$ddl ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8";
+   }
    ok(
       no_diff(
          "$ddl\n",
@@ -54,7 +58,7 @@ SKIP: {
    $ddl = $tp->get_create_table($dbh, qw(test t));
    like(
       $ddl,
-      qr/`a  b`\s+/,
+      qr/[`"]a  b[`"]\s+/,
       "Does not compress spaces (bug 932442)"
    );
 };
@@ -63,11 +67,6 @@ eval {
    $tp->parse( load_file('t/lib/samples/noquotes.sql') );
 };
 like($EVAL_ERROR, qr/quoting/, 'No quoting');
-
-eval {
-   $tp->parse( load_file('t/lib/samples/ansi_quotes.sql') );
-};
-like($EVAL_ERROR, qr/quoting/, 'ANSI quoting');
 
 $tbl = $tp->parse( load_file('t/lib/samples/t1.sql') );
 is_deeply(
@@ -144,6 +143,21 @@ is_deeply(
       charset        => 'latin1',
    },
    'Indexes with prefixes parse OK (fixes issue 1)'
+);
+
+is(
+   $tp->ansi_to_legacy( load_file('t/lib/samples/ansi.quoting.sql') ),
+   q{CREATE TABLE `t` (
+  `a` int(11) DEFAULT NULL,
+  `b``c` int(11) DEFAULT NULL,
+  `d"e` int(11) DEFAULT NULL,
+  `f
+g` int(11) DEFAULT NULL,
+  `h\` int(11) DEFAULT NULL,
+  `i\"` int(11) DEFAULT NULL
+)
+},
+   'ANSI quotes (with all kinds of dumb things) get translated correctly'
 );
 
 $tbl = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );
