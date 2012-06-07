@@ -111,7 +111,7 @@ is_deeply(
 SKIP: {
    skip "Cannot connect to sandbox master", 5 unless $dbh;
    skip "Sakila database is not loaded",    5
-      unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
+      unless @{ $dbh->selectall_arrayref("show databases like 'sakila'") };
 
    # Use mk-index-usage to create all the save results tables.
    # Must --databases foo so it won't find anything, else it will

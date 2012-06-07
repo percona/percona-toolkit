@@ -166,12 +166,12 @@ is_deeply(
 # #############################################################################
 @events = (
    {
-      arg         => 'insert into test.t values (-2,"hi2",2)',
+      arg         => "insert into test.t values (-2,'hi2',2)",
       fingerprint => 'insert into test.t values (?,?,?)',
       sampleno    => 1,
    },
    {
-      arg         => 'insert into test.t values (-2,"hi2",2)',
+      arg         => "insert into test.t values (-2,'hi2',2)",
       fingerprint => 'insert into test.t values (?,?,?)',
       sampleno    => 1,
    },
@@ -341,7 +341,7 @@ is(
 
 is_deeply(
    [ $cw->samples('insert into test.t values (?,?,?)') ],
-   [ '1', 'insert into test.t values (-2,"hi2",2)' ],
+   [ '1', "insert into test.t values (-2,'hi2',2)" ],
    'samples()'
 );
 

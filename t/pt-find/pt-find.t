@@ -47,7 +47,7 @@ like(
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 17
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    # ########################################################################
    # First, test actions: --exec*, print*, etc.

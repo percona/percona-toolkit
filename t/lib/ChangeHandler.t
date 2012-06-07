@@ -313,7 +313,7 @@ SKIP: {
 
    $master_dbh->do('DROP TABLE IF EXISTS test.issue_371');
    $master_dbh->do('CREATE TABLE test.issue_371 (id INT, foo varchar(16), bar char)');
-   $master_dbh->do('INSERT INTO test.issue_371 VALUES (1,"foo","a"),(2,"bar","b")');
+   $master_dbh->do("INSERT INTO test.issue_371 VALUES (1,'foo','a'),(2,'bar','b')");
 
    $ch->fetch_back($master_dbh);
 

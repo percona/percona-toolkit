@@ -234,7 +234,7 @@ SKIP: {
    # ########################################################################
    SKIP: {
       skip 'Sandbox master does not have the sakila database', 1
-         unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+         unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
       test_so(
          filters   => [qw(-d sakila)],

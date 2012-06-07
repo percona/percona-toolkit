@@ -130,7 +130,7 @@ is(
 # #############################################################################
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 21
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    my @chunks;
 
@@ -1115,7 +1115,7 @@ sub count_rows {
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 1
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    my @chunks;
 
@@ -1228,7 +1228,7 @@ ok( @chunks, "calculate_chunks picks a sane default for chunk_range" );
 # #############################################################################
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 1
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    my @chunks;
    $t = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );

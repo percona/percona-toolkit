@@ -214,7 +214,7 @@ is(
 # ############################################################################
 # a-y w/ chunk-size 5, even nibbles
 # ############################################################################
-$dbh->do('delete from test.t where c="z"');
+$dbh->do("delete from test.t where c='z'");
 my $all_rows = $dbh->selectall_arrayref('select * from test.t order by c');
 $ni = make_nibble_iter(
    db       => 'test',
@@ -254,7 +254,7 @@ is_deeply(
 # ############################################################################
 # single row table
 # ############################################################################
-$dbh->do('delete from test.t where c != "d"');
+$dbh->do("delete from test.t where c != 'd'");
 $ni = make_nibble_iter(
    db       => 'test',
    tbl      => 't',
