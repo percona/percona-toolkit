@@ -35,7 +35,6 @@ else {
 
 $sb->load_file('master1', 't/pt-upgrade/samples/001/tables.sql');
 $sb->load_file('master',  't/pt-upgrade/samples/001/tables.sql');
-$sb->wait_for_slaves();
 
 # Issue 747: Make mk-upgrade rewrite non-SELECT
 
