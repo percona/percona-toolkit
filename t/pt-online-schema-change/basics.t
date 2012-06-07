@@ -503,7 +503,7 @@ test_alter_table(
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 7
-   unless @{$master_dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+   unless @{$master_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    # This test will use the drop_swap method because the child tables
    # are large.  To prove this, change check_fks to rebuild_constraints

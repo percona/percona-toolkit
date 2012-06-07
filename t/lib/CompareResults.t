@@ -131,7 +131,7 @@ isa_ok($cr, 'CompareResults');
 );
 
 is_deeply(
-   $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectrow_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    ['dropme'],
    'checksum: temp table exists'
 );
@@ -145,7 +145,7 @@ is(
 );
 
 is_deeply(
-   $dbh1->selectall_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectall_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    [],
    'checksum: before_execute() drops temp table'
 );
@@ -199,7 +199,7 @@ is(
 );
 
 is_deeply(
-   $dbh1->selectall_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectall_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    [],
    'checksum: after_execute() drops temp table'
 );
@@ -335,7 +335,7 @@ isa_ok($cr, 'CompareResults');
 );
 
 is_deeply(
-   $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectrow_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    ['dropme'],
    'rows: temp table exists'
 );
@@ -349,7 +349,7 @@ is(
 );
 
 is_deeply(
-   $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectrow_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    ['dropme'],
    "rows: before_execute() doesn't drop temp table"
 );
@@ -455,7 +455,7 @@ is_deeply(
    },
 );
 
-$dbh2->do('update test.t2 set c="should be c" where i=3');
+$dbh2->do("update test.t2 set c='should be c' where i=3");
 
 is_deeply(
    $dbh2->selectrow_arrayref('select c from test.t2 where i=3'),
@@ -517,8 +517,8 @@ is_deeply(
 # Test max-different-rows.
 # #############################################################################
 $cr->reset();
-$dbh2->do('update test.t2 set c="should be a" where i=1');
-$dbh2->do('update test.t2 set c="should be b" where i=2');
+$dbh2->do("update test.t2 set c='should be a' where i=1");
+$dbh2->do("update test.t2 set c='should be b' where i=2");
 proc('before_execute');
 proc('execute');
 

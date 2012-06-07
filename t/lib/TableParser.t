@@ -30,7 +30,7 @@ my $sample = "t/lib/samples/tables/";
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $dbh;
    skip 'Sandbox master does not have the sakila database', 2
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    is(
       $tp->get_create_table($dbh, 'sakila', 'FOO'),
@@ -702,7 +702,7 @@ SKIP: {
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 2
-      unless $dbh && @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless $dbh && @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
    is_deeply(
       [$tp->find_possible_keys(
          $dbh, 'sakila', 'film_actor', $q, 'film_id > 990  and actor_id > 1')],

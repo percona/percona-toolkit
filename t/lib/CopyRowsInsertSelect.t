@@ -35,7 +35,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to MySQL';
   
 }
-elsif ( !@{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')} ) {
+elsif ( !@{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")} ) {
    plan skip_all => "Sandbox master does not have the sakila database";
 }
 else {

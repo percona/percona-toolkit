@@ -35,7 +35,7 @@ $sb->create_dbs($dbh, [qw(test)]);
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 1
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    $output = `$cmd --source F=$cnf,h=127.1,D=sakila,t=film --no-check-charset  --where "film_id < 100" --purge --dry-run --port 12345 | diff $trunk/t/pt-archiver/samples/issue-248.txt -`;
    is(
@@ -87,8 +87,8 @@ SKIP: {
    $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 
    # Change passwords so defaults files won't work.
-   $dbh->do('SET PASSWORD FOR msandbox = PASSWORD("foo")');
-   $dbh2->do('SET PASSWORD FOR msandbox = PASSWORD("foo")');
+   $dbh->do("SET PASSWORD FOR msandbox = PASSWORD('foo')");
+   $dbh2->do("SET PASSWORD FOR msandbox = PASSWORD('foo')");
 
    $dbh2->do('TRUNCATE TABLE test.table_2');
 

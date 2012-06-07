@@ -340,7 +340,7 @@ sub is_master_of {
       or die "The server specified as a slave is not a slave";
    my @connected     = $self->get_connected_slaves($master)
       or die "The server specified as a master has no connected slaves";
-   my (undef, $port) = $master->selectrow_array('SHOW VARIABLES LIKE "port"');
+   my (undef, $port) = $master->selectrow_array("SHOW VARIABLES LIKE 'port'");
 
    if ( $port != $slave_status->{master_port} ) {
       die "The slave is connected to $slave_status->{master_port} "

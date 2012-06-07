@@ -45,6 +45,9 @@ make_sandbox() {
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
       echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
    fi
+   if [ -n "$MODE_ANSI" ]; then
+      echo "sql_mode=ansi" >> /tmp/$port/my.sandbox.cnf
+   fi
 
    # If the sandbox is a slave, set it read_only.
    if [ "$type" = "slave" ]; then
