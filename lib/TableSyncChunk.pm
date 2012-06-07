@@ -182,7 +182,7 @@ sub set_checksum_queries {
 
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
-   my $sql = 'SET @crc := "", @cnt := 0';
+   my $sql = q{SET @crc := '', @cnt := 0};
    PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;

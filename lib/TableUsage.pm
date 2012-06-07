@@ -870,7 +870,27 @@ sub _explain_query {
          . "Message: " . ($warning->{message} || "") . "\n";
    }
 
-   return $warning->{message};
+   return $self->ansi_to_legacy($warning->{message});
+}
+
+# Translates ANSI quoting into legacy backtick-quoting.
+# TODO: use TableParser::ansi_to_legacy instead (this code is copy/paste)
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $sql) = @_;
+   $sql =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $sql;
+}
+
+# Translates a single string from ANSI quoting into legacy quoting by
+# un-doubling embedded double-double quotes, doubling backticks, and replacing
+# the delimiters. TODO: this is a copy-paste of TableParser.pm's code
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _get_tables {

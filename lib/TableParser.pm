@@ -412,7 +412,8 @@ sub get_keys {
       # will report its index as USING HASH even when this is not supported.
       # The true type should be BTREE.  See
       # http://bugs.mysql.com/bug.php?id=22632
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      # If ANSI quoting is in effect, we may not know the engine at all.
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
@@ -454,7 +455,7 @@ sub get_keys {
       };
 
       # Find clustered key (issue 295).
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
