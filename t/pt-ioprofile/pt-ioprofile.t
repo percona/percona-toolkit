@@ -48,13 +48,12 @@ like(
 );
 
 # If the system is really slow, it may take a second to process the files
-# and then clean up all the temp stuff.  In any case, the default run-time
-# is 30s so it should be way less than that.
+# and then clean up all the temp stuff. We'll give it a few seconds benefit of the doubt.
 cmp_ok(
    $t1 - $t0,
    '<',
-   5,
-   "Runs for --run-time"
+   6,
+   "Runs for --run-time, more or less"
 );
 
 # #############################################################################
