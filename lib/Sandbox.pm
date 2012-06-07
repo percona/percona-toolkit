@@ -374,6 +374,28 @@ sub verify_test_data {
    return;
 }
 
+sub dsn_for {
+   my ($self, $host) = @_;
+   _check_server($host);
+   return "h=127.1,P=$port_for{$host},u=msandbox,p=msandbox";
+}
+
+sub genlog {
+   my ($self, $host) = @_;
+   _check_server($host);
+   return "/tmp/$port_for{$host}/data/genlog";
+}
+
+sub clear_genlogs {
+   my ($self, @hosts) = @_;
+   @hosts = qw(master slave1 slave2) unless scalar @hosts;
+   foreach my $host ( @hosts ) {
+      PTDEVDEBUG && _d('Clearing general log on', $host);
+      Test::More::diag(`echo > /tmp/$port_for{$host}/data/genlog`);
+   }
+   return;
+}
+
 1;
 }
 # ###########################################################################

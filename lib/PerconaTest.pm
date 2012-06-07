@@ -753,6 +753,27 @@ sub full_output {
    return ($output, $status);
 }
 
+sub tables_used {
+   my ($file) = @_;
+   local $INPUT_RECORD_SEPARATOR = '';
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   my %tables;
+   while ( defined(my $chunk = <$fh>) ) {
+      map {
+         my $db_tbl = $_;
+         $db_tbl =~ s/^\s*`?//;  # strip leading space and `
+         $db_tbl =~ s/\s*`?$//;  # strip trailing space and `
+         $db_tbl =~ s/`\.`/./;   # strip inner `.`
+         $tables{$db_tbl} = 1;
+      }
+      grep {
+         m/(?:\w\.\w|`\.`)/  # only db.tbl, not just db
+      }
+      $chunk =~ m/(?:FROM|INTO|UPDATE)\s+(\S+)/gi;
+   }
+   return [ sort keys %tables ];
+}
+
 1;
 }
 # ###########################################################################
