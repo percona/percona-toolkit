@@ -86,6 +86,7 @@ $output = output(
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
+$sb->wait_for_slaves();
 
 is(
    $exit_status,
@@ -132,6 +133,7 @@ $output = output(
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
+$sb->wait_for_slaves();
 
 is(
    $exit_status,
