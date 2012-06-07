@@ -25,7 +25,12 @@ my $master_dbh = $sb->get_dbh_for('master');
 my $slave_dbh  = $sb->get_dbh_for('slave1');
 
 my $mysqlbinlog = `which mysqlbinlog`;
-chomp $mysqlbinlog if $mysqlbinlog;
+if ( $mysqlbinlog ) {
+   chomp $mysqlbinlog;
+}
+elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
+   $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
+}
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
