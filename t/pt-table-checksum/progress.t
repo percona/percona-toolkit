@@ -63,7 +63,7 @@ my $scripts = "$trunk/t/pt-table-checksum/scripts/";
 $master_dbh->do('drop table if exists percona.checksums');
 
 # Must not be lagging.
-wait_until_no_lag($slave1_dbh, $slave2_dbh);
+$sb->wait_for_slaves();
 
 # This big fancy command waits until it sees the checksum for sakila.city
 # in the repl table on the master, then it stops slave2 for 2 seconds,
@@ -96,7 +96,7 @@ is(
 );
 
 # Now wait until the SQL thread is started again.
-wait_until_slave_running($slave1_dbh, $slave2_dbh);
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Wait for --replicate table to replicate.
@@ -130,7 +130,7 @@ like(
 );
 
 $slave2_dbh->do("START SLAVE");
-wait_until_slave_running($slave2_dbh);
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Done.

@@ -246,42 +246,6 @@ sub wait_until {
    return 0;
 }
 
-sub wait_until_slave_running {
-   my (@dbhs) = @_;
-   foreach my $dbh (@dbhs) {
-      PTDEVDEBUG && _d('Waiting for slaves to be running');
-      wait_until(
-         sub {
-            my $row = $dbh->selectrow_hashref('SHOW SLAVE STATUS');
-            my $sqlt = $row->{slave_sql_running} || $row->{Slave_SQL_Running} || 'NULL';
-            my $iot  = $row->{Slave_IO_Running}  || $row->{slave_io_running}  || 'NULL';
-            PTDEVDEBUG && _d('Slave SQL:', $sqlt, 'Slave IO:', $iot);
-            return $sqlt eq 'Yes' && $iot eq 'Yes';
-         }
-      );
-   }
-}
-
-sub wait_until_no_lag {
-   my (@dbhs) = @_;
-   foreach my $dbh (@dbhs) {
-      PTDEVDEBUG && _d('Waiting for no slave lag');
-      wait_until(  # slaves aren't lagging
-         sub {
-            my $row = $dbh->selectrow_hashref('SHOW SLAVE STATUS');
-            my $lag = exists $row->{Seconds_Behind_Master}
-                    ? $row->{Seconds_Behind_Master}
-                    : $row->{seconds_behind_master};
-            PTDEVDEBUG && _d('Slave lag:', $lag);
-            if ( !defined $lag ) {
-               BAIL_OUT("Slave is stopped: " . Dumper($row));
-            }
-            return $lag ? 0 : 1;
-         }
-      );
-   }
-}
-
 # Wait t seconds for code to return.
 sub wait_for {
    my ( $code, $t ) = @_;
