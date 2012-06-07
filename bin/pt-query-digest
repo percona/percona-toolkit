@@ -14152,7 +14152,7 @@ Query fingerprinting accommodates a great many special cases, which have proven
 necessary in the real world.  For example, an IN list with 5 literals is really
 equivalent to one with 4 literals, so lists of literals are collapsed to a
 single one.  If you want to understand more about how and why all of these cases
-are handled, please review the test cases in the Subversion repository.  If you
+are handled, please review the test cases in the Launchpad repository.  If you
 find something that is not fingerprinted properly, please submit a bug report
 with a reproducible test case.  Here is a list of transformations during
 fingerprinting, which might not be exhaustive:
