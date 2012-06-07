@@ -5444,8 +5444,10 @@ sub main {
    );
 
    local $SIG{__DIE__} = sub {
+      return if $EXCEPTIONS_BEING_CAUGHT;
       local $EVAL_ERROR = $_[0];
       undef $cleanup;
+      die @_;
    };
 
    # The last cleanup task is to report whether or not the orig table
@@ -5626,7 +5628,7 @@ sub main {
       }
    };
 
-   eval {
+   my @trigger_names = eval {
       create_triggers(
          orig_tbl     => $orig_tbl,
          new_tbl      => $new_tbl,
@@ -5639,6 +5641,21 @@ sub main {
    if ( $EVAL_ERROR ) {
       die "Error creating triggers: $EVAL_ERROR\n";
    };
+
+   if ( @trigger_names ) {
+      for my $slave (@$slaves) {
+         PTDEBUG && _d('Waiting until', $slave->name(),
+                        'replicates the triggers');
+         my $sql = join " ", q{SHOW TRIGGERS FROM}, $q->quote($new_tbl->{db}),
+                  q{WHERE}, join(" OR ", map {
+                        "`Trigger` = " . $q->quote_val($_)
+                     } @trigger_names);
+         my $triggers = scalar(@trigger_names);
+         PTDEBUG && _d($sql);
+         sleep 0.5 while
+               @{$slave->dbh()->selectall_arrayref($sql)} == $triggers;
+      }
+   }
 
    # #####################################################################
    # Step 4: Copy rows.
@@ -6608,6 +6625,7 @@ sub create_triggers {
       ['ins', $insert_trigger],
    );
 
+   my @trigger_names;
    @drop_trigger_sqls = ();
    foreach my $trg ( @triggers ) {
       my ($name, $sql) = @$trg;
@@ -6620,6 +6638,7 @@ sub create_triggers {
       # Only save the trigger once it has been created
       # (or faked to be created) so if the 2nd trigger
       # fails to create, we know to only drop the 1st.
+      push @trigger_names, "${prefix}_$name";
       push @drop_trigger_sqls,
          "DROP TRIGGER IF EXISTS "
          . $q->quote($orig_tbl->{db}, "${prefix}_$name") . ";";
@@ -6629,7 +6648,7 @@ sub create_triggers {
       print "Created triggers OK.\n";
    }
 
-   return;
+   return @trigger_names;
 }
 
 sub drop_triggers {
