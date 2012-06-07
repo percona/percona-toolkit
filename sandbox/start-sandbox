@@ -145,7 +145,7 @@ elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
 else
    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
-version=`$mysqld -V | awk '{print $3}' | cut -d. -f 1,2`;
+version=`$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
 fi
