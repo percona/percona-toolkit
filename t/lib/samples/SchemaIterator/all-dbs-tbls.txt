@@ -328,6 +328,13 @@ CREATE TABLE `checksums` (
   PRIMARY KEY (`db_tbl`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 
+percona_test.sentinel
+CREATE TABLE `sentinel` (
+  `id` int(11) NOT NULL,
+  `ping` varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+
 sakila.actor
 CREATE TABLE `actor` (
   `actor_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
