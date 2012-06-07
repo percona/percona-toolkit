@@ -33,8 +33,9 @@ else {
    plan tests => 5;
 }
 
-$sb->load_file('master', 't/pt-upgrade/samples/001/tables.sql');
 $sb->load_file('master1', 't/pt-upgrade/samples/001/tables.sql');
+$sb->load_file('master',  't/pt-upgrade/samples/001/tables.sql');
+$sb->wait_for_slaves();
 
 # Issue 747: Make mk-upgrade rewrite non-SELECT
 
@@ -43,8 +44,9 @@ my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345 P=12348 -u msandbox -p msandbox
 my $c1 = $dbh1->selectrow_arrayref('checksum table test.t')->[1];
 my $c2 = $dbh2->selectrow_arrayref('checksum table test.t')->[1];
 
-ok(
-   $c1 == $c2,
+is(
+   $c1,
+   $c2,
    'Table checksums identical'
 );
 
@@ -59,13 +61,15 @@ ok(
 my $c1_after = $dbh1->selectrow_arrayref('checksum table test.t')->[1];
 my $c2_after = $dbh2->selectrow_arrayref('checksum table test.t')->[1];
 
-ok(
-   $c1_after == $c1,
+is(
+   $c1_after,
+   $c1,
    'Table on host1 not changed'
 );
 
-ok(
-   $c2_after == $c2,
+is(
+   $c2_after,
+   $c2,
    'Table on host2 not changed'
 );
 
