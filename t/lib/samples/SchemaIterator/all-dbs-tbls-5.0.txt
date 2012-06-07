@@ -246,7 +246,7 @@ CREATE TABLE `checksums` (
 percona_test.sentinel
 CREATE TABLE `sentinel` (
   `id` int(11) NOT NULL,
-  `a` int(10) unsigned default NULL,
+  `ping` varchar(64) NOT NULL default '',
   PRIMARY KEY  (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 
