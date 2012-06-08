@@ -5642,21 +5642,6 @@ sub main {
       die "Error creating triggers: $EVAL_ERROR\n";
    };
 
-   if ( @trigger_names ) {
-      for my $slave (@$slaves) {
-         PTDEBUG && _d('Waiting until', $slave->name(),
-                        'replicates the triggers');
-         my $sql = join " ", q{SHOW TRIGGERS FROM}, $q->quote($new_tbl->{db}),
-                  q{WHERE}, join(" OR ", map {
-                        "`Trigger` = " . $q->quote_val($_)
-                     } @trigger_names);
-         my $triggers = scalar(@trigger_names);
-         PTDEBUG && _d($sql);
-         sleep 0.5 while
-               @{$slave->dbh()->selectall_arrayref($sql)} == $triggers;
-      }
-   }
-
    # #####################################################################
    # Step 4: Copy rows.
    # #####################################################################
