@@ -48,7 +48,7 @@ my $qv = new QueryReview(
    dbh        => $dbh,
    db_tbl     => '`test`.`query_review`',
    tbl_struct => $tbl_struct,
-   ts_default => '"2009-01-01"',
+   ts_default => "'2009-01-01'",
    quoter     => $q,
 );
 

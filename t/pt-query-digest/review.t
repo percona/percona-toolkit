@@ -52,10 +52,10 @@ $cmd = "${run_with}slow006.txt --create-review-table --review "
 $output = `$cmd >/dev/null 2>&1`;
 
 my ($table) = $dbh->selectrow_array(
-   'show tables from test like "query_review"');
+   "show tables from test like 'query_review'");
 is($table, 'query_review', '--create-review');
 ($table) = $dbh->selectrow_array(
-   'show tables from test like "query_review_history"');
+   "show tables from test like 'query_review_history'");
 is($table, 'query_review_history', '--create-review-history-table');
 
 $output = 'foo'; # clear previous test results

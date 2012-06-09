@@ -18,6 +18,8 @@ set -u
 
 set -u
 
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
@@ -33,6 +35,10 @@ warn() {
 die() {
    warn "$*"
    exit 1
+}
+
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
 }
 
 # ###########################################################################
@@ -486,8 +492,16 @@ _lsof() {
    fi
 }
 
+
+
 _which() {
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
 }
 
 # ###########################################################################

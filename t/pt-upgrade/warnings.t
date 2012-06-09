@@ -45,13 +45,13 @@ my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12348 -
 
 $dbh2->do('set global query_cache_size=1000000');
 
-my $qc = $dbh2->selectrow_arrayref('show variables like "query_cache_size"')->[1];
+my $qc = $dbh2->selectrow_arrayref("show variables like 'query_cache_size'")->[1];
 ok(
    $qc > 999000,
    'Query size'
 );
 
-$qc = $dbh2->selectrow_arrayref('show variables like "query_cache_type"')->[1];
+$qc = $dbh2->selectrow_arrayref("show variables like 'query_cache_type'")->[1];
 is(
    $qc,
    'ON',
@@ -84,7 +84,7 @@ like(
 );
 
 $dbh2->do('set global query_cache_size=0');
-$qc = $dbh2->selectrow_arrayref('show variables like "query_cache_size"')->[1];
+$qc = $dbh2->selectrow_arrayref("show variables like 'query_cache_size'")->[1];
 ok(
    $qc == 0,
    'Query size'

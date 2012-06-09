@@ -37,7 +37,7 @@ $sb->create_dbs($dbh1, ['test']);
 # Issue 386: Make mk-deadlock-logger auto-create the --dest table
 # #############################################################################
 is_deeply(
-   $dbh1->selectall_arrayref('show tables from `test` like "issue_386"'),
+   $dbh1->selectall_arrayref(q{show tables from `test` like 'issue_386'}),
    [],
    'Deadlocks table does not exit (issue 386)'
 );
@@ -45,7 +45,7 @@ is_deeply(
 `$cmd --dest D=test,t=issue_386 --run-time 1s --interval 1s --create-dest-table`;
 
 is_deeply(
-   $dbh1->selectall_arrayref('show tables from `test` like "issue_386"'),
+   $dbh1->selectall_arrayref(q{show tables from `test` like 'issue_386'}),
    [['issue_386']],
    'Deadlocks table created with --create-dest-table (issue 386)'
 );

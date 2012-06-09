@@ -31,7 +31,7 @@ elsif ( !$slave1_dbh ) {
 elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
-elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
+elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {

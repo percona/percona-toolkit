@@ -65,7 +65,7 @@ like(
 my $ddl = $master_dbh->selectrow_arrayref("show create table pt_osc.t");
 like(
    $ddl->[1],
-   qr/^\s+`id`/m,
+   qr/^\s+["`]id["`]/m,
    "Did not alter the table"
 );
 
@@ -196,7 +196,7 @@ sub test_alter_table {
    is(
       $orig_auto_inc,
       $new_auto_inc,
-      "$name AUTO_INCREMENT=$orig_auto_inc"
+      "$name AUTO_INCREMENT=" . ($orig_auto_inc || '<unknown>')
    ) or $fail = 1;
 
    # Check if the ALTER was actually done.
