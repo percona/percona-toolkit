@@ -43,7 +43,7 @@ my $output;
 $sb->create_dbs($dbh, [qw(test)]);
 $sb->load_file('master', 't/lib/samples/tables/issue-388.sql', 'test');
 
-$dbh->do('insert into test.foo values (null, "john, smith")');
+$dbh->do("insert into test.foo values (null, 'john, smith')");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d test)) },

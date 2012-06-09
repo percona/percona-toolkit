@@ -1446,7 +1446,7 @@ sub get_dbh {
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
       'Connection info:',      $dbh->{mysql_hostinfo},
       'Character set info:',   Dumper($dbh->selectall_arrayref(
-                     'SHOW VARIABLES LIKE "character_set%"', { Slice => {}})),
+                     "SHOW VARIABLES LIKE 'character_set%'", { Slice => {}})),
       '$DBD::mysql::VERSION:', $DBD::mysql::VERSION,
       '$DBI::VERSION:',        $DBI::VERSION,
    );
@@ -1860,9 +1860,11 @@ sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
 
-   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
-      die "Cannot parse table definition; is ANSI quoting "
-         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
    }
 
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
@@ -2071,7 +2073,7 @@ sub get_keys {
       my $key_ddl = $key;
       PTDEBUG && _d('Parsed key:', $key_ddl);
 
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
@@ -2109,7 +2111,7 @@ sub get_keys {
          ddl          => $key_ddl,
       };
 
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -2190,6 +2192,21 @@ sub get_table_status {
       \%tbl;
    } @tables;
    return @tables;
+}
+
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _d {
@@ -4113,7 +4130,7 @@ sub optimize_xor {
 
    do { # Try different positions till sliced result equals non-sliced.
       PTDEBUG && _d('Trying slice', $opt_slice);
-      $dbh->do('SET @crc := "", @cnt := 0');
+      $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->make_xor_slices(
          query     => "\@crc := $func('a')",
          crc_wid   => $crc_wid,
@@ -4469,7 +4486,7 @@ sub set_checksum_queries {
 
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
-   my $sql = 'SET @crc := "", @cnt := 0';
+   my $sql = q{SET @crc := '', @cnt := 0};
    PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;
@@ -4778,7 +4795,7 @@ sub set_checksum_queries {
 
 sub prepare_sync_cycle {
    my ( $self, $host ) = @_;
-   my $sql = 'SET @crc := "", @cnt := 0';
+   my $sql = q{SET @crc := '', @cnt := 0};
    PTDEBUG && _d($sql);
    $host->{dbh}->do($sql);
    return;
@@ -6190,7 +6207,7 @@ sub is_master_of {
       or die "The server specified as a slave is not a slave";
    my @connected     = $self->get_connected_slaves($master)
       or die "The server specified as a master has no connected slaves";
-   my (undef, $port) = $master->selectrow_array('SHOW VARIABLES LIKE "port"');
+   my (undef, $port) = $master->selectrow_array("SHOW VARIABLES LIKE 'port'");
 
    if ( $port != $slave_status->{master_port} ) {
       die "The slave is connected to $slave_status->{master_port} "
@@ -8856,13 +8873,13 @@ sub get_cxn {
 
    # Disable auto-increment on zero (bug #1919897).
    $sql = '/*!40101 SET @@SQL_MODE := CONCAT(@@SQL_MODE, '
-        . '",NO_AUTO_VALUE_ON_ZERO")*/';
+        . "',NO_AUTO_VALUE_ON_ZERO')*/";
    PTDEBUG && _d($dbh, $sql);
    $dbh->do($sql);
    
    # Ensure statement-based replication.
    # http://code.google.com/p/maatkit/issues/detail?id=95
-   $sql = '/*!50105 SET @@binlog_format="STATEMENT"*/';
+   $sql = q{/*!50105 SET @@binlog_format='STATEMENT'*/};
    PTDEBUG && _d($dbh, $sql);
    $dbh->do($sql);
 

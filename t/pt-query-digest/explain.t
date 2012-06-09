@@ -56,7 +56,7 @@ ok(
 );
 
 # Normalish output from EXPLAIN.
-$dbh->do('insert into trees values ("apple"),("orange"),("banana")');
+$dbh->do("insert into trees values ('apple'),('orange'),('banana')");
 
 ok(
    no_diff(

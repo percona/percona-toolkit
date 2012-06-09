@@ -302,7 +302,7 @@ sub get_dbh {
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
       'Connection info:',      $dbh->{mysql_hostinfo},
       'Character set info:',   Dumper($dbh->selectall_arrayref(
-                     'SHOW VARIABLES LIKE "character_set%"', { Slice => {}})),
+                     "SHOW VARIABLES LIKE 'character_set%'", { Slice => {}})),
       '$DBD::mysql::VERSION:', $DBD::mysql::VERSION,
       '$DBI::VERSION:',        $DBI::VERSION,
    );
@@ -1320,7 +1320,7 @@ sub _parse_size {
       $opt->{value} = ($pre || '') . $num;
    }
    else {
-      $self->save_error("Invalid size for --$opt->{long}");
+      $self->save_error("Invalid size for --$opt->{long}: $val");
    }
    return;
 }
@@ -1465,6 +1465,48 @@ sub join_quote {
    return $db ? "$db.$tbl" : $tbl;
 }
 
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
 1;
 }
 # ###########################################################################
@@ -1494,20 +1536,81 @@ sub new {
 
 sub parse {
    my ( $self, $str ) = @_;
-   my $result = sprintf('%03d%03d%03d', $str =~ m/(\d+)/g);
+   my @version_parts = $str =~ m/(\d+)/g;
+   @version_parts = map { $_ || 0 } @version_parts[0..2];
+   my $result = sprintf('%03d%03d%03d', @version_parts);
    PTDEBUG && _d($str, 'parses to', $result);
+   return $result;
+}
+
+sub version_cmp {
+   my ($self, $dbh, $target, $cmp) = @_;
+   my $version = $self->version($dbh);
+   my $result;
+
+   if ( $cmp eq 'ge' ) {
+      $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'gt' ) {
+      $result = $self->{$dbh} gt $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'eq' ) {
+      $result = $self->{$dbh} eq $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'ne' ) {
+      $result = $self->{$dbh} ne $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'lt' ) {
+      $result = $self->{$dbh} lt $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'le' ) {
+      $result = $self->{$dbh} le $self->parse($target) ? 1 : 0;
+   }
+   else {
+      die "Asked for an unknown comparizon: $cmp"
+   }
+
+   PTDEBUG && _d($self->{$dbh}, $cmp, $target, ':', $result);
    return $result;
 }
 
 sub version_ge {
    my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'ge');
+}
+
+sub version_gt {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'gt');
+}
+
+sub version_eq {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'eq');
+}
+
+sub version_ne {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'ne');
+}
+
+sub version_lt {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'lt');
+}
+
+sub version_le {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'le');
+}
+
+sub version {
+   my ( $self, $dbh ) = @_;
    if ( !$self->{$dbh} ) {
       $self->{$dbh} = $self->parse(
          $dbh->selectrow_array('SELECT VERSION()'));
    }
-   my $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
-   PTDEBUG && _d($self->{$dbh}, 'ge', $target, ':', $result);
-   return $result;
+   return $self->{$dbh};
 }
 
 sub innodb_version {
@@ -1585,23 +1688,64 @@ sub new {
    return bless $self, $class;
 }
 
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
+
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
+      return;
+   }
+
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
+
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
+   }
+
+   return $href->{$key};
+}
+
 sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
-   if ( ref $ddl eq 'ARRAY' ) {
-      if ( lc $ddl->[0] eq 'table' ) {
-         $ddl = $ddl->[1];
-      }
-      else {
-         return {
-            engine => 'VIEW',
-         };
-      }
-   }
 
-   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
-      die "Cannot parse table definition; is ANSI quoting "
-         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
    }
 
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
@@ -1810,7 +1954,7 @@ sub get_keys {
       my $key_ddl = $key;
       PTDEBUG && _d('Parsed key:', $key_ddl);
 
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
@@ -1848,7 +1992,7 @@ sub get_keys {
          ddl          => $key_ddl,
       };
 
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -1904,41 +2048,46 @@ sub remove_auto_increment {
    return $ddl;
 }
 
-sub remove_secondary_indexes {
-   my ( $self, $ddl ) = @_;
-   my $sec_indexes_ddl;
-   my $tbl_struct = $self->parse($ddl);
-
-   if ( ($tbl_struct->{engine} || '') =~ m/InnoDB/i ) {
-      my $clustered_key = $tbl_struct->{clustered_key};
-      $clustered_key  ||= '';
-
-      my @sec_indexes   = map {
-         my $key_def = $_->{ddl};
-         $key_def =~ s/([\(\)])/\\$1/g;
-         $ddl =~ s/\s+$key_def//i;
-
-         my $key_ddl = "ADD $_->{ddl}";
-         $key_ddl   .= ',' unless $key_ddl =~ m/,$/;
-         $key_ddl;
-      }
-      grep { $_->{name} ne $clustered_key }
-      values %{$tbl_struct->{keys}};
-      PTDEBUG && _d('Secondary indexes:', Dumper(\@sec_indexes));
-
-      if ( @sec_indexes ) {
-         $sec_indexes_ddl = join(' ', @sec_indexes);
-         $sec_indexes_ddl =~ s/,$//;
-      }
-
-      $ddl =~ s/,(\n\) )/$1/s;
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
    }
-   else {
-      PTDEBUG && _d('Not removing secondary indexes from',
-         $tbl_struct->{engine}, 'table');
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
    }
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
+}
 
-   return $ddl, $sec_indexes_ddl, $tbl_struct;
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _d {
@@ -1953,311 +2102,6 @@ sub _d {
 }
 # ###########################################################################
 # End TableParser package
-# ###########################################################################
-
-# ###########################################################################
-# MySQLDump package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MySQLDump.pm
-#   t/lib/MySQLDump.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package MySQLDump;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-( our $before = <<'EOF') =~ s/^   //gm;
-   /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-   /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-   /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-   /*!40101 SET NAMES utf8 */;
-   /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-   /*!40103 SET TIME_ZONE='+00:00' */;
-   /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-   /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-   /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-   /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-EOF
-
-( our $after = <<'EOF') =~ s/^   //gm;
-   /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-   /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-   /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-   /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-   /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-   /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-   /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-   /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-EOF
-
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = {
-      cache => 0,  # Afaik no script uses this cache any longer because
-   };
-   return bless $self, $class;
-}
-
-sub dump {
-   my ( $self, $dbh, $quoter, $db, $tbl, $what ) = @_;
-
-   if ( $what eq 'table' ) {
-      my $ddl = $self->get_create_table($dbh, $quoter, $db, $tbl);
-      return unless $ddl;
-      if ( $ddl->[0] eq 'table' ) {
-         return $before
-            . 'DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . ";\n"
-            . $ddl->[1] . ";\n";
-      }
-      else {
-         return 'DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . ";\n"
-            . '/*!50001 DROP VIEW IF EXISTS '
-            . $quoter->quote($tbl) . "*/;\n/*!50001 "
-            . $self->get_tmp_table($dbh, $quoter, $db, $tbl) . "*/;\n";
-      }
-   }
-   elsif ( $what eq 'triggers' ) {
-      my $trgs = $self->get_triggers($dbh, $quoter, $db, $tbl);
-      if ( $trgs && @$trgs ) {
-         my $result = $before . "\nDELIMITER ;;\n";
-         foreach my $trg ( @$trgs ) {
-            if ( $trg->{sql_mode} ) {
-               $result .= qq{/*!50003 SET SESSION SQL_MODE='$trg->{sql_mode}' */;;\n};
-            }
-            $result .= "/*!50003 CREATE */ ";
-            if ( $trg->{definer} ) {
-               my ( $user, $host )
-                  = map { s/'/''/g; "'$_'"; }
-                    split('@', $trg->{definer}, 2);
-               $result .= "/*!50017 DEFINER=$user\@$host */ ";
-            }
-            $result .= sprintf("/*!50003 TRIGGER %s %s %s ON %s\nFOR EACH ROW %s */;;\n\n",
-               $quoter->quote($trg->{trigger}),
-               @{$trg}{qw(timing event)},
-               $quoter->quote($trg->{table}),
-               $trg->{statement});
-         }
-         $result .= "DELIMITER ;\n\n/*!50003 SET SESSION SQL_MODE=\@OLD_SQL_MODE */;\n\n";
-         return $result;
-      }
-      else {
-         return undef;
-      }
-   }
-   elsif ( $what eq 'view' ) {
-      my $ddl = $self->get_create_table($dbh, $quoter, $db, $tbl);
-      return '/*!50001 DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
-         . '/*!50001 DROP VIEW IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
-         . '/*!50001 ' . $ddl->[1] . "*/;\n";
-   }
-   else {
-      die "You didn't say what to dump.";
-   }
-}
-
-sub _use_db {
-   my ( $self, $dbh, $quoter, $new ) = @_;
-   if ( !$new ) {
-      PTDEBUG && _d('No new DB to use');
-      return;
-   }
-   my $sql = 'USE ' . $quoter->quote($new);
-   PTDEBUG && _d($dbh, $sql);
-   $dbh->do($sql);
-   return;
-}
-
-sub get_create_table {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   if ( !$self->{cache} || !$self->{tables}->{$db}->{$tbl} ) {
-      my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-         . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-         . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      PTDEBUG && _d($sql);
-      eval { $dbh->do($sql); };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-      $self->_use_db($dbh, $quoter, $db);
-      $sql = "SHOW CREATE TABLE " . $quoter->quote($db, $tbl);
-      PTDEBUG && _d($sql);
-      my $href;
-      eval { $href = $dbh->selectrow_hashref($sql); };
-      if ( $EVAL_ERROR ) {
-         warn "Failed to $sql.  The table may be damaged.\nError: $EVAL_ERROR";
-         return;
-      }
-
-      $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      PTDEBUG && _d($sql);
-      $dbh->do($sql);
-      my ($key) = grep { m/create table/i } keys %$href;
-      if ( $key ) {
-         PTDEBUG && _d('This table is a base table');
-         $self->{tables}->{$db}->{$tbl} = [ 'table', $href->{$key} ];
-      }
-      else {
-         PTDEBUG && _d('This table is a view');
-         ($key) = grep { m/create view/i } keys %$href;
-         $self->{tables}->{$db}->{$tbl} = [ 'view', $href->{$key} ];
-      }
-   }
-   return $self->{tables}->{$db}->{$tbl};
-}
-
-sub get_columns {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   PTDEBUG && _d('Get columns for', $db, $tbl);
-   if ( !$self->{cache} || !$self->{columns}->{$db}->{$tbl} ) {
-      $self->_use_db($dbh, $quoter, $db);
-      my $sql = "SHOW COLUMNS FROM " . $quoter->quote($db, $tbl);
-      PTDEBUG && _d($sql);
-      my $cols = $dbh->selectall_arrayref($sql, { Slice => {} });
-
-      $self->{columns}->{$db}->{$tbl} = [
-         map {
-            my %row;
-            @row{ map { lc $_ } keys %$_ } = values %$_;
-            \%row;
-         } @$cols
-      ];
-   }
-   return $self->{columns}->{$db}->{$tbl};
-}
-
-sub get_tmp_table {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   my $result = 'CREATE TABLE ' . $quoter->quote($tbl) . " (\n";
-   $result .= join(",\n",
-      map { '  ' . $quoter->quote($_->{field}) . ' ' . $_->{type} }
-      @{$self->get_columns($dbh, $quoter, $db, $tbl)});
-   $result .= "\n)";
-   PTDEBUG && _d($result);
-   return $result;
-}
-
-sub get_triggers {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   if ( !$self->{cache} || !$self->{triggers}->{$db} ) {
-      $self->{triggers}->{$db} = {};
-      my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-         . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-         . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      PTDEBUG && _d($sql);
-      eval { $dbh->do($sql); };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-      $sql = "SHOW TRIGGERS FROM " . $quoter->quote($db);
-      PTDEBUG && _d($sql);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute();
-      if ( $sth->rows ) {
-         my $trgs = $sth->fetchall_arrayref({});
-         foreach my $trg (@$trgs) {
-            my %trg;
-            @trg{ map { lc $_ } keys %$trg } = values %$trg;
-            push @{ $self->{triggers}->{$db}->{ $trg{table} } }, \%trg;
-         }
-      }
-      $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      PTDEBUG && _d($sql);
-      $dbh->do($sql);
-   }
-   if ( $tbl ) {
-      return $self->{triggers}->{$db}->{$tbl};
-   }
-   return values %{$self->{triggers}->{$db}};
-}
-
-sub get_databases {
-   my ( $self, $dbh, $quoter, $like ) = @_;
-   if ( !$self->{cache} || !$self->{databases} || $like ) {
-      my $sql = 'SHOW DATABASES';
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      my $sth = $dbh->prepare($sql);
-      PTDEBUG && _d($sql, @params);
-      $sth->execute( @params );
-      my @dbs = map { $_->[0] } @{$sth->fetchall_arrayref()};
-      $self->{databases} = \@dbs unless $like;
-      return @dbs;
-   }
-   return @{$self->{databases}};
-}
-
-sub get_table_status {
-   my ( $self, $dbh, $quoter, $db, $like ) = @_;
-   if ( !$self->{cache} || !$self->{table_status}->{$db} || $like ) {
-      my $sql = "SHOW TABLE STATUS FROM " . $quoter->quote($db);
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      PTDEBUG && _d($sql, @params);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute(@params);
-      my @tables = @{$sth->fetchall_arrayref({})};
-      @tables = map {
-         my %tbl; # Make a copy with lowercased keys
-         @tbl{ map { lc $_ } keys %$_ } = values %$_;
-         $tbl{engine} ||= $tbl{type} || $tbl{comment};
-         delete $tbl{type};
-         \%tbl;
-      } @tables;
-      $self->{table_status}->{$db} = \@tables unless $like;
-      return @tables;
-   }
-   return @{$self->{table_status}->{$db}};
-}
-
-sub get_table_list {
-   my ( $self, $dbh, $quoter, $db, $like ) = @_;
-   if ( !$self->{cache} || !$self->{table_list}->{$db} || $like ) {
-      my $sql = "SHOW /*!50002 FULL*/ TABLES FROM " . $quoter->quote($db);
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      PTDEBUG && _d($sql, @params);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute(@params);
-      my @tables = @{$sth->fetchall_arrayref()};
-      @tables = map {
-         my %tbl = (
-            name   => $_->[0],
-            engine => ($_->[1] || '') eq 'VIEW' ? 'VIEW' : '',
-         );
-         \%tbl;
-      } @tables;
-      $self->{table_list}->{$db} = \@tables unless $like;
-      return @tables;
-   }
-   return @{$self->{table_list}->{$db}};
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End MySQLDump package
 # ###########################################################################
 
 # ###########################################################################
@@ -2479,7 +2323,6 @@ my $server_id;    # Holds the server's @@SERVER_ID
 my $dbh;          # This program's $dbh
 my $exec_dbh;     # The $dbh to use for exec and exec-plus
 my $tp;
-my $du;
 
 # Functions to call while evaluating tests.
 my %test_for = (
@@ -2774,7 +2617,6 @@ sub main {
    my $need_table_struct = grep { $o->got($_); } @table_struct_tests;
    PTDEBUG && _d('Need table struct:', $need_table_struct);
    if ( $need_table_struct ) {
-      $du = new MySQLDump();
       $tp = new TableParser(Quoter => $q);
    }
 
@@ -2900,8 +2742,8 @@ sub main {
          if ( $need_table_struct ) {
             PTDEBUG && _d('Getting table struct for',
                $database, '.', $table->{Name});
-            my $ddl = $du->get_create_table($dbh,$q, $database, $table->{Name});
-            if ( $ddl->[0] eq 'table' ) {
+            my $ddl = $tp->get_create_table($dbh, $database, $table->{Name});
+            if ( $ddl =~ m/CREATE TABLE/ ) {
                my $table_struct;
                eval { $table_struct = $tp->parse($ddl) };
                if ( $EVAL_ERROR ) {
@@ -2909,8 +2751,8 @@ sub main {
                }
                $table->{struct} = $table_struct;
             }
-            elsif ( $ddl->[0] eq 'view' ) {
-               $table->{view} = $ddl->[1];
+            else {
+               $table->{view} = $ddl;
             }
          }
       }

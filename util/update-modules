@@ -160,10 +160,10 @@ for pkg in $pkgs; do
       continue
    fi
 
-   if file_is_modified $pkg_file; then
-      warn "$pkg_file has uncommitted changes"
-      continue
-   fi 
+   # if file_is_modified $pkg_file; then
+      # warn "$pkg_file has uncommitted changes"
+      # continue
+   # fi 
 
    replace_pkg_in_tool $tmp_tool_file
    if [ $? -eq 0 ]; then
