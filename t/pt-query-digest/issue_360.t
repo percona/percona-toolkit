@@ -23,30 +23,44 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
-
-$sb->create_dbs($dbh, ['test']);
 
 # #############################################################################
 # Issue 360: mk-query-digest first_seen and last_seen not automatically
 # populated
 # #############################################################################
-$dbh->do('DROP TABLE IF EXISTS test.query_review');
-`$trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --interval 0.01 --create-review-table --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review --daemonize --log /tmp/mk-query-digest.log --pid /tmp/mk-query-digest.pid --run-time 2`;
 
-# Load any file that is slow enough to be caught by mqd --processlist.
-`/tmp/12345/use < $trunk/t/pt-archiver/samples/table5.sql`;
-`/tmp/12345/use -e 'select sleep(2)'`;
+my $pid_file = "/tmp/pt-query-digest-test-issue_360.t.$PID";
 
-`rm -rf /tmp/mk-query-digest.log`;
+# Need a clean query review table.
+$sb->create_dbs($dbh, [qw(test)]);
+
+# Run pt-query-digest in the background for 2s,
+# saving queries to test.query_review.
+diag(`$trunk/bin/pt-query-digest --processlist h=127.1,P=12345,u=msandbox,p=msandbox --interval 0.01 --create-review-table --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review --daemonize --pid $pid_file --log /dev/null --run-time 2`);
+
+# Wait until its running.
+PerconaTest::wait_for_files($pid_file);
+
+# Execute some queries to give it something to see.
+for (1..3) {
+   $dbh->selectall_arrayref("SELECT SLEEP(1)");
+}
+
+# Wait until it stops running (should already be done).
+wait_until(sub { !-e $pid_file });
+
 my @ts = $dbh->selectrow_array('SELECT first_seen, last_seen FROM test.query_review LIMIT 1');
-ok(
-   $ts[0] && $ts[0] ne '0000-00-00 00:00:00',
+isnt(
+   $ts[0],
+   '0000-00-00 00:00:00',
    'first_seen from --processlist is not 0000-00-00 00:00:00'
 );
-ok(
-   $ts[0] && $ts[1] ne '0000-00-00 00:00:00',
+
+isnt(
+   $ts[1],
+   '0000-00-00 00:00:00',
    'last_seen from --processlist is not 0000-00-00 00:00:00'
 );
 
@@ -54,4 +68,5 @@ ok(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

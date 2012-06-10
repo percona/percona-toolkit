@@ -29,7 +29,7 @@ elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 47;
+   plan tests => 48;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -78,10 +78,11 @@ my $all_sakila_tables =  [
 # ############################################################################
 
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
+   sub { pt_table_checksum::main(@args, qw(-d sakila --resume --chunk-size 10000)) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
+
 is_deeply(
    $row,
    $all_sakila_tables,
@@ -131,7 +132,7 @@ is_deeply(
 );
 
 $output = output(
-   sub { pt_table_checksum::main(@args, qw(-d sakila --resume)) },
+   sub { pt_table_checksum::main(@args, qw(-d sakila --resume --chunk-size 10000)) },
 );
 
 $row = $master_dbh->selectall_arrayref('select db, tbl from percona.checksums order by db, tbl');
@@ -412,9 +413,9 @@ $master_dbh->do("update percona.checksums set master_crc=NULL, master_cnt=NULL, 
 # which means the tool was killed before $update_sth was called.  So,
 # it should resume from chunk 11 of this table and overwrite chunk 12.
 
-my $chunk11 = $master_dbh->selectall_arrayref('select * from percona.checksums where db="sakila" and tbl="rental" and chunk=11');
+my $chunk11 = $master_dbh->selectall_arrayref(q{select * from percona.checksums where db='sakila' and tbl='rental' and chunk=11});
 
-my $chunk12 = $master_dbh->selectall_arrayref('select master_crc from percona.checksums where db="sakila" and tbl="rental" and chunk=12');
+my $chunk12 = $master_dbh->selectall_arrayref(q{select master_crc from percona.checksums where db='sakila' and tbl='rental' and chunk=12});
 is(
    $chunk12->[0]->[0],
    undef,
@@ -449,12 +450,12 @@ ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 );
 
 is_deeply(
-   $master_dbh->selectall_arrayref('select * from percona.checksums where db="sakila" and tbl="rental" and chunk=11'),
+   $master_dbh->selectall_arrayref(q{select * from percona.checksums where db='sakila' and tbl='rental' and chunk=11}),
    $chunk11,
    "Chunk 11 not updated"
 );
 
-$chunk12 = $master_dbh->selectall_arrayref('select master_crc, master_cnt from percona.checksums where db="sakila" and tbl="rental" and chunk=12');
+$chunk12 = $master_dbh->selectall_arrayref(q{select master_crc, master_cnt from percona.checksums where db='sakila' and tbl='rental' and chunk=12});
 ok(
    defined $chunk12->[0]->[0],
    "Chunk 12 master_crc updated"
@@ -696,4 +697,5 @@ like(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

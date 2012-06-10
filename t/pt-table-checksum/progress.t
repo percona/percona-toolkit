@@ -39,18 +39,18 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 3;
+   plan tests => 5;
 }
-
-# Must have empty checksums table for these tests.
-$master_dbh->do('drop table if exists percona.checksums');
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
-# And --max-load "" prevents waiting for status variables.
+# And --max-load "" prevents waiting for status variables. Setting
+# --chunk-size may help prevent the tool from running too fast and finishing
+# before the TEST_WISHLIST job below finishes. (Or, it might just make things
+# worse. This is a random stab in the dark. There is a problem either way.)
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
 my @args       = ($master_dsn, qw(--lock-wait-timeout 3),
-                  '--progress', 'time,1', '--max-load', ''); 
+                  '--progress', 'time,1', '--max-load', '', '--chunk-size', '500'); 
 my $output;
 my $row;
 my $scripts = "$trunk/t/pt-table-checksum/scripts/";
@@ -58,19 +58,18 @@ my $scripts = "$trunk/t/pt-table-checksum/scripts/";
 # ############################################################################
 # Tool should check all slaves' lag, so slave2, not just slave1.
 # ############################################################################
-wait_until(  # slaves aren't lagging
-   sub {
-      $row = $slave1_dbh->selectrow_hashref('show slave status');
-      return 0 if $row->{Seconds_Behind_Master};
-      $row = $slave2_dbh->selectrow_hashref('show slave status');
-      return 0 if $row->{Seconds_Behind_Master};
-      return 1;
-   }
-) or die "Slaves are still lagging";
+
+# Must have empty checksums table for these tests.
+$master_dbh->do('drop table if exists percona.checksums');
+
+# Must not be lagging.
+$sb->wait_for_slaves();
 
 # This big fancy command waits until it sees the checksum for sakila.city
 # in the repl table on the master, then it stops slave2 for 2 seconds,
 # then starts it again.
+# TEST_WISHLIST PLUGIN_WISHLIST: do this with a plugin to the tool itself,
+# not in this unreliable fashion.
 system("$trunk/util/wait-to-exec '$scripts/wait-for-chunk.sh 12345 sakila city 1' '$scripts/exec-wait-exec.sh 12347 \"stop slave sql_thread\" 2 \"start slave sql_thread\"' 3 >/dev/null &");
 
 $output = output(
@@ -96,9 +95,46 @@ is(
    "No errors after waiting for slave lag"
 );
 
+# Now wait until the SQL thread is started again.
+$sb->wait_for_slaves();
+
+# #############################################################################
+# Wait for --replicate table to replicate.
+# https://bugs.launchpad.net/percona-toolkit/+bug/1008778
+# #############################################################################
+$master_dbh->do("DROP DATABASE IF EXISTS percona");
+wait_until(sub {
+   my $dbs = $slave2_dbh->selectall_arrayref("SHOW DATABASES");
+   return !grep { $_->[0] eq 'percona' } @$dbs;
+});
+
+$sb->load_file('master', "t/pt-table-checksum/samples/dsn-table.sql");
+
+$slave2_dbh->do("STOP SLAVE");
+wait_until(sub {
+   my $ss = $slave2_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+   return $ss->{slave_io_running} eq 'Yes';
+});
+
+($output) = PerconaTest::full_output(
+   sub { pt_table_checksum::main(@args, qw(-t sakila.country),
+      "--recursion-method", "dsn=F=/tmp/12345/my.sandbox.cnf,t=dsns.dsns");
+   },
+   wait_for => 3,  # wait this many seconds then kill that ^
+);
+
+like(
+   $output,
+   qr/Waiting for the --replicate table to replicate to h=127.1,P=12347/,
+   "--progress for --replicate table (bug 1008778)"
+);
+
+$slave2_dbh->do("START SLAVE");
+$sb->wait_for_slaves();
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-diag(`$trunk/sandbox/test-env reset >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 50;
+use Test::More tests => 51;
 
 use MasterSlave;
 use DSNParser;
@@ -207,8 +207,7 @@ SKIP: {
    );
 
    $ro_dbh->disconnect();
-   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
-
+   diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`); 
 }
 
 # #############################################################################
@@ -230,13 +229,13 @@ my %port_for = (
 );
 foreach my $port ( values %port_for ) {
    if ( -d "/tmp/$port" ) {
-      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null`);
+      diag(`$trunk/sandbox/stop-sandbox $port >/dev/null 2>&1`);
    }
 }
-diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2903 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2901 2900 >/dev/null`);
-diag(`$trunk/sandbox/start-sandbox slave 2902 2901 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null 2>&1`);
+diag(`$trunk/sandbox/start-sandbox slave 2903 2900 >/dev/null 2>&1`);
+diag(`$trunk/sandbox/start-sandbox slave 2901 2900 >/dev/null 2>&1`);
+diag(`$trunk/sandbox/start-sandbox slave 2902 2901 >/dev/null 2>&1`);
 
 # I discovered something weird while updating this test. Above, you see that
 # slave2 is started first, then the others. Before, slave2 was started last,
@@ -336,8 +335,12 @@ $res = $ms->wait_for_master(
 ok($res->{result} >= 0, 'Wait was successful');
 
 $ms->stop_slave($slaves[0]);
-$dbh->do('drop database if exists test'); # Any stmt will do
-diag(`(sleep 1; echo "start slave" | /tmp/$port_for{slave0}/use)&`);
+$dbh->do('drop database if exists test');
+$dbh->do('create database test');
+$dbh->do('create table test.t(a int)');
+$dbh->do('insert into test.t(a) values(1)');
+$dbh->do('update test.t set a=sleep(5)');
+diag(`(/tmp/$port_for{slave0}/use -e 'start slave')&`);
 eval {
    $res = $ms->wait_for_master(
       master_status => $ms->get_master_status($dbh),
@@ -603,14 +606,14 @@ SKIP: {
    $master_dbh->disconnect();
    $slave_dbh->disconnect();
 
-   diag(`/tmp/12346/stop >/dev/null`);
-   diag(`/tmp/12345/stop >/dev/null`);
+   diag(`/tmp/12346/stop >/dev/null 2>&1`);
+   diag(`/tmp/12345/stop >/dev/null 2>&1`);
    diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/orig.cnf`);
    diag(`cp /tmp/12345/my.sandbox.cnf /tmp/12345/orig.cnf`);
    diag(`echo "replicate-ignore-db=foo" >> /tmp/12346/my.sandbox.cnf`);
    diag(`echo "binlog-ignore-db=bar" >> /tmp/12345/my.sandbox.cnf`);
-   diag(`/tmp/12345/start >/dev/null`);
-   diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12345/start >/dev/null 2>&1`);
+   diag(`/tmp/12346/start >/dev/null 2>&1`);
    
    $master_dbh = $sb->get_dbh_for('master');
    $slave_dbh  = $sb->get_dbh_for('slave1');
@@ -637,6 +640,10 @@ SKIP: {
    diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
    diag(`/tmp/12345/start >/dev/null`);
    diag(`/tmp/12346/start >/dev/null`);
+   diag(`/tmp/12347/use -e "STOP SLAVE; START SLAVE;" >/dev/null`);
+
+   $master_dbh = $sb->get_dbh_for('master');
+   $slave_dbh  = $sb->get_dbh_for('slave1');
 };
 
 is(
@@ -698,8 +705,10 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null`);
+$sb->wipe_clean($master_dbh);
+diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900 >/dev/null 2>&1`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
-diag(`$trunk/sandbox/test-env reset`);
+diag(`$trunk/sandbox/test-env reset >/dev/null 2>&1`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

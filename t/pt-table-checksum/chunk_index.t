@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 11;
+   plan tests => 12;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -145,7 +145,6 @@ is(
 # Bug 978432: PK is ignored
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/not-using-pk-bug.sql");
-PerconaTest::wait_for_table($dbh, "test.multi_resource_apt", "apt_id=4 AND res_id=4");
 
 ok(
    no_diff(
@@ -161,4 +160,5 @@ ok(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

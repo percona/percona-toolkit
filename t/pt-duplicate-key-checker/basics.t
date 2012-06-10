@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 9;
+   plan tests => 10;
 }
 
 my $output;
@@ -102,6 +102,7 @@ ok(
    no_diff(
       sub { pt_duplicate_key_checker::main(@args, qw(-d test)) },
       "$sample/bug-894140.txt",
+      sed => [ "-e 's/  */ /g'" ],
     ),
    "Bug 894140"
 );
@@ -110,4 +111,5 @@ ok(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

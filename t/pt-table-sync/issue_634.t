@@ -28,24 +28,35 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 2;
+   plan tests => 4;
 }
-
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
-$sb->create_dbs($master_dbh, [qw(test)]);
 
 # #############################################################################
 # Issue 634: Cannot nibble table because MySQL chose no index
 # #############################################################################
-diag(`/tmp/12345/use < $trunk/t/pt-table-sync/samples/issue_634.sql`);
+$sb->load_file('master', "t/pt-table-sync/samples/issue_634.sql");
 $slave_dbh->do('insert into issue_634.t values (1)');
-$output = `$trunk/bin/pt-table-sync --sync-to-master h=127.1,P=12346,u=msandbox,p=msandbox -d issue_634 --execute --algorithms Nibble 2>&1`;
+
+$output = output(
+   sub { pt_table_sync::main("h=127.1,P=12346,u=msandbox,p=msandbox",
+      qw(--sync-to-master -d issue_634 --print --execute --algorithms Nibble))
+   },
+   stderr => 1,
+);
+$sb->wait_for_slaves();
+
+like(
+   $output,
+   qr/DELETE FROM `issue_634`.`t` WHERE `i`='1' LIMIT 1/,
+   "DELETE statement (issue 634)"
+);
+
 unlike(
    $output,
    qr/Cannot nibble/,
    "Doesn't say it can't nibble the 1-row table (issue 634)"
 );
+
 is_deeply(
    $slave_dbh->selectall_arrayref('select * from issue_634.t'),
    [],
@@ -56,5 +67,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

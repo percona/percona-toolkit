@@ -24,11 +24,11 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-if ( !@{ $dbh->selectall_arrayref('show databases like "sakila"') } ) {
+if ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
    plan skip_all => "Sakila database is not loaded";
 }
 else {
-   plan tests => 8;
+   plan tests => 9;
 }
 
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
@@ -139,4 +139,5 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

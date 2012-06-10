@@ -859,17 +859,19 @@ linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;
    [ "$CMD_GETENFORCE" ] && getenforce="$($CMD_GETENFORCE 2>&1)"
    echo "getenforce    ${getenforce:-"No SELinux detected"}" >> "$data_dir/summary"
 
-   echo "swappiness    $(awk '/vm.swappiness/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
+   if [ -e "$data_dir/sysctl" ]; then
+      echo "swappiness    $(awk '/vm.swappiness/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
 
-   local dirty_ratio="$(awk '/vm.dirty_ratio/{print $3}' "$data_dir/sysctl")"
-   local dirty_bg_ratio="$(awk '/vm.dirty_background_ratio/{print $3}' "$data_dir/sysctl")"
-   if [ "$dirty_ratio" -a "$dirty_bg_ratio" ]; then
-      echo "dirtypolicy    $dirty_ratio, $dirty_bg_ratio" >> "$data_dir/summary"
-   fi
+      local dirty_ratio="$(awk '/vm.dirty_ratio/{print $3}' "$data_dir/sysctl")"
+      local dirty_bg_ratio="$(awk '/vm.dirty_background_ratio/{print $3}' "$data_dir/sysctl")"
+      if [ "$dirty_ratio" -a "$dirty_bg_ratio" ]; then
+         echo "dirtypolicy    $dirty_ratio, $dirty_bg_ratio" >> "$data_dir/summary"
+      fi
 
-   local dirty_bytes="$(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl")"
-   if [ "$dirty_bytes" ]; then
-      echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
+      local dirty_bytes="$(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl")"
+      if [ "$dirty_bytes" ]; then
+         echo "dirtystatus     $(awk '/vm.dirty_bytes/{print $3}' "$data_dir/sysctl"), $(awk '/vm.dirty_background_bytes/{print $3}' "$data_dir/sysctl")" >> "$data_dir/summary"
+      fi
    fi
 
    schedulers_and_queue_size "$data_dir/summary" > "$data_dir/partitioning"
@@ -1375,7 +1377,7 @@ parse_memory_sysctl_netbsd() { local PTFUNCNAME=parse_memory_sysctl_netbsd;
 
    [ -e "$file" -a -e "$swapctl_file" ] || return
 
-   local swap_mem="$(echo "$(awk '{print $2;}' "$swapctl_file")*512" | bc -l)"
+   local swap_mem="$(awk '{print $2*512}' "$swapctl_file")"
    name_val "Total"   $(shorten "$(awk '/hw.physmem /{print $NF}' "$file")" 1)
    name_val "User"    $(shorten "$(awk '/hw.usermem /{print $NF}' "$file")" 1)
    name_val "Swap"    $(shorten ${swap_mem} 1)
@@ -1387,7 +1389,7 @@ parse_memory_sysctl_openbsd() { local PTFUNCNAME=parse_memory_sysctl_openbsd;
 
    [ -e "$file" -a -e "$swapctl_file" ] || return
 
-   local swap_mem="$(echo "$(awk '{print $2;}' "$swapctl_file")*512" | bc -l)"
+   local swap_mem="$(awk '{print $2*512}' "$swapctl_file")"
    name_val "Total"   $(shorten "$(awk -F= '/hw.physmem/{print $2}' "$file")" 1)
    name_val "User"    $(shorten "$(awk -F= '/hw.usermem/{print $2}' "$file")" 1)
    name_val "Swap"    $(shorten ${swap_mem} 1)

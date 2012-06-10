@@ -23,18 +23,15 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my $output;
-my $rows;
-my $cnf = "/tmp/12345/my.sandbox.cnf";
 
 # #############################################################################
 # Issue 1152: mk-archiver columns option resulting in null archived table data
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
-PerconaTest::wait_for_table($dbh, 'issue_1225.t');
 
 $dbh->do('set names "utf8"');
 my $original_rows = $dbh->selectall_arrayref('select * from issue_1225.t where i in (1, 2)');
@@ -93,4 +90,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

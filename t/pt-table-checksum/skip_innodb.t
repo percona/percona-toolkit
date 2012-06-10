@@ -17,6 +17,7 @@ shift @INC;  # our unshift (above)
 shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
+diag("Stopping/reconfiguring/restarting sandboxes 12348 and 12349");
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
@@ -35,14 +36,13 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave 12349';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
-my $slave_dnn  = 'P=12349';
 my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', ''); 
 my $output;
 my $retval;
@@ -67,6 +67,8 @@ is(
 # #############################################################################
 # Done.
 # #############################################################################
+diag('Shutting down sandboxes');
 diag(`$trunk/sandbox/stop-sandbox 12349 >/dev/null`);
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

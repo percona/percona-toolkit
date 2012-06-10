@@ -41,7 +41,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 10;
+   plan tests => 12;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -52,9 +52,25 @@ my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '');
 my $output;
 my $row;
 
+# You must call this sub if the master 12345 or slave1 12346 is restarted,
+# else a slave might notice that its master went away and enter the "trying
+# to reconnect" state, and then replication will break as the tests continue.
+sub restart_slave_threads {
+   $slave1_dbh->do('STOP SLAVE');
+   $slave2_dbh->do('STOP SLAVE');
+   $slave1_dbh->do('START SLAVE');
+   $slave2_dbh->do('START SLAVE');
+}
+
+# #############################################################################
+# Repl filters on all slaves, at all depths, should be found.
+# #############################################################################
+
 # Add a replication filter to the slaves.
+diag('Stopping 12346 and 12347 to reconfigure them with replication filters');
+diag(`/tmp/12347/stop >/dev/null`);
+diag(`/tmp/12346/stop >/dev/null`);
 for my $port ( qw(12346 12347) ) {
-   diag(`/tmp/$port/stop >/dev/null`);
    diag(`cp /tmp/$port/my.sandbox.cnf /tmp/$port/orig.cnf`);
    diag(`echo "replicate-ignore-db=foo" >> /tmp/$port/my.sandbox.cnf`);
    diag(`/tmp/$port/start >/dev/null`);
@@ -78,16 +94,16 @@ is(
 like(
    $output,
    qr/h=127.0.0.1,P=12346/,
-   "Warns about replication fitler on slave1"
+   "Warns about replication filter on slave1"
 );
 
 like(
    $output,
    qr/h=127.0.0.1,P=12347/,
-   "Warns about replication fitler on slave2"
+   "Warns about replication filter on slave2"
 );
 
-# Disable the check.
+# Disable the check and run again
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.country),
       qw(--no-check-replication-filters)) },
@@ -97,12 +113,21 @@ $output = output(
 like(
    $output,
    qr/sakila\.country$/,
-   "--no-check-replication-filters"
+   "--no-check-replication-filters didn't cause warning, and the tool ran"
+);
+
+cmp_ok(
+   PerconaTest::get_master_binlog_pos($master_dbh),
+   '>',
+   $pos,
+   "Did checksum with replication filter"
 );
 
 # Remove the replication filter from the slave.
+diag('Restarting the slaves again to remove the replication filters');
+diag(`/tmp/12347/stop >/dev/null`);
+diag(`/tmp/12346/stop >/dev/null`);
 for my $port ( qw(12346 12347) ) {
-   diag(`/tmp/$port/stop >/dev/null`);
    diag(`mv /tmp/$port/orig.cnf /tmp/$port/my.sandbox.cnf`);
    diag(`/tmp/$port/start >/dev/null`);
 }
@@ -115,24 +140,24 @@ $slave2_dbh = $sb->get_dbh_for('slave2');
 
 # Write some results to master and slave for dbs mysql and sakila.
 $sb->wipe_clean($master_dbh);
-pt_table_checksum::main(@args, qw(--chunk-time 0 --chunk-size 100),
-   '-t', 'mysql.user,sakila.city', qw(--quiet));
+$output = output(
+   sub {
+      pt_table_checksum::main(@args, qw(--chunk-time 0 --chunk-size 100),
+         '-t', 'mysql.user,sakila.city', qw(--quiet));
+   },
+   stderr => 1,
+);
 PerconaTest::wait_for_table($slave1_dbh, 'percona.checksums', "db='sakila' and tbl='city' and chunk=6");
 
+# Add a replication filter to the master: ignore db mysql.
 $master_dbh->disconnect();
-$slave1_dbh->disconnect();
-
-# Add a replication filter to the slave: ignore db mysql.
-diag(`/tmp/12346/stop >/dev/null`);
+diag('Restarting 12345 to add binlog_ignore_db filter');
 diag(`/tmp/12345/stop >/dev/null`);
-
 diag(`cp /tmp/12345/my.sandbox.cnf /tmp/12345/orig.cnf`);
 diag(`echo "binlog-ignore-db=mysql" >> /tmp/12345/my.sandbox.cnf`);
-
 diag(`/tmp/12345/start >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
+restart_slave_threads();
 $master_dbh = $sb->get_dbh_for('master');
-$slave1_dbh = $sb->get_dbh_for('slave1');
 
 # Checksum the tables again in 1 chunk.  Since db percona isn't being
 # ignored, deleting old results in the repl table should replicate.
@@ -148,38 +173,32 @@ $row = $slave1_dbh->selectall_arrayref("select db,tbl,chunk from percona.checksu
 is_deeply(
    $row,
    [[qw(sakila city 1)]],
-   "binlog-ignore-db"
+   "binlog-ignore-db and --empty-replicate-table"
 ) or print STDERR Dumper($row);
 
 $master_dbh->do("use percona");
 $master_dbh->do("truncate table percona.checksums");
 wait_until(
    sub {
-      $row = $slave1_dbh->selectall_arrayref("select * from percona.checksums");
+      $row=$slave1_dbh->selectall_arrayref("select * from percona.checksums");
       return !@$row;
    }
 );
-
-$master_dbh->disconnect();
-$slave1_dbh->disconnect();
-
-# Restore original config.
-diag(`/tmp/12346/stop >/dev/null`);
-diag(`/tmp/12345/stop >/dev/null`);
-diag(`cp /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 
 # #############################################################################
 # Test --replicate-database which resulted from this issue.
 # #############################################################################
 
-# Add a binlog-do-db filter so master will only replicate
-# statements when USE mysql is in effect.
+# Restore original config.  Then add a binlog-do-db filter so master
+# will only replicate statements when USE mysql is in effect.
+$master_dbh->disconnect();
+diag('Restarting master to reconfigure with binlog-do-db filter only');
+diag(`/tmp/12345/stop >/dev/null`);
+diag(`cp /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 diag(`echo "binlog-do-db=mysql" >> /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
-
 $master_dbh = $sb->get_dbh_for('master');
-$slave1_dbh = $sb->get_dbh_for('slave1');
+restart_slave_threads();
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(--no-check-replication-filters),
@@ -200,12 +219,12 @@ is_deeply(
    "binlog-do-do, without --replicate-database"
 ) or print STDERR Dumper($row);
 
-# Now force --replicate-database test and the checksums should not replicate.
+# Now force --replicate-database sakila and the checksums should not replicate.
 $master_dbh->do("use mysql");
 $master_dbh->do("truncate table percona.checksums");
 wait_until(
    sub {
-      $row = $slave1_dbh->selectall_arrayref("select * from percona.checksums");
+      $row=$slave1_dbh->selectall_arrayref("select * from percona.checksums");
       return !@$row;
    }
 );
@@ -215,7 +234,12 @@ $pos = PerconaTest::get_master_binlog_pos($master_dbh);
 pt_table_checksum::main(@args, qw(--quiet --no-check-replication-filters),
   qw(-t mysql.user --replicate-database sakila --no-replicate-check));
 
-sleep 1;
+my $pos_after = PerconaTest::get_master_binlog_pos($master_dbh);
+wait_until(
+   sub {
+      $pos_after <= PerconaTest::get_slave_pos_relative_to_master($slave1_dbh);
+   }
+);
 
 $row = $slave1_dbh->selectall_arrayref("select * from percona.checksums where db='mysql' AND tbl='user'");
 ok(
@@ -230,41 +254,49 @@ is(
 );
 
 # #############################################################################
-# Restore original config.
+# Check that only the expected dbs are used.
 # #############################################################################
-$master_dbh->disconnect();
-$slave1_dbh->disconnect();
 
-diag(`/tmp/12346/stop >/dev/null`);
+# Restore the original config.
+diag('Restoring original sandbox server configuration');
+$master_dbh->disconnect();
 diag(`/tmp/12345/stop >/dev/null`);
 diag(`mv /tmp/12345/orig.cnf /tmp/12345/my.sandbox.cnf`);
 diag(`/tmp/12345/start >/dev/null`);
-diag(`/tmp/12346/start >/dev/null`);
-
-diag(`$trunk/sandbox/test-env reset`);
-
+# Restart the slaves so they reconnect immediately.
+restart_slave_threads();
 $master_dbh = $sb->get_dbh_for('master');
-$slave1_dbh = $sb->get_dbh_for('slave1');
+
+# Get the master's binlog pos so we can check its binlogs for USE statements
+$row = $master_dbh->selectrow_hashref('show master status');
 
 pt_table_checksum::main(@args, qw(--quiet));
+my $mysqlbinlog = `which mysqlbinlog`;
+if ( $mysqlbinlog ) {
+   chomp $mysqlbinlog;
+}
+elsif ( -x "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog" ) {
+   $mysqlbinlog = "$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog";
+}
 
-$row = $master_dbh->selectrow_hashref('show master status');
-$output = `$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog /tmp/12345/data/$row->{file} | grep 'use ' | grep -v '^# Warning' |  sort -u`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning' |  sort -u`;
 
 is(
    $output,
 "use mysql/*!*/;
 use percona/*!*/;
+use percona_test/*!*/;
 use sakila/*!*/;
 ",
    "USE each table's database (binlog dump)"
 );
 
-diag(`$trunk/sandbox/test-env reset`);
+# Get the master's binlog pos so we can check its binlogs for USE statements
+$row = $master_dbh->selectrow_hashref('show master status');
 
 pt_table_checksum::main(@args, qw(--quiet --replicate-database percona));
 
-$output = `$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqlbinlog /tmp/12345/data/$row->{file} | grep 'use ' | grep -v '^# Warning'`;
+$output = `$mysqlbinlog /tmp/12345/data/$row->{file} --start-position=$row->{position} | grep 'use ' | grep -v '^# Warning'`;
 is(
    $output,
 "use percona/*!*/;
@@ -276,4 +308,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

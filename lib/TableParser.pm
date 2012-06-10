@@ -129,9 +129,15 @@ sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
 
-   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
-      die "Cannot parse table definition; is ANSI quoting "
-         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   # If ANSI_QUOTES is enabled, we can't parse. But we can translate ANSI_QUOTES
+   # into legacy quoting with backticks. The rules are: an identifier is
+   # surrounded with the quote characters, and embedded quote characters are
+   # doubled.
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
    }
 
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
@@ -406,7 +412,8 @@ sub get_keys {
       # will report its index as USING HASH even when this is not supported.
       # The true type should be BTREE.  See
       # http://bugs.mysql.com/bug.php?id=22632
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      # If ANSI quoting is in effect, we may not know the engine at all.
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
@@ -448,7 +455,7 @@ sub get_keys {
       };
 
       # Find clustered key (issue 295).
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -533,6 +540,28 @@ sub get_table_status {
       \%tbl;
    } @tables;
    return @tables;
+}
+
+# Translates ANSI quoting around SHOW CREATE TABLE (specifically this query's
+# output, not an arbitrary query) into legacy backtick-quoting.
+# DOESNT WORK: my $ansi_quote_re = qr/"(?:(?!(?<!")").)*"/;
+# DOESNT WORK: my $ansi_quote_re = qr/" [^\\"]* (?: (?:\\.|"") [^\\"]* )* "/ismx;
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+# Translates a single string from ANSI quoting into legacy quoting by
+# un-doubling embedded double-double quotes, doubling backticks, and replacing
+# the delimiters.
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _d {

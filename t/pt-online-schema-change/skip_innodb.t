@@ -26,19 +26,16 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master 12348';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
 my @args       = (qw(--lock-wait-timeout 3), '--max-load', ''); 
-my $output;
-my $retval;
 
-$output = output(
-   sub { $retval = pt_online_schema_change::main(@args,
+my ($output, $retval) = full_output(
+   sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=mysql,t=user", "--alter", "add column (foo int)",
       qw(--dry-run)) },
-   stderr => 1,
 );
 
 like(
@@ -57,4 +54,5 @@ is(
 # Done.
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

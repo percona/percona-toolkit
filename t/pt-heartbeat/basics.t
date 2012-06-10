@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 17;
+   plan tests => 18;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -117,7 +117,7 @@ $dbh->do('drop table if exists test.heartbeat'); # This will kill it
 $dbh->do('drop table if exists test.heartbeat');
 diag(`$cmd --update --run-time 1s --database test --table heartbeat --create-table`);
 $dbh->do('use test');
-$output = $dbh->selectcol_arrayref('SHOW TABLES LIKE "heartbeat"');
+$output = $dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
 is(
    $output->[0],
    'heartbeat', 
@@ -140,4 +140,5 @@ like(
 # #############################################################################
 `rm $pid_file $sent_file 2>/dev/null`;
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

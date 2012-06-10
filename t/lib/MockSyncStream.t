@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 5;
+use Test::More tests => 6;
 
 use MockSyncStream;
 use Quoter;
@@ -78,9 +78,11 @@ is_deeply(
 # Test online stuff, e.g. get_cols_and_struct().
 # #############################################################################
 use DSNParser;
+use VersionParser;
 use Sandbox;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $vp  = new VersionParser;
 my $dbh = $sb->get_dbh_for('master');
 
 SKIP: {
@@ -170,7 +172,7 @@ SKIP: {
             id => undef,
             i  => undef,
             f  => undef,
-            d  => undef,
+            d  => $DBD::mysql::VERSION ge '4.001' ? undef : '(7)',
             dt => undef,
             ts => undef,
             c  => '(1)',
@@ -199,4 +201,5 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -6,7 +6,7 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # %INC magic to allow us to require/use these even within the big file.
 BEGIN {
@@ -1058,6 +1058,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -1075,6 +1076,7 @@ our @EXPORT_OK   = qw(
    any_unix_timestamp
    make_checksum
    crc32
+   encode_json
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -1282,6 +1284,96 @@ sub crc32 {
    return $crc ^ 0xFFFFFFFF;
 }
 
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -1319,9 +1411,10 @@ BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw( :termios_h );
+use Fcntl qw( F_SETFL F_GETFL );
 
 use base  qw( Exporter );
 
@@ -1344,8 +1437,12 @@ my %modes = (
 # This primarily comes from the Perl Cookbook, recipe 15.8
 
 {
-
    my $fd_stdin = fileno(STDIN);
+   my $flags;
+   unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
+      $flags = fcntl(STDIN, F_GETFL, 0)
+                     or die "can't fcntl F_GETFL: $!";
+   }
    my $term     = POSIX::Termios->new();
    $term->getattr($fd_stdin);
    my $oterm    = $term->getlflag();
@@ -1376,6 +1473,10 @@ my %modes = (
       $term->setlflag($oterm);
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
+      unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
+         fcntl(STDIN, F_SETFL, $flags)
+                        or die "can't fcntl F_SETFL: $!";
+      }
    }
 
    END { cooked() }
@@ -2480,7 +2581,7 @@ package DiskstatsGroupByAll;
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 
@@ -2553,7 +2654,7 @@ package DiskstatsGroupByDisk;
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 
@@ -3407,7 +3508,7 @@ use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.

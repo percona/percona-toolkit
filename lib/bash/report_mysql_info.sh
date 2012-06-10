@@ -902,7 +902,7 @@ section_innodb () {
    local log_file="$(get_var innodb_log_files_in_group "$variables_file")"
    local log_total=$(awk "BEGIN {printf \"%.2f\n\", ${log_size}*${log_file}}" )
    name_val "Log File Size"       \
-            "${log_file} * $(shorten ${log_size} 1 1000) = $(shorten ${log_total} 1 1000)"
+            "${log_file} * $(shorten ${log_size} 1) = $(shorten ${log_total} 1)"
    name_val "Log Buffer Size"     \
             "$(shorten $(get_var innodb_log_buffer_size "$variables_file") 0)"
    name_val "Flush Method"        \

@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -54,4 +54,5 @@ like($output, qr/FROM `test`\.`issue_37`  WHERE/, 'No USE INDEX hint with --no-i
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

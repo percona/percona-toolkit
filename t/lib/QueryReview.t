@@ -30,7 +30,7 @@ if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
 else {
-   plan tests => 8;
+   plan tests => 9;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -48,7 +48,7 @@ my $qv = new QueryReview(
    dbh        => $dbh,
    db_tbl     => '`test`.`query_review`',
    tbl_struct => $tbl_struct,
-   ts_default => '"2009-01-01"',
+   ts_default => "'2009-01-01'",
    quoter     => $q,
 );
 
@@ -304,4 +304,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

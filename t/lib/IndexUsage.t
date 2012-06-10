@@ -10,7 +10,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 6;
+use Test::More tests => 7;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use IndexUsage;
@@ -111,7 +111,7 @@ is_deeply(
 SKIP: {
    skip "Cannot connect to sandbox master", 5 unless $dbh;
    skip "Sakila database is not loaded",    5
-      unless @{ $dbh->selectall_arrayref('show databases like "sakila"') };
+      unless @{ $dbh->selectall_arrayref("show databases like 'sakila'") };
 
    # Use mk-index-usage to create all the save results tables.
    # Must --databases foo so it won't find anything, else it will
@@ -250,4 +250,5 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

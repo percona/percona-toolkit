@@ -51,9 +51,12 @@ our @EXPORT      = qw(
    full_output
    load_data
    load_file
+   slurp_file
    parse_file
    wait_until
    wait_for
+   wait_until_slave_running
+   wait_until_no_lag
    test_log_parser
    test_protocol_parser
    test_packet_parser
@@ -61,6 +64,7 @@ our @EXPORT      = qw(
    throws_ok
    remove_traces
    test_bash_tool
+   verify_test_data_integrity
    $trunk
    $dsn_opts
    $sandbox_version
@@ -70,7 +74,7 @@ our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
 
 our $sandbox_version = '';
 eval {
-   chomp(my $v = `$trunk/sandbox/test-env version`);
+   chomp(my $v = `$trunk/sandbox/test-env version 2>/dev/null`);
    $sandbox_version = $v if $v;
 };
 
@@ -191,10 +195,16 @@ sub load_data {
 sub load_file {
    my ( $file, %args ) = @_;
    $file = "$trunk/$file";
+   my $contents = slurp_file($file);
+   chomp $contents if $args{chomp_contents};
+   return $contents;
+}
+
+sub slurp_file {
+   my ($file) = @_;
    open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
    my $contents = do { local $/ = undef; <$fh> };
    close $fh;
-   chomp $contents if $args{chomp_contents};
    return $contents;
 }
 
@@ -222,8 +232,8 @@ sub parse_file {
 # Wait until code returns true.
 sub wait_until {
    my ( $code, $t, $max_t ) = @_;
-   $t     ||= .25;
-   $max_t ||= 5;
+   $t     ||= .20;
+   $max_t ||= 30;
 
    my $slept = 0;
    while ( $slept <= $max_t ) {
@@ -305,6 +315,19 @@ sub wait_for_sh {
       }
    );
 };
+
+sub not_running {
+   my ($cmd) = @_;
+   PTDEVDEBUG && _d('Wait until not running:', $cmd);
+   return wait_until(
+      sub {
+         my $output = `ps x | grep -v grep | grep "$cmd"`;
+         PTDEVDEBUG && _d($output);
+         return 1 unless $output;
+         return 0;
+      }
+   );
+}
 
 sub _read {
    my ( $fh ) = @_;
@@ -482,6 +505,11 @@ sub test_packet_parser {
 #   * args                hash: (optional) may include
 #       update_sample            overwrite expected_output with cmd/code output
 #       keep_output              keep last cmd/code output file
+#       transform_result         transform the code to be compared but do not
+#                                reflect these changes on the original file
+#                                if update_sample is passed in
+#       transform_sample         similar to the above, but with the sample
+#                                file
 #   *   trf                      transform cmd/code output before diff
 # The sub dies if cmd or code dies.  STDERR is not captured.
 sub no_diff {
@@ -534,14 +562,34 @@ sub no_diff {
       `mv $tmp_file-2 $tmp_file`;
    }
 
+   my $res_file = $tmp_file;
+   if ( $args{transform_result} ) {
+      (undef, $res_file) = tempfile();
+      output(
+         sub { $args{transform_result}->($tmp_file) },
+         file => $res_file,
+      );
+   }
+
+   my $cmp_file = $expected_output;
+   if ( $args{transform_sample} ) {
+      (undef, $cmp_file) = tempfile();
+      output(
+         sub { $args{transform_sample}->($expected_output) },
+         file => $cmp_file,
+      );
+   }
+
    # diff the outputs.
-   my $retval = system("diff $tmp_file $expected_output");
+   my $out = `diff $res_file $cmp_file`;
+   my $retval = $?;
 
    # diff returns 0 if there were no differences,
    # so !0 = 1 = no diff in our testing parlance.
    $retval = $retval >> 8; 
 
    if ( $retval ) {
+      diag($out);
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
          `cat $tmp_file > $expected_output`;
          print STDERR "Updated $expected_output\n";
@@ -551,6 +599,14 @@ sub no_diff {
    # Remove our tmp files.
    `rm -f $tmp_file $tmp_file_orig /tmp/pt-test-outfile-trf >/dev/null 2>&1`
       unless $ENV{KEEP_OUTPUT} || $args{keep_output};
+
+   if ( $res_file ne $tmp_file ) {
+      1 while unlink $res_file;
+   }
+
+   if ( $cmp_file ne $expected_output ) {
+      1 while unlink $cmp_file;
+   }
 
    return !$retval;
 }
@@ -638,6 +694,13 @@ sub get_master_binlog_pos {
    return $ms->{position};
 }
 
+sub get_slave_pos_relative_to_master {
+   my ($dbh) = @_;
+   my $sql = "SHOW SLAVE STATUS";
+   my $ss  = $dbh->selectrow_hashref($sql);
+   return $ss->{exec_master_log_pos};
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -651,7 +714,7 @@ sub _d {
 # This is because otherwise, errors thrown during cleanup
 # would be skipped.
 sub full_output {
-   my ( $code ) = @_;
+   my ( $code, %args ) = @_;
    die "I need a code argument" unless $code;
 
    my (undef, $file) = tempfile();
@@ -662,19 +725,51 @@ sub full_output {
    *STDERR = *STDOUT;
 
    my $status;
-   warn $file;
    if (my $pid = fork) {
+      if ( my $t = $args{wait_for} ) {
+         # Wait for t seconds then kill the child.
+         sleep $t;
+         my $tries = 3;
+         # Most tools require 2 interrupts to make them stop.
+         while ( kill(0, $pid) && $tries-- ) {
+            kill SIGTERM, $pid;
+            sleep 0.10;
+         }
+         # Child didn't respond to SIGTERM?  Then kill -9 it.
+         kill SIGKILL, $pid if kill(0, $pid);
+         sleep 0.25;
+      }
       waitpid($pid, 0);
-      $status = $?;
+      $status = $? >> 8;
    }
    else {
-      $code->();
-      exit 0;
+      exit $code->();
    }
    close *output_fh;
    my $output = do { local $/; open my $fh, "<", $file or die $!; <$fh> };
 
    return ($output, $status);
+}
+
+sub tables_used {
+   my ($file) = @_;
+   local $INPUT_RECORD_SEPARATOR = '';
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   my %tables;
+   while ( defined(my $chunk = <$fh>) ) {
+      map {
+         my $db_tbl = $_;
+         $db_tbl =~ s/^\s*`?//;  # strip leading space and `
+         $db_tbl =~ s/\s*`?$//;  # strip trailing space and `
+         $db_tbl =~ s/`\.`/./;   # strip inner `.`
+         $tables{$db_tbl} = 1;
+      }
+      grep {
+         m/(?:\w\.\w|`\.`)/  # only db.tbl, not just db
+      }
+      $chunk =~ m/(?:FROM|INTO|UPDATE)\s+(\S+)/gi;
+   }
+   return [ sort keys %tables ];
 }
 
 1;

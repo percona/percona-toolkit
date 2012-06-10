@@ -11,10 +11,8 @@ die() {
 
 make_sandbox() {
    # Make the sandbox dir and extract the base files.
-   mkdir /tmp/$port
-   if [ $? -ne 0 ]; then
-      die "mkdir /tmp/$port failed"
-   fi
+   rm -rf /tmp/$port || die "can't rm /tmp/$port"
+   mkdir /tmp/$port || die "mkdir /tmp/$port failed"
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
@@ -45,6 +43,18 @@ make_sandbox() {
    fi
    if [ -n "$SKIP_INNODB" ]; then
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
+      echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
+   fi
+   if [ -n "$MODE_ANSI" ]; then
+      echo "sql_mode=ansi" >> /tmp/$port/my.sandbox.cnf
+   fi
+   if [ -n "$MULTIPLE_BUFFER_POOLS" ]; then
+      echo "innodb_buffer_pool_instances=$MULTIPLE_BUFFER_POOLS" >> /tmp/$port/my.sandbox.cnf
+   fi
+
+   # If the sandbox is a slave, set it read_only.
+   if [ "$type" = "slave" ]; then
+      echo "read_only" >> /tmp/$port/my.sandbox.cnf
    fi
 
    # Start the sandbox and check that it has InnoDB.
@@ -63,6 +73,12 @@ make_sandbox() {
       echo "Sandbox $type $port failed to start." >&2
       cat /tmp/$port/data/mysqld.log >&2
       exit 1
+   fi
+
+   # If the sandbox is a slave, start the slave.
+   if [ "$type" = "slave" ]; then
+      /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
+      /tmp/$port/use -e "start slave"
    fi
 
    return 0
@@ -135,7 +151,7 @@ elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
 else
    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
-version=`$mysqld -V | awk '{print $3}' | cut -d. -f 1,2`;
+version=`$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
 fi
@@ -149,13 +165,7 @@ if [ -f $PIDFILE ]; then
    echo "Sandbox $port already started (found pid file $PIDFILE)"
 else
    make_sandbox
-
-   # If the sandbox is a slave, start the slave.
-   if [ "$type" = "slave" ]; then
-      /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
-      /tmp/$port/use -e "start slave"
-      /tmp/$port/use -e "set global read_only=1"
-   fi
+   # make_sandbox has started slave and set read_only if necessary.
 
    # If the sandbox is a master-master, start the second master and slave the
    # two together.

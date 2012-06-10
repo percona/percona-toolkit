@@ -29,19 +29,20 @@ require "$trunk/bin/pt-table-checksum";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
+elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
-elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
+elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -64,7 +65,7 @@ pt_table_checksum::main(@args,
    qw(-t sakila.country --quiet --quiet));
 
 diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
-PerconaTest::wait_for_table($slave_dbh, "mysql.tables_priv", "user='ro_checksum_user'");
+PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='ro_checksum_user'");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
@@ -90,9 +91,16 @@ like(
 );
 
 diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
+wait_until(
+   sub {
+      my $rows=$slave2_dbh->selectall_arrayref("SELECT user FROM mysql.user");
+      return !grep { ($_->[0] || '') ne 'ro_checksum_user' } @$rows;
+   }
+);
 
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

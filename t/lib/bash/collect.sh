@@ -82,11 +82,11 @@ else
 fi
 
 cmd_ok \
-   "grep -q 'buf0buf.c' $p-mutex-status1" \
+   "grep -q -e OS_waits -e Type $p-mutex-status1" \
    "mutex-status1"
 
 cmd_ok \
-   "grep -q 'buf0buf.c' $p-mutex-status2" \
+   "grep -q -e OS_waits -e Type $p-mutex-status2" \
    "mutex-status2"
 
 cmd_ok \

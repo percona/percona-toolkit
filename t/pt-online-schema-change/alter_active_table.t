@@ -15,7 +15,7 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-online-schema-change";
 
-use Time::HiRes qw(usleep);
+use Time::HiRes qw(sleep);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
@@ -33,7 +33,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 7;
+   plan tests => 9;
 }
 
 my $output;
@@ -43,6 +43,7 @@ my $exit;
 my $rows;
 
 my $query_table_stop   = "/tmp/query_table.$PID.stop";
+my $query_table_pid    = "/tmp/query_table.$PID.pid";
 my $query_table_output = "/tmp/query_table.$PID.output";
 
 sub start_query_table {
@@ -52,18 +53,23 @@ sub start_query_table {
    diag(`echo > $query_table_output`);
 
    my $cmd = "$trunk/$sample/query_table.pl";
-   system("$cmd 127.1 12345 $db $tbl $pkcol $query_table_stop >$query_table_output &");
+   system("$cmd 127.1 12345 $db $tbl $pkcol $query_table_stop $query_table_pid >$query_table_output &");
+   wait_until(sub{-e $query_table_pid});
 
    return;
 }
 
 sub stop_query_table {
    diag(`touch $query_table_stop`);
-   sleep 1;
+   open my $fh, '<', $query_table_pid or die $OS_ERROR;
+   my ($p) = <$fh>;
+   close $fh;
+   chomp $p;
+   wait_until(sub{!kill 0, $p});
    return;
 }
 
-sub get_ids { 
+sub get_ids {
    open my $fh, '<', $query_table_output
       or die "Cannot open $query_table_output: $OS_ERROR";
    my @lines = <$fh>;
@@ -77,7 +83,7 @@ sub get_ids {
    }
 
    return \%ids;
-};
+}
 
 sub check_ids {
    my ( $db, $tbl, $pkcol, $ids ) = @_;
@@ -149,37 +155,40 @@ sub check_ids {
 # #############################################################################
 
 # Load 500 rows.
+diag('Loading sample dataset...');
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t");
 $master_dbh->do("USE pt_osc");
 $master_dbh->do("TRUNCATE TABLE t");
-diag(`cp $trunk/t/pt-online-schema-change/samples/basic_no_fks.data /tmp`);
-$master_dbh->do("LOAD DATA LOCAL INFILE '/tmp/basic_no_fks.data' INTO TABLE pt_osc.t");
-diag(`rm -rf /tmp/basic_no_fks.data`);
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=500");
-$master_dbh->do("ANALYZE TABLE pt_osc.t");
+$master_dbh->do("LOAD DATA LOCAL INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
+$master_dbh->do("ANALYZE TABLE t");
+$sb->wait_for_slaves();
+
+$rows = $master_dbh->selectrow_hashref('show master status');
+diag('Binlog position before altering table: ', $rows->{file}, '/', $rows->{position});
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
 
 # While that's ^ happening, alter the table.
-$output = output(
-   sub { $exit = pt_online_schema_change::main(
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
       "$master_dsn,D=pt_osc,t=t",
       qw(--lock-wait-timeout 5),
       qw(--print --execute --chunk-size 100 --alter ENGINE=InnoDB)) },
    stderr => 1,
 );
 
-# Stop altering the table.
+# Stop changing the table's data.
 stop_query_table();
+
+like($output, qr/Successfully altered `pt_osc`.`t`/, 'Altered OK');
 
 $rows = $master_dbh->selectall_hashref('SHOW TABLE STATUS FROM pt_osc', 'name');
 is(
    $rows->{t}->{engine},
    'InnoDB',
    "New table ENGINE=InnoDB"
-) or warn Dumper($rows);
+) or BAIL_OUT("Something went terribly wrong");
 
 is(
    scalar keys %$rows,
@@ -198,7 +207,9 @@ check_ids(qw(pt_osc t id), get_ids());
 # #############################################################################
 # Done.
 # #############################################################################
-diag(`rm -rf $query_table_stop >/dev/null 2>&1`);
-diag(`rm -rf $query_table_output >/dev/null 2>&1`);
+unlink $query_table_stop or warn $OS_ERROR;
+unlink $query_table_output or warn $OS_ERROR;
+unlink $query_table_pid or warn $OS_ERROR;
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
 my $output;
@@ -84,8 +84,16 @@ like(
    'No SLAVE STATUS on master'
 );
 
+# Sometimes the slave will be in a state of "reconnecting to master" that will
+# take a while. Help that along. But, we've disconnected $slave_dbh by doing
+# 'stop' on the sandbox above, so we need to reconnect.
+$slave_dbh  = $sb->get_dbh_for('slave2');
+$slave_dbh->do('STOP SLAVE');
+$slave_dbh->do('START SLAVE');
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

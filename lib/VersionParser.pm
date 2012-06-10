@@ -34,22 +34,84 @@ sub new {
 
 sub parse {
    my ( $self, $str ) = @_;
-   my $result = sprintf('%03d%03d%03d', $str =~ m/(\d+)/g);
+   my @version_parts = $str =~ m/(\d+)/g;
+   # Turn a version like 5.5 into 5.5.0
+   @version_parts = map { $_ || 0 } @version_parts[0..2];
+   my $result = sprintf('%03d%03d%03d', @version_parts);
    PTDEBUG && _d($str, 'parses to', $result);
    return $result;
 }
 
 # Compares versions like 5.0.27 and 4.1.15-standard-log.  Caches version number
 # for each DBH for later use.
+sub version_cmp {
+   my ($self, $dbh, $target, $cmp) = @_;
+   my $version = $self->version($dbh);
+   my $result;
+
+   if ( $cmp eq 'ge' ) {
+      $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'gt' ) {
+      $result = $self->{$dbh} gt $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'eq' ) {
+      $result = $self->{$dbh} eq $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'ne' ) {
+      $result = $self->{$dbh} ne $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'lt' ) {
+      $result = $self->{$dbh} lt $self->parse($target) ? 1 : 0;
+   }
+   elsif ( $cmp eq 'le' ) {
+      $result = $self->{$dbh} le $self->parse($target) ? 1 : 0;
+   }
+   else {
+      die "Asked for an unknown comparizon: $cmp"
+   }
+
+   PTDEBUG && _d($self->{$dbh}, $cmp, $target, ':', $result);
+   return $result;
+}
+
 sub version_ge {
    my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'ge');
+}
+
+sub version_gt {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'gt');
+}
+
+sub version_eq {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'eq');
+}
+
+sub version_ne {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'ne');
+}
+
+sub version_lt {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'lt');
+}
+
+sub version_le {
+   my ( $self, $dbh, $target ) = @_;
+   return $self->version_cmp($dbh, $target, 'le');
+}
+
+sub version {
+   my ( $self, $dbh ) = @_;
    if ( !$self->{$dbh} ) {
       $self->{$dbh} = $self->parse(
          $dbh->selectrow_array('SELECT VERSION()'));
    }
-   my $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
-   PTDEBUG && _d($self->{$dbh}, 'ge', $target, ':', $result);
-   return $result;
+   return $self->{$dbh};
 }
 
 # Returns DISABLED if InnoDB doesn't appear as YES or DEFAULT in SHOW ENGINES,

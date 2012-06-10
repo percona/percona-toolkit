@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+$ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
+
 use PerconaTest;
 use Sandbox;
 shift @INC;  # our unshift (above)
@@ -36,38 +38,47 @@ else {
    plan tests => 4;
 }
 
-
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
 # And --max-load "" prevents waiting for status variables.
 my $master_dsn = 'h=127.1,P=12345,u=msandbox,p=msandbox';
-my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '');
+my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '',
+                  '--progress', 'time,1');
 my $output;
 my $row;
 my $exit_status;
 
-wait_until(  # slaves aren't lagging
-   sub {
-      $row = $slave1_dbh->selectrow_hashref('show slave status');
-      return 0 if $row->{Seconds_Behind_Master};
-      $row = $slave2_dbh->selectrow_hashref('show slave status');
-      return 0 if $row->{Seconds_Behind_Master};
-      return 1;
-   }
-) or die "Slaves are still lagging";
+# Create the checksum table, else stopping the slave below
+# will cause the tool to wait forever for the --replicate
+# table to replicate to the stopped slave.
+pt_table_checksum::main(@args, qw(-t sakila.city --quiet));
 
 # ############################################################################
 # --check-slave-lag
 # ############################################################################
 
+# Stop slave1.
+$sb->wait_for_slaves();
 $slave1_dbh->do('stop slave sql_thread');
-$row = $slave1_dbh->selectrow_hashref('show slave status');
-is(
-   $row->{slave_sql_running},
-   'No',
-   'Stopped slave SQL thread on slave1'
+wait_until(sub {
+   my $ss = $slave1_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+   return $ss->{slave_sql_running} eq 'Yes';
+});
+
+# Try to checksum, but since slave1 is stopped, the tool should
+# wait for it to stop "lagging".
+($output) = PerconaTest::full_output(
+   sub { pt_table_checksum::main(@args, qw(-t sakila.city)) },
+   wait_for => 3,
 );
 
+like(
+   $output,
+   qr/Replica h=127.0.0.1,P=12346 is stopped/,
+   "Waits for stopped replica"
+);
+
+# Checksum but only use slave2 to check for lag.
 $exit_status = pt_table_checksum::main(@args, qw(-t sakila.city --quiet),
    qw(--no-replicate-check), '--check-slave-lag', 'P=12347');
 
@@ -84,18 +95,14 @@ is(
    "Checksummed table"
 );
 
-# Start slave2 sql_thread and stop slave1 sql_thread and test that
-# mk-table-checksum is really checking and waiting for just --slave-lag-dbh.
-$slave1_dbh->do('start slave sql_thread');
-$row = $slave1_dbh->selectrow_hashref('show slave status');
-is(
-   $row->{slave_sql_running},
-   'Yes',
-   'Started slave SQL thread on slave1'
-) or BAIL_OUT("Failed to restart SQL thread on slave2 (12347)");
+$slave1_dbh->do('START SLAVE sql_thread');
+$slave2_dbh->do('STOP SLAVE');
+$slave2_dbh->do('START SLAVE');
+$sb->wait_for_slaves();
 
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -1400,7 +1400,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
 # The End ####################################################
 EOF
 report_system_summary "$samples/BSD/netbsd_001" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from a NetBSD box"
+no_diff "$TMPDIR/got" "$TMPDIR/expected" "netbsd_001"
 
 cat <<EOF > "$TMPDIR/expected"
     Hostname | openbsd.my.domain
@@ -1452,7 +1452,7 @@ Architecture | CPU = 32-bit, OS = 32-bit
 # The End ####################################################
 EOF
 report_system_summary "$samples/BSD/openbsd_001" | tail -n +3  > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from a OpenBSD box"
+no_diff "$TMPDIR/got" "$TMPDIR/expected" "openbsd_001"
 
 cat <<EOF > "$TMPDIR/expected"
     Hostname | hugmeir
@@ -1571,10 +1571,10 @@ Unable to collect information
 EOF
 
 report_system_summary "$samples/Linux/001" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from Linux (Ubuntu)"
+no_diff "$TMPDIR/got" "$TMPDIR/expected" "Linux/001 (Ubuntu)"
 
 report_system_summary "$samples/Linux/002" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$samples/Linux/output_002.txt" "report_system_summary works with samples from Linux (CentOS 5.7, as root)"
+no_diff "$TMPDIR/got" "$samples/Linux/output_002.txt" "Linux/002 (CentOS 5.7, as root)"
 
 report_system_summary "$samples/Linux/003" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$samples/Linux/output_003.txt" "report_system_summary works with samples from Linux (CentOS 5.7, as non-root)"
+no_diff "$TMPDIR/got" "$samples/Linux/output_003.txt" "Linux/003 (CentOS 5.7, as non-root)"

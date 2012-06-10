@@ -30,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 1;
+   plan tests => 2;
 }
 
 my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12348 --compare results,warnings --zero-query-times";
@@ -48,4 +48,6 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

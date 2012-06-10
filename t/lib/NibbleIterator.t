@@ -39,7 +39,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 50;
+   plan tests => 54;
 }
 
 my $q   = new Quoter();
@@ -214,7 +214,7 @@ is(
 # ############################################################################
 # a-y w/ chunk-size 5, even nibbles
 # ############################################################################
-$dbh->do('delete from test.t where c="z"');
+$dbh->do("delete from test.t where c='z'");
 my $all_rows = $dbh->selectall_arrayref('select * from test.t order by c');
 $ni = make_nibble_iter(
    db       => 'test',
@@ -254,7 +254,7 @@ is_deeply(
 # ############################################################################
 # single row table
 # ############################################################################
-$dbh->do('delete from test.t where c != "d"');
+$dbh->do("delete from test.t where c != 'd'");
 $ni = make_nibble_iter(
    db       => 'test',
    tbl      => 't',
@@ -453,36 +453,10 @@ $ni = make_nibble_iter(
 );
 $ni->next();
 $ni->next();
-is_deeply(
-   \@expl,
-   [
-      {
-         id            => '1',
-         key           => 'PRIMARY',
-         key_len       => '2',
-         possible_keys => 'PRIMARY',
-         ref           => undef,
-         rows          => '54',
-         select_type   => 'SIMPLE',
-         table         => 'country',
-         type          => 'range',
-         extra         => 'Using where',
-      },
-      {
-         id             => '1',
-         key            => 'PRIMARY',
-         key_len        => '2',
-         possible_keys  => 'PRIMARY',
-         ref            => undef,
-         rows           => '49',
-         select_type    => 'SIMPLE',
-         table          => 'country',
-         type           => 'range',
-         extra          => 'Using where',
-      },
-   ],
-'exec_nibble callbackup and explain_sth'
-) or print STDERR Dumper(\@expl);
+ok($expl[0]->{rows} > 40 && $expl[0]->{rows} < 80, 'Rows between 40-80');
+is($expl[0]->{key}, 'PRIMARY', 'Uses PRIMARY key');
+is($expl[0]->{key_len}, '2', 'Uses 2 bytes of index');
+is($expl[0]->{type} , 'range', 'Uses range type');
 
 # #########################################################################
 # film_actor, multi-column pk
@@ -838,7 +812,6 @@ is(
 # Index case-sensitivity.
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/undef-arrayref-bug-995274.sql");
-PerconaTest::wait_for_table($dbh, "test.GroupMembers", "id=493076");
 
 eval {
    $ni = make_nibble_iter(
@@ -873,4 +846,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

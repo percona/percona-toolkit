@@ -13,6 +13,11 @@
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
+PTFUNCNAME=""
+PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
@@ -30,6 +35,10 @@ die() {
    exit 1
 }
 
+_d () {
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
+}
+
 # ###########################################################################
 # End log_warn_die package
 # ###########################################################################
@@ -42,6 +51,12 @@ die() {
 #   t/lib/bash/parse_options.sh
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+
+
+
+
+
+set -u
 
 ARGV=""           # Non-option args (probably input files)
 EXT_ARGV=""       # Everything after -- (args for an external command)
@@ -412,6 +427,9 @@ size_to_bytes() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
 TMPDIR=""
 
 mk_tmpdir() {
@@ -450,6 +468,9 @@ rm_tmpdir() {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 
+
+set -u
+
 _seq() {
    local i="$1"
    awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
@@ -469,8 +490,16 @@ _lsof() {
    fi
 }
 
+
+
 _which() {
-   [ -x /usr/bin/which ] && /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   if [ -x /usr/bin/which ]; then
+      /usr/bin/which "$1" 2>/dev/null | awk '{print $1}'
+   elif which which 1>/dev/null 2>&1; then
+      which "$1" 2>/dev/null | awk '{print $1}'
+   else
+      echo "$1"
+   fi
 }
 
 # ###########################################################################

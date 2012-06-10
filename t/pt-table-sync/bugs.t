@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 8;
+   plan tests => 9;
 }
 
 my $sample     = "t/pt-table-sync/samples";
@@ -41,7 +41,6 @@ my $slave_dsn  = "h=127.1,P=12346,u=msandbox,p=msandbox";
 # #############################################################################
 
 $sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.zzz", "id=111");
 
 # Make a diff in each table.
 $slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
@@ -87,6 +86,7 @@ $output = output(
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
+$sb->wait_for_slaves();
 
 is(
    $exit_status,
@@ -107,9 +107,7 @@ is_deeply(
 # #########################################################################
 
 $sb->wipe_clean($master_dbh);
-
 $sb->load_file('master', "$sample/wrong-tbl-struct-bug-1003014.sql");
-PerconaTest::wait_for_table($slave_dbh, "test.zzz", "id=111");
 
 $slave_dbh->do("DELETE FROM test.aaa WHERE STOP_ARCHIVE IN (5,6,7)");
 $slave_dbh->do("UPDATE test.zzz SET c='x' WHERE id IN (44,45,46)");
@@ -135,6 +133,7 @@ $output = output(
       "--tables", "test.aaa,test.zzz") },
    stderr => 1,
 );
+$sb->wait_for_slaves();
 
 is(
    $exit_status,
@@ -153,4 +152,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

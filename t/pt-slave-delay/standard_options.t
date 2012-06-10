@@ -27,7 +27,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 else {
-   plan tests => 8;
+   plan tests => 9;
 }
 
 my $output;
@@ -47,7 +47,7 @@ is($output, $pid, 'PID file has correct PID');
 
 # Kill it
 diag(`kill $pid`);
-sleep 1;
+wait_until(sub{!kill 0, $pid});
 ok(! -f '/tmp/mk-slave-delay.pid', 'PID file removed');
 
 # #############################################################################
@@ -98,4 +98,5 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
