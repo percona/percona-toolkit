@@ -8037,6 +8037,12 @@ when using this option; a poor choice of index could cause bad performance.
 This is probably best to use when you are checksumming only a single table, not
 an entire server.
 
+=item --chunk-index-columns
+
+type: int
+
+Number of left-most L<"--chunk-index"> columns to use.
+
 =item --chunk-size
 
 type: size; default: 1000
