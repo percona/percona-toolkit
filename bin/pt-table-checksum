@@ -5991,6 +5991,25 @@ sub main {
       }
    }
 
+   # Parse --chunk-index INDEX:N where N is the number of
+   # left-most columns of INDEX to use.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
+   my ($chunk_index, $n_chunk_index_cols)
+      = split(':', $o->get('chunk-index') || '');
+   if ( defined $chunk_index && !$chunk_index ) {
+      $o->save_error('--chunk-index cannot be an empty string');
+   }
+   else {
+      $chunk_index = lc $chunk_index;
+   }
+   if ( defined $n_chunk_index_cols
+        && (!$n_chunk_index_cols
+            || $n_chunk_index_cols =~ m/[^\d]/
+            || $n_chunk_index_cols < 1) ) {
+      $o->save_error('Invalid number of --chunk-index columns: '
+         . $n_chunk_index_cols);
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV > 1 ) {
          $o->save_error("More than one host specified; only one allowed");
@@ -6910,22 +6929,23 @@ sub main {
          my $nibble_iter;
          eval {
             $nibble_iter = new OobNibbleIterator(
-               Cxn          => $master_cxn,
-               tbl          => $tbl,
-               chunk_size   => $tbl->{chunk_size},
-               chunk_index  => $o->get('chunk-index'),
-               dml          => $checksum_dml,
-               select       => $checksum_cols,
-               past_dml     => $checksum_dml,
-               past_select  => $past_cols,
-               callbacks    => $callbacks,
-               resume       => $last_chunk,
-               OptionParser => $o,
-               Quoter       => $q,
-               TableNibbler => $tn,
-               TableParser  => $tp,
-               RowChecksum  => $rc,
-               comments     => {
+               Cxn                => $master_cxn,
+               tbl                => $tbl,
+               chunk_size         => $tbl->{chunk_size},
+               chunk_index        => $chunk_index,
+               n_chunk_index_cols => $n_chunk_index_cols,
+               dml                => $checksum_dml,
+               select             => $checksum_cols,
+               past_dml           => $checksum_dml,
+               past_select        => $past_cols,
+               callbacks          => $callbacks,
+               resume             => $last_chunk,
+               OptionParser       => $o,
+               Quoter             => $q,
+               TableNibbler       => $tn,
+               TableParser        => $tp,
+               RowChecksum        => $rc,
+               comments           => {
                   bite   => "checksum table",
                   nibble => "checksum chunk",
                },
@@ -8036,12 +8056,6 @@ index to the checksum SQL statements in a C<FORCE INDEX> clause.  Be careful
 when using this option; a poor choice of index could cause bad performance.
 This is probably best to use when you are checksumming only a single table, not
 an entire server.
-
-=item --chunk-index-columns
-
-type: int
-
-Number of left-most L<"--chunk-index"> columns to use.
 
 =item --chunk-size
 
