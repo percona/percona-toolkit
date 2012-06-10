@@ -6678,6 +6678,9 @@ sub main {
                   if ( !$expl->{key}
                        || lc($expl->{key}) ne lc($nibble_iter->nibble_index())
                        || !$expl->{key_len} ) {
+                     # XXX this message doesn't give good info if key_len is
+                     # NULL. We need an elsif() for that, instead of lumping it
+                     # into this if().
                      die "Cannot determine the key_len of the chunk index "
                         . "because MySQL chose "
                         . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
@@ -8097,7 +8100,33 @@ Sleep time between checks for L<"--max-lag">.
 
 default: yes
 
-Check the execution plan of checksum queries.
+Check query execution plans for safety. By default, this option causes
+pt-table-checksum to run EXPLAIN before running queries that are meant to access
+a small amount of data, but which could access many rows if MySQL chooses a bad
+execution plan. These include the queries to determine chunk boundaries and the
+chunk queries themselves. If it appears that MySQL will use a bad query
+execution plan, the tool will skip the table or the chunk of the table.
+
+The tool uses several heuristics to determine whether an execution plan is bad.
+The first is whether EXPLAIN reports that MySQL intends to use the desired index
+to access the rows. If MySQL chooses a different index, the tool considers the
+query unsafe.
+
+The tool also checks how much of the index MySQL reports that it will use for
+the query. The EXPLAIN output shows this in the key_len column. The tool
+remembers the largest key_len seen, and skips chunks where MySQL reports that it
+will use a smaller prefix of the index. This heuristic can be understood as
+skipping chunks that have a worse execution plan than other chunks.
+
+The tool prints a warning the first time a chunk is skipped due to a bad execution
+plan in each table. Subsequent chunks are skipped silently, although you can see
+the count of skipped chunks in the SKIPPED column in the tool's output.
+
+This option adds some setup work to each table and chunk. Although the work is
+not intrusive for MySQL, it results in more round-trips to the server, which
+consumes time. Making chunks too small will cause the overhead to become
+relatively larger. It is therefore recommended that you not make chunks too
+small, because the tool may take a very long time to complete if you do.
 
 =item --[no]check-replication-filters
 
@@ -8148,12 +8177,24 @@ when using this option; a poor choice of index could cause bad performance.
 This is probably best to use when you are checksumming only a single table, not
 an entire server.
 
+This option supports a special syntax to select a prefix of the index instead of
+the entire index. The syntax is NAME:N, where NAME is the name of the index, and
+N is the number of columns you wish to use. This works only for compound
+indexes, and is useful in cases where a bug in the MySQL query optimizer
+(planner) causes it to scan a large range of rows instead of using the index to
+locate starting and ending points precisely. This problem sometimes occurs on
+indexes with many columns, such as 4 or more. If this happens, the tool might
+print a warning related to the L<"--check-plan"> option. Instructing the tool to
+use only the first N columns from the index is a workaround for the bug in some
+cases.
+
 =item --chunk-size
 
 type: size; default: 1000
 
 Number of rows to select for each checksum query.  Allowable suffixes are
-k, M, G.
+k, M, G.  You should not use this option in most cases; prefer L<"--chunk-time">
+instead.
 
 This option can override the default behavior, which is to adjust chunk size
 dynamically to try to make chunks run in exactly L<"--chunk-time"> seconds.
@@ -8168,6 +8209,9 @@ index that contains 10,000 of a given value, there is no way to write a WHERE
 clause that matches only 1,000 of the values, and that chunk will be at least
 10,000 rows large.  Such a chunk will probably be skipped because of
 L<"--chunk-size-limit">.
+
+Selecting a small chunk size will cause the tool to become much slower, in part
+because of the setup work required for L<"--[no]-check-plan">.
 
 =item --chunk-size-limit
 
