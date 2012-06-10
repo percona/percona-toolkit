@@ -5132,12 +5132,12 @@ sub main {
    # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
    my ($chunk_index, $n_chunk_index_cols)
       = split(':', $o->get('chunk-index') || '');
-   if ( defined $chunk_index && !$chunk_index ) {
+   if ( defined $chunk_index && $chunk_index eq '' ) {
       $o->save_error('--chunk-index cannot be an empty string');
    }
    if ( defined $n_chunk_index_cols
         && (!$n_chunk_index_cols
-            || $n_chunk_index_cols =~ m/[^\d]/
+            || $n_chunk_index_cols =~ m/\D/
             || $n_chunk_index_cols < 1) ) {
       $o->save_error('Invalid number of --chunk-index columns: '
          . $n_chunk_index_cols);
