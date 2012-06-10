@@ -124,10 +124,11 @@ sub new {
       # Figure out how to nibble the table with the index.
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
-         tbl_struct => $tbl->{tbl_struct},
-         index      => $index,
-         cols       => \@cols,
-         asc_only   => 1,
+         tbl_struct   => $tbl->{tbl_struct},
+         index        => $index,
+         n_index_cols => $args{n_chunk_index_cols},
+         cols         => \@cols,
+         asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
