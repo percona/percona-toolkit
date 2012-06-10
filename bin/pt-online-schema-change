@@ -1889,8 +1889,12 @@ sub generate_asc_stmt {
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
-      @asc_cols = $asc_cols[0];
       PTDEBUG && _d('Ascending only first column');
+      @asc_cols = $asc_cols[0];
+   }
+   elsif ( my $n = $args{n_index_cols} ) {
+      PTDEBUG && _d('Ascending only first', $n, 'columns');
+      @asc_cols = @asc_cols[0..($n-1)];
    }
    PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 
@@ -4111,10 +4115,11 @@ sub new {
 
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
-         tbl_struct => $tbl->{tbl_struct},
-         index      => $index,
-         cols       => \@cols,
-         asc_only   => 1,
+         tbl_struct   => $tbl->{tbl_struct},
+         index        => $index,
+         n_index_cols => $args{n_chunk_index_cols},
+         cols         => \@cols,
+         asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
@@ -4196,16 +4201,17 @@ sub new {
 
       $self = {
          %args,
-         index              => $index,
-         limit              => $limit,
-         first_lb_sql       => $first_lb_sql,
-         last_ub_sql        => $last_ub_sql,
-         ub_sql             => $ub_sql,
-         nibble_sql         => $nibble_sql,
-         explain_ub_sql     => "EXPLAIN $ub_sql",
-         explain_nibble_sql => $explain_nibble_sql,
-         resume_lb_sql      => $resume_lb_sql,
-         sql                => {
+         index                => $index,
+         limit                => $limit,
+         first_lb_sql         => $first_lb_sql,
+         last_ub_sql          => $last_ub_sql,
+         ub_sql               => $ub_sql,
+         nibble_sql           => $nibble_sql,
+         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_nibble_sql   => $explain_nibble_sql,
+         resume_lb_sql        => $resume_lb_sql,
+         sql                  => {
             columns    => $asc->{scols},
             from       => $from,
             where      => $where,
@@ -4313,10 +4319,11 @@ sub nibble_index {
 sub statements {
    my ($self) = @_;
    return {
-      nibble                 => $self->{nibble_sth},
-      explain_nibble         => $self->{explain_nibble_sth},
-      upper_boundary         => $self->{ub_sth},
-      explain_upper_boundary => $self->{explain_ub_sth},
+      explain_first_lower_boundary => $self->{explain_first_lb_sth},
+      nibble                       => $self->{nibble_sth},
+      explain_nibble               => $self->{explain_nibble_sth},
+      upper_boundary               => $self->{ub_sth},
+      explain_upper_boundary       => $self->{explain_ub_sth},
    }
 }
 
@@ -4545,8 +4552,9 @@ sub _prepare_sths {
    $self->{explain_nibble_sth} = $dbh->prepare($self->{explain_nibble_sql});
 
    if ( !$self->{one_nibble} ) {
-      $self->{ub_sth} = $dbh->prepare($self->{ub_sql});
-      $self->{explain_ub_sth} = $dbh->prepare($self->{explain_ub_sql});
+      $self->{explain_first_lb_sth} = $dbh->prepare($self->{explain_first_lb_sql});
+      $self->{ub_sth}               = $dbh->prepare($self->{ub_sql});
+      $self->{explain_ub_sth}       = $dbh->prepare($self->{explain_ub_sql});
    }
 
    return;
@@ -5201,6 +5209,22 @@ sub main {
       }
    }
 
+   # Parse --chunk-index INDEX:N where N is the number of
+   # left-most columns of INDEX to use.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
+   my ($chunk_index, $n_chunk_index_cols)
+      = split(':', $o->get('chunk-index') || '');
+   if ( defined $chunk_index && $chunk_index eq '' ) {
+      $o->save_error('--chunk-index cannot be an empty string');
+   }
+   if ( defined $n_chunk_index_cols
+        && (!$n_chunk_index_cols
+            || $n_chunk_index_cols =~ m/\D/
+            || $n_chunk_index_cols < 1) ) {
+      $o->save_error('Invalid number of --chunk-index columns: '
+         . $n_chunk_index_cols);
+   }
+
    if ( !$o->get('help') ) {
       if ( @ARGV ) {
          $o->save_error('Specify only one DSN on the command line');
@@ -5832,6 +5856,7 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
+         my $statements  = $nibble_iter->statements();
 
          if ( $o->get('dry-run') ) {
             print "Not copying rows because this is a dry run.\n";
@@ -5843,7 +5868,6 @@ sub main {
 
          if ( $o->get('print') ) {
             # Print the checksum and next boundary statements.
-            my $statements = $nibble_iter->statements();
             foreach my $sth ( sort keys %$statements ) {
                next if $sth =~ m/^explain/;
                if ( $statements->{$sth} ) {
@@ -5885,6 +5909,34 @@ sub main {
                      . " rows (chunk size=$tbl->{chunk_size}"
                      . " * chunk size limit=$limit).\n";
                die $msg;
+            }
+         }
+         else { # chunking the table
+            if ( $o->get('check-plan') ) {
+               my $expl = explain_statement(
+                  sth  => $statements->{explain_first_lower_boundary},
+                  tbl  => $tbl,
+                  vals => [],
+               );
+               if ( !$expl->{key}
+                    || lc($expl->{key}) ne lc($nibble_iter->nibble_index()) )
+               {
+                  die "Cannot determine the key_len of the chunk index "
+                     . "because MySQL chose "
+                     . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
+                     . "instead of the " . $nibble_iter->nibble_index()
+                     . " index for the first lower boundary statement.  "
+                     . "See --[no]check-plan in the documentation for more "
+                     . "information.";
+               }
+               elsif ( !$expl->{key_len} ) {
+                  die "The key_len of the $expl->{key} index is "
+                     . (defined $expl->{key_len} ? "zero" : "NULL")
+                     . ", but this should not be possible.  " 
+                     . "See --[no]check-plan in the documentation for more "
+                     . "information.";
+               }
+               $tbl->{key_len} = $expl->{key_len};
             }
          }
 
@@ -5946,58 +5998,11 @@ sub main {
          # Count every chunk, even if it's ultimately skipped, etc.
          $tbl->{results}->{n_chunks}++;
 
-         # If the table is being chunk (i.e., it's not small enough to be
-         # consumed by one nibble), then check index usage and chunk size.
-         if ( !$nibble_iter->one_nibble() ) {
-            my $expl = explain_statement(
-               tbl  => $tbl,
-               sth  => $sth->{explain_nibble},
-               vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
-            );
-
-            # Ensure that MySQL is using the chunk index.
-            if (   lc($expl->{key} || '')
-                ne lc($nibble_iter->nibble_index() || '') ) {
-               my $msg
-                  = "Aborting copying table $tbl->{name} at chunk "
-                  . $nibble_iter->nibble_number()
-                  . " because it is not safe to chunk.  Chunking should "
-                  . "use the "
-                  . ($nibble_iter->nibble_index() || '?')
-                  . " index, but MySQL EXPLAIN reports that "
-                  . ($expl->{key} ? "the $expl->{key}" : "no")
-                  . " index will be used for "
-                  . $sth->{explain_nibble}->{Statement}
-                  . " with values "
-                  . join(", ", map { defined $_ ? $_ : "NULL" }
-                         (@{$boundary->{lower}}, @{$boundary->{upper}}))
-                  . "\n";
-               die $msg;
-            }
-
-            # Check chunk size limit if the upper boundary and next lower
-            # boundary are identical.
-            if ( $limit ) {
-               my $boundary = $nibble_iter->boundaries(); 
-               my $oversize_chunk
-                  = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
-                  :          0;
-               if ( $oversize_chunk
-                    && $nibble_iter->identical_boundaries(
-                          $boundary->{upper}, $boundary->{next_lower}) )
-               {
-                  my $msg
-                     = "Aborting copying table $tbl->{name} at chunk "
-                     . $nibble_iter->nibble_number()
-                     . " because the chunk is too large: MySQL estimates "
-                     . ($expl->{rows} || 0) . "rows.  The current chunk "
-                     . "size limit is " . ($tbl->{chunk_size} * $limit)
-                     . " rows (chunk size=$tbl->{chunk_size}"
-                     . " * chunk size limit=$limit).\n";
-                  die $msg;
-               }
-            }
-         }
+         # Die unless the nibble is safe.
+         nibble_is_safe(
+            %args,
+            OptionParser => $o,
+         );
 
          # Exec and time the chunk checksum query.
          $tbl->{nibble_time} = exec_nibble(
@@ -6100,18 +6105,19 @@ sub main {
    # This won't (shouldn't) fail because we already verified in
    # check_orig_table() table we can NibbleIterator::can_nibble().
    my $nibble_iter = new NibbleIterator(
-      Cxn          => $cxn,
-      tbl          => $orig_tbl,
-      chunk_size   => $orig_tbl->{chunk_size},
-      chunk_index  => $o->get('chunk-index'),
-      dml          => $dml,
-      select       => $select,
-      callbacks    => $callbacks,
-      OptionParser => $o,
-      Quoter       => $q,
-      TableParser  => $tp,
-      TableNibbler => new TableNibbler(TableParser => $tp, Quoter => $q),
-      comments     => {
+      Cxn                => $cxn,
+      tbl                => $orig_tbl,
+      chunk_size         => $orig_tbl->{chunk_size},
+      chunk_index        => $chunk_index,
+      n_chunk_index_cols => $n_chunk_index_cols,
+      dml                => $dml,
+      select             => $select,
+      callbacks          => $callbacks,
+      OptionParser       => $o,
+      Quoter             => $q,
+      TableParser        => $tp,
+      TableNibbler       => new TableNibbler(TableParser => $tp, Quoter => $q),
+      comments           => {
          bite   => "pt-online-schema-change $PID copy table",
          nibble => "pt-online-schema-change $PID copy nibble",
       },
@@ -6301,6 +6307,82 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub nibble_is_safe {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl NibbleIterator OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $nibble_iter, $o)= @args{@required_args};
+
+   # EXPLAIN the checksum chunk query to get its row estimate and index.
+   # XXX This call and others like it are relying on a Perl oddity.
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
+   my $sth      = $nibble_iter->statements();
+   my $boundary = $nibble_iter->boundaries();
+   my $expl     = explain_statement(
+      tbl  => $tbl,
+      sth  => $sth->{explain_nibble},
+      vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
+   );
+
+   # Ensure that MySQL is using the chunk index if the table is being chunked.
+   if ( !$nibble_iter->one_nibble()
+        && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') ) { 
+      if ( !$tbl->{warned}->{not_using_chunk_index}++
+           && $o->get('quiet') < 2 ) {
+         die "Error copying rows at chunk " . $nibble_iter->nibble_number()
+            . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
+            . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
+            . " instead of the " . $nibble_iter->nibble_index() . "index.\n";
+      }
+   }
+
+   # Ensure that the chunk isn't too large if there's a --chunk-size-limit.
+   # If single-chunking the table, this has already been checked, so it
+   # shouldn't have changed.  If chunking the table with a non-unique key,
+   # oversize chunks are possible. 
+   if ( my $limit = $o->get('chunk-size-limit') ) {
+      my $oversize_chunk
+         = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
+         :          0;
+      if ( $oversize_chunk
+           && $nibble_iter->identical_boundaries($boundary->{upper},
+                                                 $boundary->{next_lower}) ) {
+         if ( !$tbl->{warned}->{oversize_chunk}++
+              && $o->get('quiet') < 2 ) {
+            die "Error copying rows at chunk " . $nibble_iter->nibble_number()
+               . " of $tbl->{db}.$tbl->{tbl} because it is oversized.  "
+               . "The current chunk size limit is "
+               . ($tbl->{chunk_size} * $limit)
+               . " rows (chunk size=$tbl->{chunk_size}"
+               . " * chunk size limit=$limit), but MySQL estimates "
+               . "that there are " . ($expl->{rows} || 0)
+               . " rows in the chunk.\n";
+         }
+      }
+   }
+
+   # Ensure that MySQL is still using the entire index.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
+   if ( !$nibble_iter->one_nibble()
+        && $tbl->{key_len}
+        && ($expl->{key_len} || 0) < $tbl->{key_len} ) {
+      if ( !$tbl->{warned}->{key_len}++
+           && $o->get('quiet') < 2 ) {
+         die "Error copying rows at chunk " . $nibble_iter->nibble_number()
+            . " of $tbl->{db}.$tbl->{tbl} because MySQL used "
+            . "only " . ($expl->{key_len} || 0) . " bytes "
+            . "of the " . ($expl->{key} || '?') . " index instead of "
+            . $tbl->{key_len} . ".  See the --[no]check-plan documentation "
+            . "for more information.\n";
+      }
+   }
+
+   return 1; # safe
+}
+
 sub create_new_table{
    my (%args) = @_;
    my @required_args = qw(orig_tbl Cxn Quoter OptionParser TableParser);
@@ -7302,6 +7384,39 @@ type: time; default: 1
 
 Sleep time between checks for L<"--max-lag">.
 
+=item --[no]check-plan
+
+default: yes
+
+Check query execution plans for safety. By default, this option causes
+the tool to run EXPLAIN before running queries that are meant to access
+a small amount of data, but which could access many rows if MySQL chooses a bad
+execution plan. These include the queries to determine chunk boundaries and the
+chunk queries themselves. If it appears that MySQL will use a bad query
+execution plan, the tool will skip the chunk of the table.
+
+The tool uses several heuristics to determine whether an execution plan is bad.
+The first is whether EXPLAIN reports that MySQL intends to use the desired index
+to access the rows. If MySQL chooses a different index, the tool considers the
+query unsafe.
+
+The tool also checks how much of the index MySQL reports that it will use for
+the query. The EXPLAIN output shows this in the key_len column. The tool
+remembers the largest key_len seen, and skips chunks where MySQL reports that it
+will use a smaller prefix of the index. This heuristic can be understood as
+skipping chunks that have a worse execution plan than other chunks.
+
+The tool prints a warning the first time a chunk is skipped due to
+a bad execution plan in each table. Subsequent chunks are skipped silently,
+although you can see the count of skipped chunks in the SKIPPED column in
+the tool's output.
+
+This option adds some setup work to each table and chunk. Although the work is
+not intrusive for MySQL, it results in more round-trips to the server, which
+consumes time. Making chunks too small will cause the overhead to become
+relatively larger. It is therefore recommended that you not make chunks too
+small, because the tool may take a very long time to complete if you do.
+
 =item --[no]check-replication-filters
 
 default: yes
@@ -7337,6 +7452,17 @@ prefer.  If the index doesn't exist, then the tool will fall back to its default
 behavior of choosing an index.  The tool adds the index to the SQL statements in
 a C<FORCE INDEX> clause.  Be careful when using this option; a poor choice of
 index could cause bad performance.
+
+This option supports a special syntax to select a prefix of the index instead of
+the entire index. The syntax is NAME:N, where NAME is the name of the index, and
+N is the number of columns you wish to use. This works only for compound
+indexes, and is useful in cases where a bug in the MySQL query optimizer
+(planner) causes it to scan a large range of rows instead of using the index to
+locate starting and ending points precisely. This problem sometimes occurs on
+indexes with many columns, such as 4 or more. If this happens, the tool might
+print a warning related to the L<"--[no]check-plan"> option. Instructing
+the tool to use only the first N columns from the index is a workaround for
+the bug in some cases.
 
 =item --chunk-size
 

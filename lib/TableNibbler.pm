@@ -41,6 +41,7 @@ sub new {
 # * tbl_struct    Hashref returned from TableParser::parse().
 # * cols          Arrayref of columns to SELECT from the table
 # * index         Which index to ascend; optional.
+# * n_index_cols  The number of left-most index columns to use.
 # * asc_only      Whether to ascend strictly, that is, the WHERE clause for
 #                 the asc_stmt will fetch the next row > the given arguments.
 #                 The option is to fetch the row >=, which could loop
@@ -77,8 +78,12 @@ sub generate_asc_stmt {
    # These are the columns we'll ascend.
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
-      @asc_cols = $asc_cols[0];
       PTDEBUG && _d('Ascending only first column');
+      @asc_cols = $asc_cols[0];
+   }
+   elsif ( my $n = $args{n_index_cols} ) {
+      PTDEBUG && _d('Ascending only first', $n, 'columns');
+      @asc_cols = @asc_cols[0..($n-1)];
    }
    PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 

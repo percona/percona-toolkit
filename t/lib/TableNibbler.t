@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 24;
+use Test::More tests => 25;
 
 use TableParser;
 use TableNibbler;
@@ -295,6 +295,34 @@ is_deeply(
       },
    },
    'Alternate index with asc_first on sakila.rental',
+);
+
+is_deeply(
+   $n->generate_asc_stmt(
+      tbl_struct   => $t,
+      cols         => $t->{cols},
+      index        => 'rental_date',
+      n_index_cols => 2,
+   ),
+   {
+      cols  => [qw(rental_id rental_date inventory_id customer_id
+                  return_date staff_id last_update)],
+      index => 'rental_date',
+      where => '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` >= ?))',
+      slice => [qw(1 1 2)],
+      scols => [qw(rental_date rental_date inventory_id)],
+      boundaries => {
+         '<'  =>
+         '((`rental_date` < ?) OR (`rental_date` = ? AND `inventory_id` < ?))',
+         '<=' =>
+         '((`rental_date` < ?) OR (`rental_date` = ? AND `inventory_id` <= ?))',
+         '>'  =>
+         '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` > ?))',
+         '>=' =>
+         '((`rental_date` > ?) OR (`rental_date` = ? AND `inventory_id` >= ?))'
+      },
+   },
+   'Use only N left-most columns of the index',
 );
 
 is_deeply(
