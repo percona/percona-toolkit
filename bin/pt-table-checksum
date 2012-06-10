@@ -8184,9 +8184,9 @@ indexes, and is useful in cases where a bug in the MySQL query optimizer
 (planner) causes it to scan a large range of rows instead of using the index to
 locate starting and ending points precisely. This problem sometimes occurs on
 indexes with many columns, such as 4 or more. If this happens, the tool might
-print a warning related to the L<"--check-plan"> option. Instructing the tool to
-use only the first N columns from the index is a workaround for the bug in some
-cases.
+print a warning related to the L<"--[no]check-plan"> option. Instructing
+the tool to use only the first N columns from the index is a workaround for
+the bug in some cases.
 
 =item --chunk-size
 
@@ -8211,7 +8211,7 @@ clause that matches only 1,000 of the values, and that chunk will be at least
 L<"--chunk-size-limit">.
 
 Selecting a small chunk size will cause the tool to become much slower, in part
-because of the setup work required for L<"--[no]-check-plan">.
+because of the setup work required for L<"--[no]check-plan">.
 
 =item --chunk-size-limit
 
