@@ -3679,16 +3679,17 @@ sub new {
 
       $self = {
          %args,
-         index              => $index,
-         limit              => $limit,
-         first_lb_sql       => $first_lb_sql,
-         last_ub_sql        => $last_ub_sql,
-         ub_sql             => $ub_sql,
-         nibble_sql         => $nibble_sql,
-         explain_ub_sql     => "EXPLAIN $ub_sql",
-         explain_nibble_sql => $explain_nibble_sql,
-         resume_lb_sql      => $resume_lb_sql,
-         sql                => {
+         index                => $index,
+         limit                => $limit,
+         first_lb_sql         => $first_lb_sql,
+         last_ub_sql          => $last_ub_sql,
+         ub_sql               => $ub_sql,
+         nibble_sql           => $nibble_sql,
+         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_nibble_sql   => $explain_nibble_sql,
+         resume_lb_sql        => $resume_lb_sql,
+         sql                  => {
             columns    => $asc->{scols},
             from       => $from,
             where      => $where,
@@ -3796,10 +3797,11 @@ sub nibble_index {
 sub statements {
    my ($self) = @_;
    return {
-      nibble                 => $self->{nibble_sth},
-      explain_nibble         => $self->{explain_nibble_sth},
-      upper_boundary         => $self->{ub_sth},
-      explain_upper_boundary => $self->{explain_ub_sth},
+      explain_first_lower_boundary => $self->{explain_first_lb_sth},
+      nibble                       => $self->{nibble_sth},
+      explain_nibble               => $self->{explain_nibble_sth},
+      upper_boundary               => $self->{ub_sth},
+      explain_upper_boundary       => $self->{explain_ub_sth},
    }
 }
 
@@ -4028,8 +4030,9 @@ sub _prepare_sths {
    $self->{explain_nibble_sth} = $dbh->prepare($self->{explain_nibble_sql});
 
    if ( !$self->{one_nibble} ) {
-      $self->{ub_sth} = $dbh->prepare($self->{ub_sql});
-      $self->{explain_ub_sth} = $dbh->prepare($self->{explain_ub_sql});
+      $self->{explain_first_lb_sth} = $dbh->prepare($self->{explain_first_lb_sql});
+      $self->{ub_sth}               = $dbh->prepare($self->{ub_sql});
+      $self->{explain_ub_sth}       = $dbh->prepare($self->{explain_ub_sql});
    }
 
    return;
@@ -6465,6 +6468,7 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
+         my $statements  = $nibble_iter->statements();
          my $oktonibble  = 1;
 
          if ( $last_chunk ) { # resuming
@@ -6493,7 +6497,7 @@ sub main {
             print "--\n",
                   "-- $tbl->{db}.$tbl->{tbl}\n",
                   "--\n\n";
-            my $statements = $nibble_iter->statements();
+
             foreach my $sth ( sort keys %$statements ) {
                next if $sth =~ m/^explain/;
                if ( $statements->{$sth} ) {
@@ -6551,6 +6555,27 @@ sub main {
                   $oktonibble = 0;
                }
             }
+            else { # chunking the table
+               if ( $o->get('check-plan') ) {
+                  my $expl = explain_statement(
+                     sth  => $statements->{explain_first_lower_boundary},
+                     tbl  => $tbl,
+                     vals => [],
+                  );
+                  if ( !$expl->{key}
+                       || lc($expl->{key}) ne lc($nibble_iter->nibble_index())
+                       || !$expl->{key_len} ) {
+                     die "Cannot determine the key_len of the chunk index "
+                        . "because MySQL chose "
+                        . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
+                        . "rather than the " . $nibble_iter->nibble_index()
+                        . " index for the first lower boundary statement.  "
+                        . "See --[no]check-plan in the documentation for more "
+                        . "information.";
+                  }
+                  $tbl->{key_len} = $expl->{key_len}
+               }
+            }
 
             if ( $oktonibble && $o->get('empty-replicate-table') ) {
                use_repl_db(
@@ -6604,16 +6629,14 @@ sub main {
              ne lc($nibble_iter->nibble_index() || '') ) {
             PTDEBUG && _d('Cannot nibble next chunk, aborting table');
             if ( $o->get('quiet') < 2 ) {
-               my $msg
-                  = "Aborting table $tbl->{db}.$tbl->{tbl} at chunk "
+               warn ts("Aborting table $tbl->{db}.$tbl->{tbl} at chunk "
                   . ($nibble_iter->nibble_number() + 1)
                   . " because it is not safe to chunk.  Chunking should "
                   . "use the "
                   . ($nibble_iter->nibble_index() || '?')
-                  . " index, but MySQL EXPLAIN reports that "
+                  . " index, but MySQL chose "
                   . ($expl->{key} ? "the $expl->{key}" : "no")
-                  . " index will be used.\n";
-               warn ts($msg);
+                  . " index.\n");
             }
             $tbl->{checksum_results}->{errors}++;
             return 0; # stop nibbling table
@@ -6658,43 +6681,13 @@ sub main {
             return 0;  # next boundary
          }
 
-         # If the table is being chunk (i.e., it's not small enough to be
-         # consumed by one nibble), then check index usage and chunk size.
-         # XXX This call and others like it are relying on a Perl oddity.
-         # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
-         if ( !$nibble_iter->one_nibble() ) {
-            my $expl = explain_statement(
-               tbl  => $tbl,
-               sth  => $sth->{explain_nibble},
-               vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
-            );
-            my $oversize_chunk
-               = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
-               :          0;
+         # Skip this nibble unless it's safe.
+         return 0 unless nibble_is_safe(
+            %args,
+            OptionParser => $o,
+         );
 
-            # Ensure that MySQL is using the chunk index.
-            if (   lc($expl->{key} || '')
-                ne lc($nibble_iter->nibble_index() || '') ) {
-               PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
-                  "$tbl->{db}.$tbl->{tbl} not using chunk index, skipping");
-               return 0;  # next boundary
-            }
-
-            # Check chunk size limit if the upper boundary and next lower
-            # boundary are identical.
-            if ( $limit ) {
-               my $boundary = $nibble_iter->boundaries(); 
-               if ( $nibble_iter->identical_boundaries(
-                       $boundary->{upper}, $boundary->{next_lower})
-                    && $oversize_chunk ) {
-                  PTDEBUG && _d('Chunk', $args{nibbleno}, 'of table',
-                     "$tbl->{db}.$tbl->{tbl} is too large, skipping");
-                  return 0;  # next boundary
-               }
-            }
-         }
-
-         # Exec and time the chunk checksum query.
+         # Exec and time the nibble.
          $tbl->{nibble_time} = exec_nibble(
             %args,
             Retry        => $retry,
@@ -6776,7 +6769,7 @@ sub main {
                   $tbl->{chunk_size} = 1;
 
                   # This warning is printed once per table.
-                  if ( !$tbl->{warned_slow} && $o->get('quiet') < 2 ) {
+                  if ( !$tbl->{warned}->{slow}++ && $o->get('quiet') < 2 ) {
                      warn ts("Checksum queries for table "
                         . "$tbl->{db}.$tbl->{tbl} are executing very slowly.  "
                         . "--chunk-size has been automatically reduced to 1.  "
@@ -6786,7 +6779,6 @@ sub main {
                         . "selected $cnt rows and took "
                         . sprintf('%.3f', $tbl->{nibble_time})
                         . " seconds to execute.\n");
-                     $tbl->{warned_slow} = 1;
                   }
                }
 
@@ -7008,6 +7000,87 @@ sub ts {
    return $msg ? "$ts $msg" : $ts;
 }
 
+sub nibble_is_safe {
+   my (%args) = @_;
+   my @required_args = qw(Cxn tbl NibbleIterator OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($cxn, $tbl, $nibble_iter, $o)= @args{@required_args};
+
+   # EXPLAIN the checksum chunk query to get its row estimate and index.
+   # XXX This call and others like it are relying on a Perl oddity.
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/987393
+   my $sth      = $nibble_iter->statements();
+   my $boundary = $nibble_iter->boundaries();
+   my $expl     = explain_statement(
+      tbl  => $tbl,
+      sth  => $sth->{explain_nibble},
+      vals => [ @{$boundary->{lower}}, @{$boundary->{upper}} ],
+   );
+
+   # Ensure that MySQL is using the chunk index if the table is being chunked.
+   if ( !$nibble_iter->one_nibble()
+        && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') ) { 
+      if ( !$tbl->{warned}->{not_using_chunk_index}++
+           && $o->get('quiet') < 2 ) {
+         warn ts("Skipping chunk " . $nibble_iter->nibble_number()
+            . " of table $tbl->{db}.$tbl->{tbl} because MySQL chose "
+            . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
+            . " instead of the " . $nibble_iter->nibble_index() . "index.  "
+            . "This warning will not be printed again for this table.\n");
+      }
+      return 0; # not safe
+   }
+
+   # Ensure that the chunk isn't too large if there's a --chunk-size-limit.
+   # If single-chunking the table, this has already been checked, so it
+   # shouldn't have changed.  If chunking the table with a non-unique key,
+   # oversize chunks are possible. 
+   if ( my $limit = $o->get('chunk-size-limit') ) {
+      my $oversize_chunk
+         = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
+         :          0;
+      if ( $oversize_chunk
+           && $nibble_iter->identical_boundaries($boundary->{upper},
+                                                 $boundary->{next_lower}) ) {
+         if ( !$tbl->{warned}->{oversize_chunk}++
+              && $o->get('quiet') < 2 ) {
+            warn ts("Skipping chunk " . $nibble_iter->nibble_number()
+               . " of table $tbl->{db}.$tbl->{tbl} because it is oversized.  "
+               . "The current chunk size limit is "
+               . ($tbl->{chunk_size} * $limit)
+               . " rows (chunk size=$tbl->{chunk_size}"
+               . " * chunk size limit=$limit), but MySQL estimates "
+               . "that there are " . ($expl->{rows} || 0)
+               . " rows in the chunk."
+               . "  This warning will not be printed again for this table.\n");
+         }
+         return 0; # not safe
+      }
+   }
+
+   # Ensure that MySQL is still using the entire index.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
+   if ( !$nibble_iter->one_nibble()
+        && $tbl->{key_len}
+        && ($expl->{key_len} || 0) < $tbl->{key_len} ) {
+      if ( !$tbl->{warned}->{key_len}++
+           && $o->get('quiet') < 2 ) {
+         warn ts("Skipping chunk " . $nibble_iter->nibble_number()
+            . " of table $tbl->{db}.$tbl->{tbl} because MySQL chose "
+            . "to use only " . ($expl->{key_len} || 0) . " bytes "
+            . "of the " . ($expl->{key} || '?') . " index.  "
+            . "See --[no]check-plan in the documentation for "
+            . "more information.  This warning will not be printed "
+            . "again for this table.\n");
+      }
+      return 0; # not safe
+   }
+
+   return 1; # safe
+}
+
 sub exec_nibble {
    my (%args) = @_;
    my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
@@ -7074,7 +7147,7 @@ sub exec_nibble {
                     && (!$warn_code{$code}->{pattern}
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
-               if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
+               if ( !$tbl->{warned}->{$code}++ ) {  # warn once per table
                   if ( $o->get('quiet') < 2 ) {
                      warn ts("Checksum query for table $tbl->{db}.$tbl->{tbl} "
                         . "caused MySQL error $code: "
@@ -7083,7 +7156,6 @@ sub exec_nibble {
                            : $message)
                         . "\n");
                   }
-                  $tbl->{"warned_code_$code"} = 1;
                   $tbl->{checksum_results}->{errors}++;
                }
             }
@@ -7909,6 +7981,12 @@ Prompt for a password when connecting to MySQL.
 type: time; default: 1; group: Throttle
 
 Sleep time between checks for L<"--max-lag">.
+
+=item --[no]check-plan
+
+default: yes
+
+Check the execution plan of checksum queries.
 
 =item --[no]check-replication-filters
 

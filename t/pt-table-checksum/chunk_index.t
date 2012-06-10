@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 11;
+   plan tests => 13;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -155,6 +155,34 @@ ok(
       "t/pt-table-checksum/samples/not-using-pk-bug.out",
    ),
    "Smarter chunk index selection (bug 978432)"
+);
+
+# #############################################################################
+# PK but bad explain plan.
+# https://bugs.launchpad.net/percona-toolkit/+bug/1010232
+# #############################################################################
+$sb->load_file('master', "t/pt-table-checksum/samples/bad-plan-bug-1010232.sql");
+PerconaTest::wait_for_table($dbh, "bad_plan.t", "(c1,c2,c3,c4)=(1,1,2,100)");
+
+$output = output(sub {
+   $exit_status = pt_table_checksum::main(
+      $master_dsn, '--max-load', '',
+      qw(--lock-wait-timeout 3 --chunk-size 10 -t bad_plan.t)
+   ) },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "Bad key_len chunks are not errors"
+);
+
+cmp_ok(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   '>',
+   1,
+   "Skipped bad key_len chunks"
 );
 
 # #############################################################################
