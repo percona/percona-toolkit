@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 13;
+   plan tests => 14;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -183,6 +183,22 @@ cmp_ok(
    '>',
    1,
    "Skipped bad key_len chunks"
+);
+
+# Use --chunk-index:3 to use only the first 3 left-most columns of the index.
+# Can't use bad_plan.t, however, because its row are almost all identical,
+# so using 3 of 4 pk cols creates an infinite loop.
+ok(
+   no_diff(
+      sub {
+         pt_table_checksum::main(
+            $master_dsn, '--max-load', '',
+            qw(--lock-wait-timeout 3 --chunk-size 5000  -t sakila.rental),
+            qw(--chunk-index rental_date:2 --explain --explain));
+      },
+      "t/pt-table-checksum/samples/n-chunk-index-cols.txt",
+   ),
+   "--chunk-index index:n"
 );
 
 # #############################################################################

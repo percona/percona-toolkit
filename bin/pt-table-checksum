@@ -6096,9 +6096,6 @@ sub main {
    if ( defined $chunk_index && !$chunk_index ) {
       $o->save_error('--chunk-index cannot be an empty string');
    }
-   else {
-      $chunk_index = lc $chunk_index;
-   }
    if ( defined $n_chunk_index_cols
         && (!$n_chunk_index_cols
             || $n_chunk_index_cols =~ m/[^\d]/
@@ -6684,7 +6681,7 @@ sub main {
                      die "Cannot determine the key_len of the chunk index "
                         . "because MySQL chose "
                         . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
-                        . "rather than the " . $nibble_iter->nibble_index()
+                        . "instead of the " . $nibble_iter->nibble_index()
                         . " index for the first lower boundary statement.  "
                         . "See --[no]check-plan in the documentation for more "
                         . "information.";
@@ -7142,10 +7139,9 @@ sub nibble_is_safe {
       if ( !$tbl->{warned}->{not_using_chunk_index}++
            && $o->get('quiet') < 2 ) {
          warn ts("Skipping chunk " . $nibble_iter->nibble_number()
-            . " of table $tbl->{db}.$tbl->{tbl} because MySQL chose "
+            . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
             . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
-            . " instead of the " . $nibble_iter->nibble_index() . "index.  "
-            . "This warning will not be printed again for this table.\n");
+            . " instead of the " . $nibble_iter->nibble_index() . "index.\n");
       }
       return 0; # not safe
    }
@@ -7164,14 +7160,13 @@ sub nibble_is_safe {
          if ( !$tbl->{warned}->{oversize_chunk}++
               && $o->get('quiet') < 2 ) {
             warn ts("Skipping chunk " . $nibble_iter->nibble_number()
-               . " of table $tbl->{db}.$tbl->{tbl} because it is oversized.  "
+               . " of $tbl->{db}.$tbl->{tbl} because it is oversized.  "
                . "The current chunk size limit is "
                . ($tbl->{chunk_size} * $limit)
                . " rows (chunk size=$tbl->{chunk_size}"
                . " * chunk size limit=$limit), but MySQL estimates "
                . "that there are " . ($expl->{rows} || 0)
-               . " rows in the chunk."
-               . "  This warning will not be printed again for this table.\n");
+               . " rows in the chunk.\n");
          }
          return 0; # not safe
       }
@@ -7185,12 +7180,11 @@ sub nibble_is_safe {
       if ( !$tbl->{warned}->{key_len}++
            && $o->get('quiet') < 2 ) {
          warn ts("Skipping chunk " . $nibble_iter->nibble_number()
-            . " of table $tbl->{db}.$tbl->{tbl} because MySQL chose "
-            . "to use only " . ($expl->{key_len} || 0) . " bytes "
-            . "of the " . ($expl->{key} || '?') . " index.  "
-            . "See --[no]check-plan in the documentation for "
-            . "more information.  This warning will not be printed "
-            . "again for this table.\n");
+            . " of $tbl->{db}.$tbl->{tbl} because MySQL used "
+            . "only " . ($expl->{key_len} || 0) . " bytes "
+            . "of the " . ($expl->{key} || '?') . " index instead of "
+            . $tbl->{key_len} . ".  See the --[no]check-plan documentation "
+            . "for more information.\n");
       }
       return 0; # not safe
    }
