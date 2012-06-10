@@ -6676,11 +6676,8 @@ sub main {
                      vals => [],
                   );
                   if ( !$expl->{key}
-                       || lc($expl->{key}) ne lc($nibble_iter->nibble_index())
-                       || !$expl->{key_len} ) {
-                     # XXX this message doesn't give good info if key_len is
-                     # NULL. We need an elsif() for that, instead of lumping it
-                     # into this if().
+                       || lc($expl->{key}) ne lc($nibble_iter->nibble_index()) )
+                  {
                      die "Cannot determine the key_len of the chunk index "
                         . "because MySQL chose "
                         . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
@@ -6689,7 +6686,14 @@ sub main {
                         . "See --[no]check-plan in the documentation for more "
                         . "information.";
                   }
-                  $tbl->{key_len} = $expl->{key_len}
+                  elsif ( !$expl->{key_len} ) {
+                     die "The key_len of the $expl->{key} index is "
+                        . (defined $expl->{key_len} ? "zero" : "NULL")
+                        . ", but this should not be possible.  " 
+                        . "See --[no]check-plan in the documentation for more "
+                        . "information.";
+                  }
+                  $tbl->{key_len} = $expl->{key_len};
                }
             }
 
