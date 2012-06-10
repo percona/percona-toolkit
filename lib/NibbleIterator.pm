@@ -124,10 +124,11 @@ sub new {
       # Figure out how to nibble the table with the index.
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
-         tbl_struct => $tbl->{tbl_struct},
-         index      => $index,
-         cols       => \@cols,
-         asc_only   => 1,
+         tbl_struct   => $tbl->{tbl_struct},
+         index        => $index,
+         n_index_cols => $args{n_chunk_index_cols},
+         cols         => \@cols,
+         asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
@@ -229,16 +230,17 @@ sub new {
 
       $self = {
          %args,
-         index              => $index,
-         limit              => $limit,
-         first_lb_sql       => $first_lb_sql,
-         last_ub_sql        => $last_ub_sql,
-         ub_sql             => $ub_sql,
-         nibble_sql         => $nibble_sql,
-         explain_ub_sql     => "EXPLAIN $ub_sql",
-         explain_nibble_sql => $explain_nibble_sql,
-         resume_lb_sql      => $resume_lb_sql,
-         sql                => {
+         index                => $index,
+         limit                => $limit,
+         first_lb_sql         => $first_lb_sql,
+         last_ub_sql          => $last_ub_sql,
+         ub_sql               => $ub_sql,
+         nibble_sql           => $nibble_sql,
+         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_nibble_sql   => $explain_nibble_sql,
+         resume_lb_sql        => $resume_lb_sql,
+         sql                  => {
             columns    => $asc->{scols},
             from       => $from,
             where      => $where,
@@ -357,10 +359,11 @@ sub nibble_index {
 sub statements {
    my ($self) = @_;
    return {
-      nibble                 => $self->{nibble_sth},
-      explain_nibble         => $self->{explain_nibble_sth},
-      upper_boundary         => $self->{ub_sth},
-      explain_upper_boundary => $self->{explain_ub_sth},
+      explain_first_lower_boundary => $self->{explain_first_lb_sth},
+      nibble                       => $self->{nibble_sth},
+      explain_nibble               => $self->{explain_nibble_sth},
+      upper_boundary               => $self->{ub_sth},
+      explain_upper_boundary       => $self->{explain_ub_sth},
    }
 }
 
@@ -613,8 +616,9 @@ sub _prepare_sths {
    $self->{explain_nibble_sth} = $dbh->prepare($self->{explain_nibble_sql});
 
    if ( !$self->{one_nibble} ) {
-      $self->{ub_sth} = $dbh->prepare($self->{ub_sql});
-      $self->{explain_ub_sth} = $dbh->prepare($self->{explain_ub_sql});
+      $self->{explain_first_lb_sth} = $dbh->prepare($self->{explain_first_lb_sql});
+      $self->{ub_sth}               = $dbh->prepare($self->{ub_sql});
+      $self->{explain_ub_sth}       = $dbh->prepare($self->{explain_ub_sql});
    }
 
    return;
