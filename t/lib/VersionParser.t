@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 3;
+use Test::More tests => 5;
 
 use VersionParser;
 use PerconaTest;
@@ -20,6 +20,12 @@ is(
    $vp->parse('5.0.38-Ubuntu_0ubuntu1.1-log'),
    '005000038',
    'Parser works on ordinary version',
+);
+
+is(
+   $vp->parse('5.5'),
+   '005005000',
+   'Parser works on a simplified version',
 );
 
 # Open a connection to MySQL, or skip the rest of the tests.
@@ -42,4 +48,5 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

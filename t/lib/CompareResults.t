@@ -43,7 +43,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => "Cannot connect to sandbox slave";
 }
 else {
-   plan tests => 56;
+   plan tests => 57;
 }
 
 Transformers->import(qw(make_checksum));
@@ -106,7 +106,6 @@ sub get_id {
 # #############################################################################
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
-PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'checksum',
@@ -132,7 +131,7 @@ isa_ok($cr, 'CompareResults');
 );
 
 is_deeply(
-   $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectrow_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    ['dropme'],
    'checksum: temp table exists'
 );
@@ -146,7 +145,7 @@ is(
 );
 
 is_deeply(
-   $dbh1->selectall_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectall_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    [],
    'checksum: before_execute() drops temp table'
 );
@@ -200,7 +199,7 @@ is(
 );
 
 is_deeply(
-   $dbh1->selectall_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectall_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    [],
    'checksum: after_execute() drops temp table'
 );
@@ -313,7 +312,6 @@ my $tmpdir = '/tmp/mk-upgrade-res';
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
-PerconaTest::wait_for_table($dbh2, "test.t3", "f > 1");
 
 $cr = new CompareResults(
    method     => 'rows',
@@ -337,7 +335,7 @@ isa_ok($cr, 'CompareResults');
 );
 
 is_deeply(
-   $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectrow_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    ['dropme'],
    'rows: temp table exists'
 );
@@ -351,7 +349,7 @@ is(
 );
 
 is_deeply(
-   $dbh1->selectrow_arrayref('SHOW TABLES FROM test LIKE "dropme"'),
+   $dbh1->selectrow_arrayref("SHOW TABLES FROM test LIKE 'dropme'"),
    ['dropme'],
    "rows: before_execute() doesn't drop temp table"
 );
@@ -457,7 +455,7 @@ is_deeply(
    },
 );
 
-$dbh2->do('update test.t2 set c="should be c" where i=3');
+$dbh2->do("update test.t2 set c='should be c' where i=3");
 
 is_deeply(
    $dbh2->selectrow_arrayref('select c from test.t2 where i=3'),
@@ -519,8 +517,8 @@ is_deeply(
 # Test max-different-rows.
 # #############################################################################
 $cr->reset();
-$dbh2->do('update test.t2 set c="should be a" where i=1');
-$dbh2->do('update test.t2 set c="should be b" where i=2');
+$dbh2->do("update test.t2 set c='should be a' where i=1");
+$dbh2->do("update test.t2 set c='should be b' where i=2");
 proc('before_execute');
 proc('execute');
 
@@ -777,4 +775,6 @@ like(
 diag(`rm -rf $tmpdir`);
 diag(`rm -rf /tmp/*outfile.txt`);
 $sb->wipe_clean($dbh1);
+$sb->wipe_clean($dbh2);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

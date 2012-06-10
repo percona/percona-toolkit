@@ -35,11 +35,11 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to MySQL';
   
 }
-elsif ( !@{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')} ) {
+elsif ( !@{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")} ) {
    plan skip_all => "Sandbox master does not have the sakila database";
 }
 else {
-   plan tests => 14;
+   plan tests => 15;
 }
 
 my $q      = new Quoter();
@@ -58,7 +58,6 @@ sub test_copy_table {
    my ($tbl, $col, $expect) = @args{qw(tbl col expect)};
 
    $sb->load_file("master", "t/lib/samples/osc/$tbl");
-   PerconaTest::wait_for_table($dbh, "osc.t", "id=5");
    $dbh->do("USE osc");
 
    $osc->copy(
@@ -216,4 +215,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

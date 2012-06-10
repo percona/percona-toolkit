@@ -26,7 +26,15 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 17;
+   plan tests => 18;
+}
+
+sub normalize_numbers {
+   use Scalar::Util qw(looks_like_number);
+   my $AoH = shift;
+   for my $h (@$AoH) {
+      $_ = sprintf("%.8f", $_) for grep { looks_like_number($_) } values %$h;
+   }
 }
 
 my $run_with = "$trunk/bin/pt-query-digest --report-format=query_report --limit 10 $trunk/t/lib/samples/slowlogs/";
@@ -44,10 +52,10 @@ $cmd = "${run_with}slow006.txt --create-review-table --review "
 $output = `$cmd >/dev/null 2>&1`;
 
 my ($table) = $dbh->selectrow_array(
-   'show tables from test like "query_review"');
+   "show tables from test like 'query_review'");
 is($table, 'query_review', '--create-review');
 ($table) = $dbh->selectrow_array(
-   'show tables from test like "query_review_history"');
+   "show tables from test like 'query_review_history'");
 is($table, 'query_review_history', '--create-review-history-table');
 
 $output = 'foo'; # clear previous test results
@@ -56,9 +64,8 @@ $cmd = "${run_with}slow006.txt --review h=127.1,u=msandbox,p=msandbox,P=12345,D=
 $output = `$cmd`;
 my $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review',
    { Slice => {} } );
-is_deeply(
-   $res,
-   [  {  checksum    => '11676753765851784517',
+
+my $expected =    [  {  checksum    => '11676753765851784517',
          reviewed_by => undef,
          reviewed_on => undef,
          last_seen   => '2007-12-18 11:49:30',
@@ -76,74 +83,100 @@ is_deeply(
          fingerprint => 'select col from bar_tbl',
          comments    => undef,
       },
-   ],
-   'Adds/updates queries to query review table'
-);
-$res = $dbh->selectall_arrayref('SELECT lock_time_median, lock_time_stddev, query_time_sum, checksum, rows_examined_stddev, ts_cnt, sample, rows_examined_median, rows_sent_min, rows_examined_min, rows_sent_sum,  query_time_min, query_time_pct_95, rows_examined_sum, rows_sent_stddev, rows_sent_pct_95, query_time_max, rows_examined_max, query_time_stddev, rows_sent_median, lock_time_pct_95, ts_min, lock_time_min, lock_time_max, ts_max, rows_examined_pct_95 ,rows_sent_max, query_time_median, lock_time_sum FROM test.query_review_history',
-   { Slice => {} } );
+   ];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+   
 is_deeply(
    $res,
-   [  {  lock_time_median     => '0',
+   $expected,
+   'Adds/updates queries to query review table'
+);
+
+$res = $dbh->selectall_arrayref('SELECT lock_time_median, lock_time_stddev,
+FORMAT(query_time_sum, 6) AS query_time_sum, checksum,
+FORMAT(rows_examined_stddev, 6) AS rows_examined_stddev, ts_cnt, sample,
+FORMAT(rows_examined_median, 6) AS rows_examined_median, rows_sent_min,
+rows_examined_min, rows_sent_sum, FORMAT(query_time_min, 6) AS query_time_min,
+FORMAT(query_time_pct_95, 6) AS query_time_pct_95, rows_examined_sum,
+FORMAT(rows_sent_stddev, 6) AS rows_sent_stddev, FORMAT(rows_sent_pct_95, 6) AS
+rows_sent_pct_95, FORMAT(query_time_max, 6) AS query_time_max,
+rows_examined_max, FORMAT(query_time_stddev, 6) AS query_time_stddev,
+rows_sent_median, FORMAT(lock_time_pct_95, 6) AS lock_time_pct_95, ts_min,
+FORMAT(lock_time_min, 6) AS lock_time_min, lock_time_max, ts_max,
+FORMAT(rows_examined_pct_95, 6) AS rows_examined_pct_95, rows_sent_max,
+FORMAT(query_time_median, 6) AS query_time_median, lock_time_sum FROM
+test.query_review_history', { Slice => {} } );
+
+$expected =   [  {  lock_time_median     => '0',
          lock_time_stddev     => '0',
-         query_time_sum       => '3.6e-05',
+         query_time_sum       => '0.000036',
          checksum             => '11676753765851784517',
-         rows_examined_stddev => '0',
+         rows_examined_stddev => '0.000000',
          ts_cnt               => '3',
          sample               => 'SELECT col FROM foo_tbl',
-         rows_examined_median => '0',
+         rows_examined_median => '0.000000',
          rows_sent_min        => '0',
          rows_examined_min    => '0',
          rows_sent_sum        => '0',
-         query_time_min       => '1.2e-05',
-         query_time_pct_95    => '1.2e-05',
+         query_time_min       => '0.000012',
+         query_time_pct_95    => '0.000012',
          rows_examined_sum    => '0',
-         rows_sent_stddev     => '0',
-         rows_sent_pct_95     => '0',
-         query_time_max       => '1.2e-05',
+         rows_sent_stddev     => '0.000000',
+         rows_sent_pct_95     => '0.000000',
+         query_time_max       => '0.000012',
          rows_examined_max    => '0',
-         query_time_stddev    => '0',
+         query_time_stddev    => '0.000000',
          rows_sent_median     => '0',
-         lock_time_pct_95     => '0',
+         lock_time_pct_95     => '0.000000',
          ts_min               => '2007-12-18 11:48:27',
-         lock_time_min        => '0',
+         lock_time_min        => '0.000000',
          lock_time_max        => '0',
          ts_max               => '2007-12-18 11:49:30',
-         rows_examined_pct_95 => '0',
+         rows_examined_pct_95 => '0.000000',
          rows_sent_max        => '0',
-         query_time_median    => '1.2e-05',
+         query_time_median    => '0.000012',
          lock_time_sum        => '0'
       },
       {  lock_time_median     => '0',
          lock_time_stddev     => '0',
-         query_time_sum       => '3.6e-05',
+         query_time_sum       => '0.000036',
          checksum             => '15334040482108055940',
-         rows_examined_stddev => '0',
+         rows_examined_stddev => '0.000000',
          ts_cnt               => '3',
          sample               => 'SELECT col FROM bar_tbl',
-         rows_examined_median => '0',
+         rows_examined_median => '0.000000',
          rows_sent_min        => '0',
          rows_examined_min    => '0',
          rows_sent_sum        => '0',
-         query_time_min       => '1.2e-05',
-         query_time_pct_95    => '1.2e-05',
+         query_time_min       => '0.000012',
+         query_time_pct_95    => '0.000012',
          rows_examined_sum    => '0',
-         rows_sent_stddev     => '0',
-         rows_sent_pct_95     => '0',
-         query_time_max       => '1.2e-05',
+         rows_sent_stddev     => '0.000000',
+         rows_sent_pct_95     => '0.000000',
+         query_time_max       => '0.000012',
          rows_examined_max    => '0',
-         query_time_stddev    => '0',
+         query_time_stddev    => '0.000000',
          rows_sent_median     => '0',
-         lock_time_pct_95     => '0',
+         lock_time_pct_95     => '0.000000',
          ts_min               => '2007-12-18 11:48:57',
-         lock_time_min        => '0',
+         lock_time_min        => '0.000000',
          lock_time_max        => '0',
          ts_max               => '2007-12-18 11:49:07',
-         rows_examined_pct_95 => '0',
+         rows_examined_pct_95 => '0.000000',
          rows_sent_max        => '0',
-         query_time_median    => '1.2e-05',
+         query_time_median    => '0.000012',
          lock_time_sum        => '0'
       }
-   ],
+   ];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+
+is_deeply(
+   $res,
+   $expected,
    'Adds/updates queries to query review history table'
 );
 
@@ -243,9 +276,7 @@ $dbh->do('truncate table test.query_review_history');
 $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
    { Slice => {} } );
 
-is_deeply(
-   $res,
-   [
+$expected =    [
       {
          sample => "UPDATE foo.bar
 SET    biz = '91848182522'",
@@ -290,12 +321,12 @@ SET    biz = '91848182522'",
          innodb_rec_lock_wait_min => 0,
          innodb_rec_lock_wait_pct_95 => 0,
          innodb_rec_lock_wait_stddev => 0,
-         lock_time_max => '2.7e-05',
-         lock_time_median => '2.7e-05',
-         lock_time_min => '2.7e-05',
-         lock_time_pct_95 => '2.7e-05',
+         lock_time_max => '0.000027',
+         lock_time_median => '0.000027',
+         lock_time_min => '0.000027',
+         lock_time_pct_95 => '0.000027',
          lock_time_stddev => '0',
-         lock_time_sum => '5.4e-05',
+         lock_time_sum => '0.000054',
          merge_passes_max => '0',
          merge_passes_median => '0',
          merge_passes_min => '0',
@@ -304,12 +335,12 @@ SET    biz = '91848182522'",
          merge_passes_sum => '0',
          qc_hit_cnt => '2',
          qc_hit_sum => '0',
-         query_time_max => 0.000530,
-         query_time_median => 0.000530,
-         query_time_min => 0.000530,
-         query_time_pct_95 => 0.000530,
-         query_time_stddev => 0,
-         query_time_sum => 0.000530 * 2,
+         query_time_max => '0.00053',
+         query_time_median => '0.00053',
+         query_time_min => '0.00053',
+         query_time_pct_95 => '0.00053',
+         query_time_stddev => '0',
+         query_time_sum => '0.00106',
          rows_affected_max => undef,
          rows_affected_median => undef,
          rows_affected_min => undef,
@@ -317,10 +348,10 @@ SET    biz = '91848182522'",
          rows_affected_stddev => undef,
          rows_affected_sum => undef,
          rows_examined_max => 0,
-         rows_examined_median => 0,
+         rows_examined_median => '0',
          rows_examined_min => 0,
-         rows_examined_pct_95 => 0,
-         rows_examined_stddev => 0,
+         rows_examined_pct_95 => '0',
+         rows_examined_stddev => '0',
          rows_examined_sum => 0,
          rows_read_max => undef,
          rows_read_median => undef,
@@ -340,8 +371,15 @@ SET    biz = '91848182522'",
          ts_max => '2007-12-18 11:48:27',
          ts_min => '2007-12-18 11:48:27',
       },
-   ],
-   "Review history has Percona extended slowlog attribs (issue 1149)"
+   ];
+
+normalize_numbers($res);
+normalize_numbers($expected);
+
+is_deeply(
+   $res,
+   $expected,
+   "Review history has Percona extended slowlog attribs (issue 1149)",
 );
 
 
@@ -379,4 +417,5 @@ unlike(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

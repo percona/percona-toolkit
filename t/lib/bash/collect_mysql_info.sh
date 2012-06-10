@@ -31,7 +31,9 @@ file_count=$(ls "$p" | wc -l)
 is $file_count 14 "Creates the correct number of files (without --databases)"
 
 awk '{print $1}' "$p/mysqld-instances" > "$TMPDIR/collect_mysqld_instances1.test"
-ps ww -p "$(_pidof mysqld | sed -e "s/ /,/g")" | awk '{print $1}' > "$TMPDIR/collect_mysqld_instances2.test"
+pids="$(_pidof mysqld)"
+pids="$(echo $pids | sed -e "s/[ \n]/,/g")"
+ps ww -p "$pids" | awk '{print $1}' > "$TMPDIR/collect_mysqld_instances2.test"
 
 no_diff \
    "$TMPDIR/collect_mysqld_instances1.test" \

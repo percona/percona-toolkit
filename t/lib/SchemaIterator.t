@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 29;
+use Test::More tests => 30;
 
 use SchemaIterator;
 use FileIterator;
@@ -91,15 +91,18 @@ sub test_so {
          }
       }
    }
-
+   
    return \@objs if $args{return_objs};
 
    if ( $result_file ) {
+      my $transform = sub { print sort_query_output(slurp_file(shift)) };
       ok(
          no_diff(
             $res,
             $args{result},
-            cmd_output    => 1,
+            cmd_output => 1,
+            transform_result => $transform,
+            transform_sample => $transform,
          ),
          $args{test_name},
       );
@@ -122,6 +125,17 @@ sub test_so {
    return;
 }
 
+sub sort_query_output {
+   my $queries = shift;
+   my @queries = split /\n\n/, $queries;
+   
+   my $sorted;
+   for my $query (@queries) {
+      $sorted .= join "\n", sort map { my $c = $_; $c =~ s/,$//; $c } split /\n/, $query;
+   }
+   return $sorted;
+}
+
 SKIP: {
    skip "Cannot connect to sandbox master", 22 unless $dbh;
    $sb->wipe_clean($dbh);
@@ -130,8 +144,9 @@ SKIP: {
    # Test simple, unfiltered get_db_itr().
    # ########################################################################
    test_so(
-      result    => $sandbox_version ge '5.1' ? "$out/all-dbs-tbls.txt"
-                                             : "$out/all-dbs-tbls-5.0.txt",
+      result    => $sandbox_version ge '5.5' ? "$out/all-dbs-tbls.txt"
+                 : $sandbox_version ge '5.1' ? "$out/all-dbs-tbls-5.1.txt"
+                 :                             "$out/all-dbs-tbls-5.0.txt",
       test_name => "Iterate all schema objects with dbh",
    );
 
@@ -168,13 +183,13 @@ SKIP: {
 
    # Ignore some dbs and tbls.
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3'],
+      filters   => ['--ignore-databases', 'mysql,sakila,d1,d3,percona_test'],
       result    => "d2.t1 ",
       test_name => '--ignore-databases',
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3',
+      filters   => ['--ignore-databases', 'mysql,sakila,d2,d3,percona_test',
                     '--ignore-tables', 't1,t2'],
       result    => "d1.t3 ",
       test_name => '--ignore-databases and --ignore-tables',
@@ -190,7 +205,7 @@ SKIP: {
    # Filter by engines.  This also tests that --engines is case-insensitive
    test_so(
       filters   => ['-d', 'd1,d2,d3', '--engines', 'INNODB'],
-      result    => "d1.t2 ",
+      result    => ($sandbox_version ge '5.5' ? 'd1.t2 d2.t1 ' : "d1.t2 "),
       test_name => '--engines',
    );
 
@@ -208,7 +223,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila)',
+      filters   => ['--ignore-databases-regex', '(?:^d[23]|mysql|info|sakila|percona_test)',
                     '--ignore-tables-regex', 't[^23]'],
       result    => "d1.t2 d1.t3 ",
       test_name => '--ignore-databases-regex',
@@ -219,7 +234,7 @@ SKIP: {
    # ########################################################################
    SKIP: {
       skip 'Sandbox master does not have the sakila database', 1
-         unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+         unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
       test_so(
          filters   => [qw(-d sakila)],
@@ -266,7 +281,7 @@ SKIP: {
    );
 
    test_so(
-      filters   => ['--ignore-databases', 'mysql,sakila',
+      filters   => ['--ignore-databases', 'mysql,sakila,percona_test',
                     '--ignore-tables', 'd1.t1'],
       result    => "d1.t2 d1.t3 d2.t1 ",
       test_name => '--ignore-databases and --ignore-tables d1.t1 (issue 806)',
@@ -311,7 +326,8 @@ SKIP: {
    # ########################################################################
    test_so(
       filters   => [qw(-t mysql.user)],
-      result    => $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
+      result    => $sandbox_version ge '5.5' ? "$out/mysql-user-ddl-5.5.txt"
+                 : $sandbox_version ge '5.1' ? "$out/mysql-user-ddl.txt"
                                              : "$out/mysql-user-ddl-5.0.txt",
       test_name => "Get CREATE TABLE with dbh",
    );
@@ -393,4 +409,5 @@ test_so(
 # #############################################################################
 # Done.
 # #############################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

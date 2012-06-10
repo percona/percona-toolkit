@@ -28,7 +28,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my $output;
@@ -49,7 +49,7 @@ $cmd  = "$trunk/bin/pt-query-digest "
 $ENV{PTDEBUG}=1;
 `$cmd > /tmp/read_only.txt 2>&1 &`;
 
-$ENV{MKDEBUG}=0;
+$ENV{PTDEBUG}=0;
 sleep 3;
 
 $dbh1->do('select sleep(1)');
@@ -103,4 +103,5 @@ diag(`rm $pid_file 2>/dev/null`);
 $dbh1->do('set global read_only=0');
 $dbh2->do('set global read_only=1');
 $sb->wipe_clean($dbh1);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

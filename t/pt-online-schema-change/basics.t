@@ -33,7 +33,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 118;
+   plan tests => 119;
 }
 
 my $q      = new Quoter();
@@ -50,10 +50,9 @@ my $rows;
 # #############################################################################
 
 $sb->load_file('master', "$sample/basic_no_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.t", "id=20");
 
-$output = output(
-   sub { $exit = pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
       '--alter', 'drop column id') }
 );
 
@@ -66,7 +65,7 @@ like(
 my $ddl = $master_dbh->selectrow_arrayref("show create table pt_osc.t");
 like(
    $ddl->[1],
-   qr/^\s+`id`/m,
+   qr/^\s+["`]id["`]/m,
    "Did not alter the table"
 );
 
@@ -96,13 +95,6 @@ sub test_alter_table {
 
    if ( my $file = $args{file} ) {
       $sb->load_file('master', "$sample/$file");
-      sleep 0.25;
-      if ( my $wait = $args{wait} ) {
-         PerconaTest::wait_for_table($slave_dbh, @$wait);
-      }
-      else {
-         PerconaTest::wait_for_table($slave_dbh, $table, "`$pk_col`=$args{max_id}");
-      }
       $master_dbh->do("USE `$db`");
       $slave_dbh->do("USE `$db`");
    }
@@ -147,11 +139,8 @@ sub test_alter_table {
       unshift @$orig_tbls, [$new_tbl];
    }
 
-   # TODO: output() is capturing if this call dies, so if a test
-   # causes it to die, the tests just stop without saying why, i.e.
-   # without re-throwing the error.
-   $output = output(
-      sub { $exit = pt_online_schema_change::main(
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(
          @args,
          '--print',
          "$dsn,D=$db,t=$tbl",
@@ -207,7 +196,7 @@ sub test_alter_table {
    is(
       $orig_auto_inc,
       $new_auto_inc,
-      "$name AUTO_INCREMENT=$orig_auto_inc"
+      "$name AUTO_INCREMENT=" . ($orig_auto_inc || '<unknown>')
    ) or $fail = 1;
 
    # Check if the ALTER was actually done.
@@ -366,7 +355,6 @@ test_alter_table(
    table      => "pt_osc.country",
    pk_col     => "country_id",
    file       => "basic_with_fks.sql",
-   wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "rebuild_constraints",
@@ -383,9 +371,6 @@ test_alter_table(
    name       => "Basic FK rebuild --execute",
    table      => "pt_osc.country",
    pk_col     => "country_id",
-   # The previous test should not have modified the table.
-   # file       => "basic_with_fks.sql",
-   # wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "rebuild_constraints",
@@ -408,7 +393,6 @@ test_alter_table(
    table      => "pt_osc.country",
    pk_col     => "country_id",
    file       => "basic_with_fks.sql",
-   wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "drop_swap",
@@ -425,9 +409,6 @@ test_alter_table(
    name       => "Basic FK drop_swap --execute",
    table      => "pt_osc.country",
    pk_col     => "country_id",
-   # The previous test should not have modified the table.
-   # file       => "basic_with_fks.sql",
-   # wait       => ["pt_osc.address", "address_id=5"],
    test_type  => "drop_col",
    drop_col   => "last_update",
    check_fks  => "drop_swap",
@@ -451,7 +432,6 @@ test_alter_table(
    table       => "pt_osc.country",
    pk_col      => "country_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "drop_col",
    drop_col    => "last_update",
    check_fks   => "rebuild_constraints",
@@ -470,7 +450,6 @@ test_alter_table(
    table       => "pt_osc.address",
    pk_col      => "address_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "new_engine",
    new_engine  => "innodb",
    cmds        => [
@@ -489,7 +468,6 @@ test_alter_table(
    table       => "pt_osc.address",
    pk_col      => "address_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "drop_col",
    drop_col    => "last_update",
    cmds        => [
@@ -508,7 +486,6 @@ test_alter_table(
    table       => "pt_osc.city",
    pk_col      => "city_id",
    file        => "basic_with_fks.sql",
-   wait        => ["pt_osc.address", "address_id=5"],
    test_type   => "drop_col",
    drop_col    => "last_update",
    check_fks   => "rebuild_constraints",
@@ -523,7 +500,7 @@ test_alter_table(
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 7
-   unless @{$master_dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+   unless @{$master_dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    # This test will use the drop_swap method because the child tables
    # are large.  To prove this, change check_fks to rebuild_constraints
@@ -546,6 +523,7 @@ SKIP: {
    );
 
    # Restore the original fks.
+   diag('Restoring original Sakila foreign keys...');
    diag(`$trunk/sandbox/load-sakila-db 12345`);
 }
 
@@ -553,8 +531,8 @@ SKIP: {
 # --alther-foreign-keys-method=none.  This intentionally breaks fks because
 # they're not updated so they'll point to the old table that is dropped.
 # #############################################################################
+diag('Loading file and waiting for replication...');
 $sb->load_file('master', "$sample/basic_with_fks.sql");
-PerconaTest::wait_for_table($slave_dbh, "pt_osc.address", "address_id=5");
 
 # Specify --alter-foreign-keys-method for a table with no child tables.
 test_alter_table(
@@ -562,7 +540,6 @@ test_alter_table(
    table        => "pt_osc.country",
    pk_col       => "country_id",
    file         => "basic_with_fks.sql",
-   wait         => ["pt_osc.address", "address_id=5"],
    test_type    => "new_engine",
    new_engine   => "innodb",
    cmds         => [
@@ -590,15 +567,13 @@ sub test_table {
    my ($file, $name) = @args{qw(file name)};
 
    $sb->load_file('master', "t/lib/samples/osc/$file");
-   PerconaTest::wait_for_table($master_dbh, "osc.t", "id=5");
-   PerconaTest::wait_for_table($master_dbh, "osc.__new_t");
    $master_dbh->do('use osc');
    $master_dbh->do("DROP TABLE IF EXISTS osc.__new_t");
 
    my $org_rows = $master_dbh->selectall_arrayref('select * from osc.t order by id');
 
-   $output = output(
-      sub { $exit = pt_online_schema_change::main(@args,
+   ($output, $exit) = full_output(
+      sub { pt_online_schema_change::main(@args,
          "$dsn,D=osc,t=t", qw(--execute --alter ENGINE=InnoDB)) },
       stderr => 1,
    );
@@ -662,5 +637,7 @@ test_alter_table(
 # #############################################################################
 # Done.
 # #############################################################################
+$master_dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

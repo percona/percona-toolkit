@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 39;
+use Test::More tests => 40;
 
 use TableParser;
 use Quoter;
@@ -30,7 +30,7 @@ my $sample = "t/lib/samples/tables/";
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $dbh;
    skip 'Sandbox master does not have the sakila database', 2
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    is(
       $tp->get_create_table($dbh, 'sakila', 'FOO'),
@@ -39,6 +39,10 @@ SKIP: {
    );
 
    my $ddl = $tp->get_create_table($dbh, 'sakila', 'actor');
+   if ( $ddl =~ m/TABLE "actor"/ ) { # It's ANSI quoting, compensate
+      $ddl = $tp->ansi_to_legacy($ddl);
+      $ddl = "$ddl ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8";
+   }
    ok(
       no_diff(
          "$ddl\n",
@@ -51,11 +55,10 @@ SKIP: {
 
    # Bug 932442: column with 2 spaces
    $sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
-   PerconaTest::wait_for_table($dbh, "test.t");
    $ddl = $tp->get_create_table($dbh, qw(test t));
    like(
       $ddl,
-      qr/`a  b`\s+/,
+      qr/[`"]a  b[`"]\s+/,
       "Does not compress spaces (bug 932442)"
    );
 };
@@ -64,11 +67,6 @@ eval {
    $tp->parse( load_file('t/lib/samples/noquotes.sql') );
 };
 like($EVAL_ERROR, qr/quoting/, 'No quoting');
-
-eval {
-   $tp->parse( load_file('t/lib/samples/ansi_quotes.sql') );
-};
-like($EVAL_ERROR, qr/quoting/, 'ANSI quoting');
 
 $tbl = $tp->parse( load_file('t/lib/samples/t1.sql') );
 is_deeply(
@@ -145,6 +143,21 @@ is_deeply(
       charset        => 'latin1',
    },
    'Indexes with prefixes parse OK (fixes issue 1)'
+);
+
+is(
+   $tp->ansi_to_legacy( load_file('t/lib/samples/ansi.quoting.sql') ),
+   q{CREATE TABLE `t` (
+  `a` int(11) DEFAULT NULL,
+  `b``c` int(11) DEFAULT NULL,
+  `d"e` int(11) DEFAULT NULL,
+  `f
+g` int(11) DEFAULT NULL,
+  `h\` int(11) DEFAULT NULL,
+  `i\"` int(11) DEFAULT NULL
+)
+},
+   'ANSI quotes (with all kinds of dumb things) get translated correctly'
 );
 
 $tbl = $tp->parse( load_file('t/lib/samples/sakila.film.sql') );
@@ -623,7 +636,6 @@ SKIP: {
       { PrintError => 0, RaiseError => 1 });
    $root_dbh->do("GRANT SELECT ON test.* TO 'user'\@'\%'");
    $root_dbh->do('FLUSH PRIVILEGES');
-   $root_dbh->disconnect();
 
    my $user_dbh = DBI->connect(
       "DBI:mysql:host=127.0.0.1;port=12345", 'user', undef,
@@ -697,11 +709,14 @@ SKIP: {
    );
 
    $user_dbh->disconnect();
+
+   $root_dbh->do("DROP USER 'user'\@'\%'");
+   $root_dbh->disconnect();
 };
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 2
-      unless $dbh && @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless $dbh && @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
    is_deeply(
       [$tp->find_possible_keys(
          $dbh, 'sakila', 'film_actor', $q, 'film_id > 990  and actor_id > 1')],
@@ -899,4 +914,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh) if $dbh;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 20;
+   plan tests => 23;
 }
 
 my $output;
@@ -40,14 +40,22 @@ like(
    'Prints tables without any tests'
 );
 
-# These tests are going to be senstive to your sakila db.  Hopefully,
-# it matches mine which I tend to load fresh and not modify.  For example,
-# the next insert id for sakila.film is expected to be 1001.  If this
-# becomes an issue, I may commit my copy of the sakila db to Google Code.
+$output = `$cmd --view .`;
+like(
+   $output,
+   qr/`sakila`.`sales_by_store`/,
+   'Prints views'
+);
+unlike(
+   $output,
+   qr/`sakila`.`actor`/,
+   'Does not print non-views'
+);
+
 
 SKIP: {
    skip 'Sandbox master does not have the sakila database', 17
-      unless @{$dbh->selectcol_arrayref('SHOW DATABASES LIKE "sakila"')};
+      unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
    # ########################################################################
    # First, test actions: --exec*, print*, etc.
@@ -210,4 +218,5 @@ like(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -29,19 +29,20 @@ require "$trunk/bin/pt-table-checksum";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
+elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
-elsif ( !@{$master_dbh->selectall_arrayref('show databases like "sakila"')} ) {
+elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 35;
+   plan tests => 36;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -61,9 +62,6 @@ sub reset_repl_db {
    $master_dbh->do("use $repl_db");
 }
 
-$sb->wipe_clean($master_dbh);
-diag(`rm $outfile >/dev/null 2>&1`);
-
 # ############################################################################
 # Default checksum and results.  The tool does not technically require any
 # options on well-configured systems (which the test env cannot be).  With
@@ -76,8 +74,9 @@ diag(`rm $outfile >/dev/null 2>&1`);
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
-      $sandbox_version gt "5.0 " ? "$sample/default-results-5.1.txt"
-                                 : "$sample/default-results-5.0.txt",
+        $sandbox_version gt "5.1 " ? "$sample/default-results-5.5.txt"
+      : $sandbox_version gt "5.0 " ? "$sample/default-results-5.1.txt"
+      :                              "$sample/default-results-5.0.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
    ),
    "Default checksum"
@@ -100,8 +99,9 @@ cmp_ok(
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
-      $sandbox_version gt "5.0" ? "$sample/static-chunk-size-results-5.1.txt"
-                                : "$sample/static-chunk-size-results-5.0.txt",
+        $sandbox_version gt "5.1" ? "$sample/static-chunk-size-results-5.5.txt"
+      : $sandbox_version gt "5.0" ? "$sample/static-chunk-size-results-5.1.txt"
+      :                             "$sample/static-chunk-size-results-5.0.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),
    "Static chunk size (--chunk-time 0)"
@@ -110,15 +110,19 @@ ok(
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   ($sandbox_version gt "5.0" ? 86 : 82),
-   '86 checksums on master'
+   (  $sandbox_version gt "5.1" ? 89
+    : $sandbox_version gt "5.0" ? 88
+    :                             84),
+   'Expected checksums on master'
 );
 
-$row = $slave_dbh->selectrow_arrayref("select count(*) from percona.checksums");
+$row = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   ($sandbox_version gt "5.0" ? 86 : 82),
-   '86 checksums on slave'
+   (  $sandbox_version gt "5.1" ? 89
+    : $sandbox_version gt "5.0" ? 88
+    :                             84),
+   'Expected checksums on slave'
 );
 
 # ############################################################################
@@ -126,8 +130,8 @@ is(
 # ############################################################################
 
 # Make one row on the slave differ.
-$row = $slave_dbh->selectrow_arrayref("select city, last_update from sakila.city where city_id=1");
-$slave_dbh->do("update sakila.city set city='test' where city_id=1");
+$row = $slave1_dbh->selectrow_arrayref("select city, last_update from sakila.city where city_id=1");
+$slave1_dbh->do("update sakila.city set city='test' where city_id=1");
 
 $exit_status = pt_table_checksum::main(@args,
    qw(--quiet --quiet -t sakila.city));
@@ -148,7 +152,7 @@ is(
 );
 
 # Restore the row on the slave, else other tests will fail.
-$slave_dbh->do("update sakila.city set city='$row->[0]', last_update='$row->[1]' where city_id=1");
+$slave1_dbh->do("update sakila.city set city='$row->[0]', last_update='$row->[1]' where city_id=1");
 
 # #############################################################################
 # --[no]empty-replicate-table
@@ -194,7 +198,8 @@ is_deeply(
 $exit_status = pt_table_checksum::main(@args,
    qw(--quiet --quiet --chunk-time 0 --chunk-size 100 -t sakila.city));
 
-$slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='city' and (chunk=1 or chunk=6)");
+$slave1_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='city' and (chunk=1 or chunk=6)");
+PerconaTest::wait_for_table($slave2_dbh, "percona.checksums", "db='sakila' and tbl='city' and (chunk=1 or chunk=6) and thic_crc=''");
 
 ok(
    no_diff(
@@ -255,7 +260,6 @@ is(
 # ############################################################################
 $master_dbh->do('truncate table percona.checksums');
 $sb->load_file('master', "t/pt-table-checksum/samples/3tbl-resume.sql");
-PerconaTest::wait_for_table($slave_dbh, 'test.t3', "id=26");
 
 $master_dbh->do('set sql_log_bin=0');
 $master_dbh->do('truncate table test.t1');
@@ -281,7 +285,7 @@ is_deeply(
 );
 
 is_deeply(
-   $slave_dbh->selectall_arrayref("select distinct tbl from percona.checksums where db='test'"),
+   $slave1_dbh->selectall_arrayref("select distinct tbl from percona.checksums where db='test'"),
    [ ['t2'], ['t3'] ],
    "Does not checksum large slave table on slave"
 );
@@ -400,7 +404,6 @@ like(
 # Bug 932442: column with 2 spaces
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/2-space-col.sql");
-PerconaTest::wait_for_table($master_dbh, "test.t", "id=10");
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
@@ -424,7 +427,6 @@ is(
 # Bug 821675: can't parse column names containing periods
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/dot.sql");
-PerconaTest::wait_for_table($master_dbh, "test.t", "`No.`='ten'");
 
 ok(
    no_diff(
@@ -458,4 +460,5 @@ is(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

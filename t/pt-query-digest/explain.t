@@ -30,7 +30,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 5;
+   plan tests => 6;
 }
 
 my $sample = "t/pt-query-digest/samples/";
@@ -48,14 +48,15 @@ ok(
    no_diff(
       sub { pt_query_digest::main(@args,
          "$trunk/t/lib/samples/slowlogs/slow007.txt") },
-      ($sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
-                                 : "$sample/slow007_explain_1.txt")
+      ( $sandbox_version ge '5.5' ? "$sample/slow007_explain_1-55.txt"
+      : $sandbox_version ge '5.1' ? "$sample/slow007_explain_1-51.txt"
+      :                             "$sample/slow007_explain_1.txt")
    ),
    'Analysis for slow007 with --explain, no rows',
 );
 
 # Normalish output from EXPLAIN.
-$dbh->do('insert into trees values ("apple"),("orange"),("banana")');
+$dbh->do("insert into trees values ('apple'),('orange'),('banana')");
 
 ok(
    no_diff(
@@ -118,4 +119,5 @@ ok(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

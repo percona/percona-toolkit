@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 54;
+use Test::More tests => 55;
 
 use Quoter;
 use PerconaTest;
@@ -194,22 +194,29 @@ SKIP: {
 					  . "]";
       $flat_string =~ s/\n/\\n/g;
 
-      is_deeply(
-         [ $q->deserialize_list($selsth->fetchrow_array()) ],
-         $serialize_tests[$test_index],
-         "Serialize $flat_string"
-      );
+      # diag($test_index);
+      SKIP: {
+         skip "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
+	    . "See https://bugs.launchpad.net/percona-toolkit/+bug/932327",
+            1 if $DBD::mysql::VERSION lt '4' && $test_index == 9;
+         is_deeply(
+            [ $q->deserialize_list($selsth->fetchrow_array()) ],
+            $serialize_tests[$test_index],
+            "Serialize $flat_string"
+         );
+      }
    }
 
    $sth->finish();
    $selsth->finish();
 
    $dbh->do("DROP DATABASE serialize_test");
-
+   $sb->wipe_clean($dbh);
    $dbh->disconnect();
 };
 
 # ###########################################################################
 # Done.
 # ###########################################################################
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

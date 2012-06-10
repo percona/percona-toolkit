@@ -28,7 +28,7 @@ package bulk_regular_insert;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG  => $ENV{MKDEBUG};
+use constant PTDEBUG  => $ENV{PTDEBUG};
 
 # ###########################################################################
 # Customize these values for your tables.
@@ -96,7 +96,7 @@ sub before_bulk_insert {
    $sql .= join(", ", @vals);
    $sql .= " /* mk-archiver bulk_regular_insert plugin */";  # trace
 
-   MKDEBUG && _d("Bulk regular insert:", $sql);
+   PTDEBUG && _d("Bulk regular insert:", $sql);
    $dbh->do($sql);
 
    return;
@@ -112,7 +112,7 @@ sub custom_sth_bulk {
    # called with 1 bind variables when 0 are needed [for Statement "SELECT 1"]
    # at mk-archiver line 4100.
    my $sql = "SELECT ?";
-   MKDEBUG && _d("Custom sth bulk:", $sql);
+   PTDEBUG && _d("Custom sth bulk:", $sql);
 
    my $sth = $dbh->prepare($sql);
    return $sth;

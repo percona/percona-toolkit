@@ -2,7 +2,7 @@ package gt_n;
 
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG  => $ENV{MKDEBUG};
+use constant PTDEBUG  => $ENV{PTDEBUG};
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
@@ -18,7 +18,7 @@ sub new {
    my ( $class, %args ) = @_;
 
    my $sql = "SELECT COUNT(*) FROM $args{db}.$args{tbl} WHERE " . WHERE;
-   MKDEBUG && _d('Row count sql:', $sql);
+   PTDEBUG && _d('Row count sql:', $sql);
    my $sth = $args{dbh}->prepare($sql);
 
    my $self = {
@@ -35,30 +35,30 @@ sub get_row_count {
    my $sth = $self->{row_count_sth};
    $sth->execute();
    my @row = $sth->fetchrow_array();
-   MKDEBUG && _d('Row count:', $row[0]);
+   PTDEBUG && _d('Row count:', $row[0]);
    $sth->finish();
    return $row[0];
 }
 
 sub before_begin {
    my ( $self, %args ) = @_;
-   MKDEBUG && _d('before begin');
+   PTDEBUG && _d('before begin');
    # We don't need to do anything here.
    return;
 }
 
 sub is_archivable {
    my ( $self, %args ) = @_;
-   MKDEBUG && _d('is archivable');
+   PTDEBUG && _d('is archivable');
 
    if ( $self->{done} ) {
-      MKDEBUG && _d("Already done, skipping row count");
+      PTDEBUG && _d("Already done, skipping row count");
       return 0;
    }
 
    my $n_rows = $self->get_row_count();
    if ( $n_rows <= MAX_ROWS ) {
-      MKDEBUG && _d('Done archiving, row count <', MAX_ROWS,
+      PTDEBUG && _d('Done archiving, row count <', MAX_ROWS,
          '; first non-archived row:', Dumper($args{row}));
       $self->{done} = 1;
       return 0;
@@ -75,7 +75,7 @@ sub before_delete {
 
 sub after_finish {
    my ( $self ) = @_;
-   MKDEBUG && _d('after finish');
+   PTDEBUG && _d('after finish');
    # Just to show in debug output how many rows are left at the end.
    my $n_rows = $self->get_row_count();
    return;

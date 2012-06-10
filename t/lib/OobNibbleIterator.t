@@ -41,7 +41,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 16;
+   plan tests => 17;
 }
 
 my $q   = new Quoter();
@@ -257,7 +257,6 @@ ok(
 # https://bugs.launchpad.net/percona-toolkit/+bug/987393 
 # #############################################################################
 $sb->load_file('master', "t/pt-table-checksum/samples/empty-table-bug-987393.sql");
-PerconaTest::wait_for_table($dbh, "test.test_full", "id=1");
 
 $ni = make_nibble_iter(
    db       => 'test',
@@ -289,4 +288,5 @@ like(
    '_d() works'
 );
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

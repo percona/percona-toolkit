@@ -27,7 +27,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 6;
+   plan tests => 7;
 }
 
 $sb->wipe_clean($dbh);
@@ -42,7 +42,6 @@ my $cmd = "$trunk/bin/pt-archiver";
 # Issue 758: Make mk-archiver wait for a slave
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_758.sql');
-PerconaTest::wait_for_table($dbh2, "issue_758.t");
 
 is_deeply(
    $dbh->selectall_arrayref('select * from issue_758.t'),
@@ -100,4 +99,5 @@ is_deeply(
 # #############################################################################
 $sb->wipe_clean($dbh);
 $sb->wipe_clean($dbh2);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

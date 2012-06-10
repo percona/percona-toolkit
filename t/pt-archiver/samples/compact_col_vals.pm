@@ -38,7 +38,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
-use constant MKDEBUG  => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG  => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -65,7 +65,7 @@ sub new {
    my $db_tbl = $q->quote($args{db}, $args{tbl});
    my $sql    = "UPDATE $db_tbl SET `$compact_column`=? "
               . "WHERE `$compact_column`=?";
-   MKDEBUG && _d('sth:', $sql);
+   PTDEBUG && _d('sth:', $sql);
    if ( !$o->get('dry-run') ) {
       $sth = $dbh->prepare($sql);
    }
@@ -87,7 +87,7 @@ sub new {
 sub before_begin {
    my ( $self, %args ) = @_;
    my $allcols = $args{allcols};
-   MKDEBUG && _d('allcols:', Dumper($allcols));
+   PTDEBUG && _d('allcols:', Dumper($allcols));
    my $colpos = -1;
    foreach my $col ( @$allcols ) {
       $colpos++;
@@ -97,7 +97,7 @@ sub before_begin {
       die "Column $compact_column not selected by mk-archiver: "
          . join(', ', @$allcols);
    }
-   MKDEBUG && _d('col pos:', $colpos);
+   PTDEBUG && _d('col pos:', $colpos);
    $self->{col_pos} = $colpos;
    return;
 }
@@ -108,25 +108,25 @@ sub is_archivable {
    my $row      = $args{row};
    my $val      = $row->[$self->{col_pos}];
    my $sth      = $self->{sth};
-   MKDEBUG && _d('val:', $val);
+   PTDEBUG && _d('val:', $val);
 
    if ( $next_val ){
       if ( $val > $next_val ) {
-         MKDEBUG && _d('Updating', $val, 'to', $next_val);
+         PTDEBUG && _d('Updating', $val, 'to', $next_val);
          $sth->execute($next_val, $val); 
       }
       else {
-         MKDEBUG && _d('Val is OK');
+         PTDEBUG && _d('Val is OK');
       }
    }
    else {
       # This should happen once.
-      MKDEBUG && _d('First val:', $val);
+      PTDEBUG && _d('First val:', $val);
       $self->{next_val} = $val;
    }
 
    $self->{next_val}++;
-   MKDEBUG && _d('Next val should be', $self->{next_val});
+   PTDEBUG && _d('Next val should be', $self->{next_val});
 
    # No rows are archivable because we're exploiting mk-archiver
    # just for its ability to nibble the table.  To be safe, return 0
@@ -155,7 +155,7 @@ sub after_finish {
    my $o   = $self->{OptionParser};
    my $sql = "ALTER TABLE $self->{db_tbl} AUTO_INCREMENT=$self->{next_val}";
    if ( !$o->get('dry-run') ) {
-      MKDEBUG && _d($sql);
+      PTDEBUG && _d($sql);
       $self->{dbh}->do($sql);
    }
    else {

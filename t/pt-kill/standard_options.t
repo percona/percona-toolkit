@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 5;
+use Test::More tests => 6;
 
 use PerconaTest;
 use Sandbox;
@@ -48,7 +48,7 @@ SKIP: {
       'Log file created'
    );
 
-   sleep 2;
+   sleep 3; # --run-time=2; if we sleep 2 we'll get intermittent failures.
    ok(
       !-f '/tmp/pt-kill.pid',
       'PID file removed'
@@ -73,4 +73,5 @@ like(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh) if $master_dbh;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

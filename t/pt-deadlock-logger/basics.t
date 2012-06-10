@@ -24,13 +24,15 @@ if ( !$dbh1 || !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 9;
+   plan tests => 10;
 }
 
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-deadlock-logger -F $cnf h=127.1";
 
+$dbh1->commit;
+$dbh2->commit;
 $sb->wipe_clean($dbh1);
 $sb->create_dbs($dbh1, ['test']);
 
@@ -38,6 +40,7 @@ $sb->create_dbs($dbh1, ['test']);
 $dbh1->do("create table test.dl(a int) engine=innodb");
 $dbh1->do("insert into test.dl(a) values(0), (1)");
 $dbh1->commit;
+$dbh2->commit;
 $dbh1->{InactiveDestroy} = 1;
 $dbh2->{InactiveDestroy} = 1;
 
@@ -79,6 +82,8 @@ foreach my $child ( 0..1 ) {
 foreach my $child ( keys %children ) {
    my $pid = waitpid($children{$child}, 0);
 }
+$dbh1->commit;
+$dbh2->commit;
 
 # Test that there is a deadlock
 $output = $dbh1->selectrow_hashref('show /*!40101 engine*/ innodb status')->{status};
@@ -160,5 +165,8 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
+$dbh1->commit;
+$dbh2->commit;
 $sb->wipe_clean($dbh1);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

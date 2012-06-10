@@ -26,7 +26,7 @@ package DiskstatsGroupByAll;
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use base qw( Diskstats );
 

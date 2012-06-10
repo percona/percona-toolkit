@@ -35,13 +35,15 @@ package Cxn;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-# Hostnames make testing less accurate.  Tests need to see
-# that such-and-such happened on specific slave hosts, but
-# the sandbox servers are all on one host so all slaves have
-# the same hostname.
-use constant PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0;
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   # Hostnames make testing less accurate.  Tests need to see
+   # that such-and-such happened on specific slave hosts, but
+   # the sandbox servers are all on one host so all slaves have
+   # the same hostname.
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
 
 # Sub: new
 #
@@ -193,7 +195,9 @@ sub name {
 
 sub DESTROY {
    my ($self) = @_;
-   if ( $self->{dbh} && ref($self->{dbh}) ) {
+   if ( $self->{dbh}
+         && blessed($self->{dbh})
+         && $self->{dbh}->can("disconnect") ) {
       PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
       $self->{dbh}->disconnect();
    }

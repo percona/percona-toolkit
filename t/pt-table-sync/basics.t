@@ -28,11 +28,9 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 21;
+   plan tests => 22;
 }
 
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave_dbh);
 $sb->create_dbs($master_dbh, [qw(test)]);
 
 sub query_slave {
@@ -171,11 +169,14 @@ $ENV{PTDEBUG} = $dbg || 0;
 # ###########################################################################
 # Fix bug 911996.
 # ###########################################################################
+
+# pt-table-checksum waits for all checksums to replicate to all slaves,
+# so no need to call $sb->wait_for_slaves() after this.
 `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 50 --chunk-index idx_actor_last_name -t sakila.actor --quiet`;
 
-PerconaTest::wait_for_table($slave_dbh, "percona.checksums", "db='sakila' and tbl='actor' and chunk=7");
 $slave_dbh->do("update percona.checksums set this_crc='' where db='sakila' and tbl='actor' and chunk=3");
 $slave_dbh->do("update sakila.actor set last_name='' where actor_id=30");
+$sb->wait_for_slaves(); # wait for those ^ updates to replicate to slave2 (!2347)
 
 $output = output(
    sub {
@@ -200,13 +201,11 @@ is(
 
 # Fix bug 927771.
 $sb->load_file('master', 't/pt-table-sync/samples/bug_927771.sql');
-PerconaTest::wait_for_table($slave_dbh, "test.t", "c='j'");
-
 $slave_dbh->do("update test.t set c='z' where id>8");
 
+# pt-table-checksum waits for all checksums to replicate to all slaves,
+# so no need to call $sb->wait_for_slaves() after this.
 `$trunk/bin/pt-table-checksum h=127.1,P=12345,u=msandbox,p=msandbox --max-load '' --lock-wait 3 --chunk-size 2 -t test.t --quiet`;
-
-PerconaTest::wait_for_table($slave_dbh, "percona.checksums", "db='test' and tbl='t' and chunk=4");
 
 $output = output(
    sub {
@@ -217,13 +216,14 @@ $output = output(
    stderr => 1,
 );
 
+$sb->wait_for_slaves();  # wait for sync to replicate
+
 like(
    $output,
    qr/REPLACE INTO `test`.`t`\(`id`, `c`\) VALUES \('9', 'i'\)/,
    "--replicate with uc index (bug 927771)"
 );
 
-PerconaTest::wait_for_table($slave_dbh, "test.t", "id=10 AND c='j'");
 my $rows = $slave_dbh->selectall_arrayref("select id, c from test.t where id>8 order by id");
 is_deeply(
    $rows,
@@ -239,4 +239,5 @@ is_deeply(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

@@ -23,7 +23,7 @@ if ( !$dbh1 ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 9;
+   plan tests => 10;
 }
 
 my $output;
@@ -105,4 +105,5 @@ diag(`rm -rf /tmp/mk-deadlock-logger.pid`);
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh1);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

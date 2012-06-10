@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 my $output;
@@ -35,7 +35,6 @@ my $cmd = "$trunk/bin/pt-archiver";
 # Test the custom plugin gt_n.
 # ###########################################################################
 $sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
-PerconaTest::wait_for_table($dbh, 'gt_n.t1', 'status="ok"');
 my $sql = 'select status, count(*) from gt_n.t1 group by status';
 is_deeply(
    $dbh->selectall_arrayref($sql),
@@ -62,4 +61,5 @@ is_deeply(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

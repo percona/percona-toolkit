@@ -302,7 +302,7 @@ sub get_dbh {
          'SELECT DATABASE(), CONNECTION_ID(), VERSION()/*!50038 , @@hostname*/')),
       'Connection info:',      $dbh->{mysql_hostinfo},
       'Character set info:',   Dumper($dbh->selectall_arrayref(
-                     'SHOW VARIABLES LIKE "character_set%"', { Slice => {}})),
+                     "SHOW VARIABLES LIKE 'character_set%'", { Slice => {}})),
       '$DBD::mysql::VERSION:', $DBD::mysql::VERSION,
       '$DBI::VERSION:',        $DBI::VERSION,
    );
@@ -1613,6 +1613,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -1630,6 +1631,7 @@ our @EXPORT_OK   = qw(
    any_unix_timestamp
    make_checksum
    crc32
+   encode_json
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -1835,6 +1837,96 @@ sub crc32 {
       $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
    }
    return $crc ^ 0xFFFFFFFF;
+}
+
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
 }
 
 sub _d {
@@ -2736,7 +2828,7 @@ package SQLParser;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -2807,7 +2899,7 @@ sub parse {
    my $type;
    if ( $query =~ s/^(\w+)\s+// ) {
       $type = lc $1;
-      MKDEBUG && _d('Query type:', $type);
+      PTDEBUG && _d('Query type:', $type);
       die "Cannot parse " . uc($type) . " queries"
          unless $type =~ m/$allowed_types/i;
    }
@@ -2819,12 +2911,12 @@ sub parse {
 
    my @subqueries;
    if ( $query =~ m/(\(SELECT )/i ) {
-      MKDEBUG && _d('Removing subqueries');
+      PTDEBUG && _d('Removing subqueries');
       @subqueries = $self->remove_subqueries($query);
       $query      = shift @subqueries;
    }
    elsif ( $type eq 'create' && $query =~ m/\s+SELECT/ ) {
-      MKDEBUG && _d('CREATE..SELECT');
+      PTDEBUG && _d('CREATE..SELECT');
       ($subqueries[0]->{query}) = $query =~ m/\s+(SELECT .+)/;
       $query =~ s/\s+SELECT.+//;
    }
@@ -2832,14 +2924,14 @@ sub parse {
    my $parse_func = "parse_$type";
    my $struct     = $self->$parse_func($query);
    if ( !$struct ) {
-      MKDEBUG && _d($parse_func, 'failed to parse query');
+      PTDEBUG && _d($parse_func, 'failed to parse query');
       return;
    }
    $struct->{type} = $type;
    $self->_parse_clauses($struct);
 
    if ( @subqueries ) {
-      MKDEBUG && _d('Parsing subqueries');
+      PTDEBUG && _d('Parsing subqueries');
       foreach my $subquery ( @subqueries ) {
          my $subquery_struct = $self->parse($subquery->{query});
          @{$subquery_struct}{keys %$subquery} = values %$subquery;
@@ -2847,7 +2939,7 @@ sub parse {
       }
    }
 
-   MKDEBUG && _d('Query struct:', Dumper($struct));
+   PTDEBUG && _d('Query struct:', Dumper($struct));
    return $struct;
 }
 
@@ -2866,7 +2958,7 @@ sub _parse_clauses {
       $struct->{$clause} = $self->$parse_func($struct->{clauses}->{$clause});
 
       if ( $clause eq 'select' ) {
-         MKDEBUG && _d('Parsing subquery clauses');
+         PTDEBUG && _d('Parsing subquery clauses');
          $struct->{select}->{type} = 'select';
          $self->_parse_clauses($struct->{select});
       }
@@ -2912,13 +3004,13 @@ sub _parse_query {
    my $clause = $first_clause,
    my $value  = shift @clause;
    $struct->{clauses}->{$clause} = $value;
-   MKDEBUG && _d('Clause:', $clause, $value);
+   PTDEBUG && _d('Clause:', $clause, $value);
 
    while ( @clause ) {
       $clause = shift @clause;
       $value  = shift @clause;
       $struct->{clauses}->{lc $clause} = $value;
-      MKDEBUG && _d('Clause:', $clause, $value);
+      PTDEBUG && _d('Clause:', $clause, $value);
    }
 
    ($struct->{unknown}) = ($query =~ m/\G(.+)/);
@@ -2950,7 +3042,7 @@ sub parse_insert {
       my $values = $1;
       die "No values after ON DUPLICATE KEY UPDATE: $query" unless $values;
       $struct->{clauses}->{on_duplicate} = $values;
-      MKDEBUG && _d('Clause: on duplicate key update', $values);
+      PTDEBUG && _d('Clause: on duplicate key update', $values);
 
       $query =~ s/\s+ON DUPLICATE KEY UPDATE.+//;
    }
@@ -2964,13 +3056,13 @@ sub parse_insert {
    ) {
       my $tbl  = shift @into;  # table ref
       $struct->{clauses}->{into} = $tbl;
-      MKDEBUG && _d('Clause: into', $tbl);
+      PTDEBUG && _d('Clause: into', $tbl);
 
       my $cols = shift @into;  # columns, maybe
       if ( $cols ) {
          $cols =~ s/[\(\)]//g;
          $struct->{clauses}->{columns} = $cols;
-         MKDEBUG && _d('Clause: columns', $cols);
+         PTDEBUG && _d('Clause: columns', $cols);
       }
 
       my $next_clause = lc(shift @into);  # VALUES, SET or SELECT
@@ -2980,7 +3072,7 @@ sub parse_insert {
       my ($values) = ($query =~ m/\G(.+)/gci);
       die "INSERT/REPLACE without values: $query" unless $values;
       $struct->{clauses}->{$next_clause} = $values;
-      MKDEBUG && _d('Clause:', $next_clause, $values);
+      PTDEBUG && _d('Clause:', $next_clause, $values);
    }
 
    ($struct->{unknown}) = ($query =~ m/\G(.+)/);
@@ -3053,7 +3145,7 @@ sub parse_create {
 sub parse_from {
    my ( $self, $from ) = @_;
    return unless $from;
-   MKDEBUG && _d('Parsing FROM', $from);
+   PTDEBUG && _d('Parsing FROM', $from);
 
    my $using_cols;
    ($from, $using_cols) = $self->remove_using_columns($from);
@@ -3077,10 +3169,10 @@ sub parse_from {
 
       $thing =~ s/^\s+//;
       $thing =~ s/\s+$//;
-      MKDEBUG && _d('Table thing:', $thing);
+      PTDEBUG && _d('Table thing:', $thing);
 
       if ( $thing =~ m/\s+(?:ON|USING)\s+/i ) {
-         MKDEBUG && _d("JOIN condition");
+         PTDEBUG && _d("JOIN condition");
          my ($tbl_ref_txt, $join_condition_verb, $join_condition_value)
             = $thing =~ m/^(.+?)\s+(ON|USING)\s+(.+)/i;
 
@@ -3099,7 +3191,7 @@ sub parse_from {
             $tbl_ref->{join} = $join;
          }
          push @tbls, $tbl_ref;
-         MKDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
+         PTDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
 
          $tbl_ref = undef;
          $join    = {};
@@ -3117,7 +3209,7 @@ sub parse_from {
       }
       else {
          $tbl_ref = $self->parse_table_reference($thing);
-         MKDEBUG && _d('Table reference:', Dumper($tbl_ref));
+         PTDEBUG && _d('Table reference:', Dumper($tbl_ref));
       }
    }
 
@@ -3126,7 +3218,7 @@ sub parse_from {
          $tbl_ref->{join} = $join;
       }
       push @tbls, $tbl_ref;
-      MKDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
+      PTDEBUG && _d("Complete table reference:", Dumper($tbl_ref));
    }
 
    return \@tbls;
@@ -3135,7 +3227,7 @@ sub parse_from {
 sub parse_table_reference {
    my ( $self, $tbl_ref ) = @_;
    return unless $tbl_ref;
-   MKDEBUG && _d('Parsing table reference:', $tbl_ref);
+   PTDEBUG && _d('Parsing table reference:', $tbl_ref);
    my %tbl;
 
    if ( $tbl_ref =~ s/
@@ -3146,7 +3238,7 @@ sub parse_table_reference {
          )//xi)
    {
       $tbl{index_hint} = $1;
-      MKDEBUG && _d('Index hint:', $tbl{index_hint});
+      PTDEBUG && _d('Index hint:', $tbl{index_hint});
    }
 
    if ( $tbl_ref =~ m/$table_ident/ ) {
@@ -3172,7 +3264,7 @@ sub parse_table_reference {
 sub parse_where {
    my ( $self, $where, $functions ) = @_;
    return unless $where;
-   MKDEBUG && _d("Parsing WHERE", $where);
+   PTDEBUG && _d("Parsing WHERE", $where);
 
    my $op_symbol = qr/
       (?:
@@ -3216,8 +3308,8 @@ sub parse_where {
    $pred = substr $where, $offset;
    push @pred, $pred;
    push @has_op, $pred =~ m/$op_pat/o ? 1 : 0;
-   MKDEBUG && _d("Predicate fragments:", Dumper(\@pred));
-   MKDEBUG && _d("Predicate frags with operators:", @has_op);
+   PTDEBUG && _d("Predicate fragments:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate frags with operators:", @has_op);
 
    my $n = scalar @pred - 1;
    for my $i ( 1..$n ) {
@@ -3231,7 +3323,7 @@ sub parse_where {
          $pred[$i]  = undef;
       }
    }
-   MKDEBUG && _d("Predicate fragments joined:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate fragments joined:", Dumper(\@pred));
 
    for my $i ( 0..@pred ) {
       $pred = $pred[$i];
@@ -3243,7 +3335,7 @@ sub parse_where {
          $pred[$i + 1]  = undef;
       }
    }
-   MKDEBUG && _d("Predicate fragments balanced:", Dumper(\@pred));
+   PTDEBUG && _d("Predicate fragments balanced:", Dumper(\@pred));
 
    my @predicates;
    foreach my $pred ( @pred ) {
@@ -3315,7 +3407,7 @@ sub parse_having {
 sub parse_group_by {
    my ( $self, $group_by ) = @_;
    return unless $group_by;
-   MKDEBUG && _d('Parsing GROUP BY', $group_by);
+   PTDEBUG && _d('Parsing GROUP BY', $group_by);
 
    my $with_rollup = $group_by =~ s/\s+WITH ROLLUP\s*//i;
 
@@ -3329,7 +3421,7 @@ sub parse_group_by {
 sub parse_order_by {
    my ( $self, $order_by ) = @_;
    return unless $order_by;
-   MKDEBUG && _d('Parsing ORDER BY', $order_by);
+   PTDEBUG && _d('Parsing ORDER BY', $order_by);
    my $idents = $self->parse_identifiers( $self->_parse_csv($order_by) );
    return $idents;
 }
@@ -3368,7 +3460,7 @@ sub parse_values {
 
 sub parse_set {
    my ( $self, $set ) = @_;
-   MKDEBUG && _d("Parse SET", $set);
+   PTDEBUG && _d("Parse SET", $set);
    return unless $set;
    my $vals = $self->_parse_csv($set);
    return unless $vals && @$vals;
@@ -3381,7 +3473,7 @@ sub parse_set {
          %$ident_struct,
          value => $val,
       };
-      MKDEBUG && _d("SET:", Dumper($set_struct));
+      PTDEBUG && _d("SET:", Dumper($set_struct));
       push @set, $set_struct;
    }
    return \@set;
@@ -3396,9 +3488,9 @@ sub _parse_csv {
       my $quote_char   = '';
       VAL:
       foreach my $val ( split(',', $vals) ) {
-         MKDEBUG && _d("Next value:", $val);
+         PTDEBUG && _d("Next value:", $val);
          if ( $quote_char ) {
-            MKDEBUG && _d("Value is part of previous quoted value");
+            PTDEBUG && _d("Value is part of previous quoted value");
             $vals[-1] .= ",$val";
 
             if ( $val =~ m/[^\\]*$quote_char$/ ) {
@@ -3406,7 +3498,7 @@ sub _parse_csv {
                   $vals[-1] =~ s/^\s*$quote_char//;
                   $vals[-1] =~ s/$quote_char\s*$//;
                }
-               MKDEBUG && _d("Previous quoted value is complete:", $vals[-1]);
+               PTDEBUG && _d("Previous quoted value is complete:", $vals[-1]);
                $quote_char = '';
             }
 
@@ -3416,10 +3508,10 @@ sub _parse_csv {
          $val =~ s/^\s+//;
 
          if ( $val =~ m/^(['"])/ ) {
-            MKDEBUG && _d("Value is quoted");
+            PTDEBUG && _d("Value is quoted");
             $quote_char = $1;  # XXX
             if ( $val =~ m/.$quote_char$/ ) {
-               MKDEBUG && _d("Value is complete");
+               PTDEBUG && _d("Value is complete");
                $quote_char = '';
                if ( $args{remove_quotes} ) {
                   $vals[-1] =~ s/^\s*$quote_char//;
@@ -3427,14 +3519,14 @@ sub _parse_csv {
                }
             }
             else {
-               MKDEBUG && _d("Quoted value is not complete");
+               PTDEBUG && _d("Quoted value is not complete");
             }
          }
          else {
             $val =~ s/\s+$//;
          }
 
-         MKDEBUG && _d("Saving value", ($quote_char ? "fragment" : ""));
+         PTDEBUG && _d("Saving value", ($quote_char ? "fragment" : ""));
          push @vals, $val;
       }
    }
@@ -3451,7 +3543,7 @@ sub _parse_csv {
 
 sub parse_columns {
    my ( $self, $cols ) = @_;
-   MKDEBUG && _d('Parsing columns list:', $cols);
+   PTDEBUG && _d('Parsing columns list:', $cols);
 
    my @cols;
    pos $cols = 0;
@@ -3501,31 +3593,31 @@ sub remove_subqueries {
    my $len_adj = 0;
    my $n    = 0;
    for my $i ( 0..$#start_pos ) {
-      MKDEBUG && _d('Query:', $query);
+      PTDEBUG && _d('Query:', $query);
       my $offset = $start_pos[$i];
       my $len    = $end_pos[$i] - $start_pos[$i] - $len_adj;
-      MKDEBUG && _d("Subquery $n start", $start_pos[$i],
+      PTDEBUG && _d("Subquery $n start", $start_pos[$i],
             'orig end', $end_pos[$i], 'adj', $len_adj, 'adj end',
             $offset + $len, 'len', $len);
 
       my $struct   = {};
       my $token    = '__SQ' . $n . '__';
       my $subquery = substr($query, $offset, $len, $token);
-      MKDEBUG && _d("Subquery $n:", $subquery);
+      PTDEBUG && _d("Subquery $n:", $subquery);
 
       my $outer_start = $start_pos[$i + 1];
       my $outer_end   = $end_pos[$i + 1];
       if (    $outer_start && ($outer_start < $start_pos[$i])
            && $outer_end   && ($outer_end   > $end_pos[$i]) ) {
-         MKDEBUG && _d("Subquery $n nested in next subquery");
+         PTDEBUG && _d("Subquery $n nested in next subquery");
          $len_adj += $len - length $token;
          $struct->{nested} = $i + 1;
       }
       else {
-         MKDEBUG && _d("Subquery $n not nested");
+         PTDEBUG && _d("Subquery $n not nested");
          $len_adj = 0;
          if ( $subqueries[-1] && $subqueries[-1]->{nested} ) {
-            MKDEBUG && _d("Outermost subquery");
+            PTDEBUG && _d("Outermost subquery");
          }
       }
 
@@ -3542,7 +3634,7 @@ sub remove_subqueries {
       else {
          $struct->{context} = 'identifier';
       }
-      MKDEBUG && _d("Subquery $n context:", $struct->{context});
+      PTDEBUG && _d("Subquery $n context:", $struct->{context});
 
       $subquery =~ s/^\s*\(//;
       $subquery =~ s/\s*\)\s*$//;
@@ -3558,7 +3650,7 @@ sub remove_subqueries {
 sub remove_using_columns {
    my ($self, $from) = @_;
    return unless $from;
-   MKDEBUG && _d('Removing cols from USING clauses');
+   PTDEBUG && _d('Removing cols from USING clauses');
    my $using = qr/
       \bUSING
       \s*
@@ -3568,7 +3660,7 @@ sub remove_using_columns {
    /xi;
    my @cols;
    $from =~ s/$using/push @cols, $1; "USING ($#cols)"/eg;
-   MKDEBUG && _d('FROM:', $from, Dumper(\@cols));
+   PTDEBUG && _d('FROM:', $from, Dumper(\@cols));
    return $from, \@cols;
 }
 
@@ -3586,21 +3678,21 @@ sub replace_function {
 sub remove_functions {
    my ($self, $clause) = @_;
    return unless $clause;
-   MKDEBUG && _d('Removing functions from clause:', $clause);
+   PTDEBUG && _d('Removing functions from clause:', $clause);
    my @funcs;
    $clause =~ s/$function_ident/replace_function($1, \@funcs)/eg;
-   MKDEBUG && _d('Function-stripped clause:', $clause, Dumper(\@funcs));
+   PTDEBUG && _d('Function-stripped clause:', $clause, Dumper(\@funcs));
    return $clause, \@funcs;
 }
 
 sub parse_identifiers {
    my ( $self, $idents ) = @_;
    return unless $idents;
-   MKDEBUG && _d("Parsing identifiers");
+   PTDEBUG && _d("Parsing identifiers");
 
    my @ident_parts;
    foreach my $ident ( @$idents ) {
-      MKDEBUG && _d("Identifier:", $ident);
+      PTDEBUG && _d("Identifier:", $ident);
       my $parts = {};
 
       if ( $ident =~ s/\s+(ASC|DESC)\s*$//i ) {
@@ -3608,17 +3700,17 @@ sub parse_identifiers {
       }
 
       if ( $ident =~ m/^\d+$/ ) {      # Position like 5
-         MKDEBUG && _d("Positional ident");
+         PTDEBUG && _d("Positional ident");
          $parts->{position} = $ident;
       }
       elsif ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
-         MKDEBUG && _d("Expression ident");
+         PTDEBUG && _d("Expression ident");
          my ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
          $parts->{function}   = uc $func;
          $parts->{expression} = $expr if $expr;
       }
       else {                           # Ref like (table.)column
-         MKDEBUG && _d("Table/column ident");
+         PTDEBUG && _d("Table/column ident");
          my ($tbl, $col)  = $self->split_unquote($ident);
          $parts->{table}  = $tbl if $tbl;
          $parts->{column} = $col;
@@ -3632,11 +3724,11 @@ sub parse_identifiers {
 sub parse_identifier {
    my ( $self, $type, $ident ) = @_;
    return unless $type && $ident;
-   MKDEBUG && _d("Parsing", $type, "identifier:", $ident);
+   PTDEBUG && _d("Parsing", $type, "identifier:", $ident);
 
    if ( $ident =~ m/^\w+\(/ ) {  # Function like MIN(col)
       my ($func, $expr) = $ident =~ m/^(\w+)\(([^\)]*)\)/;
-      MKDEBUG && _d('Function', $func, 'arg', $expr);
+      PTDEBUG && _d('Function', $func, 'arg', $expr);
       return { col => $ident } unless $expr;  # NOW()
       $ident = $expr;  # col from MAX(col)
    }
@@ -3676,7 +3768,7 @@ sub parse_identifier {
       }
    }
 
-   MKDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
+   PTDEBUG && _d($type, "identifier struct:", Dumper(\%ident_struct));
    return \%ident_struct;
 }
 
@@ -3752,7 +3844,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 sub new {
    my ( $class, %args ) = @_;
@@ -3777,7 +3869,7 @@ sub get_table_usage {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($query) = @args{@required_args};
-   MKDEBUG && _d('Getting table access for',
+   PTDEBUG && _d('Getting table access for',
       substr($query, 0, 100), (length $query > 100 ? '...' : ''));
 
    $self->{errors}          = [];
@@ -3792,7 +3884,7 @@ sub get_table_usage {
       $query_struct = $self->{SQLParser}->parse($query);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d('Failed to parse query with SQLParser:', $EVAL_ERROR);
+      PTDEBUG && _d('Failed to parse query with SQLParser:', $EVAL_ERROR);
       if ( $EVAL_ERROR =~ m/Cannot parse/ ) {
          $tables = $self->_get_tables_used_from_query_parser(%args);
       }
@@ -3807,7 +3899,7 @@ sub get_table_usage {
       );
    }
 
-   MKDEBUG && _d('Query table usage:', Dumper($tables));
+   PTDEBUG && _d('Query table usage:', Dumper($tables));
    return $tables;
 }
 
@@ -3823,7 +3915,7 @@ sub _get_tables_used_from_query_parser {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($query) = @args{@required_args};
-   MKDEBUG && _d('Getting tables used from query parser');
+   PTDEBUG && _d('Getting tables used from query parser');
 
    $query = $self->{QueryParser}->clean_query($query);
    my ($query_type) = $query =~ m/^\s*(\w+)\s+/;
@@ -3856,15 +3948,15 @@ sub _get_tables_used_from_query_struct {
    }
    my ($query_struct) = @args{@required_args};
 
-   MKDEBUG && _d('Getting table used from query struct');
+   PTDEBUG && _d('Getting table used from query struct');
 
    my $query_type = uc $query_struct->{type};
 
    if ( $query_type eq 'CREATE' ) {
-      MKDEBUG && _d('CREATE query');
+      PTDEBUG && _d('CREATE query');
       my $sel_tables;
       if ( my $sq_struct = $query_struct->{subqueries}->[0] ) {
-         MKDEBUG && _d('CREATE query with SELECT');
+         PTDEBUG && _d('CREATE query with SELECT');
          $sel_tables = $self->_get_tables_used_from_query_struct(
             %args,
             query        => $sq_struct->{query},
@@ -3884,7 +3976,7 @@ sub _get_tables_used_from_query_struct {
 
    my $tables     = $self->_get_tables($query_struct);
    if ( !$tables || @$tables == 0 ) {
-      MKDEBUG && _d("Query does not use any tables");
+      PTDEBUG && _d("Query does not use any tables");
       return [
          [ { context => $query_type, table => $self->{constant_data_value} } ]
       ];
@@ -3899,17 +3991,17 @@ sub _get_tables_used_from_query_struct {
       );
 
       if ( $ambig && $self->{dbh} && !$self->{query_reparsed} ) {
-         MKDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
+         PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
          if ( $self->_reparse_query(%args) ) {
             return $self->_get_tables_used_from_query_struct(%args);
          } 
-         MKDEBUG && _d('Failed to disambiguate columns');
+         PTDEBUG && _d('Failed to disambiguate columns');
       }
    }
 
    my @tables_used;
    if ( $query_type eq 'UPDATE' && @{$query_struct->{tables}} > 1 ) {
-      MKDEBUG && _d("Multi-table UPDATE");
+      PTDEBUG && _d("Multi-table UPDATE");
 
       my @join_tables;
       foreach my $table ( @$tables ) {
@@ -3923,7 +4015,7 @@ sub _get_tables_used_from_query_struct {
             context => 'JOIN',
             table   => $table,
          };
-         MKDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
+         PTDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
          push @join_tables, $table_usage;
       }
       if ( $where && $where->{joined_tables} ) {
@@ -3932,7 +4024,7 @@ sub _get_tables_used_from_query_struct {
                context => $query_type,
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from WHERE (implicit join):",
+            PTDEBUG && _d("Table usage from WHERE (implicit join):",
                Dumper($table_usage));
             push @join_tables, $table_usage;
          }
@@ -3945,7 +4037,7 @@ sub _get_tables_used_from_query_struct {
                context => 'WHERE',
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
             push @where_tables, $table_usage;
          }
       }
@@ -3966,7 +4058,7 @@ sub _get_tables_used_from_query_struct {
                table   => $table->{value},
             },
          );
-         MKDEBUG && _d("Table usage from UPDATE SET:", Dumper(\@table_usage));
+         PTDEBUG && _d("Table usage from UPDATE SET:", Dumper(\@table_usage));
          push @tables_used, [
             @table_usage,
             @join_tables,
@@ -3983,11 +4075,11 @@ sub _get_tables_used_from_query_struct {
          );
 
          if ( $ambig && $self->{dbh} && !$self->{query_reparsed} ) {
-            MKDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
+            PTDEBUG && _d("Using EXPLAIN EXTENDED to disambiguate columns");
             if ( $self->_reparse_query(%args) ) {
                return $self->_get_tables_used_from_query_struct(%args);
             } 
-            MKDEBUG && _d('Failed to disambiguate columns');
+            PTDEBUG && _d('Failed to disambiguate columns');
          }
 
          foreach my $table ( @$clist_tables ) {
@@ -3995,7 +4087,7 @@ sub _get_tables_used_from_query_struct {
                context => 'SELECT',
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from CLIST:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from CLIST:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -4014,7 +4106,7 @@ sub _get_tables_used_from_query_struct {
             if ( $table->{join} && $table->{join}->{condition} ) {
                 $context = 'JOIN';
                if ( $table->{join}->{condition} eq 'using' ) {
-                  MKDEBUG && _d("Table joined with USING condition");
+                  PTDEBUG && _d("Table joined with USING condition");
                   my $joined_table  = $self->_qualify_table_name(
                      %args,
                      tables => $tables,
@@ -4029,22 +4121,22 @@ sub _get_tables_used_from_query_struct {
                   );
                }
                elsif ( $table->{join}->{condition} eq 'on' ) {
-                  MKDEBUG && _d("Table joined with ON condition");
+                  PTDEBUG && _d("Table joined with ON condition");
                   my ($on_tables, $ambig) = $self->_get_tables_used_in_where(
                      %args,
                      tables => $tables,
                      where  => $table->{join}->{where},
                      clause => 'JOIN condition',  # just for debugging
                   );
-                  MKDEBUG && _d("JOIN ON tables:", Dumper($on_tables));
+                  PTDEBUG && _d("JOIN ON tables:", Dumper($on_tables));
 
                   if ( $ambig && $self->{dbh} && !$self->{query_reparsed} ) {
-                     MKDEBUG && _d("Using EXPLAIN EXTENDED",
+                     PTDEBUG && _d("Using EXPLAIN EXTENDED",
                         "to disambiguate columns");
                      if ( $self->_reparse_query(%args) ) {
                         return $self->_get_tables_used_from_query_struct(%args);
                      } 
-                     MKDEBUG && _d('Failed to disambiguate columns'); 
+                     PTDEBUG && _d('Failed to disambiguate columns'); 
                   }
 
                   foreach my $joined_table ( @{$on_tables->{joined_tables}} ) {
@@ -4066,14 +4158,14 @@ sub _get_tables_used_from_query_struct {
                context => $context,
                table   => $qualified_table,
             };
-            MKDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from TLIST:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
 
       if ( $where && $where->{joined_tables} ) {
          foreach my $joined_table ( @{$where->{joined_tables}} ) {
-            MKDEBUG && _d("Table joined implicitly in WHERE:", $joined_table);
+            PTDEBUG && _d("Table joined implicitly in WHERE:", $joined_table);
             $self->_change_context(
                tables      => $tables,
                table       => $joined_table,
@@ -4086,7 +4178,7 @@ sub _get_tables_used_from_query_struct {
 
       if ( $query_type =~ m/(?:INSERT|REPLACE)/ ) {
          if ( $query_struct->{select} ) {
-            MKDEBUG && _d("Getting tables used in INSERT-SELECT");
+            PTDEBUG && _d("Getting tables used in INSERT-SELECT");
             my $select_tables = $self->_get_tables_used_from_query_struct(
                %args,
                query_struct => $query_struct->{select},
@@ -4098,7 +4190,7 @@ sub _get_tables_used_from_query_struct {
                context => 'SELECT',
                table   => $self->{constant_data_value},
             };
-            MKDEBUG && _d("Table usage from SET/VALUES:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from SET/VALUES:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -4114,7 +4206,7 @@ sub _get_tables_used_from_query_struct {
                table   => $table->{value_is_table} ? $table->{table}
                         :                            $self->{constant_data_value},
             };
-            MKDEBUG && _d("Table usage from SET:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from SET:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -4125,7 +4217,7 @@ sub _get_tables_used_from_query_struct {
                context => 'WHERE',
                table   => $table,
             };
-            MKDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
+            PTDEBUG && _d("Table usage from WHERE:", Dumper($table_usage));
             push @{$tables_used[0]}, $table_usage;
          }
       }
@@ -4142,11 +4234,11 @@ sub _get_tables_used_in_columns {
    }
    my ($tables, $columns) = @args{@required_args};
 
-   MKDEBUG && _d("Getting tables used in CLIST");
+   PTDEBUG && _d("Getting tables used in CLIST");
    my @tables;
    my $ambig = 0;  # found any ambiguous columns?
    if ( @$tables == 1 ) {
-      MKDEBUG && _d("Single table SELECT:", $tables->[0]->{tbl});
+      PTDEBUG && _d("Single table SELECT:", $tables->[0]->{tbl});
       my $table = $self->_qualify_table_name(
          %args,
          db  => $tables->[0]->{db},
@@ -4156,7 +4248,7 @@ sub _get_tables_used_in_columns {
    }
    elsif ( @$columns == 1 && $columns->[0]->{col} eq '*' ) {
       if ( $columns->[0]->{tbl} ) {
-         MKDEBUG && _d("SELECT all columns from one table");
+         PTDEBUG && _d("SELECT all columns from one table");
          my $table = $self->_qualify_table_name(
             %args,
             db  => $columns->[0]->{db},
@@ -4165,7 +4257,7 @@ sub _get_tables_used_in_columns {
          @tables = ($table);
       }
       else {
-         MKDEBUG && _d("SELECT all columns from all tables");
+         PTDEBUG && _d("SELECT all columns from all tables");
          foreach my $table ( @$tables ) {
             my $table = $self->_qualify_table_name(
                %args,
@@ -4178,14 +4270,14 @@ sub _get_tables_used_in_columns {
       }
    }
    else {
-      MKDEBUG && _d(scalar @$tables, "table SELECT");
+      PTDEBUG && _d(scalar @$tables, "table SELECT");
       my %seen;
       my $colno = 0;
       COLUMN:
       foreach my $column ( @$columns ) {
-         MKDEBUG && _d('Getting table for column', Dumper($column));
+         PTDEBUG && _d('Getting table for column', Dumper($column));
          if ( $column->{col} eq '*' && !$column->{tbl} ) {
-            MKDEBUG && _d('Ignoring FUNC(*) column');
+            PTDEBUG && _d('Ignoring FUNC(*) column');
             $colno++;
             next;
          }
@@ -4195,7 +4287,7 @@ sub _get_tables_used_in_columns {
             n_cols => scalar @$columns,
          );
          if ( !$column->{tbl} ) {
-            MKDEBUG && _d("Column", $column->{col}, "is not table-qualified;",
+            PTDEBUG && _d("Column", $column->{col}, "is not table-qualified;",
                "and query has multiple tables; cannot determine its table");
             $ambig++;
             next COLUMN;
@@ -4222,14 +4314,14 @@ sub _get_tables_used_in_where {
    my ($tables, $where) = @args{@required_args};
    my $sql_parser = $self->{SQLParser};
 
-   MKDEBUG && _d("Getting tables used in", $args{clause} || 'WHERE');
+   PTDEBUG && _d("Getting tables used in", $args{clause} || 'WHERE');
 
    my %filter_tables;
    my %join_tables;
    my $ambig = 0;  # found any ambiguous tables?
    CONDITION:
    foreach my $cond ( @$where ) {
-      MKDEBUG && _d("Condition:", Dumper($cond));
+      PTDEBUG && _d("Condition:", Dumper($cond));
       my @tables;  # tables used in this condition
       my $n_vals        = 0;
       my $is_constant   = 0;
@@ -4237,13 +4329,13 @@ sub _get_tables_used_in_where {
       ARG:
       foreach my $arg ( qw(left_arg right_arg) ) {
          if ( !defined $cond->{$arg} ) {
-            MKDEBUG && _d($arg, "is a constant value");
+            PTDEBUG && _d($arg, "is a constant value");
             $is_constant = 1;
             next ARG;
          }
 
          if ( $sql_parser->is_identifier($cond->{$arg}) ) {
-            MKDEBUG && _d($arg, "is an identifier");
+            PTDEBUG && _d($arg, "is an identifier");
             my $ident_struct = $sql_parser->parse_identifier(
                'column',
                $cond->{$arg}
@@ -4254,12 +4346,12 @@ sub _get_tables_used_in_where {
             );
             if ( !$ident_struct->{tbl} ) {
                if ( @$tables == 1 ) {
-                  MKDEBUG && _d("Condition column is not table-qualified; ",
+                  PTDEBUG && _d("Condition column is not table-qualified; ",
                      "using query's only table:", $tables->[0]->{tbl});
                   $ident_struct->{tbl} = $tables->[0]->{tbl};
                }
                else {
-                  MKDEBUG && _d("Condition column is not table-qualified and",
+                  PTDEBUG && _d("Condition column is not table-qualified and",
                      "query has multiple tables; cannot determine its table");
                   if (  $cond->{$arg} !~ m/\w+\(/       # not a function
                      && $cond->{$arg} !~ m/^[\d.]+$/) { # not a number
@@ -4271,7 +4363,7 @@ sub _get_tables_used_in_where {
             }
 
             if ( !$ident_struct->{db} && @$tables == 1 && $tables->[0]->{db} ) {
-               MKDEBUG && _d("Condition column is not database-qualified; ",
+               PTDEBUG && _d("Condition column is not database-qualified; ",
                   "using its table's database:", $tables->[0]->{db});
                $ident_struct->{db} = $tables->[0]->{db};
             }
@@ -4285,29 +4377,29 @@ sub _get_tables_used_in_where {
             }
          }
          else {
-            MKDEBUG && _d($arg, "is a value");
+            PTDEBUG && _d($arg, "is a value");
             $n_vals++;
          }
       }  # ARG
 
       if ( $is_constant || $n_vals == 2 ) {
-         MKDEBUG && _d("Condition is a constant or two values");
+         PTDEBUG && _d("Condition is a constant or two values");
          $filter_tables{$self->{constant_data_value}} = undef;
       }
       else {
          if ( @tables == 1 ) {
             if ( $unknown_table ) {
-               MKDEBUG && _d("Condition joins table",
+               PTDEBUG && _d("Condition joins table",
                   $tables[0], "to column from unknown table");
                $join_tables{$tables[0]} = undef;
             }
             else {
-               MKDEBUG && _d("Condition filters table", $tables[0]);
+               PTDEBUG && _d("Condition filters table", $tables[0]);
                $filter_tables{$tables[0]} = undef;
             }
          }
          elsif ( @tables == 2 ) {
-            MKDEBUG && _d("Condition joins tables",
+            PTDEBUG && _d("Condition joins tables",
                $tables[0], "and", $tables[1]);
             $join_tables{$tables[0]} = undef;
             $join_tables{$tables[1]} = undef;
@@ -4333,7 +4425,7 @@ sub _get_tables_used_in_set {
    my ($tables, $set) = @args{@required_args};
    my $sql_parser = $self->{SQLParser};
 
-   MKDEBUG && _d("Getting tables used in SET");
+   PTDEBUG && _d("Getting tables used in SET");
 
    my @tables;
    if ( @$tables == 1 ) {
@@ -4394,11 +4486,11 @@ sub _get_real_table_name {
    foreach my $table ( @$tables ) {
       if ( lc($table->{tbl}) eq $name
            || lc($table->{alias} || "") eq $name ) {
-         MKDEBUG && _d("Real table name for", $name, "is", $table->{tbl});
+         PTDEBUG && _d("Real table name for", $name, "is", $table->{tbl});
          return $table->{tbl};
       }
    }
-   MKDEBUG && _d("Table", $name, "does not exist in query");
+   PTDEBUG && _d("Table", $name, "does not exist in query");
    return;
 }
 
@@ -4410,7 +4502,7 @@ sub _qualify_table_name {
    }
    my ($tables, $table) = @args{@required_args};
 
-   MKDEBUG && _d("Qualifying table with database:", $table);
+   PTDEBUG && _d("Qualifying table with database:", $table);
 
    my ($tbl, $db) = reverse split /[.]/, $table;
 
@@ -4442,12 +4534,12 @@ sub _qualify_table_name {
       }
 
       if ( !$db_tbl ) {
-         MKDEBUG && _d("Cannot determine database for table", $tbl);
+         PTDEBUG && _d("Cannot determine database for table", $tbl);
          $db_tbl = $tbl;
       }
    }
 
-   MKDEBUG && _d("Table qualified with database:", $db_tbl);
+   PTDEBUG && _d("Table qualified with database:", $db_tbl);
    return $db_tbl;
 }
 
@@ -4458,7 +4550,7 @@ sub _change_context {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tables_used, $table, $old_context, $new_context) = @args{@required_args};
-   MKDEBUG && _d("Change context of table", $table, "from", $old_context,
+   PTDEBUG && _d("Change context of table", $table, "from", $old_context,
       "to", $new_context);
    foreach my $used_table ( @$tables_used ) {
       if (    $used_table->{table}   eq $table
@@ -4467,7 +4559,7 @@ sub _change_context {
          return;
       }
    }
-   MKDEBUG && _d("Table", $table, "is not used; cannot set its context");
+   PTDEBUG && _d("Table", $table, "is not used; cannot set its context");
    return;
 }
 
@@ -4478,18 +4570,18 @@ sub _explain_query {
    my $sql;
    if ( $db ) {
       $sql = "USE `$db`";
-      MKDEBUG && _d($dbh, $sql);
+      PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
 
    $sql = "EXPLAIN EXTENDED $query";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    eval {
       $dbh->do($sql);  # don't need the result
    };
    if ( $EVAL_ERROR ) {
       if ( $EVAL_ERROR =~ m/No database/i ) {
-         MKDEBUG && _d($EVAL_ERROR);
+         PTDEBUG && _d($EVAL_ERROR);
          push @{$self->{errors}}, 'NO_DB_SELECTED';
          return;
       }
@@ -4497,9 +4589,9 @@ sub _explain_query {
    }
 
    $sql = "SHOW WARNINGS";
-   MKDEBUG && _d($dbh, $sql);
+   PTDEBUG && _d($dbh, $sql);
    my $warning = $dbh->selectrow_hashref($sql);
-   MKDEBUG && _d(Dumper($warning));
+   PTDEBUG && _d(Dumper($warning));
    if (    ($warning->{level} || "") !~ m/Note/i
         || ($warning->{code}  || 0)  != 1003 ) {
       die "EXPLAIN EXTENDED failed:\n"
@@ -4508,7 +4600,22 @@ sub _explain_query {
          . "Message: " . ($warning->{message} || "") . "\n";
    }
 
-   return $warning->{message};
+   return $self->ansi_to_legacy($warning->{message});
+}
+
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $sql) = @_;
+   $sql =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $sql;
+}
+
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _get_tables {
@@ -4527,7 +4634,7 @@ sub _reparse_query {
    my ($self, %args) = @_;
    my @required_args = qw(query query_struct);
    my ($query, $query_struct) = @args{@required_args};
-   MKDEBUG && _d("Reparsing query with EXPLAIN EXTENDED");
+   PTDEBUG && _d("Reparsing query with EXPLAIN EXTENDED");
 
    $self->{query_reparsed} = 1;
 
@@ -4571,7 +4678,7 @@ sub _ex_qualify_column {
    return $col unless $self->{ex_query_struct};
    my $ex = $self->{ex_query_struct};
 
-   MKDEBUG && _d('Qualifying column',$col->{col},'with EXPLAIN EXTENDED query');
+   PTDEBUG && _d('Qualifying column',$col->{col},'with EXPLAIN EXTENDED query');
 
    return unless $col;
 
@@ -4581,7 +4688,7 @@ sub _ex_qualify_column {
 
    if ( !$col->{tbl} ) {
       if ( $where_arg ) {
-         MKDEBUG && _d('Searching WHERE conditions for column');
+         PTDEBUG && _d('Searching WHERE conditions for column');
          CONDITION:
          foreach my $cond ( @{$ex->{where}} ) {
             if ( defined $cond->{$where_arg}
@@ -4604,16 +4711,16 @@ sub _ex_qualify_column {
       elsif ( defined $colno
            && $ex->{columns}->[$colno]
            && lc($ex->{columns}->[$colno]->{col}) eq $colname ) {
-         MKDEBUG && _d('Exact match by col name and number');
+         PTDEBUG && _d('Exact match by col name and number');
          $col = $ex->{columns}->[$colno];
       }
       elsif ( defined $colno
               && scalar @{$ex->{columns}} == $n_cols ) {
-         MKDEBUG && _d('Match by column number in CLIST');
+         PTDEBUG && _d('Match by column number in CLIST');
          $col = $ex->{columns}->[$colno];
       }
       else {
-         MKDEBUG && _d('Searching for unique column in every db.tbl');
+         PTDEBUG && _d('Searching for unique column in every db.tbl');
          my ($uniq_db, $uniq_tbl);
          my $colcnt  = 0;
          my $schemas = $self->{schemas};
@@ -4636,14 +4743,14 @@ sub _ex_qualify_column {
    }
 
    if ( !$col->{db} && $col->{tbl} ) {
-      MKDEBUG && _d('Column has table, needs db');
+      PTDEBUG && _d('Column has table, needs db');
       if ( my $real_tbl = $self->{table_for}->{lc $col->{tbl}} ) {
-         MKDEBUG && _d('Table is an alias');
+         PTDEBUG && _d('Table is an alias');
          $col->{db}  = $real_tbl->{db};
          $col->{tbl} = $real_tbl->{tbl};
       }
       else {
-         MKDEBUG && _d('Searching for unique table in every db');
+         PTDEBUG && _d('Searching for unique table in every db');
          my $real_tbl = $self->_get_real_table_name(
             tables => $ex->{from},
             name   => $col->{tbl},
@@ -4668,7 +4775,7 @@ sub _ex_qualify_column {
       }
    }
 
-   MKDEBUG && _d('Qualified column:', Dumper($col));
+   PTDEBUG && _d('Qualified column:', Dumper($col));
    return $col;
 }
 
@@ -5210,6 +5317,9 @@ sub add {
 
    push @{$self->{procs}}, $process;
    push @{$self->{names}}, $name;
+   if ( my $n = $args{retry_on_error} ) {
+      $self->{retries}->{$name} = $n;
+   }
    if ( $self->{instrument} ) {
       $self->{instrumentation}->{$name} = { time => 0, calls => 0 };
    }
@@ -5274,10 +5384,28 @@ sub execute {
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Pipeline process $procno ("
-            . ($self->{names}->[$procno] || "")
-            . ") caused an error: $EVAL_ERROR";
-         die $EVAL_ERROR unless $self->{continue_on_error};
+         my $name = $self->{names}->[$procno] || "";
+         my $msg  = "Pipeline process " . ($procno + 1)
+                  . " ($name) caused an error: "
+                  . $EVAL_ERROR;
+         if ( defined $self->{retries}->{$name} ) {
+            my $n = $self->{retries}->{$name};
+            if ( $n ) {
+               warn $msg . "Will retry pipeline process $procno ($name) "
+                  . "$n more " . ($n > 1 ? "times" : "time") . ".\n";
+               $self->{retries}->{$name}--;
+            }
+            else {
+               die $msg . "Terminating pipeline because process $procno "
+                  . "($name) caused too many errors.\n";
+            }
+         }
+         elsif ( !$self->{continue_on_error} ) {
+            die $msg;
+         }
+         else {
+            warn $msg;
+         }
       }
    }
 
@@ -5520,9 +5648,11 @@ sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
 
-   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
-      die "Cannot parse table definition; is ANSI quoting "
-         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
    }
 
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
@@ -5731,7 +5861,7 @@ sub get_keys {
       my $key_ddl = $key;
       PTDEBUG && _d('Parsed key:', $key_ddl);
 
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
@@ -5769,7 +5899,7 @@ sub get_keys {
          ddl          => $key_ddl,
       };
 
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -5850,6 +5980,21 @@ sub get_table_status {
       \%tbl;
    } @tables;
    return @tables;
+}
+
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _d {

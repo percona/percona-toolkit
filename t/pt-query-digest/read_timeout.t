@@ -13,6 +13,8 @@ use Test::More tests => 2;
 
 use PerconaTest;
 
+use Time::HiRes qw(sleep time);
+
 # #########################################################################
 # Issue 226: Fix mk-query-digest signal handling
 # #########################################################################
@@ -36,8 +38,8 @@ if ( $timeout ) {
 }
 
 ok(
-   $waited >= 2 && $waited <= 3,
-   "--read-timeout 2 waited $waited seconds reading STDIN"
+   $waited >= 2 && $waited < 4,
+   sprintf("--read-timeout 2 waited %.1f seconds reading STDIN", $waited)
 );
 
 diag(`rm -rf /tmp/mqd.pid`);
@@ -61,8 +63,8 @@ if ( $timeout ) {
 }
 
 ok(
-   $waited >= 2 && $waited <= 3,
-   "--read-timeout waited $waited seconds reading a file"
+   $waited >= 2 && $waited < 4,
+   sprintf("--read-timeout waited %.1f seconds reading a file", $waited)
 );
 
 diag(`rm -rf /tmp/mqd.pid`);

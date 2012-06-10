@@ -7,6 +7,13 @@
 # Exist 0 on success/no errors, or 1 on any warnings or errors.
 
 err() {
+   echo "MySQL processes:" >&2
+   ps x | grep mysql >&2
+
+   echo "Sandbox servers:" >&2
+   ls /tmp/1234? >&2
+   ls /tmp/290? >&2
+
    echo
    for msg; do
       echo "$msg" >&2
@@ -39,29 +46,15 @@ mysql_basedir_ok() {
 }
 
 set_mysql_basedir() {
-   # Auto-detect basedir if its not explicitly set.
-   if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
-      BASEDIR_AUTO_DETECTED=1
-      mysqld=`which mysqld 2>/dev/null`
-      if [ -n "$mysqld" ]; then
-         PERCONA_TOOLKIT_SANDBOX=`$mysqld --verbose --help 2>/dev/null | grep 'basedir ' | awk '{print $2}'`
-         if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then      
-            return 0
-         fi
-      else
-         return 0
-      fi
+   if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
+      mysqld="$PERCONA_TOOLKIT_SANDBOX/bin/mysqld"
+   elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
+      mysqld="$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld"
+   elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
+      mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
    else
-      if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
-         mysqld="$PERCONA_TOOLKIT_SANDBOX/bin/mysqld"
-      elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
-         mysqld="$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld"
-      elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
-         mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
-      else
-         err "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
-         return 0
-      fi
+      err "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
+      return 0
    fi
    mysql_basedir_ok $PERCONA_TOOLKIT_SANDBOX
    local basedir_ok=$?
@@ -142,7 +135,7 @@ sandbox_status() {
    if [ $? -eq 0 ]; then
       echo "yes"
 
-      if [ "$version" != "4.0" ] && [ "$version" != "4.1" ]; then
+      if [ "$MYSQL_VERSION" '>' "4.1" ]; then
          echo -n "  sakila db is loaded - "
          /tmp/$port/use -e 'show databases like "sakila"' 2>/dev/null | grep sakila >/dev/null 2>&1
          if [ $? -eq 0 ]; then
@@ -186,7 +179,7 @@ sandbox_status() {
 
 sandbox_is_running() {
    local p=$1
-   ps axw | grep mysqld | grep -v grep | grep /tmp/$p >/dev/null
+   ps xw | grep mysqld | grep -v grep | grep /tmp/$p >/dev/null
 }
 
 kill_sandbox() {
@@ -201,15 +194,16 @@ kill_sandbox() {
       mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
+      sleep 1
 
       # See if the sandbox server is still running.
       sandbox_is_running $p 
       if [ $? -eq 0 ]; then
          # Kill both mysqld_safe and mysqld.
-         pid1=`ps axw | grep mysqld_safe | grep /tmp/$p | awk '{print $1}'`
-         pid2=`ps axw | grep mysqld | grep -v mysqld_safe | grep /tmp/$p | awk '{print $1}'`
-         kill -9 $pid1  # Die, damn you, die!
-         kill -9 $pid2
+         pid1=`ps xw | grep -v grep | grep mysqld_safe | grep /tmp/$p | awk '{print $1}'`
+         pid2=`ps xw | grep -v grep | grep -v mysqld_safe | grep mysqld | grep /tmp/$p | awk '{print $1}'`
+         [ "$pid1" ] && kill -9 $pid1  # Die, damn you, die!
+         [ "$pid2" ] && kill -9 $pid2
          sleep 1
 
          # Third and finaly check if the sandbox server is running.
@@ -236,7 +230,8 @@ kill_sandbox() {
 MYSQL_VERSION=""
 set_mysql_version() {
    if [ -d /tmp/12345 ] && [ -f /tmp/12345/use ]; then
-      MYSQL_VERSION=$(/tmp/12345/use -N -e "select version()" | head -n 2 | tail -n 1 | cut -d'.' -f1,2)
+      MYSQL_VERSION=$(/tmp/12345/use -ss -e "SELECT VERSION()" \
+	| cut -d'.' -f1,2)
    fi
 }
 
@@ -275,39 +270,41 @@ else
    fi
 fi
 
-# Determine the MySQL version.
-# bin/mysqld -V should print something like:
-#  /usr/bin/mysqld  Ver 5.1.34 for linux-gnu on x86_64 (MySQL Community Server)
-version=`$mysqld -V | awk '{print $3}' | cut -d. -f 1,2`;
-if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
-   err "Percona Toolkit sandbox server version $version does not exists."
-   exit 1
-fi
-
 case $opt in
    start)
       cd $PERCONA_TOOLKIT_BRANCH/sandbox
       ./start-sandbox master 12345
-      exit_status=$?
+      exit_status=$((exit_status | $?))
+      set_mysql_version
       if [ $exit_status -eq 0 ]; then
          ./start-sandbox slave 12346 12345
+         exit_status=$((exit_status | $?))
          ./start-sandbox slave 12347 12346
-         exit_status=$?
-         if [ "$version" != "4.0" ] && [ "$version" != "4.1" ]; then
-            if [ $? -eq 0 ]; then
-               echo -n "Loading sakila database... "
-               ./load-sakila-db 12345
-               exit_status=$?
-               if [ $? -ne 0 ]; then
-                  echo "FAILED"
-               else
-                  echo "OK"
-               fi
+         exit_status=$((exit_status | $?))
+         if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
+            echo -n "Loading sakila database... "
+            ./load-sakila-db 12345
+            exit_status=$((exit_status | $?)) 
+            if [ $exit_status -ne 0 ]; then
+               echo "FAILED"
+            else
+               echo "OK"
             fi
+            ../util/checksum-test-dataset
+            ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
+            /tmp/12345/use -e "create table percona_test.sentinel(id int primary key, ping varchar(64) not null default '')"
+            /tmp/12345/use -e "insert into percona_test.sentinel(id, ping) values(1, '$ping')";
+            echo -n "Waiting for replication to finish..."
+            while true; do
+               pong=$(/tmp/12347/use -ss -e 'select ping from percona_test.sentinel where id=1' 2>/dev/null)
+               [ "$ping" = "$pong" ] && break
+               echo -n '.'
+               sleep 1
+            done
+            echo ' OK'
          fi
       fi
       if [ $exit_status -eq 0 ]; then
-         set_mysql_version
          echo "Percona Toolkit test environment started with MySQL v$MYSQL_VERSION."
       else
          err "There was an error starting the Percona Toolkit test environment."
@@ -328,7 +325,7 @@ case $opt in
    kill)
       # This is a blunt approach for killing the entire mk test env
       # when a polite stop fails.  It uses kill -9 as a last resort.
-      for port in 12345 12346 12347 12348 12349 2900 2901 2902 2903; do
+      for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
          kill_sandbox $port
       done
       ;;
@@ -354,17 +351,16 @@ case $opt in
       # don't replicate to new sandbox servers.  This makes creating new
       # sandbox servers a lot faster.  There's no check if this works or
       # not, so... yeah.
-      /tmp/12347/use -e "STOP SLAVE"
-      /tmp/12346/use -e "STOP SLAVE"
+      echo "RESETTING SLAVE. This is DANGEROUS and DOESN'T WORK. FIXME." >&2
+      /tmp/12347/use -e "STOP SLAVE; FLUSH SLAVE;"
+      /tmp/12346/use -e "STOP SLAVE; FLUSH SLAVE; FLUSH MASTER;"
+      /tmp/12345/use -e "FLUSH MASTER"
 
-      /tmp/12346/use -e "RESET MASTER"
-      /tmp/12345/use -e "RESET MASTER"
-
-      /tmp/12347/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12346, master_log_file='mysql-bin.000001', master_log_pos=0"
-      /tmp/12346/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12345, master_log_file='mysql-bin.000001', master_log_pos=0"
-
-      /tmp/12347/use -e "START SLAVE"
+      /tmp/12346/use -e "CHANGE MASTER TO master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12345, master_log_file='mysql-bin.000001', master_log_pos=0"
       /tmp/12346/use -e "START SLAVE"
+
+      /tmp/12347/use -e "CHANGE MASTER TO master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12346, master_log_file='mysql-bin.000001', master_log_pos=0"
+      /tmp/12347/use -e "START SLAVE"
 
       exit_status=0
       ;;

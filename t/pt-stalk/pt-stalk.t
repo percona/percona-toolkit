@@ -24,7 +24,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 26;
+   plan tests => 27;
 }
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
@@ -41,7 +41,7 @@ diag(`rm -rf $dest 2>/dev/null`);
 # Test that it won't run if can't connect to MySQL.
 # ###########################################################################
 
-my $retval = system("$trunk/bin/pt-stalk >$log_file 2>&1");
+my $retval = system("$trunk/bin/pt-stalk -- --no-defaults --protocol socket --socket /dev/null  >$log_file 2>&1");
 my $output = `cat $log_file`;
 
 like(
@@ -148,17 +148,16 @@ like(
    "Collect triggered"
 );
 
+# There is some nondeterminism here. Sometimes it'll run for 2 samples because
+# the samples may not be precisely 1 second apart.
 chomp($output = `cat $dest/*-df | grep -c '^TS'`);
-is(
-   $output,
-   2,
+ok(
+   $output >= 1 && $output <= 2,
    "Collect ran for --run-time"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk --iterations 1'`;
-is(
-   $output,
-   "",
+ok(
+   PerconaTest::not_running("pt-stalk --iterations 1"),
    "pt-stalk is not running"
 );
 
@@ -202,10 +201,8 @@ ok(
    "No files collected"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk --no-collect'`;
-is(
-   $output,
-   "",
+ok(
+   PerconaTest::not_running("pt-stalk --no-collect"),
    "pt-stalk is not running"
 );
 
@@ -280,10 +277,8 @@ is(
    "Not stalking, collect gathered data"
 );
 
-$output = `ps x | grep -v grep | grep 'pt-stalk --no-stalk'`;
-is(
-   $output,
-   "",
+ok(
+   PerconaTest::not_running("pt-stalk --no-stalk"),
    "Not stalking, pt-stalk is not running"
 );
 
@@ -293,4 +288,5 @@ is(
 diag(`rm $pid_file 2>/dev/null`);
 diag(`rm $log_file 2>/dev/null`);
 diag(`rm -rf $dest 2>/dev/null`);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

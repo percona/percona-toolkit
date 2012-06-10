@@ -45,7 +45,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
-use constant MKDEBUG  => $ENV{MKDEBUG};
+use constant PTDEBUG  => $ENV{PTDEBUG};
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -79,7 +79,7 @@ sub new {
       $other_table = $other_table_base . $id;
    }
    $other_table = $q->quote($other_db, $other_table);
-   MKDEBUG && _d('Other table:', $other_table);
+   PTDEBUG && _d('Other table:', $other_table);
 
    my $self = {
       dbh          => $args{dbh},
@@ -100,7 +100,7 @@ sub new {
 sub before_begin {
    my ( $self, %args ) = @_;
    my $allcols = $args{allcols};
-   MKDEBUG && _d('allcols:', Dumper($allcols));
+   PTDEBUG && _d('allcols:', Dumper($allcols));
    my $colpos = -1;
    foreach my $col ( @$allcols ) {
       $colpos++;
@@ -110,7 +110,7 @@ sub before_begin {
       die "Main table column $main_table_col not selected by mk-archiver: "
          . join(', ', @$allcols);
    }
-   MKDEBUG && _d('main col pos:', $colpos);
+   PTDEBUG && _d('main col pos:', $colpos);
    $self->{main_col_pos} = $colpos;
    return;
 }
@@ -131,12 +131,12 @@ sub before_delete {
 
    my $sql = "DELETE FROM $self->{other_tbl} "
            . "WHERE $other_table_col=$val";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    eval {
       $dbh->do($sql);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       warn $EVAL_ERROR;
    }
 
@@ -159,12 +159,12 @@ sub before_bulk_delete {
    my $sql = "DELETE FROM $self->{other_tbl} "
            . "WHERE $other_table_col IN ($delete_rows) ";
 #           . "LIMIT $self->{limit}";
-   MKDEBUG && _d($sql);
+   PTDEBUG && _d($sql);
    eval {
       $dbh->do($sql);
    };
    if ( $EVAL_ERROR ) {
-      MKDEBUG && _d($EVAL_ERROR);
+      PTDEBUG && _d($EVAL_ERROR);
       warn $EVAL_ERROR;
    }
 

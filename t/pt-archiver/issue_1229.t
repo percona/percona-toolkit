@@ -22,8 +22,12 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( $DBD::mysql::VERSION lt '4' ) {
+   plan skip_all => "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
+	. "See https://bugs.launchpad.net/percona-toolkit/+bug/932327";
+}
 else {
-   plan tests => 2;
+   plan tests => 3;
 }
 
 my $output;
@@ -36,7 +40,6 @@ my $file = "/tmp/mk-archiver-file.txt";
 # archive to file
 # #############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
-PerconaTest::wait_for_table($dbh, 'issue_1225.t', "i=2");
 
 $dbh->do('set names "utf8"');
 my $original_rows = $dbh->selectall_arrayref('select * from issue_1225.t where i in (1, 2)');
@@ -75,4 +78,5 @@ diag(`rm -rf $file >/dev/null`);
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

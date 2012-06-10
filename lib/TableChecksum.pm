@@ -204,7 +204,7 @@ sub optimize_xor {
 
    do { # Try different positions till sliced result equals non-sliced.
       PTDEBUG && _d('Trying slice', $opt_slice);
-      $dbh->do('SET @crc := "", @cnt := 0');
+      $dbh->do(q{SET @crc := '', @cnt := 0});
       my $slices = $self->make_xor_slices(
          query     => "\@crc := $func('a')",
          crc_wid   => $crc_wid,

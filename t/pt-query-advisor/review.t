@@ -26,7 +26,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 5;
 }
 
 my $output = "";
@@ -59,10 +59,10 @@ is(
    "Empty --review table"
 );
 
-$dbh->do('insert into test.query_review values
-   (1, "select * from tbl where id=? order by col",
-       "select * from tbl where id=42 order by col",
-       NOW(), NOW(), NULL, NULL, NULL)');
+$dbh->do("insert into test.query_review values
+   (1, 'select * from tbl where id=? order by col',
+       'select * from tbl where id=42 order by col',
+       NOW(), NOW(), NULL, NULL, NULL)");
 
 ok(
    no_diff(
@@ -72,10 +72,10 @@ ok(
    "--review with one bad query"
 );
 
-$dbh->do('insert into test.query_review values
-   (2, "select col from tbl2 where id=? order by col limit ?",
-       "select col from tbl2 where id=52 order by col limit 10",
-       NOW(), NOW(), NULL, NULL, NULL)');
+$dbh->do("insert into test.query_review values
+   (2, 'select col from tbl2 where id=? order by col limit ?',
+       'select col from tbl2 where id=52 order by col limit 10',
+       NOW(), NOW(), NULL, NULL, NULL)");
 
 ok(
    no_diff(
@@ -98,4 +98,5 @@ ok(
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

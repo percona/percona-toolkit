@@ -29,7 +29,7 @@ elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -41,8 +41,6 @@ my $output;
 
 $sb->create_dbs($master_dbh, [qw(test)]);
 $sb->load_file('master', 't/pt-table-checksum/samples/issue_94.sql');
-
-PerconaTest::wait_for_table($slave_dbh, 'test.issue_94', 'a=11');
 $slave_dbh->do("update test.issue_94 set c=''");
 
 $output = output(
@@ -80,4 +78,5 @@ unlike(
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

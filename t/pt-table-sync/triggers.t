@@ -32,7 +32,7 @@ elsif ( !$vp->version_ge($master_dbh, '5.0.2') ) {
    plan skip_all => 'Sever does not support triggers (< 5.0.2)';
 }
 else {
-   plan tests => 10;
+   plan tests => 11;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -96,21 +96,8 @@ like(
 #  Issue 367: mk-table-sync incorrectly advises --ignore-triggers
 # #############################################################################
 
+diag('Loading file and waiting for replication');
 $sb->load_file('master', 't/pt-table-sync/samples/issue_367.sql');
-my $i = 0;
-PerconaTest::wait_until(
-   sub {
-      my $r;
-      eval {
-         $r = $slave_dbh->selectrow_arrayref('SHOW TABLES FROM db1');
-      };
-      return 1 if ($r->[0] || '') eq 't1';
-      diag('Waiting for slave...') unless $i++;
-      return 0;
-   },
-   0.5,
-   30,
-);
 
 # Make slave db1.t1 and db2.t1 differ from master.
 $slave_dbh->do('INSERT INTO db1.t1 VALUES (9)');
@@ -135,6 +122,7 @@ unlike(
    "Doesn't warn about trigger on db1 (issue 367)"
 );
 
+$sb->wait_for_slaves();
 my $r = $slave_dbh->selectrow_array('SELECT * FROM db2.t1 WHERE i = 5');
 is(
    $r,
@@ -147,4 +135,5 @@ is(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

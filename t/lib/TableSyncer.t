@@ -50,7 +50,7 @@ elsif ( !$dst_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 61;
+   plan tests => 62;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -990,7 +990,7 @@ my $idb_status = $src_dbh->selectrow_hashref("SHOW /*!40100 ENGINE*/ INNODB STAT
 $src_dbh->commit();
 like(
    $idb_status->{status},
-   qr/MySQL thread id $cid, query id \d+/,
+   qr/MySQL thread id $cid, .*?query id \d+/,
    "Open transaction"
 );
 
@@ -1076,4 +1076,5 @@ like(
 );
 $sb->wipe_clean($src_dbh);
 $sb->wipe_clean($dst_dbh);
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;

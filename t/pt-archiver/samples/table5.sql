@@ -1,6 +1,6 @@
 use test;
 drop table if exists stat_test;
-create table stat_test(a int);
+create table stat_test(a int)engine=myisam; -- required b/c test plugin does not commit txn
 DROP TABLE IF EXISTS `table_5`;
 DROP TABLE IF EXISTS `table_5_dest`;
 DROP TABLE IF EXISTS `table_5_copy`;
@@ -15,7 +15,7 @@ CREATE TABLE `table_5` (
   h decimal(9,5) not null,
   i datetime not null,
   PRIMARY KEY  (a,b,c,d)
-) type=InnoDB;
+) engine=InnoDB;
 CREATE TABLE `table_5_dest` (
   a date not null,
   b int not null,
@@ -27,7 +27,7 @@ CREATE TABLE `table_5_dest` (
   h decimal(9,5) not null,
   i datetime not null,
   PRIMARY KEY  (a,b,c,d)
-) type=InnoDB;
+) engine=InnoDB;
 CREATE TABLE `table_5_copy` (
   a date not null,
   b int not null,
@@ -39,7 +39,7 @@ CREATE TABLE `table_5_copy` (
   h decimal(9,5) not null,
   i datetime not null,
   PRIMARY KEY  (a,b,c,d)
-) type=InnoDB;
+) engine=InnoDB;
 
 
 INSERT INTO `table_5` VALUES (current_date - interval 2 day,581,'m','ga',1,16,0,'0.00402','2007-03-10 18:00:33')

@@ -37,9 +37,10 @@ BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
 use warnings;
 use strict;
 use English qw(-no_match_vars);
-use constant MKDEBUG => $ENV{MKDEBUG} || 0;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw( :termios_h );
+use Fcntl qw( F_SETFL F_GETFL );
 
 use base  qw( Exporter );
 
@@ -68,6 +69,11 @@ my %modes = (
 {
 
    my $fd_stdin = fileno(STDIN);
+   my $flags;
+   unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
+      $flags = fcntl(STDIN, F_GETFL, 0)
+                     or die "can't fcntl F_GETFL: $!";
+   }
    my $term     = POSIX::Termios->new();
    $term->getattr($fd_stdin);
    my $oterm    = $term->getlflag();
@@ -98,6 +104,10 @@ my %modes = (
       $term->setlflag($oterm);
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
+      unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
+         fcntl(STDIN, F_SETFL, $flags)
+                        or die "can't fcntl F_SETFL: $!";
+      }
    }
 
    END { cooked() }
