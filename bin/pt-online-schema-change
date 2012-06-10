@@ -1828,8 +1828,12 @@ sub generate_asc_stmt {
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
-      @asc_cols = $asc_cols[0];
       PTDEBUG && _d('Ascending only first column');
+      @asc_cols = $asc_cols[0];
+   }
+   elsif ( my $n = $args{n_index_cols} ) {
+      PTDEBUG && _d('Ascending only first', $n, 'columns');
+      @asc_cols = @asc_cols[0..($n-1)];
    }
    PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 
@@ -4029,10 +4033,11 @@ sub new {
 
       my $asc = $args{TableNibbler}->generate_asc_stmt(
          %args,
-         tbl_struct => $tbl->{tbl_struct},
-         index      => $index,
-         cols       => \@cols,
-         asc_only   => 1,
+         tbl_struct   => $tbl->{tbl_struct},
+         index        => $index,
+         n_index_cols => $args{n_chunk_index_cols},
+         cols         => \@cols,
+         asc_only     => 1,
       );
       PTDEBUG && _d('Ascend params:', Dumper($asc));
 
@@ -4114,16 +4119,17 @@ sub new {
 
       $self = {
          %args,
-         index              => $index,
-         limit              => $limit,
-         first_lb_sql       => $first_lb_sql,
-         last_ub_sql        => $last_ub_sql,
-         ub_sql             => $ub_sql,
-         nibble_sql         => $nibble_sql,
-         explain_ub_sql     => "EXPLAIN $ub_sql",
-         explain_nibble_sql => $explain_nibble_sql,
-         resume_lb_sql      => $resume_lb_sql,
-         sql                => {
+         index                => $index,
+         limit                => $limit,
+         first_lb_sql         => $first_lb_sql,
+         last_ub_sql          => $last_ub_sql,
+         ub_sql               => $ub_sql,
+         nibble_sql           => $nibble_sql,
+         explain_first_lb_sql => "EXPLAIN $first_lb_sql",
+         explain_ub_sql       => "EXPLAIN $ub_sql",
+         explain_nibble_sql   => $explain_nibble_sql,
+         resume_lb_sql        => $resume_lb_sql,
+         sql                  => {
             columns    => $asc->{scols},
             from       => $from,
             where      => $where,
@@ -4231,10 +4237,11 @@ sub nibble_index {
 sub statements {
    my ($self) = @_;
    return {
-      nibble                 => $self->{nibble_sth},
-      explain_nibble         => $self->{explain_nibble_sth},
-      upper_boundary         => $self->{ub_sth},
-      explain_upper_boundary => $self->{explain_ub_sth},
+      explain_first_lower_boundary => $self->{explain_first_lb_sth},
+      nibble                       => $self->{nibble_sth},
+      explain_nibble               => $self->{explain_nibble_sth},
+      upper_boundary               => $self->{ub_sth},
+      explain_upper_boundary       => $self->{explain_ub_sth},
    }
 }
 
@@ -4463,8 +4470,9 @@ sub _prepare_sths {
    $self->{explain_nibble_sth} = $dbh->prepare($self->{explain_nibble_sql});
 
    if ( !$self->{one_nibble} ) {
-      $self->{ub_sth} = $dbh->prepare($self->{ub_sql});
-      $self->{explain_ub_sth} = $dbh->prepare($self->{explain_ub_sql});
+      $self->{explain_first_lb_sth} = $dbh->prepare($self->{explain_first_lb_sql});
+      $self->{ub_sth}               = $dbh->prepare($self->{ub_sql});
+      $self->{explain_ub_sth}       = $dbh->prepare($self->{explain_ub_sql});
    }
 
    return;
@@ -4652,6 +4660,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
+use B qw();
 
 require Exporter;
 our @ISA         = qw(Exporter);
@@ -4669,6 +4678,7 @@ our @EXPORT_OK   = qw(
    any_unix_timestamp
    make_checksum
    crc32
+   encode_json
 );
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
@@ -4874,6 +4884,96 @@ sub crc32 {
       $crc = (($crc >> 8) & 0x00FFFFFF) ^ $comp;
    }
    return $crc ^ 0xFFFFFFFF;
+}
+
+my $got_json = eval { require JSON };
+sub encode_json {
+   return JSON::encode_json(@_) if $got_json;
+   my ( $data ) = @_;
+   return (object_to_json($data) || '');
+}
+
+
+sub object_to_json {
+   my ($obj) = @_;
+   my $type  = ref($obj);
+
+   if($type eq 'HASH'){
+      return hash_to_json($obj);
+   }
+   elsif($type eq 'ARRAY'){
+      return array_to_json($obj);
+   }
+   else {
+      return value_to_json($obj);
+   }
+}
+
+sub hash_to_json {
+   my ($obj) = @_;
+   my @res;
+   for my $k ( sort { $a cmp $b } keys %$obj ) {
+      push @res, string_to_json( $k )
+         .  ":"
+         . ( object_to_json( $obj->{$k} ) || value_to_json( $obj->{$k} ) );
+   }
+   return '{' . ( @res ? join( ",", @res ) : '' )  . '}';
+}
+
+sub array_to_json {
+   my ($obj) = @_;
+   my @res;
+
+   for my $v (@$obj) {
+      push @res, object_to_json($v) || value_to_json($v);
+   }
+
+   return '[' . ( @res ? join( ",", @res ) : '' ) . ']';
+}
+
+sub value_to_json {
+   my ($value) = @_;
+
+   return 'null' if(!defined $value);
+
+   my $b_obj = B::svref_2object(\$value);  # for round trip problem
+   my $flags = $b_obj->FLAGS;
+   return $value # as is 
+      if $flags & ( B::SVp_IOK | B::SVp_NOK ) and !( $flags & B::SVp_POK ); # SvTYPE is IV or NV?
+
+   my $type = ref($value);
+
+   if( !$type ) {
+      return string_to_json($value);
+   }
+   else {
+      return 'null';
+   }
+
+}
+
+my %esc = (
+   "\n" => '\n',
+   "\r" => '\r',
+   "\t" => '\t',
+   "\f" => '\f',
+   "\b" => '\b',
+   "\"" => '\"',
+   "\\" => '\\\\',
+   "\'" => '\\\'',
+);
+
+sub string_to_json {
+   my ($arg) = @_;
+
+   $arg =~ s/([\x22\x5c\n\r\t\f\b])/$esc{$1}/g;
+   $arg =~ s/\//\\\//g;
+   $arg =~ s/([\x00-\x08\x0b\x0e-\x1f])/'\\u00' . unpack('H2', $1)/eg;
+
+   utf8::upgrade($arg);
+   utf8::encode($arg);
+
+   return '"' . $arg . '"';
 }
 
 sub _d {
