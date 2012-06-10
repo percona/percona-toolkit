@@ -7292,7 +7292,7 @@ the tool to run EXPLAIN before running queries that are meant to access
 a small amount of data, but which could access many rows if MySQL chooses a bad
 execution plan. These include the queries to determine chunk boundaries and the
 chunk queries themselves. If it appears that MySQL will use a bad query
-execution plan, the tool will skip the table or the chunk of the table.
+execution plan, the tool will skip the chunk of the table.
 
 The tool uses several heuristics to determine whether an execution plan is bad.
 The first is whether EXPLAIN reports that MySQL intends to use the desired index
@@ -7305,9 +7305,10 @@ remembers the largest key_len seen, and skips chunks where MySQL reports that it
 will use a smaller prefix of the index. This heuristic can be understood as
 skipping chunks that have a worse execution plan than other chunks.
 
-The tool prints a warning the first time a chunk is skipped due to a bad execution
-plan in each table. Subsequent chunks are skipped silently, although you can see
-the count of skipped chunks in the SKIPPED column in the tool's output.
+The tool prints a warning the first time a chunk is skipped due to
+a bad execution plan in each table. Subsequent chunks are skipped silently,
+although you can see the count of skipped chunks in the SKIPPED column in
+the tool's output.
 
 This option adds some setup work to each table and chunk. Although the work is
 not intrusive for MySQL, it results in more round-trips to the server, which
