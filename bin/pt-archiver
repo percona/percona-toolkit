@@ -4425,8 +4425,8 @@ table; it should seek into the index, then scan until it finds more archivable
 rows.  Specifying the index with the 'i' part of the L<"--source"> argument can
 be crucial for this; use L<"--dry-run"> to examine the generated queries and be
 sure to EXPLAIN them to see if they are efficient (most of the time you probably
-want to scan the PRIMARY key, which is the default).  Even better, profile
-pt-archiver with mk-query-profiler (L<http://maatkit.org/get/mk-query-profiler>)
+want to scan the PRIMARY key, which is the default).  Even better, examine the
+difference in the Handler status counters before and after running the query,
 and make sure it is not scanning the whole table every query.
 
 You can disable the seek-then-scan optimizations partially or wholly with

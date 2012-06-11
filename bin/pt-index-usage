@@ -5591,9 +5591,9 @@ Analyze queries in slow.log and print reports:
 
   pt-index-usage /path/to/slow.log --host localhost
 
-Disable reports and save results to mk database for later analysis:
+Disable reports and save results to percona database for later analysis:
 
-  pt-index-usage slow.log --no-report --save-results-database mk
+  pt-index-usage slow.log --no-report --save-results-database percona
 
 =head1 RISKS
 
