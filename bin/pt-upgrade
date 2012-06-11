@@ -5930,8 +5930,13 @@ sub generate_asc_stmt {
 
    my @asc_cols = @{$tbl_struct->{keys}->{$index}->{cols}};
    if ( $args{asc_first} ) {
-      @asc_cols = $asc_cols[0];
       PTDEBUG && _d('Ascending only first column');
+      @asc_cols = $asc_cols[0];
+   }
+   elsif ( my $n = $args{n_index_cols} ) {
+      $n = scalar @asc_cols if $n > @asc_cols;
+      PTDEBUG && _d('Ascending only first', $n, 'columns');
+      @asc_cols = @asc_cols[0..($n-1)];
    }
    PTDEBUG && _d('Will ascend columns', join(', ', @asc_cols));
 
