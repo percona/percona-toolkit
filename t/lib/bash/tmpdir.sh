@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 9
+plan 10
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/tmpdir.sh"
@@ -35,6 +35,29 @@ cmd_ok "test -d $dir" "mk_tmpdir creates --tmpdir"
 rm_tmpdir
 
 cmd_ok "test ! -d $tmpdir" "rm_tmpdir removes --tmpdir"
+
+# ###########################################################################
+# Bug 945079: tmpdir should respect $TEMP
+# ###########################################################################
+
+tempdir_test () {
+   new_TEMP="/tmp/tmpdir_test"
+   rm -rf "$new_TEMP"
+   mkdir "$new_TEMP"
+   local TMPDIR="$new_TEMP/"
+
+   mk_tmpdir
+
+   is "$(dirname "$TMPDIR")" \
+      "$new_TEMP"            \
+      'mk_tmpdir respects $TMPDIR'
+
+   rm_tmpdir
+
+   rm -rf "$new_TEMP"
+}
+
+tempdir_test 
 
 # ###########################################################################
 # Done
