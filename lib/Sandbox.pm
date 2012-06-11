@@ -74,11 +74,9 @@ sub use {
    return if !defined $cmd || !$cmd;
    my $use = $self->_use_for($server) . " $cmd";
    PTDEBUG && _d('"Executing', $use, 'on', $server);
-   eval {
-      `$use`;
-   };
-   if ( $EVAL_ERROR ) {
-      die "Failed to execute $cmd on $server: $EVAL_ERROR";
+   my $out = `$use 2>&1`;
+   if ( $? >> 8 ) {
+      die "Failed to execute $cmd on $server: $out";
    }
    return;
 }
@@ -140,9 +138,9 @@ sub load_file {
 
    my $use = $self->_use_for($server) . " $d < $file";
    PTDEBUG && _d('Loading', $file, 'on', $server, ':', $use);
-   eval { `$use` };
-   if ( $EVAL_ERROR ) {
-      die "Failed to execute $file on $server: $EVAL_ERROR";
+   my $out = `$use 2>&1`;
+   if ( $? >> 8 ) {
+      die "Failed to execute $file on $server: $out";
    }
    $self->wait_for_slaves();
 }
