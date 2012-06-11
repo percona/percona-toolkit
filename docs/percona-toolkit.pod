@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Percona Toolkit - Advanced command-line tools used by Percona for MySQL support and consulting
+percona-toolkit - Advanced command-line tools used by Percona for MySQL support and consulting
 
 =head1 DESCRIPTION
 

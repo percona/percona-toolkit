@@ -5,10 +5,10 @@ WriteMakefile(
     VERSION   => '2.1.1',
     EXE_FILES => [ <bin/*> ],
     MAN1PODS  => {
-      'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1',
+      'docs/percona-toolkit.pod' => 'blib/man1/percona-toolkit.1p',
       map {
          (my $name = $_) =~ s/^bin.//;
-         $_ => "blib/man1/$name.1";
+         $_ => "blib/man1/$name.1p";
       } <bin/*>
     },
     MAN3PODS     => {}, # man(3) pages are for C libs
