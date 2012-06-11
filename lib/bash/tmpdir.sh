@@ -45,8 +45,7 @@ mk_tmpdir() {
    else
       local tool="${0##*/}"
       local pid="$$"
-      local x="$TMPDIR"
-      TMPDIR=`TMPDIR="$x" mktemp -d -t "${tool}.${pid}.XXXXXX"` \
+      TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }

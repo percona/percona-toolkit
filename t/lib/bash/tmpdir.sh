@@ -41,10 +41,9 @@ cmd_ok "test ! -d $tmpdir" "rm_tmpdir removes --tmpdir"
 # ###########################################################################
 
 tempdir_test () {
-   new_TEMP="/tmp/tmpdir_test"
-   rm -rf "$new_TEMP"
-   mkdir "$new_TEMP"
-   local TMPDIR="$new_TEMP/"
+   local new_TEMP="/tmp/tmpdir_test"
+   [ -d "$new_TEMP" ] || mkdir "$new_TEMP"
+   export TMPDIR="$new_TEMP"
 
    mk_tmpdir
 
