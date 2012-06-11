@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 15;
+   plan tests => 16;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -193,17 +193,30 @@ ok(
          pt_table_checksum::main(
             $master_dsn, '--max-load', '',
             qw(--lock-wait-timeout 3 --chunk-size 5000  -t sakila.rental),
-            qw(--chunk-index rental_date:2 --explain --explain));
+            qw(--chunk-index rental_date --chunk-index-columns 2),
+            qw(--explain --explain));
       },
       "t/pt-table-checksum/samples/n-chunk-index-cols.txt",
    ),
-   "--chunk-index index:n"
+   "--chunk-index-columns"
 );
-         
-         pt_table_checksum::main(
-            $master_dsn, '--max-load', '',
-            qw(--lock-wait-timeout 3 --chunk-size 5000  -t sakila.rental),
-            qw(--chunk-index rental_date:5 --explain --explain));
+
+$output = output(         
+   sub {
+      $exit_status = pt_table_checksum::main(
+         $master_dsn, '--max-load', '',
+         qw(--lock-wait-timeout 3 --chunk-size 5000  -t sakila.rental),
+         qw(--chunk-index rental_date --chunk-index-columns 5),
+         qw(--explain --explain));
+   },
+   stderr => 1,
+);
+
+is(
+   $exit_status,
+   0,
+   "--chunk-index-columns > number of index columns"
+);
 
 # #############################################################################
 # Done.
