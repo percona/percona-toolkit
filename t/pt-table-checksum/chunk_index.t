@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 14;
+   plan tests => 15;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -199,6 +199,11 @@ ok(
    ),
    "--chunk-index index:n"
 );
+         
+         pt_table_checksum::main(
+            $master_dsn, '--max-load', '',
+            qw(--lock-wait-timeout 3 --chunk-size 5000  -t sakila.rental),
+            qw(--chunk-index rental_date:5 --explain --explain));
 
 # #############################################################################
 # Done.

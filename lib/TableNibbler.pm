@@ -82,6 +82,7 @@ sub generate_asc_stmt {
       @asc_cols = $asc_cols[0];
    }
    elsif ( my $n = $args{n_index_cols} ) {
+      $n = scalar @asc_cols if $n > @asc_cols;
       PTDEBUG && _d('Ascending only first', $n, 'columns');
       @asc_cols = @asc_cols[0..($n-1)];
    }
