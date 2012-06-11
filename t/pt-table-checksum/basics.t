@@ -42,7 +42,7 @@ elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 36;
+   plan tests => 38;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -254,6 +254,26 @@ is(
    0,
    "Oversize chunks are not errors"
 );
+
+# SKIPPED should be accurate if the first skipped chunk # > 1.
+# https://bugs.launchpad.net/percona-toolkit/+bug/1011738
+$output = output(
+   sub { pt_table_checksum::main(@args,
+      qw(-t osc.t --chunk-size 6 --chunk-size-limit 1)) },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/Skipping chunk 2/i,
+   "Skipped chunk 2"
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'skipped'),
+   1,
+   "Skipped 1 chunk (bug 1011738)"
+) or diag($output);
 
 # ############################################################################
 # Check slave table row est. if doing doing 1=1 on master table.
