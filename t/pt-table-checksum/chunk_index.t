@@ -175,7 +175,7 @@ is(
    $exit_status,
    0,
    "Bad key_len chunks are not errors"
-);
+) or diag($output);
 
 cmp_ok(
    PerconaTest::count_checksum_results($output, 'skipped'),
@@ -223,14 +223,18 @@ $output = output(
       $exit_status = pt_table_checksum::main(
          $master_dsn, '--max-load', '',
          qw(--lock-wait-timeout 3 --chunk-size 1000 -t sakila.film_actor),
-         qw(--chunk-index-columns 1),
+         qw(--chunk-index-columns 1 --chunk-size-limit 3),
       );
    },
    stderr => 1,
 );
 
-is(
+# Since we're not using the full index, it's basically a non-unique index,
+# so there are dupes.  The table really has 5462 rows, so we must get
+# at least that many, and probably a few more.
+cmp_ok(
    PerconaTest::count_checksum_results($output, 'rows'),
+   '>=',
    5462,
    "Initial key_len reflects --chunk-index-columns"
 ) or diag($output);

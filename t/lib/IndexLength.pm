@@ -37,7 +37,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 6;
+   plan tests => 7;
 }
 
 my $output;
@@ -55,12 +55,12 @@ my $cxn = new Cxn(
 
 sub test_index_len {
    my (%args) = @_;
-   my @required_args = qw(name tbl index n_index_cols len);
+   my @required_args = qw(name tbl index len);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
-   my $len = $il->index_length(
+   my ($len, $key) = $il->index_length(
       Cxn          => $cxn,
       tbl          => $args{tbl},
       index        => $args{index},
@@ -112,6 +112,19 @@ test_index_len(
    index        => "PRIMARY",
    n_index_cols => 1,
    len          => 2,
+);
+
+# #############################################################################
+# Use full index if no n_index_cols
+# #############################################################################
+
+# Use sakila.film_actor stuff from previous tests.
+
+test_index_len(
+   name  => "sakila.film_actor all cols = 4 bytes",
+   tbl   => $tbl,
+   index => "PRIMARY",
+   len   => 4,
 );
 
 # #############################################################################

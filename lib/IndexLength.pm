@@ -51,7 +51,7 @@ sub new {
 # the first N left-most columns of the index.
 sub index_length {
    my ($self, %args) = @_;
-   my @required_args = qw(Cxn tbl index n_index_cols);
+   my @required_args = qw(Cxn tbl index);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -62,18 +62,32 @@ sub index_length {
    die "Index $args{index} does not exist in table $args{tbl}->{name}"
       unless $args{tbl}->{tbl_struct}->{keys}->{$args{index}};
 
+   my $index_struct = $args{tbl}->{tbl_struct}->{keys}->{$args{index}};
+   my $index_cols   = $index_struct->{cols};
+   my $n_index_cols = $args{n_index_cols};
+   if ( !$n_index_cols || $n_index_cols > @$index_cols ) {
+      $n_index_cols = scalar @$index_cols;
+   }
+
    # Get the first row with non-NULL values.
-   my $vals = $self->_get_first_values(%args);
+   my $vals = $self->_get_first_values(
+      %args,
+      n_index_cols => $n_index_cols,
+   );
 
    # Make an EXPLAIN query to scan the range and execute it.
-   my $sql = $self->_make_range_query(%args, vals => $vals);
+   my $sql = $self->_make_range_query(
+      %args,
+      n_index_cols => $n_index_cols,
+      vals         => $vals,
+   );
    my $sth = $cxn->dbh()->prepare($sql);
    PTDEBUG && _d($sth->{Statement}, 'params:', @$vals);
    $sth->execute(@$vals);
    my $row = $sth->fetchrow_hashref();
    $sth->finish();
    PTDEBUG && _d('Range scan:', Dumper($row));
-   return $row->{key_len};
+   return $row->{key_len}, $row->{key};
 }
 
 sub _get_first_values {
@@ -86,11 +100,9 @@ sub _get_first_values {
 
    my $q = $self->{Quoter};
 
-   my $index_struct = $tbl->{tbl_struct}->{keys}->{$index};
-   my $index_cols   = $index_struct->{cols};
-   $n_index_cols    = @$index_cols - 1 if $n_index_cols > @$index_cols;
-
    # Select just the index columns.
+   my $index_struct  = $tbl->{tbl_struct}->{keys}->{$index};
+   my $index_cols    = $index_struct->{cols};
    my $index_columns = join (', ',
       map { $q->quote($_) } @{$index_cols}[0..($n_index_cols - 1)]);
 
@@ -104,7 +116,7 @@ sub _get_first_values {
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
            . "WHERE " . join(' AND ', @where)
            . " ORDER BY $index_columns "
-           . "LIMIT 1";  # only need 1 row
+           . "LIMIT 1 /*key_len*/";  # only need 1 row
    PTDEBUG && _d($sql);
    my $vals = $cxn->dbh()->selectrow_arrayref($sql);
    return $vals;
@@ -122,11 +134,12 @@ sub _make_range_query {
 
    my $index_struct = $tbl->{tbl_struct}->{keys}->{$index};
    my $index_cols   = $index_struct->{cols};
-   $n_index_cols    = @$index_cols - 1 if $n_index_cols > @$index_cols;
 
    # All but the last index col = val.
    my @where;
    if ( $n_index_cols > 1 ) {
+      # -1 for zero-index array as usual, then -1 again because
+      # we don't want the last column; that's added below.
       foreach my $n ( 0..($n_index_cols - 2) ) {
          my $col = $index_cols->[$n];
          my $val = $vals->[$n];
@@ -137,12 +150,13 @@ sub _make_range_query {
    # The last index col > val.  This causes the range scan using just
    # the N left-most index columns.
    my $col = $index_cols->[$n_index_cols - 1];
-   my $val = $vals->[$n_index_cols - 1];
+   my $val = $vals->[-1];  # should only be as many vals as cols
    push @where, $q->quote($col) . " >= ?";
 
    my $sql = "EXPLAIN SELECT /*!40001 SQL_NO_CACHE */ * "
            . "FROM $tbl->{name} FORCE INDEX (" . $q->quote($index) . ") "
-           . "WHERE " . join(' AND ', @where);
+           . "WHERE " . join(' AND ', @where)
+           . " /*key_len*/";
    return $sql;
 }
 
