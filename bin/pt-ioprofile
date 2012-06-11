@@ -443,7 +443,8 @@ mk_tmpdir() {
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXXX` \
+      local x="$TMPDIR"
+      TMPDIR=`TMPDIR="$x" mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
