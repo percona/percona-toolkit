@@ -25,7 +25,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 16;
+   plan tests => 17;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -205,18 +205,35 @@ $output = output(
    sub {
       $exit_status = pt_table_checksum::main(
          $master_dsn, '--max-load', '',
-         qw(--lock-wait-timeout 3 --chunk-size 5000  -t sakila.rental),
-         qw(--chunk-index rental_date --chunk-index-columns 5),
-         qw(--explain --explain));
+         qw(--lock-wait-timeout 3 --chunk-size 1000  -t sakila.film_actor),
+         qw(--chunk-index PRIMARY --chunk-index-columns 9),
+      );
    },
    stderr => 1,
 );
 
 is(
-   $exit_status,
-   0,
+   PerconaTest::count_checksum_results($output, 'rows'),
+   5462,
    "--chunk-index-columns > number of index columns"
+) or diag($output);
+
+$output = output(         
+   sub {
+      $exit_status = pt_table_checksum::main(
+         $master_dsn, '--max-load', '',
+         qw(--lock-wait-timeout 3 --chunk-size 1000 -t sakila.film_actor),
+         qw(--chunk-index-columns 1),
+      );
+   },
+   stderr => 1,
 );
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   5462,
+   "Initial key_len reflects --chunk-index-columns"
+) or diag($output);
 
 # #############################################################################
 # Done.
