@@ -6171,8 +6171,6 @@ sub main {
       }
    }
 
-   # Parse --chunk-index INDEX:N where N is the number of
-   # left-most columns of INDEX to use.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1010232
    my $n_chunk_index_cols = $o->get('chunk-index-columns');
    if ( defined $n_chunk_index_cols
