@@ -11181,9 +11181,9 @@ Execute and compare all queries in slow.log on host1 to host2:
 
 Use pt-query-digest to get, execute and compare queries from tcpdump:
 
-  tcpdump -i eth0 port 3306 -s 65535  -x -n -q -tttt     \
-    | pt-query-digest --type tcpdump --no-report --print \
-    | pt-upgrade h=host1 h=host2
+  tcpdump -i eth0 port 3306 -s 65535  -x -n -q -tttt > tcpdump.txt
+  pt-query-digest tcpdump.txt --type tcpdump --no-report --print > digest.txt
+  pt-upgrade digest.txt h=host1 h=host2
 
 Compare only query times on host1 to host2 and host3:
 
