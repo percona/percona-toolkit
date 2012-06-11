@@ -2,12 +2,12 @@
 
 plan 10
 
-TMPDIR="$TEST_TMPDIR"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
 
 . "$LIB_DIR/summary_common.sh"
 
-p="$TMPDIR/get_var_samples"
+p="$PT_TMPDIR/get_var_samples"
 
 echo "test1    abcdef" > "$p"
 is \

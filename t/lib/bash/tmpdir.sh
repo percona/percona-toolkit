@@ -5,17 +5,17 @@ plan 10
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/tmpdir.sh"
 
-is "$TMPDIR" "" "TMPDIR not defined"
+is "$PT_TMPDIR" "" "PT_TMPDIR not defined"
 
 mk_tmpdir
-cmd_ok "test -d $TMPDIR" "mk_tmpdir makes secure tmpdir"
+cmd_ok "test -d $PT_TMPDIR" "mk_tmpdir makes secure tmpdir"
 
-tmpdir=$TMPDIR;
+tmpdir="$PT_TMPDIR";
 
 rm_tmpdir
 cmd_ok "test ! -d $tmpdir" "rm_tmpdir"
 
-is "$TMPDIR" "" "rm_tmpdir resets TMPDIR"
+is "$PT_TMPDIR" "" "rm_tmpdir resets PT_TMPDIR"
 
 # ###########################################################################
 # User-specified tmpdir.
@@ -23,12 +23,12 @@ is "$TMPDIR" "" "rm_tmpdir resets TMPDIR"
 
 dir="/tmp/use--tmpdir"
 
-is "$TMPDIR" "" "TMPDIR not defined"
+is "$PT_TMPDIR" "" "PT_TMPDIR not defined"
 
 cmd_ok "test ! -d $dir" "--tmpdir does not exist yet"
 
 mk_tmpdir $dir
-is "$TMPDIR" "$dir" "mk_tmpdir uses --tmpdir"
+is "$PT_TMPDIR" "$dir" "mk_tmpdir uses --tmpdir"
 
 cmd_ok "test -d $dir" "mk_tmpdir creates --tmpdir"
 
@@ -47,9 +47,9 @@ tempdir_test () {
 
    mk_tmpdir
 
-   is "$(dirname "$TMPDIR")" \
+   is "$(dirname "$PT_TMPDIR")" \
       "$new_TEMP"            \
-      'mk_tmpdir respects $TMPDIR'
+      'mk_tmpdir respects $PT_TMPDIR'
 
    rm_tmpdir
 

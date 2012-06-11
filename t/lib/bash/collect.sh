@@ -2,12 +2,12 @@
 
 plan 21
 
-TMPFILE="$TEST_TMPDIR/parse-opts-output"
-TMPDIR="$TEST_TMPDIR"
+TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
 TOOL="pt-stalk"
 
-mkdir "$TMPDIR/collect" 2>/dev/null
+mkdir "$PT_TMPDIR/collect" 2>/dev/null
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/parse_options.sh"
@@ -18,28 +18,28 @@ source "$LIB_DIR/collect.sh"
 parse_options "$BIN_DIR/pt-stalk" --run-time 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 # Prefix (with path) for the collect files.
-p="$TMPDIR/collect/2011_12_05"
+p="$PT_TMPDIR/collect/2011_12_05"
 
 # Default collect, no extras like gdb, tcpdump, etc.
-collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
+collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
 # Even if this system doesn't have all the cmds, collect should still
 # have created some files for cmds that (hopefully) all systems have.
-ls -1 $TMPDIR/collect | sort > $TMPDIR/collect-files
+ls -1 $PT_TMPDIR/collect | sort > $PT_TMPDIR/collect-files
 
 # If this system has /proc, then some files should be collected.
 # Else, those files should not exist.
 if [ -f /proc/diskstats ]; then
    cmd_ok \
-      "grep -q '[0-9]' $TMPDIR/collect/2011_12_05-diskstats" \
+      "grep -q '[0-9]' $PT_TMPDIR/collect/2011_12_05-diskstats" \
       "/proc/diskstats"
 else
-   test -f $TMPDIR/collect/2011_12_05-diskstats
+   test -f $PT_TMPDIR/collect/2011_12_05-diskstats
    is "$?" "1" "No /proc/diskstats"
 fi
 
 cmd_ok \
-   "grep -q '\-hostname\$' $TMPDIR/collect-files" \
+   "grep -q '\-hostname\$' $PT_TMPDIR/collect-files" \
    "Collected hostname"
 
 cmd_ok \
@@ -136,9 +136,9 @@ is "$empty_files" "0" "No empty files"
 
 parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
-rm $TMPDIR/collect/*
+rm $PT_TMPDIR/collect/*
 
-collect "$TMPDIR/collect" "2011_12_05" > $p-output 2>&1
+collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
 iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "2" "2 iteration/2s run time"

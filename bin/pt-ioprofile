@@ -153,7 +153,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
+   PO_DIR="$PT_TMPDIR/po"
 
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
@@ -357,10 +357,10 @@ _parse_command_line() {
             opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
                option_error "Unknown option: $real_opt"
                continue
@@ -430,7 +430,7 @@ size_to_bytes() {
 
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -439,21 +439,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      local x="$TMPDIR"
-      TMPDIR=`TMPDIR="$x" mktemp -d -t "${tool}.${pid}.XXXXXX"` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -520,7 +519,7 @@ TOOL="pt-ioprofile"
 # pid function fd_no size timing filename
 # The arguments are the files to summarize.
 tabulate_strace() {
-   cat > $TMPDIR/tabulate_strace.awk <<EOF
+   cat > $PT_TMPDIR/tabulate_strace.awk <<EOF
    BEGIN {
       # These are function names, or partial function names, that we care about.
       # Later we will ignore any function whose name doesn't look like these.
@@ -617,7 +616,7 @@ tabulate_strace() {
       }
    }
 EOF
-   awk -f $TMPDIR/tabulate_strace.awk "$@"
+   awk -f $PT_TMPDIR/tabulate_strace.awk "$@"
 }
 
 # Takes as input the output from tabulate_strace.  Arguments are just a subset
@@ -629,7 +628,7 @@ summarize_strace() {
    local group_by="$3"
    local file="$4"
 
-   cat > "$TMPDIR/summarize_strace.awk" <<EOF
+   cat > "$PT_TMPDIR/summarize_strace.awk" <<EOF
    BEGIN {
       # These are function names, or partial function names, that we care about.
       # Later we will ignore any function whose name doesn't look like these.
@@ -740,25 +739,25 @@ summarize_strace() {
    }
 EOF
 
-   awk -f $TMPDIR/summarize_strace.awk "$file" > $TMPDIR/summarized_samples
+   awk -f $PT_TMPDIR/summarize_strace.awk "$file" > $PT_TMPDIR/summarized_samples
    if [ "$group_by" != "all" ]; then
-      head -n1 $TMPDIR/summarized_samples
-      tail -n +2 $TMPDIR/summarized_samples | sort -rn -k1
+      head -n1 $PT_TMPDIR/summarized_samples
+      tail -n +2 $PT_TMPDIR/summarized_samples | sort -rn -k1
    else
-      grep TOTAL $TMPDIR/summarized_samples
-      grep -v TOTAL $TMPDIR/summarized_samples | sort -rn -k1
+      grep TOTAL $PT_TMPDIR/summarized_samples
+      grep -v TOTAL $PT_TMPDIR/summarized_samples | sort -rn -k1
    fi
 }
 
 main() {
    if [ $# -gt 0 ]; then
       # Summarize the files the user passed in.
-      tabulate_strace "$@" > $TMPDIR/tabulated_samples
+      tabulate_strace "$@" > $PT_TMPDIR/tabulated_samples
    else
       # There's no file to analyze, so we'll make one.
       if which strace > /dev/null 2>&1; then
 
-         local samples=${OPT_SAVE_SAMPLES:-"$TMPDIR/samples"}
+         local samples=${OPT_SAVE_SAMPLES:-"$PT_TMPDIR/samples"}
 
          # Get the PID of the process to profile, unless the user
          # gave us it explicitly with --profile-pid.
@@ -808,7 +807,7 @@ main() {
             kill -s 18 $proc_pid
 
             # Summarize the output we just generated.
-            tabulate_strace "$samples" > $TMPDIR/tabulated_samples
+            tabulate_strace "$samples" > $PT_TMPDIR/tabulated_samples
          else
             echo "Cannot determine PID of $OPT_PROFILE_PROCESS process" >&2
             exit 1
@@ -823,7 +822,7 @@ main() {
       $OPT_AGGREGATE \
       $OPT_CELL      \
       $OPT_GROUP_BY  \
-      "$TMPDIR/tabulated_samples"
+      "$PT_TMPDIR/tabulated_samples"
 }
 
 # Execute the program if it was not included from another file.

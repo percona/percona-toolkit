@@ -2,7 +2,7 @@
 
 plan 40
 
-TMPDIR="$TEST_TMPDIR"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
 TOOL="pt-summary"
 
@@ -14,7 +14,7 @@ TOOL="pt-summary"
 . "$LIB_DIR/collect_system_info.sh"
 
 # Prefix (with path) for the collect files.
-p="$TMPDIR/collect_mysql_info"
+p="$PT_TMPDIR/collect_mysql_info"
 samples="$PERCONA_TOOLKIT_BRANCH/t/pt-summary/samples"
 
 mkdir "$p"
@@ -25,116 +25,116 @@ setup_commands
 
 collect_system_data "$p"
 
-p2="$TMPDIR/collect_mysql_info2"
+p2="$PT_TMPDIR/collect_mysql_info2"
 mkdir "$p2"
 touch "$p2/some_empty_file"
 collect_system_data "$p2"
 
 cmd_ok "test ! -e \"$p2/some_empty_file\"" "collect_system_data removes empty files before exiting"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 Fusion-MPT SAS
 EOF
-find_raid_controller_lspci "$samples/lspci-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lspci-001.txt"
+find_raid_controller_lspci "$samples/lspci-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lspci-001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 LSI Logic Unknown
 EOF
-find_raid_controller_lspci "$samples/lspci-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lspci-002.txt"
+find_raid_controller_lspci "$samples/lspci-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lspci-002.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 AACRAID
 EOF
-find_raid_controller_lspci "$samples/lspci-003.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lspci-003.txt"
+find_raid_controller_lspci "$samples/lspci-003.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lspci-003.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 LSI Logic MegaRAID SAS
 EOF
-find_raid_controller_lspci "$samples/lspci-004.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lspci-004.txt"
+find_raid_controller_lspci "$samples/lspci-004.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lspci-004.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 Fusion-MPT SAS
 EOF
-find_raid_controller_lspci "$samples/lspci-005.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lspci-005.txt"
+find_raid_controller_lspci "$samples/lspci-005.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lspci-005.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 HP Smart Array
 EOF
-find_raid_controller_lspci "$samples/lspci-006.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lspci-006.txt"
+find_raid_controller_lspci "$samples/lspci-006.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lspci-006.txt"
 
 # find_raid_controller_dmesg
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 Fusion-MPT SAS
 EOF
-find_raid_controller_dmesg "$samples/dmesg-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-001.txt"
+find_raid_controller_dmesg "$samples/dmesg-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 AACRAID
 EOF
-find_raid_controller_dmesg "$samples/dmesg-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-002.txt"
+find_raid_controller_dmesg "$samples/dmesg-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-002.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 LSI Logic MegaRAID SAS
 EOF
-find_raid_controller_dmesg "$samples/dmesg-003.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-003.txt"
+find_raid_controller_dmesg "$samples/dmesg-003.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-003.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 AACRAID
 EOF
-find_raid_controller_dmesg "$samples/dmesg-004.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-004.txt"
+find_raid_controller_dmesg "$samples/dmesg-004.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-004.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 Fusion-MPT SAS
 EOF
-find_raid_controller_dmesg "$samples/dmesg-005.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-005.txt"
+find_raid_controller_dmesg "$samples/dmesg-005.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-005.txt"
 
 # TODO is this right?
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 EOF
-find_raid_controller_dmesg "$samples/dmesg-006.txt" > "$TMPDIR/got"
-cat "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-006.txt"
+find_raid_controller_dmesg "$samples/dmesg-006.txt" > "$PT_TMPDIR/got"
+cat "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-006.txt"
 
 # TODO is this right?
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 EOF
-find_raid_controller_dmesg "$samples/dmesg-007.txt" > "$TMPDIR/got"
-cat "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmesg-007.txt"
+find_raid_controller_dmesg "$samples/dmesg-007.txt" > "$PT_TMPDIR/got"
+cat "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmesg-007.txt"
 
 # raid_controller
 
-rm "$TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
-raid_controller "" "" > "$TMPDIR/raid_controller_outfile.tmp"
+rm "$PT_TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
+raid_controller "" "" > "$PT_TMPDIR/raid_controller_outfile.tmp"
 
 is \
-   "$(get_var raid_controller "$TMPDIR/raid_controller_outfile.tmp")" \
+   "$(get_var raid_controller "$PT_TMPDIR/raid_controller_outfile.tmp")" \
    "No RAID controller detected" \
    "raid_controller has a sane default"
 
-rm "$TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
-raid_controller "" "$samples/lspci-001.txt" > "$TMPDIR/raid_controller_outfile.tmp"
+rm "$PT_TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
+raid_controller "" "$samples/lspci-001.txt" > "$PT_TMPDIR/raid_controller_outfile.tmp"
 is \
-   "$(get_var raid_controller "$TMPDIR/raid_controller_outfile.tmp")" \
+   "$(get_var raid_controller "$PT_TMPDIR/raid_controller_outfile.tmp")" \
    "Fusion-MPT SAS" \
    "raid_controller gets the correct result from an lspci file"
 
-rm "$TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
-raid_controller "$samples/dmesg-004.txt" "" > "$TMPDIR/raid_controller_outfile.tmp"
+rm "$PT_TMPDIR/raid_controller_outfile.tmp" 2>/dev/null
+raid_controller "$samples/dmesg-004.txt" "" > "$PT_TMPDIR/raid_controller_outfile.tmp"
 is \
-   "$(get_var raid_controller "$TMPDIR/raid_controller_outfile.tmp")" \
+   "$(get_var raid_controller "$PT_TMPDIR/raid_controller_outfile.tmp")" \
    "AACRAID" \
    "...Or from a dmseg file"
 
@@ -142,8 +142,8 @@ is \
 
 i=1
 for expected in "" "" "" "" "" "Xen" "VirtualBox"; do
-   find_virtualization_dmesg "$samples/dmesg-00$i.txt" > "$TMPDIR/got"
-   is "$(cat "$TMPDIR/got")" "$expected" "dmesg-00$i.txt"
+   find_virtualization_dmesg "$samples/dmesg-00$i.txt" > "$PT_TMPDIR/got"
+   is "$(cat "$PT_TMPDIR/got")" "$expected" "dmesg-00$i.txt"
    i=$(($i + 1))
 done
 
@@ -153,9 +153,9 @@ fake_command () {
    local cmd="$1"
    local output="$2"
 
-   printf "#!/usr/bin/env bash\necho \"${output}\"\n" > "$TMPDIR/${cmd}_replacement"
-   chmod +x "$TMPDIR/${cmd}_replacement"
-   eval "CMD_$(echo $cmd | tr '[a-z]' '[A-Z]')=\"$TMPDIR/${cmd}_replacement\""
+   printf "#!/usr/bin/env bash\necho \"${output}\"\n" > "$PT_TMPDIR/${cmd}_replacement"
+   chmod +x "$PT_TMPDIR/${cmd}_replacement"
+   eval "CMD_$(echo $cmd | tr '[a-z]' '[A-Z]')=\"$PT_TMPDIR/${cmd}_replacement\""
 }
 
 test_linux_exclusive_collection () {
@@ -208,12 +208,12 @@ test_linux_exclusive_collection () {
 platform="$(get_var platform "$p/summary")"
 
 if [ "$platform" = "Linux" ]; then
-   mkdir "$TMPDIR/linux_data"
+   mkdir "$PT_TMPDIR/linux_data"
    if [ -e "$p/sysctl" ]; then
-      cp "$p/sysctl" "$TMPDIR/linux_data/sysctl"
+      cp "$p/sysctl" "$PT_TMPDIR/linux_data/sysctl"
    fi
-   test_linux_exclusive_collection "$TMPDIR/linux_data"
-   rm -rf "$TMPDIR/linux_data"
+   test_linux_exclusive_collection "$PT_TMPDIR/linux_data"
+   rm -rf "$PT_TMPDIR/linux_data"
 else
    skip 1 5 "Tests exclusive for Linux"
 fi
@@ -257,8 +257,8 @@ test_propietary_raid_controller () {
       "AACRAID calls arcconf"
 }
 
-mkdir "$TMPDIR/raid_controller"
-test_propietary_raid_controller "$TMPDIR/raid_controller"
+mkdir "$PT_TMPDIR/raid_controller"
+test_propietary_raid_controller "$PT_TMPDIR/raid_controller"
 
 
 # notable_processes_info
@@ -270,9 +270,9 @@ forked_pid="$!"
 if [ -e /proc/$forked_pid/oom_adj ] \
       && echo "-17" > /proc/$forked_pid/oom_adj 2>/dev/null; then
 
-   notable_processes_info > "$TMPDIR/notable_procs"
+   notable_processes_info > "$PT_TMPDIR/notable_procs"
    like \
-      "$(cat "$TMPDIR/notable_procs")" \
+      "$(cat "$PT_TMPDIR/notable_procs")" \
       "${forked_pid}\\s+-17" \
       "notable_proccesses_info finds the process we manually changed earlier"
 
@@ -309,6 +309,6 @@ EOF
       "..but if it's there, it gets called with the expected parameters "
 }
 
-mkdir "$TMPDIR/dmidecode_system_info"
-test_dmidecode_system_info "$TMPDIR/dmidecode_system_info"
+mkdir "$PT_TMPDIR/dmidecode_system_info"
+test_dmidecode_system_info "$PT_TMPDIR/dmidecode_system_info"
 
