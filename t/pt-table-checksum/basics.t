@@ -259,7 +259,7 @@ is(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1011738
 $output = output(
    sub { pt_table_checksum::main(@args,
-      qw(-t osc.t --chunk-size 5 --chunk-size-limit 1)) },
+      qw(-t osc.t --chunk-size 6 --chunk-size-limit 1)) },
    stderr => 1,
 );
 
@@ -273,7 +273,7 @@ is(
    PerconaTest::count_checksum_results($output, 'skipped'),
    1,
    "Skipped 1 chunk (bug 1011738)"
-);
+) or diag($output);
 
 # ############################################################################
 # Check slave table row est. if doing doing 1=1 on master table.

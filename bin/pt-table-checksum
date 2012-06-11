@@ -7009,6 +7009,11 @@ sub main {
          # Count every chunk, even if it's ultimately skipped, etc.
          $tbl->{checksum_results}->{n_chunks}++;
 
+         # Reset the nibble_time because this nibble hasn't been
+         # executed yet.  If nibble_time is undef, then it's marked
+         # as skipped in after_nibble.
+         $tbl->{nibble_time} = undef;
+
          # --explain level 2: print chunk,lower boundary values,upper
          # boundary values.
          if ( $o->get('explain') > 1 ) {
