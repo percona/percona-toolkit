@@ -162,7 +162,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
+   PO_DIR="$PT_TMPDIR/po"
 
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
@@ -366,10 +366,10 @@ _parse_command_line() {
             opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
                option_error "Unknown option: $real_opt"
                continue
@@ -439,7 +439,7 @@ size_to_bytes() {
 
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -448,20 +448,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -538,7 +538,7 @@ get_nice_of_pid () {
    if [ -n "${niceness}" ]; then
       echo $niceness
    else
-      local tmpfile="$TMPDIR/nice_through_c.tmp.c"
+      local tmpfile="$PT_TMPDIR/nice_through_c.tmp.c"
       _d "Getting the niceness from ps failed, somehow. We are about to try this:"
       cat <<EOC > "$tmpfile"
 
@@ -620,8 +620,8 @@ setup_data_dir () {
    local existing_dir="$1"
    local data_dir=""
    if [ -z "$existing_dir" ]; then
-      mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
-      data_dir="$TMPDIR/data"
+      mkdir "$PT_TMPDIR/data" || die "Cannot mkdir $PT_TMPDIR/data"
+      data_dir="$PT_TMPDIR/data"
    else
       if [ ! -d "$existing_dir" ]; then
          mkdir "$existing_dir" || die "Cannot mkdir $existing_dir"
@@ -893,7 +893,7 @@ network_device_info () {
    local ip_minus_s_file="$1"
 
    if [ "$CMD_ETHTOOL" ]; then
-      local tempfile="$TMPDIR/ethtool_output_temp"
+      local tempfile="$PT_TMPDIR/ethtool_output_temp"
       for device in $( awk '/^[1-9]/{ print $2 }'  "$ip_minus_s_file" \
                         | awk -F: '{print $1}'     \
                         | grep -v '^lo\|^in\|^gr'  \
@@ -996,7 +996,7 @@ find_virtualization () { local PTFUNCNAME=find_virtualization;
    local dmesg_file="$2"
    local lspci_file="$3"
 
-   local tempfile="$TMPDIR/find_virtualziation.tmp"
+   local tempfile="$PT_TMPDIR/find_virtualziation.tmp"
 
    local virt=""
    if [ -s "$dmesg_file" ]; then
@@ -1086,8 +1086,8 @@ mounted_fs_info () { local PTFUNCNAME=mounted_fs_info;
       if [ "${platform}" = "Linux" ]; then
          cmd="df -h -P"
       fi
-      $cmd  | sort > "$TMPDIR/mounted_fs_info.tmp"
-      mount | sort | join "$TMPDIR/mounted_fs_info.tmp" -
+      $cmd  | sort > "$PT_TMPDIR/mounted_fs_info.tmp"
+      mount | sort | join "$PT_TMPDIR/mounted_fs_info.tmp" -
    fi
 }
 
@@ -1095,7 +1095,7 @@ raid_controller () { local PTFUNCNAME=raid_controller;
    local dmesg_file="$1"
    local lspci_file="$2"
 
-   local tempfile="$TMPDIR/raid_controller.tmp"
+   local tempfile="$PT_TMPDIR/raid_controller.tmp"
 
    local controller=""
    if [ -s "$lspci_file" ]; then
@@ -1273,16 +1273,16 @@ parse_proc_cpuinfo () { local PTFUNCNAME=parse_proc_cpuinfo;
    name_val "Processors" "physical = ${physical}, cores = ${cores}, virtual = ${virtual}, hyperthreading = ${htt}"
 
    awk -F: '/cpu MHz/{print $2}' "${file}" \
-      | sort | uniq -c > "$TMPDIR/parse_proc_cpuinfo_cpu.unq"
-   name_val "Speeds" "$(group_concat "$TMPDIR/parse_proc_cpuinfo_cpu.unq")"
+      | sort | uniq -c > "$PT_TMPDIR/parse_proc_cpuinfo_cpu.unq"
+   name_val "Speeds" "$(group_concat "$PT_TMPDIR/parse_proc_cpuinfo_cpu.unq")"
 
    awk -F: '/model name/{print $2}' "${file}" \
-      | sort | uniq -c > "$TMPDIR/parse_proc_cpuinfo_model.unq"
-   name_val "Models" "$(group_concat "$TMPDIR/parse_proc_cpuinfo_model.unq")"
+      | sort | uniq -c > "$PT_TMPDIR/parse_proc_cpuinfo_model.unq"
+   name_val "Models" "$(group_concat "$PT_TMPDIR/parse_proc_cpuinfo_model.unq")"
 
    awk -F: '/cache size/{print $2}' "${file}" \
-      | sort | uniq -c > "$TMPDIR/parse_proc_cpuinfo_cache.unq"
-   name_val "Caches" "$(group_concat "$TMPDIR/parse_proc_cpuinfo_cache.unq")"
+      | sort | uniq -c > "$PT_TMPDIR/parse_proc_cpuinfo_cache.unq"
+   name_val "Caches" "$(group_concat "$PT_TMPDIR/parse_proc_cpuinfo_cache.unq")"
 }
 
 parse_sysctl_cpu_freebsd() { local PTFUNCNAME=parse_sysctl_cpu_freebsd;
@@ -1324,8 +1324,8 @@ parse_psrinfo_cpus() { local PTFUNCNAME=parse_psrinfo_cpus;
       start = index($0, " at ") + 4;
       end   = length($0) - start - 4
       print substr($0, start, end);
-   }' "$file" | sort | uniq -c > "$TMPDIR/parse_psrinfo_cpus.tmp"
-   name_val "Speeds" "$(group_concat "$TMPDIR/parse_psrinfo_cpus.tmp")"
+   }' "$file" | sort | uniq -c > "$PT_TMPDIR/parse_psrinfo_cpus.tmp"
+   name_val "Speeds" "$(group_concat "$PT_TMPDIR/parse_psrinfo_cpus.tmp")"
 }
 
 parse_free_minus_b () { local PTFUNCNAME=parse_free_minus_b;

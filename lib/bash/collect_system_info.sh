@@ -183,7 +183,7 @@ network_device_info () {
    local ip_minus_s_file="$1"
 
    if [ "$CMD_ETHTOOL" ]; then
-      local tempfile="$TMPDIR/ethtool_output_temp"
+      local tempfile="$PT_TMPDIR/ethtool_output_temp"
       # For each entry in the ip -s link dump, check if itu starts with a number.
       # If it does, print the second field. Then remove the colon and everything
       # following that. Then skip what are usually interfaces.
@@ -298,7 +298,7 @@ find_virtualization () { local PTFUNCNAME=find_virtualization;
    local dmesg_file="$2"
    local lspci_file="$3"
 
-   local tempfile="$TMPDIR/find_virtualziation.tmp"
+   local tempfile="$PT_TMPDIR/find_virtualziation.tmp"
 
    local virt=""
    if [ -s "$dmesg_file" ]; then
@@ -395,8 +395,8 @@ mounted_fs_info () { local PTFUNCNAME=mounted_fs_info;
       if [ "${platform}" = "Linux" ]; then
          cmd="df -h -P"
       fi
-      $cmd  | sort > "$TMPDIR/mounted_fs_info.tmp"
-      mount | sort | join "$TMPDIR/mounted_fs_info.tmp" -
+      $cmd  | sort > "$PT_TMPDIR/mounted_fs_info.tmp"
+      mount | sort | join "$PT_TMPDIR/mounted_fs_info.tmp" -
    fi
 }
 
@@ -409,7 +409,7 @@ raid_controller () { local PTFUNCNAME=raid_controller;
    local dmesg_file="$1"
    local lspci_file="$2"
 
-   local tempfile="$TMPDIR/raid_controller.tmp"
+   local tempfile="$PT_TMPDIR/raid_controller.tmp"
 
    local controller=""
    if [ -s "$lspci_file" ]; then

@@ -2,9 +2,9 @@
 
 plan 78
 
-TMPFILE="$TEST_TMPDIR/parse-opts-output"
+TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
-TMPDIR="$TEST_TMPDIR"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 
 source "$LIB_DIR/log_warn_die.sh"
 source "$LIB_DIR/parse_options.sh"

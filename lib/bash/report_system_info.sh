@@ -55,16 +55,16 @@ parse_proc_cpuinfo () { local PTFUNCNAME=parse_proc_cpuinfo;
    name_val "Processors" "physical = ${physical}, cores = ${cores}, virtual = ${virtual}, hyperthreading = ${htt}"
 
    awk -F: '/cpu MHz/{print $2}' "${file}" \
-      | sort | uniq -c > "$TMPDIR/parse_proc_cpuinfo_cpu.unq"
-   name_val "Speeds" "$(group_concat "$TMPDIR/parse_proc_cpuinfo_cpu.unq")"
+      | sort | uniq -c > "$PT_TMPDIR/parse_proc_cpuinfo_cpu.unq"
+   name_val "Speeds" "$(group_concat "$PT_TMPDIR/parse_proc_cpuinfo_cpu.unq")"
 
    awk -F: '/model name/{print $2}' "${file}" \
-      | sort | uniq -c > "$TMPDIR/parse_proc_cpuinfo_model.unq"
-   name_val "Models" "$(group_concat "$TMPDIR/parse_proc_cpuinfo_model.unq")"
+      | sort | uniq -c > "$PT_TMPDIR/parse_proc_cpuinfo_model.unq"
+   name_val "Models" "$(group_concat "$PT_TMPDIR/parse_proc_cpuinfo_model.unq")"
 
    awk -F: '/cache size/{print $2}' "${file}" \
-      | sort | uniq -c > "$TMPDIR/parse_proc_cpuinfo_cache.unq"
-   name_val "Caches" "$(group_concat "$TMPDIR/parse_proc_cpuinfo_cache.unq")"
+      | sort | uniq -c > "$PT_TMPDIR/parse_proc_cpuinfo_cache.unq"
+   name_val "Caches" "$(group_concat "$PT_TMPDIR/parse_proc_cpuinfo_cache.unq")"
 }
 
 # ##############################################################################
@@ -121,8 +121,8 @@ parse_psrinfo_cpus() { local PTFUNCNAME=parse_psrinfo_cpus;
       start = index($0, " at ") + 4;
       end   = length($0) - start - 4
       print substr($0, start, end);
-   }' "$file" | sort | uniq -c > "$TMPDIR/parse_psrinfo_cpus.tmp"
-   name_val "Speeds" "$(group_concat "$TMPDIR/parse_psrinfo_cpus.tmp")"
+   }' "$file" | sort | uniq -c > "$PT_TMPDIR/parse_psrinfo_cpus.tmp"
+   name_val "Speeds" "$(group_concat "$PT_TMPDIR/parse_psrinfo_cpus.tmp")"
 }
 
 # ##############################################################################
@@ -409,7 +409,7 @@ parse_filesystems () { local PTFUNCNAME=parse_filesystems;
 }
 
 # ##############################################################################
-# Parse the output of fdisk -l, which should be in $TMPDIR/percona-toolkit; there might be
+# Parse the output of fdisk -l, which should be in $PT_TMPDIR/percona-toolkit; there might be
 # multiple fdisk -l outputs in the file.
 # ##############################################################################
 parse_fdisk () { local PTFUNCNAME=parse_fdisk;
@@ -460,7 +460,7 @@ parse_ethernet_controller_lspci () { local PTFUNCNAME=parse_ethernet_controller_
 
 # ##############################################################################
 # Parse the output of "hpacucli ctrl all show config", which should be stored in
-# $TMPDIR/percona-toolkit
+# $PT_TMPDIR/percona-toolkit
 # ##############################################################################
 parse_hpacucli () { local PTFUNCNAME=parse_hpacucli;
    local file="$1"
@@ -469,7 +469,7 @@ parse_hpacucli () { local PTFUNCNAME=parse_hpacucli;
 }
 
 # ##############################################################################
-# Parse the output of arcconf, which should be stored in $TMPDIR/percona-toolkit
+# Parse the output of arcconf, which should be stored in $PT_TMPDIR/percona-toolkit
 # ##############################################################################
 parse_arcconf () { local PTFUNCNAME=parse_arcconf;
    local file="$1"

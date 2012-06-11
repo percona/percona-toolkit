@@ -29,7 +29,7 @@ fi
 
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -38,20 +38,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -60,7 +60,7 @@ rm_tmpdir() {
 
 mk_tmpdir
 
-FILE="$TMPDIR/mext_temp_file";
+FILE="$PT_TMPDIR/mext_temp_file";
 NUM=0;
 REL=0;
 

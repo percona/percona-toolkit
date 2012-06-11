@@ -3,12 +3,12 @@
 # This test file must be ran by util/test-bash-functions.
 
 TESTS=6
-TMPDIR=$TEST_TMPDIR
+PT_TMPDIR=$TEST_PT_TMPDIR
 
 # ############################################################################
 TEST_NAME="stacktrace-001.txt"
 # ############################################################################
-cat > $TMPDIR/expected <<EOF
+cat > $PT_TMPDIR/expected <<EOF
     187 __lll_mutex_lock_wait,_L_mutex_lock_1133,pthread_mutex_lock,safe_mutex_lock,open_table,open_tables,open_and_lock_tables,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread,clone
      62 __lll_mutex_lock_wait,_L_mutex_lock_1133,pthread_mutex_lock,safe_mutex_lock,close_thread_tables,dispatch_command,handle_one_connection,start_thread,clone
      39 read,vio_read,my_real_read,my_net_read,handle_one_connection,start_thread,clone
@@ -31,13 +31,13 @@ cat > $TMPDIR/expected <<EOF
       1 do_sigwait,sigwait,signal_hand,start_thread,clone
 EOF
 
-aggregate_stacktrace 0 samples/stacktrace-001.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+aggregate_stacktrace 0 samples/stacktrace-001.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected
 
 # ############################################################################
 TEST_NAME="stacktrace-002.txt"
 # ############################################################################
-cat > $TMPDIR/expected <<EOF
+cat > $PT_TMPDIR/expected <<EOF
    2387 pthread_cond_wait,open_table,open_tables,open_and_lock_tables_derived,execute_sqlcom_select,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone
       5 pthread_cond_wait,open_table,open_tables,open_and_lock_tables_derived,mysql_insert,mysql_execute_command,mysql_parse,dispatch_command,do_command,handle_one_connection,start_thread,clone
       4 pthread_cond_wait,os_event_wait_low,os_aio_simulated_handle,fil_aio_wait,io_handler_thread,start_thread,clone
@@ -52,13 +52,13 @@ cat > $TMPDIR/expected <<EOF
       1 do_sigwait,sigwait,signal_hand,start_thread,clone
 EOF
 
-aggregate_stacktrace 0 samples/stacktrace-002.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+aggregate_stacktrace 0 samples/stacktrace-002.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected
 
 # ############################################################################
 TEST_NAME="stacktrace-003.txt"
 # ############################################################################
-cat > $TMPDIR/expected <<EOF
+cat > $PT_TMPDIR/expected <<EOF
      35 pthread_cond_wait,end_thread,handle_one_connection,start_thread,clone
      20 read,read,vio_read,my_real_read,my_net_read,handle_one_connection,start_thread,clone
      18 pthread_cond_wait,os_event_wait_low,os_aio_simulated_handle,fil_aio_wait,io_handler_thread,start_thread,clone
@@ -72,13 +72,13 @@ cat > $TMPDIR/expected <<EOF
       1 btr_cur_search_to_nth_level,btr_estimate_n_rows_in_range,ha_innobase::records_in_range,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_select,get_key_scans_params,SQL_SELECT::test_quick_select,get_quick_record_count,make_join_statistics,JOIN::optimize,mysql_select,handle_select,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread,clone
 EOF
 
-aggregate_stacktrace 0 samples/stacktrace-003.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+aggregate_stacktrace 0 samples/stacktrace-003.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected
 
 # ############################################################################
 TEST_NAME="stacktrace-003-b.txt"
 # ############################################################################
-cat > $TMPDIR/expected <<EOF
+cat > $PT_TMPDIR/expected <<EOF
      35 pthread_cond_wait,end_thread
      20 read,read
      18 pthread_cond_wait,os_event_wait_low
@@ -90,13 +90,13 @@ cat > $TMPDIR/expected <<EOF
       1 btr_cur_search_to_nth_level,btr_estimate_n_rows_in_range
 EOF
 
-aggregate_stacktrace 2 samples/stacktrace-003.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+aggregate_stacktrace 2 samples/stacktrace-003.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected
 
 # ############################################################################
 TEST_NAME="stacktrace-004.txt"
 # ############################################################################
-cat > $TMPDIR/expected <<EOF
+cat > $PT_TMPDIR/expected <<EOF
      33 pthread_cond_wait,boost::condition_variable::wait,Queue::pop,Worker::work,boost::_mfi::mf0::operator,boost::_bi::list1::operator,boost::_bi::bind_t::operator,boost::detail::thread_data::run,thread_proxy,start_thread,clone,??
       1 StringBuilder::length,Parser::add,Parser::try_parse_query,Parser::parse_block,Parser::work,boost::_mfi::mf0::operator,boost::_bi::list1::operator,boost::_bi::bind_t::operator,boost::detail::thread_data::run,thread_proxy,start_thread,clone,??
       1 pthread_cond_wait,boost::thread::join,LogReader::wait,Replay::wait,main
@@ -104,13 +104,13 @@ cat > $TMPDIR/expected <<EOF
       1 pthread_cond_wait,boost::condition_variable::wait,Queue::pop,Reporter::work,boost::_mfi::mf0::operator,boost::_bi::list1::operator,boost::_bi::bind_t::operator,boost::detail::thread_data::run,thread_proxy,start_thread,clone,??
 EOF
 
-aggregate_stacktrace 0 samples/stacktrace-004.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+aggregate_stacktrace 0 samples/stacktrace-004.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected
 
 # ############################################################################
 TEST_NAME="stacktrace-005.txt"
 # ############################################################################
-cat > $TMPDIR/expected <<EOF
+cat > $PT_TMPDIR/expected <<EOF
      32 read,vio_read_buff,libmysqlclient::??,my_net_read,cli_safe_read,libmysqlclient::??,mysql_real_query,Connection::run,Worker::work,thread_proxy,start_thread,clone,??
       1 pthread_cond_wait,LogReader::work,thread_proxy,start_thread,clone,??
       1 pthread_cond_wait,boost::thread::join,main
@@ -119,5 +119,5 @@ cat > $TMPDIR/expected <<EOF
       1 pthread_cond_wait,boost::condition_variable::wait,Queue::push,Parser::work,thread_proxy,start_thread,clone,??
 EOF
 
-aggregate_stacktrace 0 samples/stacktrace-005.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected
+aggregate_stacktrace 0 samples/stacktrace-005.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected

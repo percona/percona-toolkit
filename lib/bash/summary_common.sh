@@ -37,7 +37,7 @@ get_nice_of_pid () {
    if [ -n "${niceness}" ]; then
       echo $niceness
    else
-      local tmpfile="$TMPDIR/nice_through_c.tmp.c"
+      local tmpfile="$PT_TMPDIR/nice_through_c.tmp.c"
       _d "Getting the niceness from ps failed, somehow. We are about to try this:"
       cat <<EOC > "$tmpfile"
 #include <sys/time.h>
@@ -127,8 +127,8 @@ setup_data_dir () {
    local data_dir=""
    if [ -z "$existing_dir" ]; then
       # User didn't specify a --save-data dir, so use a sub-dir in our tmpdir.
-      mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
-      data_dir="$TMPDIR/data"
+      mkdir "$PT_TMPDIR/data" || die "Cannot mkdir $PT_TMPDIR/data"
+      data_dir="$PT_TMPDIR/data"
    else
       # Check the user's --save-data dir.
       if [ ! -d "$existing_dir" ]; then

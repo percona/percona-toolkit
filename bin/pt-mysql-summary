@@ -155,7 +155,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
+   PO_DIR="$PT_TMPDIR/po"
 
    if [ ! -d "$PO_DIR" ]; then
       mkdir "$PO_DIR"
@@ -359,10 +359,10 @@ _parse_command_line() {
             opt="$(echo $opt | awk -F= '{print $1}')"
          fi
 
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
                option_error "Unknown option: $real_opt"
                continue
@@ -432,7 +432,7 @@ size_to_bytes() {
 
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -441,20 +441,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -623,7 +623,7 @@ get_nice_of_pid () {
    if [ -n "${niceness}" ]; then
       echo $niceness
    else
-      local tmpfile="$TMPDIR/nice_through_c.tmp.c"
+      local tmpfile="$PT_TMPDIR/nice_through_c.tmp.c"
       _d "Getting the niceness from ps failed, somehow. We are about to try this:"
       cat <<EOC > "$tmpfile"
 
@@ -705,8 +705,8 @@ setup_data_dir () {
    local existing_dir="$1"
    local data_dir=""
    if [ -z "$existing_dir" ]; then
-      mkdir "$TMPDIR/data" || die "Cannot mkdir $TMPDIR/data"
-      data_dir="$TMPDIR/data"
+      mkdir "$PT_TMPDIR/data" || die "Cannot mkdir $PT_TMPDIR/data"
+      data_dir="$PT_TMPDIR/data"
    else
       if [ ! -d "$existing_dir" ]; then
          mkdir "$existing_dir" || die "Cannot mkdir $existing_dir"
@@ -836,8 +836,8 @@ collect_master_logs_status () {
 
 collect_mysql_deferred_status () {
    local status_file="$1"
-   collect_mysql_status > "$TMPDIR/defer_gatherer"
-   join "$status_file" "$TMPDIR/defer_gatherer"
+   collect_mysql_status > "$PT_TMPDIR/defer_gatherer"
+   join "$status_file" "$PT_TMPDIR/defer_gatherer"
 }
 
 collect_internal_vars () {
@@ -1387,7 +1387,7 @@ find_max_trx_time() {
 
 find_transation_states () {
    local file="$1"
-   local tmpfile="$TMPDIR/find_transation_states.tmp"
+   local tmpfile="$PT_TMPDIR/find_transation_states.tmp"
 
    [ -e "$file" ] || return
 
@@ -1438,7 +1438,7 @@ format_innodb_status () {
 
 format_overall_db_stats () {
    local file="$1"
-   local tmpfile="$TMPDIR/format_overall_db_stats.tmp"
+   local tmpfile="$PT_TMPDIR/format_overall_db_stats.tmp"
 
    [ -e "$file" ] || return
 
