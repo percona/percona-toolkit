@@ -476,7 +476,7 @@ find_max_trx_time() {
 
 find_transation_states () {
    local file="$1"
-   local tmpfile="$TMPDIR/find_transation_states.tmp"
+   local tmpfile="$PT_TMPDIR/find_transation_states.tmp"
 
    [ -e "$file" ] || return
 
@@ -531,7 +531,7 @@ format_innodb_status () {
 # then there should be multiple databases.
 format_overall_db_stats () {
    local file="$1"
-   local tmpfile="$TMPDIR/format_overall_db_stats.tmp"
+   local tmpfile="$PT_TMPDIR/format_overall_db_stats.tmp"
 
    [ -e "$file" ] || return
 

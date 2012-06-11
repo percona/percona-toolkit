@@ -126,8 +126,8 @@ collect_master_logs_status () {
 # Somewhat different from the others, this one joins the status we got earlier
 collect_mysql_deferred_status () {
    local status_file="$1"
-   collect_mysql_status > "$TMPDIR/defer_gatherer"
-   join "$status_file" "$TMPDIR/defer_gatherer"
+   collect_mysql_status > "$PT_TMPDIR/defer_gatherer"
+   join "$status_file" "$PT_TMPDIR/defer_gatherer"
 }
 
 collect_internal_vars () {

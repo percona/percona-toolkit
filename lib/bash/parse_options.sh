@@ -23,7 +23,7 @@
 # global variables for each option.
 
 # XXX
-# GLOBAL $TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
+# GLOBAL $PT_TMPDIR AND $TOOL MUST BE SET BEFORE USING THIS LIB!
 # XXX
 
 # Parsing command line options with Bash is easy until we have to dealt
@@ -63,7 +63,7 @@ PO_DIR=""         # Directory with program option spec files
 #   file - Program file with Perl POD which has usage and options.
 #
 # Required Global Variables:
-#   TIMDIR  - Temp directory set by <set_TMPDIR()>.
+#   TIMDIR  - Temp directory set by <set_PT_TMPDIR()>.
 #   TOOL    - Tool's name.
 usage() {
    local file="$1"
@@ -150,7 +150,7 @@ option_error() {
 #   file - Program file with Perl POD options.
 #
 # Required Global Variables:
-#   TIMDIR  - Temp directory set by <set_TMPDIR()>.
+#   TIMDIR  - Temp directory set by <set_PT_TMPDIR()>.
 #
 # Set Global Variables:
 #   This sub decalres a global var for each option by uppercasing the
@@ -169,7 +169,7 @@ parse_options() {
    OPT_ERRS=0
    OPT_VERSION=""
    OPT_HELP=""
-   PO_DIR="$TMPDIR/po"
+   PO_DIR="$PT_TMPDIR/po"
 
    # Ready the directory for the program option (po) spec files.
    if [ ! -d "$PO_DIR" ]; then
@@ -422,10 +422,10 @@ _parse_command_line() {
          fi
 
          # Find the option's spec file.
-         if [ -f "$TMPDIR/po/$opt" ]; then
-            spec="$TMPDIR/po/$opt"
+         if [ -f "$PT_TMPDIR/po/$opt" ]; then
+            spec="$PT_TMPDIR/po/$opt"
          else
-            spec=$(grep "^short form:-$opt\$" "$TMPDIR"/po/* | cut -d ':' -f 1)
+            spec=$(grep "^short form:-$opt\$" "$PT_TMPDIR"/po/* | cut -d ':' -f 1)
             if [ -z "$spec"  ]; then
                option_error "Unknown option: $real_opt"
                continue

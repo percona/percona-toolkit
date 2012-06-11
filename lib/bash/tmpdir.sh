@@ -24,16 +24,16 @@
 set -u
 
 # Global variables.
-TMPDIR=""
+PT_TMPDIR=""
 
 # Sub: mk_tmpdir
-#   Create a secure tmpdir and set TMPDIR.
+#   Create a secure tmpdir and set PT_TMPDIR.
 #
 # Optional Arguments:
 #   dir - User-specified tmpdir (default none).
 #
 # Set Global Variables:
-#   TMPDIR - Absolute path of secure temp directory.
+#   PT_TMPDIR - Absolute path of secure temp directory.
 mk_tmpdir() {
    local dir="${1:-""}"
 
@@ -41,28 +41,28 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      TMPDIR=`mktemp -d /tmp/${tool}.${pid}.XXXXXX` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 # Sub: rm_tmpdir
-#   Remove the tmpdir and unset TMPDIR.
+#   Remove the tmpdir and unset PT_TMPDIR.
 #
 # Optional Global Variables:
-#   TMPDIR - TMPDIR set by <mk_tmpdir()>.
+#   PT_TMPDIR - PT_TMPDIR set by <mk_tmpdir()>.
 #
 # Set Global Variables:
-#   TMPDIR - Set to "".
+#   PT_TMPDIR - Set to "".
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################

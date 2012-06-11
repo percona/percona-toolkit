@@ -2,7 +2,7 @@
 
 plan 20
 
-TMPDIR="$TEST_TMPDIR"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
 TOOL="pt-mysql-summary"
 
@@ -13,7 +13,7 @@ TOOL="pt-mysql-summary"
 . "$LIB_DIR/collect_mysql_info.sh"
 
 # Prefix (with path) for the collect files.
-p="$TMPDIR/collect_mysql_info"
+p="$PT_TMPDIR/collect_mysql_info"
 samples="$PERCONA_TOOLKIT_BRANCH/t/pt-mysql-summary/samples"
 
 mkdir "$p"
@@ -30,36 +30,36 @@ file_count=$(ls "$p" | wc -l)
 
 is $file_count 14 "Creates the correct number of files (without --databases)"
 
-awk '{print $1}' "$p/mysqld-instances" > "$TMPDIR/collect_mysqld_instances1.test"
+awk '{print $1}' "$p/mysqld-instances" > "$PT_TMPDIR/collect_mysqld_instances1.test"
 pids="$(_pidof mysqld)"
 pids="$(echo $pids | sed -e "s/[ \n]/,/g")"
-ps ww -p "$pids" | awk '{print $1}' > "$TMPDIR/collect_mysqld_instances2.test"
+ps ww -p "$pids" | awk '{print $1}' > "$PT_TMPDIR/collect_mysqld_instances2.test"
 
 no_diff \
-   "$TMPDIR/collect_mysqld_instances1.test" \
-   "$TMPDIR/collect_mysqld_instances2.test" \
+   "$PT_TMPDIR/collect_mysqld_instances1.test" \
+   "$PT_TMPDIR/collect_mysqld_instances2.test" \
    "collect_mysql_info() finds the correct instances"
 
-collect_mysqld_instances /dev/null > "$TMPDIR/collect_mysqld_instances3.test"
+collect_mysqld_instances /dev/null > "$PT_TMPDIR/collect_mysqld_instances3.test"
 
-awk '{print $1}' "$TMPDIR/collect_mysqld_instances3.test"> "$TMPDIR/collect_mysqld_instances4.test"
+awk '{print $1}' "$PT_TMPDIR/collect_mysqld_instances3.test"> "$PT_TMPDIR/collect_mysqld_instances4.test"
 
 no_diff \
-   "$TMPDIR/collect_mysqld_instances4.test" \
-   "$TMPDIR/collect_mysqld_instances2.test" \
+   "$PT_TMPDIR/collect_mysqld_instances4.test" \
+   "$PT_TMPDIR/collect_mysqld_instances2.test" \
    "(sanity check) which are the same that collect_mysqld_instances() does"
 
 # collect_mysql_status
-$CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' > "$TMPDIR/collect_mysql_status"
+$CMD_MYSQL $EXT_ARGV -ss -e 'SHOW /*!50000 GLOBAL*/ STATUS' > "$PT_TMPDIR/collect_mysql_status"
 
 
 # TODO This is still pretty fragile.
-awk '{print $1}' "$p/mysql-status" | sort > "$TMPDIR/collect_mysql_status_collect"
-awk '{print $1}' "$TMPDIR/collect_mysql_status" | sort  > "$TMPDIR/collect_mysql_status_manual"
+awk '{print $1}' "$p/mysql-status" | sort > "$PT_TMPDIR/collect_mysql_status_collect"
+awk '{print $1}' "$PT_TMPDIR/collect_mysql_status" | sort  > "$PT_TMPDIR/collect_mysql_status_manual"
 
 no_diff \
-   "$TMPDIR/collect_mysql_status_collect" \
-   "$TMPDIR/collect_mysql_status_manual"    \
+   "$PT_TMPDIR/collect_mysql_status_collect" \
+   "$PT_TMPDIR/collect_mysql_status_manual"    \
    "collect_mysql_status works the same than if done manually"
 
 port="$(get_var port "$p/mysql-variables")"
@@ -72,10 +72,10 @@ is \
 # collect_internal_vars
 pat='pt-summary-internal-user\|pt-summary-internal-FNV_64\|pt-summary-internal-trigger_count\|pt-summary-internal-symbols'
 
-collect_internal_vars > "$TMPDIR/collect_internal_vars"
+collect_internal_vars > "$PT_TMPDIR/collect_internal_vars"
 is \
    "$( grep $pat "$p/mysql-variables" )" \
-   "$( grep $pat "$TMPDIR/collect_internal_vars" )" \
+   "$( grep $pat "$PT_TMPDIR/collect_internal_vars" )" \
    "collect_internal_vars works"
 
 # find_my_cnf_file
@@ -100,21 +100,21 @@ is "$res" "/var/lib/mysql/my.cnf" "ps-mysqld-004.txt with port"
 
 
 # collect_mysql_databases
-$CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' > "$TMPDIR/mysql_collect_databases" 2>/dev/null
+$CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' > "$PT_TMPDIR/mysql_collect_databases" 2>/dev/null
 
 no_diff \
    "$p/mysql-databases" \
-   "$TMPDIR/mysql_collect_databases"       \
+   "$PT_TMPDIR/mysql_collect_databases"       \
    "collect_mysql_databases works"
 
 $CMD_MYSQL $EXT_ARGV -ss -e 'CREATE DATABASE collect_mysql_databases_test;' 1>/dev/null 2>&1
 
-collect_mysql_databases > "$TMPDIR/mysql_collect_databases"
+collect_mysql_databases > "$PT_TMPDIR/mysql_collect_databases"
 
 $CMD_MYSQL $EXT_ARGV -ss -e 'DROP DATABASE collect_mysql_databases_test;'
 
 cmd_ok \
-   "grep collect_mysql_databases_test '$TMPDIR/mysql_collect_databases' 1>/dev/null 2>&1" \
+   "grep collect_mysql_databases_test '$PT_TMPDIR/mysql_collect_databases' 1>/dev/null 2>&1" \
    "...and finds new dbs when we add them"
 
 # collect_master_logs_status
@@ -136,42 +136,42 @@ test_get_mysqldump_for () {
    local dir="$1"
    # Let's fake mysqldump
 
-   printf '#!/usr/bin/env bash\necho $@\n' > "$TMPDIR/mysqldump_fake.sh"
-   chmod +x "$TMPDIR/mysqldump_fake.sh"
+   printf '#!/usr/bin/env bash\necho $@\n' > "$PT_TMPDIR/mysqldump_fake.sh"
+   chmod +x "$PT_TMPDIR/mysqldump_fake.sh"
    local orig_mysqldump="$CMD_MYSQLDUMP"
-   local CMD_MYSQLDUMP="$TMPDIR/mysqldump_fake.sh"
+   local CMD_MYSQLDUMP="$PT_TMPDIR/mysqldump_fake.sh"
 
-   cat <<EOF > "$TMPDIR/expected"
+   cat <<EOF > "$PT_TMPDIR/expected"
 --defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases --all-databases
 EOF
    get_mysqldump_for '' > "$dir/mysqldump_test_1"
    no_diff \
       "$dir/mysqldump_test_1" \
-      "$TMPDIR/expected" \
+      "$PT_TMPDIR/expected" \
       "get_mysqldump_for picks a name default"
 
    get_mysqldump_for '' '--all-databases' > "$dir/mysqldump_test_2"
    no_diff \
       "$dir/mysqldump_test_2" \
-      "$TMPDIR/expected" \
+      "$PT_TMPDIR/expected" \
       "..which is the same as if we explicitly set --all-databases"
 
-   cat <<EOF > "$TMPDIR/expected"
+   cat <<EOF > "$PT_TMPDIR/expected"
 --defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases a
 EOF
    get_mysqldump_for '' 'a' > "$dir/mysqldump_test_3"
    no_diff \
       "$dir/mysqldump_test_3" \
-      "$TMPDIR/expected" \
+      "$PT_TMPDIR/expected" \
       "get_mysqldump_for: Explicitly setting a database works"
 
-   cat <<EOF > "$TMPDIR/expected"
+   cat <<EOF > "$PT_TMPDIR/expected"
 --defaults-file=/tmp/12345/my.sandbox.cnf --no-data --skip-comments --skip-add-locks --skip-add-drop-table --compact --skip-lock-all-tables --skip-lock-tables --skip-set-charset --databases a b
 EOF
    get_mysqldump_for '' 'a,b' > "$dir/mysqldump_test_4"
    no_diff \
       "$dir/mysqldump_test_4" \
-      "$TMPDIR/expected" \
+      "$PT_TMPDIR/expected" \
       "get_mysqldump_for: Two databases separated by a comma are interpreted correctly"
 
    if [ -n "$orig_mysqldump" ]; then
@@ -195,5 +195,5 @@ EOF
 
 }
 
-mkdir "$TMPDIR/mysqldump"
-test_get_mysqldump_for "$TMPDIR/mysqldump"
+mkdir "$PT_TMPDIR/mysqldump"
+test_get_mysqldump_for "$PT_TMPDIR/mysqldump"
