@@ -188,7 +188,7 @@ is(
    $rows->{t}->{engine},
    'InnoDB',
    "New table ENGINE=InnoDB"
-) or BAIL_OUT("Something went terribly wrong");
+) or warn Dumper($rows);
 
 is(
    scalar keys %$rows,
