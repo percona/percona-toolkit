@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More tests => 31;
 
 use MySQLConfig;
 use DSNParser;
@@ -826,6 +826,16 @@ SKIP: {
       "MySQL version from dbh"
    );
 }
+
+$config = new MySQLConfig(
+   file => "$trunk/t/lib/samples/configs/mycnf-kc-001.txt",
+   TextResultSetParser => $trp,
+);
+is(
+  $config->value_of('user'),
+  'mysql',
+  'end of line comment in option file'
+);
 
 # #############################################################################
 # Done.

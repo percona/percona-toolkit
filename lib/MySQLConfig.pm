@@ -337,8 +337,9 @@ sub _parse_varvals {
    ITEM:
    foreach my $item ( @varvals ) {
       if ( $item ) {
-         # Strip leading and trailing whitespace.
+         # Strip leading and trailing whitespace, and trailing comments.
          $item =~ s/^\s+//;
+         $item =~ s/[#;].*$//;
          $item =~ s/\s+$//;
       }
 
