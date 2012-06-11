@@ -8,7 +8,7 @@ plan 32
 . "$LIB_DIR/report_formatting.sh"
 . "$LIB_DIR/report_mysql_info.sh"
 
-TMPDIR="$TEST_TMPDIR"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
 TOOL="pt-mysql-summary"
 
@@ -18,30 +18,30 @@ NAME_VAL_LEN=20
 # table_cache
 # ###########################################################################
 
-rm $TMPDIR/table_cache_tests 2>/dev/null
-touch $TMPDIR/table_cache_tests
+rm $PT_TMPDIR/table_cache_tests 2>/dev/null
+touch $PT_TMPDIR/table_cache_tests
 
 is                                                  \
-   $(get_table_cache "$TMPDIR/table_cache_tests")   \
+   $(get_table_cache "$PT_TMPDIR/table_cache_tests")   \
    0                                                \
    "0 if neither table_cache nor table_open_cache are present"
 
-cat <<EOF > $TMPDIR/table_cache_tests
+cat <<EOF > $PT_TMPDIR/table_cache_tests
 table_cache       5
 table_open_cache  4
 EOF
 
 is                                                 \
-   $(get_table_cache "$TMPDIR/table_cache_tests")  \
+   $(get_table_cache "$PT_TMPDIR/table_cache_tests")  \
    4                                               \
    "If there's a table_open_cache present, uses that"
 
-cat <<EOF > $TMPDIR/table_cache_tests
+cat <<EOF > $PT_TMPDIR/table_cache_tests
 table_cache       5
 EOF
 
 is                                                 \
-   $(get_table_cache "$TMPDIR/table_cache_tests")  \
+   $(get_table_cache "$PT_TMPDIR/table_cache_tests")  \
    5                                               \
    "Otherwise, defaults to table_cache"
 
@@ -49,7 +49,7 @@ is                                                 \
 # summarize_processlist
 # ###########################################################################
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
 
   Command                        COUNT(*) Working SUM(Time) MAX(Time)
   ------------------------------ -------- ------- --------- ---------
@@ -106,28 +106,28 @@ cat <<EOF > $TMPDIR/expected
 
 EOF
 
-summarize_processlist "$samples/processlist-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "summarize_processlist"
+summarize_processlist "$samples/processlist-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "summarize_processlist"
 
 
 # ###########################################################################
 # summarize_binlogs
 # ###########################################################################
 NAME_VAL_LEN=25
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
                   Binlogs | 20
                Zero-Sized | 3
                Total Size | 6.5G
 EOF
 
-summarize_binlogs "$samples/mysql-master-logs-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/expected" "$TMPDIR/got" "summarize_binlogs"
+summarize_binlogs "$samples/mysql-master-logs-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/expected" "$PT_TMPDIR/got" "summarize_binlogs"
 
 # ###########################################################################
 # Reporting semisync replication
 # ###########################################################################
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
    master semisync status | 
        master trace level | 32, net wait (more information about network waits)
 master timeout in milliseconds | 10000
@@ -147,14 +147,14 @@ master wait_pos_backtraverse |
             master yes_tx | 
 EOF
 
-_semi_sync_stats_for "master" "$samples/mysql-variables-with-semisync.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/expected" "$TMPDIR/got" "semisync replication"
+_semi_sync_stats_for "master" "$samples/mysql-variables-with-semisync.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/expected" "$PT_TMPDIR/got" "semisync replication"
 
 # ###########################################################################
 # pretty_print_cnf_file
 # ###########################################################################
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
 
 [mysqld]
 datadir                             = /mnt/data/mysql
@@ -187,24 +187,24 @@ pid-file                            = /var/run/mysqld/mysqld.pid
 target-dir                          = /data/backup
 EOF
 
-pretty_print_cnf_file "$samples/my.cnf-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "pretty_print_cnf_file"
+pretty_print_cnf_file "$samples/my.cnf-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "pretty_print_cnf_file"
 
 
 # TODO BUG NUMBER#
-cp "$samples/my.cnf-001.txt" "$TMPDIR/test_pretty_print_cnf_file"
-echo "some_var_yadda=0" >> "$TMPDIR/test_pretty_print_cnf_file"
-echo "some_var_yadda                      = 0" >> "$TMPDIR/expected"
+cp "$samples/my.cnf-001.txt" "$PT_TMPDIR/test_pretty_print_cnf_file"
+echo "some_var_yadda=0" >> "$PT_TMPDIR/test_pretty_print_cnf_file"
+echo "some_var_yadda                      = 0" >> "$PT_TMPDIR/expected"
 
-pretty_print_cnf_file "$TMPDIR/test_pretty_print_cnf_file" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "pretty_print_cnf_file, bug XXXXXX"
+pretty_print_cnf_file "$PT_TMPDIR/test_pretty_print_cnf_file" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "pretty_print_cnf_file, bug XXXXXX"
 
 
 # ###########################################################################
 # plugin_status
 # ###########################################################################
 
-cat <<EOF > $TMPDIR/plugins
+cat <<EOF > $PT_TMPDIR/plugins
 binlog   ACTIVE   STORAGE ENGINE NULL  GPL
 partition   ACTIVE   STORAGE ENGINE NULL  GPL
 ARCHIVE  ACTIVE   STORAGE ENGINE NULL  GPL
@@ -218,21 +218,21 @@ MRG_MYISAM  ACTIVE   STORAGE ENGINE NULL  GPL
 EOF
 
 is \
-   "$(get_plugin_status $TMPDIR/plugins InnoDB )"  \
+   "$(get_plugin_status $PT_TMPDIR/plugins InnoDB )"  \
    "ACTIVE"                                  \
    "Sanity test, finds InnoDB as active"
 
 is \
-   "$(get_plugin_status $TMPDIR/plugins some_plugin_that_doesnt_exist )"  \
+   "$(get_plugin_status $PT_TMPDIR/plugins some_plugin_that_doesnt_exist )"  \
    "Not found"                                  \
    "Doesn't find a nonexistent plugin"
 
-echo "INNODB_CMP  ACTIVE" >> $TMPDIR/plugins
+echo "INNODB_CMP  ACTIVE" >> $PT_TMPDIR/plugins
 is \
-   "$(get_plugin_status $TMPDIR/plugins "INNODB_CMP" )"  \
+   "$(get_plugin_status $PT_TMPDIR/plugins "INNODB_CMP" )"  \
    "ACTIVE"
 
-cat <<EOF > $TMPDIR/plugins
+cat <<EOF > $PT_TMPDIR/plugins
 binlog   ACTIVE   STORAGE ENGINE NULL  GPL
 mysql_native_password   ACTIVE   AUTHENTICATION NULL  GPL
 mysql_old_password   ACTIVE   AUTHENTICATION NULL  GPL
@@ -256,7 +256,7 @@ partition   ACTIVE   STORAGE ENGINE NULL  GPL
 EOF
 
 is \
-   "$(get_plugin_status $TMPDIR/plugins "INNODB_CMP" )"  \
+   "$(get_plugin_status $PT_TMPDIR/plugins "INNODB_CMP" )"  \
    "ACTIVE"                                              \
    "Multiple plugins with the same prefix"
 
@@ -266,80 +266,80 @@ is \
 
 _NO_FALSE_NEGATIVES=1
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Port  Data Directory             Nice OOM Socket
   ===== ========================== ==== === ======
    3306 /var/lib/mysql             ?    ?   /var/run/mysqld/mysqld.sock
   12345 /tmp/12345/data            ?    ?   /tmp/12345/mysql_sandbox12345.sock
   12346 /tmp/12346/data            ?    ?   /tmp/12346/mysql_sandbox12346.sock
 EOF
-touch "$TMPDIR/empty"
-parse_mysqld_instances "$samples/ps-mysqld-001.txt" "$TMPDIR/empty" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-001.txt"
+touch "$PT_TMPDIR/empty"
+parse_mysqld_instances "$samples/ps-mysqld-001.txt" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ps-mysqld-001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Port  Data Directory             Nice OOM Socket
   ===== ========================== ==== === ======
         /var/lib/mysql             ?    ?   /var/lib/mysql/mysql.sock
 EOF
-parse_mysqld_instances "$samples/ps-mysqld-002.txt" "$TMPDIR/empty" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-002.txt"
+parse_mysqld_instances "$samples/ps-mysqld-002.txt" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ps-mysqld-002.txt"
 
 #parse_mysqld_instances
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Port  Data Directory             Nice OOM Socket
   ===== ========================== ==== === ======
    3306 /mnt/data-store/mysql/data ?    ?   /tmp/mysql.sock
 EOF
-parse_mysqld_instances "$samples/ps-mysqld-003.txt" "$TMPDIR/empty" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "ps-mysqld-003.txt"
+parse_mysqld_instances "$samples/ps-mysqld-003.txt" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ps-mysqld-003.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Port  Data Directory             Nice OOM Socket
   ===== ========================== ==== === ======
         /var/db/mysql              ?    ?   
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 mysql   767  0.0  0.9  3492  1100  v0  I     3:01PM   0:00.07 /bin/sh /usr/local/bin/mysqld_safe --defaults-extra-file=/var/db/mysql/my.cnf --user=mysql --datadir=/var/db/mysql --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
 mysql   818  0.0 17.4 45292 20584  v0  I     3:01PM   0:02.28 /usr/local/libexec/mysqld --defaults-extra-file=/var/db/mysql/my.cnf --basedir=/usr/local --datadir=/var/db/mysql --user=mysql --log-error=/var/db/mysql/freebsd.hsd1.va.comcast.net..err --pid-file=/var/db/mysql/freebsd.hsd1.va.comcast.net..pid
 EOF
-parse_mysqld_instances "$TMPDIR/in" "$TMPDIR/empty" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_mysqld_instances"
+parse_mysqld_instances "$PT_TMPDIR/in" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_mysqld_instances"
 
 # ###########################################################################
 # get_mysql_*
 # ###########################################################################
 NAME_VAL_LEN=20
 
-cp $samples/mysql-variables-001.txt $TMPDIR/mysql-variables
+cp $samples/mysql-variables-001.txt $PT_TMPDIR/mysql-variables
 is \
-   $(get_mysql_timezone "$TMPDIR/mysql-variables") \
+   $(get_mysql_timezone "$PT_TMPDIR/mysql-variables") \
    "EDT" \
    "get_mysql_timezone"
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
 2010-05-27 11:38 (up 0+02:08:52)
 EOF
-cp $samples/mysql-status-001.txt $TMPDIR/mysql-status
-uptime="$(get_var Uptime $TMPDIR/mysql-status)"
+cp $samples/mysql-status-001.txt $PT_TMPDIR/mysql-status
+uptime="$(get_var Uptime $PT_TMPDIR/mysql-status)"
 current_time="$(echo -e "2010-05-27 11:38\n")"
-get_mysql_uptime "${uptime}" "${current_time}" > $TMPDIR/got
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "get_mysql_uptime"
+get_mysql_uptime "${uptime}" "${current_time}" > $PT_TMPDIR/got
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "get_mysql_uptime"
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
              Version | 5.0.51a-24+lenny2 (Debian)
             Built On | debian-linux-gnu i486
 EOF
-cp "$samples/mysql-variables-001.txt" "$TMPDIR/mysql-variables"
-get_mysql_version "$TMPDIR/mysql-variables" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "get_mysql_version"
+cp "$samples/mysql-variables-001.txt" "$PT_TMPDIR/mysql-variables"
+get_mysql_version "$PT_TMPDIR/mysql-variables" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "get_mysql_version"
 
 # ###########################################################################
 # format_status_variables
 # ###########################################################################
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 Variable                                Per day  Per second      5 secs
 Bytes_received                          8000000         100            
 Bytes_sent                             35000000         400            
@@ -428,15 +428,15 @@ Uptime                                    90000           1           1
 Uptime_since_flush_status                 90000           1            
 EOF
 
-join "$samples/mysql-status-001.txt" "$samples/mysql-status-002.txt" > "$TMPDIR/in"
-format_status_variables "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "format_status_variables"
+join "$samples/mysql-status-001.txt" "$samples/mysql-status-002.txt" > "$PT_TMPDIR/in"
+format_status_variables "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "format_status_variables"
 
 # ###########################################################################
 # format_overall_db_stats
 # ###########################################################################
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   Database Tables Views SPs Trigs Funcs   FKs Partn
   mysql        17                                  
@@ -464,10 +464,10 @@ cat <<EOF > "$TMPDIR/expected"
   sakila     1  15   1   3  19  26   3   4   1          45   4   1   7   2
 
 EOF
-format_overall_db_stats "$samples/mysql-schema-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+format_overall_db_stats "$samples/mysql-schema-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
 
   Database Tables Views SPs Trigs Funcs   FKs Partn
   {chosen}      1                                  
@@ -489,17 +489,17 @@ cat <<EOF > $TMPDIR/expected
   {chosen}   1   1
 
 EOF
-format_overall_db_stats "$samples/mysql-schema-002.txt" > "$TMPDIR/got"
+format_overall_db_stats "$samples/mysql-schema-002.txt" > "$PT_TMPDIR/got"
 no_diff \
-   "$TMPDIR/got" \
-   "$TMPDIR/expected" \
+   "$PT_TMPDIR/got" \
+   "$PT_TMPDIR/expected" \
    "format_overall_db_stats: single DB without CREATE DATABASE nor USE db defaults to {chosen}"
 
 # ###########################################################################
 # format_innodb_status
 # ###########################################################################
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
       Checkpoint Age | 619k
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
   Oldest Transaction | 3 Seconds
@@ -547,10 +547,10 @@ Mutexes/Locks Waited For
       1 lock on RW-latch at 0x7f4bd0a8c8d0 '&block->lock'
 EOF
 
-format_innodb_status $samples/innodb-status.001.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.001.txt"
+format_innodb_status $samples/innodb-status.001.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.001.txt"
 
-cat <<'EOF' > $TMPDIR/expected
+cat <<'EOF' > $PT_TMPDIR/expected
       Checkpoint Age | 348M
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
   Oldest Transaction | 4 Seconds
@@ -581,10 +581,10 @@ Mutexes/Locks Waited For
       1 Mutex at 0x2abf68b6c0d0 '&log_sys->mutex'
 EOF
 
-format_innodb_status $samples/innodb-status.002.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.002.txt"
+format_innodb_status $samples/innodb-status.002.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.002.txt"
 
-cat <<'EOF' > $TMPDIR/expected
+cat <<'EOF' > $PT_TMPDIR/expected
       Checkpoint Age | 0
         InnoDB Queue | 0 queries inside InnoDB, 0 queries in queue
   Oldest Transaction | 35 Seconds
@@ -599,10 +599,10 @@ Tables Locked
       1 `test`.`t`
 EOF
 
-format_innodb_status $samples/innodb-status.003.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.003.txt"
+format_innodb_status $samples/innodb-status.003.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.003.txt"
 
-cat <<'EOF' > $TMPDIR/expected
+cat <<'EOF' > $PT_TMPDIR/expected
       Checkpoint Age | 93M
         InnoDB Queue | 9 queries inside InnoDB, 0 queries in queue
   Oldest Transaction | 263 Seconds
@@ -627,8 +627,8 @@ Mutexes/Locks Waited For
       1 lock on RW-latch at 0x2ab2c679a550 created in file buf/buf0buf.c line 550
 EOF
 
-format_innodb_status $samples/innodb-status.004.txt > $TMPDIR/got
-no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.004.txt" 
+format_innodb_status $samples/innodb-status.004.txt > $PT_TMPDIR/got
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.004.txt" 
 
 # ###########################################################################
 # section_innodb
@@ -636,7 +636,7 @@ no_diff $TMPDIR/got $TMPDIR/expected "innodb-status.004.txt"
 
 test_format_innodb () {
    local NAME_VAL_LEN=25
-   cat <<EOF > $TMPDIR/expected
+   cat <<EOF > $PT_TMPDIR/expected
                   Version | 1.0.17-13.2
          Buffer Pool Size | 128.0M
          Buffer Pool Fill | 1%
@@ -660,8 +660,8 @@ test_format_innodb () {
       Adaptive Checkpoint | estimate
 EOF
 
-   section_innodb "$samples/temp001/mysql-variables" "$samples/temp001/mysql-status" > "$TMPDIR/got"
-   no_diff "$TMPDIR/got" "$TMPDIR/expected" "Format InnoDB"
+   section_innodb "$samples/temp001/mysql-variables" "$samples/temp001/mysql-status" > "$PT_TMPDIR/got"
+   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Format InnoDB"
 }
 
 test_format_innodb
@@ -673,13 +673,13 @@ test_format_innodb
 test_format_innodb_filters () {
    local NAME_VAL_LEN=20
 
-   cat <<EOF > $TMPDIR/expected
+   cat <<EOF > $PT_TMPDIR/expected
         binlog_do_db | foo
     binlog_ignore_db | mysql,test
 EOF
 
-   format_binlog_filters "$samples/mysql-show-master-status-001.txt" > "$TMPDIR/got"
-   no_diff "$TMPDIR/got" "$TMPDIR/expected" "Format InnoDB filters"
+   format_binlog_filters "$samples/mysql-show-master-status-001.txt" > "$PT_TMPDIR/got"
+   no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Format InnoDB filters"
 }
 
 test_format_innodb_filters
@@ -692,26 +692,26 @@ OPT_SLEEP=1
 OPT_DATABASES=""
 OPT_READ_SAMPLES=""
 NAME_VAL_LEN=25
-report_mysql_summary "$samples/tempdir" | tail -n+3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$samples/expected_result_report_summary.txt"
+report_mysql_summary "$samples/tempdir" | tail -n+3 > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$samples/expected_result_report_summary.txt"
 
 _NO_FALSE_NEGATIVES=""
 OPT_SLEEP=10
-report_mysql_summary "$samples/temp002" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+report_mysql_summary "$samples/temp002" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
 no_diff \
-   "$TMPDIR/got" \
+   "$PT_TMPDIR/got" \
    "$samples/expected_output_temp002.txt" \
    "report_mysql_summary, dir: temp002"
 
-report_mysql_summary "$samples/temp003" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+report_mysql_summary "$samples/temp003" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
 no_diff \
-   "$TMPDIR/got" \
+   "$PT_TMPDIR/got" \
    "$samples/expected_output_temp003.txt" \
    "report_mysql_summary, dir: temp003"
 
-report_mysql_summary "$samples/temp004" 2>/dev/null | tail -n+3 > "$TMPDIR/got"
+report_mysql_summary "$samples/temp004" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
 no_diff \
-   "$TMPDIR/got" \
+   "$PT_TMPDIR/got" \
    "$samples/expected_output_temp004.txt" \
    "report_mysql_summary, dir: temp004"
 

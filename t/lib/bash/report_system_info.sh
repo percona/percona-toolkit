@@ -9,7 +9,7 @@ plan 49
 . "$LIB_DIR/report_formatting.sh"
 . "$LIB_DIR/report_system_info.sh"
 
-TMPDIR="$TEST_TMPDIR"
+PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
 TOOL="pt-summary"
 
@@ -18,28 +18,28 @@ NAME_VAL_LEN=12
 
 # parse_proc_cpuinfo
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Processors | physical = 1, cores = 2, virtual = 2, hyperthreading = no
       Speeds | 2x1300.000
       Models | 2xGenuine Intel(R) CPU U7300 @ 1.30GHz
       Caches | 2x3072 KB
 EOF
 
-parse_proc_cpuinfo "$samples/proc_cpuinfo001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_proc_cpuinfo, proc_cpuinfo001.txt"
+parse_proc_cpuinfo "$samples/proc_cpuinfo001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_proc_cpuinfo, proc_cpuinfo001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Processors | physical = 1, cores = 1, virtual = 2, hyperthreading = yes
       Speeds | 2x1000.000
       Models | 2xIntel(R) Atom(TM) CPU N455 @ 1.66GHz
       Caches | 2x512 KB
 EOF
 
-parse_proc_cpuinfo "$samples/proc_cpuinfo002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_proc_cpuinfo, proc_cpuinfo002.txt"
+parse_proc_cpuinfo "$samples/proc_cpuinfo002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_proc_cpuinfo, proc_cpuinfo002.txt"
 
 # parse_ethtool
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 Settings for eth0:
    Supported ports: [ TP MII ]
    Supported link modes:   10baseT/Half 10baseT/Full 
@@ -62,19 +62,19 @@ Settings for eth0:
    Link detected: no
 EOF
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Device    Speed     Duplex
   ========= ========= =========
   eth0       10Mb/s     Half      
 EOF
 
-parse_ethtool "$TMPDIR/in" > "$TMPDIR/got"
+parse_ethtool "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
 no_diff \
-   "$TMPDIR/expected" \
-   "$TMPDIR/got" \
+   "$PT_TMPDIR/expected" \
+   "$PT_TMPDIR/got" \
    "parse_ethtool works"
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 Settings for eth0:
    Supported ports: [ TP MII ]
    Supported link modes:   10baseT/Half 10baseT/Full 
@@ -117,22 +117,22 @@ Settings for eth4:
    Link detected: no
 EOF
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Device    Speed     Duplex
   ========= ========= =========
   eth0       10Mb/s     Half      
   eth4       100Mb/s    Full      
 EOF
 
-parse_ethtool "$TMPDIR/in" > "$TMPDIR/got"
+parse_ethtool "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
 no_diff \
-   "$TMPDIR/expected" \
-   "$TMPDIR/got" \
+   "$PT_TMPDIR/expected" \
+   "$PT_TMPDIR/got" \
    "parse_ethtool works if there are multiple devices"
 
 # parse_netstat
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Connections from remote IP addresses
     192.168.243.72      1
     192.168.243.81      2
@@ -144,10 +144,10 @@ cat <<EOF > $TMPDIR/expected
     ESTABLISHED         4
     LISTEN             15
 EOF
-parse_netstat "$samples/netstat-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_netstat, netstat-001.txt"
+parse_netstat "$samples/netstat-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_netstat, netstat-001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Connections from remote IP addresses
     10.14.82.196      175
     10.14.82.200       10
@@ -181,10 +181,10 @@ cat <<EOF > "$TMPDIR/expected"
     LISTEN             15
     TIME_WAIT        1250
 EOF
-parse_netstat "$samples/netstat-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_netstat, netstat-002.txt"
+parse_netstat "$samples/netstat-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_netstat, netstat-002.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Connections from remote IP addresses
     10.8.0.12           6
     10.8.0.14           2
@@ -210,16 +210,16 @@ cat <<EOF > "$TMPDIR/expected"
     TIME_WAIT           3
 EOF
 
-parse_netstat "$samples/netstat-003.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_netstat, netstat-003.txt"
+parse_netstat "$samples/netstat-003.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_netstat, netstat-003.txt"
 
 # parse_lsi_megaraid
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
          BBU | 100% Charged, Temperature 18C, isSOHGood=Yes
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 BBU status for Adapter: 0
 
 BatteryType: BBU
@@ -250,11 +250,11 @@ isSOHGood: Yes
 
 Exit Code: 0x00
 EOF
-parse_lsi_megaraid_bbu_status "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_lsi_megaraid_bbu_status "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 # ############################################################################
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   PhysiclDev Type State   Errors Vendor  Model        Size
   ========== ==== ======= ====== ======= ============ ===========
@@ -264,7 +264,7 @@ cat <<EOF > "$TMPDIR/expected"
   Hard Disk  SAS  Online   0/0/0 SEAGATE ST373455SS   70007MB
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
                                      
 Adapter #0
 
@@ -351,12 +351,12 @@ Media Type: Hard Disk Device
 
 Exit Code: 0x00
 EOF
-parse_lsi_megaraid_devices "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_lsi_megaraid_devices "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 
 # ############################################################################
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   PhysiclDev Type State   Errors Vendor  Model        Size
   ========== ==== ======= ====== ======= ============ ===========
@@ -366,7 +366,7 @@ cat <<EOF > "$TMPDIR/expected"
   Hard Disk  SAS  Online   0/0/0 SEAGATE ST373455SS   70007MB
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 [root@pc-db1 ~]# /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
                                      
 Adapter #0
@@ -487,11 +487,11 @@ Media Type: Hard Disk Device
 
 Exit Code: 0x00
 EOF
-parse_lsi_megaraid_devices "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_lsi_megaraid_devices "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 # ############################################################################
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   VirtualDev Size      RAID Level Disks SpnDpth Stripe Status  Cache
   ========== ========= ========== ===== ======= ====== ======= =========
@@ -499,7 +499,7 @@ cat <<EOF > "$TMPDIR/expected"
   1(no name) 69376MB   1 (1-0-0)      2     1-1   64kB Optimal WB, no RA
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 [root@pc-db1 ~]# /opt/MegaRAID/MegaCli/MegaCli64 -LdPdInfo -aALL
                                      
 Adapter #0
@@ -620,11 +620,11 @@ Media Type: Hard Disk Device
 
 Exit Code: 0x00
 EOF
-parse_lsi_megaraid_virtual_devices "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_lsi_megaraid_virtual_devices "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 # ############################################################################
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   VirtualDev Size      RAID Level Disks SpnDpth Stripe Status  Cache
   ========== ========= ========== ===== ======= ====== ======= =========
@@ -632,7 +632,7 @@ cat <<EOF > "$TMPDIR/expected"
   1(no name) 69376MB   1 (1-0-0)      2      1-   64kB Optimal WB, no RA
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 [root@pc-db1 ~]# /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -Lall -aAll
                                      
 
@@ -664,38 +664,38 @@ Disk Cache Policy: Disk's Default
 
 Exit Code: 0x00
 EOF
-parse_lsi_megaraid_virtual_devices "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_lsi_megaraid_virtual_devices "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 
 # ############################################################################
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Model | PERC 6/i Integrated, PCIE interface, 8 ports
        Cache | 256MB Memory, BBU Present
 EOF
 
-parse_lsi_megaraid_adapter_info "$samples/MegaCli64_AdpAllInfo_aALL001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_lsi_megaraid_adapter_info "$samples/MegaCli64_AdpAllInfo_aALL001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 # Launchpad 886223
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   VirtualDev Size      RAID Level Disks SpnDpth Stripe Status  Cache
   ========== ========= ========== ===== ======= ====== ======= =========
   0(no name)  135.5 GB 0 (:-1-0)      2 Depth-2  64 KB Optimal WB, no RA
 EOF
-parse_lsi_megaraid_virtual_devices "$PERCONA_TOOLKIT_BRANCH/t/pt-summary/samples/MegaCli64_LdPdInfo_aALL_886223" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "Bug 886223"
+parse_lsi_megaraid_virtual_devices "$PERCONA_TOOLKIT_BRANCH/t/pt-summary/samples/MegaCli64_LdPdInfo_aALL_886223" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Bug 886223"
 
 # parse_hpacucli
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
       logicaldrive 1 (136.7 GB, RAID 1, OK)
       physicaldrive 1I:1:1 (port 1I:box 1:bay 1, SAS, 146 GB, OK)
       physicaldrive 1I:1:2 (port 1I:box 1:bay 2, SAS, 146 GB, OK)
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 
 Smart Array P400i in Slot 0 (Embedded)    (sn: PH73MU7325     )
 
@@ -708,18 +708,18 @@ Smart Array P400i in Slot 0 (Embedded)    (sn: PH73MU7325     )
       physicaldrive 1I:1:2 (port 1I:box 1:bay 2, SAS, 146 GB, OK)
 
 EOF
-parse_hpacucli "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_hpacucli "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
-parse_hpacucli "$samples/hpaculi-003.txt" > "$TMPDIR/got"
+parse_hpacucli "$samples/hpaculi-003.txt" > "$PT_TMPDIR/got"
 is \
-   "$(cat "$TMPDIR/got")" \
+   "$(cat "$PT_TMPDIR/got")" \
    "" \
    "parse_hpacucli, hpaculi-003.txt"
 
 # parse_fusionmpt_lsiutil
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   /proc/mpt/ioc0    LSI Logic SAS1068E B3    MPT 105   Firmware 00192f00   IOC 0
    B___T___L  Type       Vendor   Product          Rev      SASAddress     PhyNum
@@ -733,10 +733,10 @@ cat <<EOF > "$TMPDIR/expected"
    0   3  PhysDisk 2     SEAGATE  ST3146855SS      S52A  5000c500130fcaed     3
    0  10  PhysDisk 3     SEAGATE  ST3146855SS      S52A  5000c500131093f5     2
 EOF
-parse_fusionmpt_lsiutil "$samples/lsiutil-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lsiutil-001.txt"
+parse_fusionmpt_lsiutil "$samples/lsiutil-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lsiutil-001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   /proc/mpt/ioc0    LSI Logic SAS1064E B3    MPT 105   Firmware 011e0000   IOC 0
    B___T___L  Type       Vendor   Product          Rev      SASAddress     PhyNum
@@ -746,10 +746,10 @@ cat <<EOF > "$TMPDIR/expected"
    0   2  PhysDisk 0     IBM-ESXS ST9300603SS   F  B536  5000c5001d784329     1
    0   3  PhysDisk 1     IBM-ESXS MBD2300RC        SB17  500000e113c17152     0
 EOF
-parse_fusionmpt_lsiutil "$samples/lsiutil-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lsiutil-002.txt"
+parse_fusionmpt_lsiutil "$samples/lsiutil-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lsiutil-002.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 
   /proc/mpt/ioc0    LSI Logic SAS1064E B3    MPT 105   Firmware 011e0000   IOC 0
    B___T___L  Type       Vendor   Product          Rev      SASAddress     PhyNum
@@ -759,12 +759,12 @@ cat <<EOF > "$TMPDIR/expected"
    0   2  PhysDisk 0     IBM-ESXS MBD2300RC        SB17  500000e113c00ed2     1
    0   3  PhysDisk 1     IBM-ESXS MBD2300RC        SB17  500000e113c17ee2     0
 EOF
-parse_fusionmpt_lsiutil "$samples/lsiutil-003.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "lsiutil-003.txt"
+parse_fusionmpt_lsiutil "$samples/lsiutil-003.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "lsiutil-003.txt"
 
 # parse_free_minus_b
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Total | 3.9G
         Free | 1.4G
         Used | physical = 2.5G, swap allocated = 4.9G, swap used = 0.0, virtual = 2.5G
@@ -773,7 +773,7 @@ cat <<EOF > "$TMPDIR/expected"
        Dirty | 60 kB
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
              total       used       free     shared    buffers     cached
 Mem:    4182048768 2653696000 1528352768          0  138240000 2060787712
 -/+ buffers/cache:  454668288 3727380480
@@ -824,11 +824,11 @@ Hugepagesize:       2048 kB
 DirectMap4k:       10232 kB
 DirectMap2M:      897024 kB
 EOF
-parse_free_minus_b "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_free_minus_b"
+parse_free_minus_b "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_free_minus_b"
 
 # Bug 993436: Memory: Total reports M when it should say G
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Total | 1010.5M
         Free | 784.4M
         Used | physical = 226.1M, swap allocated = 2.0G, swap used = 0.0, virtual = 226.1M
@@ -836,21 +836,21 @@ cat <<EOF > "$TMPDIR/expected"
       Caches | 122.2M
        Dirty | 152 kB
 EOF
-parse_free_minus_b "$T_DIR/pt-summary/samples/Linux/002/memory" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_free_minus_b (bug 993436)"
+parse_free_minus_b "$T_DIR/pt-summary/samples/Linux/002/memory" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_free_minus_b (bug 993436)"
 
 # parse_filesystems
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Filesystem  Size Used Type  Opts Mountpoint
   /dev/sda1    99M  13% ext3  rw   /boot
   /dev/sda2   540G  89% ext3  rw   /
   tmpfs        48G   0% tmpfs rw   /dev/shm
 EOF
-parse_filesystems "$samples/df-mount-003.txt" "Linux" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "df-mount-003.txt Linux"
+parse_filesystems "$samples/df-mount-003.txt" "Linux" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "df-mount-003.txt Linux"
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Filesystem  Size Used Type        Opts              Mountpoint
   /dev/sda1   9.9G  34% ext3        rw                /
   /dev/sdb    414G   1% ext3        rw                /mnt
@@ -860,10 +860,10 @@ cat <<EOF > $TMPDIR/expected
   none        7.6G   0% proc        rw                /dev/shm
   none        7.6G   0% sysfs       rw                /dev/shm
 EOF
-parse_filesystems "$samples/df-mount-004.txt" "Linux" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "df-mount-004.txt Linux"
+parse_filesystems "$samples/df-mount-004.txt" "Linux" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "df-mount-004.txt Linux"
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Filesystem                         Size Used Type  Opts       Mountpoint
   /dev/cciss/c0d0p1                   99M  24% ext3  rw         /boot
   /dev/mapper/VolGroup00-LogVol00    194G  58% ext3  rw         /
@@ -871,10 +871,10 @@ cat <<EOF > $TMPDIR/expected
   /dev/mapper/VolGroup01-mysql_data 1008G  44% ext3  rw,noatime /data/mysql-data
   tmpfs                               48G   0% tmpfs rw         /dev/shm
 EOF
-parse_filesystems "$samples/df-mount-005.txt" "Linux" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "df-mount-005.txt Linux"
+parse_filesystems "$samples/df-mount-005.txt" "Linux" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "df-mount-005.txt Linux"
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Filesystem   Size Used Type  Opts                Mountpoint
   /dev/ad0s1a  496M  32% ufs   local               /
   /dev/ad0s1d  1.1G   1% ufs   local, soft-updates /var
@@ -882,12 +882,12 @@ cat <<EOF > $TMPDIR/expected
   /dev/ad0s1f   17G   9% ufs   local, soft-updates /usr
   devfs        1.0K 100% devfs local               /dev
 EOF
-parse_filesystems "$samples/df-mount-006.txt" "FreeBSD" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "df-mount-006.txt FreeBSD"
+parse_filesystems "$samples/df-mount-006.txt" "FreeBSD" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "df-mount-006.txt FreeBSD"
 
 # parse_ip_s_link
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
   ========= ========= ========== ========== ========== ========== ==========
   lo          3000000      25000          0    3000000      25000          0
@@ -895,10 +895,10 @@ cat <<EOF > "$TMPDIR/expected"
   wlan0      50000000      80000          0   20000000      90000          0
   vboxnet0          0          0          0          0          0          0
 EOF
-parse_ip_s_link "$samples/ip-s-link-001.txt" > $TMPDIR/got
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "ip-s-link-001.txt"
+parse_ip_s_link "$samples/ip-s-link-001.txt" > $PT_TMPDIR/got
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ip-s-link-001.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
   ========= ========= ========== ========== ========== ========== ==========
   lo       3500000000  350000000          0 3500000000  350000000          0
@@ -906,10 +906,10 @@ cat <<EOF > "$TMPDIR/expected"
   eth1     1250000000   60000000          0  900000000   50000000          0
   sit0              0          0          0          0          0          0
 EOF
-parse_ip_s_link "$samples/ip-s-link-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "ip-s-link-002.txt"
+parse_ip_s_link "$samples/ip-s-link-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ip-s-link-002.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   interface  rx_bytes rx_packets  rx_errors   tx_bytes tx_packets  tx_errors
   ========= ========= ========== ========== ========== ========== ==========
   lo         25000000     300000          0   25000000     300000          0
@@ -917,12 +917,12 @@ cat <<EOF > "$TMPDIR/expected"
   wlan0             0          0          0          0          0          0
   virbr0            0          0          0          0          0          0
 EOF
-parse_ip_s_link "$samples/ip-s-link-003.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "ip-s-link-003.txt"
+parse_ip_s_link "$samples/ip-s-link-003.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ip-s-link-003.txt"
 
 # parse_fdisk
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
 Device       Type      Start        End               Size
 ============ ==== ========== ========== ==================
 /dev/dm-0    Disk                             494609104896
@@ -931,30 +931,30 @@ Device       Type      Start        End               Size
 /dev/sda1    Part          1         26          205632000
 /dev/sda2    Part         26      60801       499891392000
 EOF
-parse_fdisk "$samples/fdisk-01.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "parse_fdisk"
+parse_fdisk "$samples/fdisk-01.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_fdisk"
 
 # parse_ethernet_controller_lspci
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Controller | Broadcom Corporation NetXtreme II BCM5708 Gigabit Ethernet (rev 12)
   Controller | Broadcom Corporation NetXtreme II BCM5708 Gigabit Ethernet (rev 12)
 EOF
-parse_ethernet_controller_lspci "$samples/lspci-001.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_ethernet_controller_lspci "$samples/lspci-001.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
 # parse_dmidecode_mem_devices
 
-cat <<EOF > $TMPDIR/expected
+cat <<EOF > $PT_TMPDIR/expected
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
   SODIMM0   2048 MB  800 MHz           SODIMM        Other         Synchronous
   SODIMM1   2048 MB  800 MHz           SODIMM        Other         Synchronous
 EOF
-parse_dmidecode_mem_devices "$samples/dmidecode-001.txt" > $TMPDIR/got
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmidecode-001.tx"
+parse_dmidecode_mem_devices "$samples/dmidecode-001.txt" > $PT_TMPDIR/got
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-001.tx"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
   DIMM1     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
@@ -966,10 +966,10 @@ cat <<EOF > "$TMPDIR/expected"
   DIMM7     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
   DIMM8     2048 MB  667 MHz (1.5 ns)  {OUT OF SPEC} {OUT OF SPEC} Synchronous
 EOF
-parse_dmidecode_mem_devices "$samples/dmidecode-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmidecode-002.tx"
+parse_dmidecode_mem_devices "$samples/dmidecode-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-002.tx"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
             1024 kB  33 MHz            Other         Flash         Non-Volatile
@@ -992,10 +992,10 @@ cat <<EOF > "$TMPDIR/expected"
   D7        {EMPTY}  1333 MHz          DIMM          Other         Other   
   D8        {EMPTY}  1333 MHz          DIMM          Other         Other   
 EOF
-parse_dmidecode_mem_devices "$samples/dmidecode-003.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmidecode-003.txt"
+parse_dmidecode_mem_devices "$samples/dmidecode-003.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-003.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
   DIMM_A2   4096 MB  1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Synchronous
@@ -1011,10 +1011,10 @@ cat <<EOF > "$TMPDIR/expected"
   DIMM_B1   {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Synchronous
   DIMM_B4   {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Synchronous
 EOF
-parse_dmidecode_mem_devices "$samples/dmidecode-004.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmidecode-004.txt"
+parse_dmidecode_mem_devices "$samples/dmidecode-004.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-004.txt"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
   Locator   Size     Speed             Form Factor   Type          Type Detail
   ========= ======== ================= ============= ============= ===========
   P1-DIMM1A 16384 MB 1066 MHz (0.9 ns) DIMM          {OUT OF SPEC} Other   
@@ -1037,12 +1037,12 @@ cat <<EOF > "$TMPDIR/expected"
   P2-DIMM3B {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
   P2-DIMM3C {EMPTY}  Unknown           DIMM          {OUT OF SPEC} Other   
 EOF
-parse_dmidecode_mem_devices "$samples/dmidecode-005.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "dmidecode-005.txt"
+parse_dmidecode_mem_devices "$samples/dmidecode-005.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "dmidecode-005.txt"
 
 # parse_arcconf
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Specs | Adaptec 3405, SAS/SATA, 128 MB cache, Optimal
      Battery | 99%, 3d1h11m remaining, Optimal
 
@@ -1058,7 +1058,7 @@ cat <<EOF > "$TMPDIR/expected"
   Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3146855SS  140014 MB   On (WB)
 EOF
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
 # /usr/StorMan/arcconf getconfig 1
 Controllers found: 1
 ----------------------------------------------------------------------
@@ -1193,10 +1193,10 @@ Physical Device information
 Command completed successfully.
 
 EOF
-parse_arcconf "$TMPDIR/in" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected"
+parse_arcconf "$PT_TMPDIR/in" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Specs | Adaptec 3405, SAS/SATA, 128 MB cache, Optimal
      Battery | 99%, 3d1h11m remaining, Optimal
 
@@ -1211,12 +1211,12 @@ cat <<EOF > "$TMPDIR/expected"
   Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
   Hard drive Online  SAS 3.0 Gb/s  SEAGATE ST3300655SS  286102 MB   On (WB)
 EOF
-parse_arcconf "$samples/arcconf-002.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "arcconf-002.txt"
+parse_arcconf "$samples/arcconf-002.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "arcconf-002.txt"
 
 # Launchpad 917781, parse_arcconf doesn't work with ZMM
 # https://bugs.launchpad.net/percona-toolkit/+bug/917781
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Specs | Adaptec 5405Z, SAS/SATA, 512 MB cache, Optimal
      Battery | ZMM Optimal
 
@@ -1232,12 +1232,12 @@ cat <<EOF > "$TMPDIR/expected"
   Hard drive Full rpm,Powered off SATA 3.0 Gb/s WDC     WD3000HLFS-0 286168 MB   On (WB)
 EOF
 
-parse_arcconf "$samples/arcconf-004_917781.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "Bug 917781"
+parse_arcconf "$samples/arcconf-004_917781.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Bug 917781"
 
 # Launchpad 900285, ${var/ /} doesn't work in sh
 # https://bugs.launchpad.net/percona-toolkit/+bug/900285
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
        Specs | Adaptec 5805Z, SAS/SATA, 512 MB cache, Optimal
      Battery | ZMM Optimal
 
@@ -1255,24 +1255,24 @@ cat <<EOF > "$TMPDIR/expected"
   Hard drive Full rpm,Powered off SAS 3.0 Gb/s  SEAGATE ST3300657SS  286102 MB   On (WB)
   Hard drive Full rpm,Powered off SAS 3.0 Gb/s  SEAGATE ST3300657SS  286102 MB   On (WB)
 EOF
-parse_arcconf "$samples/arcconf-003_900285.txt" > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "Bug 900285"
+parse_arcconf "$samples/arcconf-003_900285.txt" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Bug 900285"
 
 # parse_uptime
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
  15:10:14 up 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08
 EOF
 is \
-   "$( parse_uptime "$TMPDIR/in" )" \
+   "$( parse_uptime "$PT_TMPDIR/in" )" \
    "1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
    "parse_uptime works with Ubuntu's uptime"
 
-cat <<EOF > "$TMPDIR/in"
+cat <<EOF > "$PT_TMPDIR/in"
  some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08
 EOF
 is \
-   "$( parse_uptime "$TMPDIR/in" )" \
+   "$( parse_uptime "$PT_TMPDIR/in" )" \
    " some weird format etc 1 day, 15:08, 11 users,  load average: 0.18, 0.09, 0.08" \
    "parse_uptime returns uptime as-if if it doesn't contain an 'up'"
 
@@ -1284,16 +1284,16 @@ is \
    "format_lvs has a meaningful error message if all goes wrong"
 
 
-echo "Pretending to be an lvs dump" > "$TMPDIR/in"
+echo "Pretending to be an lvs dump" > "$PT_TMPDIR/in"
 is \
-   "$(format_lvs "$TMPDIR/in" "")" \
+   "$(format_lvs "$PT_TMPDIR/in" "")" \
    "Pretending to be an lvs dump" \
    "format_lvs dumps the file passed in"
 
 # report_system_summary
 parse_options "$BIN_DIR/pt-summary"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
     Hostname | 
       Uptime | 57 mins, 1 user, load averages: 0.16, 0.03, 0.07
     Platform | FreeBSD
@@ -1345,10 +1345,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
  0 0 0   58164  339792     0   0   0   0     0   0   0   0  231  115  229  0  5 95
 # The End ####################################################
 EOF
-report_system_summary "$samples/BSD/freebsd_001" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "report_system_summary works with samples from a FreeBSD box"
+report_system_summary "$samples/BSD/freebsd_001" | tail -n +3 > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "report_system_summary works with samples from a FreeBSD box"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
     Hostname | 
       Uptime | 43 mins, 2 users, load averages: 0.00, 0.00, 0.00
     Platform | NetBSD
@@ -1399,10 +1399,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
  0 0 0  78564  21364    0   0   0    0    0    0  0  0  101   11  10  0 0 100
 # The End ####################################################
 EOF
-report_system_summary "$samples/BSD/netbsd_001" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "netbsd_001"
+report_system_summary "$samples/BSD/netbsd_001" | tail -n +3 > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "netbsd_001"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
     Hostname | openbsd.my.domain
       Uptime | 1:14, 1 user, load averages: 0.44, 0.20, 0.16
     Platform | OpenBSD
@@ -1451,10 +1451,10 @@ Architecture | CPU = 32-bit, OS = 32-bit
  0 0 0   7496  191456   11   0   0   0   0   0   0   0  230    23   12  0  0 100
 # The End ####################################################
 EOF
-report_system_summary "$samples/BSD/openbsd_001" | tail -n +3  > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "openbsd_001"
+report_system_summary "$samples/BSD/openbsd_001" | tail -n +3  > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "openbsd_001"
 
-cat <<EOF > "$TMPDIR/expected"
+cat <<EOF > "$PT_TMPDIR/expected"
     Hostname | hugmeir
       Uptime | 1 day, 15:14,  5 users,  load average: 0.00, 0.06, 0.07
       System | Quanta; UW3; vTBD (Other)
@@ -1570,11 +1570,11 @@ Unable to collect information
 # The End ####################################################
 EOF
 
-report_system_summary "$samples/Linux/001" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$TMPDIR/expected" "Linux/001 (Ubuntu)"
+report_system_summary "$samples/Linux/001" | tail -n +3 > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "Linux/001 (Ubuntu)"
 
-report_system_summary "$samples/Linux/002" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$samples/Linux/output_002.txt" "Linux/002 (CentOS 5.7, as root)"
+report_system_summary "$samples/Linux/002" | tail -n +3 > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$samples/Linux/output_002.txt" "Linux/002 (CentOS 5.7, as root)"
 
-report_system_summary "$samples/Linux/003" | tail -n +3 > "$TMPDIR/got"
-no_diff "$TMPDIR/got" "$samples/Linux/output_003.txt" "Linux/003 (CentOS 5.7, as non-root)"
+report_system_summary "$samples/Linux/003" | tail -n +3 > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$samples/Linux/output_003.txt" "Linux/003 (CentOS 5.7, as non-root)"

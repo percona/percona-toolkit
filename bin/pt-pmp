@@ -18,7 +18,7 @@ TOOL="pt-pmp"
 
 set -u
 
-TMPDIR=""
+PT_TMPDIR=""
 
 mk_tmpdir() {
    local dir="${1:-""}"
@@ -27,21 +27,20 @@ mk_tmpdir() {
       if [ ! -d "$dir" ]; then
          mkdir "$dir" || die "Cannot make tmpdir $dir"
       fi
-      TMPDIR="$dir"
+      PT_TMPDIR="$dir"
    else
       local tool="${0##*/}"
       local pid="$$"
-      local x="$TMPDIR"
-      TMPDIR=`TMPDIR="$x" mktemp -d -t "${tool}.${pid}.XXXXXX"` \
+      PT_TMPDIR=`mktemp -d -t "${tool}.${pid}.XXXXXX"` \
          || die "Cannot make secure tmpdir"
    fi
 }
 
 rm_tmpdir() {
-   if [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ]; then
-      rm -rf "$TMPDIR"
+   if [ -n "$PT_TMPDIR" ] && [ -d "$PT_TMPDIR" ]; then
+      rm -rf "$PT_TMPDIR"
    fi
-   TMPDIR=""
+   PT_TMPDIR=""
 }
 
 # ###########################################################################
@@ -200,14 +199,14 @@ main() {
       fi
       date;
       for x in $(seq 1 $OPT_i); do
-         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-$TMPDIR/percona-toolkit}"
-         date +'TS %N.%s %F %T' >> "${OPT_k:-$TMPDIR/percona-toolkit}"
+         gdb -ex "set pagination 0" -ex "thread apply all bt" -batch -p $OPT_p >> "${OPT_k:-$PT_TMPDIR/percona-toolkit}"
+         date +'TS %N.%s %F %T' >> "${OPT_k:-$PT_TMPDIR/percona-toolkit}"
          sleep $OPT_s
       done
    fi
 
    if [ $# -eq 0 ]; then
-      aggregate_stacktrace "${OPT_l}" "${OPT_k:-$TMPDIR/percona-toolkit}"
+      aggregate_stacktrace "${OPT_l}" "${OPT_k:-$PT_TMPDIR/percona-toolkit}"
    else
       aggregate_stacktrace "${OPT_l}" "$@"
    fi

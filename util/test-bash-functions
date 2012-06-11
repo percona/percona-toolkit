@@ -40,10 +40,10 @@ SANDBOX_VERSION="$($BRANCH/sandbox/test-env version)"
 # Paths
 # ############################################################################
 
-# Do not use TMPDIR because the tools use it for their own secure tmpdir.
-TEST_TMPDIR="/tmp/percona-toolkit.test"
-if [ ! -d $TEST_TMPDIR ]; then
-   mkdir $TEST_TMPDIR
+# Do not use PT_TMPDIR because the tools use it for their own secure tmpdir.
+TEST_PT_TMPDIR="/tmp/percona-toolkit.test"
+if [ ! -d $TEST_PT_TMPDIR ]; then
+   mkdir $TEST_PT_TMPDIR
 fi
 
 # ############################################################################
@@ -79,7 +79,7 @@ load_tests() {
 # Source a test file to run whatever it contains (hopefully tests!).
 run_test() {
    local t=$1  # test file name, e.g. "group-by-all-01" for pt-diskstats
-   rm -rf $TEST_TMPDIR/* >/dev/null 2>&1
+   rm -rf $TEST_PT_TMPDIR/* >/dev/null 2>&1
 
    # Tests assume that they're being ran from their own dir, so they access
    # sample files like "samples/foo.txt".  So cd to the dir of the test file
@@ -106,8 +106,8 @@ result() {
       echo "not ok $testno - $TEST_FILE $test_name"
       failed_tests=$(( failed_tests + 1))
       echo "#   Failed '$test_command'" >&2
-      if [ -f $TEST_TMPDIR/failed_result ]; then
-         cat $TEST_TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
+      if [ -f $TEST_PT_TMPDIR/failed_result ]; then
+         cat $TEST_PT_TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
       fi
    fi
    testno=$((testno + 1))
@@ -164,7 +164,7 @@ no_diff() {
    local expected=$2
    local test_name=${3:-""}
    test_command="diff $got $expected"
-   eval $test_command > $TEST_TMPDIR/failed_result 2>&1
+   eval $test_command > $TEST_PT_TMPDIR/failed_result 2>&1
    result $? "$test_name"
 }
 
@@ -235,5 +235,5 @@ else
    done
 fi
 
-rm -rf $TEST_TMPDIR
+rm -rf $TEST_PT_TMPDIR
 exit $failed_tests
