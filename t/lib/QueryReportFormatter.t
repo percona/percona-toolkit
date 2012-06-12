@@ -536,7 +536,6 @@ $result = $qrf->header(
    ea        => $ea,
    # select    => [ $ea->get_attributes() ],
    orderby   => 'Query_time',
-   zero_bool => 0,
 );
 
 ok(
