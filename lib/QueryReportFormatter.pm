@@ -204,7 +204,6 @@ sub files {
 #   * orderby    scalar: attrib items ordered by
 # Optional arguments:
 #   * select     arrayref: attribs to print, mostly for testing
-#   * zero_bool  bool: print zero bool values (0%)
 # Print a report about the global statistics in the EventAggregator.
 # Formerly called "global_report()."
 sub header {
@@ -296,7 +295,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 || $args{zero_bool} ) { 
+         if ( $store->{sum} > 0 ) { 
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -485,7 +484,6 @@ sub query_report {
 #   * select      arrayref: attribs to print, mostly for testing
 #   * reason      scalar: why this item is being reported (top|outlier)
 #   * rank        scalar: item rank among the worst
-#   * zero_bool   bool: print zero bool values (0%)
 # Print a report about the statistics in the EventAggregator.
 # Called by query_report().
 sub event_report {
@@ -648,7 +646,7 @@ sub event_report {
          my $vals = $store->{$attrib};
          next unless scalar %$vals;
 
-         if ( $vals->{sum} > 0 || $args{zero_bool} ) {
+         if ( $vals->{sum} > 0 ) {
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($vals);
