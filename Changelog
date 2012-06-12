@@ -2,6 +2,7 @@ Changelog for Percona Toolkit
 
   * Disabled pt-table-sync --lock-and-rename except for MySQL 5.5 and newer
   * Made pt-index-usage and pt-log-player work with MySQL 5.5
+  * Removed --[no]zero-bool from pt-query-digest
   * Added --[no]check-plan to pt-online-schema-change
   * Added --chunk-index-columns to pt-online-schema-change
   * Added --[no]drop-new-table to pt-online-schema-change
