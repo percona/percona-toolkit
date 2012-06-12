@@ -61,6 +61,7 @@ v2.1.2 released 2012-06-12
   * Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
   * Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
   * Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+  * Fixed bug 997155: pt-table-sync sets binlog_format needlessly
   * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
   * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
   * Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1
