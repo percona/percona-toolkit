@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.2 released 2012-06-12
+
   * pt-heartbeat: Implemented --recursion-method=none
   * pt-index-usage: MySQL 5.5 compatibility fixes
   * pt-log-player: MySQL 5.5 compatibility fixes
