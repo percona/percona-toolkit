@@ -21,6 +21,7 @@ Changelog for Percona Toolkit
   * Fixed bug 912902: Some shell tools still use basename
   * Fixed bug 987694: There is no --recursion-method=none option
   * Fixed bug 886077: Passwords with commas don't work, expose part of password
+  * Fixed bug 856024: Lintian warnings when building percona-toolkit Debian package
   * Fixed bug 903379: pt-archiver --file doesn't create a file
   * Fixed bug 979092: pt-archiver --sleep conflicts with bulk operations
   * Fixed bug 903443: pt-deadlock-logger crashes on MySQL 5.5
