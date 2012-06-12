@@ -10,6 +10,7 @@ Changelog for Percona Toolkit
   * Added --database to pt-slave-delay
   * Added --[no]check-plan to pt-table-checksum
   * Added --chunk-index-columns to pt-table-checksum
+  * Implemented --recursion-method=none in pt-heartbeat, pt-online-schema-change, pt-slave-find, pt-slave-restart, pt-table-checksum, and pt-table-sync
   * Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
   * Fixed bug 919499: pt-table-checksum fails with binary log error in mysql >= 5.5.18
   * Fixed bug 978432: pt-table-checksum ignoring primary key
@@ -21,7 +22,6 @@ Changelog for Percona Toolkit
   * Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
   * Fixed bug 1004551: pt-online-schema-change --no-swap-tables causes error
   * Fixed bug 1008778: pt-table-checksum doesn't wait for checksum table to replicate
-  * Fixed bug 1010020: pt-online-schema-change can nibble after swapping the tables
   * Fixed bug 1010232: pt-table-checksum doesn't check the size of checksum chunks
   * Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1
   * Fixed bug 885382: pt-query-digest --embedded-attributes doesn't check cardinality
