@@ -9462,7 +9462,7 @@ or unique index, it might be best to synchronize that data by another means.
 
 At the time of this release, due to bugs in earlier versions of MySQL,
 L<"--lock-and-rename"> is disabled in versions earlier than 5.5. Consider
-using L<"pt-online-schema-change"> instead.
+using pt-online-schema-change instead.
 
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
