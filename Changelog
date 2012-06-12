@@ -55,6 +55,7 @@ Changelog for Percona Toolkit
   * Fixed bug 912902: Some shell tools still use basename
   * Fixed bug 945079: Shell tools TMPDIR may break
   * Fixed bug 949630: pt-query-digest mentions a Subversion repository
+  * Fixed bug 844034: pt-show-grants --separate fails with proxy user
 
 v2.1.1 released 2012-04-03
 
