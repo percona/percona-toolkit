@@ -6444,7 +6444,7 @@ sub header {
          next unless exists $results->{globals}->{$attrib};
 
          my $store = $results->{globals}->{$attrib};
-         if ( $store->{sum} > 0 || $args{zero_bool} ) { 
+         if ( $store->{sum} > 0 ) { 
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($store);
@@ -6731,7 +6731,7 @@ sub event_report {
          my $vals = $store->{$attrib};
          next unless scalar %$vals;
 
-         if ( $vals->{sum} > 0 || $args{zero_bool} ) {
+         if ( $vals->{sum} > 0 ) {
             push @result,
                sprintf $self->{bool_format},
                   $self->make_label($attrib), $self->bool_percents($vals);
@@ -15519,12 +15519,6 @@ port 3306 and also be told to watch a server on a non-standard port.
 default: yes
 
 Zero out the Rows_XXX properties for administrator command events.
-
-=item --[no]zero-bool
-
-default: yes
-
-Print 0% boolean values in report.
 
 =back
 
