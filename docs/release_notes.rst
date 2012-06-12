@@ -1,6 +1,94 @@
 Release Notes
 *************
 
+v2.1.2 released 2012-06-12
+==========================
+
+Percona Toolkit 2.1.2 has been released.  This is a very important release because it fixes a critical bug in pt-table-sync (bug 1003014) which caused various failures.  All users of Percona Toolkit 2.1 should upgrade to this release.  There were 47 other bug fixes, several new options, and other changes.  The following is a high-level summary of the most important changes.
+
+In addition to the critical bug fix mentioned above, another important pt-table-sync bug was fixed, bug 1002365: --ignore-* options did not work with --replicate.  The --lock-and-rename feature of the tool was also disabled unless running MySQL 5.5 or newer because it did not work reliably in earlier versions of MySQL.
+
+Several important pt-table-checksum bugs were fixed.  First, a bug caused the tool to ignore the primary key.  Second, the tool did not wait for the checksum table to replicate, so it could select from a nonexistent table on a replica and crash.  Third, it did not check if all checksum queries were safe and chunk index with more than 3 columns could cause MySQL to scan many more rows than expected.
+
+pt-online-schema-change received many improvements and fixes: it did not retry deadlocks, but now it does; --no-swap-tables caused an error; it did not handle column renames; it did not allow disabling foreign key checks; --dry-run always failed on tables with foreign keys; it used different keys for chunking and triggers; etc.  In short: pt-online-schema-change 2.1.2 is superior to 2.1.1.
+
+Two pt-archiver bugs were fixed: bug 979092, --sleep conflicts with bulk operations; and bug 903379, --file doesn't create a file.
+
+--recursion-method=none was implemented in pt-heartbeat, pt-online-schema-change, pt-slave-find, pt-slave-restart, pt-table-checksum, and pt-table-sync.  This allows these tools to avoid executing SHOW SLAVE STATUS which requires a privilege not available to Amazon RDS users.
+
+Other bugs were fixed in pt-stalk, pt-variable-advisor, pt-duplicate-key-checker, pt-diskstats, pt-query-digest, pt-sift, pt-kill, pt-summary, and pt-deadlock-logger.
+
+Percona Toolkit 2.1.2 should be backwards-compatible with 2.1.1, so users are strongly encouraged to upgrade.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* pt-heartbeat: Implemented --recursion-method=none
+* pt-index-usage: MySQL 5.5 compatibility fixes
+* pt-log-player: MySQL 5.5 compatibility fixes
+* pt-online-schema-change: Added --chunk-index-columns
+* pt-online-schema-change: Added --[no]check-plan
+* pt-online-schema-change: Added --[no]drop-new-table
+* pt-online-schema-change: Implemented --recursion-method=none
+* pt-query-advisor: Added --report-type for JSON output
+* pt-query-digest: Removed --[no]zero-bool
+* pt-slave-delay: Added --database
+* pt-slave-find: Implemented --recursion-method=none
+* pt-slave-restart: Implemented --recursion-method=none
+* pt-table-checksum: Added --chunk-index-columns
+* pt-table-checksum: Added --[no]check-plan
+* pt-table-checksum: Implemented --recursion-method=none
+* pt-table-sync: Disabled --lock-and-rename except for MySQL 5.5 and newer
+* pt-table-sync: Implemented --recursion-method=none
+* Fixed bug 945079: Shell tools TMPDIR may break
+* Fixed bug 912902: Some shell tools still use basename
+* Fixed bug 987694: There is no --recursion-method=none option
+* Fixed bug 886077: Passwords with commas don't work, expose part of password
+* Fixed bug 856024: Lintian warnings when building percona-toolkit Debian package
+* Fixed bug 903379: pt-archiver --file doesn't create a file
+* Fixed bug 979092: pt-archiver --sleep conflicts with bulk operations
+* Fixed bug 903443: pt-deadlock-logger crashes on MySQL 5.5
+* Fixed bug 941064: pt-deadlock-logger can't clear deadlocks on 5.5
+* Fixed bug 952727: pt-diskstats shows incorrect wr_mb_s
+* Fixed bug 994176: pt-diskstats --group-by=all --headers=scroll prints a header for every sample
+* Fixed bug 894140: pt-duplicate-key-checker sometimes recreates a key it shouldn't
+* Fixed bug 923896: pt-kill: uninitialized value causes script to exit
+* Fixed bug 1003003: pt-online-schema-change uses different keys for chunking and triggers
+* Fixed bug 1003315: pt-online-schema-change --dry-run always fails on table with foreign keys
+* Fixed bug 1004551: pt-online-schema-change --no-swap-tables causes error
+* Fixed bug 976108: pt-online-schema-change doesn't allow to disable foreign key checks
+* Fixed bug 976109: pt-online-schema-change doesn't handle column renames
+* Fixed bug 988036: pt-online-schema-change causes deadlocks under heavy write load
+* Fixed bug 989227: pt-online-schema-change crashes with PTDEBUG
+* Fixed bug 994002: pt-online-schema-change 2.1.1 doesn't choose the PRIMARY KEY
+* Fixed bug 994010: pt-online-schema-change 2.1.1 crashes without InnoDB
+* Fixed bug 996915: pt-online-schema-change crashes with invalid --max-load and --critical-load
+* Fixed bug 998831: pt-online-schema-change -- Should have an option to NOT drop tables on failure
+* Fixed bug 1002448: pt-online-schema-change: typo for finding usable indexes
+* Fixed bug 885382: pt-query-digest --embedded-attributes doesn't check cardinality
+* Fixed bug 888114: pt-query-digest report crashes with infinite loop
+* Fixed bug 949630: pt-query-digest mentions a Subversion repository
+* Fixed bug 844034: pt-show-grants --separate fails with proxy user
+* Fixed bug 946707: pt-sift loses STDIN after pt-diskstats
+* Fixed bug 994947: pt-stalk doesn't reset cycles_true after collection
+* Fixed bug 986151: pt-stalk-has mktemp error
+* Fixed bug 993436: pt-summary Memory: Total reports M instead of G
+* Fixed bug 1008778: pt-table-checksum doesn't wait for checksum table to replicate
+* Fixed bug 1010232: pt-table-checksum doesn't check the size of checksum chunks
+* Fixed bug 1011738: pt-table-checksum SKIPPED is zero but chunks were skipped
+* Fixed bug 919499: pt-table-checksum fails with binary log error in mysql >= 5.5.18
+* Fixed bug 972399: pt-table-checksum docs are not rendered right
+* Fixed bug 978432: pt-table-checksum ignoring primary key
+* Fixed bug 995274: pt-table-checksum can't use an undefined value as an ARRAY reference at line 2206
+* Fixed bug 996110: pt-table-checksum crashes if InnoDB is disabled
+* Fixed bug 987393: pt-table-checksum: Empy tables cause "undefined value as an ARRAY" errors
+* Fixed bug 1002365: pt-table-sync --ignore-* options don't work with --replicate
+* Fixed bug 1003014: pt-table-sync --replicate and --sync-to-master error "index does not exist"
+* Fixed bug 823403: pt-table-sync --lock-and-rename doesn't work on 5.1
+* Fixed bug 898138: pt-variable-advisor doesn't recognize 5.5.3+ concurrent_insert values
+
 v2.1.1 released 2012-04-03
 ==========================
 
