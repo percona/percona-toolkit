@@ -1436,14 +1436,15 @@ sub new {
    }
 
    my $self = {
-      dsn          => $dsn,
-      dbh          => $args{dbh},
-      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
-      hostname     => '',
-      set          => $args{set},
-      dbh_set      => 0,
-      OptionParser => $o,
-      DSNParser    => $dp,
+      dsn             => $dsn,
+      dbh             => $args{dbh},
+      dsn_name        => $dp->as_string($dsn, [qw(h P S)]),
+      hostname        => '',
+      set             => $args{set},
+      dbh_set         => 0,
+      is_cluster_node => undef,
+      OptionParser    => $o,
+      DSNParser       => $dp,
    };
 
    return bless $self, $class;
@@ -1511,6 +1512,19 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub is_cluster_node {
+   my ($self) = @_;
+   return $self->{is_cluster_node} if defined $self->{is_cluster_node};
+   
+   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
+   PTDEBUG && _d($sql);
+   my $row = $self->{dbh}->selectrow_arrayref($sql);
+   PTDEBUG && _d(defined $row ? @$row : 'undef');
+   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+  
+   return $self->{is_cluster_node};
 }
 
 sub DESTROY {
@@ -6499,6 +6513,7 @@ sub main {
    my $master_dbh = $master_cxn->dbh();  # just for brevity
    my $master_dsn = $master_cxn->dsn();  # just for brevity
 
+
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
@@ -6538,6 +6553,12 @@ sub main {
          },
       );
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
+
+      if ( $master_cxn->is_cluster_node() && !@$slaves ) {
+         die $master_cxn->name() . " is a cluster node but no other nodes "
+            . "or regular replicas were found.  Use --recursion-method=dsn "
+            . "to specify the other nodes in the cluster.\n";
+      }
 
       if ( $o->get('check-slave-lag') ) {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
@@ -6744,7 +6765,9 @@ sub main {
    my $checksum_dml = "REPLACE INTO $repl_table "
                     . "(db, tbl, chunk, chunk_index,"
                     . " lower_boundary, upper_boundary, this_cnt, this_crc) "
-                    . "SELECT ?, ?, ?, ?, ?, ?,";
+                    . "SELECT "
+                    . ($master_cxn->is_cluster_node() ? '/*!99997*/' : '')
+                    . " ?, ?, ?, ?, ?, ?,";
    my $past_cols    = " COUNT(*), '0'";
 
    # ########################################################################
