@@ -6513,7 +6513,6 @@ sub main {
    my $master_dbh = $master_cxn->dbh();  # just for brevity
    my $master_dsn = $master_cxn->dsn();  # just for brevity
 
-
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
@@ -6572,6 +6571,23 @@ sub main {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
+
+      # Cluster nodes aren't slaves, so SHOW SLAVE STATUS doesn't work.
+      # Nodes shouldn't be out of sync anyway because the cluster is
+      # (virtually) synchronous, so waiting for the last checksum chunk
+      # to appear should be sufficient.
+      @$slave_lag_cxns = grep {
+         my $slave_cxn = $_;
+         if ( $slave_cxn->is_cluster_node() ) {
+            warn "Not checking replica lag on " . $slave_cxn->name()
+               . " because it is a cluster node.\n";
+            0;
+         }
+         else {
+            PTDEBUG && _d('Will check slave lag on', $slave_cxn->name());
+            $slave_cxn;
+         }
+      } @$slave_lag_cxns;
 
       # #####################################################################
       # Possibly check replication slaves and exit.
