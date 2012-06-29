@@ -32,22 +32,21 @@ MYSQL_BIN_DIR="$HOME/mysql-bin"
 [ -d "$MYSQL_BIN_DIR" ] || mkdir "$MYSQL_BIN_DIR"
 
 find_mysql_base_dir() {
-   find "$MYSQL_BIN_DIR" -name "mysql-$1\*" -type -d | tail -n 1
+   find "$MYSQL_BIN_DIR" -name "mysql-$1\*" -type d | tail -n 1
 }
 
 MYSQL_BASE_DIR=$(find_mysql_base_dir $MYSQL)
 if [ -z "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
-      wget -q http://hackmysql.com/barebones/mysql/$MYSQL/$ARCH
-      tarball=$(ls -t1 | head -n1)
-	   tar xvfz "$tarball"
-      rm "$tarball"
+      wget -q -O mysql.tar.gz http://hackmysql.com/barebones/mysql/$MYSQL/$ARCH
+	   tar xvfz mysql.tar.gz
+      rm mysql.tar.gz
    )
    MYSQL_BASE_DIR=$(find_mysql_base_dir $MYSQL)
 fi
 
-if [ -z "$MYSQL_BASE_DIR/bin/mysqld -V" ]; then
+if [ -z $("$MYSQL_BASE_DIR/bin/mysqld" -V) ]; then
    echo "$MYSQL_BASE_DIR/bin/mysqld does not execute" >&2
    exit 1
 fi
