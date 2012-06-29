@@ -1,9 +1,10 @@
 #!/bin/sh
 
-######################################
-# Source our alt_cmds.sh for _seq(). #
-######################################
-. lib/bash/alt_cmds.sh
+# This script is used to do a test run on a Jenkins node.  Jenkins jobs
+# set env vars based on job params (like MYSQL and TEST_CMD) then execute
+# this script which does the rest.  When this script exists, the Jenkins
+# job exists, so if some commands (like check-dev-env) fail, then the
+# Jenkins job will fail too.
 
 ##############
 # Set modes. #
@@ -20,17 +21,43 @@ util/check-dev-env
 #####################################
 # Install barebones MySQL binaries. #
 #####################################
-if ! [ -d "mysql-${MYSQL}-barebones" ]; then
-   wget -q http://hackmysql.com/mysql-${MYSQL}-barebones.tar.gz
-	tar xvfz mysql-${MYSQL}-barebones.tar.gz
+
+if [ $(uname -a | grep x86_64 >/dev/null 2>&1) ]; then
+   ARCH="64"
+else
+   ARCH="32"
+fi
+
+MYSQL_BIN_DIR="$HOME/mysql-bin"
+[ -d "$MYSQL_BIN_DIR" ] || mkdir "$MYSQL_BIN_DIR"
+
+find_mysql_base_dir() {
+   find "$MYSQL_BIN_DIR" -name "mysql-$1\*" -type -d | tail -n 1
+}
+
+MYSQL_BASE_DIR=$(find_mysql_base_dir $MYSQL)
+if [ -z "$MYSQL_BASE_DIR" ]; then
+   (
+      cd $MYSQL_BIN_DIR
+      wget -q http://hackmysql.com/barebones/mysql/$MYSQL/$ARCH
+      tarball=$(ls -t1 | head -n1)
+	   tar xvfz "$tarball"
+      rm "$tarball"
+   )
+   MYSQL_BASE_DIR=$(find_mysql_base_dir $MYSQL)
+fi
+
+if [ -z "$MYSQL_BASE_DIR/bin/mysqld -V" ]; then
+   echo "$MYSQL_BASE_DIR/bin/mysqld does not execute" >&2
+   exit 1
 fi
 
 ##########################
 # Set required env vars. #
 ##########################
 export PERCONA_TOOLKIT_BRANCH="$PWD"
-export PERCONA_TOOLKIT_SANDBOX="$PWD/mysql-${MYSQL}-barebones"
-export PATH="$PATH:/usr/sbin:$PWD/mysql-${MYSQL}-barebones/bin"
+export PERCONA_TOOLKIT_SANDBOX="$MYSQL_BASE_DIR"
+export PATH="$PATH:/usr/sbin:$MYSQL_BASE_DIR/bin"
 
 #############################
 # Check and start test env. #
@@ -55,13 +82,12 @@ fi
 # Run the tests. #
 ##################
 EXIT_STATUS=0
-ITERATIONS="${ITERATIONS:-1}"
-for iter in $(_seq $ITERATIONS); do
-   (
-      $TEST_CMD
-   )
-   EXIT_STATUS=$(($? | 0))
-done
+TEST_CMD="${TEST_CMD:-"prove -r t/"}"
+
+(
+   $TEST_CMD
+)
+EXIT_STATUS=$(($? | 0))
 
 #############
 # Clean up. #
