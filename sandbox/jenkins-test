@@ -22,7 +22,7 @@ util/check-dev-env
 # Install barebones MySQL binaries. #
 #####################################
 
-if [ $(uname -a | grep x86_64 >/dev/null 2>&1) ]; then
+if uname -a | grep x86_64 >/dev/null 2>&1; then
    ARCH="64"
 else
    ARCH="32"
@@ -32,10 +32,10 @@ MYSQL_BIN_DIR="$HOME/mysql-bin"
 [ -d "$MYSQL_BIN_DIR" ] || mkdir "$MYSQL_BIN_DIR"
 
 find_mysql_base_dir() {
-   find "$MYSQL_BIN_DIR" -name "mysql-$1\*" -type d | tail -n 1
+   find "$MYSQL_BIN_DIR" -name "mysql-$1*" -type d | tail -n 1
 }
 
-MYSQL_BASE_DIR=$(find_mysql_base_dir $MYSQL)
+MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
 if [ -z "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
@@ -43,7 +43,7 @@ if [ -z "$MYSQL_BASE_DIR" ]; then
 	   tar xvfz mysql.tar.gz
       rm mysql.tar.gz
    )
-   MYSQL_BASE_DIR=$(find_mysql_base_dir $MYSQL)
+   MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
 fi
 
 if [ -z $("$MYSQL_BASE_DIR/bin/mysqld" -V) ]; then
