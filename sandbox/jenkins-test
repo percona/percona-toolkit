@@ -46,7 +46,7 @@ if [ -z "$MYSQL_BASE_DIR" ]; then
    MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
 fi
 
-if [ -z $("$MYSQL_BASE_DIR/bin/mysqld" -V) ]; then
+if [ -z "$("$MYSQL_BASE_DIR/bin/mysqld" -V)" ]; then
    echo "$MYSQL_BASE_DIR/bin/mysqld does not execute" >&2
    exit 1
 fi
