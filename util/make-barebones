@@ -17,6 +17,9 @@ tar xvfz $tarball \
    "$full_dir/share/errmsg*" \
    "$full_dir/share/charset*" \
    "$full_dir/share/english*" \
+   "$full_dir/share/mysql/errmsg*" \
+   "$full_dir/share/mysql/charset*" \
+   "$full_dir/share/mysql/english*" \
    "$full_dir/bin/my_print_defaults" \
    "$full_dir/bin/mysql" \
    "$full_dir/bin/mysqld" \
