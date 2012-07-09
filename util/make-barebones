@@ -25,6 +25,7 @@ tar xvfz $tarball \
    "$full_dir/bin/mysqld" \
    "$full_dir/bin/mysqladmin" \
    "$full_dir/bin/mysqlbinlog" \
+   "$full_dir/bin/mysqldump" \
    "$full_dir/bin/mysqld" \
    "$full_dir/bin/mysqld_safe" \
    "$full_dir/bin/safe_mysqld"
