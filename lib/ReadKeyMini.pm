@@ -157,7 +157,8 @@ sub _GetTerminalSize {
       die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
    }
 
-   my ( $rows, $cols );
+   my $cols = $ENV{COLUMNS} || 80;
+   my $rows = $ENV{LINES}   || 24;
 
    if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
       my $winsize = '';
@@ -167,18 +168,16 @@ sub _GetTerminalSize {
       }
    }
 
-   if ( $rows = `tput lines` ) {
-      chomp($rows);
-      chomp($cols = `tput cols`);
-   }
-   elsif ( my $stty = `stty -a` ) {
-      ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
-   }
-   else {
-      ($cols, $rows) = @ENV{qw( COLUMNS LINES )};
-      $cols ||= 80;
-      $rows ||= 24;
-   }
+   eval {
+      if ( $rows = `tput lines` ) {
+         chomp($rows);
+         chomp($cols = `tput cols`);
+      }
+      elsif ( my $stty = `stty -a` ) {
+         ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
+      }
+   };
+   PTDEBUG && _d($EVAL_ERROR);
 
    return ( $cols, $rows );
 }
