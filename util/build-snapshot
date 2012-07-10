@@ -83,12 +83,11 @@ prep_release_dir() {
 
    # Pretend that someone will actually read this special readme
    # and discover that this isn't a full release.
-   echo >$SNAPSHOT_DIR/$PKG/README.SNAPSHOT <<README
-This is a snapshot of Percona Toolkit created on $DATE, based on the full $VERSION release.  Snapshots are previews of the current code and should only be used for testing.  The code in this snapshot can change or be removed in later snapshots and is no guarantee of what will be included in the next full release.  Contact Percona (http://www.percona.com/) if you have any questions.
+   echo "This is a snapshot of Percona Toolkit created on $DATE, based on the full $VERSION release.  Snapshots are previews of the current code and should only be used for testing.  The code in this snapshot can change or be removed in later snapshots and is no guarantee of what will be included in the next full release.  Contact Percona (http://www.percona.com/) if you have any questions.
 
-The README and Changelog from the full $VERSION release are included for reference.  See DIFF for a diff of all changes since the $VERSION release.
-README
-   
+The README and Changelog from the full $VERSION release are included for reference.  See DIFF for a diff of all changes since the $VERSION release." \
+   >$SNAPSHOT_DIR/$PKG/README.SNAPSHOT
+
    echo "OK"
 
    # Make a diff of all changes since the last full release.
