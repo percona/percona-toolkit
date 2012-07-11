@@ -8552,7 +8552,6 @@ sub lock_and_rename {
 #   OptionParser  - <OptionParser> object
 #   DSNParser     - <DSNParser> object
 #   Quoter        - <Quoter> object
-#   VersionParser - <VersionParser> object
 #
 # Returns:
 #   Exit status
@@ -8844,7 +8843,7 @@ sub sync_via_replication {
 sub sync_all {
    my ( %args ) = @_;
    my @required_args = qw(dsns plugins OptionParser DSNParser Quoter
-                          VersionParser TableParser MySQLDump);
+                          TableParser MySQLDump);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
