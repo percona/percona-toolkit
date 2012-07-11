@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 43;
+use Test::More tests => 44;
 
 use PerconaTest;
 
@@ -431,6 +431,18 @@ ok(
       "t/pt-query-digest/samples/slow054.txt",
    ),
    'Analysis for slow054 (InnoDB_trx_id bug 821694)'
+);
+
+# #############################################################################
+# Bug 924950: pt-query-digest --group-by db may crash profile report
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow055.txt',
+         qw(--group-by db)) },
+      "t/pt-query-digest/samples/slow055.txt",
+   ),
+   'Analysis for slow055 (group by blank db bug 924950)'
 );
 
 # #############################################################################
