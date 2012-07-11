@@ -18,7 +18,6 @@ shift @INC;  # our unshift (above)
 shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
-my $vp  = new VersionParser();
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');

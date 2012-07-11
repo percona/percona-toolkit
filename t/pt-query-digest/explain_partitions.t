@@ -17,14 +17,13 @@ use VersionParser;
 use Sandbox;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
-my $vp = new VersionParser();
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$vp->version_ge($dbh, '5.1.0') ) {
+elsif ( VersionParser->new($dbh) < '5.1' ) {
    plan skip_all => 'Sandbox master version not >= 5.1';
 }
 else {

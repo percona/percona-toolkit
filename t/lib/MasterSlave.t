@@ -20,8 +20,7 @@ use Cxn;
 use Sandbox;
 use PerconaTest;
 
-my $vp = new VersionParser();
-my $ms = new MasterSlave(VersionParser => $vp);
+my $ms = new MasterSlave();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 

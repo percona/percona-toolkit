@@ -13,6 +13,7 @@ use Test::More tests => 83;
 
 use PodParser;
 use AdvisorRules;
+use VersionParser;
 use VariableAdvisorRules;
 use Advisor;
 use PerconaTest;
@@ -343,27 +344,27 @@ my @cases = (
       advice => [qw(tmp_table_size)],
    },
    {  name          => "end-of-life mysql version",
-      mysql_version => '005000087',
+      mysql_version => VersionParser->new('5.0.87'),
       advice        => ['end-of-life mysql version'],
    },
    {  name          => "old mysql version 3.22.00",
-      mysql_version => '00302200',
+      mysql_version => VersionParser->new('3.22.00'),
       advice        => ['old mysql version', 'end-of-life mysql version'],
    },
    {  name          => "old mysql version 4.1.1",
-      mysql_version => '004001001',
+      mysql_version => VersionParser->new('4.1.1'),
       advice        => ['old mysql version', 'end-of-life mysql version'],
    },
    {  name          => "old mysql version 5.0.36",
-      mysql_version => '005000036',
+      mysql_version => VersionParser->new('5.0.36'),
       advice        => ['old mysql version', 'end-of-life mysql version'],
    },
    {  name          => "old mysql version 5.1.29",
-      mysql_version => '005001029',
+      mysql_version => VersionParser->new('5.1.29'),
       advice        => ['old mysql version'],
    },
    {  name          => "old mysql version 5.5.0",
-      mysql_version => '005005000',
+      mysql_version => VersionParser->new('5.5.0'),
       advice        => [],
    },
 );

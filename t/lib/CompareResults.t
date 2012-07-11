@@ -17,7 +17,6 @@ use DSNParser;
 use QueryParser;
 use TableSyncer;
 use TableChecksum;
-use VersionParser;
 use TableSyncGroupBy;
 use MockSyncStream;
 use MockSth;
@@ -48,22 +47,19 @@ else {
 
 Transformers->import(qw(make_checksum));
 
-my $vp = new VersionParser();
 my $q  = new Quoter();
 my $qp = new QueryParser();
 my $tp = new TableParser(Quoter => $q);
-my $tc = new TableChecksum(Quoter => $q, VersionParser => $vp);
+my $tc = new TableChecksum(Quoter => $q);
 my $of = new Outfile();
 my $rr = new Retry();
 my $ts = new TableSyncer(
    Quoter        => $q,
-   VersionParser => $vp,
    TableChecksum => $tc,
    Retry         => $rr,
    MasterSlave   => 1,
 );
 my %modules = (
-   VersionParser => $vp,
    Quoter        => $q,
    TableParser   => $tp,
    TableSyncer   => $ts,

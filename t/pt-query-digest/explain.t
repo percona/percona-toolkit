@@ -13,7 +13,6 @@ use Test::More;
 
 use Sandbox;
 use PerconaTest;
-use VersionParser;
 # See 101_slowlog_analyses.t for why we shift.
 shift @INC;  # our unshift (above)
 shift @INC;  # PerconaTest's unshift
@@ -22,7 +21,6 @@ shift @INC;  # Sandbox
 require "$trunk/bin/pt-query-digest";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
-my $vp  = new VersionParser();
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
 

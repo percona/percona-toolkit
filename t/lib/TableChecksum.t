@@ -11,8 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use TableChecksum;
 use VersionParser;
+use TableChecksum;
 use TableParser;
 use Quoter;
 use DSNParser;
@@ -34,8 +34,7 @@ $sb->create_dbs($dbh, ['test']);
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $vp = new VersionParser();
-my $c  = new TableChecksum(Quoter=>$q, VersionParser=>$vp);
+my $c  = new TableChecksum(Quoter=>$q);
 
 my $t;
 
@@ -47,13 +46,6 @@ throws_ok (
    qr/Invalid checksum algorithm/,
    'Algorithm=foo',
 );
-
-# Inject the VersionParser with some bogus versions.  Later I'll just pass the
-# string version number instead of a real DBH, so the version parsing will
-# return the value I want.
-foreach my $ver( qw(4.0.0 4.1.1) ) {
-   $vp->{$ver} = $vp->parse($ver);
-}
 
 is (
    $c->best_algorithm(
