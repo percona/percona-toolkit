@@ -209,7 +209,7 @@ sub files {
 sub header {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea orderby) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $ea      = $args{ea};
    my $orderby = $args{orderby};
@@ -489,7 +489,7 @@ sub query_report {
 sub event_report {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea item orderby) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $ea      = $args{ea};
    my $item    = $args{item};
@@ -686,7 +686,7 @@ sub event_report {
 sub chart_distro {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea item attrib) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $ea     = $args{ea};
    my $item   = $args{item};
@@ -765,7 +765,7 @@ sub chart_distro {
 sub distro_sparkline {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea item attrib) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $ea     = $args{ea};
    my $item   = $args{item};

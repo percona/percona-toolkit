@@ -764,7 +764,7 @@ sub _calc_metrics {
 sub metrics {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(attrib where) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $attrib = $args{attrib};
    my $where   = $args{where};

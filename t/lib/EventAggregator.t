@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 81;
+use Test::More tests => 82;
 
 use QueryRewriter;
 use EventAggregator;
@@ -1922,6 +1922,21 @@ is(
    $ea->{result_classes}->{'SELECT * FROM foo WHERE id=1'}->{InnoDB_trx_id}->{cnt},
    8,
    "Parse InnoDB_trx_id as string"
+);
+
+# #############################################################################
+# Bug 924950: pt-query-digest --group-by db may crash profile report
+# #############################################################################
+$ea = new EventAggregator(
+   groupby => 'Schema',
+   worst   => 'Query_time',
+);
+parse_file('t/lib/samples/slowlogs/slow055.txt', $p, $ea);
+my $m = $ea->metrics(where => '', attrib => 'Query_time');
+is(
+   $m->{cnt},
+   3,
+   "Metrics for '' attrib (bug 924950)"
 );
 
 # #############################################################################
