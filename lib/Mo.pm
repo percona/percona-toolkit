@@ -17,9 +17,9 @@
 # ###########################################################################
 # Mo package
 # ###########################################################################
-BEGIN {
 # Package: Mo
 # Mo provides a miniature object system in the style of Moose and Moo.
+BEGIN {
 $INC{"Mo.pm"} = __FILE__;
 package Mo;
 our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
