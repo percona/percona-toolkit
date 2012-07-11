@@ -22,6 +22,9 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( PerconaTest::load_data_is_disabled($dbh) ) {
+    plan skip_all => 'Cannot use --bulk-insert with LOAD DATA LOCAL INFILE disabled';
+}
 else {
    plan tests => 5;
 }
