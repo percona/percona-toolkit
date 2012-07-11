@@ -22,8 +22,12 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( PerconaTest::load_data_is_disabled($dbh) ) {
+   diag("LOAD DATA LOCAL INFILE is disabled, only going to test the error message");
+   plan tests => 2;
+}
 else {
-   plan tests => 10;
+   plan tests => 11;
 }
 
 my $output;
@@ -34,6 +38,10 @@ my $cmd = "$trunk/bin/pt-archiver";
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['test']);
 
+if ( PerconaTest::load_data_is_disabled($dbh) ) {
+   test_disabled_load_data($dbh, $sb);
+}
+else {
 # Test --bulk-insert
 $sb->load_file('master', 't/pt-archiver/samples/table5.sql');
 $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
@@ -83,6 +91,43 @@ is_deeply(
    [[1],[2],[3],[4],[5],[6],[7]],
    "--bulk-insert archived 7 rows (issue 1260)"
 );
+
+# Test that the tool bails out early if LOAD DATA LOCAL INFILE is disabled
+{
+   if ( -d "/tmp/2900" ) {
+      diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null 2>&1`);
+   }
+
+   local $ENV{LOCAL_INFILE} = 0;
+   diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null 2>&1`);
+
+   my $master3_dbh = $sb->get_dbh_for('master3');
+
+   test_disabled_load_data($master3_dbh, $sb);
+
+   diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null 2>&1`);
+   $master3_dbh->disconnect() if $master3_dbh;
+}
+
+}
+
+sub test_disabled_load_data {
+   my ($dbh, $sb) = @_;
+   $sb->load_file('master', 't/pt-archiver/samples/table5.sql');
+   $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
+
+   my ($output, undef) = full_output(
+      sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
+         qw(--bulk-delete --where 1=1 --statistics),
+         '--source', "D=test,t=table_5,F=$cnf",
+         '--dest',   "t=table_5_dest") },
+   );
+
+   like($output,
+      qr!\Q--bulk-insert cannot work as LOAD DATA LOCAL INFILE is disabled. See http://kb.percona.com/troubleshoot-load-data-infile!,
+      ""
+   );
+}
 
 # #############################################################################
 # Done.
