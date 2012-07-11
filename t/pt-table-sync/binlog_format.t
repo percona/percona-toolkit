@@ -17,7 +17,6 @@ use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
 my $output;
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -29,8 +28,8 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-elsif ( !$vp->version_ge($master_dbh, '5.1.5') ) {
-      plan skip_all => 'Requires MySQL 5.1 or newer';
+elsif ( VersionParser->new($master_dbh) < '5.1.5' ) {
+      plan skip_all => 'Requires MySQL 5.1.5 or newer';
 }
 else {
    plan tests => 7;
