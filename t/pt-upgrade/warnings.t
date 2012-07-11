@@ -29,6 +29,9 @@ if ( !$dbh1 ) {
 elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
+elsif ( PerconaTest::load_data_is_disabled($dbh1) ) {
+   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
+}
 else {
    plan tests => 6;
 }
