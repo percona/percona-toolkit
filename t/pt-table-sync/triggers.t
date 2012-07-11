@@ -1,4 +1,4 @@
-// #!/usr/bin/env perl
+#!/usr/bin/env perl
 
 BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
