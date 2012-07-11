@@ -125,7 +125,7 @@ sub test_disabled_load_data {
 
    like($output,
       qr!\Q--bulk-insert cannot work as LOAD DATA LOCAL INFILE is disabled. See http://kb.percona.com/troubleshoot-load-data-infile!,
-      ""
+      "--bulk-insert throws an error if LOCAL INFILE is disabled"
    );
 }
 
