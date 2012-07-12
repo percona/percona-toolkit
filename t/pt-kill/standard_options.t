@@ -48,7 +48,7 @@ SKIP: {
       'Log file created'
    );
 
-   sleep 3; # --run-time=2; if we sleep 2 we'll get intermittent failures.
+   wait_until(sub { return !-f '/tmp/pt-kill.pid' });
    ok(
       !-f '/tmp/pt-kill.pid',
       'PID file removed'
