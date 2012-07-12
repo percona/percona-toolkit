@@ -4072,6 +4072,9 @@ sub main {
       my $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
       $get_proclist = sub {
          return $retry->retry(
+            # Retry for an hour: 1,200 tries x 3 seconds = 3600s/1hr
+            tries => 1200,
+            wait  => sub { sleep 3; }, 
             try => sub {
                $proc_sth->execute();
                return $proc_sth->fetchall_arrayref({});
@@ -4105,6 +4108,7 @@ sub main {
          my ($id) = @_;
          PTDEBUG && _d('Killing process', $id);
          return $retry->retry(
+            tries => 2,
             try => sub {
                return $kill_sth->execute($id);
             },
