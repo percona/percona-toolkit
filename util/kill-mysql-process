@@ -1,0 +1,44 @@
+#!/usr/bin/env perl
+
+# This script helps test that tools reconnect to MySQL.  Its meant to be ran
+# in the background like system(qq($trunk/util/kill-mysql-process DB)) where
+# DB is the name of special "tracer" database used to isolate the test in
+# the process list.  So, do something like CREATE DATABASE pt_kill_test, then
+# run the test with D=pt_kill_test (presuming pt_kill_test is unique to
+# the test).  This script will then kill any and all processes that are using
+# the pt_kill_test db.
+#
+# Exits 0 if the tracer db is observed and procs are killed, else exits 1.
+
+use strict;
+use warnings FATAL => 'all';
+use Time::HiRes qw(sleep time);
+
+if ( !@ARGV || @ARGV < 1 || @ARGV > 3 ) {
+   print STDERR "Usage: kill-mysql-process OPTION=VALUE\n";
+   print STDERR "Options: db, wait, runtime, interval\n";
+   exit 1;
+}
+
+my %opt = map { my ($op, $val) = split '=', $_; $op => $val; } @ARGV;
+
+$opt{db}       ||= 'tracer_db';
+$opt{runtime}  ||= 5.0;
+$opt{interval} ||= 0.2;
+
+sleep $opt{wait} if $opt{wait};
+
+my $t_start = time;
+while ( time - $t_start < $opt{runtime} ) {
+   my $procs = `/tmp/12345/use -ss -e "show processlist" | grep $opt{db} | cut -f1`;
+   if ( $procs && $procs =~ /\d/ ) {
+      foreach my $proc ( split "\n", $procs ) {
+         chomp $proc;
+         `/tmp/12345/use -e "KILL $proc"`;
+      }
+      exit 0;
+   }
+   sleep $opt{interval};
+}
+
+exit 1;

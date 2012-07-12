@@ -4,6 +4,7 @@ BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
+   $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 };
 
 use strict;
@@ -25,7 +26,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 6;
 }
 
 my $output;
@@ -78,6 +79,32 @@ like(
    qr/Checking processlist/,
    '--verbose'
 );
+
+# #############################################################################
+# Reconnect if cxn lost.
+# #############################################################################
+$master_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_test");
+
+system(qq($trunk/util/kill-mysql-process db=pt_kill_test wait=2 &));
+
+$output = output(
+   sub { pt_kill::main('-F', $cnf, qw(-D pt_kill_test),
+      qw(--run-time 4 --interval 1 --print --verbose)) },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/Reconnected/,
+   "kill-mysql-process says it reconnected"
+);
+
+my $n_checks =()= $output =~ m/Checking processlist/g;
+is(
+   $n_checks,
+   4,
+   "pt-kill still checked the processlist 4 times"
+) or diag($output);
 
 # #############################################################################
 # Done.

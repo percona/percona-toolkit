@@ -4086,6 +4086,7 @@ sub main {
                   eval {
                      $dbh      = $cxn->connect();
                      $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
+                     msg('Reconnected to ' . $cxn->name());
                   };
                   return 1 unless $EVAL_ERROR; # try again
                }
@@ -4102,6 +4103,7 @@ sub main {
       my $kill_sth = $dbh->prepare($kill_sql);
       $kill = sub {
          my ($id) = @_;
+         PTDEBUG && _d('Killing process', $id);
          return $retry->retry(
             try => sub {
                return $kill_sth->execute($id);
@@ -4116,6 +4118,7 @@ sub main {
                   eval {
                      $dbh      = $cxn->connect();
                      $kill_sth = $dbh->prepare($kill_sql);
+                     msg('Reconnected to ' . $cxn->name());
                   };
                   return 1 unless $EVAL_ERROR; # try again
                }
@@ -4371,16 +4374,6 @@ sub main {
 # Subroutines.
 # ############################################################################
 
-sub get_cxn {
-   my ( $dp, $dsn, $ac ) = @_;
-   if ( $o->get('ask-pass') ) {
-      $dsn->{p} = OptionParser::prompt_noecho("Enter password: "); 
-   }
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => $ac});
-   $dbh->{InactiveDestroy} = 1; # Because of forking.
-   return $dbh;
-}
-
 # Forks and detaches from parent to execute the given command;
 # does not block parent.
 sub exec_cmd {
@@ -4604,6 +4597,9 @@ L<"--kill"> and L<"--kill-query"> are mutually exclusive.
 
 L<"--daemonize"> and L<"--test-matching"> are mutually exclusive.
 
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
+
 =over
 
 =item --ask-pass
@@ -4625,6 +4621,12 @@ type: Array
 
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
 
 =item --daemonize
 
