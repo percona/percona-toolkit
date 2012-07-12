@@ -103,6 +103,7 @@ sub new {
       dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
       hostname     => '',
       set          => $args{set},
+      NAME_lc      => $args{NAME_lc},
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
@@ -149,7 +150,10 @@ sub set_dbh {
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
-   $dbh->{FetchHashKeyName} = 'NAME_lc';
+   if ( !exists $self->{NAME_lc}
+        || (defined $self->{NAME_lc} && $self->{NAME_lc}) ) {
+      $dbh->{FetchHashKeyName} = 'NAME_lc';
+   }
    
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.

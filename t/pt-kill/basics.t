@@ -52,7 +52,7 @@ my @times = $output =~ m/\(Query (\d+) sec\)/g;
 ok(
    @times > 2 && @times < 7,
    "There were 2 to 5 captures"
-) or print STDERR Dumper($output);
+) or diag($output);
 
 # This is to catch a bad bug where there wasn't any sleep time when
 # --iterations  was 0, and another bug when --run-time was not respected.
@@ -64,8 +64,7 @@ $output = `$cmd --busy-time 1s --print --run-time 11s`;
 ok(
    @times > 7 && @times < 12,
    'Approximately 9 or 10 captures with --iterations 0'
-) or print STDERR Dumper($output);
-
+) or diag($output);
 
 # ############################################################################
 # --verbose
