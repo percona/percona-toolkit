@@ -15,8 +15,14 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# ReadKeyMini
+# ReadKeyMini package
 # ###########################################################################
+
+# Package: ReadKeyMini
+# ReadKeyMini is a wrapper around Term::ReadKey. If that's available,
+# we use ReadMode and GetTerminalSize from there. Otherwise, we use homebrewn
+# definitions.
+
 BEGIN {
 
 package ReadKeyMini;
@@ -28,11 +34,6 @@ package ReadKeyMini;
 # Costs us nothing though, so worth trying. Putting this on top of the file
 # would solve the issue.
 BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
-
-# Package: ReadKeyMini
-# ReadKeyMini is a wrapper around Term::ReadKey. If that's available,
-# we use ReadMode and GetTerminalSize from there. Otherwise, we use homebrewn
-# definitions.
 
 use warnings;
 use strict;
@@ -72,7 +73,7 @@ my %modes = (
    my $flags;
    unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
       $flags = fcntl(STDIN, F_GETFL, 0)
-                     or die "can't fcntl F_GETFL: $!";
+                     or warn "can't fcntl F_GETFL: $!";
    }
    my $term     = POSIX::Termios->new();
    $term->getattr($fd_stdin);
@@ -106,7 +107,7 @@ my %modes = (
       $term->setattr( $fd_stdin, TCSANOW );
       unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
          fcntl(STDIN, F_SETFL, $flags)
-                        or die "can't fcntl F_SETFL: $!";
+                        or warn "can't fcntl F_SETFL: $!";
       }
    }
 
@@ -167,11 +168,11 @@ sub _GetTerminalSize {
       }
    }
 
-   if ( $rows = `tput lines` ) {
+   if ( $rows = `tput lines 2>/dev/null` ) {
       chomp($rows);
       chomp($cols = `tput cols`);
    }
-   elsif ( my $stty = `stty -a` ) {
+   elsif ( my $stty = `stty -a 2>/dev/null` ) {
       ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
    }
    else {
