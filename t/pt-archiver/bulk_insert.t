@@ -35,13 +35,14 @@ my $rows;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-archiver";
 
-$sb->wipe_clean($dbh);
-$sb->create_dbs($dbh, ['test']);
-
 if ( PerconaTest::load_data_is_disabled($dbh) ) {
    test_disabled_load_data($dbh, $sb);
 }
 else {
+
+$sb->wipe_clean($dbh);
+$sb->create_dbs($dbh, ['test']);
+
 # Test --bulk-insert
 $sb->load_file('master', 't/pt-archiver/samples/table5.sql');
 $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
@@ -113,6 +114,8 @@ is_deeply(
 
 sub test_disabled_load_data {
    my ($dbh, $sb) = @_;
+   $sb->wipe_clean($dbh);
+   $sb->create_dbs($dbh, ['test']);
    $sb->load_file('master', 't/pt-archiver/samples/table5.sql');
    $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
 
