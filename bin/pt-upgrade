@@ -10998,6 +10998,32 @@ sub main {
    }
 
    # ########################################################################
+   # If we're comparing rows, check that LOAD DATA LOCAL INFILE works for,
+   # all hosts, or bail out early if it doesn't.
+   # ########################################################################
+   my $compare = $o->get('compare');
+   if ( $compare->{results}
+         && lc($o->get('compare-results-method')) eq 'rows' )
+   {
+      foreach my $host ( @$hosts ) {
+         local $@;
+         my $sql = "LOAD DATA LOCAL INFILE '/dev/null' INTO TABLE "
+                 . "`test`.`pt_not_there`";
+         eval { $host->{dbh}->do($sql); 1 } or do {
+            my $e = $@;
+            my $error_re = qr/\QDBD::mysql::db do failed: The used command is not allowed with this MySQL version [for Statement "LOAD DATA LOCAL INFILE/;
+            if ($e =~ $error_re) {
+               $_->{dbh}->disconnect() for @$hosts;
+               die("Cannot compare rows as LOAD DATA LOCAL INFILE "
+                 . "is disabled for $host->{name}. See "
+                 . "http://kb.percona.com/troubleshoot-load-data-infile"
+               );
+            }
+         };
+      }
+   }
+   
+   # ########################################################################
    # Make some common modules.
    # ########################################################################
    my $q        = new Quoter();
@@ -11030,7 +11056,6 @@ sub main {
    # ########################################################################
    # Make compare modules in order.
    # ########################################################################
-   my $compare = $o->get('compare');
    my @compare_modules;
    if ( $compare->{results} ) {
       my $method  = lc $o->get('compare-results-method');
