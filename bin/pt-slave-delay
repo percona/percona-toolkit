@@ -2345,9 +2345,16 @@ sub main {
             || $pos->[$FILE] ne $status->{master_log_file}
             || $pos->[$POS] != $status->{read_master_log_pos} )
          {
-            push @positions,
-               [ $now, $status->{master_log_file},
-                 $status->{read_master_log_pos} ];
+            push @positions, [
+                # Bug 962330: pt-slave-delay incorrectly computes lag if
+                # started when slave is already lagging.
+                # That happened because for an already lagged slave, $now
+                # isn't the correct time, but is actually
+                # $now - $seconds_lagged.
+                 $now - ( $status->{seconds_behind_master} || 0 ),
+                 $status->{master_log_file},
+                 $status->{read_master_log_pos}
+            ];
          }
       }
 
