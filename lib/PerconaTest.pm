@@ -717,12 +717,17 @@ sub full_output {
    my ( $code, %args ) = @_;
    die "I need a code argument" unless $code;
 
-   my (undef, $file) = tempfile();
-   open *output_fh, '>', $file
-         or die "Cannot open file $file: $OS_ERROR";
-   local *STDOUT = *output_fh;
+   local (*STDOUT, *STDERR);
+   require IO::File;
 
-   *STDERR = *STDOUT;
+   my (undef, $file) = tempfile();
+   open *STDOUT, '>', $file
+         or die "Cannot open file $file: $OS_ERROR";
+   *STDOUT->autoflush(1);
+
+   open *STDERR, '>', $file
+      or die "Cannot open file $file: $OS_ERROR";
+   *STDERR->autoflush(1);
 
    my $status;
    if (my $pid = fork) {
@@ -745,7 +750,7 @@ sub full_output {
    else {
       exit $code->();
    }
-   close *output_fh;
+   close $_ or die "Cannot close $_: $OS_ERROR" for qw(STDOUT STDERR);
    my $output = do { local $/; open my $fh, "<", $file or die $!; <$fh> };
 
    return ($output, $status);
@@ -770,6 +775,19 @@ sub tables_used {
       $chunk =~ m/(?:FROM|INTO|UPDATE)\s+(\S+)/gi;
    }
    return [ sort keys %tables ];
+}
+
+sub load_data_is_disabled {
+    my ($dbh) = @_;
+    my $sql = "LOAD DATA LOCAL INFILE '/dev/null' INTO TABLE "
+            . "`t`.`pt_not_there`";
+    local $@;
+    if (!eval { $dbh->do($sql); 1 } ) {
+        my $e = $@;
+        return 1 if $e =~ qr/\QDBD::mysql::db do failed: The used command is not allowed with this MySQL version [for Statement "LOAD DATA LOCAL INFILE/;
+    }
+
+    return;
 }
 
 1;
