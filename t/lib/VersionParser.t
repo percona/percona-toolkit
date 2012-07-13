@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 27;
+use Test::More tests => 29;
 
 use VersionParser;
 use PerconaTest;
@@ -80,10 +80,24 @@ is(
    'Parser works on a simplified version',
 );
 
+my $fractional_version = VersionParser->new('5.0.08');
+
 is(
-   VersionParser->new('5.0.08')->revision,
+   $fractional_version->revision,
    '0.8',
-   'In 5.0.08, the revsion is 0.8',
+   'Verson(5.0.08), the revision is 0.8',
+);
+
+is(
+   "$fractional_version",
+   "5.0.08",
+   "Version(5.0.08) stringifies to 5.0.08"
+);
+
+is(
+   $fractional_version->normalized_version(),
+   "50000",
+   "Version(5.0.08) normalizes to 50000"
 );
 
 # Open a connection to MySQL, or skip the rest of the tests.

@@ -94,8 +94,9 @@ sub _split_version {
 # 50120
 sub normalized_version {
    my ( $self ) = @_;
-   my @version_parts = map { $_ || 0 } $self->_split_version( $self->version );
-   my $result = sprintf('%d%02d%02d', @version_parts);
+   my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
+                                                      $self->minor,
+                                                      $self->revision);
    PTDEBUG && _d($self->version, 'normalizes to', $result);
    return $result;
 }
