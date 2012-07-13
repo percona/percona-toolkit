@@ -3096,10 +3096,6 @@ sub get_connected_slaves {
 
    my $show = "SHOW GRANTS FOR ";
    my $user = 'CURRENT_USER()';
-   if ( VersionParser->new($dbh) < '4.1.2' ) {
-      $user = $dbh->selectrow_arrayref('SELECT USER()')->[0];
-      $user =~ s/([^@]+)@(.+)/'$1'\@'$2'/;
-   }
    my $sql = $show . $user;
    PTDEBUG && _d($dbh, $sql);
 
