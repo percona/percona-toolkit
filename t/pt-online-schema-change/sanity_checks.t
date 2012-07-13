@@ -46,16 +46,22 @@ my $rows;
 # #############################################################################
 
 # Of course, the orig database and table must exist.
-throws_ok(
+($output, undef) = full_output(
    sub { pt_online_schema_change::main(@args,
          "$dsn,D=nonexistent_db,t=t", qw(--dry-run)) },
+);
+
+like( $output,
    qr/Unknown database/,
    "Original database must exist"
 );
 
-throws_ok(
+($output, undef) = full_output(
    sub { pt_online_schema_change::main(@args,
          "$dsn,D=mysql,t=nonexistent_tbl", qw(--dry-run)) },
+);
+
+like( $output,
    qr/`mysql`.`nonexistent_tbl` does not exist/,
    "Original table must exist"
 );
@@ -66,9 +72,12 @@ $slave_dbh->do("USE pt_osc");
 
 # The orig table cannot have any triggers.
 $master_dbh->do("CREATE TRIGGER pt_osc.pt_osc_test AFTER DELETE ON pt_osc.t FOR EACH ROW DELETE FROM pt_osc.t WHERE 0");
-throws_ok(
+($output, undef) = full_output(
    sub { pt_online_schema_change::main(@args,
          "$dsn,D=pt_osc,t=t", qw(--dry-run)) },
+);
+
+like( $output,
    qr/`pt_osc`.`t` has triggers/,
    "Original table cannot have triggers"
 );
@@ -77,9 +86,12 @@ $master_dbh->do('DROP TRIGGER pt_osc.pt_osc_test');
 # The orig table must have a pk or unique index so the delete trigger is safe.
 $master_dbh->do("ALTER TABLE pt_osc.t DROP COLUMN id");
 $master_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
-throws_ok(
+($output, undef) = full_output(
    sub { pt_online_schema_change::main(@args,
          "$dsn,D=pt_osc,t=t", qw(--dry-run)) },
+);
+
+like( $output,
    qr/`pt_osc`.`t` does not have a PRIMARY KEY or a unique index/,
    "Original table must have a PK or unique index"
 );
@@ -97,9 +109,14 @@ for my $i ( 1..10 ) {
    $master_dbh->do("create table $table (id int)");
 }
 
-throws_ok(
+my $x;
+($output, $x) = full_output(
    sub { pt_online_schema_change::main(@args,
-         "$dsn,D=pt_osc,t=t", qw(--quiet --dry-run)) },
+         "$dsn,D=pt_osc,t=t", qw(--quiet --dry-run)); },
+);
+
+like(
+   $output,
    qr/Failed to find a unique new table name/,
    "Doesn't try forever to find a new table name"
 );

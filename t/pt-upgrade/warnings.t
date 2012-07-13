@@ -24,10 +24,16 @@ my $dbh1 = $sb->get_dbh_for('master');
 my $dbh2 = $sb->get_dbh_for('master1');
 
 if ( !$dbh1 ) {
+   diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
    plan skip_all => 'Cannot connect to sandbox master';
 }
 elsif ( !$dbh2 ) {
+   diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
    plan skip_all => 'Cannot connect to second sandbox master';
+}
+elsif ( PerconaTest::load_data_is_disabled($dbh1) ) {
+   diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
+   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
 }
 else {
    plan tests => 6;

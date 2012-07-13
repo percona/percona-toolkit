@@ -69,7 +69,7 @@ wait_until(sub {
 # wait for it to stop "lagging".
 ($output) = PerconaTest::full_output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.city)) },
-   wait_for => 3,
+   wait_for => 10,
 );
 
 like(
