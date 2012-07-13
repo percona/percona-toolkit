@@ -36,7 +36,7 @@ my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-archiver";
 
 if ( PerconaTest::load_data_is_disabled($dbh) ) {
-   test_disabled_load_data($dbh, $sb);
+   test_disabled_load_data($dbh, $sb, 'master', $cnf);
 }
 else {
 
@@ -104,7 +104,7 @@ is_deeply(
 
    my $master3_dbh = $sb->get_dbh_for('master3');
 
-   test_disabled_load_data($master3_dbh, $sb);
+   test_disabled_load_data($master3_dbh, $sb, 'master3', "/tmp/2900/my.sandbox.cnf");
 
    diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null 2>&1`);
    $master3_dbh->disconnect() if $master3_dbh;
@@ -113,10 +113,10 @@ is_deeply(
 }
 
 sub test_disabled_load_data {
-   my ($dbh, $sb) = @_;
+   my ($dbh, $sb, $master, $cnf) = @_;
    $sb->wipe_clean($dbh);
    $sb->create_dbs($dbh, ['test']);
-   $sb->load_file('master', 't/pt-archiver/samples/table5.sql');
+   $sb->load_file($master, 't/pt-archiver/samples/table5.sql');
    $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
 
    my ($output, undef) = full_output(
