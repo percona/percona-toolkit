@@ -3676,6 +3676,232 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Retry package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Retry;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub retry {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(try fail final_fail);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
+   my $tries = $args{tries} || 3;
+
+   my $last_error;
+   my $tryno = 0;
+   TRY:
+   while ( ++$tryno <= $tries ) {
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
+      my $result;
+      eval {
+         $result = $try->(tryno=>$tryno);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
+
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
+         }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
+         return $result;
+      }
+   }
+
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Retry package
+# ###########################################################################
+
+# ###########################################################################
+# Cxn package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Cxn.pm
+#   t/lib/Cxn.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Cxn;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(DSNParser OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
+   if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
+      $dsn = $dp->parse(
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+   }
+
+   my $self = {
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
+      set          => $args{set},
+      NAME_lc      => $args{NAME_lc},
+      dbh_set      => 0,
+      OptionParser => $o,
+      DSNParser    => $dp,
+   };
+
+   return bless $self, $class;
+}
+
+sub connect {
+   my ( $self ) = @_;
+   my $dsn = $self->{dsn};
+   my $dp  = $self->{DSNParser};
+   my $o   = $self->{OptionParser};
+
+   my $dbh = $self->{dbh};
+   if ( !$dbh || !$dbh->ping() ) {
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
+      }
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+   }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+
+   return $self->set_dbh($dbh);
+}
+
+sub set_dbh {
+   my ($self, $dbh) = @_;
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   PTDEBUG && _d($dbh, 'Setting dbh');
+
+   if ( !exists $self->{NAME_lc}
+        || (defined $self->{NAME_lc} && $self->{NAME_lc}) ) {
+      $dbh->{FetchHashKeyName} = 'NAME_lc';
+   }
+   
+   my $sql = 'SELECT @@hostname, @@server_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
+
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
+   return $dbh;
+}
+
+sub dbh {
+   my ($self) = @_;
+   return $self->{dbh};
+}
+
+sub dsn {
+   my ($self) = @_;
+   return $self->{dsn};
+}
+
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   if ( $self->{dbh}
+         && blessed($self->{dbh})
+         && $self->{dbh}->can("disconnect") ) {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      $self->{dbh}->disconnect();
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Cxn package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -3788,10 +4014,10 @@ sub main {
    # ########################################################################
    # Make input sub that will either get processlist from MySQL or a file.
    # ########################################################################
-   my $dsn;
-   my $dbh;
-   my $kill_sth;
-   my $get_proclist;
+   my $cxn;
+   my $dbh;           # $cxn->dbh
+   my $get_proclist;  # callback to SHOW PROCESSLIST
+   my $kill;          # callback to KILL
    my $files;
    if ( $files = $o->get('test-matching') ) {
       PTDEBUG && _d('Getting processlist from files:', @$files);
@@ -3830,14 +4056,83 @@ sub main {
    }
    else {
       PTDEBUG && _d('Getting processlist from MySQL');
-      $dsn      = $dp->parse_options($o);
-      $dbh      = get_cxn($dp, $dsn, 1); 
-      $kill_sth = $o->get('kill-query') ? $dbh->prepare('KILL QUERY ?')
-                :                         $dbh->prepare('KILL ?');
+      $cxn = Cxn->new(
+         dsn_string   => shift @ARGV,
+         NAME_lc      => 0,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $dbh = $cxn->connect();
+
+      # Make the get_proclist and kill callbacks.  Use Retry in case
+      # the connection to MySQL is lost, then the dbh and the sths
+      # will need to be re-initialized.
+      my $retry = Retry->new();
+
       my $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
       $get_proclist = sub {
-         $proc_sth->execute();
-         return $proc_sth->fetchall_arrayref({});
+         return $retry->retry(
+            # Retry for an hour: 1,200 tries x 3 seconds = 3600s/1hr
+            tries => 1200,
+            wait  => sub { sleep 3; }, 
+            try => sub {
+               $proc_sth->execute();
+               return $proc_sth->fetchall_arrayref({});
+            },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               # The 1st pattern means that MySQL itself died or was stopped.
+               # The 2nd pattern means that our cxn was killed (KILL <id>).
+               if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                     $dbh      = $cxn->connect();
+                     $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
+                     msg('Reconnected to ' . $cxn->name());
+                  };
+                  return 1 unless $EVAL_ERROR; # try again
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
+         );
+      };
+
+      my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
+      my $kill_sth = $dbh->prepare($kill_sql);
+      $kill = sub {
+         my ($id) = @_;
+         PTDEBUG && _d('Killing process', $id);
+         return $retry->retry(
+            tries => 2,
+            try => sub {
+               return $kill_sth->execute($id);
+            },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               # The 1st pattern means that MySQL itself died or was stopped.
+               # The 2nd pattern means that our cxn was killed (KILL <id>).
+               if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                     $dbh      = $cxn->connect();
+                     $kill_sth = $dbh->prepare($kill_sql);
+                     msg('Reconnected to ' . $cxn->name());
+                  };
+                  return 1 unless $EVAL_ERROR; # try again
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
+         );
       };
    }
 
@@ -3860,7 +4155,7 @@ sub main {
    # Start working.
    # ########################################################################
    msg("$PROGRAM_NAME starting");
-   msg($dbh ? "Connected to host " . $dp->as_string($dsn)
+   msg($dbh ? "Connected to host " . $cxn->name()
             : "Test matching files @$files");
 
    # Class-based match criteria.
@@ -4044,7 +4339,7 @@ sub main {
                      . " seconds before kill");
                   sleep $o->get('wait-before-kill');
                }
-               eval { $kill_sth->execute($query->{Id}); };
+               eval { $kill->($query->{Id}) };
                if ( $EVAL_ERROR ) {
                   msg("Error killing $query->{Id}: $EVAL_ERROR");
                }
@@ -4082,16 +4377,6 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
-
-sub get_cxn {
-   my ( $dp, $dsn, $ac ) = @_;
-   if ( $o->get('ask-pass') ) {
-      $dsn->{p} = OptionParser::prompt_noecho("Enter password: "); 
-   }
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => $ac});
-   $dbh->{InactiveDestroy} = 1; # Because of forking.
-   return $dbh;
-}
 
 # Forks and detaches from parent to execute the given command;
 # does not block parent.
@@ -4177,7 +4462,7 @@ pt-kill - Kill MySQL queries that match certain criteria.
 
 =head1 SYNOPSIS
 
-Usage: pt-kill [OPTIONS]
+Usage: pt-kill [OPTIONS] [DSN]
 
 pt-kill kills MySQL connections.  pt-kill connects to MySQL and gets queries
 from SHOW PROCESSLIST if no FILE is given.  Else, it reads queries from one
@@ -4316,6 +4601,9 @@ L<"--kill"> and L<"--kill-query"> are mutually exclusive.
 
 L<"--daemonize"> and L<"--test-matching"> are mutually exclusive.
 
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
+
 =over
 
 =item --ask-pass
@@ -4337,6 +4625,12 @@ type: Array
 
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
 
 =item --daemonize
 
