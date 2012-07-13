@@ -2314,6 +2314,8 @@ use overload (
    fallback => 1,
 );
 
+use Carp ();
+
 our $VERSION = 0.01;
 
 has major => (
@@ -2368,8 +2370,9 @@ sub _split_version {
 
 sub normalized_version {
    my ( $self ) = @_;
-   my @version_parts = map { $_ || 0 } $self->_split_version( $self->version );
-   my $result = sprintf('%d%02d%02d', @version_parts);
+   my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
+                                                      $self->minor,
+                                                      $self->revision);
    PTDEBUG && _d($self->version, 'normalizes to', $result);
    return $result;
 }
@@ -2403,10 +2406,13 @@ sub BUILDARGS {
    if ( @_ == 1 ) {
       my %args;
       if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
-         my $dbh = $_[0];
-         my $query;
          PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
-         if ( eval { $query = $dbh->selectall_hashref(q<SHOW VARIABLES LIKE 'version%'>) } ) {
+         my $dbh = $_[0];
+         my $query = eval {
+            $dbh->selectall_arrayref(q<SHOW VARIABLES LIKE 'version%'>, { Slice => {} })
+         };
+         if ( $query ) {
+            $query = { map { $_->{variable_name} => $_->{value} } @$query };
             @args{@methods} = $self->_split_version($query->{version});
             $args{flavor} = delete $query->{version_comment}
                   if $query->{version_comment};
@@ -2415,7 +2421,8 @@ sub BUILDARGS {
             @args{@methods} = $self->_split_version($query);
          }
          else {
-            PTDEBUG && _d("Couldn't get the version from the dbh: $@");
+            Carp::confess("Couldn't get the version from the dbh while "
+                        . "creating a VersionParser object: $@");
          }
          $args{innodb_version} = eval { $self->_innodb_version($dbh) };
       }
@@ -3262,10 +3269,6 @@ sub get_connected_slaves {
 
    my $show = "SHOW GRANTS FOR ";
    my $user = 'CURRENT_USER()';
-   if ( VersionParser->new($dbh) < '4.1.2' ) {
-      $user = $dbh->selectrow_arrayref('SELECT USER()')->[0];
-      $user =~ s/([^@]+)@(.+)/'$1'\@'$2'/;
-   }
    my $sql = $show . $user;
    PTDEBUG && _d($dbh, $sql);
 
