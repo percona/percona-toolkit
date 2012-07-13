@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 29;
+use Test::More tests => 31;
 
 use VersionParser;
 use PerconaTest;
