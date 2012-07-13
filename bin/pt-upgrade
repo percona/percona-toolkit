@@ -8677,6 +8677,7 @@ sub BUILDARGS {
       if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
          PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
          my $dbh = $_[0];
+         local $dbh->{FetchHashKeyName} = 'NAME_lc';
          my $query = eval {
             $dbh->selectall_arrayref(q<SHOW VARIABLES LIKE 'version%'>, { Slice => {} })
          };
