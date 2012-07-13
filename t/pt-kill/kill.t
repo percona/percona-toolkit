@@ -41,7 +41,7 @@ my $cnf='/tmp/12345/my.sandbox.cnf';
 
 # Shell out to a sleep(10) query and try to capture the query.
 # Backticks don't work here.
-system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null&");
+system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null 2>&1 &");
 sleep 0.5;
 my $rows = $dbh->selectall_hashref('show processlist', 'id');
 my $pid;

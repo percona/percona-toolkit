@@ -4,6 +4,7 @@ BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
+   $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 };
 
 use strict;
@@ -25,7 +26,7 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 4;
+   plan tests => 6;
 }
 
 my $output;
@@ -52,7 +53,7 @@ my @times = $output =~ m/\(Query (\d+) sec\)/g;
 ok(
    @times > 2 && @times < 7,
    "There were 2 to 5 captures"
-) or print STDERR Dumper($output);
+) or diag($output);
 
 # This is to catch a bad bug where there wasn't any sleep time when
 # --iterations  was 0, and another bug when --run-time was not respected.
@@ -64,8 +65,7 @@ $output = `$cmd --busy-time 1s --print --run-time 11s`;
 ok(
    @times > 7 && @times < 12,
    'Approximately 9 or 10 captures with --iterations 0'
-) or print STDERR Dumper($output);
-
+) or diag($output);
 
 # ############################################################################
 # --verbose
@@ -79,6 +79,32 @@ like(
    qr/Checking processlist/,
    '--verbose'
 );
+
+# #############################################################################
+# Reconnect if cxn lost.
+# #############################################################################
+$master_dbh->do("CREATE DATABASE IF NOT EXISTS pt_kill_test");
+
+system(qq($trunk/util/kill-mysql-process db=pt_kill_test wait=2 &));
+
+$output = output(
+   sub { pt_kill::main('-F', $cnf, qw(-D pt_kill_test),
+      qw(--run-time 4 --interval 1 --print --verbose)) },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/Reconnected/,
+   "kill-mysql-process says it reconnected"
+);
+
+my $n_checks =()= $output =~ m/Checking processlist/g;
+is(
+   $n_checks,
+   4,
+   "pt-kill still checked the processlist 4 times"
+) or diag($output);
 
 # #############################################################################
 # Done.
