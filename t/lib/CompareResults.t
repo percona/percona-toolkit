@@ -304,8 +304,10 @@ is_deeply(
 # #############################################################################
 # Test the rows method.
 # #############################################################################
-
 my $tmpdir = '/tmp/mk-upgrade-res';
+SKIP: {
+   skip "LOAD DATA LOCAL INFILE is disabled, can't test method => rows", 30
+      if PerconaTest::load_data_is_disabled($dbh1);
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
@@ -681,7 +683,7 @@ is(
    $report,
    'rows: report, left with more rows'
 );
-
+}
 # #############################################################################
 # Try to compare without having done the actions.
 # #############################################################################
@@ -726,6 +728,9 @@ is_deeply(
    'No differences after bad compare()'
 );
 
+SKIP: {
+   skip "LOAD DATA LOCAL INFILE is disabled, can't test method => rows", 2
+      if PerconaTest::load_data_is_disabled($dbh1);
 $cr = new CompareResults(
    method     => 'rows',
    'base-dir' => $tmpdir,
@@ -754,6 +759,8 @@ is_deeply(
    ],
    'No differences after bad compare()'
 );
+
+}
 
 # #############################################################################
 # Done.

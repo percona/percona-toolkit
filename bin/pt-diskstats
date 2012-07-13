@@ -1389,24 +1389,19 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# ReadKeyMini
+# ReadKeyMini package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/ReadKeyMini.pm
+#   t/lib/ReadKeyMini.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
+{
+
 BEGIN {
 
 package ReadKeyMini;
-# Here be magic. We lie to %INC and say that someone already pulled us from
-# the filesystem. Which might be true, if this is inside a .pm file, but
-# might not be, if we are part of the big file. The spurious BEGINs are mostly
-# unnecesary, but if we aren't inside a .pm and something uses us, import or
-# EXPORT_OK might not yet be defined. Though that probably won't help.
-# Costs us nothing though, so worth trying. Putting this on top of the file
-# would solve the issue.
 BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
-
-# Package: ReadKeyMini
-# ReadKeyMini is a wrapper around Term::ReadKey. If that's available,
-# we use ReadMode and GetTerminalSize from there. Otherwise, we use homebrewn
-# definitions.
 
 use warnings;
 use strict;
@@ -1434,14 +1429,14 @@ my %modes = (
    'ultra-raw' => 5,
 );
 
-# This primarily comes from the Perl Cookbook, recipe 15.8
 
 {
+
    my $fd_stdin = fileno(STDIN);
    my $flags;
    unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
       $flags = fcntl(STDIN, F_GETFL, 0)
-                     or die "can't fcntl F_GETFL: $!";
+                     or warn "can't fcntl F_GETFL: $!";
    }
    my $term     = POSIX::Termios->new();
    $term->getattr($fd_stdin);
@@ -1475,7 +1470,7 @@ my %modes = (
       $term->setattr( $fd_stdin, TCSANOW );
       unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
          fcntl(STDIN, F_SETFL, $flags)
-                        or die "can't fcntl F_SETFL: $!";
+                        or warn "can't fcntl F_SETFL: $!";
       }
    }
 
@@ -1489,9 +1484,6 @@ sub readkey {
    sysread(STDIN, $key, 1);
    my $timeout = 0.1;
    if ( $key eq "\033" ) {
-   # Ugly and broken hack, but good enough for the two minutes it took to write.
-   # Namely, Ctrl escapes, the F-NUM keys, and other stuff you can send from the keyboard
-   # take more than one "character" to represent, and would be wrong to break into pieces.
       {
          my $x = '';
          STDIN->blocking(0);
@@ -1505,15 +1497,11 @@ sub readkey {
    return $key;
 }
 
-# As per perlfaq8:
 
 BEGIN {
    eval { no warnings; local $^W; require 'sys/ioctl.ph' };
    if ( !defined &TIOCGWINSZ ) {
       *TIOCGWINSZ = sub () {
-            # Very few systems actually have ioctl.ph, thus it comes to this.
-            # These seem to be good enough, for now. See:
-            # http://stackoverflow.com/a/4286840/536499
               $^O eq 'linux'   ? 0x005413
             : $^O eq 'solaris' ? 0x005468
             :                    0x40087468;
@@ -1536,11 +1524,11 @@ sub _GetTerminalSize {
       }
    }
 
-   if ( $rows = `tput lines` ) {
+   if ( $rows = `tput lines 2>/dev/null` ) {
       chomp($rows);
       chomp($cols = `tput cols`);
    }
-   elsif ( my $stty = `stty -a` ) {
+   elsif ( my $stty = `stty -a 2>/dev/null` ) {
       ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
    }
    else {
@@ -1555,6 +1543,7 @@ sub _GetTerminalSize {
 }
 
 1;
+}
 # ###########################################################################
 # End ReadKeyMini package
 # ###########################################################################

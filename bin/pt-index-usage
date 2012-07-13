@@ -4068,8 +4068,11 @@ sub BUILDARGS {
          my $query = eval {
             $dbh->selectall_arrayref(q<SHOW VARIABLES LIKE 'version%'>, { Slice => {} })
          };
-         if ( $query ) {
-            $query = { map { $_->{variable_name} => $_->{value} } @$query };
+         if ( ref($query) eq 'ARRAY' && @$query ) {
+            $query = { map {
+                  ($_->{variable_name} || $_->{Variable_name})
+                     => ($_->{value} || $_->{Value})
+            } @$query };
             @args{@methods} = $self->_split_version($query->{version});
             $args{flavor} = delete $query->{version_comment}
                   if $query->{version_comment};
