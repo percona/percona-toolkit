@@ -28,6 +28,12 @@ is(
    'default ->innodb_version is NO'
 );
 
+is(
+   $v1->flavor(),
+   "Unknown",
+   "default ->flavor is Unknown"
+);
+
 my $v2;
 $v2 = new_ok "VersionParser", [ qw( major 5 minor 5 revision 5 ) ], "new from parts works";
 is( "$v2", "5.5.5" );
@@ -125,6 +131,16 @@ SKIP: {
       $ver,
       "object from dbh stringifies as expected"
    );
+
+   my (undef, $flavor) = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
+   SKIP: {  
+      skip "Couldn't fetch version_comment from the db", 1 unless $flavor;
+      is(
+         $vp->flavor(),
+         $flavor,
+         "When created from a dbh, flavor is set through version_comment",
+      );
+   };
 }
 
 # #############################################################################

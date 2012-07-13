@@ -131,10 +131,13 @@ sub BUILDARGS {
    if ( @_ == 1 ) {
       my %args;
       if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
-         my $dbh = $_[0];
-         my $query;
          PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
-         if ( eval { $query = $dbh->selectall_hashref(q<SHOW VARIABLES LIKE 'version%'>) } ) {
+         my $dbh = $_[0];
+         my $query = eval {
+            $dbh->selectall_arrayref(q<SHOW VARIABLES LIKE 'version%'>, { Slice => {} })
+         };
+         if ( $query ) {
+            $query = { map { $_->{variable_name} => $_->{value} } @$query };
             @args{@methods} = $self->_split_version($query->{version});
             $args{flavor} = delete $query->{version_comment}
                   if $query->{version_comment};
