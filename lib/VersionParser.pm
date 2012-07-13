@@ -35,6 +35,8 @@ use overload (
    fallback => 1,
 );
 
+use Carp ();
+
 our $VERSION = 0.01;
 
 has major => (
@@ -112,6 +114,8 @@ sub comment {
 my @methods = qw(major minor revision);
 sub cmp {
    my ($left, $right) = @_;
+   # If the first object is blessed and ->isa( self's class ), then
+   # just use that; Otherwise, contruct a new VP object from it.
    my $right_obj = (blessed($right) && $right->isa(ref($left)))
                    ? $right
                    : ref($left)->new($right);
@@ -146,9 +150,8 @@ sub BUILDARGS {
             @args{@methods} = $self->_split_version($query);
          }
          else {
-            PTDEBUG && _d("Couldn't get the version from the dbh: $@");
-            # No need to die here; ->new will die on it's own since the version
-            # is missing
+            Carp::confess("Couldn't get the version from the dbh while "
+                        . "creating a VersionParser object: $@");
          }
          $args{innodb_version} = eval { $self->_innodb_version($dbh) };
       }
