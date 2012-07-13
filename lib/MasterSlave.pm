@@ -273,16 +273,9 @@ sub _find_slaves_by_hosts {
 sub get_connected_slaves {
    my ( $self, $dbh ) = @_;
 
-   # Check for the PROCESS privilege.  SHOW GRANTS operates differently
-   # before 4.1.2: it requires "FROM ..." and it's not until 4.0.6 that
-   # CURRENT_USER() is available.  So for versions <4.1.2 we get current
-   # user with USER(), quote it, and then add it to statement.
+   # Check for the PROCESS privilege.
    my $show = "SHOW GRANTS FOR ";
    my $user = 'CURRENT_USER()';
-   if ( VersionParser->new($dbh) < '4.1.2' ) {
-      $user = $dbh->selectrow_arrayref('SELECT USER()')->[0];
-      $user =~ s/([^@]+)@(.+)/'$1'\@'$2'/;
-   }
    my $sql = $show . $user;
    PTDEBUG && _d($dbh, $sql);
 
