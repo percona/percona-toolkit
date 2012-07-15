@@ -27,7 +27,7 @@ my $timeout = wait_for(
       `$trunk/bin/pt-query-digest --read-timeout 2 --pid /tmp/mqd.pid 2>/dev/null`;
       return;
    },
-   4,
+   5,
 );
 $end    = time;
 $waited = $end - $start;
@@ -52,7 +52,7 @@ $timeout = wait_for(
       `$trunk/bin/pt-query-digest --read-timeout 2 --pid /tmp/mqd.pid /tmp/mqd.fifo`;
       return;
    },
-   4,
+   5,
 );
 $end    = time;
 $waited = $end - $start;
