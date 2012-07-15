@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 35;
+use Test::More tests => 37;
 
 use DSNParser;
 use OptionParser;
@@ -541,6 +541,30 @@ sub test_password_comma_with_auto {
 foreach my $password_comma ( @password_commas ) {
    test_password_comma_with_auto(@$password_comma);
 }
+
+# #############################################################################
+# Bug 984915: SQL calls after creating the dbh aren't checked
+# #############################################################################
+
+$dsn = $dp->parse('h=127.1,P=12345,u=msandbox,p=msandbox');
+my @opts = $dp->get_cxn_params($dsn);
+$opts[0] .= ";charset=garbage_eh";
+my ($out, undef) = full_output(sub { $dp->get_dbh(@opts, {}) });
+
+like(
+   $out,
+   qr/\QUnknown character set/,
+   "get_dbh dies withg an unknown charset"
+);
+
+$dp->prop('set-vars', "time_zoen='UTC'");
+($out, undef) = full_output(sub { $dp->get_dbh($dp->get_cxn_params($dsn), {}) });
+
+like(
+   $out,
+   qr/\QUnknown system variable 'time_zoen'/,
+   "get_dbh dies withg an unknown charset"
+);
 
 # #############################################################################
 # Done.
