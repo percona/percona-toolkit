@@ -38,7 +38,7 @@ if ( $timeout ) {
 }
 
 ok(
-   $waited >= 2 && $waited < 4,
+   $waited >= 2 && int($waited) < 4,
    sprintf("--read-timeout 2 waited %.1f seconds reading STDIN", $waited)
 );
 
@@ -63,7 +63,7 @@ if ( $timeout ) {
 }
 
 ok(
-   $waited >= 2 && $waited < 4,
+   $waited >= 2 && int($waited) < 4,
    sprintf("--read-timeout waited %.1f seconds reading a file", $waited)
 );
 
