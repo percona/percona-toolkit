@@ -20,27 +20,32 @@ use Time::HiRes qw(sleep time);
 # #########################################################################
 diag(`rm -rf /tmp/mqd.pid`);
 
-my ($start, $end, $waited);
-my $timeout = wait_for(
-   sub {
-      $start = time;
-      `$trunk/bin/pt-query-digest --read-timeout 2 --pid /tmp/mqd.pid 2>/dev/null`;
-      return;
-   },
-   5,
-);
-$end    = time;
-$waited = $end - $start;
-if ( $timeout ) {
-   # mqd ran longer than --read-timeout
-   my $pid = `cat /tmp/mqd.pid`;
-   `kill $pid`;
-}
+my ($start, $end, $waited, $timeout);
+SKIP: {
+    use IO::File;
+    skip("Either not connected to a tty or STDIN isn't blocking, won't test"
+       . " --read-timeout with STDIN", 1) if !-t STDIN || !STDIN->blocking();
+    $timeout = wait_for(
+        sub {
+            $start = time;
+            `$trunk/bin/pt-query-digest --read-timeout 2 --pid /tmp/mqd.pid 2>/dev/null`;
+            return;
+        },
+        5,
+    );
+    $end    = time;
+    $waited = $end - $start;
+    if ( $timeout ) {
+        # mqd ran longer than --read-timeout
+        my $pid = `cat /tmp/mqd.pid`;
+        kill SIGTERM => $pid if $pid;
+    }
 
-ok(
-   $waited >= 2 && int($waited) < 4,
-   sprintf("--read-timeout 2 waited %.1f seconds reading STDIN", $waited)
-);
+    ok(
+        $waited >= 2 && int($waited) < 4,
+        sprintf("--read-timeout 2 waited %.1f seconds reading STDIN", $waited)
+    );
+}
 
 diag(`rm -rf /tmp/mqd.pid`);
 diag(`rm -rf /tmp/mqd.fifo; mkfifo /tmp/mqd.fifo`);
