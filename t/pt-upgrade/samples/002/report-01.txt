@@ -36,9 +36,9 @@ select i from t where i is not null
 
 
 # Row count differences
-# Query ID           127.1:12345 127.1:12348
-# ================== =========== ===========
-# 3C830E3839B916D7-1           4           3
+# Query ID           host1 host2
+# ================== ===== =====
+# 3C830E3839B916D7-1     4     3
 
 # Statistics
 # events                         1

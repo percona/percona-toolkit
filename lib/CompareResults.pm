@@ -836,8 +836,10 @@ sub report {
    my $query_id_col = {
       name        => 'Query ID',
    };
+   my $hostno = 0;
    my @host_cols = map {
-      my $col = { name => $_->{name} };
+      $hostno++;
+      my $col = { name => "host$hostno" };
       $col;
    } @$hosts;
 
@@ -933,12 +935,14 @@ sub _report_diff_row_counts {
 
    my $report = new ReportFormatter();
    $report->set_title('Row count differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
    );
 
    my $diff_row_counts = $self->{diffs}->{row_counts};
