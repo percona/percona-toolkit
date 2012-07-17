@@ -279,14 +279,14 @@ is_deeply(
 
 $report = <<EOF;
 # Checksum differences
-# Query ID           master    slave
+# Query ID           host1     host2
 # ================== ========= ==========
 # D2D386B840D3BEEA-1 $events[0]->{checksum} $events[1]->{checksum}
 
 # Row count differences
-# Query ID           master slave
-# ================== ====== =====
-# D2D386B840D3BEEA-1      3     4
+# Query ID           host1 host2
+# ================== ===== =====
+# D2D386B840D3BEEA-1     3     4
 EOF
 
 is(
@@ -488,14 +488,14 @@ is_deeply(
 
 $report = <<EOF;
 # Column value differences
-# Query ID           Column master slave
-# ================== ====== ====== ===========
-# CFC309761E9131C5-3 c      c      should be c
+# Query ID           Column host1 host2
+# ================== ====== ===== ===========
+# CFC309761E9131C5-3 c      c     should be c
 
 # Row count differences
-# Query ID           master slave
-# ================== ====== =====
-# B8B721D77EA1FD78-0      3     4
+# Query ID           host1 host2
+# ================== ===== =====
+# B8B721D77EA1FD78-0     3     4
 EOF
 
 is(
@@ -552,9 +552,9 @@ is_deeply(
 
 $report = <<EOF;
 # Column value differences
-# Query ID           Column master slave
-# ================== ====== ====== ===========
-# CFC309761E9131C5-3 c      a      should be a
+# Query ID           Column host1 host2
+# ================== ====== ===== ===========
+# CFC309761E9131C5-3 c      a     should be a
 EOF
 
 is(
@@ -674,9 +674,9 @@ is_deeply(
 
 $report = <<EOF;
 # Row count differences
-# Query ID           master slave
-# ================== ====== =====
-# D56E6FABA26D1F1C-3      3     1
+# Query ID           host1 host2
+# ================== ===== =====
+# D56E6FABA26D1F1C-3     3     1
 EOF
 
 is(
