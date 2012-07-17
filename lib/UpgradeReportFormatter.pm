@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -25,12 +25,12 @@ package UpgradeReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG           => $ENV{PTDEBUG};
-
-Transformers->import(qw(make_checksum percentage_of shorten micro_t));
-
 use constant LINE_LENGTH       => 74;
 use constant MAX_STRING_LENGTH => 10;
+
+Transformers->import(qw(make_checksum percentage_of shorten micro_t));
 
 # Special formatting functions
 my %formatting_function = (
@@ -70,6 +70,14 @@ sub event_report {
    $line .= ('_' x (LINE_LENGTH - length($line)));
    push @result, $line;
 
+   # Second line: full host names
+   # https://bugs.launchpad.net/percona-toolkit/+bug/980318
+   my $hostno = 0;
+   foreach my $host ( @$hosts ) {
+      $hostno++;
+      push @result, "# Host$hostno: " . ($host->{name} || '?')
+   }
+
    # Differences report.  This relies on a sampleno attrib in each class
    # since all other attributes (except maybe Query_time) are optional.
    my $class = $meta_stats->{classes}->{$where};
@@ -89,9 +97,10 @@ sub event_report {
       underline_header => 0,
       strip_whitespace => 0,
    );
+   $hostno = 0;
    $report->set_columns(
       { name => '' },
-      map { { name => $_->{name}, right_justify => 1 } } @$hosts,
+      map { $hostno++; { name => "host$hostno", right_justify => 1 } } @$hosts,
    );
    # Bool values.
    foreach my $thing ( qw(Errors Warnings) ) {
