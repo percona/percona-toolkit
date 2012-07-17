@@ -36,9 +36,9 @@ SELECT SUM(total) FROM test.t WHERE id > 0
 
 
 # Column value differences
-# Query ID           Column     127.1:12345 127.1:12348
-# ================== ========== =========== ===========
-# C1B1E457814417E4-1 SUM(total) 14.68       13.68
+# Query ID           Column     host1 host2
+# ================== ========== ===== =====
+# C1B1E457814417E4-1 SUM(total) 14.68 13.68
 
 # Statistics
 # events                         1
