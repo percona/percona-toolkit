@@ -3048,7 +3048,7 @@ sub _calc_metrics {
 sub metrics {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(attrib where) ) {
-      die "I need a $arg argument" unless $args{$arg};
+      die "I need a $arg argument" unless defined $args{$arg};
    }
    my $attrib = $args{attrib};
    my $where   = $args{where};
@@ -8628,12 +8628,12 @@ package UpgradeReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG           => $ENV{PTDEBUG};
-
-Transformers->import(qw(make_checksum percentage_of shorten micro_t));
-
 use constant LINE_LENGTH       => 74;
 use constant MAX_STRING_LENGTH => 10;
+
+Transformers->import(qw(make_checksum percentage_of shorten micro_t));
 
 my %formatting_function = (
    ts => sub {
@@ -8671,6 +8671,12 @@ sub event_report {
    $line .= ('_' x (LINE_LENGTH - length($line)));
    push @result, $line;
 
+   my $hostno = 0;
+   foreach my $host ( @$hosts ) {
+      $hostno++;
+      push @result, "# Host$hostno: " . ($host->{name} || '?')
+   }
+
    my $class = $meta_stats->{classes}->{$where};
    push @result,
       '# Found ' . ($class->{differences}->{sum} || 0)
@@ -8687,9 +8693,10 @@ sub event_report {
       underline_header => 0,
       strip_whitespace => 0,
    );
+   $hostno = 0;
    $report->set_columns(
       { name => '' },
-      map { { name => $_->{name}, right_justify => 1 } } @$hosts,
+      map { $hostno++; { name => "host$hostno", right_justify => 1 } } @$hosts,
    );
    foreach my $thing ( qw(Errors Warnings) ) {
       my @vals = $thing;
