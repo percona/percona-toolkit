@@ -110,8 +110,8 @@ $meta_events = [
 
 $expected = <<EOF;
 # Query 1: ID 0x82860EDA9A88FCC5 at byte 0 _______________________________
-# Host1: host1.domain.com:3306
-# Host2: host2.domain.com:3307
+# host1: host1.domain.com:3306
+# host2: host2.domain.com:3307
 # Found 1 differences in 3 samples:
 #   checksums       0
 #   row counts      1

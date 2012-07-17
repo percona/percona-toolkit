@@ -75,7 +75,7 @@ sub event_report {
    my $hostno = 0;
    foreach my $host ( @$hosts ) {
       $hostno++;
-      push @result, "# Host$hostno: " . ($host->{name} || '?')
+      push @result, "# host$hostno: " . ($host->{name} || '?')
    }
 
    # Differences report.  This relies on a sampleno attrib in each class
