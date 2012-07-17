@@ -254,8 +254,10 @@ sub report {
    my $query_id_col = {
       name        => 'Query ID',
    };
+   my $hostno = 0;
    my @host_cols = map {
-      my $col = { name => $_->{name} };
+      $hostno++;
+      my $col = { name => "host$hostno" };
       $col;
    } @$hosts;
 
@@ -297,12 +299,14 @@ sub _report_diff_big {
 
    my $report = new ReportFormatter();
    $report->set_title('Big query time differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
       { name => 'Difference', right_justify => 1 },
    );
 
@@ -344,12 +348,14 @@ sub _report_diff_in_bucket {
 
    my $report = new ReportFormatter();
    $report->set_title('Significant query time differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
       { name => '%Increase',  right_justify => 1 },
       { name => '%Threshold', right_justify => 1 },
    );
