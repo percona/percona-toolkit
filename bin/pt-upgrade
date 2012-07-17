@@ -8674,7 +8674,7 @@ sub event_report {
    my $hostno = 0;
    foreach my $host ( @$hosts ) {
       $hostno++;
-      push @result, "# Host$hostno: " . ($host->{name} || '?')
+      push @result, "# host$hostno: " . ($host->{name} || '?')
    }
 
    my $class = $meta_stats->{classes}->{$where};
