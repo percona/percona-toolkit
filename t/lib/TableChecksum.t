@@ -11,7 +11,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use VersionParser;
 use TableChecksum;
 use TableParser;
 use Quoter;
@@ -118,8 +117,8 @@ is (
       algorithm => 'CHECKSUM',
       dbh       => '4.0.0',
    ),
-   'ACCUM',
-   'CHECKSUM and BIT_XOR eliminated by version',
+   'CHECKSUM',
+   'Ignore version, always use CHECKSUM',
 );
 
 is (
@@ -136,8 +135,8 @@ is (
       algorithm => 'BIT_XOR',
       dbh       => '4.0.0',
    ),
-   'ACCUM',
-   'BIT_XOR eliminated by version',
+   'BIT_XOR',
+   'Ignore version, always use BIT_XOR',
 );
 
 is (

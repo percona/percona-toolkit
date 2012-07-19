@@ -143,16 +143,13 @@ sub sync_table {
    # Make an index hint for either the explicitly given chunk_index
    # or the chunk_index chosen by the plugin if index_hint is true.
    my $index_hint;
-   my $hint = ((VersionParser->new($src->{dbh}) >= '4.0.9'
-               && VersionParser->new($dst->{dbh}) >= '4.0.9') ? 'FORCE' : 'USE')
-            . ' INDEX';
    if ( $args{chunk_index} ) {
       PTDEBUG && _d('Using given chunk index for index hint');
-      $index_hint = "$hint (" . $q->quote($args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($args{chunk_index}) . ")";
    }
    elsif ( $plugin_args{chunk_index} && $args{index_hint} ) {
       PTDEBUG && _d('Using chunk index chosen by plugin for index hint');
-      $index_hint = "$hint (" . $q->quote($plugin_args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($plugin_args{chunk_index}) . ")";
    }
    PTDEBUG && _d('Index hint:', $index_hint);
 
