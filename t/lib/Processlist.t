@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 34;
+use Test::More tests => 35;
 
 use Processlist;
 use PerconaTest;
@@ -859,6 +859,34 @@ local $@;
 eval { $pl->find([$proc], %find_spec) };
 ok !$@,
  "Bug 923896: NULL Time in processlist doesn't fail for idle_time+Command=Sleep";
+
+# #############################################################################
+# NULL STATE doesn't generate warnings
+# https://bugs.launchpad.net/percona-toolkit/+bug/821703
+# #############################################################################
+
+$procs = [
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 7,
+    'some state', 1] ],
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 8,
+    undef, 2] ],
+],
+
+eval {
+   parse_n_times(
+      2,
+      code  => sub {
+         return shift @$procs;
+      },
+      time  => Transformers::unix_timestamp('2001-01-01 00:05:00'),
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "NULL STATE shouldn't cause warnings"
+);
 
 # #############################################################################
 # Done.
