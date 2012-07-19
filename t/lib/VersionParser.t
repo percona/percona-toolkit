@@ -36,9 +36,9 @@ is(
 
 my $v2;
 $v2 = new_ok "VersionParser", [ qw( major 5 minor 5 revision 5 ) ], "new from parts works";
-is( "$v2", "5.5.5" );
+is( "$v2", "5.5.5", "..and stringifies correctly" );
 $v2 = new_ok "VersionParser", [ { qw( major 5 minor 5 revision 5 ) } ], "new from hashref works";
-is( "$v2", "5.5.5" );
+is( "$v2", "5.5.5", "..and stringifies correctly" );
 
 for my $test (
     [ "5.0.1", "lt", "5.0.2" ],
@@ -71,6 +71,7 @@ is(
 is(
    $c->comment('@@hostname,'),
    '/*!50501 @@hostname, */',
+   '->comment works with @@variable'
 );
 
 
