@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More;
 
 use lib "$ENV{PERCONA_TOOLKIT_BRANCH}/t/lib/Mo";
 use Bar;
@@ -22,3 +22,5 @@ is "@Bar::ISA", "Foo", 'Extends with multiple classes not supported';
 
 ok 'Foo'->can('stuff'), 'Foo is loaded';
 ok not('Bar'->can('buff')), 'Boo is not loaded';
+
+done_testing;

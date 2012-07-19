@@ -9,9 +9,11 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 1;
+use Test::More;
 
 eval 'package Foo; use Mo; $x = 1';
 
 like $@, qr/Global symbol "\$x" requires explicit package name/,
     'Mo is strict';
+
+done_testing;
