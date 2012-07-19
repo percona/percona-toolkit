@@ -23,7 +23,7 @@ if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 else {
-   plan tests => 10;
+   plan tests => 13;
 }
 
 my $output;
@@ -105,6 +105,35 @@ ok(
       sed => [ "-e 's/  */ /g'" ],
     ),
    "Bug 894140"
+);
+
+# #############################################################################
+# --key-types
+# https://bugs.launchpad.net/percona-toolkit/+bug/969669 
+# #############################################################################
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args,
+         qw(-d sakila --key-types k)) },
+      "$sample/key-types-k.txt"),
+   '--key-types k'
+);
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args,
+         qw(-d sakila --key-types f)) },
+      "$sample/key-types-f.txt"),
+   '--key-types f'
+);
+
+ok(
+   no_diff(
+      sub { pt_duplicate_key_checker::main(@args,
+         qw(-d sakila --key-types fk)) },
+      "$sample/key-types-fk.txt"),
+   '--key-types fk (explicit)'
 );
 
 # #############################################################################
