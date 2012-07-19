@@ -11,8 +11,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-plan tests => 39;
-
 #============
 package Foo;
 use Mo;
@@ -138,3 +136,5 @@ my $maz = Maz->new;
 is $_, 5, '$_ is untouched';
 is $maz->foo, 5, 'BUILD works again';
 is $maz->bar, 7, 'BUILD works in parent class';
+
+done_testing;

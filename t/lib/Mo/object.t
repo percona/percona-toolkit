@@ -9,10 +9,12 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 2;
+use Test::More;
 use lib "$ENV{PERCONA_TOOLKIT_BRANCH}/t/lib/Mo";
 
 { package Clean; use Foo; }
 
 is_deeply([ @Clean::ISA ], [], "Didn't mess with caller's ISA");
 is(Clean->can('has'), undef, "Didn't export anything");
+
+done_testing;

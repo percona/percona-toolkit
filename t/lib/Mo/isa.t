@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 80;
+use Test::More;
 
 sub dies_ok (&;$) {
   my $code = shift;
@@ -119,3 +119,5 @@ for my $i (4..7) {
 for my $type (@types[1..$#types]) {
     my $method = "my$type";
     dies_ok { $foo->$method(undef) } "$type attr set to undef dies" }
+
+done_testing;

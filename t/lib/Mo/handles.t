@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 82;
+use Test::More;
 
 
 # -------------------------------------------------------------------
@@ -478,3 +478,5 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     );
 }
 
+
+done_testing;

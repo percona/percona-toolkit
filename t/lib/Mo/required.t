@@ -11,8 +11,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-plan tests => 3;
-
 #============
 package Foo::required;
 use Mo qw(required);
@@ -37,3 +35,5 @@ is $f->stuff, 'fubar', 'Object is correctly initialized when required values are
 
 my $f2 = Foo::required_is->new(stuff => 'fubar');
 is $f2->stuff, 'fubar', 'Object is correctly initialized when required is combined with is';
+
+done_testing;
