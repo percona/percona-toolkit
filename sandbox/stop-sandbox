@@ -17,8 +17,14 @@ for port in "$@"; do
       continue
    fi
 
-   /tmp/$port/stop
-   exit_status=$((exit_status | $?))
+   if [ -x "/tmp/$port/stop" ]; then
+      /tmp/$port/stop
+      exit_status=$((exit_status | $?))
+   else
+      echo "/tmp/$port is missing files:" >&2
+      ls -la /tmp/$port >&2
+   fi
+
    rm -rf /tmp/$port
    exit_status=$((exit_status | $?))
 done
