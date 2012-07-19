@@ -185,9 +185,9 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     can_ok($baz_proxy, 'bar');
     can_ok($baz_proxy, 'boo');
 
-    is($baz_proxy->foo, 'Baz::foo', '... got the right proxied return value');
-    is($baz_proxy->bar, 'Baz::bar', '... got the right proxied return value');
-    is($baz_proxy->boo, 'Baz::boo', '... got the right proxied return value');
+    is($baz_proxy->foo, 'Baz::foo', '... ->foo got the right proxied return value');
+    is($baz_proxy->bar, 'Baz::bar', '... ->bar got the right proxied return value');
+    is($baz_proxy->boo, 'Baz::boo', '... ->boo got the right proxied return value');
 }
 {
     my $baz_proxy = Baz::Proxy2->new;
@@ -199,8 +199,8 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     can_ok($baz_proxy, 'foo');
     can_ok($baz_proxy, 'boo');
 
-    is($baz_proxy->foo, 'Baz::foo', '... got the right proxied return value');
-    is($baz_proxy->boo, 'Baz::boo', '... got the right proxied return value');
+    is($baz_proxy->foo, 'Baz::foo', '... ->foo got the right proxied return value');
+    is($baz_proxy->boo, 'Baz::boo', '... ->boo got the right proxied return value');
 }
 {
     my $baz_proxy = Baz::Proxy3->new;
@@ -212,8 +212,8 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     can_ok($baz_proxy, 'bar');
     can_ok($baz_proxy, 'boo');
 
-    is($baz_proxy->bar, 'Baz::bar', '... got the right proxied return value');
-    is($baz_proxy->boo, 'Baz::boo', '... got the right proxied return value');
+    is($baz_proxy->bar, 'Baz::bar', '... ->bar got the right proxied return value');
+    is($baz_proxy->boo, 'Baz::boo', '... ->boo got the right proxied return value');
 }
 
 # -------------------------------------------------------------------
@@ -349,8 +349,8 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
 
     # and make sure the delegation picks it up
 
-    is($bar->foo->bar, 30, '... bar->foo->bar returned the right (changed) value');
-    is($bar->foo_bar, 30, '... bar->foo_bar delegated correctly');
+    is($bar->foo->bar, 30, '... bar->foo->bar returned the value changed by ->foo->bar()');
+    is($bar->foo_bar, 30, '... bar->foo_bar getter delegated correctly');
 
     # change the value through the delegation ...
 
@@ -358,8 +358,8 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
 
     # and make sure everyone sees it
 
-    is($bar->foo->bar, 50, '... bar->foo->bar returned the right (changed) value');
-    is($bar->foo_bar, 50, '... bar->foo_bar delegated correctly');
+    is($bar->foo->bar, 50, '... bar->foo->bar returned the value changed by ->foo_bar()');
+    is($bar->foo_bar, 50, '... bar->foo_bar getter delegated correctly');
 
     # change the object we are delegating too
 
@@ -432,12 +432,12 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     my $i = Bar->new(foo => undef);
     local $@;
     eval { $i->foo_bar };
-    like($@, qr/is not defined/, 'useful error from unblessed reference' );
+    like($@, qr/is not defined/, 'useful error if delegating from undef' );
 
     my $j = Bar->new(foo => []);
     local $@;
     eval { $j->foo_bar };
-    like($@, qr/is not an object \(got 'ARRAY/, 'useful error from unblessed reference' );
+    like($@, qr/is not an object \(got 'ARRAY/, '... or from an unblessed reference' );
 
     my $k = Bar->new(foo => "Foo");
     local $@;
