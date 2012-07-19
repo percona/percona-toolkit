@@ -4573,7 +4573,10 @@ sub main {
    my $cxn;
    my $dbh;           # $cxn->dbh
    my $get_proclist;  # callback to SHOW PROCESSLIST
+   my $proc_sth;
    my $kill;          # callback to KILL
+   my $kill_sth;
+   my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
    my $files;
    if ( $files = $o->get('test-matching') ) {
       PTDEBUG && _d('Getting processlist from files:', @$files);
@@ -4625,7 +4628,7 @@ sub main {
       # will need to be re-initialized.
       my $retry = Retry->new();
 
-      my $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
+      $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
       $get_proclist = sub {
          return $retry->retry(
             # Retry for an hour: 1,200 tries x 3 seconds = 3600s/1hr
@@ -4658,8 +4661,8 @@ sub main {
          );
       };
 
-      my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
-      my $kill_sth = $dbh->prepare($kill_sql);
+
+      $kill_sth = $dbh->prepare($kill_sql);
       $kill = sub {
          my ($id) = @_;
          PTDEBUG && _d('Killing process', $id);
@@ -4692,12 +4695,12 @@ sub main {
       };
    }
 
-   my $log;
+   # Set up --log-dsn if specified.
+   my ($log, $log_sth);
    my @processlist_columns = qw(
-         Id User Host db Command
-         Time State Info Time_ms
-      );
-
+      Id User Host db Command
+      Time State Info Time_ms
+   );
    if ( my $log_dsn = $o->get('log-dsn') ) {
       my $db    = $log_dsn->{D};
       my $table = $log_dsn->{t};
@@ -4734,9 +4737,9 @@ sub main {
       my @all_log_columns = ( qw( server_id timestamp reason kill_error ),
                               @processlist_columns );
 
-      my $sql            = 'SELECT @@SERVER_ID';
+      my $sql = 'SELECT @@SERVER_ID';
       PTDEBUG && _d($sql);
-      my ($server_id)    = $dbh->selectrow_array($sql);
+      my ($server_id) = $dbh->selectrow_array($sql);
 
       $sql = "INSERT INTO $log_table ("
            . join(", ", @all_log_columns)
@@ -4744,7 +4747,7 @@ sub main {
            . join(", ", $server_id, ("?") x (@all_log_columns-1))
            . ")";
       PTDEBUG && _d($sql);
-      my $log_sth = $log_dbh->prepare( $sql );
+      $log_sth = $log_dbh->prepare($sql); 
 
       my $retry = Retry->new();
 
