@@ -63,7 +63,7 @@ export PATH="$PATH:/usr/sbin:$MYSQL_BASE_DIR/bin"
 #############################
 sandbox/test-env checkconfig || exit 1
 sandbox/test-env stop        || exit 1
-sandbox/test-env kill
+sandbox/test-env kill        || exit 1
 sandbox/test-env start       || exit 1
 
 #######################
