@@ -3566,7 +3566,7 @@ sub main {
          $fks = $tp->get_fks($tbl->{ddl},  {database => $tbl->{db}});
       }
 
-      next TABLE unless %$keys || %$fks;
+      next TABLE unless ($keys && %$keys) || ($fks && %$fks);
 
       if ( $o->got('verbose') ) {
          print_all_keys($keys, $tbl, \%seen_tbl) if $keys;
