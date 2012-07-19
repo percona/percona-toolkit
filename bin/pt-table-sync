@@ -2082,7 +2082,7 @@ sub BUILDARGS {
          my $dbh = $_[0];
          local $dbh->{FetchHashKeyName} = 'NAME_lc';
          my $query = eval {
-            $dbh->selectall_arrayref(q<SHOW VARIABLES LIKE 'version%'>, { Slice => {} })
+            $dbh->selectall_arrayref(q/SHOW VARIABLES LIKE 'version%'/, { Slice => {} })
          };
          if ( $query ) {
             $query = { map { $_->{variable_name} => $_->{value} } @$query };
@@ -2090,7 +2090,7 @@ sub BUILDARGS {
             $args{flavor} = delete $query->{version_comment}
                   if $query->{version_comment};
          }
-         elsif ( eval { ($query) = $dbh->selectrow_array('SELECT VERSION()') } ) {
+         elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
             @args{@methods} = $self->_split_version($query);
          }
          else {
@@ -2580,12 +2580,6 @@ sub get_keys {
       my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
-      if ( $opts->{mysql_version} && $opts->{mysql_version} lt '4.1'
-         && $engine =~ m/HEAP|MEMORY/i )
-      {
-         $type = 'HASH'; # MySQL pre-4.1 supports only HASH indexes on HEAP
-      }
-
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
       my $unique = $key =~ m/PRIMARY|UNIQUE/ ? 1 : 0;
       my @cols;
@@ -4554,21 +4548,14 @@ sub best_algorithm {
    die "Invalid checksum algorithm $alg"
       if $alg && !$ALGOS{$alg};
 
-   my $version = VersionParser->new($dbh);
-
    if (
       $args{where} || $args{chunk}        # CHECKSUM does whole table
-      || $args{replicate}                 # CHECKSUM can't do INSERT.. SELECT
-      || $version < '4.1.1') # CHECKSUM doesn't exist
+      || $args{replicate})                # CHECKSUM can't do INSERT.. SELECT
    {
       PTDEBUG && _d('Cannot use CHECKSUM algorithm');
       @choices = grep { $_ ne 'CHECKSUM' } @choices;
    }
 
-   if ( $version < '4.1.1' ) {
-      PTDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
-      @choices = grep { $_ ne 'BIT_XOR' } @choices;
-   }
 
    if ( $alg && grep { $_ eq $alg } @choices ) {
       PTDEBUG && _d('User requested', $alg, 'algorithm');
@@ -5756,16 +5743,13 @@ sub sync_table {
    PTDEBUG && _d('CRC column:', $crc_col);
 
    my $index_hint;
-   my $hint = ((VersionParser->new($src->{dbh}) >= '4.0.9'
-               && VersionParser->new($dst->{dbh}) >= '4.0.9') ? 'FORCE' : 'USE')
-            . ' INDEX';
    if ( $args{chunk_index} ) {
       PTDEBUG && _d('Using given chunk index for index hint');
-      $index_hint = "$hint (" . $q->quote($args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($args{chunk_index}) . ")";
    }
    elsif ( $plugin_args{chunk_index} && $args{index_hint} ) {
       PTDEBUG && _d('Using chunk index chosen by plugin for index hint');
-      $index_hint = "$hint (" . $q->quote($plugin_args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($plugin_args{chunk_index}) . ")";
    }
    PTDEBUG && _d('Index hint:', $index_hint);
 
