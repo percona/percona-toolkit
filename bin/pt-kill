@@ -1280,7 +1280,7 @@ sub parse {
    }
 
    foreach my $key ( keys %given_props ) {
-      die "Unknown DSN option '$key' in '$dsn'.  For more details, "
+      die "DSN option '$key' in '$dsn'.  For more details, "
             . "please use the --help option, or try 'perldoc $PROGRAM_NAME' "
             . "for complete documentation."
          unless exists $opts->{$key};
@@ -2087,6 +2087,436 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# TableParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableParser.pm
+#   t/lib/TableParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package TableParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $self = { %args };
+   return bless $self, $class;
+}
+
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
+
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
+      return;
+   }
+
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
+
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
+   }
+
+   return $href->{$key};
+}
+
+sub parse {
+   my ( $self, $ddl, $opts ) = @_;
+   return unless $ddl;
+
+   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "Cannot parse table definition; is ANSI quoting "
+         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   }
+
+   my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
+   (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
+
+   $ddl =~ s/(`[^`]+`)/\L$1/g;
+
+   my $engine = $self->get_engine($ddl);
+
+   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
+   PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
+
+   my %def_for;
+   @def_for{@cols} = @defs;
+
+   my (@nums, @null);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   foreach my $col ( @cols ) {
+      my $def = $def_for{$col};
+      my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
+      die "Can't determine column type for $def" unless $type;
+      $type_for{$col} = $type;
+      if ( $type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ) {
+         push @nums, $col;
+         $is_numeric{$col} = 1;
+      }
+      if ( $def !~ m/NOT NULL/ ) {
+         push @null, $col;
+         $is_nullable{$col} = 1;
+      }
+      $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
+   }
+
+   my ($keys, $clustered_key) = $self->get_keys($ddl, $opts, \%is_nullable);
+
+   my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
+
+   return {
+      name           => $name,
+      cols           => \@cols,
+      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col         => { map { $_ => 1 } @cols },
+      null_cols      => \@null,
+      is_nullable    => \%is_nullable,
+      is_autoinc     => \%is_autoinc,
+      clustered_key  => $clustered_key,
+      keys           => $keys,
+      defs           => \%def_for,
+      numeric_cols   => \@nums,
+      is_numeric     => \%is_numeric,
+      engine         => $engine,
+      type_for       => \%type_for,
+      charset        => $charset,
+   };
+}
+
+sub sort_indexes {
+   my ( $self, $tbl ) = @_;
+
+   my @indexes
+      = sort {
+         (($a ne 'PRIMARY') <=> ($b ne 'PRIMARY'))
+         || ( !$tbl->{keys}->{$a}->{is_unique} <=> !$tbl->{keys}->{$b}->{is_unique} )
+         || ( $tbl->{keys}->{$a}->{is_nullable} <=> $tbl->{keys}->{$b}->{is_nullable} )
+         || ( scalar(@{$tbl->{keys}->{$a}->{cols}}) <=> scalar(@{$tbl->{keys}->{$b}->{cols}}) )
+      }
+      grep {
+         $tbl->{keys}->{$_}->{type} eq 'BTREE'
+      }
+      sort keys %{$tbl->{keys}};
+
+   PTDEBUG && _d('Indexes sorted best-first:', join(', ', @indexes));
+   return @indexes;
+}
+
+sub find_best_index {
+   my ( $self, $tbl, $index ) = @_;
+   my $best;
+   if ( $index ) {
+      ($best) = grep { uc $_ eq uc $index } keys %{$tbl->{keys}};
+   }
+   if ( !$best ) {
+      if ( $index ) {
+         die "Index '$index' does not exist in table";
+      }
+      else {
+         ($best) = $self->sort_indexes($tbl);
+      }
+   }
+   PTDEBUG && _d('Best index found is', $best);
+   return $best;
+}
+
+sub find_possible_keys {
+   my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
+   return () unless $where;
+   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+      . ' WHERE ' . $where;
+   PTDEBUG && _d($sql);
+   my $expl = $dbh->selectrow_hashref($sql);
+   $expl = { map { lc($_) => $expl->{$_} } keys %$expl };
+   if ( $expl->{possible_keys} ) {
+      PTDEBUG && _d('possible_keys =', $expl->{possible_keys});
+      my @candidates = split(',', $expl->{possible_keys});
+      my %possible   = map { $_ => 1 } @candidates;
+      if ( $expl->{key} ) {
+         PTDEBUG && _d('MySQL chose', $expl->{key});
+         unshift @candidates, grep { $possible{$_} } split(',', $expl->{key});
+         PTDEBUG && _d('Before deduping:', join(', ', @candidates));
+         my %seen;
+         @candidates = grep { !$seen{$_}++ } @candidates;
+      }
+      PTDEBUG && _d('Final list:', join(', ', @candidates));
+      return @candidates;
+   }
+   else {
+      PTDEBUG && _d('No keys in possible_keys');
+      return ();
+   }
+}
+
+sub check_table {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(dbh db tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $db, $tbl) = @args{@required_args};
+   my $q      = $self->{Quoter};
+   my $db_tbl = $q->quote($db, $tbl);
+   PTDEBUG && _d('Checking', $db_tbl);
+
+   my $sql = "SHOW TABLES FROM " . $q->quote($db)
+           . ' LIKE ' . $q->literal_like($tbl);
+   PTDEBUG && _d($sql);
+   my $row;
+   eval {
+      $row = $dbh->selectrow_arrayref($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return 0;
+   }
+   if ( !$row->[0] || $row->[0] ne $tbl ) {
+      PTDEBUG && _d('Table does not exist');
+      return 0;
+   }
+
+   PTDEBUG && _d('Table exists; no privs to check');
+   return 1 unless $args{all_privs};
+
+   $sql = "SHOW FULL COLUMNS FROM $db_tbl";
+   PTDEBUG && _d($sql);
+   eval {
+      $row = $dbh->selectrow_hashref($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return 0;
+   }
+   if ( !scalar keys %$row ) {
+      PTDEBUG && _d('Table has no columns:', Dumper($row));
+      return 0;
+   }
+   my $privs = $row->{privileges} || $row->{Privileges};
+
+   $sql = "DELETE FROM $db_tbl LIMIT 0";
+   PTDEBUG && _d($sql);
+   eval {
+      $dbh->do($sql);
+   };
+   my $can_delete = $EVAL_ERROR ? 0 : 1;
+
+   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
+      ($can_delete ? 'delete' : ''));
+
+   if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
+          && $can_delete) ) {
+      PTDEBUG && _d('User does not have all privs');
+      return 0;
+   }
+
+   PTDEBUG && _d('User has all privs');
+   return 1;
+}
+
+sub get_engine {
+   my ( $self, $ddl, $opts ) = @_;
+   my ( $engine ) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;
+   PTDEBUG && _d('Storage engine:', $engine);
+   return $engine || undef;
+}
+
+sub get_keys {
+   my ( $self, $ddl, $opts, $is_nullable ) = @_;
+   my $engine        = $self->get_engine($ddl);
+   my $keys          = {};
+   my $clustered_key = undef;
+
+   KEY:
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
+
+      next KEY if $key =~ m/FOREIGN/;
+
+      my $key_ddl = $key;
+      PTDEBUG && _d('Parsed key:', $key_ddl);
+
+      if ( $engine !~ m/MEMORY|HEAP/ ) {
+         $key =~ s/USING HASH/USING BTREE/;
+      }
+
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
+      $type = $type || $special || 'BTREE';
+      if ( $opts->{mysql_version} && $opts->{mysql_version} lt '004001000'
+         && $engine =~ m/HEAP|MEMORY/i )
+      {
+         $type = 'HASH'; # MySQL pre-4.1 supports only HASH indexes on HEAP
+      }
+
+      my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
+      my $unique = $key =~ m/PRIMARY|UNIQUE/ ? 1 : 0;
+      my @cols;
+      my @col_prefixes;
+      foreach my $col_def ( $cols =~ m/`[^`]+`(?:\(\d+\))?/g ) {
+         my ($name, $prefix) = $col_def =~ m/`([^`]+)`(?:\((\d+)\))?/;
+         push @cols, $name;
+         push @col_prefixes, $prefix;
+      }
+      $name =~ s/`//g;
+
+      PTDEBUG && _d( $name, 'key cols:', join(', ', map { "`$_`" } @cols));
+
+      $keys->{$name} = {
+         name         => $name,
+         type         => $type,
+         colnames     => $cols,
+         cols         => \@cols,
+         col_prefixes => \@col_prefixes,
+         is_unique    => $unique,
+         is_nullable  => scalar(grep { $is_nullable->{$_} } @cols),
+         is_col       => { map { $_ => 1 } @cols },
+         ddl          => $key_ddl,
+      };
+
+      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+         my $this_key = $keys->{$name};
+         if ( $this_key->{name} eq 'PRIMARY' ) {
+            $clustered_key = 'PRIMARY';
+         }
+         elsif ( $this_key->{is_unique} && !$this_key->{is_nullable} ) {
+            $clustered_key = $this_key->{name};
+         }
+         PTDEBUG && $clustered_key && _d('This key is the clustered key');
+      }
+   }
+
+   return $keys, $clustered_key;
+}
+
+sub get_fks {
+   my ( $self, $ddl, $opts ) = @_;
+   my $q   = $self->{Quoter};
+   my $fks = {};
+
+   foreach my $fk (
+      $ddl =~ m/CONSTRAINT .* FOREIGN KEY .* REFERENCES [^\)]*\)/mg )
+   {
+      my ( $name ) = $fk =~ m/CONSTRAINT `(.*?)`/;
+      my ( $cols ) = $fk =~ m/FOREIGN KEY \(([^\)]+)\)/;
+      my ( $parent, $parent_cols ) = $fk =~ m/REFERENCES (\S+) \(([^\)]+)\)/;
+
+      my ($db, $tbl) = $q->split_unquote($parent, $opts->{database});
+      my %parent_tbl = (tbl => $tbl);
+      $parent_tbl{db} = $db if $db;
+
+      if ( $parent !~ m/\./ && $opts->{database} ) {
+         $parent = $q->quote($opts->{database}) . ".$parent";
+      }
+
+      $fks->{$name} = {
+         name           => $name,
+         colnames       => $cols,
+         cols           => [ map { s/[ `]+//g; $_; } split(',', $cols) ],
+         parent_tbl     => \%parent_tbl,
+         parent_tblname => $parent,
+         parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
+         parent_colnames=> $parent_cols,
+         ddl            => $fk,
+      };
+   }
+
+   return $fks;
+}
+
+sub remove_auto_increment {
+   my ( $self, $ddl ) = @_;
+   $ddl =~ s/(^\).*?) AUTO_INCREMENT=\d+\b/$1/m;
+   return $ddl;
+}
+
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
+   }
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
+   }
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End TableParser package
+# ###########################################################################
+
+# ###########################################################################
 # Processlist package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -2135,6 +2565,7 @@ sub new {
       last_poll   => 0,
       active_cxn  => {},  # keyed off ID
       event_cache => [],
+      _reasons_for_matching => {},
    };
    return bless $self, $class;
 }
@@ -2345,7 +2776,9 @@ sub find {
             PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds busy time');
+         my $reason = 'Exceeds busy time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
 
@@ -2355,7 +2788,9 @@ sub find {
             PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds idle time');
+         my $reason = 'Exceeds idle time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
  
@@ -2372,7 +2807,9 @@ sub find {
                PTDEBUG && _d('Query does not match', $property, 'spec');
                next QUERY;
             }
-            PTDEBUG && _d('Query matches', $property, 'spec');
+            my $reason = 'Query matches ' . $property . ' spec';
+            PTDEBUG && _d($reason);
+            push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
             $matched++;
          }
       }
@@ -3295,6 +3732,125 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Quoter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Quoter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   return bless {}, $class;
+}
+
+sub quote {
+   my ( $self, @vals ) = @_;
+   foreach my $val ( @vals ) {
+      $val =~ s/`/``/g;
+   }
+   return join('.', map { '`' . $_ . '`' } @vals);
+}
+
+sub quote_val {
+   my ( $self, $val ) = @_;
+
+   return 'NULL' unless defined $val;          # undef = NULL
+   return "''" if $val eq '';                  # blank string = ''
+   return $val if $val =~ m/^0x[0-9a-fA-F]+$/;  # hex data
+
+   $val =~ s/(['\\])/\\$1/g;
+   return "'$val'";
+}
+
+sub split_unquote {
+   my ( $self, $db_tbl, $default_db ) = @_;
+   $db_tbl =~ s/`//g;
+   my ( $db, $tbl ) = split(/[.]/, $db_tbl);
+   if ( !$tbl ) {
+      $tbl = $db;
+      $db  = $default_db;
+   }
+   return ($db, $tbl);
+}
+
+sub literal_like {
+   my ( $self, $like ) = @_;
+   return unless $like;
+   $like =~ s/([%_])/\\$1/g;
+   return "'$like'";
+}
+
+sub join_quote {
+   my ( $self, $default_db, $db_tbl ) = @_;
+   return unless $db_tbl;
+   my ($db, $tbl) = split(/[.]/, $db_tbl);
+   if ( !$tbl ) {
+      $tbl = $db;
+      $db  = $default_db;
+   }
+   $db  = "`$db`"  if $db  && $db  !~ m/^`/;
+   $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
+   return $db ? "$db.$tbl" : $tbl;
+}
+
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
+1;
+}
+# ###########################################################################
+# End Quoter package
+# ###########################################################################
+
+# ###########################################################################
 # QueryRewriter package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4027,7 +4583,10 @@ sub main {
    my $cxn;
    my $dbh;           # $cxn->dbh
    my $get_proclist;  # callback to SHOW PROCESSLIST
+   my $proc_sth;
    my $kill;          # callback to KILL
+   my $kill_sth;
+   my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
    my $files;
    if ( $files = $o->get('test-matching') ) {
       PTDEBUG && _d('Getting processlist from files:', @$files);
@@ -4079,7 +4638,7 @@ sub main {
       # will need to be re-initialized.
       my $retry = Retry->new();
 
-      my $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
+      $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
       $get_proclist = sub {
          return $retry->retry(
             # Retry for an hour: 1,200 tries x 3 seconds = 3600s/1hr
@@ -4112,8 +4671,8 @@ sub main {
          );
       };
 
-      my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
-      my $kill_sth = $dbh->prepare($kill_sql);
+
+      $kill_sth = $dbh->prepare($kill_sql);
       $kill = sub {
          my ($id) = @_;
          PTDEBUG && _d('Killing process', $id);
@@ -4132,6 +4691,93 @@ sub main {
                   eval {
                      $dbh      = $cxn->connect();
                      $kill_sth = $dbh->prepare($kill_sql);
+                     msg('Reconnected to ' . $cxn->name());
+                  };
+                  return 1 unless $EVAL_ERROR; # try again
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
+         );
+      };
+   }
+
+   # Set up --log-dsn if specified.
+   my ($log, $log_sth);
+   my @processlist_columns = qw(
+      Id User Host db Command
+      Time State Info Time_ms
+   );
+   if ( my $log_dsn = $o->get('log-dsn') ) {
+      my $db    = $log_dsn->{D};
+      my $table = $log_dsn->{t};
+      die "--log-dsn does not specify a database (D) "
+        . "or a database-qualified table (t)"
+         unless defined $table && defined $db;
+      my $log_cxn   = Cxn->new(
+         dsn_string   => ($dp->get_cxn_params($log_dsn))[0],
+         NAME_lc      => 0,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      my $log_dbh   = $log_cxn->connect();
+      my $log_table = Quoter->quote($db, $table);
+
+      # Create the log-table table if it doesn't exist and --create-log-table
+      # was passed in
+      my $tp = TableParser->new( Quoter => "Quoter" );
+      if ( !$tp->check_table( dbh => $log_dbh, db => $db, tbl => $table ) ) {
+         if ($o->get('create-log-table') ) {
+            my $sql = $o->read_para_after(
+               __FILE__, qr/MAGIC_create_log_table/);
+            $sql =~ s/kill_log/IF NOT EXISTS $log_table/;
+            PTDEBUG && _d($sql);
+            $log_dbh->do($sql);
+         }
+         else {
+            die "--log-dsn table does not exist. Please create it or specify "
+            . "--create-log-table.";
+         }
+      }
+
+      # All the columns of the table that we care about
+      my @all_log_columns = ( qw( server_id timestamp reason kill_error ),
+                              @processlist_columns );
+
+      my $sql = 'SELECT @@SERVER_ID';
+      PTDEBUG && _d($sql);
+      my ($server_id) = $dbh->selectrow_array($sql);
+
+      $sql = "INSERT INTO $log_table ("
+           . join(", ", @all_log_columns)
+           . ") VALUES("
+           . join(", ", $server_id, ("?") x (@all_log_columns-1))
+           . ")";
+      PTDEBUG && _d($sql);
+      $log_sth = $log_dbh->prepare($sql); 
+
+      my $retry = Retry->new();
+
+      $log = sub {
+         my (@params) = @_;
+         PTDEBUG && _d('Logging values:', @params);
+         return $retry->retry(
+            tries => 20,
+            wait  => sub { sleep 3; },
+            try   => sub { return $log_sth->execute(@params); },
+            fail  => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               # The 1st pattern means that MySQL itself died or was stopped.
+               # The 2nd pattern means that our cxn was killed (KILL <id>).
+               if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                     $log_dbh = $log_cxn->connect();
+                     $log_sth = $log_dbh->prepare( $sql );
                      msg('Reconnected to ' . $cxn->name());
                   };
                   return 1 unless $EVAL_ERROR; # try again
@@ -4349,7 +4995,17 @@ sub main {
                      . " seconds before kill");
                   sleep $o->get('wait-before-kill');
                }
+               local $@;
                eval { $kill->($query->{Id}) };
+               if ( $log ) {
+                  log_to_table(
+                     log        => $log,
+                     query      => $query,
+                     proclist   => $pl,
+                     columns    => \@processlist_columns,
+                     eval_error => $EVAL_ERROR,
+                  );
+               }
                if ( $EVAL_ERROR ) {
                   msg("Error killing $query->{Id}: $EVAL_ERROR");
                }
@@ -4415,6 +5071,21 @@ sub msg {
    print '# ', ts(time), " $msg\n" if $o->get('verbose');
    PTDEBUG && _d($msg);
    return;
+}
+
+sub log_to_table {
+   my (%args) = @_;
+   my ($log, $query, $pl, $processlist_columns)
+            = @args{qw( log query proclist columns )};
+
+   my $ts      = Transformers::ts(localtime);
+   my $reasons = join "\n", map {
+         defined($_) ? $_ : "Unkown reason"
+      } @{ $pl->{_reasons_for_matching}->{$query} };
+   $log->(
+         $ts, $reasons, $args{eval_error},
+         @{$query}{@$processlist_columns}
+   );
 }
 
 sub group_queries {
@@ -4642,6 +5313,13 @@ short form: -D; type: string
 
 The database to use for the connection.
 
+=item --create-log-table
+
+Create the L<"--log-dsn"> table if it does not exist.
+
+This option causes the table specified by L<"--log-dsn"> to be created with the
+default structure shown in the documentation for that option.
+
 =item --daemonize
 
 Fork to the background and detach from the shell.  POSIX operating systems
@@ -4745,6 +5423,37 @@ See also L<"--run-time">.
 type: string
 
 Print all output to this file when daemonized.
+
+=item --log-dsn
+
+type: DSN
+
+Store each query killed in this DSN.
+
+The argument specifies a table to store all killed queries.  The DSN
+passed in must have the databse (D) and table (t) options. The
+table must have at least the following columns.  You can add more columns for
+your own special purposes, but they won't be used by pt-kill.  The
+following CREATE TABLE definition is also used for L<"--create-log-table">.
+MAGIC_create_log_table:
+
+   CREATE TABLE kill_log (
+      kill_id     int(10) unsigned NOT NULL AUTO_INCREMENT,
+      server_id   bigint(4) NOT NULL DEFAULT '0',
+      timestamp   DATETIME,
+      reason      TEXT,
+      kill_error  TEXT,
+      Id          bigint(4) NOT NULL DEFAULT '0',
+      User        varchar(16) NOT NULL DEFAULT '',
+      Host        varchar(64) NOT NULL DEFAULT '',
+      db          varchar(64) DEFAULT NULL,
+      Command     varchar(16) NOT NULL DEFAULT '',
+      Time        int(7) NOT NULL DEFAULT '0',
+      State       varchar(64) DEFAULT NULL,
+      Info        longtext,
+      Time_ms     bigint(21) DEFAULT '0', # NOTE, TODO: currently not used
+      PRIMARY KEY (kill_id)
+   ) DEFAULT CHARSET=utf8
 
 =item --password
 
@@ -5250,6 +5959,10 @@ Socket file to use for connection.
 dsn: user; copy: yes
 
 User for login if not current user.
+
+=item * t
+
+Table to log actions in, if passed through --log-dsn.
 
 =back
 
