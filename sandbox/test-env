@@ -184,7 +184,6 @@ sandbox_is_running() {
 
 kill_sandbox() {
    local p=$1
-   local rmdir=1
 
    # See if the sandbox server is running.
    sandbox_is_running $p
@@ -194,7 +193,7 @@ kill_sandbox() {
       mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
-      sleep 1
+      sleep 2
 
       # See if the sandbox server is still running.
       sandbox_is_running $p 
@@ -204,13 +203,13 @@ kill_sandbox() {
          pid2=`ps xw | grep -v grep | grep -v mysqld_safe | grep mysqld | grep /tmp/$p | awk '{print $1}'`
          [ "$pid1" ] && kill -9 $pid1  # Die, damn you, die!
          [ "$pid2" ] && kill -9 $pid2
-         sleep 1
+         sleep 2
 
          # Third and finaly check if the sandbox server is running.
          sandbox_is_running $p
          if [ $? -eq 0 ]; then
             err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"
-            rmdir=0
+            return 1
          else 
             echo "Killed MySQL test server on port $p (PID $pid1, $pid2)"
          fi
@@ -219,12 +218,12 @@ kill_sandbox() {
       fi
    fi
 
-   if [ $rmdir -eq 1 ] && [ -d "/tmp/$p" ]; then
+   if [ -d "/tmp/$p" ]; then
       rm -rf /tmp/$p
       echo "Removed /tmp/$p"
    fi
 
-   return
+   return 0
 }
 
 MYSQL_VERSION=""
@@ -327,6 +326,7 @@ case $opt in
       # when a polite stop fails.  It uses kill -9 as a last resort.
       for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
          kill_sandbox $port
+         exit_status=$((exit_status | $?))
       done
       ;;
    restart)

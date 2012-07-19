@@ -17,8 +17,11 @@ for port in "$@"; do
       continue
    fi
 
-   /tmp/$port/stop
-   exit_status=$((exit_status | $?))
+   if [ -x "/tmp/$port/stop" ]; then
+      /tmp/$port/stop
+      exit_status=$((exit_status | $?))
+   fi
+
    rm -rf /tmp/$port
    exit_status=$((exit_status | $?))
 done
