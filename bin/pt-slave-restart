@@ -1721,7 +1721,7 @@ sub BUILDARGS {
          my $dbh = $_[0];
          local $dbh->{FetchHashKeyName} = 'NAME_lc';
          my $query = eval {
-            $dbh->selectall_arrayref(q<SHOW VARIABLES LIKE 'version%'>, { Slice => {} })
+            $dbh->selectall_arrayref(q/SHOW VARIABLES LIKE 'version%'/, { Slice => {} })
          };
          if ( $query ) {
             $query = { map { $_->{variable_name} => $_->{value} } @$query };
@@ -1729,7 +1729,7 @@ sub BUILDARGS {
             $args{flavor} = delete $query->{version_comment}
                   if $query->{version_comment};
          }
-         elsif ( eval { ($query) = $dbh->selectrow_array('SELECT VERSION()') } ) {
+         elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
             @args{@methods} = $self->_split_version($query);
          }
          else {
