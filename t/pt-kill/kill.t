@@ -175,7 +175,7 @@ $dbh->do($sql);
       host    => 'localhost',
       db      => undef,
       command => 'Query',
-      state   => $sandbox_version gt '5.0' ? "User sleep" : "executing",
+      state   => ($sandbox_version lt '5.1' ? "executing" : "User sleep"),
       info    => 'select sleep(4)',
    };
    my %trimmed_result;
