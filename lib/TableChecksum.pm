@@ -111,23 +111,15 @@ sub best_algorithm {
    die "Invalid checksum algorithm $alg"
       if $alg && !$ALGOS{$alg};
 
-   my $version = VersionParser->new($dbh);
-
    # CHECKSUM is eliminated by lots of things...
    if (
       $args{where} || $args{chunk}        # CHECKSUM does whole table
-      || $args{replicate}                 # CHECKSUM can't do INSERT.. SELECT
-      || $version < '4.1.1') # CHECKSUM doesn't exist
+      || $args{replicate})                # CHECKSUM can't do INSERT.. SELECT
    {
       PTDEBUG && _d('Cannot use CHECKSUM algorithm');
       @choices = grep { $_ ne 'CHECKSUM' } @choices;
    }
 
-   # BIT_XOR isn't available till 4.1.1 either
-   if ( $version < '4.1.1' ) {
-      PTDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
-      @choices = grep { $_ ne 'BIT_XOR' } @choices;
-   }
 
    # Choose the best (fastest) among the remaining choices.
    if ( $alg && grep { $_ eq $alg } @choices ) {
