@@ -79,6 +79,9 @@ sub is_in {
 }
 
 # Internal
+# The crux of these two versions is to transform a version like 5.1.01 into
+# 5, 1, and 0.1, and then reverse the process. This is so that the version
+# above and 5.1.1 are differentiated.
 sub _join_version {
     my ($self, @parts) = @_;
 
@@ -88,12 +91,11 @@ sub _join_version {
 sub _split_version {
    my ($self, $str) = @_;
    my @version_parts = map { s/^0(?=\d)/0./; $_ } $str =~ m/(\d+)/g;
-   # Turn a version like 5.5 into 5.5.0
    return @version_parts[0..2];
 }
 
 # Returns the version formatted as %d%02d%02d; that is, 5.1.20 would become
-# 50120
+# 50120, 5.1.2 would become 50102, and 5.1.02 would become 50100
 sub normalized_version {
    my ( $self ) = @_;
    my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
