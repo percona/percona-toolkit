@@ -51,6 +51,9 @@ make_sandbox() {
    if [ -n "$MULTIPLE_BUFFER_POOLS" ]; then
       echo "innodb_buffer_pool_instances=$MULTIPLE_BUFFER_POOLS" >> /tmp/$port/my.sandbox.cnf
    fi
+   if [ -n "$LOCAL_INFILE" ]; then
+      echo "local-infile=$LOCAL_INFILE" >> /tmp/$port/my.sandbox.cnf
+   fi
 
    # If the sandbox is a slave, set it read_only.
    if [ "$type" = "slave" ]; then
