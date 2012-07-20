@@ -35,13 +35,12 @@ $Data::Dumper::Quotekeys = 0;
 # Arguments:
 #   * MasterSlave    A MasterSlave module
 #   * Quoter         A Quoter module
-#   * VersionParser  A VersionParser module
 #   * TableChecksum  A TableChecksum module
 #   * Retry          A Retry module
 #   * DSNParser      (optional)
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(MasterSlave Quoter VersionParser TableChecksum Retry);
+   my @required_args = qw(MasterSlave Quoter TableChecksum Retry);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
@@ -127,7 +126,6 @@ sub sync_table {
    $args{timeout_ok}  ||= 0;
 
    my $q  = $self->{Quoter};
-   my $vp = $self->{VersionParser};
 
    # ########################################################################
    # Get and prepare the first plugin that can sync this table.
@@ -145,16 +143,13 @@ sub sync_table {
    # Make an index hint for either the explicitly given chunk_index
    # or the chunk_index chosen by the plugin if index_hint is true.
    my $index_hint;
-   my $hint = ($vp->version_ge($src->{dbh}, '4.0.9')
-               && $vp->version_ge($dst->{dbh}, '4.0.9') ? 'FORCE' : 'USE')
-            . ' INDEX';
    if ( $args{chunk_index} ) {
       PTDEBUG && _d('Using given chunk index for index hint');
-      $index_hint = "$hint (" . $q->quote($args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($args{chunk_index}) . ")";
    }
    elsif ( $plugin_args{chunk_index} && $args{index_hint} ) {
       PTDEBUG && _d('Using chunk index chosen by plugin for index hint');
-      $index_hint = "$hint (" . $q->quote($plugin_args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($plugin_args{chunk_index}) . ")";
    }
    PTDEBUG && _d('Index hint:', $index_hint);
 

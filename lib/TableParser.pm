@@ -26,9 +26,6 @@
 # $tbl is the return value from the sub below, parse().
 #
 # And some subs have an optional $opts param which is a hashref of options.
-# $opts->{mysql_version} is typically used, which is the return value from
-# VersionParser::parser() (which returns a zero-padded MySQL version,
-# e.g. 004001000 for 4.1.0).
 package TableParser;
 
 use strict;
@@ -421,12 +418,6 @@ sub get_keys {
       my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
-      if ( $opts->{mysql_version} && $opts->{mysql_version} lt '004001000'
-         && $engine =~ m/HEAP|MEMORY/i )
-      {
-         $type = 'HASH'; # MySQL pre-4.1 supports only HASH indexes on HEAP
-      }
-
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
       my $unique = $key =~ m/PRIMARY|UNIQUE/ ? 1 : 0;
       my @cols;

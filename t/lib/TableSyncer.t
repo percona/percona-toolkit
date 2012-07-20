@@ -50,7 +50,7 @@ elsif ( !$dst_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
 else {
-   plan tests => 62;
+   plan tests => 61;
 }
 
 $sb->create_dbs($dbh, ['test']);
@@ -74,28 +74,20 @@ throws_ok(
 );
 throws_ok(
    sub { new TableSyncer(MasterSlave=>1, Quoter=>1) },
-   qr/I need a VersionParser/,
-   'VersionParser required'
-);
-throws_ok(
-   sub { new TableSyncer(MasterSlave=>1, Quoter=>1, VersionParser=>1) },
    qr/I need a TableChecksum/,
    'TableChecksum required'
 );
 
 my $rd       = new RowDiff(dbh=>$src_dbh);
 my $ms       = new MasterSlave();
-my $vp       = new VersionParser();
 my $rt       = new Retry();
 my $checksum = new TableChecksum(
    Quoter         => $q,
-   VersionParser => $vp,
 );
 my $syncer = new TableSyncer(
    MasterSlave   => $ms,
    Quoter        => $q,
    TableChecksum => $checksum,
-   VersionParser => $vp,
    DSNParser     => $dp,
    Retry         => $rt,
 );

@@ -1034,6 +1034,456 @@ if ( PTDEBUG ) {
 # ###########################################################################
 
 # ###########################################################################
+# Mo package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Mo.pm
+#   t/lib/Mo.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+BEGIN {
+$INC{"Mo.pm"} = __FILE__;
+package Mo;
+our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
+
+{
+   no strict 'refs';
+   sub _glob_for {
+      return \*{shift()}
+   }
+
+   sub _stash_for {
+      return \%{ shift() . "::" };
+   }
+}
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util ();
+
+our %TYPES = (
+   Bool   => sub { !$_[0] || (defined $_[0] && &Scalar::Util::looks_like_number && $_[0] == 1) },
+   Num    => sub { defined $_[0] && &Scalar::Util::looks_like_number },
+   Int    => sub { defined $_[0] && &Scalar::Util::looks_like_number && $_[0] == int $_[0] },
+   Str    => sub { defined $_[0] },
+   Object => sub { defined $_[0] && &Scalar::Util::blessed },
+   FileHandle => sub { local $@; require IO::Handle; fileno($_[0]) && $_[0]->opened },
+
+   map {
+      my $type = /R/ ? $_ : uc $_;
+      $_ . "Ref" => sub { ref $_[0] eq $type }
+   } qw(Array Code Hash Regexp Glob Scalar)
+);
+
+our %metadata_for;
+{
+   package Mo::Object;
+
+   sub new {
+      my $class = shift;
+      my $args  = $class->BUILDARGS(@_);
+
+      my @args_to_delete;
+      while ( my ($attr, $meta) = each %{$metadata_for{$class}} ) {
+         next unless exists $meta->{init_arg};
+         my $init_arg = $meta->{init_arg};
+
+         if ( defined $init_arg ) {
+            $args->{$attr} = delete $args->{$init_arg};
+         }
+         else {
+            push @args_to_delete, $attr;
+         }
+      }
+
+      delete $args->{$_} for @args_to_delete;
+
+      for my $attribute ( keys %$args ) {
+         if ( my $coerce = $metadata_for{$class}{$attribute}{coerce} ) {
+            $args->{$attribute} = $coerce->($args->{$attribute});
+         }
+         if ( my $I = $metadata_for{$class}{$attribute}{isa} ) {
+            ( (my $I_name), $I ) = @{$I};
+            Mo::_check_type_constaints($attribute, $I, $I_name, $args->{$attribute});
+         }
+      }
+
+      while ( my ($attribute, $meta) = each %{$metadata_for{$class}} ) {
+         next unless $meta->{required};
+         Carp::confess("Attribute ($attribute) is required for $class")
+            if ! exists $args->{$attribute}
+      }
+
+      @_ = %$args;
+      my $self = bless $args, $class;
+
+      my @build_subs;
+      my $linearized_isa = mro::get_linear_isa($class);
+
+      for my $isa_class ( @$linearized_isa ) {
+         unshift @build_subs, *{ Mo::_glob_for "${isa_class}::BUILD" }{CODE};
+      }
+      exists &$_ && $_->( $self, @_ ) for grep { defined } @build_subs;
+      return $self;
+   }
+
+   sub BUILDARGS {
+      shift;
+      my $ref;
+      if ( @_ == 1 && ref($_[0]) ) {
+         Carp::confess("Single parameters to new() must be a HASH ref")
+            unless ref($_[0]) eq ref({});
+         $ref = {%{$_[0]}} # We want a new reference, always
+      }
+      else {
+         $ref = { @_ };
+      }
+      return $ref;
+   }
+}
+
+my %export_for;
+sub Mo::import {
+    warnings->import(qw(FATAL all));
+    strict->import();
+    
+    my $caller     = scalar caller(); # Caller's package
+    my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
+    my (%exports, %options);
+
+    my (undef, @features) = @_;
+    my %ignore = ( map { $_ => 1 } qw( is isa init_arg builder buildargs clearer predicate build handles default required ) );
+    for my $feature (grep { !$ignore{$_} } @features) {
+      { local $@; require "Mo/$feature.pm"; }
+      {
+         no strict 'refs';
+         &{"Mo::${feature}::e"}(
+                  $caller_pkg,
+                  \%exports,
+                  \%options,
+                  \@_
+            );
+      }
+    }
+
+    return if $exports{M}; 
+
+    %exports = (
+        extends => sub {
+            for my $class ( map { "$_" } @_ ) {
+               $class =~ s{::|'}{/}g;
+               { local $@; eval { require "$class.pm" } } # or warn $@;
+            }
+            _set_package_isa($caller, @_);
+            _set_inherited_metadata($caller);
+        },
+        has => sub {
+            my $names = shift;
+            for my $attribute ( ref $names ? @$names : $names ) {
+               my %args   = @_;
+               my $method = ($args{is} || '') eq 'ro'
+                  ? sub {
+                     Carp::confess("Cannot assign a value to a read-only accessor at reader ${caller_pkg}${attribute}")
+                        if $#_;
+                     return $_[0]{$attribute};
+                  }
+                  : sub {
+                     return $#_
+                           ? $_[0]{$attribute} = $_[1]
+                           : $_[0]{$attribute};
+                  };
+
+               $metadata_for{$caller}{$attribute} = ();
+
+               if ( my $I = $args{isa} ) {
+                  my $orig_I = $I;
+                  my $type;
+                  if ( $I =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+                     $I = _nested_constraints($attribute, $1, $2);
+                  }
+                  $metadata_for{$caller}{$attribute}{isa} = [$orig_I, $I];
+                  my $orig_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        Mo::_check_type_constaints($attribute, $I, $orig_I, $_[1]);
+                     }
+                     goto &$orig_method;
+                  };
+               }
+
+               if ( my $builder = $args{builder} ) {
+                  my $original_method = $method;
+                  $method = sub {
+                        $#_
+                           ? goto &$original_method
+                           : ! exists $_[0]{$attribute}
+                              ? $_[0]{$attribute} = $_[0]->$builder
+                              : goto &$original_method
+                  };
+               }
+
+               if ( my $code = $args{default} ) {
+                  Carp::confess("${caller}::${attribute}'s default is $code, but should be a coderef")
+                        unless ref($code) eq 'CODE';
+                  my $original_method = $method;
+                  $method = sub {
+                        $#_
+                           ? goto &$original_method
+                           : ! exists $_[0]{$attribute}
+                              ? $_[0]{$attribute} = $_[0]->$code
+                              : goto &$original_method
+                  };
+               }
+
+               if ( my $role = $args{does} ) {
+                  my $original_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        Carp::confess(qq<Attribute ($attribute) doesn't consume a '$role' role">)
+                           unless blessed($_[1]) && $_[1]->does($role)
+                     }
+                     goto &$original_method
+                  };
+               }
+
+               if ( my $coercion = $args{coerce} ) {
+                  $metadata_for{$caller}{$attribute}{coerce} = $coercion;
+                  my $original_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        return $original_method->($_[0], $coercion->($_[1]))
+                     }
+                     goto &$original_method;
+                  }
+               }
+
+               $method = $options{$_}->($method, $attribute, @_)
+                  for sort keys %options;
+
+               *{ _glob_for "${caller}::$attribute" } = $method;
+
+               if ( $args{required} ) {
+                  $metadata_for{$caller}{$attribute}{required} = 1;
+               }
+
+               if ($args{clearer}) {
+                  *{ _glob_for "${caller}::$args{clearer}" }
+                     = sub { delete shift->{$attribute} }
+               }
+
+               if ($args{predicate}) {
+                  *{ _glob_for "${caller}::$args{predicate}" }
+                     = sub { exists shift->{$attribute} }
+               }
+
+               if ($args{handles}) {
+                  _has_handles($caller, $attribute, \%args);
+               }
+
+               if (exists $args{init_arg}) {
+                  $metadata_for{$caller}{$attribute}{init_arg} = $args{init_arg};
+               }
+            }
+        },
+        %exports,
+    );
+
+    $export_for{$caller} = [ keys %exports ];
+
+    for my $keyword ( keys %exports ) {
+      *{ _glob_for "${caller}::$keyword" } = $exports{$keyword}
+    }
+    *{ _glob_for "${caller}::extends" }{CODE}->( "Mo::Object" )
+      unless @{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] };
+};
+
+sub _check_type_constaints {
+   my ($attribute, $I, $I_name, $val) = @_;
+   ( ref($I) eq 'CODE'
+      ? $I->($val)
+      : (ref $val eq $I
+         || ($val && $val eq $I)
+         || (exists $TYPES{$I} && $TYPES{$I}->($val)))
+   )
+   || Carp::confess(
+         qq<Attribute ($attribute) does not pass the type constraint because: >
+      . qq<Validation failed for '$I_name' with value >
+      . (defined $val ? Mo::Dumper($val) : 'undef') )
+}
+
+sub _has_handles {
+   my ($caller, $attribute, $args) = @_;
+   my $handles = $args->{handles};
+
+   my $ref = ref $handles;
+   my $kv;
+   if ( $ref eq ref [] ) {
+         $kv = { map { $_,$_ } @{$handles} };
+   }
+   elsif ( $ref eq ref {} ) {
+         $kv = $handles;
+   }
+   elsif ( $ref eq ref qr// ) {
+         Carp::confess("Cannot delegate methods based on a Regexp without a type constraint (isa)")
+            unless $args->{isa};
+         my $target_class = $args->{isa};
+         $kv = {
+            map   { $_, $_     }
+            grep  { $_ =~ $handles }
+            grep  { !exists $Mo::Object::{$_} && $target_class->can($_) }
+            grep  { $_ ne 'has' && $_ ne 'extends' }
+            keys %{ _stash_for $target_class }
+         };
+   }
+   else {
+         Carp::confess("handles for $ref not yet implemented");
+   }
+
+   while ( my ($method, $target) = each %{$kv} ) {
+         my $name = _glob_for "${caller}::$method";
+         Carp::confess("You cannot overwrite a locally defined method ($method) with a delegation")
+            if defined &$name;
+
+         my ($target, @curried_args) = ref($target) ? @$target : $target;
+         *$name = sub {
+            my $self        = shift;
+            my $delegate_to = $self->$attribute();
+            my $error = "Cannot delegate $method to $target because the value of $attribute";
+            Carp::confess("$error is not defined") unless $delegate_to;
+            Carp::confess("$error is not an object (got '$delegate_to')")
+               unless Scalar::Util::blessed($delegate_to) || (!ref($delegate_to) && $delegate_to->can($target));
+            return $delegate_to->$target(@curried_args, @_);
+         }
+   }
+}
+
+sub _nested_constraints {
+   my ($attribute, $aggregate_type, $type) = @_;
+
+   my $inner_types;
+   if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+      $inner_types = _nested_constraints($1, $2);
+   }
+   else {
+      $inner_types = $TYPES{$type};
+   }
+
+   if ( $aggregate_type eq 'ArrayRef' ) {
+      return sub {
+         my ($val) = @_;
+         return unless ref($val) eq ref([]);
+
+         if ($inner_types) {
+            for my $value ( @{$val} ) {
+               return unless $inner_types->($value) 
+            }
+         }
+         else {
+            for my $value ( @{$val} ) {
+               return unless $value && ($value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type)));
+            }
+         }
+         return 1;
+      };
+   }
+   elsif ( $aggregate_type eq 'Maybe' ) {
+      return sub {
+         my ($value) = @_;
+         return 1 if ! defined($value);
+         if ($inner_types) {
+            return unless $inner_types->($value) 
+         }
+         else {
+            return unless $value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type));
+         }
+         return 1;
+      }
+   }
+   else {
+      Carp::confess("Nested aggregate types are only implemented for ArrayRefs and Maybe");
+   }
+}
+
+sub _set_package_isa {
+   my ($package, @new_isa) = @_;
+
+   *{ _glob_for "${package}::ISA" } = [@new_isa];
+}
+
+sub _set_inherited_metadata {
+   my $class = shift;
+   my $linearized_isa = mro::get_linear_isa($class);
+   my %new_metadata;
+
+   for my $isa_class (reverse @$linearized_isa) {
+      %new_metadata = (
+         %new_metadata,
+         %{ $metadata_for{$isa_class} || {} },
+      );
+   }
+   $metadata_for{$class} = \%new_metadata;
+}
+
+sub unimport {
+   my $caller = scalar caller();
+   my $stash  = _stash_for( $caller );
+
+   delete $stash->{$_} for @{$export_for{$caller}};
+}
+
+sub Dumper {
+   require Data::Dumper;
+   local $Data::Dumper::Indent    = 0;
+   local $Data::Dumper::Sortkeys  = 0;
+   local $Data::Dumper::Quotekeys = 0;
+   local $Data::Dumper::Terse     = 1;
+
+   Data::Dumper::Dumper(@_)
+}
+
+BEGIN {
+   if ($] >= 5.010) {
+      { local $@; require mro; }
+   }
+   else {
+      local $@;
+      eval {
+         require MRO::Compat;
+      } or do {
+         *mro::get_linear_isa = *mro::get_linear_isa_dfs = sub {
+            no strict 'refs';
+
+            my $classname = shift;
+
+            my @lin = ($classname);
+            my %stored;
+            foreach my $parent (@{"$classname\::ISA"}) {
+               my $plin = mro::get_linear_isa_dfs($parent);
+               foreach (@$plin) {
+                     next if exists $stored{$_};
+                     push(@lin, $_);
+                     $stored{$_} = 1;
+               }
+            }
+            return \@lin;
+         };
+      }
+   }
+}
+
+}
+1;
+}
+# ###########################################################################
+# End Mo package
+# ###########################################################################
+
+# ###########################################################################
 # DSNParser package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -1415,96 +1865,145 @@ sub _d {
 {
 package VersionParser;
 
-use strict;
-use warnings FATAL => 'all';
+use Mo;
+use Scalar::Util qw(blessed);
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub new {
-   my ( $class ) = @_;
-   bless {}, $class;
-}
+use overload (
+   '""'     => "version",
+   '<=>'    => "cmp",
+   'cmp'    => "cmp",
+   fallback => 1,
+);
 
-sub parse {
-   my ( $self, $str ) = @_;
-   my @version_parts = $str =~ m/(\d+)/g;
-   @version_parts = map { $_ || 0 } @version_parts[0..2];
-   my $result = sprintf('%03d%03d%03d', @version_parts);
-   PTDEBUG && _d($str, 'parses to', $result);
-   return $result;
-}
+use Carp ();
 
-sub version_cmp {
-   my ($self, $dbh, $target, $cmp) = @_;
-   my $version = $self->version($dbh);
-   my $result;
+our $VERSION = 0.01;
 
-   if ( $cmp eq 'ge' ) {
-      $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'gt' ) {
-      $result = $self->{$dbh} gt $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'eq' ) {
-      $result = $self->{$dbh} eq $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'ne' ) {
-      $result = $self->{$dbh} ne $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'lt' ) {
-      $result = $self->{$dbh} lt $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'le' ) {
-      $result = $self->{$dbh} le $self->parse($target) ? 1 : 0;
-   }
-   else {
-      die "Asked for an unknown comparizon: $cmp"
-   }
+has major => (
+    is       => 'ro',
+    isa      => 'Int',
+    required => 1,
+);
 
-   PTDEBUG && _d($self->{$dbh}, $cmp, $target, ':', $result);
-   return $result;
-}
+has [qw( minor revision )] => (
+    is  => 'ro',
+    isa => 'Num',
+);
 
-sub version_ge {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'ge');
-}
+has flavor => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'Unknown' },
+);
 
-sub version_gt {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'gt');
-}
+has innodb_version => (
+    is      => 'ro',
+    isa     => 'Str',
+    default => sub { 'NO' },
+);
 
-sub version_eq {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'eq');
-}
-
-sub version_ne {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'ne');
-}
-
-sub version_lt {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'lt');
-}
-
-sub version_le {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'le');
+sub series {
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor);
 }
 
 sub version {
-   my ( $self, $dbh ) = @_;
-   if ( !$self->{$dbh} ) {
-      $self->{$dbh} = $self->parse(
-         $dbh->selectrow_array('SELECT VERSION()'));
-   }
-   return $self->{$dbh};
+   my $self = shift;
+   return $self->_join_version($self->major, $self->minor, $self->revision);
 }
 
-sub innodb_version {
+sub is_in {
+   my ($self, $target) = @_;
+
+   return $self eq $target;
+}
+
+sub _join_version {
+    my ($self, @parts) = @_;
+
+    return join ".", map { my $c = $_; $c =~ s/^0\./0/; $c } grep defined, @parts;
+}
+sub _split_version {
+   my ($self, $str) = @_;
+   my @version_parts = map { s/^0(?=\d)/0./; $_ } $str =~ m/(\d+)/g;
+   return @version_parts[0..2];
+}
+
+sub normalized_version {
+   my ( $self ) = @_;
+   my $result = sprintf('%d%02d%02d', map { $_ || 0 } $self->major,
+                                                      $self->minor,
+                                                      $self->revision);
+   PTDEBUG && _d($self->version, 'normalizes to', $result);
+   return $result;
+}
+
+sub comment {
+   my ( $self, $cmd ) = @_;
+   my $v = $self->normalized_version();
+
+   return "/*!$v $cmd */"
+}
+
+my @methods = qw(major minor revision);
+sub cmp {
+   my ($left, $right) = @_;
+   my $right_obj = (blessed($right) && $right->isa(ref($left)))
+                   ? $right
+                   : ref($left)->new($right);
+
+   my $retval = 0;
+   for my $m ( @methods ) {
+      last unless defined($left->$m) && defined($right_obj->$m);
+      $retval = $left->$m <=> $right_obj->$m;
+      last if $retval;
+   }
+   return $retval;
+}
+
+sub BUILDARGS {
+   my $self = shift;
+
+   if ( @_ == 1 ) {
+      my %args;
+      if ( blessed($_[0]) && $_[0]->can("selectrow_hashref") ) {
+         PTDEBUG && _d("VersionParser got a dbh, trying to get the version");
+         my $dbh = $_[0];
+         local $dbh->{FetchHashKeyName} = 'NAME_lc';
+         my $query = eval {
+            $dbh->selectall_arrayref(q/SHOW VARIABLES LIKE 'version%'/, { Slice => {} })
+         };
+         if ( $query ) {
+            $query = { map { $_->{variable_name} => $_->{value} } @$query };
+            @args{@methods} = $self->_split_version($query->{version});
+            $args{flavor} = delete $query->{version_comment}
+                  if $query->{version_comment};
+         }
+         elsif ( eval { ($query) = $dbh->selectrow_array(q/SELECT VERSION()/) } ) {
+            @args{@methods} = $self->_split_version($query);
+         }
+         else {
+            Carp::confess("Couldn't get the version from the dbh while "
+                        . "creating a VersionParser object: $@");
+         }
+         $args{innodb_version} = eval { $self->_innodb_version($dbh) };
+      }
+      elsif ( !ref($_[0]) ) {
+         @args{@methods} = $self->_split_version($_[0]);
+      }
+
+      for my $method (@methods) {
+         delete $args{$method} unless defined $args{$method};
+      }
+      @_ = %args if %args;
+   }
+
+   return $self->SUPER::BUILDARGS(@_);
+}
+
+sub _innodb_version {
    my ( $self, $dbh ) = @_;
    return unless $dbh;
    my $innodb_version = "NO";
@@ -1542,6 +2041,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
+no Mo;
 1;
 }
 # ###########################################################################
@@ -2810,27 +3310,11 @@ sub get_rules {
          my ( %args ) = @_;
          my $mysql_version = $args{mysql_version};
          return 0 unless $mysql_version;
-         my ($major, $minor, $patch) = $mysql_version =~ m/(\d{3})/g;
-         if ( $major eq '003' ) {
-            return $mysql_version lt '003023000' ? 1 : 0;  # 3.23.x
-         }
-         elsif ( $major eq '004' ) {
-            return $mysql_version lt '004001020' ? 1 : 0;  # 4.1.20
-         }
-         elsif ( $major eq '005' ) {
-            if ( $minor eq '000' ) {
-               return $mysql_version lt '005000037' ? 1 : 0;  # 5.0.37
-            }
-            elsif ( $minor eq '001' ) {
-               return $mysql_version lt '005001030' ? 1 : 0;  # 5.1.30
-            }
-            else {
-               return 0;
-            }
-         }
-         else {
-            return 0;
-         }
+         return 1 if   ($mysql_version == '3'   && $mysql_version < '3.23'  )
+                    || ($mysql_version == '4'   && $mysql_version < '4.1.20')
+                    || ($mysql_version == '5.0' && $mysql_version < '5.0.37')
+                    || ($mysql_version == '5.1' && $mysql_version < '5.1.30');
+         return 0;
       },
    },
    {
@@ -2839,7 +3323,7 @@ sub get_rules {
          my ( %args ) = @_;
          my $mysql_version = $args{mysql_version};
          return 0 unless $mysql_version;
-         return $mysql_version lt '005001000' ? 1 : 0;  # 5.1.x
+         return $mysql_version < '5.1' ? 1 : 0;  # 5.1.x
       },
    },
 };
@@ -2966,13 +3450,11 @@ sub main {
    # #########################################################################
    # Make common modules.
    # #########################################################################
-   my $vp  = new VersionParser();
    my $trp = new TextResultSetParser();
    my %common_modules = (
       OptionParser        => $o,
       DSNParser           => $dp,
       TextResultSetParser => $trp,
-      VersionParser       => $vp,
    );
 
    # ##########################################################################
@@ -3016,8 +3498,9 @@ sub main {
       %common_modules,
    );
 
-   my $mysql_version  = $vp->parse($vars->{version});
-   my $innodb_version = $vp->innodb_version($dbh);
+   my $mysql_version  = VersionParser->new($vars->{version});
+   my $innodb_version = VersionParser->new($dbh)->innodb_version()
+                           if $dbh;
    PTDEBUG && _d("MySQL version", $mysql_version,
       "InnoDB version", $innodb_version);
 
