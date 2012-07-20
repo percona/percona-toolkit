@@ -3953,6 +3953,22 @@ sub main {
          $dp->get_cxn_params($table), { AutoCommit => $ac });
       PTDEBUG && _d('Inspecting table on', $dp->as_string($table));
 
+      if ( $o->get('bulk-insert') ) {
+         local $@;
+         my $sql = "LOAD DATA LOCAL INFILE '/dev/null' INTO TABLE "
+                 . "`test`.`pt_not_there`";
+         eval { $dbh->do($sql); 1 } or do {
+            my $e = $@;
+            my $error_re = qr/\QDBD::mysql::db do failed: The used command is not allowed with this MySQL version [for Statement "LOAD DATA LOCAL INFILE/;
+            if ($e =~ $error_re) {
+               $dbh->disconnect();
+               die("--bulk-insert cannot work as LOAD DATA LOCAL INFILE "
+                 . "is disabled. See http://kb.percona.com/troubleshoot-load-data-infile"
+               );
+            }
+         };
+      }
+      
       # Set options that can enable removing data on the master and archiving it
       # on the slaves.
       if ( $table->{a} ) {

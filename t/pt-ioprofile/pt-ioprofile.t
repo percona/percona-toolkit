@@ -50,8 +50,8 @@ like(
 # If the system is really slow, it may take a second to process the files
 # and then clean up all the temp stuff. We'll give it a few seconds benefit of the doubt.
 cmp_ok(
-   $t1 - $t0,
-   '<',
+   int($t1 - $t0),
+   '<=',
    6,
    "Runs for --run-time, more or less"
 );
