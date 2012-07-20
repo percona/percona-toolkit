@@ -17,16 +17,20 @@ require "$trunk/bin/pt-heartbeat";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
 
-if ( !$dbh ) {
+if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
+elsif ( !$slave1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave1';
+}
 else {
-   plan tests => 18;
+   plan tests => 22;
 }
 
-$sb->create_dbs($dbh, ['test']);
+$sb->create_dbs($master_dbh, ['test']);
 
 my $output;
 my $cnf       = '/tmp/12345/my.sandbox.cnf';
@@ -35,10 +39,10 @@ my $pid_file  = "/tmp/__pt-heartbeat-test.pid";
 my $sent_file = "/tmp/pt-heartbeat-sentinel";
 my $ps_grep_cmd = "ps x | grep pt-heartbeat | grep daemonize | grep -v grep";
 
-`rm $sent_file 2>/dev/null`;
+diag(`rm $sent_file 2>/dev/null`);
 
-$dbh->do('drop table if exists test.heartbeat');
-$dbh->do(q{CREATE TABLE test.heartbeat (
+$master_dbh->do('drop table if exists test.heartbeat');
+$master_dbh->do(q{CREATE TABLE test.heartbeat (
              id int NOT NULL PRIMARY KEY,
              ts datetime NOT NULL
           ) ENGINE=MEMORY});
@@ -53,7 +57,7 @@ like($output, qr/heartbeat table is empty/ms, 'Dies on empty heartbeat table wit
 $output = output(
    sub { pt_heartbeat::main('-F', $cnf, qw(-D test --check)) },
 );
-my $row = $dbh->selectall_hashref('select * from test.heartbeat', 'id');
+my $row = $master_dbh->selectall_hashref('select * from test.heartbeat', 'id');
 is(
    $row->{1}->{id},
    1,
@@ -62,7 +66,7 @@ is(
 
 # Run one instance with --replace to create the table.
 `$cmd -D test --update --replace --run-time 1s`;
-ok($dbh->selectrow_array('select id from test.heartbeat'), 'Record is there');
+ok($master_dbh->selectrow_array('select id from test.heartbeat'), 'Record is there');
 
 # Check the delay and ensure it is only a single line with nothing but the
 # delay (no leading whitespace or anything).
@@ -105,7 +109,7 @@ $output = `$ps_grep_cmd`;
 unlike($output, qr/$cmd/, 'It is not running');
 ok(-f $sent_file, 'Sentinel file is there');
 unlink($sent_file);
-$dbh->do('drop table if exists test.heartbeat'); # This will kill it
+$master_dbh->do('drop table if exists test.heartbeat'); # This will kill it
 
 # #############################################################################
 # Issue 353: Add --create-table to mk-heartbeat
@@ -114,10 +118,10 @@ $dbh->do('drop table if exists test.heartbeat'); # This will kill it
 # These creates the new table format, whereas the preceding tests used the
 # old format, so tests from here on may need --master-server-id.
 
-$dbh->do('drop table if exists test.heartbeat');
+$master_dbh->do('drop table if exists test.heartbeat');
 diag(`$cmd --update --run-time 1s --database test --table heartbeat --create-table`);
-$dbh->do('use test');
-$output = $dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
+$master_dbh->do('use test');
+$output = $master_dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
 is(
    $output->[0],
    'heartbeat', 
@@ -136,9 +140,67 @@ like(
 );
 
 # #############################################################################
+# Bug 1004567: pt-heartbeat --update --replace causes duplicate key error
+# #############################################################################
+
+# Create the heartbeat table on the master and slave.
+$master_dbh->do("DROP TABLE IF EXISTS test.heartbeat");
+$sb->wait_for_slaves();
+
+$output = output(
+   sub { pt_heartbeat::main("F=/tmp/12345/my.sandbox.cnf",
+      qw(-D test --update --replace --create-table --run-time 1))
+   }
+);
+
+$row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
+is(
+   $row->[0],
+   '12345',
+   'Heartbeat on master'
+);
+
+$sb->wait_for_slaves();
+
+$row = $slave1_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
+is(
+   $row->[0],
+   '12345',
+   'Heartbeat on slave1'
+);
+
+# Drop the heartbeat table only on the master.
+$master_dbh->do("SET SQL_LOG_BIN=0");
+$master_dbh->do("DROP TABLE test.heartbeat");
+$master_dbh->do("SET SQL_LOG_BIN=1");
+
+# Re-create the heartbeat table on the master.
+$output = output(
+   sub { pt_heartbeat::main("F=/tmp/12345/my.sandbox.cnf",
+      qw(-D test --update --replace --create-table --run-time 1))
+   }
+);
+
+$row = $master_dbh->selectrow_arrayref('SELECT server_id FROM test.heartbeat');
+is(
+   $row->[0],
+   '12345',
+   'New heartbeat on master'
+);
+
+$sb->wait_for_slaves();
+
+$row = $slave1_dbh->selectrow_hashref("SHOW SLAVE STATUS");
+is(
+   $row->{last_error},
+   '',
+   "No slave error"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-`rm $pid_file $sent_file 2>/dev/null`;
-$sb->wipe_clean($dbh);
+diag(`rm $pid_file $sent_file 2>/dev/null`);
+$sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 exit;
