@@ -39,7 +39,7 @@ our %ALGOS = (
 
 sub new {
    my ( $class, %args ) = @_;
-   foreach my $arg ( qw(Quoter VersionParser) ) {
+   foreach my $arg ( qw(Quoter) ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my $self = { %args };
@@ -107,7 +107,6 @@ sub get_crc_type {
 sub best_algorithm {
    my ( $self, %args ) = @_;
    my ( $alg, $dbh ) = @args{ qw(algorithm dbh) };
-   my $vp = $self->{VersionParser};
    my @choices = sort { $ALGOS{$a}->{pref} <=> $ALGOS{$b}->{pref} } keys %ALGOS;
    die "Invalid checksum algorithm $alg"
       if $alg && !$ALGOS{$alg};
@@ -115,18 +114,12 @@ sub best_algorithm {
    # CHECKSUM is eliminated by lots of things...
    if (
       $args{where} || $args{chunk}        # CHECKSUM does whole table
-      || $args{replicate}                 # CHECKSUM can't do INSERT.. SELECT
-      || !$vp->version_ge($dbh, '4.1.1')) # CHECKSUM doesn't exist
+      || $args{replicate})                # CHECKSUM can't do INSERT.. SELECT
    {
       PTDEBUG && _d('Cannot use CHECKSUM algorithm');
       @choices = grep { $_ ne 'CHECKSUM' } @choices;
    }
 
-   # BIT_XOR isn't available till 4.1.1 either
-   if ( !$vp->version_ge($dbh, '4.1.1') ) {
-      PTDEBUG && _d('Cannot use BIT_XOR algorithm because MySQL < 4.1.1');
-      @choices = grep { $_ ne 'BIT_XOR' } @choices;
-   }
 
    # Choose the best (fastest) among the remaining choices.
    if ( $alg && grep { $_ eq $alg } @choices ) {

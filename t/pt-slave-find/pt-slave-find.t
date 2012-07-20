@@ -107,23 +107,25 @@ my $innodb_re = qr/InnoDB version\s+(.*)/;
 my (@innodb_versions) = $result =~ /$innodb_re/g;
 $result =~ s/$innodb_re/InnoDB version  BUILTIN/g;
 
-my $vp = new VersionParser;
+my $master_version = VersionParser->new($master_dbh);
+my $slave_version  = VersionParser->new($slave_dbh);
+my $slave2_version = VersionParser->new($slave_2_dbh);
 
 is(
    $innodb_versions[0],
-   $vp->innodb_version($master_dbh),
+   $master_version->innodb_version(),
    "pt-slave-find gets the right InnoDB version for the master"
 );
 
 is(
    $innodb_versions[1],
-   $vp->innodb_version($slave_dbh),
+   $slave_version->innodb_version(),
    "...and for the first slave"
 );
 
 is(
    $innodb_versions[2],
-   $vp->innodb_version($slave_2_dbh),
+   $slave2_version->innodb_version(),
    "...and for the first slave"
 );
 

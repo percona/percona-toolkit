@@ -46,16 +46,14 @@ diag(`$mysql < $trunk/t/lib/samples/before-TableSyncChunk.sql`);
 
 my $q  = new Quoter();
 my $tp = new TableParser(Quoter => $q);
-my $vp = new VersionParser();
 my $ms = new MasterSlave();
 my $rr = new Retry();
 my $chunker    = new TableChunker( Quoter => $q, TableParser => $tp );
-my $checksum   = new TableChecksum( Quoter => $q, VersionParser => $vp );
+my $checksum   = new TableChecksum( Quoter => $q );
 my $syncer     = new TableSyncer(
    MasterSlave   => $ms,
    TableChecksum => $checksum,
    Quoter        => $q,
-   VersionParser => $vp,
    Retry         => $rr,
 );
 
