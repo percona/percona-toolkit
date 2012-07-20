@@ -3352,10 +3352,14 @@ sub main {
       PTDEBUG && _d($sql);
       $dbh->do($sql);
 
-      $sql = "INSERT INTO $db_tbl (ts, server_id) VALUES (NOW(), $server_id)";
+      $sql = ($o->get('replace') ? "REPLACE" : "INSERT")
+           . qq/ INTO $db_tbl (ts, server_id) VALUES (NOW(), $server_id)/;
       PTDEBUG && _d($sql);
       # This may fail if the table already existed and already had this row.
       # We eval to ignore this possibility.
+      # NOTE: This can break replication though!  See:
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1004567
+      # So --replace should be used in most cases.
       eval { $dbh->do($sql); };
    }
 
