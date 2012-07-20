@@ -42,7 +42,7 @@ elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
 else {
-   plan tests => 3;
+   plan tests => 4;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -94,7 +94,31 @@ diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
 wait_until(
    sub {
       my $rows=$slave2_dbh->selectall_arrayref("SELECT user FROM mysql.user");
-      return !grep { ($_->[0] || '') ne 'ro_checksum_user' } @$rows;
+      return !grep { ($_->[0] || '') eq 'ro_checksum_user' } @$rows;
+   }
+);
+
+# #############################################################################
+# Bug 916168: bug in pt-table-checksum privileges check
+# #############################################################################
+`/tmp/12345/use -u root < $trunk/t/pt-table-checksum/samples/privs-bug-916168.sql`;
+
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      "$master_dsn,u=test_user,p=foo", qw(-t sakila.country)) },
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'rows'),
+   109,
+   "test_user privs work (bug 916168)"
+);
+
+diag(`/tmp/12345/use -u root -e "drop user 'test_user'\@'%'"`);
+wait_until(
+   sub {
+      my $rows=$slave2_dbh->selectall_arrayref("SELECT user FROM mysql.user");
+      return !grep { ($_->[0] || '') eq 'test_user' } @$rows;
    }
 );
 
