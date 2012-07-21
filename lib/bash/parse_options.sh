@@ -121,6 +121,15 @@ usage_or_errors() {
       for opt in $(ls "$PO_DIR"); do
          local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
          local varvalue="${!varname}"
+         if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+            # Typeless option, like --version, so it's given/TRUE
+            # or not given/FALSE.
+            if [ "$varvalue" -a "$varvalue" = "yes" ];
+               then varvalue="TRUE"
+            else
+               varvalue="FALSE"
+            fi
+         fi
          printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
          echo
       done
