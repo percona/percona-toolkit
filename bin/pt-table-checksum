@@ -8177,15 +8177,8 @@ sub check_repl_table {
    }
    else {
       PTDEBUG && _d('--replicate table', $repl_table, 'already exists');
-      # Check it again but this time check the privs.
-      my $have_tbl_privs = $tp->check_table(
-         dbh       => $dbh,
-         db        => $db,
-         tbl       => $tbl,
-         all_privs => 1,
-      );
-      die "User does not have all privileges on --replicate table "
-         . "$repl_table.\n" unless $have_tbl_privs;
+      # We used to check the table privs here, but:
+      # https://bugs.launchpad.net/percona-toolkit/+bug/916168
    }
 
    # Check and wait for the repl table to appear on all slaves.
