@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 80
+plan 81
 
 TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -66,6 +66,15 @@ is "$OPT_NOPTION" "" "Negated option (neg)"
 is "$OPT_INT_OPT" "" "Default int option (neg)"
 is "$OPT_INT_OPT2" "42" "Default int option with default (neg)"
 is "$OPT_VERSION" "" "--version (neg)"
+
+# ############################################################################
+# Negate an option like --nooption.
+# https://bugs.launchpad.net/percona-toolkit/+bug/954990
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --nonoption
+
+is "$OPT_NOPTION" "" "--nooption negates option like --no-option"
 
 # ############################################################################
 # Short form.

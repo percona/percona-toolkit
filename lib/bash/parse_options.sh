@@ -415,13 +415,25 @@ _parse_command_line() {
          # Save real opt from cmd line for error messages.
          real_opt="$opt"
 
-         # Strip leading -- or --no- from option.
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
+         # Handle the --nofoo variant of --no-foo.
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            # Only long options can be negated, so if there's no spec file
+            # for the base option name, then we've been fooled: the leading
+            # --no is actually part of the option's real name, like --north.
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            fi
          else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
+            # Handle normal cases: --option and --no-option.
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          fi
 
          # Split opt=val pair.
