@@ -122,6 +122,13 @@ usage_or_errors() {
       for opt in $(ls "$PO_DIR"); do
          local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
          local varvalue="${!varname}"
+         if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+            if [ "$varvalue" -a "$varvalue" = "yes" ];
+               then varvalue="TRUE"
+            else
+               varvalue="FALSE"
+            fi
+         fi
          printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
          echo
       done
@@ -344,12 +351,20 @@ _parse_command_line() {
 
          real_opt="$opt"
 
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            fi
          else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          fi
 
          if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then

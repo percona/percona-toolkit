@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 78
+plan 81
 
 TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -68,6 +68,15 @@ is "$OPT_INT_OPT2" "42" "Default int option with default (neg)"
 is "$OPT_VERSION" "" "--version (neg)"
 
 # ############################################################################
+# Negate an option like --nooption.
+# https://bugs.launchpad.net/percona-toolkit/+bug/954990
+# ############################################################################
+
+parse_options "$T_LIB_DIR/samples/bash/po001.sh" --nonoption
+
+is "$OPT_NOPTION" "" "--nooption negates option like --no-option"
+
+# ############################################################################
 # Short form.
 # ############################################################################
 
@@ -120,6 +129,19 @@ usage_or_errors "$T_LIB_DIR/samples/bash/po003.sh" >$TMPFILE 2>&1
 cmd_ok \
    "grep -q 'Exit if the disk is less than this %full.' $TMPFILE" \
    "Don't interpolate --help descriptions"
+
+# TRUE/FALSE for typeless options, like the Perl tools.
+# https://bugs.launchpad.net/percona-toolkit/+bug/954990
+parse_options "$BIN_DIR/pt-stalk" --help
+usage_or_errors "$BIN_DIR/pt-stalk" >$TMPFILE 2>&1
+
+cmd_ok \
+   "grep -q '\-\-stalk[ ][ ]*TRUE' $TMPFILE" \
+   "TRUE for specified option in --help"
+
+cmd_ok \
+   "grep -q '\-\-version[ ][ ]*FALSE' $TMPFILE" \
+   "FALSE for non-specified option in --help"
 
 # ###########################################################################
 # Config files.
