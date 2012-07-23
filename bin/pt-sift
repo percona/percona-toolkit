@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 
-TOOL="pt-sift"
-
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
 # notices and disclaimers.
 
 usage() {
    if [ "${OPT_ERR}" ]; then
-      echo "${OPT_ERR}" >&2
+      echo "Error: $OPT_ERR" >&2
    fi
    echo "Usage: pt-sift FILE|PREFIX|DIRECTORY" >&2
    echo "For more information, 'man pt-sift' or 'perldoc $0'." >&2
@@ -56,6 +54,28 @@ rm_tmpdir() {
 # End tmpdir package
 # ###########################################################################
 
+# ###########################################################################
+# Global variables
+# ###########################################################################
+
+TOOL="pt-sift"
+if [ -d "/var/lib/pt-stalk" ]; then
+   BASEDIR="/var/lib/pt-stalk"
+else
+   BASEDIR="$PWD"
+fi
+PREFIX=""
+
+# ###########################################################################
+# Subroutines
+# ###########################################################################
+
+sigtrap() {
+   echo "Caught signal, exiting" >&2
+   rm_tmpdir
+   exit 0
+}
+
 # Show current help and settings
 print_help() {
    cat <<-HELP
@@ -75,22 +95,34 @@ print_help() {
 	HELP
 }
 
-# The main code that runs by default.  Arguments are the command-line options.
+# ###########################################################################
+# Main program loop, called below if tool is ran from the command line.
+# ###########################################################################
+
 main() {
+   trap sigtrap SIGHUP SIGINT SIGTERM
 
    # If there's a command-line arg, figure out if it's a file, directory, or
    # prefix.  The outcome of this block of code should be that BASEDIR is the
    # directory where the files live, without a trailing slash; and PREFIX is
    # either empty or a timestamp, such as "2011_02_08_16_58_07".
-   ARG="${1:-.}"
-   if [ -d "${ARG}" ]; then
-      BASEDIR="$(echo "${ARG}" | sed -e 's!/$!!')"
-   elif [ -f "${ARG}" -o -f "${ARG}-df" -o -f "${ARG}df" ]; then
-      BASEDIR="$(dirname "${ARG}")"
-      PREFIX="$(echo "${ARG}" | sed -e 's/-[a-z1]*$//' -e 's!^.*/!!')"
-   else
-      echo "Error: ${ARG} doesn't look like a directory, file, or file prefix"
-      exit 1
+   if [ $# -gt 1 ]; then
+      OPT_ERR="Specify only one PREFIX or DIR"
+      usage
+   fi
+
+   if [ $# -eq 1 ]; then
+      if [ -d "$1" ]; then
+         BASEDIR="$1"
+         PREFIX=""
+      elif [ -f "$1" -o -f "$1-df" -o -f "$1df" ]; then
+         BASEDIR="$(dirname "$1")"
+         PREFIX="$(echo "$1" | perl -ne '$_ =~ m/([\d_]+)/; print $1;')"
+      else
+         echo "Error: $1 is not a directory, and there are no pt-stalk files in the curent working directory ($BASEDIR) with a $1 prefix." >&2
+         echo "For more information, 'man pt-sift' or 'perldoc $0'." >&2
+         exit 1
+      fi
    fi
 
    # If the programs we need don't exist, try to get them.
@@ -120,7 +152,15 @@ main() {
 
    # We need to generate a list of timestamps, and ask the user to choose one if
    # there is no PREFIX yet.  NOTE: we rely on the "-df" files here.
-   ls "${BASEDIR}" | grep -- '-df$' | cut -d- -f1 | sort > $PT_TMPDIR/pt-sift.prefixes
+   (
+      cd "$BASEDIR"
+      ls *-df 2>/dev/null | cut -d- -f1 | sort > "$PT_TMPDIR/pt-sift.prefixes" 
+   )
+   if [ ! -s "$PT_TMPDIR/pt-sift.prefixes" ]; then
+      echo "Error: There are no pt-stalk files in $BASEDIR" >&2
+      echo "For more information, 'man pt-sift' or 'perldoc $0'." >&2
+      exit 1
+   fi
    if [ -z "${PREFIX}" ]; then
       if [ "$(grep -c . $PT_TMPDIR/pt-sift.prefixes)" = "1" ]; then
          # If there is only one sample, we use it as the prefix.
@@ -133,7 +173,7 @@ main() {
       cat $PT_TMPDIR/pt-sift.prefixes | while read line; do
          i=$(($i + 1))
          echo -n "  $line"
-         if [ "${i}" = "3" ]; then
+         if [ $i -eq 3 ]; then
             echo
             i=0
          fi
@@ -170,80 +210,88 @@ main() {
          # Format a brief report: busiest device's disk stats, CPU stats
          DEFAULT)
             echo "--diskstats--"
+            if [ -f "${BASEDIR}/${PREFIX}-diskstats" ]; then
 
-            $PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
-               | awk '
-                  /ts/ { header = $0 }
-                  /[0-9]/ {
-                     io  = $3 + $9;
-                     if ( io >= mio ) {
-                        mio   = io;
-                        mseen = $0;
+               $PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
+                  | awk '
+                     /ts/ { header = $0 }
+                     /[0-9]/ {
+                        io  = $3 + $9;
+                        if ( io >= mio ) {
+                           mio   = io;
+                           mseen = $0;
+                        }
                      }
-                  }
-                  END {
-                     print header;
-                     print mseen;
-                  }'
+                     END {
+                        print header;
+                        print mseen;
+                     }'
 
-            # Find out which device was the busiest.
-            mdev="$($PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
-               | awk '
-                  /[0-9]/ {
-                     io  = $3 + $9;
-                     if ( io >= mio ) {
-                        mio   = io;
-                        mdev  = $2;
+               # Find out which device was the busiest.
+               mdev="$($PR_diskstats --group-by disk "${BASEDIR}/${PREFIX}-diskstats" \
+                  | awk '
+                     /[0-9]/ {
+                        io  = $3 + $9;
+                        if ( io >= mio ) {
+                           mio   = io;
+                           mdev  = $2;
+                        }
                      }
-                  }
-                  END {
-                     print mdev;
-                  }')"
+                     END {
+                        print mdev;
+                     }')"
 
-            # Print the busy% for that device, rounded to the nearest N%, with
-            # "." as a marker for a repeated value.
-            $PR_diskstats --group-by sample "${BASEDIR}/${PREFIX}-diskstats" \
-               | awk "
+               # Print the busy% for that device, rounded to the nearest N%, with
+               # "." as a marker for a repeated value.
+               $PR_diskstats --group-by sample "${BASEDIR}/${PREFIX}-diskstats" \
+                  | awk "
+                     BEGIN {
+                        fuzz = 5;
+                        printf \" ${mdev} \"
+                     }
+                     \$1 = \"${mdev}\" {
+                        busy_rounded = fuzz * sprintf(\"%d\", substr(\$15, 1, length(\$15) - 1) / fuzz);
+                        if ( printed == 1 && prev == busy_rounded ) {
+                           printf \" .\";
+                        }
+                        else {
+                           printf \" %d%%\", busy_rounded;
+                           prev    = busy_rounded;
+                           printed = 1;
+                        }
+                     }"
+               echo
+            else
+               echo "    No diskstats file exists"
+            fi
+
+            echo "--vmstat--"
+            if [ -f "${BASEDIR}/${PREFIX}-vmstat" ]; then
+               tail -n 3 "${BASEDIR}/${PREFIX}-vmstat-overall" | $PR_align
+
+               # Figure out which column is 'wa' and print this, similar to the
+               # busy% for disks above.
+               wa_col="$(awk '/swpd/{for(i=1;i<=NF;++i){if($i=="wa"){print i; exit}}}' "${BASEDIR}/${PREFIX}-vmstat")"
+               awk "
                   BEGIN {
                      fuzz = 5;
-                     printf \" ${mdev} \"
+                     printf \"wa\"
                   }
-                  \$1 = \"${mdev}\" {
-                     busy_rounded = fuzz * sprintf(\"%d\", substr(\$15, 1, length(\$15) - 1) / fuzz);
-                     if ( printed == 1 && prev == busy_rounded ) {
+                  /[0-9]/ {
+                     wa_rounded = fuzz * sprintf(\"%d\", \$${wa_col} / fuzz);
+                     if ( printed == 1 && prev == wa_rounded ) {
                         printf \" .\";
                      }
                      else {
-                        printf \" %d%%\", busy_rounded;
-                        prev    = busy_rounded;
+                        printf \" %d%%\", wa_rounded;
+                        prev    = wa_rounded;
                         printed = 1;
                      }
-                  }"
-            echo
-
-            echo "--vmstat--"
-            tail -n 3 "${BASEDIR}/${PREFIX}-vmstat-overall" | $PR_align
-
-            # Figure out which column is 'wa' and print this, similar to the
-            # busy% for disks above.
-            wa_col="$(awk '/swpd/{for(i=1;i<=NF;++i){if($i=="wa"){print i; exit}}}' "${BASEDIR}/${PREFIX}-vmstat")"
-            awk "
-               BEGIN {
-                  fuzz = 5;
-                  printf \"wa\"
-               }
-               /[0-9]/ {
-                  wa_rounded = fuzz * sprintf(\"%d\", \$${wa_col} / fuzz);
-                  if ( printed == 1 && prev == wa_rounded ) {
-                     printf \" .\";
-                  }
-                  else {
-                     printf \" %d%%\", wa_rounded;
-                     prev    = wa_rounded;
-                     printed = 1;
-                  }
-               }" "${BASEDIR}/${PREFIX}-vmstat"
-            echo
+                  }" "${BASEDIR}/${PREFIX}-vmstat"
+               echo
+            else
+               echo "    No vmstat file exists"
+            fi
 
             echo "--innodb--"
             awk '
@@ -551,15 +599,19 @@ fi
 
 =head1 NAME
 
-pt-sift - Browses files created by pt-collect.
+pt-sift - Browses files created by pt-stalk.
 
 =head1 SYNOPSIS
 
 Usage: pt-sift FILE|PREFIX|DIRECTORY
 
-pt-sift browses the files created by L<pt-collect>.  If you specify a
-FILE or PREFIX, it browses only files with that prefix.  If you specify a
-DIRECTORY, then it browses all files within that directory.
+pt-sift browses files created by L<pt-stalk>.  If no options are given,
+the tool browses all pt-stalk files in C</var/lib/pt-stalk> if that directory
+exists, else the current working directory is used.  If a FILE is given,
+the tool browses files with the same prefix in the given file's directory.
+If a PREFIX is given, the tool browses files in C</var/lib/pt-stalk>
+(or the current working directory) with the same prefix.  If a DIRECTORY
+is given, the tool browses all pt-stalk files in it.
 
 =head1 RISKS
 
@@ -584,7 +636,7 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 pt-sift downloads other tools that it might need, such as L<pt-diskstats>,
 and then makes a list of the unique timestamp prefixes of all the files in
-the directory, as written by the L<pt-collect> tool.  If the user specified
+the directory, as written by the L<pt-stalk> tool.  If the user specified
 a timestamp on the command line, then it begins with that sample of data;
 otherwise it begins by showing a list of the timestamps and prompting for
 a selection.  Thereafter, it displays a summary of the selected sample, and
