@@ -114,7 +114,7 @@ my ($row) = $cxn->dbh()->selectrow_hashref('SHOW MASTER STATUS');
 ok(
    exists $row->{binlog_ignore_db},
    "FetchHashKeyName = NAME_lc",
-);
+) or diag(Dumper($row));
 
 test_var_val(
    $cxn->dbh(),
@@ -163,7 +163,7 @@ $cxn->connect();
 ok(
    exists $row->{binlog_ignore_db},
    "Reconnect FetchHashKeyName = NAME_lc",
-);
+) or diag(Dumper($row));
 
 test_var_val(
    $cxn->dbh(),
