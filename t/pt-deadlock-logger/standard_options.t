@@ -65,41 +65,46 @@ $dbh1->do('USE test');
 $dbh1->do('DROP TABLE IF EXISTS deadlocks');
 $dbh1->do("$deadlocks_tbl");
 
-`$cmd --dest D=test,t=deadlocks --daemonize --run-time 1s --interval 1s --pid /tmp/mk-deadlock-logger.pid 1>/dev/null 2>/dev/null`;
-$output = `ps -eaf | grep '$cmd \-\-dest '`;
-like($output, qr/$cmd/, 'It lives daemonized');
-ok(-f '/tmp/mk-deadlock-logger.pid', 'PID file created');
+my $pid_file = '/tmp/mk-deadlock-logger.pid';
+unlink $pid_file
+   and diag("Unlinked existing $pid_file");
 
+`$cmd --dest D=test,t=deadlocks --daemonize --run-time 6s --interval 1s --pid $pid_file 1>/dev/null 2>/dev/null`;
+$output = `ps -eaf | grep '$cmd \-\-dest '`;
+like($output, qr/\Q$cmd/, 'It lives daemonized');
+
+PerconaTest::wait_for_files($pid_file);
+ok(-f $pid_file, 'PID file created');
 my ($pid) = $output =~ /\s+(\d+)\s+/;
-$output = `cat /tmp/mk-deadlock-logger.pid`;
+chomp($output = slurp_file($pid_file));
 is($output, $pid, 'PID file has correct PID');
 
 # Kill it
-sleep 2;
-ok(! -f '/tmp/mk-deadlock-logger.pid', 'PID file removed');
+PerconaTest::wait_until(sub { !kill 0, $pid });
+ok(! -f $pid_file, 'PID file removed');
 
 # Check that it won't run if the PID file already exists (issue 383).
-diag(`touch /tmp/mk-deadlock-logger.pid`);
+diag(`touch $pid_file`);
 ok(
-   -f '/tmp/mk-deadlock-logger.pid',
+   -f $pid_file,
    'PID file already exists'
 );
 
-$output = `$cmd --dest D=test,t=deadlocks --daemonize --run-time 1s --interval 1s --pid /tmp/mk-deadlock-logger.pid 2>&1`;
+$output = `$cmd --dest D=test,t=deadlocks --daemonize --run-time 1s --interval 1s --pid $pid_file 2>&1`;
 like(
    $output,
    qr/PID file .+ already exists/,
    'Does not run if PID file already exists'
 );
 
-$output = `ps -eaf | grep 'mk-deadlock-logger \-\-dest '`;
+$output = `ps -eaf | grep 'pt-deadlock-logger \-\-dest '`;
 unlike(
    $output,
    qr/$cmd/,
    'It does not lived daemonized'
 );
 
-diag(`rm -rf /tmp/mk-deadlock-logger.pid`);
+unlink $pid_file;
 
 # #############################################################################
 # Done.
