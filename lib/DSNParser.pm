@@ -263,6 +263,18 @@ sub fill_in_dsn {
    $dsn->{D} ||= $db;
 }
 
+# MySQL won't resolve iso-8859-1 or latin-1 as latin1, while Perl would, so
+# we hardcode the aliases here. The UTF-8 case is a bit different;
+# MySQL doesn't really support UTF-8 in SET NAMES, instead using
+# their own definition, which is constrained to codepoints 0..0xFFFF, so
+# rightfully calls it something different: utf8. I'm not actually sure
+# if the naming convention is intended or plain lucky on their part, though.
+my %encoding_aliases = (
+   'utf-8'      => 'utf8',
+   'iso-8859-1' => 'latin1',
+   'latin-1'    => 'latin1',
+);
+
 # Actually opens a connection, then sets some things on the connection so it is
 # the way the Maatkit tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
@@ -274,7 +286,7 @@ sub get_dbh {
       RaiseError         => 1,
       PrintError         => 0,
       ShowErrorStatement => 1,
-      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
+      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf-?8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
 
@@ -336,7 +348,7 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -346,16 +358,19 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       eval { $dbh->do($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
 
       # Set character set and binmode on STDOUT.
-      if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-         $sql = "/*!40101 SET NAMES $charset*/";
+      if ( my ($charset) = $cxn_string =~ m/charset=([-\w]+)/ ) {
+         $charset = $encoding_aliases{lc($charset)} || $charset;
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
          PTDEBUG && _d('Enabling charset for STDOUT');
          if ( $charset eq 'utf8' ) {
@@ -367,12 +382,12 @@ sub get_dbh {
          }
       }
 
-      if ( $self->prop('set-vars') ) {
-         $sql = "SET " . $self->prop('set-vars');
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }
