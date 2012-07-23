@@ -85,6 +85,7 @@ main() {
    ARG="${1:-.}"
    if [ -d "${ARG}" ]; then
       BASEDIR="$(echo "${ARG}" | sed -e 's!/$!!')"
+      PREFIX=""
    elif [ -f "${ARG}" -o -f "${ARG}-df" -o -f "${ARG}df" ]; then
       BASEDIR="$(dirname "${ARG}")"
       PREFIX="$(echo "${ARG}" | sed -e 's/-[a-z1]*$//' -e 's!^.*/!!')"
