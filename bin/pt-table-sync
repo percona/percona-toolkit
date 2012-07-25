@@ -9396,7 +9396,7 @@ sub get_cxn {
    # Set repeatable read for both explicit and auto_commit transactions
    # as lower isolation levels will not play nice with binlog_format=STATEMENT
    # https://bugs.launchpad.net/percona-toolkit/+bug/869005
-   my $sql = "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ";
+   $sql = "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ";
    eval {
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
