@@ -8145,17 +8145,35 @@ sub check_repl_table {
    my $sql = "SHOW DATABASES LIKE '$db'";
    PTDEBUG && _d($sql);
    my @db_exists = $dbh->selectrow_array($sql);
-   if ( !@db_exists && $o->get('create-replicate-table') ) {
-      $sql = "CREATE DATABASE " . $q->quote($db) . " /* pt-table-checksum */";
+   if ( !@db_exists && !$o->get('create-replicate-table') ) {
+      die "--replicate database $db does not exist and "
+         . "--no-create-replicate-table was passed in.  You need "
+         . "to create the database.\n";
+   }
+
+   if ( $o->get('create-replicate-table') ) {
+      $sql = "CREATE DATABASE IF NOT EXISTS "
+            . $q->quote($db)
+            . " /* pt-table-checksum */";
+      local $@;
+      PTDEBUG && _d($sql);
       eval {
          $dbh->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         die "--replicate database $db does not exist and it cannot be "
-            . "created automatically.  You need to create the database.\n";
+         if ( @db_exists ) {
+            print STDERR "CREATE DATABASE IF NOT EXISTS $db failed, but the "
+                     . "db already exists.  This is harmless unless the "
+                     . "slaves don't have the database. $EVAL_ERROR"; # kb link?
+         }
+         else {
+            die "--replicate database $db does not exist and it cannot be "
+               . "created automatically.  You need to create the database. "
+               . $EVAL_ERROR;
+         }
       }
    }
-
+   
    # USE the correct db (probably the repl db, but maybe --replicate-database).
    use_repl_db(%args);
 
@@ -8165,28 +8183,41 @@ sub check_repl_table {
       db  => $db,
       tbl => $tbl,
    );
-   if ( !$tbl_exists ) {
-      if ( $o->get('create-replicate-table') ) {
-         create_repl_table(%args)
-      }
-      else {
-         die "--replicate table $repl_table does not exist; "
-            . "read the documentation or use --create-replicate-table "
-            . "to create it.\n";
+
+   # Always create the table, unless --no-create-replicate-table
+   # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
+   if ( !$tbl_exists && !$o->get('create-replicate-table') ) {
+      die "--replicate table $repl_table does not exist and "
+        . "--no-create-replicate-table was passed in.  "
+        . "You need to create the table.\n";
+   }
+   if ( $o->get('create-replicate-table') ) {
+      local $@;
+      eval {
+         create_repl_table(%args);
+      };
+      if ( $EVAL_ERROR ) {
+         if ( $tbl_exists ) {
+            print STDERR "CREATE TABLE IF NOT EXISTS $args{repl_table} "
+                     . "failed, but the table already exists.  This "
+                     . "is harmless unless the slaves don't have the "
+                     . "table. $EVAL_ERROR";
+         }
+         else {
+            die $EVAL_ERROR;
+         }
       }
    }
-   else {
-      PTDEBUG && _d('--replicate table', $repl_table, 'already exists');
-      # Check it again but this time check the privs.
-      my $have_tbl_privs = $tp->check_table(
-         dbh       => $dbh,
-         db        => $db,
-         tbl       => $tbl,
-         all_privs => 1,
-      );
-      die "User does not have all privileges on --replicate table "
-         . "$repl_table.\n" unless $have_tbl_privs;
-   }
+
+   # Check it again but this time check the privs.
+   my $have_tbl_privs = $tp->check_table(
+      dbh       => $dbh,
+      db        => $db,
+      tbl       => $tbl,
+      all_privs => 1,
+   );
+   die "User does not have all privileges on --replicate table "
+      . "$repl_table.\n" unless $have_tbl_privs;
 
    # Check and wait for the repl table to appear on all slaves.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1008778
@@ -8327,7 +8358,7 @@ sub create_repl_table {
    my ($dbh, $repl_table, $o) = @args{@required_args};
    PTDEBUG && _d('Creating --replicate table', $repl_table); 
    my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_replicate/);
-   $sql =~ s/CREATE TABLE checksums/CREATE TABLE $repl_table/;
+   $sql =~ s/CREATE TABLE checksums/CREATE TABLE IF NOT EXISTS $repl_table/;
    $sql =~ s/;$//;
    PTDEBUG && _d($dbh, $sql);
    eval {
