@@ -4755,6 +4755,11 @@ sub next {
             return;
          }
       }
+      if ( !$self->{one_nibble} && !$self->{first_lower} ) {
+         PTDEBUG && _d('No first lower boundary, table must be empty');
+         $self->{no_more_boundaries} = 1;
+         return;
+      }
    }
 
    NIBBLE:
@@ -6502,13 +6507,21 @@ sub main {
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
          my $statements  = $nibble_iter->statements();
+         my $boundary    = $nibble_iter->boundaries();
 
          if ( $o->get('dry-run') ) {
             print "Not copying rows because this is a dry run.\n";
          }
          else {
-            print "Copying approximately ", $nibble_iter->row_estimate(),
-               " rows...\n";
+            if ( !$nibble_iter->one_nibble() && !$boundary->{first_lower} ) {
+               # https://bugs.launchpad.net/percona-toolkit/+bug/1020997
+               print "$tbl->{name} is empty, no rows to copy.\n";
+               return;
+            }
+            else {
+               print "Copying approximately ", $nibble_iter->row_estimate(),
+                  " rows...\n";
+            }
          }
 
          if ( $o->get('print') ) {
