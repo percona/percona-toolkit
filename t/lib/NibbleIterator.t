@@ -249,7 +249,7 @@ is_deeply(
    \@rows,
    $all_rows,
    '1 nibble'
-) or print Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # single row table
@@ -274,7 +274,7 @@ is_deeply(
    \@rows,
    [['d']],
    'single row table'
-) or print Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # empty table
@@ -294,7 +294,7 @@ is_deeply(
    \@rows,
    [],
    'empty table'
-) or print Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # Callbacks
@@ -397,35 +397,35 @@ is_deeply(
    $row,
    [25, 'da79784d'],
    "SELECT chunk checksum 1 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
    [25, 'e860c4f9'],
    "SELECT chunk checksum 2 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
    [25, 'eb651f58'],
    "SELECT chunk checksum 3 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
    [25, '2d87d588'],
    "SELECT chunk checksum 4 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 $row = $ni->next();
 is_deeply(
    $row,
    [9, 'beb4a180'],
    "SELECT chunk checksum 5 FROM sakila.country"
-) or print STDERR Dumper($row); 
+) or diag(Dumper($row));
 
 
 # #########################################################################
@@ -552,7 +552,7 @@ is_deeply(
       [ 'z'        ], # last nibble
    ],
    "Change chunk size while nibbling"
-) or print STDERR Dumper(\@rows);
+) or diag(Dumper(\@rows));
 
 # ############################################################################
 # Nibble one row at a time.
