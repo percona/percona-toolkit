@@ -7702,7 +7702,9 @@ sub main {
                      $slave->name());
                   # Save unique chunks that differ.
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1030031
-                  map { $diff_chunks{ $_->{chunk} }++ } @$diffs;
+                  if ( scalar @$diffs ) {
+                     map { $diff_chunks{ $_->{chunk} }++ } @$diffs;
+                  }
                };
                if ($EVAL_ERROR) {
                   if ( $o->get('quiet') < 2 ) {
