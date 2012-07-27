@@ -263,18 +263,6 @@ sub fill_in_dsn {
    $dsn->{D} ||= $db;
 }
 
-# MySQL won't resolve iso-8859-1 or latin-1 as latin1, while Perl would, so
-# we hardcode the aliases here. The UTF-8 case is a bit different;
-# MySQL doesn't really support UTF-8 in SET NAMES, instead using
-# their own definition, which is constrained to codepoints 0..0xFFFF, so
-# rightfully calls it something different: utf8. I'm not actually sure
-# if the naming convention is intended or plain lucky on their part, though.
-my %encoding_aliases = (
-   'utf-8'      => 'utf8',
-   'iso-8859-1' => 'latin1',
-   'latin-1'    => 'latin1',
-);
-
 # Actually opens a connection, then sets some things on the connection so it is
 # the way the Maatkit tools will expect.  Tools should NEVER open their own
 # connection or use $dbh->reconnect, or these things will not take place!
@@ -286,7 +274,7 @@ sub get_dbh {
       RaiseError         => 1,
       PrintError         => 0,
       ShowErrorStatement => 1,
-      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf-?8/i ? 1 : 0),
+      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
 
@@ -364,8 +352,7 @@ sub get_dbh {
       }
 
       # Set character set and binmode on STDOUT.
-      if ( my ($charset) = $cxn_string =~ m/charset=([-\w]+)/ ) {
-         $charset = $encoding_aliases{lc($charset)} || $charset;
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };

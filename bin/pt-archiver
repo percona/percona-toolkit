@@ -2121,12 +2121,6 @@ sub fill_in_dsn {
    $dsn->{D} ||= $db;
 }
 
-my %encoding_aliases = (
-   'utf-8'      => 'utf8',
-   'iso-8859-1' => 'latin1',
-   'latin-1'    => 'latin1',
-);
-
 sub get_dbh {
    my ( $self, $cxn_string, $user, $pass, $opts ) = @_;
    $opts ||= {};
@@ -2135,7 +2129,7 @@ sub get_dbh {
       RaiseError         => 1,
       PrintError         => 0,
       ShowErrorStatement => 1,
-      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf-?8/i ? 1 : 0),
+      mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
 
@@ -2203,8 +2197,7 @@ sub get_dbh {
            . ": $EVAL_ERROR";
       }
 
-      if ( my ($charset) = $cxn_string =~ m/charset=([-\w]+)/ ) {
-         $charset = $encoding_aliases{lc($charset)} || $charset;
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
@@ -5115,6 +5108,9 @@ Default character set.  If the value is utf8, sets Perl's binmode on
 STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
 NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
 without the utf8 layer, and runs SET NAMES after connecting to MySQL.
+
+Note that only charsets as known by MySQL are recognized; So for example,
+"UTF8" will work, but "UTF-8" will not.
 
 See also L<"--[no]check-charset">.
 
