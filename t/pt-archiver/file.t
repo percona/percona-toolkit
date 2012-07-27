@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 13;
-}
 
 my $output;
 my $rows;
@@ -95,7 +92,7 @@ sub test_charset {
    ) or diag($out);
 }
 
-for my $charset (qw(latin1 iso-8859-1 latin-1 utf8 UTF-8 UTF8 )) {
+for my $charset (qw(latin1 utf8 UTF8 )) {
    test_charset($charset);
 }
 
@@ -112,11 +109,16 @@ my ($out) = full_output( sub {
    },
 );
 
-like($out, qr/\QError setting NAMES to some_charset_that_doesn/, "..but an unknown charset fails");
+like(
+   $out,
+   qr/\QError setting NAMES to some_charset_that_doesn/,
+   "..but an unknown charset fails"
+);
 
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
