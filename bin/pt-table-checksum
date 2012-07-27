@@ -7703,6 +7703,9 @@ sub main {
                   # Save unique chunks that differ.
                   # https://bugs.launchpad.net/percona-toolkit/+bug/1030031
                   if ( scalar @$diffs ) {
+                     # "chunk" is the chunk number.  See the SELECT
+                     # statement in RowChecksum::find_replication_differences()
+                     # for the full list of columns.
                      map { $diff_chunks{ $_->{chunk} }++ } @$diffs;
                   }
                };
