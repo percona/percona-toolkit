@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 16;
+use Test::More;
 
 use TextResultSetParser();
 use MySQLConfigComparer;
@@ -370,6 +370,39 @@ $c2 = new MySQLConfig(
 }
 
 # #############################################################################
+# Case insensitivity
+# #############################################################################
+
+$c1 = new MySQLConfig(
+   result_set => [['binlog_format', 'MIXED']],
+   format     => 'option_file',
+);
+
+$c2 = new MySQLConfig(
+   result_set => [['binlog_format', 'mixed']],
+   format     => 'option_file',
+);
+
+is_deeply(
+   diff($c1, $c2),
+   undef,
+   "Case insensitivity is on by default"
+);
+
+my $case_cc = MySQLConfigComparer->new( ignore_case => undef, );
+
+is_deeply(
+   $case_cc->diff(configs => [$c1, $c2]),
+   {
+      binlog_format => [
+         'MIXED',
+         'mixed'
+      ]
+   },
+   "..but can be turned off"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 {
@@ -382,4 +415,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-exit;
+
+done_testing;

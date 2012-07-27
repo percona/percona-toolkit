@@ -1291,7 +1291,7 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -1301,15 +1301,17 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       eval { $dbh->do($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
 
-      if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-         $sql = "/*!40101 SET NAMES $charset*/";
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
          PTDEBUG && _d('Enabling charset for STDOUT');
          if ( $charset eq 'utf8' ) {
@@ -1321,12 +1323,12 @@ sub get_dbh {
          }
       }
 
-      if ( $self->prop('set-vars') ) {
-         $sql = "SET " . $self->prop('set-vars');
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }
@@ -1451,6 +1453,7 @@ sub new {
       dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
       hostname     => '',
       set          => $args{set},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
@@ -1488,7 +1491,10 @@ sub set_dbh {
 
    PTDEBUG && _d($dbh, 'Setting dbh');
 
-   $dbh->{FetchHashKeyName} = 'NAME_lc';
+   if ( !exists $self->{NAME_lc}
+        || (defined $self->{NAME_lc} && $self->{NAME_lc}) ) {
+      $dbh->{FetchHashKeyName} = 'NAME_lc';
+   }
    
    my $sql = 'SELECT @@hostname, @@server_id';
    PTDEBUG && _d($dbh, $sql);
@@ -2382,6 +2388,9 @@ sub new {
       value_is_optional => \%value_is_optional,
       any_value_is_true => \%any_value_is_true,
       base_path         => \%base_path,
+      ignore_case       => exists $args{ignore_case}
+                                ? $args{ignore_case}
+                                : 1,
    };
 
    return bless $self, $class;
@@ -2408,6 +2417,7 @@ sub diff {
    my $config0     = $configs->[0];
    my $last_config = @$configs - 1;
    my $vars        = $self->_get_shared_vars(%args);
+   my $ignore_case = $self->{ignore_case};
 
    my $diffs;
    VARIABLE:
@@ -2432,7 +2442,9 @@ sub diff {
                next CONFIG if $val0 == $valN;
             }
             else {
-               next CONFIG if $val0 eq $valN;
+               next CONFIG if $ignore_case
+                              ? lc($val0) eq lc($valN)
+                              : $val0 eq $valN;
 
                if ( $config0->format() ne $configN->format() ) {
                   if ( $any_value_is_true->{$var} ) {
@@ -2933,6 +2945,7 @@ sub main {
    my $trp         = new TextResultSetParser();
    my $config_cmp  = new MySQLConfigComparer(
       ignore_variables => $o->get('ignore-variables'),
+      ignore_case      => $o->get('ignore-case'),
    );
    my %common_modules = (
       DSNParser           => $dp,
@@ -3161,6 +3174,12 @@ L<"SYNOPSIS"> and usage information for details.
 =item --ask-pass
 
 Prompt for a password when connecting to MySQL.
+
+=item --[no]ignore-case
+
+default: yes
+
+Compare the variables case-insensitively.
 
 =item --charset
 
