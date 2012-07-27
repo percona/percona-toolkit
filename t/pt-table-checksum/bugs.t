@@ -42,7 +42,7 @@ elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
-   plan tests => 9;
+   plan tests => 10;
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -155,13 +155,27 @@ $slave1_dbh->do("SET SQL_LOG_BIN=1");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-t test.t --chunk-size 10)) },
-   stderr => 1,
 );
 
 is(
    PerconaTest::count_checksum_results($output, 'diffs'),
    2,
    "Bug 1030031 (wrong DIFFS): 2 diffs"
+);
+
+# Restore slave2, but then give it 1 diff that's not the same chunk#
+# as slave1, so there's 3 unique chunk that differ.
+$slave2_dbh->do("UPDATE test.t SET c='e' WHERE id=5");
+$slave2_dbh->do("UPDATE test.t SET c='' WHERE id=26");
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t test.t --chunk-size 10)) },
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   3,
+   "Bug 1030031 (wrong DIFFS): 3 diffs"
 );
 
 # #############################################################################

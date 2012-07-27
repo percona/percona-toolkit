@@ -7690,7 +7690,7 @@ sub main {
             );
 
             # Check each slave for checksum diffs.
-            my $max_diffs = 0;
+            my %diff_chunks;
             foreach my $slave ( @$slaves ) {
                eval {
                   my $diffs = $rc->find_replication_differences(
@@ -7700,10 +7700,9 @@ sub main {
                   );
                   PTDEBUG && _d(scalar @$diffs, 'checksum diffs on',
                      $slave->name());
-                  if ( my $n_diffs = scalar @$diffs ) {
-                     # https://bugs.launchpad.net/percona-toolkit/+bug/1030031
-                     $max_diffs = $n_diffs if $n_diffs > $max_diffs;
-                  }
+                  # Save unique chunks that differ.
+                  # https://bugs.launchpad.net/percona-toolkit/+bug/1030031
+                  map { $diff_chunks{ $_->{chunk} }++ } @$diffs;
                };
                if ($EVAL_ERROR) {
                   if ( $o->get('quiet') < 2 ) {
@@ -7716,7 +7715,7 @@ sub main {
                   $tbl->{checksum_results}->{errors}++;
                }
             }
-            $tbl->{checksum_results}->{diffs} = $max_diffs;
+            $tbl->{checksum_results}->{diffs} = scalar keys %diff_chunks;
          }
 
          # Print table's checksum results if we're not being quiet,
