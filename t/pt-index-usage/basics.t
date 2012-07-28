@@ -27,9 +27,6 @@ if ( !$dbh ) {
 if ( !@{ $dbh->selectall_arrayref("show databases like 'sakila'") } ) {
    plan skip_all => "Sakila database is not loaded";
 }
-else {
-   plan tests => 9;
-}
 
 my $cnf     = '/tmp/12345/my.sandbox.cnf';
 my @args    = ('-F', $cnf);
@@ -136,8 +133,23 @@ is(
    'No output without default db'
 );
 
+# https://bugs.launchpad.net/percona-toolkit/+bug/1028614
+$dbh->do("CREATE DATABASE IF NOT EXISTS z");
+$dbh->do("CREATE TABLE z.t (id int)");
+
+ok(
+   no_diff(
+      sub { pt_index_usage::main(@args, qw(-D sakila),
+               "$trunk/$samples/slow006.txt") },
+      "$samples/slow006-report.txt"
+   ),
+   '--database is kept (bug 1028614)'
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
