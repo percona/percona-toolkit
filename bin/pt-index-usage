@@ -5013,7 +5013,7 @@ sub main {
 
    my $schema     = new Schema();
    my $schema_itr = new SchemaIterator(
-      dbh          => $dbh,
+      dbh          => $si_dbh,
       OptionParser => $o,
       Quoter       => $q,
       TableParser  => $tp,
