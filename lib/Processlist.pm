@@ -279,7 +279,7 @@ sub parse_event {
                   int($query_start),        # START
                   $etime,                   # ETIME
                   $time,                    # FSEEN
-                  { $curr->[STATE] => 0 },  # PROFILE
+                  { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
          }
@@ -294,7 +294,7 @@ sub parse_event {
                int($query_start),        # START
                $etime,                   # ETIME
                $time,                    # FSEEN
-               { $curr->[STATE] => 0 },  # PROFILE
+               { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
       }
