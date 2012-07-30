@@ -3598,9 +3598,9 @@ sub print_advice {
    foreach my $id ( @$advice ) {
       my $info = $adv->get_rule_info($id);
       my @desc = map {
-         $_ .= '.' unless m/\.$/;
+         $_ .= '.' unless m/[.?]$/;
          $_;
-      } split(/\.\s{1,2}/, $info->{description} || '');
+      } split(/(?<=[.?])\s{1,2}/, $info->{description} || '');
       $desc[1] ||= "";  # Some desc have only 1 sentence.
       my $desc = $verbose == 1 ? $desc[0]             # terse
                : $verbose == 2 ? "$desc[0] $desc[1]"  # fuller
