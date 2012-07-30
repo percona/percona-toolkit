@@ -103,7 +103,7 @@ sub new {
       dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
       hostname     => '',
       set          => $args{set},
-      NAME_lc      => $args{NAME_lc},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,

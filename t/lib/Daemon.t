@@ -168,8 +168,8 @@ ok(
 
 my (undef, $tempfile) = tempfile();
 
-system("$cmd 5 --daemonize --log $log_file --pid $pid_file 2>$tempfile");
-PerconaTest::wait_for_files($log_file, $pid_file);
+system("$cmd 5 --daemonize --log $log_file --pid $pid_file > $tempfile 2>&1");
+PerconaTest::wait_for_files($log_file, $pid_file, $tempfile);
 
 $output = `ps wx | grep '$cmd 5' | grep -v grep`;
 chomp(my $new_pid = slurp_file($pid_file));
@@ -203,7 +203,7 @@ diag(`rm $tempfile >/dev/null`);
 # Check that it actually checks the running process.
 # ############################################################################
 rm_tmp_files();
-system("$cmd 10 --daemonize --log $log_file --pid $pid_file");
+system("$cmd 20 --daemonize --log $log_file --pid $pid_file");
 PerconaTest::wait_for_files($pid_file, $log_file);
 chomp($pid = slurp_file($pid_file));
 $output = `$cmd 0 --daemonize --pid $pid_file 2>&1`;
@@ -212,6 +212,9 @@ like(
    qr/$pid, is running/,
    'Says that PID is running (issue 419)'
 );
+
+kill SIGKILL => $pid
+   if $pid;
 
 sleep 1;
 rm_tmp_files();
