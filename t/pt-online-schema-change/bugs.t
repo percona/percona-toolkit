@@ -28,9 +28,6 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
-else {
-   plan tests => 7;
-}
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
@@ -111,9 +108,61 @@ like $output,
     qr/\QNot updating foreign key constraints because this is a dry run./,
     "Bug 1003315: But now we do get an explanation from --dry-run";
 
+# ############################################################################
+# This fakes the conditions to trigger
+# ############################################################################
+{
+   my $o = new OptionParser(file => "$trunk/bin/pt-table-checksum");
+   $o->get_specs();
+   no warnings;
+   local *pt_online_schema_change::explain_statement = sub {
+      return { key => 'some_key' }
+   };
+   {
+      package PerconaTest::Fake::NibbleIterator;
+      sub AUTOLOAD {
+          our $AUTOLOAD = $AUTOLOAD;
+          return if $AUTOLOAD =~ /one_nibble/;
+          return { lower => [], upper => [] }
+      }
+   }
+
+   eval {
+      pt_online_schema_change::nibble_is_safe(
+         Cxn   => 1,
+         tbl   => {qw( db some_db tbl some_table )},
+         NibbleIterator => bless({}, "PerconaTest::Fake::NibbleIterator"),
+         OptionParser   => $o,
+      );
+   };
+   
+   like(
+      $EVAL_ERROR,
+      qr/Error copying rows at chunk.*because MySQL chose/,
+      "Dies if MySQL isn't using the chunk index"
+   );
+
+   $o->set('quiet', 1);
+   eval {
+      pt_online_schema_change::nibble_is_safe(
+         Cxn   => 1,
+         tbl   => {qw( db some_db tbl some_table )},
+         NibbleIterator => bless({}, "PerconaTest::Fake::NibbleIterator"),
+         OptionParser   => $o,
+      );
+   };
+   
+   is(
+      $EVAL_ERROR,
+      '',
+      "..unless --quiet was specified",
+   );
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
