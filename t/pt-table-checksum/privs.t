@@ -67,7 +67,11 @@ PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='ro_checksum
    ) },
 );
 
-isnt($exit_status, 0, "");
+ok(
+   $exit_status,
+   "Dies with an error status if it can't create the db/table"
+);
+
 like($output,
    qr/\Q--replicate database percona does not exist and it cannot be created automatically/,
    "fails if the percona db doesn't exist and the user can't create it",
@@ -113,7 +117,7 @@ $output = output(
       # Comment out this line and the tests fail because ro_checksum_user
       # doesn't have privs to SHOW SLAVE HOSTS.  This proves that
       # --recursion-method none is working.
-      qw(--recursion-method none)
+      qw(--recursion-method none --no-create-replicate-table)
    ) },
    stderr => 1,
 );
@@ -128,6 +132,18 @@ like(
    $output,
    qr/ sakila.store$/m,
    "Read-only user (bug 987694): checksummed rows"
+);
+
+($output) = full_output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      "$master_dsn,u=ro_checksum_user,p=msandbox",
+      qw(--recursion-method none)
+   ) }
+);
+
+like($output,
+   qr/\QThe database exists on the master, but replication will break/,
+   "dies if the db exists on the master but it can't CREATE DATABASE and --no-create-replicate-table was not specified",
 );
 
 diag(qx{/tmp/12345/use -u root -e 'DROP TABLE `percona`.`checksums`'});
