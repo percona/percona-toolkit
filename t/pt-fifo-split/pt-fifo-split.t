@@ -14,7 +14,8 @@ use Test::More tests => 4;
 use PerconaTest;
 require "$trunk/bin/pt-fifo-split";
 
-unlink('/tmp/pt-fifo-split');
+my $fifo = '/tmp/pt-fifo-split';
+unlink($fifo);
 
 my $cmd = "$trunk/bin/pt-fifo-split";
 
@@ -22,24 +23,17 @@ my $output = `$cmd --help`;
 like($output, qr/Options and values/, 'It lives');
 
 system("($cmd --lines 10000 $trunk/bin/pt-fifo-split > /dev/null 2>&1 < /dev/null)&");
-sleep(1);
+PerconaTest::wait_for_files($fifo);
 
-open my $fh, '<', '/tmp/pt-fifo-split' or die $OS_ERROR;
-my $contents = do { local $INPUT_RECORD_SEPARATOR; <$fh>; };
-close $fh;
+my $contents  = slurp_file($fifo);
+my $contents2 = load_file('bin/pt-fifo-split');
 
-open my $fh2, '<', "$trunk/bin/pt-fifo-split" or die $OS_ERROR;
-my $contents2 = do { local $INPUT_RECORD_SEPARATOR; <$fh2>; };
-close $fh2;
-
-ok($contents eq $contents2, 'I read the file');
+is($contents, $contents2, 'I read the file');
 
 system("($cmd $trunk/t/pt-fifo-split/samples/file_with_lines --offset 2 > /dev/null 2>&1 < /dev/null)&");
-sleep(1);
+PerconaTest::wait_for_files($fifo);
 
-open $fh, '<', '/tmp/pt-fifo-split' or die $OS_ERROR;
-$contents = do { local $INPUT_RECORD_SEPARATOR; <$fh>; };
-close $fh;
+$contents = slurp_file($fifo);
 
 is($contents, <<EOF
      2	hi
@@ -60,7 +54,7 @@ like(
    qr{PID file /tmp/pt-script.pid already exists},
    'Dies if PID file already exists (issue 391)'
 );
-`rm -rf /tmp/pt-script.pid`;
+unlink '/tmp/pt-script.pid';
 
 # #############################################################################
 # Done.

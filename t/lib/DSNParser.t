@@ -554,7 +554,7 @@ my ($out, undef) = full_output(sub { $dp->get_dbh(@opts, {}) });
 like(
    $out,
    qr/\QUnknown character set/,
-   "get_dbh dies withg an unknown charset"
+   "get_dbh dies with an unknown charset"
 );
 
 $dp->prop('set-vars', "time_zoen='UTC'");
@@ -563,7 +563,7 @@ $dp->prop('set-vars', "time_zoen='UTC'");
 like(
    $out,
    qr/\QUnknown system variable 'time_zoen'/,
-   "get_dbh dies withg an unknown charset"
+   "get_dbh dies with an unknown system variable"
 );
 
 # #############################################################################

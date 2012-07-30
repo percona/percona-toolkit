@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 51;
+use Test::More tests => 52;
 
 use MasterSlave;
 use DSNParser;
@@ -287,6 +287,12 @@ $ms->recurse_to_slaves(
       callback      => $callback,
       skip_callback => $skip_callback,
    });
+
+is(
+   scalar(@slaves),
+   3,
+   "recurse to slaves finds all three slaves"
+) or diag(Dumper(\@slaves));
 
 is_deeply(
    $ms->get_master_dsn( $slaves[0], undef, $dp ),

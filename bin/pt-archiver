@@ -2182,7 +2182,7 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -2192,15 +2192,17 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       eval { $dbh->do($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
 
-      if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-         $sql = "/*!40101 SET NAMES $charset*/";
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
          PTDEBUG && _d('Enabling charset for STDOUT');
          if ( $charset eq 'utf8' ) {
@@ -2212,12 +2214,12 @@ sub get_dbh {
          }
       }
 
-      if ( $self->prop('set-vars') ) {
-         $sql = "SET " . $self->prop('set-vars');
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }
@@ -3953,6 +3955,22 @@ sub main {
          $dp->get_cxn_params($table), { AutoCommit => $ac });
       PTDEBUG && _d('Inspecting table on', $dp->as_string($table));
 
+      if ( $o->get('bulk-insert') ) {
+         local $@;
+         my $sql = "LOAD DATA LOCAL INFILE '/dev/null' INTO TABLE "
+                 . "`test`.`pt_not_there`";
+         eval { $dbh->do($sql); 1 } or do {
+            my $e = $@;
+            my $error_re = qr/\QDBD::mysql::db do failed: The used command is not allowed with this MySQL version [for Statement "LOAD DATA LOCAL INFILE/;
+            if ($e =~ $error_re) {
+               $dbh->disconnect();
+               die("--bulk-insert cannot work as LOAD DATA LOCAL INFILE "
+                 . "is disabled. See http://kb.percona.com/troubleshoot-load-data-infile"
+               );
+            }
+         };
+      }
+      
       # Set options that can enable removing data on the master and archiving it
       # on the slaves.
       if ( $table->{a} ) {
@@ -5090,6 +5108,9 @@ Default character set.  If the value is utf8, sets Perl's binmode on
 STDOUT to utf8, passes the mysql_enable_utf8 option to DBD::mysql, and runs SET
 NAMES UTF8 after connecting to MySQL.  Any other value sets binmode on STDOUT
 without the utf8 layer, and runs SET NAMES after connecting to MySQL.
+
+Note that only charsets as known by MySQL are recognized; So for example,
+"UTF8" will work, but "UTF-8" will not.
 
 See also L<"--[no]check-charset">.
 

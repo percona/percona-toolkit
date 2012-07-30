@@ -46,19 +46,17 @@ $cmd  = "$trunk/bin/pt-query-digest "
          . "--execute h=127.1,P=12346,u=msandbox,p=msandbox --mirror 1 "
          . "--pid $pid_file";
 
-$ENV{PTDEBUG}=1;
-`$cmd > /tmp/read_only.txt 2>&1 &`;
-
-$ENV{PTDEBUG}=0;
-sleep 3;
+{
+    local $ENV{PTDEBUG}=1;
+    `$cmd > /tmp/read_only.txt 2>&1 &`;
+}
 
 $dbh1->do('select sleep(1)');
-sleep 1;
 $dbh1->do('set global read_only=1');
 $dbh2->do('set global read_only=0');
 $dbh1->do('select sleep(1)');
 
-sleep 1;
+PerconaTest::wait_for_files($pid_file);
 chomp(my $pid = `cat $pid_file`);
 kill 15, $pid;
 sleep 0.25;
