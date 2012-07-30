@@ -764,7 +764,14 @@ EOF
    fi
 }
 
+sigtrap() {
+   warn "Caught signal, forcing exit"
+   rm_tmpdir
+   exit $EXIT_STATUS
+}
+
 main() {
+   trap sigtrap HUP INT TERM
    if [ $# -gt 0 ]; then
       # Summarize the files the user passed in.
       tabulate_strace "$@" > $PT_TMPDIR/tabulated_samples
