@@ -431,7 +431,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_eq($args{variables}->{expire_log_days}, 0)
-            && $args{variables}->{log_bin} ? 1 : 0;
+            && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
    {
@@ -464,7 +464,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_seq($args{variables}->{innodb_locks_unsafe_for_binlog},
-            "ON") && $args{variables}->{log_bin} ? 1 : 0;
+            "ON") && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
    {
@@ -472,7 +472,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return _var_sneq($args{variables}->{innodb_support_xa}, "ON")
-            && $args{variables}->{log_bin} ? 1 : 0;
+            && _var_seq($args{variables}->{log_bin}, "ON");
       },
    },
    {
@@ -520,7 +520,7 @@ sub get_rules {
       code => sub {
          my ( %args ) = @_;
          return
-            $args{variables}->{log_bin}
+            _var_seq($args{variables}->{log_bin}, "ON")
             && (   _var_eq($args{variables}->{sync_binlog}, 0)
                 || _var_gt($args{variables}->{sync_binlog}, 1)) ? 1 : 0;
       },
