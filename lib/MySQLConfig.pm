@@ -371,6 +371,13 @@ sub _parse_varvals {
             $val = '';
          }
          else {
+            $val =~ s/
+                        \A        # Start of value
+                        (['"])    # Opening quote
+                        (.*)      # Value
+                        \1        # Closing quote
+                        [\n\r]*\z # End of value
+                    /$2/x;
             if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
                # value is a size like 1k, 16M, etc.
                my %factor_for = (
