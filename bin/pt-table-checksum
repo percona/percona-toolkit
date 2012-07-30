@@ -8147,7 +8147,7 @@ sub check_repl_table {
    my @db_exists = $dbh->selectrow_array($sql);
    if ( !@db_exists && !$o->get('create-replicate-table') ) {
       die "--replicate database $db does not exist and "
-         . "--no-create-replicate-table was passed in.  You need "
+         . "--no-create-replicate-table was specified.  You need "
          . "to create the database.\n";
    }
 
@@ -8162,9 +8162,12 @@ sub check_repl_table {
       };
       if ( $EVAL_ERROR ) {
          if ( @db_exists ) {
-            print STDERR "CREATE DATABASE IF NOT EXISTS $db failed, but the "
-                     . "db already exists.  This is harmless unless the "
-                     . "slaves don't have the database. $EVAL_ERROR"; # kb link?
+            die "Error executing $sql: $EVAL_ERROR\n"
+              . "The database exists on the master, but replication will "
+              . "break if it does not also exist on all replicas. If the "
+              . "--replicate database and table already exist on the master "
+              . "and all replicas, or if you created them manually, then "
+              . "specify --no-create-replicate-table to avoid this error."
          }
          else {
             die "--replicate database $db does not exist and it cannot be "
@@ -8188,7 +8191,7 @@ sub check_repl_table {
    # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
    if ( !$tbl_exists && !$o->get('create-replicate-table') ) {
       die "--replicate table $repl_table does not exist and "
-        . "--no-create-replicate-table was passed in.  "
+        . "--no-create-replicate-table was specified.  "
         . "You need to create the table.\n";
    }
    if ( $o->get('create-replicate-table') ) {
@@ -8198,13 +8201,17 @@ sub check_repl_table {
       };
       if ( $EVAL_ERROR ) {
          if ( $tbl_exists ) {
-            print STDERR "CREATE TABLE IF NOT EXISTS $args{repl_table} "
-                     . "failed, but the table already exists.  This "
-                     . "is harmless unless the slaves don't have the "
-                     . "table. $EVAL_ERROR";
+            die "Error executing $sql: $EVAL_ERROR\n"
+              . "The table exists on the master, but replication will "
+              . "break if it does not also exist on all replicas. If the "
+              . "--replicate database and table already exist on the master "
+              . "and all replicas, or if you created them manually, then "
+              . "specify --no-create-replicate-table to avoid this error."
          }
          else {
-            die $EVAL_ERROR;
+            die "--replicate table $tbl does not exist and it cannot be "
+               . "created automatically.  You need to create the table. "
+               . $EVAL_ERROR;
          }
       }
    }
