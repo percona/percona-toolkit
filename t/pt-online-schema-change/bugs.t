@@ -109,7 +109,7 @@ like $output,
     "Bug 1003315: But now we do get an explanation from --dry-run";
 
 # ############################################################################
-# This fakes the conditions to trigger
+# This fakes the conditions to trigger the chunk index error
 # ############################################################################
 {
    my $o = new OptionParser(file => "$trunk/bin/pt-table-checksum");
