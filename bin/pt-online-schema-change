@@ -8360,7 +8360,7 @@ percentage, seconds, or number of iterations.
 
 =item --quiet
 
-short form: -q
+short form: -q; cumulative: yes; default: 0
 
 Do not print messages to STDOUT.  Errors and warnings are still printed to
 STDERR.
