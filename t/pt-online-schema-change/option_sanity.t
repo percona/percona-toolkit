@@ -51,19 +51,6 @@ like(
    "--execute FALSE by default"
 );
 
-like(
-   $output,
-   qr/--quiet\s+0/,
-   "--quiet is 0 by default",
-);
-
-$output = `$cmd --quiet --quiet --help`;
-like(
-   $output,
-   qr/--quiet\s+2/,
-   "--quiet is cummulative",
-);
-
 $output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox --alter-foreign-keys-method drop_swap --no-drop-new-table`;
 like(
    $output,

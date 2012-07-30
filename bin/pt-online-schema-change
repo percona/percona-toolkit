@@ -6989,7 +6989,7 @@ sub nibble_is_safe {
    if ( !$nibble_iter->one_nibble()
         && lc($expl->{key} || '') ne lc($nibble_iter->nibble_index() || '') ) { 
       if ( !$tbl->{warned}->{not_using_chunk_index}++
-           && $o->get('quiet') < 2 ) {
+           && !$o->get('quiet') ) {
          die "Error copying rows at chunk " . $nibble_iter->nibble_number()
             . " of $tbl->{db}.$tbl->{tbl} because MySQL chose "
             . ($expl->{key} ? "the $expl->{key}" : "no") . " index "
@@ -7009,7 +7009,7 @@ sub nibble_is_safe {
            && $nibble_iter->identical_boundaries($boundary->{upper},
                                                  $boundary->{next_lower}) ) {
          if ( !$tbl->{warned}->{oversize_chunk}++
-              && $o->get('quiet') < 2 ) {
+              && !$o->get('quiet') ) {
             die "Error copying rows at chunk " . $nibble_iter->nibble_number()
                . " of $tbl->{db}.$tbl->{tbl} because it is oversized.  "
                . "The current chunk size limit is "
@@ -7028,7 +7028,7 @@ sub nibble_is_safe {
         && $tbl->{key_len}
         && ($expl->{key_len} || 0) < $tbl->{key_len} ) {
       if ( !$tbl->{warned}->{key_len}++
-           && $o->get('quiet') < 2 ) {
+           && !$o->get('quiet') ) {
          die "Error copying rows at chunk " . $nibble_iter->nibble_number()
             . " of $tbl->{db}.$tbl->{tbl} because MySQL used "
             . "only " . ($expl->{key_len} || 0) . " bytes "
@@ -8360,7 +8360,7 @@ percentage, seconds, or number of iterations.
 
 =item --quiet
 
-short form: -q; cumulative: yes; default: 0
+short form: -q
 
 Do not print messages to STDOUT.  Errors and warnings are still printed to
 STDERR.
