@@ -152,10 +152,10 @@ like $output,
       );
    };
    
-   is(
+   like(
       $EVAL_ERROR,
-      '',
-      "..unless --quiet was specified",
+      qr/Error copying rows at chunk.*because MySQL chose/,
+      "...even if --quiet was specified",
    );
 }
 
