@@ -8189,11 +8189,19 @@ sub check_repl_table {
 
    # Always create the table, unless --no-create-replicate-table
    # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
-   if ( !$tbl_exists && !$o->get('create-replicate-table') ) {
-      die "--replicate table $repl_table does not exist and "
-        . "--no-create-replicate-table was specified.  "
-        . "You need to create the table.\n";
+   if ( !$tbl_exists ) {
+      if ( !$o->get('create-replicate-table') ) {
+         die "--replicate table $repl_table does not exist and "
+         . "--no-create-replicate-table was specified.  "
+         . "You need to create the table.\n";
+      }
    }
+   else {
+      PTDEBUG && _d('--replicate table', $repl_table, 'already exists');
+      # We used to check the table privs here, but:
+      # https://bugs.launchpad.net/percona-toolkit/+bug/916168
+   }
+
    if ( $o->get('create-replicate-table') ) {
       local $@;
       eval {
@@ -8215,16 +8223,6 @@ sub check_repl_table {
          }
       }
    }
-
-   # Check it again but this time check the privs.
-   my $have_tbl_privs = $tp->check_table(
-      dbh       => $dbh,
-      db        => $db,
-      tbl       => $tbl,
-      all_privs => 1,
-   );
-   die "User does not have all privileges on --replicate table "
-      . "$repl_table.\n" unless $have_tbl_privs;
 
    # Check and wait for the repl table to appear on all slaves.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1008778
