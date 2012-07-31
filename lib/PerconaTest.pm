@@ -68,6 +68,7 @@ our @EXPORT      = qw(
    $trunk
    $dsn_opts
    $sandbox_version
+   $can_load_data
 );
 
 our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -77,6 +78,8 @@ eval {
    chomp(my $v = `$trunk/sandbox/test-env version 2>/dev/null`);
    $sandbox_version = $v if $v;
 };
+
+our $can_load_data = can_load_data();
 
 our $dsn_opts = [
    {
@@ -777,17 +780,9 @@ sub tables_used {
    return [ sort keys %tables ];
 }
 
-sub load_data_is_disabled {
-    my ($dbh) = @_;
-    my $sql = "LOAD DATA LOCAL INFILE '/dev/null' INTO TABLE "
-            . "`t`.`pt_not_there`";
-    local $@;
-    if (!eval { $dbh->do($sql); 1 } ) {
-        my $e = $@;
-        return 1 if $e =~ qr/\QDBD::mysql::db do failed: The used command is not allowed with this MySQL version [for Statement "LOAD DATA LOCAL INFILE/;
-    }
-
-    return;
+sub can_load_data {
+    my $output = `/tmp/12345/use -e "SELECT * FROM percona_test.load_data" 2>/dev/null`;
+    return ($output || '') =~ /42/;
 }
 
 1;

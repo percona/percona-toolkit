@@ -15,6 +15,13 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
+# This test calls pt-upgrade with --compare-results-method rows
+# which use LOAD DATA LOCAL INFILE.  If LOAD DATA is disabled,
+# then this this test can't run.
+if ( !$can_load_data ) {
+   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
+}
+
 # This runs immediately if the server is already running, else it starts it.
 diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
@@ -30,13 +37,6 @@ if ( !$dbh1 ) {
 elsif ( !$dbh2 ) {
    diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
    plan skip_all => 'Cannot connect to second sandbox master';
-}
-elsif ( PerconaTest::load_data_is_disabled($dbh1) ) {
-   diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
-   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
-}
-else {
-   plan tests => 6;
 }
 
 $sb->load_file('master', 't/pt-upgrade/samples/001/tables.sql');
@@ -102,4 +102,5 @@ ok(
 $sb->wipe_clean($dbh1);
 diag(`$trunk/sandbox/stop-sandbox master 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
