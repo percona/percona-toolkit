@@ -22,23 +22,14 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( PerconaTest::load_data_is_disabled($dbh) ) {
-   diag("LOAD DATA LOCAL INFILE is disabled, only going to test the error message");
-   plan tests => 2;
-}
-else {
-   plan tests => 11;
+elsif ( !$can_load_data ) {
+   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
 }
 
 my $output;
 my $rows;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
 my $cmd = "$trunk/bin/pt-archiver";
-
-if ( PerconaTest::load_data_is_disabled($dbh) ) {
-   test_disabled_load_data($dbh, $sb, 'master', $cnf);
-}
-else {
 
 $sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, ['test']);
@@ -67,7 +58,6 @@ $output = `/tmp/12345/use -N -e "checksum table test.table_5_dest, test.table_5_
 my ( $chks ) = $output =~ m/dest\s+(\d+)/;
 like($output, qr/copy\s+$chks/, 'copy checksum');
 
-
 # ############################################################################
 # Issue 1260: mk-archiver --bulk-insert data loss
 # ############################################################################
@@ -93,48 +83,10 @@ is_deeply(
    "--bulk-insert archived 7 rows (issue 1260)"
 );
 
-# Test that the tool bails out early if LOAD DATA LOCAL INFILE is disabled
-{
-   if ( -d "/tmp/2900" ) {
-      diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null 2>&1`);
-   }
-
-   local $ENV{LOCAL_INFILE} = 0;
-   diag(`$trunk/sandbox/start-sandbox master 2900 >/dev/null 2>&1`);
-
-   my $master3_dbh = $sb->get_dbh_for('master3');
-
-   test_disabled_load_data($master3_dbh, $sb, 'master3', "/tmp/2900/my.sandbox.cnf");
-
-   diag(`$trunk/sandbox/stop-sandbox 2900 >/dev/null 2>&1`);
-   $master3_dbh->disconnect() if $master3_dbh;
-}
-
-}
-
-sub test_disabled_load_data {
-   my ($dbh, $sb, $master, $cnf) = @_;
-   $sb->wipe_clean($dbh);
-   $sb->create_dbs($dbh, ['test']);
-   $sb->load_file($master, 't/pt-archiver/samples/table5.sql');
-   $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
-
-   my ($output, undef) = full_output(
-      sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
-         qw(--bulk-delete --where 1=1 --statistics),
-         '--source', "D=test,t=table_5,F=$cnf",
-         '--dest',   "t=table_5_dest") },
-   );
-
-   like($output,
-      qr!\Q--bulk-insert cannot work as LOAD DATA LOCAL INFILE is disabled. See http://kb.percona.com/troubleshoot-load-data-infile!,
-      "--bulk-insert throws an error if LOCAL INFILE is disabled"
-   );
-}
-
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

@@ -29,11 +29,6 @@ if ( !$dbh1 ) {
 elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
-else {
-   plan tests => 13;
-}
-
-my $load_data_is_disabled = PerconaTest::load_data_is_disabled($dbh1);
 
 my @host_args = ('h=127.1,P=12345', 'P=12348');
 my @op_args   = (qw(-u msandbox -p msandbox),
@@ -67,7 +62,7 @@ ok(
 );
 
 SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 2 if $load_data_is_disabled;
+   skip "LOAD DATA LOCAL INFILE is disabled", 2 unless $can_load_data;
    
    ok(
       no_diff(
@@ -114,7 +109,8 @@ $sb->wipe_clean($dbh2);
 # compare-results-method=rows
 # #############################################################################
 SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 4 if $load_data_is_disabled;
+   skip "LOAD DATA LOCAL INFILE is disabled", 4 unless $can_load_data;
+
    $sb->load_file('master',  "$sample/002/tables.sql");
    $sb->load_file('master1', "$sample/002/tables.sql");
 
@@ -159,7 +155,6 @@ SKIP: {
    
    $sb->wipe_clean($dbh1);
    $sb->wipe_clean($dbh2);
-
 }
 
 # #############################################################################
@@ -167,7 +162,7 @@ SKIP: {
 # precision (M) and scale (D) 
 # #############################################################################
 SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 2 if $load_data_is_disabled;
+   skip "LOAD DATA LOCAL INFILE is disabled", 2 unless $can_load_data;
 
    $sb->load_file('master',  "$sample/003/tables.sql");
    $sb->load_file('master1', "$sample/003/tables.sql");
@@ -199,4 +194,5 @@ diag(`rm /tmp/left-outfile.txt /tmp/right-outfile.txt 2>/dev/null`);
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 $sb->wipe_clean($dbh1);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
