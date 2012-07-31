@@ -7,17 +7,29 @@
 # Exist 0 on success/no errors, or 1 on any warnings or errors.
 
 err() {
-   echo "MySQL processes:" >&2
-   ps x | grep mysql >&2
-
-   echo "Sandbox servers:" >&2
-   ls /tmp/1234? >&2
-   ls /tmp/290? >&2
-
-   echo
    for msg; do
       echo "$msg" >&2
    done
+
+   if [ "$DEBUG_SANDBOXES" ]; then 
+      echo
+      echo "MySQL processes:" >&2
+      ps x | grep mysql >&2
+
+      echo
+      for p in 12345 12346 12347; do
+         echo "Sandbox $p:" >&2
+         if [ -d "/tmp/$p" ]; then
+            ls -lh /tmp/$p/* >&2
+            echo
+            cat /tmp/$p/data/mysqld.log >&2
+            echo
+            tail -n 100 /tmp/$p/data/genlog >&2
+         else
+            echo "/tmp/$p does not exist" >&2
+         fi
+      done
+   fi
 }
 
 usage() {
@@ -315,6 +327,7 @@ case $opt in
       if [ $exit_status -eq 0 ]; then
          echo "Percona Toolkit test environment started with MySQL v$MYSQL_VERSION."
       else
+         DEBUG_SANDBOXES=1
          err "There was an error starting the Percona Toolkit test environment."
       fi
       ;;
@@ -327,6 +340,7 @@ case $opt in
       if [ $exit_status -eq 0 ]; then
          echo "Percona Toolkit test environment stopped."
       else
+         DEBUG_SANDBOXES=1
          err "Error stopping the Percona Toolkit test environment."
       fi
       ;;
