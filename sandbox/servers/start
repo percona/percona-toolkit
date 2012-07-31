@@ -41,18 +41,21 @@ $BASEDIR/bin/mysqld_safe --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>
 cd $PWD
 
 echo -n "Starting MySQL test server on port PORT... "
-for i in 1 2 3 4 5 6 7 8 9 10; do
-   sleep 1
-   if [ -f $PIDFILE ] && [ -S $SOCKETFILE ]; then
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+   if [ -f $PIDFILE -a  -S $SOCKETFILE -a -s "/tmp/PORT/data/ibdata1" ]; then
       break
    fi
+   sleep 1
 done
 
-sandbox_is_alive
-if [ $? -eq 1 ]; then
-   echo "OK"
-   exit 0
-else
-   echo "FAILED"
-   exit 1
-fi
+for i in 1 2 3 4 5; do
+   sandbox_is_alive
+   if [ $? -eq 1 ]; then
+      echo "OK"
+      exit 0
+   fi
+   sleep 1
+done
+
+echo "FAILED"
+exit 1
