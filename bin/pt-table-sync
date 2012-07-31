@@ -9214,7 +9214,7 @@ sub get_change_dbh {
       # of the master (master-master replication).
       my $slave_status = $ms->get_slave_status($dst->{dbh});
       my (undef, $log_bin) = $dst->{dbh}->selectrow_array(
-         'SHOW VARIABLES LIKE "log_bin"');
+         q{SHOW VARIABLES LIKE 'log_bin'});
       my ($sql_log_bin) = $dst->{dbh}->selectrow_array(
          'SELECT @@SQL_LOG_BIN');
       PTDEBUG && _d('Variables on destination:',
