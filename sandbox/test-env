@@ -234,23 +234,6 @@ set_mysql_version() {
    fi
 }
 
-check_load_data() {
-   # LOAD DATA is disabled or broken on some boxes.  PerconaTest exports
-   # $can_load_data which is true if percona_test.load_data has the 42 row,
-   # signaling that LOAD DATA LOCAL INFILE worked.
-   /tmp/12345/use -e "CREATE TABLE IF NOT EXISTS percona_test.load_data (i int)"
-   echo 42 > /tmp/load_data_test.$$
-   /tmp/12345/use -e "LOAD DATA LOCAL INFILE '/tmp/load_data_test.$$' INTO TABLE percona_test.load_data"
-   sleep 0.1
-   rm /tmp/load_data_test.$$
-   /tmp/12345/use -e "SELECT * FROM percona_test.load_data" | grep 42 >/dev/null 2>&1
-   if [ $? -eq 0 ]; then
-      echo "LOAD DATA LOCAL INFILE is enabled"
-   else
-      echo "LOAD DATA LOCAL INFILE is disabled"
-   fi
-}
-
 # ###########################################################################
 # Sanity check the cmd line options.
 # ###########################################################################
@@ -306,8 +289,16 @@ case $opt in
             else
                echo "OK"
             fi
+
+            # Create percona_test db and checksum all the tables.
             ../util/checksum-test-dataset
-            check_load_data
+
+            # LOAD DATA is disabled or broken on some boxes.
+            # PerconaTest exports $can_load_data which is true
+            # if percona_test.load_data has the 42 row,
+            # signaling that LOAD DATA LOCAL INFILE worked.
+            ../util/check-load-data
+
             ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
             /tmp/12345/use -e "create table percona_test.sentinel(id int primary key, ping varchar(64) not null default '')"
             /tmp/12345/use -e "insert into percona_test.sentinel(id, ping) values(1, '$ping')";
