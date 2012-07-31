@@ -42,10 +42,10 @@ cd $PWD
 
 echo -n "Starting MySQL test server on port PORT... "
 for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-   sleep 1
    if [ -f $PIDFILE -a  -S $SOCKETFILE -a -s "/tmp/PORT/data/ibdata1" ]; then
       break
    fi
+   sleep 1
 done
 
 for i in 1 2 3 4 5; do

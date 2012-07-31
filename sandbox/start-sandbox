@@ -9,6 +9,23 @@ die() {
    exit 1
 }
 
+debug_sandbox() {
+   local port="$1"
+   echo
+   echo "MySQL processes:" >&2
+   ps x | grep mysql >&2
+   echo
+   if [ -d "/tmp/$port" ]; then
+      ls -lh /tmp/$port/* >&2
+      echo
+      cat /tmp/$port/data/mysqld.log >&2
+      echo
+      tail -n 100 /tmp/$port/data/genlog >&2
+   else
+      echo "/tmp/$port does not exist" >&2
+   fi
+}
+
 make_sandbox() {
    # Make the sandbox dir and extract the base files.
    rm -rf /tmp/$port || die "can't rm /tmp/$port"
@@ -67,14 +84,14 @@ make_sandbox() {
          /tmp/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
          # grep exits 0 if lines are found
          if [ $? -ne 0 ]; then
-            echo "****** WARNING sandbox doesn't have a working InnoDB! ******" >&2
-            cat /tmp/$port/data/mysqld.log >&2
+            echo "Sandbox $type $port doesn't have InnoDB" >&2
+            debug_sandbox $port
             exit 1
          fi
       fi
    else
       echo "Sandbox $type $port failed to start." >&2
-      cat /tmp/$port/data/mysqld.log >&2
+      debug_sandbox $port
       exit 1
    fi
 
