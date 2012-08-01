@@ -8152,17 +8152,38 @@ sub check_repl_table {
    my $sql = "SHOW DATABASES LIKE '$db'";
    PTDEBUG && _d($sql);
    my @db_exists = $dbh->selectrow_array($sql);
-   if ( !@db_exists && $o->get('create-replicate-table') ) {
-      $sql = "CREATE DATABASE " . $q->quote($db) . " /* pt-table-checksum */";
+   if ( !@db_exists && !$o->get('create-replicate-table') ) {
+      die "--replicate database $db does not exist and "
+         . "--no-create-replicate-table was specified.  You need "
+         . "to create the database.\n";
+   }
+
+   if ( $o->get('create-replicate-table') ) {
+      $sql = "CREATE DATABASE IF NOT EXISTS "
+            . $q->quote($db)
+            . " /* pt-table-checksum */";
+      local $@;
+      PTDEBUG && _d($sql);
       eval {
          $dbh->do($sql);
       };
       if ( $EVAL_ERROR ) {
-         die "--replicate database $db does not exist and it cannot be "
-            . "created automatically.  You need to create the database.\n";
+         if ( @db_exists ) {
+            die "Error executing $sql: $EVAL_ERROR\n"
+              . "The database exists on the master, but replication will "
+              . "break if it does not also exist on all replicas. If the "
+              . "--replicate database and table already exist on the master "
+              . "and all replicas, or if you created them manually, then "
+              . "specify --no-create-replicate-table to avoid this error."
+         }
+         else {
+            die "--replicate database $db does not exist and it cannot be "
+               . "created automatically.  You need to create the database. "
+               . $EVAL_ERROR;
+         }
       }
    }
-
+   
    # USE the correct db (probably the repl db, but maybe --replicate-database).
    use_repl_db(%args);
 
@@ -8172,20 +8193,42 @@ sub check_repl_table {
       db  => $db,
       tbl => $tbl,
    );
+
+   # Always create the table, unless --no-create-replicate-table
+   # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
    if ( !$tbl_exists ) {
-      if ( $o->get('create-replicate-table') ) {
-         create_repl_table(%args)
-      }
-      else {
-         die "--replicate table $repl_table does not exist; "
-            . "read the documentation or use --create-replicate-table "
-            . "to create it.\n";
+      if ( !$o->get('create-replicate-table') ) {
+         die "--replicate table $repl_table does not exist and "
+         . "--no-create-replicate-table was specified.  "
+         . "You need to create the table.\n";
       }
    }
    else {
       PTDEBUG && _d('--replicate table', $repl_table, 'already exists');
       # We used to check the table privs here, but:
       # https://bugs.launchpad.net/percona-toolkit/+bug/916168
+   }
+
+   if ( $o->get('create-replicate-table') ) {
+      local $@;
+      eval {
+         create_repl_table(%args);
+      };
+      if ( $EVAL_ERROR ) {
+         if ( $tbl_exists ) {
+            die "Error executing $sql: $EVAL_ERROR\n"
+              . "The table exists on the master, but replication will "
+              . "break if it does not also exist on all replicas. If the "
+              . "--replicate database and table already exist on the master "
+              . "and all replicas, or if you created them manually, then "
+              . "specify --no-create-replicate-table to avoid this error."
+         }
+         else {
+            die "--replicate table $tbl does not exist and it cannot be "
+               . "created automatically.  You need to create the table. "
+               . $EVAL_ERROR;
+         }
+      }
    }
 
    # Check and wait for the repl table to appear on all slaves.
@@ -8327,7 +8370,7 @@ sub create_repl_table {
    my ($dbh, $repl_table, $o) = @args{@required_args};
    PTDEBUG && _d('Creating --replicate table', $repl_table); 
    my $sql = $o->read_para_after(__FILE__, qr/MAGIC_create_replicate/);
-   $sql =~ s/CREATE TABLE checksums/CREATE TABLE $repl_table/;
+   $sql =~ s/CREATE TABLE checksums/CREATE TABLE IF NOT EXISTS $repl_table/;
    $sql =~ s/;$//;
    PTDEBUG && _d($dbh, $sql);
    eval {

@@ -41,9 +41,6 @@ elsif ( !$slave1_dbh ) {
 elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
-else {
-   plan tests => 4;
-}
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
@@ -55,6 +52,53 @@ my $exit_status;
 my $sample  = "t/pt-table-checksum/samples/";
 
 # ############################################################################
+# Should always create schema and tables with IF NOT EXISTS
+# https://bugs.launchpad.net/percona-toolkit/+bug/950294
+# ############################################################################
+
+$sb->wipe_clean($master_dbh);
+diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql 2>/dev/null`);
+PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='ro_checksum_user'");
+
+($output, $exit_status) = full_output(
+   sub { pt_table_checksum::main(@args,
+      "$master_dsn,u=ro_checksum_user,p=msandbox",
+      qw(--recursion-method none)
+   ) },
+);
+
+ok(
+   $exit_status,
+   "Dies with an error status if it can't create the db/table"
+);
+
+like($output,
+   qr/\Q--replicate database percona does not exist and it cannot be created automatically/,
+   "fails if the percona db doesn't exist and the user can't create it",
+);
+
+($output, $exit_status) = full_output(
+   sub { pt_table_checksum::main(@args,
+      "$master_dsn,u=ro_checksum_user,p=msandbox",
+      qw(--recursion-method none --no-create-replicate-table)
+   ) },
+);
+
+like($output,
+   qr/\Q--replicate database percona does not exist and --no-create-replicate-table was/,
+   "fails if the percona db doesn't exist and --no-create-replicate-table",
+);
+
+diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
+wait_until(
+   sub {
+      my $rows=$slave2_dbh->selectall_arrayref("SELECT user FROM mysql.user");
+      return !grep { ($_->[0] || '') ne 'ro_checksum_user' } @$rows;
+   }
+);
+$sb->wipe_clean($master_dbh);
+
+# ############################################################################
 # --recursion-method=none to avoid SHOW SLAVE HOSTS
 # https://bugs.launchpad.net/percona-toolkit/+bug/987694
 # ############################################################################
@@ -64,7 +108,7 @@ pt_table_checksum::main(@args,
    "$master_dsn,u=msandbox,p=msandbox",
    qw(-t sakila.country --quiet --quiet));
 
-diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql`);
+diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql 2>/dev/null`);
 PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='ro_checksum_user'");
 
 $output = output(
@@ -73,7 +117,7 @@ $output = output(
       # Comment out this line and the tests fail because ro_checksum_user
       # doesn't have privs to SHOW SLAVE HOSTS.  This proves that
       # --recursion-method none is working.
-      qw(--recursion-method none)
+      qw(--recursion-method none --no-create-replicate-table)
    ) },
    stderr => 1,
 );
@@ -88,6 +132,32 @@ like(
    $output,
    qr/ sakila.store$/m,
    "Read-only user (bug 987694): checksummed rows"
+);
+
+($output) = full_output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      "$master_dsn,u=ro_checksum_user,p=msandbox",
+      qw(--recursion-method none)
+   ) }
+);
+
+like($output,
+   qr/\QThe database exists on the master, but replication will break/,
+   "dies if the db exists on the master but it can't CREATE DATABASE and --no-create-replicate-table was not specified",
+);
+
+diag(qx{/tmp/12345/use -u root -e 'DROP TABLE `percona`.`checksums`'});
+
+($output, $exit_status) = full_output(
+   sub { pt_table_checksum::main(@args,
+      "$master_dsn,u=ro_checksum_user,p=msandbox",
+      qw(--recursion-method none --no-create-replicate-table)
+   ) },
+);
+
+like($output,
+   qr/\Q--replicate table `percona`.`checksums` does not exist and --no/,
+   "fails if the checksums db doesn't exist and --no-create-replicate-table"
 );
 
 diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
@@ -127,4 +197,5 @@ wait_until(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
