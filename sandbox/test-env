@@ -345,7 +345,7 @@ case $opt in
       fi
       ;;
    kill)
-      # This is a blunt approach for killing the entire mk test env
+      # This is a blunt approach for killing the entire test env
       # when a polite stop fails.  It uses kill -9 as a last resort.
       for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
          kill_sandbox $port
