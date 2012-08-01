@@ -444,7 +444,8 @@ find_raid_controller_dmesg () { local PTFUNCNAME=find_raid_controller_dmesg;
 # ##############################################################################
 find_raid_controller_lspci () { local PTFUNCNAME=find_raid_controller_lspci;
    local file="$1"
-   if grep -q "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS" "${file}"; then
+   if grep -q "RAID bus controller: LSI Logic / Symbios Logic MegaRAID SAS" "${file}" \
+     || grep -q "RAID bus controller: LSI Logic / Symbios Logic LSI MegaSAS" $file; then
       echo 'LSI Logic MegaRAID SAS'
    elif grep -q "Fusion-MPT SAS" "${file}"; then
       echo 'Fusion-MPT SAS'
