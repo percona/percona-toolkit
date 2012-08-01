@@ -1586,7 +1586,7 @@ sub parse {
    }
 
    foreach my $key ( keys %given_props ) {
-      die "DSN option '$key' in '$dsn'.  For more details, "
+      die "Unknown DSN option '$key' in '$dsn'.  For more details, "
             . "please use the --help option, or try 'perldoc $PROGRAM_NAME' "
             . "for complete documentation."
          unless exists $opts->{$key};
@@ -1741,7 +1741,7 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -1751,15 +1751,17 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       eval { $dbh->do($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
 
-      if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-         $sql = "/*!40101 SET NAMES $charset*/";
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
          PTDEBUG && _d('Enabling charset for STDOUT');
          if ( $charset eq 'utf8' ) {
@@ -1771,12 +1773,12 @@ sub get_dbh {
          }
       }
 
-      if ( $self->prop('set-vars') ) {
-         $sql = "SET " . $self->prop('set-vars');
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }
@@ -2476,9 +2478,11 @@ sub parse {
    my ( $self, $ddl, $opts ) = @_;
    return unless $ddl;
 
-   if ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
-      die "Cannot parse table definition; is ANSI quoting "
-         . "enabled or SQL_QUOTE_SHOW_CREATE disabled?";
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
    }
 
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
@@ -2687,19 +2691,13 @@ sub get_keys {
       my $key_ddl = $key;
       PTDEBUG && _d('Parsed key:', $key_ddl);
 
-      if ( $engine !~ m/MEMORY|HEAP/ ) {
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
          $key =~ s/USING HASH/USING BTREE/;
       }
 
       my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
       my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
       $type = $type || $special || 'BTREE';
-      if ( $opts->{mysql_version} && $opts->{mysql_version} lt '004001000'
-         && $engine =~ m/HEAP|MEMORY/i )
-      {
-         $type = 'HASH'; # MySQL pre-4.1 supports only HASH indexes on HEAP
-      }
-
       my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
       my $unique = $key =~ m/PRIMARY|UNIQUE/ ? 1 : 0;
       my @cols;
@@ -2725,7 +2723,7 @@ sub get_keys {
          ddl          => $key_ddl,
       };
 
-      if ( $engine =~ m/InnoDB/i && !$clustered_key ) {
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
          my $this_key = $keys->{$name};
          if ( $this_key->{name} eq 'PRIMARY' ) {
             $clustered_key = 'PRIMARY';
@@ -2806,6 +2804,21 @@ sub get_table_status {
       \%tbl;
    } @tables;
    return @tables;
+}
+
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
 }
 
 sub _d {
@@ -2955,7 +2968,7 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @$curr,                   # proc info
+                  @{$curr}[0..7],           # proc info
                   int($query_start),        # START
                   $etime,                   # ETIME
                   $time,                    # FSEEN
@@ -2969,7 +2982,7 @@ sub parse_event {
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @$curr,                   # proc info
+               @{$curr}[0..7],           # proc info
                int($query_start),        # START
                $etime,                   # ETIME
                $time,                    # FSEEN
@@ -4667,7 +4680,7 @@ sub new {
       dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
       hostname     => '',
       set          => $args{set},
-      NAME_lc      => $args{NAME_lc},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
