@@ -8,7 +8,7 @@ BASEDIR="PERCONA_TOOLKIT_SANDBOX"
 
 sandbox_is_alive() {
    # First, all these files must exist.
-   [ -f $PIDFILE -a  -S $SOCKETFILE -a -s "/tmp/PORT/data/ibdata1" ] || return 1
+   [ -f $PIDFILE -a  -S $SOCKETFILE ] || return 1
 
    # And that PID file must have a PID.
    local pid=$(cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null)
