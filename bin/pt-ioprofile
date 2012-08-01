@@ -764,7 +764,14 @@ EOF
    fi
 }
 
+sigtrap() {
+   warn "Caught signal, forcing exit"
+   rm_tmpdir
+   exit $EXIT_STATUS
+}
+
 main() {
+   trap sigtrap HUP INT TERM
    if [ $# -gt 0 ]; then
       # Summarize the files the user passed in.
       tabulate_strace "$@" > $PT_TMPDIR/tabulated_samples
@@ -789,13 +796,15 @@ main() {
             _lsof "$proc_pid" > "$samples" 2>&1
             if [ "$?" -ne "0" ]; then
                echo "Error: could not execute lsof, error code $?"
-               exit 1
+               EXIT_STATUS=1
+               return 1
             fi
 
             strace -T -s 0 -f -p $proc_pid >> "$samples" 2>&1 &
             if [ "$?" -ne "0" ]; then
                echo "Error: could not execute strace, error code $?"
-               exit 1
+               EXIT_STATUS=1
+               return 1
             fi
             strace_pid=$!
             # sleep one second then check to make sure the strace is
@@ -805,7 +814,8 @@ main() {
             if [ "$?" -ne "0" ]; then
                echo "Cannot find strace process" >&2
                tail "$samples" >&2
-               exit 1
+               EXIT_STATUS=1
+               return 1
             fi 
             # sleep for interval -1, since we did a one second sleep
             # before checking for the PID of strace
@@ -825,11 +835,13 @@ main() {
             tabulate_strace "$samples" > $PT_TMPDIR/tabulated_samples
          else
             echo "Cannot determine PID of $OPT_PROFILE_PROCESS process" >&2
-            exit 1
+            EXIT_STATUS=1
+            return 1
          fi
       else
          echo "strace is not in PATH" >&2
-         exit 1
+         EXIT_STATUS=1
+         return 1
       fi
    fi
 
@@ -851,7 +863,10 @@ if    [ "${0##*/}" = "$TOOL" ] \
    parse_options "$0" "$@"
    usage_or_errors "$0"
    po_status=$?
+   rm_tmpdir
    if [ $po_status -eq 0 ]; then
+      # Make a secure tmpdir.
+      mk_tmpdir
       # XXX
       # TODO: This should be quoted but because the way parse_options()
       # currently works, it flattens files in $@ (i.e. given on the cmd
@@ -859,10 +874,11 @@ if    [ "${0##*/}" = "$TOOL" ] \
       # functions will see 1 file named "file1 file2" instead of "file1"
       # "file2".
       main $ARGV
+      # Clean up.
+      rm_tmpdir
    else
       [ $OPT_ERRS -gt 0 ] && EXIT_STATUS=1
    fi
-   rm_tmpdir
    exit $EXIT_STATUS
 fi
 
