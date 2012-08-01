@@ -1,40 +1,58 @@
 #!/bin/sh
 
+start_ts=$(date +%s)
+
 PIDFILE="/tmp/PORT/data/mysql_sandboxPORT.pid"
+SOCKETFILE="/tmp/PORT/mysql_sandboxPORT.sock"
 BASEDIR="PERCONA_TOOLKIT_SANDBOX"
 
 sandbox_is_alive() {
-   local pid=`cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null`
-   if [ -z "$pid" ]; then
-      return 0
-   fi
-   kill -0 $pid
-   local ps_alive=$?
+   # First, all these files must exist.
+   [ -f $PIDFILE -a  -S $SOCKETFILE -a -s "/tmp/PORT/data/ibdata1" ] || return 1
 
+   # And that PID file must have a PID.
+   local pid=$(cat /tmp/PORT/data/mysql_sandboxPORT.pid 2>/dev/null)
+   [ "$pid" ] || return 1
+
+   # Second, MySQL is truly alive when it respond to a ping.
+   # It's not enough that the mysqld process is running because
+   # InnoDB can take time to create ibdata1, etc.  So MySQL is
+   # only alive when it responds to queries.
    $BASEDIR/bin/mysqladmin --defaults-file="/tmp/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
-   local mysql_alive=$?
+   [ $? -eq 0 ] || return 1
 
-   if [ $ps_alive -eq 0 ] && [ $mysql_alive -eq 0 ]; then
-      return 1  # sandbox is alive
-   else
-      return 0
-   fi
+   return 0
 }
 
-exit_status=0
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+# #############################################################################
+# Script starts here
+# #############################################################################
 
 echo -n "Stopping MySQL test server on port PORT... "
 
-sandbox_is_alive
-if [ $? -eq 1 ]; then
+if sandbox_is_alive; then
    $BASEDIR/bin/mysqladmin --defaults-file=/tmp/PORT/my.sandbox.cnf shutdown
-   exit_status=$?
 fi
 
-if [ $exit_status -eq 0 ]; then
-   echo "OK"
-else
-   echo "FAILED"
-fi
+for i in $(_seq 60); do
+   if sandbox_is_alive; then
+      sleep 1
+      continue
+   fi
+   rm -rf $PIDFILE 2>/dev/null
+   rm -rf $SOCKETFILE 2>/dev/null
+   end_ts=$(date +%s)
+   t=$((end_ts - start_ts))
+   echo "OK (${t}s)"
+   exit 0
+done
 
-exit $exit_status
+end_ts=$(date +%s)
+t=$((end_ts - start_ts))
+echo "FAILED (${t}s)"
+exit 1
