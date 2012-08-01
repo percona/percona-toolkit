@@ -38,27 +38,29 @@ sub new {
 
 sub get_slaves {
    my ($self, %args) = @_;
-   my @required_args = qw(make_cxn OptionParser DSNParser Quoter);
+   my @required_args = qw(make_cxn recursion_method recurse DSNParser Quoter);
    foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
+                                     # exists because recurse can be undef
+      die "I need a $arg argument" unless exists $args{$arg};
    }
-   my ($make_cxn, $o, $dp) = @args{@required_args};
+   my ($make_cxn, $methods, $recurse, $dp) = @args{@required_args};
 
    my $slaves = [];
-   my $method = $o->get('recursion-method');
-   PTDEBUG && _d('Slave recursion method:', $method);
-   if ( !$method || $method =~ m/processlist|hosts/i ) {
+   
+   PTDEBUG && _d('Slave recursion method:', $methods);
+   if ( !@$methods || grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
          die "I need a $arg argument" unless $args{$arg};
       }
       my ($dbh, $dsn) = @args{@required_args};
+      
       $self->recurse_to_slaves(
          {  dbh        => $dbh,
             dsn        => $dsn,
             dsn_parser => $dp,
-            recurse    => $o->get('recurse'),
-            method     => $o->get('recursion-method'),
+            recurse    => $recurse,
+            method     => $methods,
             callback   => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
@@ -69,23 +71,42 @@ sub get_slaves {
          }
       );
    }
-   elsif ( $method =~ m/^dsn=/i ) {
-      my ($dsn_table_dsn) = $method =~ m/^dsn=(.+)/i;
+   elsif ( @$methods && $methods->[0] =~ m/^dsn=/i ) {
+      (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
       );
    }
-   elsif ( $method =~ m/none/i ) {
-      # https://bugs.launchpad.net/percona-toolkit/+bug/987694
+   elsif ( !@$methods || $methods->[0] =~ m/none/i ) {
       PTDEBUG && _d('Not getting to slaves');
    }
    else {
-      die "Invalid --recursion-method: $method.  Valid values are: "
-        . "dsn=DSN, hosts, or processlist.\n";
+      die "Unexpected recursion methods: @$methods";
    }
-
+   
    return $slaves;
+}
+
+# Sub: check_recursion_method
+#   Check that the arrayref of recursion methods passed in is valid
+sub check_recursion_method {
+   my ($methods) = @_;
+
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
+      my ($method) = @$methods;
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|dsn=)/i;
+   }
 }
 
 # Sub: recurse_to_slaves
@@ -114,7 +135,7 @@ sub recurse_to_slaves {
    my $dp   = $args->{dsn_parser};
    my $dsn  = $args->{dsn};
 
-   if ( lc($args->{method} || '') eq 'none' ) {
+   if ( $args->{method} && lc($args->{method}->[0] || '') eq 'none' ) {
       # https://bugs.launchpad.net/percona-toolkit/+bug/987694
       PTDEBUG && _d('Not recursing to slaves');
       return;
@@ -184,21 +205,10 @@ sub recurse_to_slaves {
 # If a method is given, it becomes the preferred (first tried) method.
 # Searching stops as soon as a method finds slaves.
 sub find_slave_hosts {
-   my ( $self, $dsn_parser, $dbh, $dsn, $method ) = @_;
+   my ( $self, $dsn_parser, $dbh, $dsn, $methods ) = @_;
 
-   my @methods = qw(processlist hosts);
-   if ( $method ) {
-      # Remove all but the given method.
-      @methods = grep { $_ ne $method } @methods;
-      # Add given method to the head of the list.
-      unshift @methods, $method;
-   }
-   else {
-      if ( ($dsn->{P} || 3306) != 3306 ) {
-         PTDEBUG && _d('Port number is non-standard; using only hosts method');
-         @methods = qw(hosts);
-      }
-   }
+   my @methods = $self->_resolve_recursion_methods($methods, $dsn);
+
    PTDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
       'using methods', @methods);
 
@@ -213,6 +223,18 @@ sub find_slave_hosts {
 
    PTDEBUG && _d('Found', scalar(@slaves), 'slaves');
    return @slaves;
+}
+
+sub _resolve_recursion_methods {
+   my ($self, $methods, $dsn) = @_;
+
+   # If an explicit recursion method was specified, use that
+   return @$methods if $methods && @$methods;
+   # Otherwise, if we're on the standard port, default to processlist and hosts
+   return qw( processlist hosts ) if (($dsn->{P} || 3306) == 3306);
+   # Or if on a non-standard port, default to hosts.
+   PTDEBUG && _d('Port number is non-standard; using only hosts method');
+   return qw( hosts );
 }
 
 sub _find_slaves_by_processlist {
