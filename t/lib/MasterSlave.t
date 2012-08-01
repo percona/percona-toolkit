@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 52;
+use Test::More;
 
 use MasterSlave;
 use DSNParser;
@@ -19,6 +19,8 @@ use Quoter;
 use Cxn;
 use Sandbox;
 use PerconaTest;
+
+use Data::Dumper;
 
 my $ms = new MasterSlave();
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -43,13 +45,16 @@ $o->get_specs("$trunk/bin/pt-table-checksum");
 
 SKIP: {
    skip "Cannot connect to sandbox master", 2 unless $master_dbh;
-   @ARGV = ();
+   local @ARGV = ();
    $o->get_opts();
-
+   
    my $slaves = $ms->get_slaves(
       dbh          => $master_dbh,
       dsn          => $master_dsn,
-      OptionParser => $o,
+      recursion_method => $o->got('recursion-method')
+                        ? $o->get('recursion-method')
+                        : [],
+      recurse      => $o->get('recurse'),
       DSNParser    => $dp,
       Quoter       => $q,
       make_cxn     => sub {
@@ -78,7 +83,7 @@ SKIP: {
          master_id => 12345,
          source    => 'hosts',
       },
-      'get_slaves() from recurse_to_slaves()'
+      'get_slaves() from recurse_to_slaves() with a default --recursion-method works'
    );
 
    my ($id) = $slaves->[0]->dbh()->selectrow_array('SELECT @@SERVER_ID');
@@ -93,11 +98,14 @@ SKIP: {
    # and ignore it.  This tests nonetheless that "processlist" isn't
    # misspelled, which would cause the sub to die.
    # https://bugs.launchpad.net/percona-toolkit/+bug/921802
-   @ARGV = ('--recursion-method', 'processlist');
+   local @ARGV = ('--recursion-method', 'processlist');
    $o->get_opts();
 
    $slaves = $ms->get_slaves(
-      OptionParser => $o,
+      recursion_method => $o->got('recursion-method')
+                        ? $o->get('recursion-method')
+                        : [],
+      recurse      => $o->get('recurse'),
       DSNParser    => $dp,
       Quoter       => $q,
       dbh          => $master_dbh,
@@ -146,7 +154,10 @@ SKIP: {
    throws_ok(
       sub {
          $slaves = $ms->get_slaves(
-            OptionParser => $o,
+            recursion_method => $o->got('recursion-method')
+                              ? $o->get('recursion-method')
+                              : [],
+            recurse      => $o->get('recurse'),
             DSNParser    => $dp,
             Quoter       => $q,
             dbh          => $ro_dbh,
@@ -169,7 +180,10 @@ SKIP: {
    @ARGV = ('--recursion-method', 'none');
    $o->get_opts();
    $slaves = $ms->get_slaves(
-      OptionParser => $o,
+      recursion_method => $o->got('recursion-method')
+                        ? $o->get('recursion-method')
+                        : [],
+      recurse      => $o->get('recurse'),
       DSNParser    => $dp,
       Quoter       => $q,
       dbh          => $ro_dbh,
@@ -671,7 +685,10 @@ $sb->load_file('master', "t/lib/samples/MasterSlave/dsn_table.sql");
 $o->get_opts();
 
 my $slaves = $ms->get_slaves(
-   OptionParser => $o,
+   recursion_method => $o->got('recursion-method')
+                     ? $o->get('recursion-method')
+                     : [],
+   recurse      => $o->get('recurse'),
    DSNParser    => $dp,
    Quoter       => $q,
    make_cxn     => sub {
@@ -707,6 +724,31 @@ is(
    'dbh created from DSN table works'
 );
 
+# ############################################################################
+# Invalid recursion methods are caught
+# ############################################################################
+local $EVAL_ERROR;
+eval {
+   MasterSlave::check_recursion_method([qw(stuff)])
+};
+
+like(
+   $EVAL_ERROR,
+   qr/Invalid recursion method: stuff/,
+   "Invalid recursion methods are caught",
+);
+
+local $EVAL_ERROR;
+eval {
+   MasterSlave::check_recursion_method([qw(processlist stuff)])
+};
+
+like(
+   $EVAL_ERROR,
+   qr/Invalid combination of recursion methods: processlist, stuff/,
+   "Invalid recursion methods are caught",
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -716,4 +758,5 @@ diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
 diag(`$trunk/sandbox/test-env reset >/dev/null 2>&1`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
