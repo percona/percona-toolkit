@@ -150,31 +150,35 @@ sub output {
    my ($file, $stderr, $die, $trf) = @args{qw(file stderr die trf)};
 
    my $output = '';
-   if ( $file ) { 
-      open *output_fh, '>', $file
-         or die "Cannot open file $file: $OS_ERROR";
-   }
-   else {
-      open *output_fh, '>', \$output
-         or die "Cannot capture output to variable: $OS_ERROR";
-   }
-   local *STDOUT = *output_fh;
+   {
+      if ( $file ) { 
+         open *output_fh, '>', $file
+            or die "Cannot open file $file: $OS_ERROR";
+      }
+      else {
+         open *output_fh, '>', \$output
+            or die "Cannot capture output to variable: $OS_ERROR";
+      }
+      local *STDOUT = *output_fh;
 
-   # If capturing STDERR we must dynamically scope (local) STDERR
-   # in the outer scope of the sub.  If we did,
-   #   if ( $args{stderr} ) { local *STDERR; ... }
-   # then STDERR would revert to its original value outside the if
-   # block.
-   local *STDERR     if $args{stderr};  # do in outer scope of this sub
-   *STDERR = *STDOUT if $args{stderr};
+      # If capturing STDERR we must dynamically scope (local) STDERR
+      # in the outer scope of the sub.  If we did,
+      #   if ( $args{stderr} ) { local *STDERR; ... }
+      # then STDERR would revert to its original value outside the if
+      # block.
+      local *STDERR     if $args{stderr};  # do in outer scope of this sub
+      *STDERR = *STDOUT if $args{stderr};
 
-   eval { $code->() };
-   close *output_fh;
-   if ( $EVAL_ERROR ) {
-      die $EVAL_ERROR if $die;
-      warn $EVAL_ERROR unless $args{stderr};
-      return $EVAL_ERROR;
+      eval { $code->() };
+      if ( $EVAL_ERROR ) {
+         die $EVAL_ERROR if $die;
+         warn $EVAL_ERROR;
+      }
+
+      close *output_fh;
    }
+
+   select STDOUT;
 
    # Possible transform output before returning it.  This doesn't work
    # if output was captured to a file.

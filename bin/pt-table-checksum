@@ -8162,7 +8162,7 @@ sub check_repl_table {
       $sql = "CREATE DATABASE IF NOT EXISTS "
             . $q->quote($db)
             . " /* pt-table-checksum */";
-      local $@;
+#      local $@;
       PTDEBUG && _d($sql);
       eval {
          $dbh->do($sql);

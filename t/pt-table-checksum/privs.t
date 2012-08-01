@@ -56,47 +56,45 @@ my $sample  = "t/pt-table-checksum/samples/";
 # https://bugs.launchpad.net/percona-toolkit/+bug/950294
 # ############################################################################
 
-$sb->wipe_clean($master_dbh);
+$master_dbh->do("DROP DATABASE IF EXISTS percona");
 diag(`/tmp/12345/use -u root < $trunk/t/lib/samples/ro-checksum-user.sql 2>/dev/null`);
-PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='ro_checksum_user'");
+PerconaTest::wait_for_table($slave2_dbh, "mysql.user", "user='ro_checksum_user'");
 
-($output, $exit_status) = full_output(
-   sub { pt_table_checksum::main(@args,
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
       "$master_dsn,u=ro_checksum_user,p=msandbox",
       qw(--recursion-method none)
    ) },
+   stderr => 1,
 );
 
-ok(
-   $exit_status,
-   "Dies with an error status if it can't create the db/table"
+like(
+   $output,
+   qr/\Qdatabase percona does not exist and it cannot be created automatically/,
+   "Error if percona db doesn't exist and user can't create it",
 );
 
-like($output,
-   qr/\Q--replicate database percona does not exist and it cannot be created automatically/,
-   "fails if the percona db doesn't exist and the user can't create it",
-);
-
-($output, $exit_status) = full_output(
+$output = output(
    sub { pt_table_checksum::main(@args,
       "$master_dsn,u=ro_checksum_user,p=msandbox",
       qw(--recursion-method none --no-create-replicate-table)
    ) },
+   stderr => 1,
 );
 
-like($output,
-   qr/\Q--replicate database percona does not exist and --no-create-replicate-table was/,
-   "fails if the percona db doesn't exist and --no-create-replicate-table",
+like(
+   $output,
+   qr/\Qdatabase percona does not exist and --no-create-replicate-table was/,
+   "Error if percona db doesn't exist and --no-create-replicate-table",
 );
 
 diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
 wait_until(
    sub {
       my $rows=$slave2_dbh->selectall_arrayref("SELECT user FROM mysql.user");
-      return !grep { ($_->[0] || '') ne 'ro_checksum_user' } @$rows;
+      return !grep { ($_->[0] || '') eq 'ro_checksum_user' } @$rows;
    }
 );
-$sb->wipe_clean($master_dbh);
 
 # ############################################################################
 # --recursion-method=none to avoid SHOW SLAVE HOSTS
@@ -143,7 +141,7 @@ like(
 
 like($output,
    qr/\QThe database exists on the master, but replication will break/,
-   "dies if the db exists on the master but it can't CREATE DATABASE and --no-create-replicate-table was not specified",
+   "Error if db exists on the master,  can't CREATE DATABASE, and --no-create-replicate-table was not specified",
 );
 
 diag(qx{/tmp/12345/use -u root -e 'DROP TABLE `percona`.`checksums`'});
@@ -157,7 +155,7 @@ diag(qx{/tmp/12345/use -u root -e 'DROP TABLE `percona`.`checksums`'});
 
 like($output,
    qr/\Q--replicate table `percona`.`checksums` does not exist and --no/,
-   "fails if the checksums db doesn't exist and --no-create-replicate-table"
+   "Error if checksums db doesn't exist and --no-create-replicate-table"
 );
 
 diag(`/tmp/12345/use -u root -e "drop user 'ro_checksum_user'\@'%'"`);
@@ -171,7 +169,7 @@ wait_until(
 # #############################################################################
 # Bug 916168: bug in pt-table-checksum privileges check
 # #############################################################################
-`/tmp/12345/use -u root < $trunk/t/pt-table-checksum/samples/privs-bug-916168.sql`;
+diag(`/tmp/12345/use -u root < $trunk/t/pt-table-checksum/samples/privs-bug-916168.sql`);
 
 $output = output(
    sub { $exit_status = pt_table_checksum::main(@args,
@@ -197,5 +195,5 @@ wait_until(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-
 done_testing;
+exit;
