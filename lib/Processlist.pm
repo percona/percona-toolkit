@@ -275,7 +275,7 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @$curr,                   # proc info
+                  @{$curr}[0..7],           # proc info
                   int($query_start),        # START
                   $etime,                   # ETIME
                   $time,                    # FSEEN
@@ -290,7 +290,7 @@ sub parse_event {
             # But only save the new cxn if it's executing.
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @$curr,                   # proc info
+               @{$curr}[0..7],           # proc info
                int($query_start),        # START
                $etime,                   # ETIME
                $time,                    # FSEEN
