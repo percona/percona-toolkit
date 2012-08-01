@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 83;
+use Test::More;
 
 use PodParser;
 use AdvisorRules;
@@ -279,6 +279,10 @@ my @cases = (
       vars   => [qw(expire_log_days 0 log_bin ON)],
       advice => [qw(expire_log_days)],
    },
+   {  name   => "expire_log_days, log_bin OFF, only warns about log_bin",
+      vars   => [qw(expire_log_days 0 log_bin OFF)],
+      advice => [qw(log_bin)],
+   },
    {  name   => "innodb_file_io_threads",
       vars   => [qw(innodb_file_io_threads 16)],
       advice => [qw(innodb_file_io_threads)],
@@ -295,9 +299,17 @@ my @cases = (
       vars   => [qw(innodb_locks_unsafe_for_binlog ON log_bin ON)],
       advice => [qw(innodb_locks_unsafe_for_binlog)],
    },
+   {  name   => "innodb_locks_unsafe_for_binlog, log_bin off, only warns about log_bin",
+      vars   => [qw(innodb_locks_unsafe_for_binlog ON log_bin OFF)],
+      advice => [qw(log_bin)],
+   },
    {  name   => "innodb_support_xa",
       vars   => [qw(innodb_support_xa OFF log_bin ON)],
       advice => [qw(innodb_support_xa)],
+   },
+   {  name   => "innodb_support_xa, log_bin OFF, only warns about log_bin",
+      vars   => [qw(innodb_support_xa OFF log_bin OFF)],
+      advice => [qw(log_bin)],
    },
    {  name   => "log_bin ON",
       vars   => [qw(log_bin ON)],
@@ -338,6 +350,10 @@ my @cases = (
    {  name   => "sync_binlog 2",
       vars   => [qw(sync_binlog 2 log_bin ON)],
       advice => [qw(sync_binlog)],
+   },
+   {  name   => "log_bin OFF, sync_binlog 0, doesn't warn about sync_binlog",
+      vars   => [qw(sync_binlog 0 log_bin OFF)],
+      advice => [qw(log_bin)],
    },
    {  name   => "tmp_table_size",
       vars   => [qw(tmp_table_size 1024 max_heap_table_size 512)],
@@ -404,4 +420,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-exit;
+
+done_testing;
