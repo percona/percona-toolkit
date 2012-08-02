@@ -7945,6 +7945,12 @@ The C<RENAME> clause cannot be used to rename the table.
 Columns cannot be renamed by dropping and re-adding with the new name.
 The tool will not copy the original column's data to the new column.
 
+=item *
+
+If you add a column without a default value and make it NOT NULL, the tool
+will fail, as it will not try to guess a default value for you; You must
+specify the default.
+
 =back
 
 =item --alter-foreign-keys-method
