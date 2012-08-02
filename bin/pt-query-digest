@@ -227,7 +227,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
@@ -266,7 +266,7 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
       $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
@@ -276,15 +276,17 @@ sub get_dbh {
       PTDEBUG && _d($dbh, $sql);
       eval { $dbh->do($sql) };
       if ( $EVAL_ERROR ) {
-         die $EVAL_ERROR;
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
 
-      if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-         $sql = "/*!40101 SET NAMES $charset*/";
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
          }
          PTDEBUG && _d('Enabling charset for STDOUT');
          if ( $charset eq 'utf8' ) {
@@ -296,12 +298,12 @@ sub get_dbh {
          }
       }
 
-      if ( $self->prop('set-vars') ) {
-         $sql = "SET " . $self->prop('set-vars');
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
          PTDEBUG && _d($dbh, ':', $sql);
          eval { $dbh->do($sql) };
          if ( $EVAL_ERROR ) {
-            die $EVAL_ERROR;
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }
@@ -2311,6 +2313,7 @@ sub new {
       last_poll   => 0,
       active_cxn  => {},  # keyed off ID
       event_cache => [],
+      _reasons_for_matching => {},
    };
    return bless $self, $class;
 }
@@ -2521,7 +2524,9 @@ sub find {
             PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds busy time');
+         my $reason = 'Exceeds busy time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
 
@@ -2531,7 +2536,9 @@ sub find {
             PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds idle time');
+         my $reason = 'Exceeds idle time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
  
@@ -2548,7 +2555,9 @@ sub find {
                PTDEBUG && _d('Query does not match', $property, 'spec');
                next QUERY;
             }
-            PTDEBUG && _d('Query matches', $property, 'spec');
+            my $reason = 'Query matches ' . $property . ' spec';
+            PTDEBUG && _d($reason);
+            push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
             $matched++;
          }
       }
