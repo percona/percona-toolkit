@@ -6897,7 +6897,8 @@ severity: warn
 OUTER JOIN defeated.  The reference to an outer table column in the WHERE clause
 prevents the OUTER JOIN from returning any non-matched rows, which implicitly
 converts the query to an INNER JOIN.  This is probably a bug in the query or a
-misunderstanding of how OUTER JOIN works.
+misunderstanding of how OUTER JOIN works, as LEFT/RIGHT joins are a shortcut
+for LEFT/RIGHT OUTER JOIN.
 
 =item JOI.004
 
