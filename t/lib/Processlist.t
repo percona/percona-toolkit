@@ -891,6 +891,33 @@ is(
 );
 
 # #############################################################################
+# Extra processlist fields are ignored and don't cause errors
+# https://bugs.launchpad.net/percona-toolkit/+bug/883098
+# #############################################################################
+
+$procs = [
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 7,
+    'some state', 1, 0, 0, 1] ],
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 8,
+    undef, 2, 1, 2, 0] ],
+],
+
+eval {
+   parse_n_times(
+      2,
+      code  => sub {
+         return shift @$procs;
+      },
+      time  => Transformers::unix_timestamp('2001-01-01 00:05:00'),
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "Extra processlist fields don't cause errors"
+);
+# #############################################################################
 # Done.
 # #############################################################################
 done_testing;
