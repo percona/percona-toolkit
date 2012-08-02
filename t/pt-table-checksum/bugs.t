@@ -176,6 +176,22 @@ is(
 );
 
 # #############################################################################
+# pt-table-checksum can crash with --columns if none match
+# https://bugs.launchpad.net/percona-toolkit/+bug/1016131
+# #############################################################################
+
+($output) = full_output(
+   sub { pt_table_checksum::main(@args, '--tables', 'mysql.user,mysql.host',
+                                 '--columns', 'some_fale_column') },
+);
+
+like(
+   $output,
+   qr/\QSkipping table mysql.user because all columns are excluded by --columns or --ignore-columns/,
+   "Bug 1016131: ptc should skip tables where all columns are excluded"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
