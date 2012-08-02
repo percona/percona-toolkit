@@ -211,7 +211,7 @@ SKIP: {
          dsn        => $ro_dsn,
          recurse    => 2,
          callback   => sub { $recursed++ },
-         method     => 'none',
+         method     => [ 'none' ],
       });
    is(
       $recursed,
