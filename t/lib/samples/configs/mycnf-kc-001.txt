@@ -1,0 +1,4 @@
+[mysqld]
+user=mysql # comment
+password="password # still part of it!"# comment
+something='something ; or # another'      # comment
