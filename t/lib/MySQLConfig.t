@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More;
 
 use MySQLConfig;
 use DSNParser;
@@ -827,6 +827,28 @@ SKIP: {
    );
 }
 
+$config = new MySQLConfig(
+   file => "$trunk/t/lib/samples/configs/mycnf-kc-001.txt",
+   TextResultSetParser => $trp,
+);
+is(
+  $config->value_of('user'),
+  'mysql',
+  'end of line comment in option file'
+);
+
+is(
+  $config->value_of('password'),
+  'password # still part of it!',
+  'end of line comments respect quoted values'
+);
+
+is(
+  $config->value_of('something'),
+  'something ; or # another',
+  "..and removing comments doesn't leave trailing whitespace"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -841,4 +863,5 @@ like(
    '_d() works'
 );
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;

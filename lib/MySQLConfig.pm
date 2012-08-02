@@ -337,7 +337,7 @@ sub _parse_varvals {
    ITEM:
    foreach my $item ( @varvals ) {
       if ( $item ) {
-         # Strip leading and trailing whitespace.
+         # Strip leading and trailing whitespace, and trailing comments.
          $item =~ s/^\s+//;
          $item =~ s/\s+$//;
       }
@@ -349,6 +349,9 @@ sub _parse_varvals {
          # Variable names are usually specified like "log-bin"
          # but in SHOW VARIABLES they're all like "log_bin".
          $var =~ s/-/_/g;
+
+         # Remove trailing comments
+         $var =~ s/\s*#.*$//;
 
          # The var is a duplicate (in the bad sense, i.e. where user is
          # probably unaware that there's two different values for this var
@@ -371,13 +374,22 @@ sub _parse_varvals {
             $val = '';
          }
          else {
-            $val =~ s/
-                        \A        # Start of value
-                        (['"])    # Opening quote
-                        (.*)      # Value
-                        \1        # Closing quote
-                        [\n\r]*\z # End of value
-                    /$2/x;
+            my $quote_re = qr/
+               \A             # Start of value
+               (['"])         # Opening quote
+               (.*)           # Value
+               \1             # Closing quote
+               \s*(?:\#.*)?   # End of line comment
+               [\n\r]*\z      # End of value
+            /x;
+            if ( $val =~ $quote_re ) {
+               # If it matches the quote re, then $2 holds the value
+               $val = $2;
+            }
+            else {
+               # Otherwise, remove possible trailing comments
+               $val =~ s/\s*#.*//;
+            }  
             if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
                # value is a size like 1k, 16M, etc.
                my %factor_for = (
