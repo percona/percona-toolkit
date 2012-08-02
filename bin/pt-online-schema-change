@@ -1896,7 +1896,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
@@ -7984,6 +7984,12 @@ The C<RENAME> clause cannot be used to rename the table.
 
 Columns cannot be renamed by dropping and re-adding with the new name.
 The tool will not copy the original column's data to the new column.
+
+=item *
+
+If you add a column without a default value and make it NOT NULL, the tool
+will fail, as it will not try to guess a default value for you; You must
+specify the default.
 
 =back
 

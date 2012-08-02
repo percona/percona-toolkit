@@ -227,7 +227,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
@@ -4356,6 +4356,11 @@ sub next {
             $self->{no_more_boundaries} = 1;
             return;
          }
+      }
+      if ( !$self->{one_nibble} && !$self->{first_lower} ) {
+         PTDEBUG && _d('No first lower boundary, table must be empty');
+         $self->{no_more_boundaries} = 1;
+         return;
       }
    }
 
