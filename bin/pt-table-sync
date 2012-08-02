@@ -8378,7 +8378,7 @@ sub main {
    # Do the work.
    # ########################################################################
    my $tp        = new TableParser( Quoter => $q );
-   my $ms        = new MasterSlave();
+   my $ms        = new MasterSlave(OptionParser=>$o,DSNParser=>$dp,Quoter=>$q);
    my $du        = new MySQLDump( cache => 0 );
    my $rt        = new Retry();
    my $chunker   = new TableChunker( Quoter => $q, TableParser => $tp );
