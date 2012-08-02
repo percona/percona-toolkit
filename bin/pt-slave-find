@@ -3398,7 +3398,7 @@ sub main {
    my $ms = new MasterSlave(
       OptionParser => $o,
       DSNParser    => $dp,
-      Quoter       => $q,
+      Quoter       => "Quoter",
    );
    $ms->recurse_to_slaves(
       {  dbh      => $dbh,
