@@ -23,7 +23,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $ms  = new MasterSlave();
+my $ms  = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $rsp = new TextResultSetParser();
 my $pl;
 my $procs;
