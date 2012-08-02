@@ -1514,7 +1514,8 @@ sub _GetTerminalSize {
       die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
    }
 
-   my ( $rows, $cols );
+   my $cols = $ENV{COLUMNS} || 80;
+   my $rows = $ENV{LINES}   || 24;
 
    if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
       my $winsize = '';
