@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -27,67 +27,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = {
-      %args,
-      replication_thread => {},
-   };
-   return bless $self, $class;
-}
-
-sub get_slaves {
-   my ($self, %args) = @_;
-   my @required_args = qw(make_cxn recursion_method recurse DSNParser Quoter);
-   foreach my $arg ( @required_args ) {
-                                     # exists because recurse can be undef
-      die "I need a $arg argument" unless exists $args{$arg};
-   }
-   my ($make_cxn, $methods, $recurse, $dp) = @args{@required_args};
-
-   my $slaves = [];
-   
-   PTDEBUG && _d('Slave recursion method:', $methods);
-   if ( !@$methods || grep { m/processlist|hosts/i } @$methods ) {
-      my @required_args = qw(dbh dsn);
-      foreach my $arg ( @required_args ) {
-         die "I need a $arg argument" unless $args{$arg};
-      }
-      my ($dbh, $dsn) = @args{@required_args};
-      
-      $self->recurse_to_slaves(
-         {  dbh        => $dbh,
-            dsn        => $dsn,
-            dsn_parser => $dp,
-            recurse    => $recurse,
-            method     => $methods,
-            callback   => sub {
-               my ( $dsn, $dbh, $level, $parent ) = @_;
-               return unless $level;
-               PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
-               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
-               return;
-            },
-         }
-      );
-   }
-   elsif ( @$methods && $methods->[0] =~ m/^dsn=/i ) {
-      (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
-      $slaves = $self->get_cxn_from_dsn_table(
-         %args,
-         dsn_table_dsn => $dsn_table_dsn,
-      );
-   }
-   elsif ( !@$methods || $methods->[0] =~ m/none/i ) {
-      PTDEBUG && _d('Not getting to slaves');
-   }
-   else {
-      die "Unexpected recursion methods: @$methods";
-   }
-   
-   return $slaves;
-}
-
 # Sub: check_recursion_method
 #   Check that the arrayref of recursion methods passed in is valid
 sub check_recursion_method {
@@ -106,6 +45,86 @@ sub check_recursion_method {
       my ($method) = @$methods;
       die "Invalid recursion method: " . ( $method || 'undef' )
          unless $method && $method =~ m/^(?:processlist$|hosts$|none$|dsn=)/i;
+   }
+}
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(OptionParser DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $self = {
+      %args,
+      replication_thread => {},
+   };
+   return bless $self, $class;
+}
+
+sub get_slaves {
+   my ($self, %args) = @_;
+   my @required_args = qw(make_cxn);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($make_cxn) = @args{@required_args};
+
+   my $slaves  = [];
+   my $dp      = $self->{DSNParser};
+   my $methods = $self->_resolve_recursion_methods($args{dsn});
+
+   if ( grep { m/processlist|hosts/i } @$methods ) {
+      my @required_args = qw(dbh dsn);
+      foreach my $arg ( @required_args ) {
+         die "I need a $arg argument" unless $args{$arg};
+      }
+      my ($dbh, $dsn) = @args{@required_args};
+      
+      $self->recurse_to_slaves(
+         {  dbh       => $dbh,
+            dsn       => $dsn,
+            callback  => sub {
+               my ( $dsn, $dbh, $level, $parent ) = @_;
+               return unless $level;
+               PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
+               push @$slaves, $make_cxn->(dsn => $dsn, dbh => $dbh);
+               return;
+            },
+         }
+      );
+   }
+   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
+      $slaves = $self->get_cxn_from_dsn_table(
+         %args,
+         dsn_table_dsn => $dsn_table_dsn,
+      );
+   }
+   elsif ( $methods->[0] =~ m/none/i ) {
+      PTDEBUG && _d('Not getting to slaves');
+   }
+   else {
+      die "Unexpected recursion methods: @$methods";
+   }
+   
+   return $slaves;
+}
+
+sub _resolve_recursion_methods {
+   my ($self, $dsn) = @_;
+   my $o = $self->{OptionParser};
+   if ( $o->got('recursion-method') ) {
+      # Use whatever the user explicitly gave on the command line.
+      return $o->get('recursion-method');
+   }
+   elsif ( $dsn && ($dsn->{P} || 3306) != 3306 ) {
+      # Special case: hosts is best when port is non-standard.
+      PTDEBUG && _d('Port number is non-standard; using only hosts method');
+      return [qw(hosts)];
+   }
+   else {
+      # Use the option's default.
+      return $o->get('recursion-method');
    }
 }
 
@@ -132,10 +151,16 @@ sub check_recursion_method {
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp   = $args->{dsn_parser};
-   my $dsn  = $args->{dsn};
+   my $dp      = $self->{DSNParser};
+   my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
+   my $dsn     = $args->{dsn};
 
-   if ( $args->{method} && lc($args->{method}->[0] || '') eq 'none' ) {
+   # Re-resolve the recursion methods for each slave.  In most cases
+   # it won't change, but it could if one slave uses standard port (3306)
+   # and another does not.
+   my $methods = $self->_resolve_recursion_methods($dsn);
+   PTDEBUG && _d('Recursion methods:', @$methods);
+   if ( lc($methods->[0]) eq 'none' ) {
       # https://bugs.launchpad.net/percona-toolkit/+bug/987694
       PTDEBUG && _d('Not recursing to slaves');
       return;
@@ -175,13 +200,13 @@ sub recurse_to_slaves {
    # Call the callback!
    $args->{callback}->($dsn, $dbh, $level, $args->{parent});
 
-   if ( !defined $args->{recurse} || $level < $args->{recurse} ) {
+   if ( !defined $recurse || $level < $recurse ) {
 
       # Find the slave hosts.  Eliminate hosts that aren't slaves of me (as
       # revealed by server_id and master_id).
       my @slaves =
          grep { !$_->{master_id} || $_->{master_id} == $id } # Only my slaves.
-         $self->find_slave_hosts($dp, $dbh, $dsn, $args->{method});
+         $self->find_slave_hosts($dp, $dbh, $dsn, $methods);
 
       foreach my $slave ( @slaves ) {
          PTDEBUG && _d('Recursing from',
@@ -207,14 +232,12 @@ sub recurse_to_slaves {
 sub find_slave_hosts {
    my ( $self, $dsn_parser, $dbh, $dsn, $methods ) = @_;
 
-   my @methods = $self->_resolve_recursion_methods($methods, $dsn);
-
    PTDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
-      'using methods', @methods);
+      'using methods', @$methods);
 
    my @slaves;
    METHOD:
-   foreach my $method ( @methods ) {
+   foreach my $method ( @$methods ) {
       my $find_slaves = "_find_slaves_by_$method";
       PTDEBUG && _d('Finding slaves with', $find_slaves);
       @slaves = $self->$find_slaves($dsn_parser, $dbh, $dsn);
@@ -223,18 +246,6 @@ sub find_slave_hosts {
 
    PTDEBUG && _d('Found', scalar(@slaves), 'slaves');
    return @slaves;
-}
-
-sub _resolve_recursion_methods {
-   my ($self, $methods, $dsn) = @_;
-
-   # If an explicit recursion method was specified, use that
-   return @$methods if $methods && @$methods;
-   # Otherwise, if we're on the standard port, default to processlist and hosts
-   return qw( processlist hosts ) if (($dsn->{P} || 3306) == 3306);
-   # Or if on a non-standard port, default to hosts.
-   PTDEBUG && _d('Port number is non-standard; using only hosts method');
-   return qw( hosts );
 }
 
 sub _find_slaves_by_processlist {
@@ -871,12 +882,15 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn DSNParser Quoter);
+   my @required_args = qw(dsn_table_dsn make_cxn);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn, $dp, $q) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
+
+   my $dp = $self->{DSNParser};
+   my $q  = $self->{Quoter};
 
    my $dsn = $dp->parse($dsn_table_dsn);
    my $dsn_table;
