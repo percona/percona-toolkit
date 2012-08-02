@@ -79,7 +79,7 @@ throws_ok(
 );
 
 my $rd       = new RowDiff(dbh=>$src_dbh);
-my $ms       = new MasterSlave();
+my $ms       = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $rt       = new Retry();
 my $checksum = new TableChecksum(
    Quoter         => $q,
