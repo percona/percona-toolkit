@@ -3774,7 +3774,11 @@ sub check_delay {
    # Collect a list of connections to the slaves.
    if ( $o->get('recurse') ) {
       PTDEBUG && _d('Recursing to slaves');
-      my $ms = new MasterSlave();
+      my $ms = new MasterSlave(
+         OptionParser => $o,
+         DSNParser    => $dp,
+         Quoter       => "Quoter",
+      );
       $ms->recurse_to_slaves(
          {  dbh        => $dbh,
             dsn        => $dsn,
