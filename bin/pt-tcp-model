@@ -2338,7 +2338,8 @@ number of iterations.
 
 type: float
 
-The percentile for the last column when L<"--type"> is "requests" (default .99).
+The percentile for the second to last last column when L<"--type"> is
+"requests" (default .99).
 
 =item --run-time
 

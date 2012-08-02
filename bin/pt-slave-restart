@@ -2015,7 +2015,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
