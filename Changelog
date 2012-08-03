@@ -1,5 +1,38 @@
 Changelog for Percona Toolkit
 
+  * pt-kill: Implemented --log-dsn to log info about killed queries to a table
+  * Fixed bug 1016127: Install hint for DBD::mysql is wrong
+  * Fixed bug 984915: DSNParser does not check success of --set-vars
+  * Fixed bug 889739: pt-config-diff doesn't diff quoted strings properly
+  * Fixed bug 969669: pt-duplicate-key-checker --key-types=k doesn't work
+  * Fixed bug 1004567: pt-heartbeat --update --replace causes duplicate key error
+  * Fixed bug 1028614: pt-index-usage ignores --database
+  * Fixed bug 940733: pt-ioprofile leaves behind temp directory
+  * Fixed bug 941469: pt-kill doesn't reconnect if its connection is lost
+  * Fixed bug 1016114: pt-online-schema-change docs don't mention default values
+  * Fixed bug 1020997: pt-online-schema-change fails when table is empty
+  * Fixed bug 1022628: pt-online-schema-change error: Use of uninitialized value in numeric lt (<) at line 6519
+  * Fixed bug 937225: pt-query-advisor OUTER JOIN advice in JOI.003 is confusing
+  * Fixed bug 821703: pt-query-digest --processlist may crash
+  * Fixed bug 883098: pt-query-digest crashes if processlist has extra columns
+  * Fixed bug 924950: pt-query-digest --group-by db may crash profile report
+  * Fixed bug 1022851: pt-sift error: PREFIX: unbound variable
+  * Fixed bug 969703: pt-sift defaults to '.' instead of '/var/lib/pt-talk'
+  * Fixed bug 962330: pt-slave-delay incorrectly computes lag if started when slave is already lagging
+  * Fixed bug 954990: pt-stalk --nostalk does not work
+  * Fixed bug 977226: pt-summary doesn't detect LSI RAID control
+  * Fixed bug 1030031: pt-table-checksum reports wrong number of DIFFS
+  * Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5 
+  * Fixed bug 950294: pt-table-checksum should always create schema and tables with IF NOT EXISTS
+  * Fixed bug 953141: pt-table-checksum ignores its default and explicit --recursion-method
+  * Fixed bug 1030975: pt-table-sync crashes if sql_mode includes ANSI_QUOTES
+  * Fixed bug 869005: pt-table-sync should always set REPEATABLE READ
+  * Fixed bug 903510: pt-tcp-model crashes in --type=requests mode on empty file
+  * Fixed bug 934310: pt-tcp-model --quantile docs wrong
+  * Fixed bug 980318: pt-upgrade results truncated if hostnames are long
+  * Fixed bug 821696: pt-variable-advisor shows too long of a snippet
+  * Fixed bug 844880: pt-variable-advisor shows binary logging as both enabled and disabled
+
 v2.1.2 released 2012-06-12
 
   * pt-heartbeat: Implemented --recursion-method=none
