@@ -104,16 +104,16 @@ sub get_os {
    my ($self) = @_;
 
   chomp(my $platform = `uname -s`);
+  PTDEBUG && _d('platform:', $platform);
   return unless $platform;
 
-   my $lsb_release=`which lsb_release 2>/dev/null | awk '{print \$1}'`;
+   chomp(my $lsb_release
+            = `which lsb_release 2>/dev/null | awk '{print \$1}'` || '');
+   PTDEBUG && _d('lsb_release:', $lsb_release);
 
-   my $kernel  = "";
    my $release = "";
 
    if ( $platform eq 'Linux' ) {
-      $kernel = `uname -r`;
-
       if ( -f "/etc/fedora-release" ) {
          $release = `cat /etc/fedora-release`;
       }
@@ -127,7 +127,8 @@ sub get_os {
          $release = `$lsb_release -ds`;
       }
       elsif ( -f "/etc/lsb-release" ) {
-         $release = `grep DISTRIB_DESCRIPTION /etc/lsb-release |awk -F'=' '{print \$2}' |sed 's#"##g'`;
+         $release = `grep DISTRIB_DESCRIPTION /etc/lsb-release`;
+         $release =~ s/^\w+="([^"]+)".+/$1/;
       }
       elsif ( -f "/etc/debian_version" ) {
          $release = "Debian-based version " . `cat /etc/debian_version`;
@@ -136,8 +137,8 @@ sub get_os {
              $release .= ' ' . ($code || '');
          }
       }
-      elsif ( `ls /etc/*release >/dev/null 2>&1` ) {
-         if ( `grep -q DISTRIB_DESCRIPTION /etc/*release` ) {
+      elsif ( `ls /etc/*release 2>/dev/null` ) {
+         if ( `grep DISTRIB_DESCRIPTION /etc/*release 2>/dev/null` ) {
             $release = `grep DISTRIB_DESCRIPTION /etc/*release | head -n1`;
          }
          else {
@@ -146,18 +147,22 @@ sub get_os {
       }
    }
    elsif ( $platform =~ m/^\w+BSD$/ ) {
-      $kernel  = `sysctl -n "kern.osrevision"`;
-      $release = `uname -r`;
+      chomp(my $rel = `uname -r`);
+      $release = "$platform $rel";
    }
    elsif ( $platform eq "SunOS" ) {
-      $kernel  = `uname -v`;
-      $release = `head -n1 /etc/release` || `uname -r`;
+      chomp(my $rel = `head -n1 /etc/release` || `uname -r`);
+      $release = "$platform $rel";
    }
 
-   chomp($kernel)  if $kernel;
-   chomp($release) if $release;
+   if ( !$release ) {
+      PTDEBUG && _d('Failed to get the release, using platform');
+      $release = $platform;
+   }
+   chomp($release);
 
-   return $kernel && $release ? "$kernel $release" : $platform;
+   PTDEBUG && _d('OS version =', $release);
+   return $release;
 }
 
 sub get_perl_variable {
