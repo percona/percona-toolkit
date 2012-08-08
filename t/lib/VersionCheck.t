@@ -78,24 +78,55 @@ test_v(
    },
 );
 
-my (undef, $mysql_version)
-   = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
-my (undef, $mysql_distro)
-   = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
+SKIP: {
+   skip "Cannot cannot to sandbox master", 2 unless $dbh;
 
-test_v(
-   name     => "mysql_variable",
-   response => "MySQL;mysql_variable;version_comment,version\n",
-   items    => {
-      'MySQL' => {
-         item => 'MySQL',
-         type => 'mysql_variable',
-         vars => [qw(version_comment version)],
+   my (undef, $mysql_version)
+      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
+   my (undef, $mysql_distro)
+      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
+
+   test_v(
+      name     => "mysql_variable",
+      response => "MySQL;mysql_variable;version_comment,version\n",
+      items    => {
+         'MySQL' => {
+            item => 'MySQL',
+            type => 'mysql_variable',
+            vars => [qw(version_comment version)],
+         },
       },
-   },
-   versions => {
-      'MySQL' => "$mysql_distro $mysql_version",
-   },
+      versions => {
+         'MySQL' => "$mysql_distro $mysql_version",
+      },
+   );
+}
+
+# I can't think of a way to make these 2 OS tests more specific
+# since the test env doesn't know what OS its running on.  We
+# at least know that an OS should have these two things: a word
+# and version with at least major and minor numbers.
+my $os = $vc->get_os;
+diag($os);
+
+like(
+   $os,
+   qr/^\w+/,
+   "OS has some kind of name"
+);
+
+like(
+   $os,
+   qr/\d+\.\d+/,
+   "OS has some kind of version"
+);
+
+# get_os() runs a lot of shell cmds that include newlines,
+# but the client's response can't have newlines in the versions
+# becuase newlines separate items.
+ok(
+   $os !~ m/\n$/,
+   "Newline stripped from OS"
 );
 
 # #############################################################################
