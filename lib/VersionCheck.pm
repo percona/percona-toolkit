@@ -175,9 +175,11 @@ sub get_perl_variable {
    # append ::VERSION to get the module's version.   
    my $var     = $item->{vars}->[0] || ($item->{item} . '::VERSION');
    my $version = do { no strict; ${*{$var}}; }; 
-   PTDEBUG && _d('Perl version for', $var, '=', $version);
+   PTDEBUG && _d('Perl version for', $var, '=', "$version");
 
-   return $version;
+   # Explicitly stringify this else $PERL_VERSION will return
+   # as a version object.
+   return $version ? "$version" : $version;
 }
 
 sub get_mysql_variable {

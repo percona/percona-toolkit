@@ -39,6 +39,7 @@ sub test_v {
       items => $items,
       dbh   => $dbh,
    );
+   diag(Dumper($versions));
    is_deeply(
       $versions,
       $args{versions},
