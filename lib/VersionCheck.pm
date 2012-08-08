@@ -131,10 +131,11 @@ sub get_os {
          $release =~ s/^\w+="([^"]+)".+/$1/;
       }
       elsif ( -f "/etc/debian_version" ) {
-         $release = "Debian-based version " . `cat /etc/debian_version`;
+         chomp(my $rel = `cat /etc/debian_version`);
+         $release = "Debian $rel";
          if ( -f "/etc/apt/sources.list" ) {
-             my $code = `awk '/^deb/ {print \$3}' /etc/apt/sources.list | awk -F/ '{print \$1}'| awk 'BEGIN {FS="|"} {print \$1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print \$2}'`;
-             $release .= ' ' . ($code || '');
+             chomp(my $code_name = `awk '/^deb/ {print \$3}' /etc/apt/sources.list | awk -F/ '{print \$1}'| awk 'BEGIN {FS="|"} {print \$1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print \$2}'`);
+             $release .= " ($code_name)" if $code_name;
          }
       }
       elsif ( `ls /etc/*release 2>/dev/null` ) {
