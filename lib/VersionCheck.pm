@@ -146,12 +146,12 @@ sub get_os {
          }
       }
    }
-   elsif ( $platform =~ m/^\w+BSD$/ ) {
-      chomp(my $rel = `uname -r`);
+   elsif ( $platform =~ m/^(BSD|Darwin)$/ ) {
+      my $rel = `uname -r`;
       $release = "$platform $rel";
    }
    elsif ( $platform eq "SunOS" ) {
-      chomp(my $rel = `head -n1 /etc/release` || `uname -r`);
+      my $rel = `head -n1 /etc/release` || `uname -r`;
       $release = "$platform $rel";
    }
 
