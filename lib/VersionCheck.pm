@@ -171,6 +171,14 @@ sub get_perl_variable {
    my $item = $args{item};
    return unless $item;
 
+   # Can't just stringify $PERL_VERSION because on 5.8 it doesn't work.
+   # So %vd coerces the version into a string on 5.8+.
+   if ( $item->{item} eq 'Perl' ) {
+      my $version = sprintf '%vd', $PERL_VERSION;
+      PTDEBUG && _d('Perl version', $version);
+      return $version;
+   }
+
    # If there's a var, then its an explicit Perl variable name to get,
    # else the item name is an implicity Perl module name to which we
    # append ::VERSION to get the module's version.   

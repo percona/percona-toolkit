@@ -46,6 +46,16 @@ sub test_v {
       "$args{name} versions"
    );
 
+   # Perl 5.8 $^V/$PERL_VERSION is borked, make sure
+   # the module is coping with it.
+   if ( $items->{Perl} ) {
+      like(
+         $versions->{Perl},
+         q/\d+\.\d+.\d+/,
+         "Perl version looks like a version"
+      );
+   }
+
    return;
 }
 
