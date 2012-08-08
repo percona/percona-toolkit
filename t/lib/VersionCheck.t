@@ -70,7 +70,7 @@ test_v(
       },
    },
    versions => {
-      'Perl' => "$PERL_VERSION",
+      'Perl' => sprintf('%vd', $PERL_VERSION),
    },
 );
 
