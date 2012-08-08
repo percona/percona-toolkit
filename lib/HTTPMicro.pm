@@ -1,11 +1,33 @@
+# This program is copyright 2012 Percona Inc.
+# Feedback and improvements are welcome.
+#
+# THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, version 2; OR the Perl Artistic License.  On UNIX and similar
+# systems, you can issue `man perlgpl' or `man perlartistic' to read these
+# licenses.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+# Place, Suite 330, Boston, MA  02111-1307  USA.
+# ###########################################################################
+# HTTPMicro package
+# ###########################################################################
+{
+# Package: HTTPMicro
+# A stripped down version of HTTP::Tiny; but not a correct HTTP/1.1
+# implementation
+
 package HTTP::Micro;
 BEGIN {
   $HTTP::Micro::VERSION = '0.001';
 }
 use strict;
 use warnings;
-# A stripped down version of HTTP::Tiny; but not a correct HTTP/1.1
-# implementation
 
 use Carp ();
 
@@ -456,3 +478,7 @@ sub can_write {
 }
 
 1;
+}
+# ###########################################################################
+# End HTTPMicro package
+# ###########################################################################
