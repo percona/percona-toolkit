@@ -70,7 +70,7 @@ sub pingback {
    # Optional args
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTP::Micro->new();
+   $ua ||= HTTP::Micro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    # GET http://upgrade.percona.com, the server will return

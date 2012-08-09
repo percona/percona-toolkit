@@ -761,7 +761,7 @@ sub pingback {
 
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTP::Micro->new();
+   $ua ||= HTTP::Micro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
