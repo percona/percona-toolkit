@@ -51,7 +51,7 @@ sub test_v {
    if ( $items->{Perl} ) {
       like(
          $versions->{Perl},
-         q/\d+\.\d+.\d+/,
+         qr/\d+\.\d+.\d+/,
          "Perl version looks like a version"
       );
    }
@@ -61,11 +61,11 @@ sub test_v {
 
 test_v(
    name     => "Perl version",
-   response => "Perl;perl_variable;PERL_VERSION\n",
+   response => "Perl;perl_version;PERL_VERSION\n",
    items    => {
       'Perl' => {
          item => 'Perl',
-         type => 'perl_variable',
+         type => 'perl_version',
          vars => [qw(PERL_VERSION)],
       },
    },
@@ -75,12 +75,12 @@ test_v(
 );
 
 test_v(
-   name     => "perl_variable (no args)",
-   response => "Data::Dumper;perl_variable\n",
+   name     => "perl_module_version",
+   response => "Data::Dumper;perl_module_version\n",
    items    => {
       'Data::Dumper' => {
          item => 'Data::Dumper',
-         type => 'perl_variable',
+         type => 'perl_module_version',
          vars => [],
       },
    },
@@ -88,6 +88,40 @@ test_v(
       'Data::Dumper' => $Data::Dumper::VERSION,
    },
 );
+
+test_v(
+   name     => "bin_version",
+   response => "perl;bin_version\n",
+   items    => {
+      'perl' => {
+         item => 'perl',
+         type => 'bin_version',
+         vars => [],
+      },
+   },
+   versions => {
+      'perl' => sprintf('%vd', $PERL_VERSION),
+   },
+);
+
+use File::Spec;
+{
+   local $ENV{PATH} = "$ENV{PATH}:" . File::Spec->catfile($ENV{PERCONA_TOOLKIT_BRANCH}, "bin");
+   test_v(
+      name     => "bin_version",
+      response => "pt-archiver;bin_version\n",
+      items    => {
+         'pt-archiver' => {
+            item => 'pt-archiver',
+            type => 'bin_version',
+            vars => [],
+         },
+      },
+      versions => {
+         'pt-archiver' => $Sandbox::Percona::Toolkit::VERSION,
+      },
+   );
+}
 
 SKIP: {
    skip "Cannot cannot to sandbox master", 2 unless $dbh;
@@ -117,7 +151,7 @@ SKIP: {
 # since the test env doesn't know what OS its running on.  We
 # at least know that an OS should have these two things: a word
 # and version with at least major and minor numbers.
-my $os = $vc->get_os;
+my $os = $vc->get_os_version;
 diag($os);
 
 like(

@@ -28,10 +28,16 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
+use File::Basename ();
+use Data::Dumper ();
+
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+
+   Data::Dumper::Dumper(@_);
+}
 
 sub new {
    my ($class, %args) = @_;
@@ -75,7 +81,7 @@ sub get_versions {
    my %versions;
    foreach my $item ( values %$items ) {
       next unless $self->valid_item($item);
-
+      
       eval {
          my $func    = 'get_' . $item->{type};
          my $version = $self->$func(
@@ -100,12 +106,12 @@ sub valid_item {
    return 1;
 }
 
-sub get_os {
+sub get_os_version {
    my ($self) = @_;
 
   chomp(my $platform = `uname -s`);
   PTDEBUG && _d('platform:', $platform);
-  return unless $platform;
+  return $OSNAME unless $platform;
 
    chomp(my $lsb_release
             = `which lsb_release 2>/dev/null | awk '{print \$1}'` || '');
@@ -166,29 +172,36 @@ sub get_os {
    return $release;
 }
 
-sub get_perl_variable {
+sub get_perl_version {
    my ($self, %args) = @_;
    my $item = $args{item};
    return unless $item;
 
-   # Can't just stringify $PERL_VERSION because on 5.8 it doesn't work.
-   # So %vd coerces the version into a string on 5.8+.
-   if ( $item->{item} eq 'Perl' ) {
-      my $version = sprintf '%vd', $PERL_VERSION;
-      PTDEBUG && _d('Perl version', $version);
-      return $version;
-   }
+   my $version = sprintf '%vd', $PERL_VERSION;
+   PTDEBUG && _d('Perl version', $version);
+   return $version;
+}
 
+sub get_perl_module_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+   
    # If there's a var, then its an explicit Perl variable name to get,
    # else the item name is an implicity Perl module name to which we
-   # append ::VERSION to get the module's version.   
-   my $var     = $item->{vars}->[0] || ($item->{item} . '::VERSION');
-   my $version = do { no strict; ${*{$var}}; }; 
+   # append ::VERSION to get the module's version.
+   my $var          = $item->{item} . '::VERSION';
+   my $version      = _get_scalar($var);
    PTDEBUG && _d('Perl version for', $var, '=', "$version");
 
    # Explicitly stringify this else $PERL_VERSION will return
    # as a version object.
    return $version ? "$version" : $version;
+}
+
+sub _get_scalar {
+   no strict;
+   return ${*{shift()}};
 }
 
 sub get_mysql_variable {
@@ -230,6 +243,23 @@ sub _get_from_mysql {
    }
 
    return join(' ', @versions);
+}
+
+sub get_bin_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   my $cmd  = $item->{item};
+   return unless $cmd;
+
+   my $sanitized_command = File::Basename::basename($cmd);
+   return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
+
+   my $output = `$sanitized_command --version 2>&1`;
+
+   my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
+
+   PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
+   return $version;
 }
 
 sub _d {
