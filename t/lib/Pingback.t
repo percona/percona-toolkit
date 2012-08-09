@@ -24,17 +24,22 @@ my $dbh = $sb->get_dbh_for('master');
 # and fake accepting client responses.
 # #############################################################################
 
-my $get;   # server reponses
-my $post;  # client responses
+my $response;  # responses to client
+my $post;      # what client sends for POST
 {
    package FakeUA;
 
    sub new { bless {}, $_[0] }
    sub request {
       my ($self, $type, $url, $content) = @_;
-      return shift @$get if $type eq 'GET';
-      $post = $content   if $type eq 'POST';
-      return;
+      if ( $type eq 'GET' ) {
+         return shift @$response;
+      }
+      elsif ( $type eq 'POST' ) {
+         $post = $content;
+         return shift @$response;
+      }
+      die "Invalid client request method: $type";
    }
 }
 
@@ -51,11 +56,12 @@ my $dd_ver   = $Data::Dumper::VERSION;
 sub test_pingback {
    my (%args) = @_;
 
-   $get  = $args{get};
+   $response = $args{response};
    $post = "";  # clear previous test
 
+   my $sug;
    eval {
-      Pingback::pingback(
+      $sug = Pingback::pingback(
          url => $url,
          dbh => $args{dbh},
          ua  => $fake_ua,
@@ -68,22 +74,78 @@ sub test_pingback {
    );
 
    is(
-      $post->{content},
+      $post ? ($post->{content} || '') : '',
       $args{post},
       "$args{name} client response"
-   )
+   );
+
+   is_deeply(
+      $sug,
+      $args{sug},
+      "$args{name} suggestions"
+   );
 }
 
 test_pingback(
-   name => "Perl version and Data::Dumper::VERSION",
-   # Client gets this from the server:
-   get  => [
+   name => "Perl version and module version",
+   response => [
+      # in response to client's GET
+      { status  => 200,
+        content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
+      },
+      # in response to client's POST
+      { status  => 200,
+        content => "Perl;perl_version;Perl 5.8 is wonderful.\nData::Dumper;perl_module_version;Data::Printer is nicer.\n",
+      }
+   ],
+   # client should POST this
+   post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
+   # Server should return these suggetions after the client posts
+   sug  => [
+      'Data::Printer is nicer.',
+      'Perl 5.8 is wonderful.',
+   ],
+);
+
+# Client should handle not getting any suggestions.
+
+test_pingback(
+   name => "Versions but no suggestions",
+   response => [
+      # in response to client's GET
+      { status  => 200,
+        content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
+      },
+      # in response to client's POST
+      { status  => 200,
+        content => "",
+      }
+   ],
+   post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
+   sug  => undef,
+);
+
+# Client should handle no response to GET.
+
+test_pingback(
+   name => "No response to GET",
+   response => [],
+   post => "",
+   sug  => undef,
+);
+
+# Client should handle no response to POST.
+
+test_pingback(
+   name => "No response to POST",
+   response => [
+      # in response to client's GET
       { status  => 200,
         content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
       },
    ],
-   # And it responds with this:
    post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
+   sug  => undef,
 );
 
 # #############################################################################
@@ -99,13 +161,21 @@ SKIP: {
 
    test_pingback(
       name => "MySQL version",
-      get  => [
+      dbh  => $dbh,
+      response => [
+         # in response to client's GET
          { status  => 200,
            content => "MySQL;mysql_variable;version,version_comment\n",
          },
+         # in response to client's POST
+         { status  => 200,
+           content => "MySQL;mysql_variable;Percona Server is fast.\n",
+         }
       ],
+      # client should POST this
       post => "MySQL;mysql_variable;$mysql_ver $mysql_distro\n",
-      dbh  => $dbh,
+      # Server should return these suggetions after the client posts
+      sug => ['Percona Server is fast.'],
    );
 }
 

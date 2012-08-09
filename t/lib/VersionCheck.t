@@ -61,12 +61,12 @@ sub test_v {
 
 test_v(
    name     => "Perl version",
-   response => "Perl;perl_version;PERL_VERSION\n",
+   response => "Perl;perl_version\n",
    items    => {
       'Perl' => {
          item => 'Perl',
          type => 'perl_version',
-         vars => [qw(PERL_VERSION)],
+         vars => [],
       },
    },
    versions => {
