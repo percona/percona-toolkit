@@ -45,20 +45,6 @@ eval {
    require VersionCheck;
 };
 
-sub ping_for_updates {
-   my (%args) = @_;
-   my $advice = "";
-   my $response = pingback(%args);
-
-   PTDEBUG && _d('Server response:', Dumper($response));
-   if ( $response && $response->{success} ) {
-      $advice = $response->{content};
-      $advice =~ s/\r\n/\n/g; # Normalize linefeeds
-   }
-
-   return $advice;
-}
-
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url);
@@ -82,7 +68,7 @@ sub pingback {
    # items/types that need extra hints.
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
-   return unless $response->{status} == 200;
+   return unless $response && $response->{status} == 200 && $response->{content};
 
    # Parse the plaintext server response into a hashref keyed on
    # the items like:
@@ -117,10 +103,25 @@ sub pingback {
       headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
       content => $client_content,
    };
+   PTDEBUG && _d('Client response:', Dumper($client_response));
 
-   PTDEBUG && _d('Sending back to the server:', Dumper($response));
-   
-   return $ua->request('POST', $url, $client_response);
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   return unless $response && $response->{status} == 200 && $response->{content};
+
+   # If the server has suggestions for items, it sends them back in
+   # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
+   # debugging; the tool just repports the suggestions.
+   $items = $vc->parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   return unless scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
 }
 
 sub encode_client_response {

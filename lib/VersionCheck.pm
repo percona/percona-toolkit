@@ -52,15 +52,15 @@ sub parse_server_response {
    }
    my ($response) = @args{@required_args};
 
-   PTDEBUG && _d('Server response:', $response); 
-
    my %items = map {
       my ($item, $type, $vars) = split(";", $_);
-      my (@vars)               = split(",", ($vars || ''));
+      if ( !defined $args{split_vars} || $args{split_vars} ) {
+         $vars = [ split(",", ($vars || '')) ];
+      }
       $item => {
          item => $item,
          type => $type,
-         vars => \@vars,
+         vars => $vars,
       };
    } split("\n", $response);
 
@@ -252,9 +252,11 @@ sub get_bin_version {
    return unless $cmd;
 
    my $sanitized_command = File::Basename::basename($cmd);
+   PTDEBUG && _d('cmd:', $cmd, 'sanitized:', $sanitized_command);
    return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
 
    my $output = `$sanitized_command --version 2>&1`;
+   PTDEBUG && _d('output:', $output);
 
    my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
 

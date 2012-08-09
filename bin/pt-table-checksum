@@ -49,15 +49,15 @@ sub parse_server_response {
    }
    my ($response) = @args{@required_args};
 
-   PTDEBUG && _d('Server response:', $response); 
-
    my %items = map {
       my ($item, $type, $vars) = split(";", $_);
-      my (@vars)               = split(",", ($vars || ''));
+      if ( !defined $args{split_vars} || $args{split_vars} ) {
+         $vars = [ split(",", ($vars || '')) ];
+      }
       $item => {
          item => $item,
          type => $type,
-         vars => \@vars,
+         vars => $vars,
       };
    } split("\n", $response);
 
@@ -235,9 +235,11 @@ sub get_bin_version {
    return unless $cmd;
 
    my $sanitized_command = File::Basename::basename($cmd);
+   PTDEBUG && _d('cmd:', $cmd, 'sanitized:', $sanitized_command);
    return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
 
    my $output = `$sanitized_command --version 2>&1`;
+   PTDEBUG && _d('output:', $output);
 
    my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
 
@@ -737,20 +739,6 @@ eval {
    require VersionCheck;
 };
 
-sub ping_for_updates {
-   my (%args) = @_;
-   my $advice = "";
-   my $response = pingback(%args);
-
-   PTDEBUG && _d('Server response:', Dumper($response));
-   if ( $response && $response->{success} ) {
-      $advice = $response->{content};
-      $advice =~ s/\r\n/\n/g; # Normalize linefeeds
-   }
-
-   return $advice;
-}
-
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url);
@@ -766,7 +754,7 @@ sub pingback {
 
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
-   return unless $response->{status} == 200;
+   return unless $response && $response->{status} == 200 && $response->{content};
 
    my $items = $vc->parse_server_response(
       response => $response->{content}
@@ -788,10 +776,22 @@ sub pingback {
       headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
       content => $client_content,
    };
+   PTDEBUG && _d('Client response:', Dumper($client_response));
 
-   PTDEBUG && _d('Sending back to the server:', Dumper($response));
-   
-   return $ua->request('POST', $url, $client_response);
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   return unless $response && $response->{status} == 200 && $response->{content};
+
+   $items = $vc->parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   return unless scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
 }
 
 sub encode_client_response {
@@ -7869,11 +7869,25 @@ sub main {
    # Check for updates
    # ########################################################################
 
-   if ( $o->get('check-for-updates') ) {
-      print Pingback::ping_for_updates(
-         url => 'http://staging.upgrade.percona.com',
-         dbh => $master_dbh
-      );
+   if ( $o->get('version-check') ) {
+      # If this blows up, oh well, don't bother the user about it.
+      # This feature is a "best effort" only; we don't want it to
+      # get in the way of the tool's real work.
+      eval {
+         my $advice = Pingback::pingback(
+            url => 'http://staging.upgrade.percona.com',
+            dbh => $master_dbh
+         );
+         if ( $advice ) {
+            # TODO: print this at the start or the end?
+            # TODO: how to format this?
+            print "--version-check advice:\n";
+            print join("\n", map { "  * $_" } @$advice);
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error doing --version-check:', $EVAL_ERROR);
+      }
    }
    
    # ########################################################################
@@ -9959,12 +9973,6 @@ checksum times will vary, but query checksum sizes will not. Another way to do
 the same thing is to specify a value for L<"--chunk-size"> explicitly, instead
 of leaving it at the default.
 
-=item --[no]check-for-updates
-
-default: yes
-
-XXX TODO DOCS
-
 =item --columns
 
 short form: -c; type: array; group: Filter
@@ -9977,6 +9985,8 @@ type: Array; group: Config
 
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
+
+See the L<"--help"> output for a list of default config files.
 
 =item --[no]create-replicate-table
 
@@ -10406,6 +10416,24 @@ User for login if not current user.
 group: Help
 
 Show version and exit.
+
+=item --[no]version-check
+
+default: yes
+
+Send program versions to Percona and print suggested upgrades and problems.
+
+The version check feature causes the tool to send and receive data from
+Percona over the web.  The data contains program versions from the local
+machine.  Percona uses the data to focus development on the most widely
+used versions of programs, and to suggest to customers possible upgrades
+and known bad versions of programs.
+
+This feature can be disabled by specifying C<--no-version-check> on the
+command line or in one of several L<"--config"> files, or by setting the
+environment variable C<PERCONA_VERSION_CHECK=0>.
+
+For more information, visit L<http://www.percona.com/version-check>.
 
 =item --where
 
