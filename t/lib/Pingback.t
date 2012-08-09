@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use PerconaTest;
+
 use Pingback;
 
 my @requests;
@@ -18,24 +20,25 @@ my @requests;
    package FakeUA;
 
    sub new { bless $_[1], $_[0] }
-   sub get { shift @{ $_[0] } }
-   sub post { push @requests, $_[2]; }
+   sub request {
+      my ($self, $type, $url, $content) = @_;
+
+      if ( $type ne 'GET' ) {
+         push @requests, $content;
+      }
+      return shift @{ $self };
+   }
 }
 
 my $fake_ua = FakeUA->new([
-   { status => 200, content => '$PerconaTest::Pingback::counter++; +{ some => "data" }' },
-   { status => 200 },
-   { status => 200, content => 'code_that_fails() !!!::,.-' },
+   { status => 200, content => "Perl;perl_variable;PERL_VERSION\nData::Dumper;perl_variable\n" }, # GET 1
+   { status => 200, }, # POST 1
+   { status => 200, content => "Perl;perl_variable;PERL_VERSION\nMySQL;mysql_variable;version_comment,version\n", }, # GET 2
+   { status => 200, }, # POST 2
 ]);
 
-$PerconaTest::Pingback::counter = 0;
-Pingback::pingback('http://www.percona.com/fake_url', $fake_ua);
-
-is(
-   $PerconaTest::Pingback::counter,
-   1,
-   "If the GET returns with status 200 and there's content, it's executed as Perl code"
-);
+@requests = ();
+Pingback::pingback('http://www.percona.com/fake_url', undef, $fake_ua);
 
 is(
    scalar @requests,
@@ -43,34 +46,50 @@ is(
    "..and it sends one request"
 );
 
-is(
-   $requests[0]->{content},
-   '{"some":"data"}',
-   "..which was obtained through the eval'd text"
-);
-
-@requests = ();
-Pingback::pingback('http://www.percona.com/fake_url', $fake_ua);
-
+my $v = sprintf('Perl,%vd', $^V);
 like(
    $requests[0]->{content},
-   qr/"perl_version":"$]"/,
-   "if the server doesn't return any code, checks the defaults"
-);
-
-@requests = ();
-Pingback::pingback('http://www.percona.com/fake_url', $fake_ua);
-
-like(
-   $requests[0]->{content},
-   qr/"perl_version":"$]"/,
-   "returns the defaults if the code returned by the server failed"
+   qr/\Q$v/,
+   "..which has the expected version of Perl"
 );
 
 like(
    $requests[0]->{content},
-   qr/"check_code_error":/,
-   "..plus an item for the error",
+   qr/\Q$Data::Dumper::VERSION/,
+   "..and the expected D::D version"
 );
+
+#@requests = ();
+#my ($out) = full_output( sub { Pingback::pingback('http://www.percona.com/fake_url', undef, $fake_ua) } );
+# 
+
+use DSNParser;
+use Sandbox;
+my $dp  = DSNParser->new(opts=>$dsn_opts);
+my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('master');
+SKIP: {
+   skip 'Cannot connect to sandbox master', 3 unless $dbh;
+
+   my (undef, $mysql_version)
+      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
+   my (undef, $mysql_version_comment)
+      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
+      
+   @requests = ();
+   Pingback::pingback('http://www.percona.com/fake_url', $dbh, $fake_ua);
+
+   like(
+      $requests[0]->{content},
+      qr/\Q$v/,
+      "Second request has the expected version of Perl"
+   );
+
+   like(
+      $requests[0]->{content},
+      qr/\Q$mysql_version_comment $mysql_version/,
+      "..and gets the MySQL version"
+   );
+}
 
 done_testing;

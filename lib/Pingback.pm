@@ -7,43 +7,34 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 local $EVAL_ERROR;
 eval {
-   require HTTP::Tiny;
-   require Transformers;
+   require HTTPMicro;
+   require VersionCheck;
 };
 
 sub pingback {
-   my ($url, $ua) = @_;
-   $ua ||= HTTP::Tiny->new( verify_ssl => 1 );
+   my ($url, $dbh, $ua) = @_; # pingback($url, $dbh[, $ua])
+   $ua ||= HTTP::Micro->new();
 
-   my $response = $ua->get($url);
+   my $response = $ua->request('GET', $url);
 
    if ( $response->{status} >= 500
-         || (exists $response->{reason} && !exists $response->{content}) )
+         ||  exists $response->{reason}
+         || !exists $response->{content} )
    {
       return;
    }
 
-   my $checks = $response->{content}
-              ? eval($response->{content})
-              : _default_checks();
-   my $e = $EVAL_ERROR;
-   $checks ||= _default_checks();
-   $checks->{check_code_error} = $e if $EVAL_ERROR;
+   my $items  = VersionCheck->parse_server_response(response => $response->{content});
+   my $checks = VersionCheck->get_versions(items => $items, dbh => $dbh);
 
-   my $options = {
-      headers  => { 'content-type'   => 'application/json', },
-      content  => Transformers::encode_json($checks),
-   };
+   my $options = { content => encode_to_plaintext($checks) };
 
-   return $ua->post($url, $options);
+   return $ua->request('POST', $url, $options);
 }
 
-sub _default_checks {
-   return +{
-         perl_version      => $],
-         DBD_mysql_version => $DBD::mysql::VERSION || 'N/A',
-         operating_system  => $^O eq "MSWin32" ? Win32::GetOSName() : $^O,
-   };
+sub encode_to_plaintext {
+   my $data = shift;
+   return join "\n", map { "$_,$data->{$_}" } keys %$data;
 }
 
 1;
