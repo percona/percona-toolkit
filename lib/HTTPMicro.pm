@@ -34,7 +34,7 @@ use Carp ();
 
 my @attributes;
 BEGIN {
-    @attributes = qw(agent default_headers timeout);
+    @attributes = qw(agent timeout);
     no strict 'refs';
     for my $accessor ( @attributes ) {
         *{$accessor} = sub {
@@ -85,11 +85,6 @@ sub request {
     return $response;
 }
 
-my %DefaultPort = (
-    http => 80,
-    https => 443,
-);
-
 sub _request {
     my ($self, $method, $url, $args) = @_;
 
@@ -98,7 +93,7 @@ sub _request {
     my $request = {
         method    => $method,
         scheme    => $scheme,
-        host_port => ($port == $DefaultPort{$scheme} ? $host : "$host:$port"),
+        host_port => ($port == 80 ? $host : "$host:$port"),
         uri       => $path_query,
         headers   => {},
     };
@@ -128,7 +123,7 @@ sub _request {
 sub _prepare_headers_and_cb {
     my ($self, $request, $args) = @_;
 
-    for ($self->{default_headers}, $args->{headers}) {
+    for ($args->{headers}) {
         next unless defined;
         while (my ($k, $v) = each %$_) {
             $request->{headers}{lc $k} = $v;
@@ -162,7 +157,7 @@ sub _split_url {
     my $port = do {
        $host =~ s/:([0-9]*)\z// && length $1
          ? $1
-         : ($scheme eq 'http' ? 80 : $scheme eq 'https' ? 443 : undef);
+         : ($scheme eq 'http' ? 80 : undef);
     };
 
     return ($scheme, $host, $port, $path_query);
@@ -198,23 +193,11 @@ sub new {
     }, $class;
 }
 
-my $ssl_verify_args = {
-    check_cn => "when_only",
-    wildcards_in_alt => "anywhere",
-    wildcards_in_cn => "anywhere"
-};
-
 sub connect {
     @_ == 4 || croak(q/Usage: $handle->connect(scheme, host, port)/);
     my ($self, $scheme, $host, $port) = @_;
 
-    if ( $scheme eq 'https' ) {
-        eval "require IO::Socket::SSL"
-            unless exists $INC{'IO/Socket/SSL.pm'};
-        croak(qq/IO::Socket::SSL must be installed for https support/)
-            unless $INC{'IO/Socket/SSL.pm'};
-    }
-    elsif ( $scheme ne 'http' ) {
+    if ( $scheme ne 'http' ) {
       croak(qq/Unsupported URL scheme '$scheme'/);
     }
 
@@ -228,14 +211,6 @@ sub connect {
 
     binmode($self->{fh})
       or croak(qq/Could not binmode() socket: '$!'/);
-
-    if ( $scheme eq 'https') {
-        IO::Socket::SSL->start_SSL($self->{fh});
-        ref($self->{fh}) eq 'IO::Socket::SSL'
-            or die(qq/SSL connection failed for $host\n/);
-        $self->{fh}->verify_hostname( $host, $ssl_verify_args )
-            or die(qq/SSL certificate not valid for $host\n/);
-    }
 
     $self->{host} = $host;
     $self->{port} = $port;
