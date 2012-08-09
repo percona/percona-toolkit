@@ -79,11 +79,11 @@ test_pingback(
    # Client gets this from the server:
    get  => [
       { status  => 200,
-        content => "Perl;perl_variable;PERL_VERSION\nData::Dumper;perl_variable\n",
+        content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
       },
    ],
    # And it responds with this:
-   post => "Data::Dumper;perl_variable;$dd_ver\nPerl;perl_variable;$perl_ver\n",
+   post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
 );
 
 # #############################################################################
