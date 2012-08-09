@@ -177,6 +177,7 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox") if $dbh;
+ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox")
+   if $dbh;
 done_testing;
 exit;
