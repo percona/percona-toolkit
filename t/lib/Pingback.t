@@ -68,7 +68,7 @@ sub test_pingback {
    );
 
    is(
-      $post,
+      $post->{content},
       $args{post},
       "$args{name} client response"
    )

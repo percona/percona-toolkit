@@ -28,6 +28,7 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use File::Basename ();
 use Data::Dumper ();
 
 sub Dumper {
@@ -43,6 +44,20 @@ eval {
    require HTTPMicro;
    require VersionCheck;
 };
+
+sub ping_for_updates {
+   my (%args) = @_;
+   my $advice = "";
+   my $response = pingback(%args);
+
+   PTDEBUG && _d('Server response:', Dumper($response));
+   if ( $response && $response->{success} ) {
+      $advice = $response->{content};
+      $advice =~ s/\r\n/\n/g; # Normalize linefeeds
+   }
+
+   return $advice;
+}
 
 sub pingback {
    my (%args) = @_;
@@ -90,13 +105,21 @@ sub pingback {
    );
    return unless scalar keys %$versions;
 
-   # Join the items and whatever veersions are available and re-encode
+   # Join the items and whatever versions are available and re-encode
    # them in same simple plaintext item-per-line protocol, and send
    # it back to Percona.
-   my $client_response = encode_client_response(
+   my $client_content = encode_client_response(
       items    => $items,
       versions => $versions,
    );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+
+   PTDEBUG && _d('Sending back to the server:', Dumper($response));
+   
    return $ua->request('POST', $url, $client_response);
 }
 
