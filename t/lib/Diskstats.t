@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 108;
+use Test::More;
 
 use PerconaTest;
 
@@ -518,7 +518,7 @@ for my $test (
       ok(
          no_diff(
             sub {
-               open my $fh, "<", $file_with_trunk or die $!;
+               open my $fh, "<", $file_with_trunk or die $!; # "<">"
                $obj->group_by(filehandle => $fh);
             },
             $expected,
@@ -575,6 +575,32 @@ EOF
 }
 
 # ###########################################################################
+# --group-by sample + --devices-regex show the wrong device
+# https://bugs.launchpad.net/percona-toolkit/+bug/1035311
+# ###########################################################################
+my $sample_obj = DiskstatsGroupBySample->new( OptionParser => $o, devices_regex => qr/./ );
+
+$sample_obj->ordered_devs( [ "aaaa", "bbbb" ] );
+
+for (
+   [ 1, "aaaa", "with 1 dev shows the first device" ],
+   [ 5, "{5}",  'with 5 devs shows "{5}"'],
+   [ 2, "{2}",  'with 2 devs shows "{2}"' ],
+   [ 1, "bbbb", 'with 1 devs and a filtering devices_regex, shows "bbbb"'],
+)
+{
+   my ($num_devs, $expected, $test) = @$_;
+   is(
+      $sample_obj->compute_dev($num_devs),
+      $expected,
+      "DiskstatsGroupBySample->compute_dev $test"
+   );
+
+   # After the first iteration, change the 
+   $sample_obj->set_devices_regex(qr/^bbbb/);
+}
+
+# ###########################################################################
 # Done.
 # ###########################################################################
-exit;
+done_testing;
