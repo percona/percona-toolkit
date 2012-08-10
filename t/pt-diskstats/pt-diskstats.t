@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 25;
+use Test::More;
 
 use File::Temp ();
 
@@ -127,6 +127,16 @@ test_diskstats_file(
 );
 
 # ###########################################################################
+# --group-by sample + --devices-regex show the wrong device name
+# https://bugs.launchpad.net/percona-toolkit/+bug/1035311
+# ###########################################################################
+test_diskstats_file(
+   file     => "bug-1035311.txt",
+   commands => [ "S", "/", 'xvdb1', "q" ],
+   options  => [],
+);
+
+# ###########################################################################
 # --save-samples and --iterations
 # ###########################################################################
 
@@ -161,7 +171,7 @@ ok(
 # ###########################################################################
 # Done.
 # ###########################################################################
-exit;
+done_testing;
 
 __DATA__
 Leave this here!
