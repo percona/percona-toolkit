@@ -41,7 +41,17 @@ sub Dumper {
 
 sub new {
    my ($class, %args) = @_;
-   return bless {}, $class;
+   my $self = {
+      valid_types => qr/
+         ^(?:
+             os_version
+            |perl_version
+            |perl_module_version
+            |mysql_variable
+            |bin_version
+         )$/x,
+   };
+   return bless $self, $class;
 }
 
 sub parse_server_response {
@@ -103,6 +113,13 @@ sub get_versions {
 
 sub valid_item {
    my ($self, $item) = @_;
+   return unless $item;
+
+   if ( ($item->{type} || '') !~ m/$self->{valid_types}/ ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return;
+   }
+
    return 1;
 }
 

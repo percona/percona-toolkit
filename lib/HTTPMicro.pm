@@ -138,6 +138,7 @@ sub _prepare_headers_and_cb {
         utf8::downgrade($args->{content}, 1)
             or Carp::croak(q/Wide character in request message body/);
         $request->{headers}{'content-length'} = length $args->{content};
+        $request->{content} = $args->{content};
     }
     return;
 }

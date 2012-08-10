@@ -38,7 +38,17 @@ sub Dumper {
 
 sub new {
    my ($class, %args) = @_;
-   return bless {}, $class;
+   my $self = {
+      valid_types => qr/
+         ^(?:
+             os_version
+            |perl_version
+            |perl_module_version
+            |mysql_variable
+            |bin_version
+         )$/x,
+   };
+   return bless $self, $class;
 }
 
 sub parse_server_response {
@@ -100,6 +110,13 @@ sub get_versions {
 
 sub valid_item {
    my ($self, $item) = @_;
+   return unless $item;
+
+   if ( ($item->{type} || '') !~ m/$self->{valid_types}/ ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return;
+   }
+
    return 1;
 }
 
@@ -386,6 +403,7 @@ sub _prepare_headers_and_cb {
         utf8::downgrade($args->{content}, 1)
             or Carp::croak(q/Wide character in request message body/);
         $request->{headers}{'content-length'} = length $args->{content};
+        $request->{content} = $args->{content};
     }
     return;
 }
@@ -7883,13 +7901,14 @@ sub main {
             # TODO: how to format this?
             print "--version-check advice:\n";
             print join("\n", map { "  * $_" } @$advice);
+            print "\n";
          }
       };
       if ( $EVAL_ERROR ) {
          PTDEBUG && _d('Error doing --version-check:', $EVAL_ERROR);
       }
    }
-   
+
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
