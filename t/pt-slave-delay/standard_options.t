@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More ;
+use Test::More;
 
 use PerconaTest;
 use Sandbox;
@@ -24,31 +24,24 @@ if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to second sandbox master';
-}
-else {
-   plan tests => 9;
+   plan skip_all => 'Cannot connect to sandbox slave1';
 }
 
 my $output;
 my $cmd = "$trunk/bin/pt-slave-delay -F /tmp/12346/my.sandbox.cnf h=127.1";
+my $pid_file = "/tmp/pt-slave-delay-test.$PID";
 
 # Check daemonization
-system("$cmd --delay 1m --interval 1s --run-time 5s --daemonize --pid /tmp/mk-slave-delay.pid");
-$output = `ps -eaf | grep 'mk-slave-delay' | grep ' \-\-delay 1m '`;
+system("$cmd --delay 1m --interval 1s --run-time 5s --daemonize --pid $pid_file 2>&1");
+PerconaTest::wait_for_files($pid_file);
+chomp(my $pid = `cat $pid_file`);
+$output = `ps x | grep "^[ ]*$pid"`;
 like($output, qr/$cmd/, 'It lives daemonized');
-
-ok(-f '/tmp/mk-slave-delay.pid', 'PID file created');
-my ($pid) = $output =~ /\s+(\d+)\s+/;
-$output = `cat /tmp/mk-slave-delay.pid`;
-# If this test fails, it may be because another instances of
-# mk-slave-delay is running.
-is($output, $pid, 'PID file has correct PID');
 
 # Kill it
 diag(`kill $pid`);
 wait_until(sub{!kill 0, $pid});
-ok(! -f '/tmp/mk-slave-delay.pid', 'PID file removed');
+ok(! -f $pid_file, 'PID file removed');
 
 # #############################################################################
 # Check that SLAVE-HOST can be given by cmd line opts.
@@ -99,4 +92,5 @@ like(
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

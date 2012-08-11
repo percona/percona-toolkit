@@ -46,7 +46,6 @@ my $output;
 # the child should restart the slave, and the tool should report
 # that it reconnected and did some work, ending with "Setting slave
 # to run normally".
-diag('Running...');
 my $pid = fork();
 if ( $pid ) {
    # parent
@@ -65,7 +64,6 @@ else {
    diag(`/tmp/12346/start >/dev/null`);
    # Ensure we don't break the sandbox -- instance 12347 will be disconnected
    # when its master gets rebooted
-   diag("Restarting slave on instance 12347 after restarting instance 12346");
    diag(`/tmp/12347/use -e "stop slave; start slave"`);
    exit;
 }
