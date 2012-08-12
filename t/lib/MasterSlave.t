@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "lib/MasterSlave.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
+
 use MasterSlave;
 use DSNParser;
 use VersionParser;

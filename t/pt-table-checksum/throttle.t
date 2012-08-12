@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "pt-table-checksum/throttle.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
+
 $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;

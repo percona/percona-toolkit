@@ -11,6 +11,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "pt-table-checksum/replication_filters.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
+
+
 # Hostnames make testing less accurate.  Tests need to see
 # that such-and-such happened on specific slave hosts, but
 # the sandbox servers are all on one host so all slaves have

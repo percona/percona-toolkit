@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More tests => 4;
 
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "pt-fifo-split/pt-fifo-split. is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
+
 use PerconaTest;
 require "$trunk/bin/pt-fifo-split";
 
