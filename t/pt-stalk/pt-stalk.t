@@ -23,9 +23,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 27;
-}
 
 my $cnf      = "/tmp/12345/my.sandbox.cnf";
 my $pid_file = "/tmp/pt-stalk.pid.$PID";
@@ -282,6 +279,28 @@ ok(
    "Not stalking, pt-stalk is not running"
 );
 
+# ############################################################################
+# bad "find" usage in purge_samples gives 
+# https://bugs.launchpad.net/percona-toolkit/+bug/942114
+# ############################################################################
+
+use File::Temp qw( tempdir );
+
+my $tempdir = tempdir( CLEANUP => 1 );
+
+my $script = <<"EOT";
+. $trunk/bin/pt-stalk
+purge_samples $tempdir 10000 2>&1
+EOT
+
+$output = `$script`;
+
+unlike(
+   $output,
+   qr/\Qfind: warning: you have specified the -depth option/,
+   "Bug 942114: no bad find usage"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -289,4 +308,5 @@ diag(`rm $pid_file 2>/dev/null`);
 diag(`rm $log_file 2>/dev/null`);
 diag(`rm -rf $dest 2>/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
