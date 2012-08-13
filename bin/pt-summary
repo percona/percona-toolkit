@@ -30,7 +30,7 @@ PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
-   TS=$(date +%F-%T | tr :- _);
+   TS=$(date +%F-%T | tr ':-' '_');
    echo "$TS $*"
 }
 
@@ -129,7 +129,7 @@ usage_or_errors() {
       echo "Options and values after processing arguments:"
       echo
       for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+         local varname="OPT_$(echo "$opt" | tr 'a-z-' 'A-Z_')"
          local varvalue="${!varname}"
          if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
             if [ "$varvalue" -a "$varvalue" = "yes" ];
@@ -247,7 +247,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -413,7 +413,7 @@ _parse_command_line() {
       fi
 
       if [ "$opt_is_ok" ]; then
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          if grep "^type:size" "$spec" >/dev/null; then
             val=$(size_to_bytes $val)
