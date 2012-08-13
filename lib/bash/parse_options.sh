@@ -119,7 +119,7 @@ usage_or_errors() {
       echo "Options and values after processing arguments:"
       echo
       for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+         local varname="OPT_$(echo "$opt" | tr 'a-z-' 'A-Z_')"
          local varvalue="${!varname}"
          if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
             # Typeless option, like --version, so it's given/TRUE
@@ -271,7 +271,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -482,7 +482,7 @@ _parse_command_line() {
 
       if [ "$opt_is_ok" ]; then
          # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          # Convert sizes.
          if grep "^type:size" "$spec" >/dev/null; then
