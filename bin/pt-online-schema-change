@@ -7991,6 +7991,17 @@ If you add a column without a default value and make it NOT NULL, the tool
 will fail, as it will not try to guess a default value for you; You must
 specify the default.
 
+=item *
+
+C<DROP FOREIGN KEY constraint_name> requires specifying C<_constraint_name>
+rather than the real C<constraint_name>.  Due to a limitation in MySQL,
+pt-online-schema-change adds a leading underscore to foreign key constraint
+names when creating the new table.  For example, to drop this contraint:
+
+  CONSTRAINT `fk_foo` FOREIGN KEY (`foo_id`) REFERENCES `bar` (`foo_id`)
+
+You must specify C<--alter "DROP FOREIGN KEY _fk_foo">.
+
 =back
 
 =item --alter-foreign-keys-method
