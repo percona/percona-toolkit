@@ -9678,9 +9678,9 @@ DSN table database.
 
 =item * F
 
-dsn: mysql_read_default_file; copy: no
+dsn: mysql_read_default_file; copy: yes
 
-Only read default options from the given file
+Defaults file for connection values.
 
 =item * h
 
