@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 4;
+use Test::More;
 
 if ( !$ENV{SLOW_TESTS} ) {
    plan skip_all => "pt-fifo-split/pt-fifo-split. is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
@@ -63,4 +63,5 @@ unlink '/tmp/pt-script.pid';
 # #############################################################################
 # Done.
 # #############################################################################
+done_testing;
 exit;
