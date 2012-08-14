@@ -200,7 +200,7 @@ parse_options() {
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
 
-   _parse_command_line "$@"
+   _parse_command_line "${@:-""}"
 }
 
 _parse_pod() {
@@ -292,7 +292,7 @@ _eval_po() {
 
 _parse_config_files() {
 
-   for config_file in "$@"; do
+   for config_file in "${@:-""}"; do
       test -f "$config_file" || continue
 
       while read config_opt; do
@@ -326,7 +326,7 @@ _parse_command_line() {
    local required_arg=""
    local spec=""
 
-   for opt in "$@"; do
+   for opt in "${@:-""}"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
          HAVE_EXT_ARGV=1
          continue
@@ -2180,14 +2180,13 @@ sigtrap() { local PTFUNCNAME=sigtrap;
 
 # Execute the program if it was not included from another file.  This makes it
 # possible to include without executing, and thus test.
-set +u
 if    [ "${0##*/}" = "$TOOL" ] \
    || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
-set -u
+
    # Set up temporary dir.
    mk_tmpdir
    # Parse command line options.
-   parse_options "$0" "$@"
+   parse_options "$0" "${@:-""}"
    usage_or_errors "$0"
    po_status=$?
    rm_tmpdir
@@ -2196,7 +2195,7 @@ set -u
       exit $po_status
    fi
 
-   main "$@"
+   main "${@:-""}"
 fi
 
 
