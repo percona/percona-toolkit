@@ -444,7 +444,6 @@ SKIP: {
 
    $d = new RowDiff(dbh => $master_dbh);
 
-   diag(`$trunk/sandbox/mk-test-env reset >/dev/null 2>&1`);
    $sb->create_dbs($master_dbh, [qw(test)]);
    $sb->load_file('master', 't/lib/samples/issue_11.sql');
    PerconaTest::wait_until(
