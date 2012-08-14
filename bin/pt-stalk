@@ -121,19 +121,22 @@ usage_or_errors() {
       echo
       echo "Options and values after processing arguments:"
       echo
-      for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
-         local varvalue="${!varname}"
-         if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
-            if [ "$varvalue" -a "$varvalue" = "yes" ];
-               then varvalue="TRUE"
-            else
-               varvalue="FALSE"
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
             fi
-         fi
-         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
-         echo
-      done
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
       return 1
    fi
 
@@ -193,7 +196,7 @@ parse_options() {
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
 
-   _parse_command_line "$@"
+   _parse_command_line "${@:-""}"
 }
 
 _parse_pod() {
@@ -285,7 +288,7 @@ _eval_po() {
 
 _parse_config_files() {
 
-   for config_file in "$@"; do
+   for config_file in "${@:-""}"; do
       test -f "$config_file" || continue
 
       while read config_opt; do
@@ -319,7 +322,7 @@ _parse_command_line() {
    local required_arg=""
    local spec=""
 
-   for opt in "$@"; do
+   for opt in "${@:-""}"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
          HAVE_EXT_ARGV=1
          continue
@@ -1197,7 +1200,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    # Parse command line options.  We must do this first so we can
    # see if --daemonize was specified.
    mk_tmpdir
-   parse_options "$0" "$@"
+   parse_options "$0" "${@:-""}"
 
    # Verify and set TRIGGER_FUNCTION based on --function.
    if ! set_trg_func "$OPT_FUNCTION"; then
@@ -1264,7 +1267,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       # the child's PID.
       make_pid_file "$OPT_PID" $$
 
-      main "$@" </dev/null 1>>"$OPT_LOG" 2>&1 &
+      main "${@:-""}" </dev/null 1>>"$OPT_LOG" 2>&1 &
 
       # Update PID file with the child's PID.
       # The child PID is $BASHPID but that special var is only
@@ -1273,7 +1276,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
       echo "$!" > "$OPT_PID"
    else
       [ "$OPT_STALK" ] && make_pid_file "$OPT_PID" $$
-      main "$@"
+      main "${@:-""}"
    fi
 fi
 
