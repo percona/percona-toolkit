@@ -108,18 +108,7 @@ use Data::Dumper;
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
       unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
-         no strict;
          if ( -t STDIN ) { warn "STD is tty\n"; }
-         Dump(STDIN);
-         Dump(F_SETFL);
-         Dump($flags);
-         warn "STDIN=",Dumper(STDIN);
-         warn "SETFL=",Dumper(F_SETFL);
-         warn "*STDIN=", Dumper(*STDIN);
-         warn "fd_stdin=", Dumper($fd_stdin);
-         warn "flags=", Dumper($flags);
-         warn "tell=",tell(STDIN), "\n";
-         warn `ls -l /proc/$PID/*`, "\n";
          fcntl(STDIN, F_SETFL, int($flags))
                         or warn "can't fcntl F_SETFL: $!";
       }
