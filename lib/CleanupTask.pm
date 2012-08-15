@@ -57,9 +57,9 @@ sub DESTROY {
       PTDEBUG && _d('Calling cleanup task', $task);
       # Temporarily restore STDOUT and STDERR to what they were
       # when the object was created
-      open local *STDOUT, ">&=", $self->{stdout_copy}
+      open local(*STDOUT), ">&=", $self->{stdout_copy}
          if $self->{stdout_copy};
-      open local *STDERR, ">&=", $self->{stderr_copy}
+      open local(*STDERR), ">&=", $self->{stderr_copy}
          if $self->{stderr_copy};
       $task->();
    }
