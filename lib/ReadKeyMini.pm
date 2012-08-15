@@ -68,6 +68,8 @@ my %modes = (
 # This primarily comes from the Perl Cookbook, recipe 15.8
 
 {
+use Devel::Peek;
+use Data::Dumper;
 
    my $fd_stdin = fileno(STDIN);
    my $flags;
@@ -100,12 +102,18 @@ my %modes = (
       $term->setcc( VTIME, 1 );
       $term->setattr( $fd_stdin, TCSANOW );
    }
-use Data::Dumper;
+
    sub cooked {
       $term->setlflag($oterm);
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
       unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
+         no strict;
+         Dump(STDIN);
+         Dump(F_SETFL);
+         Dump($flags);
+         warn "STDIN=",Dumper(STDIN);
+         warn "SETFL=",Dumper(F_SETFL);
          warn "*STDIN=", Dumper(*STDIN);
          warn "fd_stdin=", Dumper($fd_stdin);
          warn "flags=", Dumper($flags);
