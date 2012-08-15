@@ -15,7 +15,7 @@ use File::Temp qw( tempfile );
 use Daemon;
 use OptionParser;
 use PerconaTest;
-plan skip_all => "Hm";
+#plan skip_all => "Hm";
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
 my $o = new OptionParser(file => "$trunk/t/lib/samples/daemonizes.pl");
