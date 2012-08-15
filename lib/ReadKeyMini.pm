@@ -108,7 +108,7 @@ use Data::Dumper;
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
       unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
-         if ( -t STDIN ) { warn "STD is tty\n"; }
+         # if ( -t STDIN ) { warn "STD is tty\n"; }
          fcntl(STDIN, F_SETFL, int($flags))
                         or warn "can't fcntl F_SETFL: $!";
       }
