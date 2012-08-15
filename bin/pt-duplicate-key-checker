@@ -2188,8 +2188,9 @@ sub get_duplicate_keys {
 
    my $clustered_key = $args{clustered_key} ? $keys{$args{clustered_key}}
                      : undef;
-   PTDEBUG && _d('clustered key:', $clustered_key->{name},
-      $clustered_key->{colnames});
+   PTDEBUG && _d('clustered key:',
+      $clustered_key ? ($clustered_key->{name}, $clustered_key->{colnames})
+                     : 'none');
    if ( $clustered_key
         && $args{clustered}
         && $args{tbl_info}->{engine}
@@ -3404,74 +3405,74 @@ sub main {
    );
    TABLE:
    while ( my $tbl = $schema_itr->next() ) {
-      $tbl->{engine} = $tbl->{tbl_struct}->{engine};
+      eval {
+         $tbl->{engine} = $tbl->{tbl_struct}->{engine};
 
-      my ($keys, $clustered_key, $fks);
-      if ( $get_keys ) {
-         ($keys, $clustered_key)
-            = $tp->get_keys($tbl->{ddl}, {});
-      }
-      if ( $get_fks ) {
-         $fks = $tp->get_fks($tbl->{ddl},  {database => $tbl->{db}});
-      }
-
-      next TABLE unless ($keys && %$keys) || ($fks && %$fks);
-
-      if ( $o->got('verbose') ) {
-         print_all_keys($keys, $tbl, \%seen_tbl) if $keys;
-         print_all_keys($fks,  $tbl, \%seen_tbl) if $fks;
-      }
-      else {
-         PTDEBUG && _d('Getting duplicate keys on', $tbl->{db}, $tbl->{tbl});
-         eval {
-            if ( $keys ) {
-               $dk->get_duplicate_keys(
-                  $keys,
-                  clustered_key => $clustered_key,
-                  tbl_info      => $tbl,
-                  callback      => \&print_duplicate_key,
-                  %tp_opts,
-                  # get_duplicate_keys() ignores these args but passes them
-                  # to the callback:
-                     dbh      => $dbh,
-                     is_fk    => 0,
-                     o        => $o,
-                     ks       => $ks,
-                     tp       => $tp,
-                     q        => $q,
-                     seen_tbl => \%seen_tbl,
-                     summary  => \%summary,
-               );
-            }
-            if ( $fks ) {
-               $dk->get_duplicate_fks(
-                  $fks,
-                  tbl_info => $tbl,
-                  callback => \&print_duplicate_key,
-                  %tp_opts,
-                  # get_duplicate_fks() ignores these args but passes them
-                  # to the callback:
-                     dbh   => $dbh,
-                     is_fk => 1,
-                     o     => $o,
-                     ks    => $ks,
-                     tp       => $tp,
-                     q        => $q,
-                     seen_tbl => \%seen_tbl,
-                     summary  => \%summary,
-               );
-            }
-         };
-         if ( $EVAL_ERROR ) {
-            warn "Error checking `$tbl->{db}`.`$tbl->{tbl}` for duplicate keys: "
-               . $EVAL_ERROR;
-            next TABLE;
+         my ($keys, $clustered_key, $fks);
+         if ( $get_keys ) {
+            ($keys, $clustered_key)
+               = $tp->get_keys($tbl->{ddl}, {});
          }
-      }
+         if ( $get_fks ) {
+            $fks = $tp->get_fks($tbl->{ddl},  {database => $tbl->{db}});
+         }
 
-      # Always count Total Keys so print_key_summary won't die
-      # because %summary is empty.
-      $summary{'Total Indexes'} += (scalar keys %$keys) + (scalar keys %$fks)
+         if ( ($keys && %$keys) || ($fks && %$fks) ) {
+            if ( $o->got('verbose') ) {
+               print_all_keys($keys, $tbl, \%seen_tbl) if $keys;
+               print_all_keys($fks,  $tbl, \%seen_tbl) if $fks;
+            }
+            else {
+               PTDEBUG && _d('Getting duplicate keys on',
+                  $tbl->{db}, $tbl->{tbl});
+               if ( $keys ) {
+                  $dk->get_duplicate_keys(
+                     $keys,
+                     clustered_key => $clustered_key,
+                     tbl_info      => $tbl,
+                     callback      => \&print_duplicate_key,
+                     %tp_opts,
+                     # get_duplicate_keys() ignores these args but passes them
+                     # to the callback:
+                        dbh      => $dbh,
+                        is_fk    => 0,
+                        o        => $o,
+                        ks       => $ks,
+                        tp       => $tp,
+                        q        => $q,
+                        seen_tbl => \%seen_tbl,
+                        summary  => \%summary,
+                  );
+               }
+               if ( $fks ) {
+                  $dk->get_duplicate_fks(
+                     $fks,
+                     tbl_info => $tbl,
+                     callback => \&print_duplicate_key,
+                     %tp_opts,
+                     # get_duplicate_fks() ignores these args but passes them
+                     # to the callback:
+                        dbh   => $dbh,
+                        is_fk => 1,
+                        o     => $o,
+                        ks    => $ks,
+                        tp       => $tp,
+                        q        => $q,
+                        seen_tbl => \%seen_tbl,
+                        summary  => \%summary,
+                  );
+               }
+            }
+
+            # Always count Total Keys so print_key_summary won't die
+            # because %summary is empty.
+            $summary{'Total Indexes'} += (scalar keys %$keys)
+                                       + (scalar keys %$fks)
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         warn "Error checking $tbl->{db}.$tbl->{tbl}: $EVAL_ERROR";
+      }
    }  # TABLE
 
    print_key_summary(%summary) if $o->get('summary');

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 38;
+use Test::More;
 
 use VersionParser;
 use DuplicateKeyFinder;
@@ -786,4 +786,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+done_testing;
 exit;
