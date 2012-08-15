@@ -100,12 +100,14 @@ my %modes = (
       $term->setcc( VTIME, 1 );
       $term->setattr( $fd_stdin, TCSANOW );
    }
-
+use Data::Dumper;
    sub cooked {
       $term->setlflag($oterm);
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
       unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
+         warn Dumper($fd_stdin);
+         warn Dumper($flags);
          fcntl(STDIN, F_SETFL, $flags)
                         or warn "can't fcntl F_SETFL: $!";
       }
