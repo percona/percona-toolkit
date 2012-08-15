@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 108;
+use Test::More; # tests => 108;
 
 use PerconaTest;
 
@@ -304,7 +304,8 @@ is_deeply(
 #   "",
 #   "->show_inactive works"
 #);
-
+done_testing;
+exit;
 # ############################################################################
 # Sane defaults and fatal errors
 # ############################################################################
