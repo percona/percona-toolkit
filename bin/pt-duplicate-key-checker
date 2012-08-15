@@ -2188,8 +2188,9 @@ sub get_duplicate_keys {
 
    my $clustered_key = $args{clustered_key} ? $keys{$args{clustered_key}}
                      : undef;
-   PTDEBUG && _d('clustered key:', $clustered_key->{name},
-      $clustered_key->{colnames});
+   PTDEBUG && _d('clustered key:',
+      $clustered_key ? ($clustered_key->{name}, $clustered_key->{colnames})
+                     : 'none');
    if ( $clustered_key
         && $args{clustered}
         && $args{tbl_info}->{engine}
