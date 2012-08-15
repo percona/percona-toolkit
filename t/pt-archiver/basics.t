@@ -28,9 +28,6 @@ if ( !$master_dbh ) {
 elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
-else {
-   plan tests => 29;
-}
 
 my $output;
 my $rows;
@@ -188,55 +185,57 @@ cmp_ok(
 # #############################################################################
 # Bug 903387: pt-archiver doesn't honor b=1 flag to create SQL_LOG_BIN statement
 # #############################################################################
+SKIP: {
+   skip('LOAD DATA LOCAL INFILE is disabled', 3) if !$can_load_data;
+   $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
+   $sb->wait_for_slaves();
 
-$sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
-$sb->wait_for_slaves();
+   my $original_rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   is_deeply(
+      $original_rows,
+      [
+         [1, 'aa', '11:11:11'],
+         [2, 'bb', '11:11:12'],
+         [3, 'cc', '11:11:13'],
+         [4, 'dd', '11:11:14'],
+         [5, 'ee', '11:11:15'],
+         [6, 'ff', '11:11:16'],
+         [7, 'gg', '11:11:17'],
+         [8, 'hh', '11:11:18'],
+         [9, 'ii', '11:11:19'],
+         [10,'jj', '11:11:10'],
+      ],
+      "Bug 903387: slave has rows"
+   );
 
-my $original_rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
-is_deeply(
-   $original_rows,
-   [
-      [1, 'aa', '11:11:11'],
-      [2, 'bb', '11:11:12'],
-      [3, 'cc', '11:11:13'],
-      [4, 'dd', '11:11:14'],
-      [5, 'ee', '11:11:15'],
-      [6, 'ff', '11:11:16'],
-      [7, 'gg', '11:11:17'],
-      [8, 'hh', '11:11:18'],
-      [9, 'ii', '11:11:19'],
-      [10,'jj', '11:11:10'],
-   ],
-   "Bug 903387: slave has rows"
-);
+   $output = output(
+      sub { pt_archiver::main(
+         '--source', "D=bri,t=t,F=$cnf,b=1",
+         '--dest',   "D=bri,t=t_arch",
+         qw(--where 1=1 --replace --commit-each --bulk-insert --bulk-delete),
+         qw(--limit 10)) },
+   );
 
-$output = output(
-   sub { pt_archiver::main(
-      '--source', "D=bri,t=t,F=$cnf,b=1",
-      '--dest',   "D=bri,t=t_arch",
-      qw(--where 1=1 --replace --commit-each --bulk-insert --bulk-delete),
-      qw(--limit 10)) },
-);
+   $rows = $master_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   is_deeply(
+      $rows,
+      [
+         [10,'jj', '11:11:10'],
+      ],
+      "Bug 903387: rows deleted on master"
+   ) or diag(Dumper($rows));
 
-$rows = $master_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
-is_deeply(
-   $rows,
-   [
-      [10,'jj', '11:11:10'],
-   ],
-   "Bug 903387: rows deleted on master"
-) or diag(Dumper($rows));
-
-$rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
-is_deeply(
-   $rows,
-   $original_rows,
-   "Bug 903387: slave still has rows"
-) or diag(Dumper($rows));
-
+   $rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   is_deeply(
+      $rows,
+      $original_rows,
+      "Bug 903387: slave still has rows"
+   ) or diag(Dumper($rows));
+}
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
