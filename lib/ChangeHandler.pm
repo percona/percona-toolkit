@@ -488,7 +488,10 @@ sub make_fetch_back_query {
             my $col = $_;
             if (    $self->{hex_blob}
                  && $tbl_struct->{type_for}->{$col} =~ m/blob|text|binary/ ) {
-               $col = "IF(`$col`='', '', CONCAT('0x', HEX(`$col`))) AS `$col`";
+               # Here we cast to binary, as otherwise, since text columns are
+               # space padded, MySQL would compare ' ' and '' to be the same.
+               # See https://bugs.launchpad.net/percona-toolkit/+bug/930693
+               $col = "IF(BINARY(`$col`)='', '', CONCAT('0x', HEX(`$col`))) AS `$col`";
             }
             else {
                $col = "`$col`";
