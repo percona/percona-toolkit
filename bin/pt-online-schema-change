@@ -5650,9 +5650,9 @@ sub DESTROY {
    my $task = $self->{task};
    if ( ref $task ) {
       PTDEBUG && _d('Calling cleanup task', $task);
-      open local *STDOUT, ">&=", $self->{stdout_copy}
+      open local(*STDOUT), ">&=", $self->{stdout_copy}
          if $self->{stdout_copy};
-      open local *STDERR, ">&=", $self->{stderr_copy}
+      open local(*STDERR), ">&=", $self->{stderr_copy}
          if $self->{stderr_copy};
       $task->();
    }
