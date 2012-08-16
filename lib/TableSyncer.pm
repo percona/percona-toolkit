@@ -618,34 +618,6 @@ sub lock_and_wait {
    return $result;
 }
 
-# This query will check all needed privileges on the table without actually
-# changing anything in it.  We can't use REPLACE..SELECT because that doesn't
-# work inside of LOCK TABLES.  Returns 1 if user has all needed privs to
-# sync table, else returns 0.
-sub have_all_privs {
-   my ( $self, $dbh, $db, $tbl ) = @_;
-   my $db_tbl = $self->{Quoter}->quote($db, $tbl);
-   my $sql    = "SHOW FULL COLUMNS FROM $db_tbl";
-   PTDEBUG && _d('Permissions check:', $sql);
-   my $cols       = $dbh->selectall_arrayref($sql, {Slice => {}});
-   my ($hdr_name) = grep { m/privileges/i } keys %{$cols->[0]};
-   my $privs      = $cols->[0]->{$hdr_name};
-   $sql = "DELETE FROM $db_tbl LIMIT 0"; # FULL COLUMNS doesn't show all privs
-   PTDEBUG && _d('Permissions check:', $sql);
-   eval { $dbh->do($sql); };
-   my $can_delete = $EVAL_ERROR ? 0 : 1;
-
-   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
-      ($can_delete ? 'delete' : ''));
-   if ( $privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/ 
-        && $can_delete ) {
-      PTDEBUG && _d('User has all privs');
-      return 1;
-   }
-   PTDEBUG && _d('User does not have all privs');
-   return 0;
-}
-
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
