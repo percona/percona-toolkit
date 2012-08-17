@@ -6,7 +6,55 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      Percona::Toolkit
+      OptionParser
+      Mo
+      Quoter
+      DSNParser
+      VersionParser
+      TableSyncStream
+      TableParser
+      RowDiff
+      MySQLDump
+      ChangeHandler
+      TableChunker
+      TableChecksum
+      TableSyncChunk
+      TableSyncNibble
+      TableSyncGroupBy
+      TableSyncer
+      TableNibbler
+      MasterSlave
+      Daemon
+      SchemaIterator
+      Transformers
+      Retry
+   ));
+}
+
+# ###########################################################################
+# Percona::Toolkit package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/Toolkit.pm
+#   t/lib/Percona/Toolkit.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::Toolkit;
+our $VERSION = '2.1.3';
+1;
+}
+# ###########################################################################
+# End Percona::Toolkit package
+# ###########################################################################
 
 # ###########################################################################
 # OptionParser package
@@ -8244,6 +8292,7 @@ use Data::Dumper;
 
 Transformers->import(qw(time_to_secs any_unix_timestamp));
 
+use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 $OUTPUT_AUTOFLUSH = 1;

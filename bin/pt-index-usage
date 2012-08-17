@@ -6,7 +6,48 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      Percona::Toolkit
+      DSNParser
+      Quoter
+      OptionParser
+      PodParser
+      QueryParser
+      QueryRewriter
+      SlowLogParser
+      TableParser
+      Transformers
+      Schema
+      SchemaIterator
+      FileIterator
+      ExplainAnalyzer
+      IndexUsage
+      Progress
+   ));
+}
+
+# ###########################################################################
+# Percona::Toolkit package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/Toolkit.pm
+#   t/lib/Percona/Toolkit.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::Toolkit;
+our $VERSION = '2.1.3';
+1;
+}
+# ###########################################################################
+# End Percona::Toolkit package
+# ###########################################################################
 
 # ###########################################################################
 # DSNParser package
@@ -4823,11 +4864,14 @@ sub _d {
 # ###########################################################################
 package pt_index_usage;
 
+use strict;
+use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 $OUTPUT_AUTOFLUSH     = 1;
 
+use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 Transformers->import(qw(make_checksum));
@@ -4835,7 +4879,6 @@ Transformers->import(qw(make_checksum));
 # Global variables.  Only really essential variables should be here.
 my $oktorun = 1;
 
-if ( !caller ) { exit main(@ARGV); } # Run the program.
 sub main {
    @ARGV = @_;  # set global ARGV for this package
 
@@ -5427,6 +5470,11 @@ sub _d {
         @_;
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
+
+# ############################################################################
+# Run the program.
+# ############################################################################
+if ( !caller ) { exit main(@ARGV); }
 
 1; # Because this is a module as well as a script.
 
