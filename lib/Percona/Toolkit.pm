@@ -19,27 +19,7 @@
 # ###########################################################################
 {
 package Percona::Toolkit;
-
 our $VERSION = '2.1.3';
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = (qw(_d));
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
 1;
 }
 # ###########################################################################

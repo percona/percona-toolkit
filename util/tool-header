@@ -63,7 +63,7 @@ if ! grep -m 1 -q '^use ' $tool_file; then
    die "This only works for Perl tools"
 fi
 
-echo "#!/usr/bin/env perl 
+echo "#!/usr/bin/env perl
 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See \"COPYRIGHT, LICENSE, AND WARRANTY\" at the end of this file for legal
