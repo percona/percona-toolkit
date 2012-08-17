@@ -1,4 +1,4 @@
-#!/usr/bin/env   perl 
+#!/usr/bin/env perl 
 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
@@ -6,13 +6,22 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-# %INC magic to allow us to require/use these even within the big file.
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
 BEGIN {
-   $INC{$_} = __FILE__ for map {
-         (my $t = $_ . ".pm") =~ s!::!/!g; $t
-      } qw( OptionParser Transformers ReadKeyMini Diskstats DiskstatsGroupByAll DiskstatsGroupByDisk DiskstatsGroupBySample DiskstatsMenu pt_diskstats );
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      OptionParser
+      Transformers
+      ReadKeyMini
+      Diskstats
+      DiskstatsGroupByAll
+      DiskstatsGroupByDisk
+      DiskstatsGroupBySample
+      DiskstatsMenu
+   ));
 }
 
 # ###########################################################################
