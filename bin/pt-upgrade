@@ -8944,10 +8944,6 @@ sub _compare_rows {
 
       if ( !$right ) {
          PTDEBUG && _d('No results sth on host', $i);
-         $different_row_counts++;
-         $different_column_counts++;
-         $different_column_types++;
-         $different_column_values++;
          delete $event->{results_sth};
          next EVENT;
       }
