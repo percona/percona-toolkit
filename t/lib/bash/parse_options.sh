@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 81
+plan 83
 
 TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
 TOOL="pt-stalk"
@@ -245,6 +245,18 @@ is "$OPT_DISK_BYTES_FREE" "104857600" "Size: 100M"
 
 parse_options "$T_LIB_DIR/samples/bash/po004.sh"
 is "$OPT_DISK_BYTES_FREE" "104857600" "Size: 100M default"
+
+# ############################################################################
+# Bug 1038995: pt-stalk notify-by-email fails
+# https://bugs.launchpad.net/percona-toolkit/+bug/1038995
+# ############################################################################
+
+# This failed because --notify was misparsed as --no-tify
+parse_options "$T_LIB_DIR/samples/bash/po005.sh"
+is "$OPT_NOTIFY_BY_EMAIL" "" "Bug 1038995: --notify-by-email is empty by default"
+
+parse_options "$T_LIB_DIR/samples/bash/po005.sh" --notify-by-email foo@bar.com
+is "$OPT_NOTIFY_BY_EMAIL" "foo@bar.com" "Bug 1038995: ...but gets set without errors if specified"
 
 # ############################################################################
 # Done

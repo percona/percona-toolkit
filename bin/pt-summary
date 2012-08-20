@@ -365,6 +365,9 @@ _parse_command_line() {
             if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
                opt_is_negated=1
                opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
             fi
          else
             if $(echo $opt | grep '^--no-' >/dev/null); then
