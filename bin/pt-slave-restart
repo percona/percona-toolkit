@@ -22,7 +22,7 @@ BEGIN {
       MasterSlave
       Daemon
       VersionCheck
-      HTTP::Micro
+      HTTPMicro
       Pingback
    ));
 }
@@ -3409,9 +3409,9 @@ sub _d {
 # ###########################################################################
 {
 
-package HTTP::Micro;
+package HTTPMicro;
 BEGIN {
-  $HTTP::Micro::VERSION = '0.001';
+  $HTTPMicro::VERSION = '0.001';
 }
 use strict;
 use warnings;
@@ -3484,7 +3484,7 @@ sub _request {
         headers   => {},
     };
 
-    my $handle  = HTTP::Micro::Handle->new(timeout => $self->{timeout});
+    my $handle  = HTTPMicro::Handle->new(timeout => $self->{timeout});
 
     $handle->connect($scheme, $host, $port);
 
@@ -3550,7 +3550,7 @@ sub _split_url {
 }
 
 package
-    HTTP::Micro::Handle; # hide from PAUSE/indexers
+    HTTPMicro::Handle; # hide from PAUSE/indexers
 use strict;
 use warnings;
 
@@ -3874,7 +3874,7 @@ sub Dumper {
 
 local $EVAL_ERROR;
 eval {
-   require HTTP::Micro;
+   require HTTPMicro;
    require VersionCheck;
 };
 
@@ -3888,7 +3888,7 @@ sub pingback {
 
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTP::Micro->new( timeout => 5 );
+   $ua ||= HTTPMicro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);

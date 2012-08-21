@@ -22,9 +22,9 @@
 # A stripped down version of HTTP::Tiny; but not a correct HTTP/1.1
 # implementation
 
-package HTTP::Micro;
+package HTTPMicro;
 BEGIN {
-  $HTTP::Micro::VERSION = '0.001';
+  $HTTPMicro::VERSION = '0.001';
 }
 use strict;
 use warnings;
@@ -98,7 +98,7 @@ sub _request {
         headers   => {},
     };
 
-    my $handle  = HTTP::Micro::Handle->new(timeout => $self->{timeout});
+    my $handle  = HTTPMicro::Handle->new(timeout => $self->{timeout});
 
     $handle->connect($scheme, $host, $port);
 
@@ -165,7 +165,7 @@ sub _split_url {
 }
 
 package
-    HTTP::Micro::Handle; # hide from PAUSE/indexers
+    HTTPMicro::Handle; # hide from PAUSE/indexers
 use strict;
 use warnings;
 

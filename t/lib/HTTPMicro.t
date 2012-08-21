@@ -11,17 +11,22 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use HTTP::Tiny;
 use HTTPMicro;
+
+local $EVAL_ERROR;
+eval { require HTTP::Tiny };
+if ( $EVAL_ERROR ) {
+   skip_all("HTTP::Tiny is not installed, not testing compat");
+}
 
 my $test_url = "http://www.google.com";
 my $tiny  = HTTP::Tiny->new(max_redirect => 0)->request('GET', $test_url);
-my $micro = HTTP::Micro->new->request('GET', $test_url);
+my $micro = HTTPMicro->new->request('GET', $test_url);
 
 is_deeply(
    $micro->{content},
    $tiny->{content},
-   "HTTP::Micro behaves like HTTP::Tiny (with max_redirect) for $test_url"
+   "HTTPMicro behaves like HTTP::Tiny (with max_redirect) for $test_url"
 );
 
 done_testing;
