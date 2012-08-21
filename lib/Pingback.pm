@@ -176,6 +176,7 @@ sub _touch {
    sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
+   utime(undef, undef, $file);
 }
 
 sub encode_client_response {

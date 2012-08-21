@@ -215,6 +215,11 @@ ok(
    "time_to_check returns true if the file exists and it's mtime is at least one day old",
 );
 
+ok(
+   !Pingback::time_to_check($file),
+   "...but fails if tried a second time, as the mtime has been updated",
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
