@@ -41,7 +41,7 @@ sub Dumper {
 
 local $EVAL_ERROR;
 eval {
-   require HTTP::Micro;
+   require HTTPMicro;
    require VersionCheck;
 };
 
@@ -56,7 +56,7 @@ sub pingback {
    # Optional args
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTP::Micro->new( timeout => 5 );
+   $ua ||= HTTPMicro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    # GET http://upgrade.percona.com, the server will return
