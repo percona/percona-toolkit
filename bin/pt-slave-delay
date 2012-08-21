@@ -3460,9 +3460,9 @@ my $o;
 my $oktorun = 1;
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
-   $o     = new OptionParser();
+   $o = new OptionParser();
    $o->get_specs();
    $o->get_opts();
 
@@ -3533,6 +3533,14 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($slave_dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # If the I/O thread isn't running when the program starts,

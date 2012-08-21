@@ -4085,7 +4085,7 @@ my $q  = new Quoter();
 my %children;
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.
@@ -4153,7 +4153,7 @@ sub main {
    }
 
    # ########################################################################
-   # Connect and go to work.
+   # Connect to MySQL.
    # ########################################################################
    if ( $o->get('ask-pass') ) {
       $o->set('password', OptionParser::prompt_noecho("Enter password: "));
@@ -4179,6 +4179,17 @@ sub main {
       $daemon->make_PID_file();
    }
 
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
+   }
+
+   # ########################################################################
+   # Start monitoring the slave.
+   # ########################################################################
    my $exit_status = 0; 
    my @servers_to_watch; 
 

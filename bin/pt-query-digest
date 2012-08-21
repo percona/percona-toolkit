@@ -12852,8 +12852,8 @@ my $ps_dbh;  # For Processlist
 my $aux_dbh; # For --aux-dsn (--since/--until "MySQL expression")
 
 sub main {
-   @ARGV    = @_;  # set global ARGV for this package
-   $oktorun = 1;   # reset between tests else pipeline won't run
+   local @ARGV = @_;  # set global ARGV for this package
+   $oktorun    = 1;   # reset between tests else pipeline won't run
 
    # ##########################################################################
    # Get configuration information.
@@ -14152,6 +14152,14 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($qv_dbh || $ps_dbh || $ex_dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # ##########################################################################
