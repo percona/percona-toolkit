@@ -4304,7 +4304,7 @@ my $hdr_width = $max_width - 2;  # for '# '
 my $hdr_fmt   = "# %-${hdr_width}s\n";
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    my %summary = ( 'Total Indexes' => 0 );
    my %seen_tbl;
@@ -4347,6 +4347,14 @@ sub main {
                     :         $dsn_defaults;
    my $dbh          = $dp->get_dbh($dp->get_cxn_params($dsn),
                               { AutoCommit => 1, });
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
+   }
 
    # #######################################################################
    # Do the main work.

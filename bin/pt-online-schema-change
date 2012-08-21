@@ -6830,7 +6830,7 @@ $OUTPUT_AUTOFLUSH = 1;
 
 sub main {
    # Reset global vars else tests will fail.
-   @ARGV              = @_;
+   local @ARGV        = @_;
    $oktorun           = 1;
    @drop_trigger_sqls = ();
 
@@ -7013,6 +7013,14 @@ sub main {
    # ########################################################################   
    if ( VersionParser->new($cxn->dbh()) < '5.0.10' ) {
       die "This tool requires MySQL 5.0.10 or newer.\n";
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($cxn->dbh());
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # ########################################################################

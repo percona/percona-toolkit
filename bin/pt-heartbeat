@@ -4229,7 +4229,7 @@ my @dbhs;  # Holds slave DBHs if --recurse
 my @sths;  # Holds [$host, $sth] if --recurse
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    # Reset all global vars between test runs else weird things happen.
    @dbhs = ();
@@ -4635,6 +4635,14 @@ sub main {
       );
       disconnect($dbh, $heartbeat_sth);
       return 0;
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # ########################################################################

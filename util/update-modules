@@ -120,6 +120,7 @@ update_tool_header() {
       return 1
    fi
    cat $tool_file-header $tool_file-code > $tool_file
+   [ $? -eq 0 ] && rm $tool_file-header $tool_file-code
 }
 
 # ############################################################################

@@ -4483,7 +4483,17 @@ sub main {
 
    $o->usage_or_errors();
 
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check();
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
+   }
+
+   # ########################################################################
    # Interactive mode. Delegate to DiskstatsMenu::run_interactive
+   # ########################################################################
    my $diskstats = new DiskstatsMenu();
    return $diskstats->run_interactive(
       OptionParser => $o,

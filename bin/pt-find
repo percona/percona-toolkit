@@ -3395,7 +3395,7 @@ my @stored_code_tests = qw(
 );
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.
@@ -3516,6 +3516,14 @@ sub main {
 
    # Discover if we need to get stored code.  Need dbh to do this.
    my $need_stored_code = grep { $o->got($_); } @stored_code_tests;
+   
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
+   }
 
    # ########################################################################
    # Go do it.
