@@ -180,6 +180,42 @@ SKIP: {
 }
 
 # #############################################################################
+# Testing time_to_check
+# #############################################################################
+
+my $dir   = File::Spec->tmpdir();
+my $file  = File::Spec->catfile($dir, 'percona-toolkit-version-check-test');
+
+unlink $file;
+
+ok(
+   Pingback::time_to_check($file),
+   "time_to_check() returns true if the file doesn't exist",
+);
+
+ok(
+   !Pingback::time_to_check($file),
+   "...but false if it exists and it's been less than 24 hours",
+);
+
+my $one_day = 60 * 60 * 24;
+my ($old_atime, $old_mtime) = (stat($file))[8,9];
+
+utime($old_atime - $one_day * 2, $old_mtime - $one_day * 2, $file);
+
+cmp_ok(
+   (stat($file))[9],
+   q{<},
+   time() - $one_day,
+   "Sanity check, the file's mtime is now at least one day behind time()",
+);
+
+ok(
+   Pingback::time_to_check($file),
+   "time_to_check returns true if the file exists and it's mtime is at least one day old",
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox")
