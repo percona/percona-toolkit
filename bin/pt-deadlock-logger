@@ -3392,7 +3392,7 @@ my %is_proc_info = (
 );
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    my $q  = new Quoter();
 
@@ -3439,7 +3439,7 @@ sub main {
    $o->usage_or_errors();
 
    # ########################################################################
-   # Start working.
+   # Connect to MySQL and set up the --dest, if any.
    # ########################################################################
    my $dbh   = get_cxn($source_dsn, 1);
    my $dest_dbh;
@@ -3481,7 +3481,9 @@ sub main {
       }
    }
 
+   # ########################################################################
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
+   # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
       $daemon = new Daemon(o=>$o);
@@ -3494,6 +3496,17 @@ sub main {
       $daemon->make_PID_file();
    }
 
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
+   }
+
+   # ########################################################################
+   # Start looking for and logging deadlocks.
+   # ########################################################################
    my $last_fingerprint = '';
 
    $oktorun  = 1;

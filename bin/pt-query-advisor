@@ -7001,7 +7001,7 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun = 1;  # global for sig handler
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    my %seen_id;           # already printed rule info (advice)
    my %seen_fingerprint;  # already seen queries
@@ -7354,6 +7354,14 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # #########################################################################

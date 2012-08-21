@@ -5812,7 +5812,7 @@ Transformers->import(qw(make_checksum));
 my $oktorun = 1;
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    $oktorun = 1;
 
@@ -5978,6 +5978,14 @@ sub main {
             warn "Failed to create views: $EVAL_ERROR";
          }
       }
+   }
+   
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # ########################################################################

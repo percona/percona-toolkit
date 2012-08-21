@@ -4728,6 +4728,7 @@ sub _touch {
    sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
+   utime(undef, undef, $file);
 }
 
 sub encode_client_response {
@@ -4801,7 +4802,7 @@ my @beginning_of_txn;
 my $q  = new Quoter;
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    # Reset global vars else tests, which run this tool as a module,
    # may encounter weird results.
@@ -5285,6 +5286,14 @@ sub main {
             allcols => $sel_stmt->{cols},
          );
       });
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($src->{dbh});
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # ########################################################################

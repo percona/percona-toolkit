@@ -3049,7 +3049,8 @@ Transformers->import(qw(parse_timestamp));
 my $oktorun;
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
+   $oktorun = 1;
 
    # ########################################################################
    # Get configuration information.
@@ -3125,7 +3126,9 @@ sub main {
       $ins_sth  = $dst_dbh->prepare($sql);
    }
 
+   # ########################################################################
    # Daemonize only after (potentially) asking for passwords for --ask-pass.
+   # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
       $daemon = new Daemon(o=>$o);
@@ -3138,7 +3141,17 @@ sub main {
       $daemon->make_PID_file();
    }
 
-   $oktorun = 1;
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
+      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
+   }
+
+   # ########################################################################
+   # Start finding and logging foreign key errors.
+   # ########################################################################
    while (                            # Quit if:
       ($start == $end || $now < $end) # time is exceeded
       && $oktorun                     # or instructed to quit
