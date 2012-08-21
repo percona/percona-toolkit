@@ -256,7 +256,7 @@ sub get_report {
    if ( $self->{underline_header} ) {
       my @underlines = map { '=' x $_->{print_width} } @{$self->{cols}};
       push @lines, $self->_truncate_line(
-         sprintf($fmt, @underlines),
+         sprintf($fmt, map { $_ || '' } @underlines),
          mark  => '',
       );
    }
@@ -267,7 +267,7 @@ sub get_report {
       my @vals = map {
             defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value}
       } @$vals;
-      my $line = sprintf($fmt, @vals);
+      my $line = sprintf($fmt, map { defined $_ ? $_ : '' } @vals);
       if ( $self->{extend_right} ) {
          $line;
       }

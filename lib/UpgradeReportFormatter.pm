@@ -64,7 +64,7 @@ sub event_report {
    my $line = sprintf(
       '# Query %d: ID 0x%s at byte %d ',
       $rank || 0,
-      make_checksum($where),
+      make_checksum($where) || '0x0',
       0, # $sample->{pos_in_log} || 0
    );
    $line .= ('_' x (LINE_LENGTH - length($line)));
@@ -89,7 +89,7 @@ sub event_report {
    my @diffs = grep { $_ =~ m/^different_/ } keys %$class;
    foreach my $diff ( sort @diffs ) {
       push @result,
-         sprintf $fmt, '  ' . make_label($diff), $class->{$diff}->{sum};
+         sprintf $fmt, '  ' . (make_label($diff) || ''), ($class->{$diff}->{sum} || 0);
    }
 
    # Side-by-side hosts report.
