@@ -8279,7 +8279,7 @@ sub get_report {
    if ( $self->{underline_header} ) {
       my @underlines = map { '=' x $_->{print_width} } @{$self->{cols}};
       push @lines, $self->_truncate_line(
-         sprintf($fmt, @underlines),
+         sprintf($fmt, map { $_ || '' } @underlines),
          mark  => '',
       );
    }
@@ -8290,7 +8290,7 @@ sub get_report {
       my @vals = map {
             defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value}
       } @$vals;
-      my $line = sprintf($fmt, @vals);
+      my $line = sprintf($fmt, map { defined $_ ? $_ : '' } @vals);
       if ( $self->{extend_right} ) {
          $line;
       }
@@ -8507,7 +8507,7 @@ sub event_report {
    my $line = sprintf(
       '# Query %d: ID 0x%s at byte %d ',
       $rank || 0,
-      make_checksum($where),
+      make_checksum($where) || '0x0',
       0, # $sample->{pos_in_log} || 0
    );
    $line .= ('_' x (LINE_LENGTH - length($line)));
@@ -8528,7 +8528,7 @@ sub event_report {
    my @diffs = grep { $_ =~ m/^different_/ } keys %$class;
    foreach my $diff ( sort @diffs ) {
       push @result,
-         sprintf $fmt, '  ' . make_label($diff), $class->{$diff}->{sum};
+         sprintf $fmt, '  ' . (make_label($diff) || ''), ($class->{$diff}->{sum} || 0);
    }
 
    my $report = new ReportFormatter(
@@ -10864,40 +10864,44 @@ sub main {
             my $item       = $worst->[$rank - 1]->[0];
             my $sample     = $meta_ea->results->{samples}->{$item};
             my $samp_query = $sample->{arg} || '';
+            eval {
+               print "\n";
+               print $urf->event_report(
+                  meta_ea => $meta_ea,
+                  hosts   => $hosts,
+                  where   => $item,
+                  rank    => $rank,
+                  worst   => 'differences',
+               );
 
-            print "\n";
-            print $urf->event_report(
-               meta_ea => $meta_ea,
-               hosts   => $hosts,
-               where   => $item,
-               rank    => $rank,
-               worst   => 'differences',
-            );
-
-            if ( $sample->{original_arg} ) {
-               my $orig = $sample->{original_arg};
-               if ( $o->get('shorten') ) {
-                  $orig = $qr->shorten($orig, $o->get('shorten'));
+               if ( $sample->{original_arg} ) {
+                  my $orig = $sample->{original_arg};
+                  if ( $o->get('shorten') ) {
+                     $orig = $qr->shorten($orig, $o->get('shorten'));
+                  }
+                  print "# Converted non-SELECT:\n#   $orig\n";
                }
-               print "# Converted non-SELECT:\n#   $orig\n";
-            }
-            if ( $o->get('fingerprints') ) {
-               print "# Fingerprint\n#   $item\n";
-            }
-            print "use `$sample->{db}`;\n" if $sample->{db};
-            $samp_query = $qr->shorten($samp_query, $o->get('shorten'))
-               if $o->get('shorten');
-            print "$samp_query\n";
+               if ( $o->get('fingerprints') ) {
+                  print "# Fingerprint\n#   $item\n";
+               }
+               print "use `$sample->{db}`;\n" if $sample->{db};
+               $samp_query = $qr->shorten($samp_query, $o->get('shorten'))
+                  if $o->get('shorten');
+               print "$samp_query\n";
 
-            my $query_id = make_checksum($item);
-            foreach my $c ( @compare_modules ) {
-               my %compare_samples = $c->samples($item);
-               @{$samples{$item}}{keys %compare_samples}
-                  = values %compare_samples;
-            }
-            map {
+               my $query_id = make_checksum($item);
+               foreach my $c ( @compare_modules ) {
+                  my %compare_samples = $c->samples($item);
+                  @{$samples{$item}}{keys %compare_samples}
+                     = values %compare_samples;
+               }
+               map {
                   print "/* $query_id-$_ */ $samples{$item}->{$_}\n";
-            } sort { $a <=> $b } keys %{$samples{$item}};
+               } sort { $a <=> $b } keys %{$samples{$item}};
+            };
+            if ( $EVAL_ERROR ) {
+               warn "Error printing queries report for $item: $EVAL_ERROR";
+            }
          } # Each worst ITEM
       }
 
@@ -10906,19 +10910,30 @@ sub main {
       # ##################################################################
       if ( $o->get('reports')->{differences} ) {
          foreach my $c ( @compare_modules ) {
-            my $report = $c->report(hosts => $hosts);
-            print "\n$report" if $report;
+            eval {
+               my $report = $c->report(hosts => $hosts);
+               print "\n$report" if $report;
+            };
+            if ( $EVAL_ERROR ) {
+               warn "Error printing differences report: $EVAL_ERROR";
+            }
          }
       }
 
       if ( $o->get('reports')->{errors} ) {
-         report_errors(errors => $errors);
+         eval {
+            report_errors(errors => $errors);
+         };
+         if ( $EVAL_ERROR ) {
+            warn "Error printing errors report: $EVAL_ERROR";
+         }
       }
 
       if ( $o->get('reports')->{statistics} ) {
          my $fmt = "# %-30s %d\n";
          print "\n# Statistics\n";
-         map { printf $fmt, $_, $stats->{$_} } sort keys %$stats;
+         map { printf($fmt, ($_ || ''), ($stats->{$_} || 0)) }
+         sort keys %$stats;
       }
 
       # ##################################################################
