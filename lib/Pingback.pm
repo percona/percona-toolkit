@@ -41,7 +41,7 @@ sub Dumper {
 
 local $EVAL_ERROR;
 eval {
-   require HTTPMicro;
+   require HTTP::Micro;
    require VersionCheck;
 };
 
