@@ -16,7 +16,7 @@ use HTTPMicro;
 local $EVAL_ERROR;
 eval { require HTTP::Tiny };
 if ( $EVAL_ERROR ) {
-   skip_all("HTTP::Tiny is not installed, not testing compat");
+   plan skip_all => "HTTP::Tiny is not installed, not testing compat";
 }
 
 my $test_url = "http://www.google.com";
