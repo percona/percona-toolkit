@@ -59,7 +59,7 @@ sub pingback {
    # Optional args
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 5 );
+   $ua ||= HTTP::Micro->new( timeout => 2 );
    $vc ||= VersionCheck->new();
 
    # GET http://upgrade.percona.com, the server will return
@@ -71,7 +71,12 @@ sub pingback {
    # items/types that need extra hints.
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
-   return unless $response && $response->{status} == 200 && $response->{content};
+   die "No response from GET $url"
+      if !$response;
+   die "GET $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+   die "GET $url did not return any programs to check"
+      if !$response->{content};
 
    # Parse the plaintext server response into a hashref keyed on
    # the items like:
@@ -83,7 +88,8 @@ sub pingback {
    my $items = $vc->parse_server_response(
       response => $response->{content}
    );
-   return unless scalar keys %$items;
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
 
    # Get the versions for those items in another hashref also keyed on
    # the items like:
@@ -92,7 +98,8 @@ sub pingback {
       items => $items,
       dbh   => $dbh,
    );
-   return unless scalar keys %$versions;
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
 
    # Join the items and whatever versions are available and re-encode
    # them in same simple plaintext item-per-line protocol, and send
@@ -110,7 +117,14 @@ sub pingback {
 
    $response = $ua->request('POST', $url, $client_response);
    PTDEBUG && _d('Server suggestions:', Dumper($response));
-   return unless $response && $response->{status} == 200 && $response->{content};
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   # If the server does not have any suggestions,
+   # there will not be any content.
+   return unless $response->{content};
 
    # If the server has suggestions for items, it sends them back in
    # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
@@ -119,7 +133,8 @@ sub pingback {
       response   => $response->{content},
       split_vars => 0,
    );
-   return unless scalar keys %$items;
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
    my @suggestions = map { $_->{vars} }
                      sort { $a->{item} cmp $b->{item} }
                      values %$items;
@@ -179,7 +194,7 @@ sub encode_client_response {
    my @lines;
    foreach my $item ( sort keys %$items ) {
       next unless exists $versions->{$item};
-      push @lines, join(';', $item,$items->{$item}->{type},$versions->{$item});
+      push @lines, join(';', $item, $versions->{$item});
    }
 
    my $client_response = join("\n", @lines) . "\n";
