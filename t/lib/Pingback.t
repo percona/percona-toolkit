@@ -49,7 +49,7 @@ my $fake_ua = FakeUA->new();
 # Pingback tests
 # #############################################################################
 
-my $url      = 'http://upgrade.percona.com';
+my $url      = 'http://staging.upgrade.percona.com';
 my $perl_ver = sprintf '%vd', $PERL_VERSION;
 my $dd_ver   = $Data::Dumper::VERSION;
 
@@ -67,11 +67,20 @@ sub test_pingback {
          ua  => $fake_ua,
       );
    };
-   is(
-      $EVAL_ERROR,
-      "",
-      "$args{name} no error"
-   );
+   if ( $args{no_response} ) {
+      like(
+         $EVAL_ERROR,
+         qr/No response/,
+         "$args{name} dies with \"no response\" error"
+      );
+   }
+   else {
+      is(
+         $EVAL_ERROR,
+         "",
+         "$args{name} no error"
+      );
+   }
 
    is(
       $post ? ($post->{content} || '') : '',
@@ -99,7 +108,7 @@ test_pingback(
       }
    ],
    # client should POST this
-   post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
+   post => "Data::Dumper;$dd_ver\nPerl;$perl_ver\n",
    # Server should return these suggetions after the client posts
    sug  => [
       'Data::Printer is nicer.',
@@ -121,7 +130,7 @@ test_pingback(
         content => "",
       }
    ],
-   post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
+   post => "Data::Dumper;$dd_ver\nPerl;$perl_ver\n",
    sug  => undef,
 );
 
@@ -130,6 +139,7 @@ test_pingback(
 test_pingback(
    name => "No response to GET",
    response => [],
+   no_response => 1,
    post => "",
    sug  => undef,
 );
@@ -138,13 +148,14 @@ test_pingback(
 
 test_pingback(
    name => "No response to POST",
+   no_response => 1,
    response => [
       # in response to client's GET
       { status  => 200,
         content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
       },
    ],
-   post => "Data::Dumper;perl_module_version;$dd_ver\nPerl;perl_version;$perl_ver\n",
+   post => "Data::Dumper;$dd_ver\nPerl;$perl_ver\n",
    sug  => undef,
 );
 
@@ -173,7 +184,7 @@ SKIP: {
          }
       ],
       # client should POST this
-      post => "MySQL;mysql_variable;$mysql_ver $mysql_distro\n",
+      post => "MySQL;$mysql_ver $mysql_distro\n",
       # Server should return these suggetions after the client posts
       sug => ['Percona Server is fast.'],
    );
@@ -212,13 +223,15 @@ cmp_ok(
 
 ok(
    Pingback::time_to_check($file),
-   "time_to_check returns true if the file exists and it's mtime is at least one day old",
+   "time_to_check true if file exists and mtime < one day",
 );
 
 ok(
    !Pingback::time_to_check($file),
    "...but fails if tried a second time, as the mtime has been updated",
 );
+
+unlink $file;
 
 # #############################################################################
 # Done.

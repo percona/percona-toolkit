@@ -34,6 +34,10 @@ use Fcntl          qw(:DEFAULT);
 
 use File::Spec;
 
+my $dir = File::Spec->tmpdir();
+my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $check_time_limit = 60 * 60 * 24;  # one day
+
 sub Dumper {
    local $Data::Dumper::Indent    = 1;
    local $Data::Dumper::Sortkeys  = 1;
@@ -48,6 +52,48 @@ eval {
    require VersionCheck;
 };
 
+sub version_check {
+   # If this blows up, oh well, don't bother the user about it.
+   # This feature is a "best effort" only; we don't want it to
+   # get in the way of the tool's real work.
+   eval {
+      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+         PTDEBUG && _d('--version-check is disabled by PERCONA_VERSION_CHECK');
+         $ENV{PTVCDEBUG} && _d('--version-check is disabled by the',
+            'PERCONA_VERSION_CHECK environment variable');
+         return;
+      } 
+
+      if ( !time_to_check($check_time_file) ) {
+         PTDEBUG && _d('Not time to do --version-check');
+         $ENV{PTVCDEBUG} && _d('It is not time to --version-checka again;',
+            'only 1 check per', $check_time_limit, 'seconds, and the last',
+            'check was performed on the modified time of',  $check_time_file);
+         return;
+      }
+
+      my $dbh = shift;  # optional
+      my $advice = pingback(
+         url => 'http://staging.upgrade.percona.com',
+         dbh => $dbh,
+      );
+      if ( $advice ) {
+         print "# Percona suggests these upgrades:\n";
+         print join("\n", map { "#   * $_" } @$advice);
+         print "\n# Specify --no-version-check to disable these suggestions.\n\n";
+      }
+      elsif ( $ENV{PTVCDEBUG} ) {
+         _d('--version-check worked, but there were no suggestions');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d('Error doing --version-check:', $EVAL_ERROR);
+      $ENV{PTVCDEBUG} && _d('Error doing --version-check:', $EVAL_ERROR);
+   }
+
+   return;
+}
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url);
@@ -59,7 +105,7 @@ sub pingback {
    # Optional args
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTP::Micro->new( timeout => 2 );
+   $ua ||= HTTPMicro->new( timeout => 2 );
    $vc ||= VersionCheck->new();
 
    # GET http://upgrade.percona.com, the server will return
@@ -142,33 +188,33 @@ sub pingback {
    return \@suggestions;
 }
 
-my $one_day = 60 * 60 * 24;
 sub time_to_check {
    my ($file) = @_;
+   die "I need a file argument" unless $file;
 
-   if ( !$file ) {
-      my $dir = File::Spec->tmpdir();
-      $file   = File::Spec->catfile($dir, 'percona-toolkit-version-check');
-   }
-   my $mtime  = (stat $file)[9];
-
-   # If there isn't an mtime, the file (probably) doesn't exist, so
-   # touch it and return true.
-   if ( !defined $mtime ) {
+   if ( !-f $file ) {
+      PTDEBUG && _d('Creating', $file);
       _touch($file);
       return 1;
+   }
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      PTDEBUG && _d('Error getting modified time of', $file);
+      return 0;
    }
 
    # Otherwise, if there's been more than a day since the last check,
    # update the file and return true.
    my $time = int(time());
-   if ( ($time - $mtime) > $one_day ) {
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
       _touch($file);
       return 1;
    }
 
    # Otherwise, we're still within the day, so don't do the version check.
-   return;
+   return 0;
 }
 
 sub _touch {

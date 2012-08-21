@@ -4006,8 +4006,15 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use File::Basename ();
-use Data::Dumper ();
+use File::Basename qw();
+use Data::Dumper   qw();
+use Fcntl          qw(:DEFAULT);
+
+use File::Spec;
+
+my $dir = File::Spec->tmpdir();
+my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $check_time_limit = 60 * 60 * 24;  # one day
 
 sub Dumper {
    local $Data::Dumper::Indent    = 1;
@@ -4023,6 +4030,45 @@ eval {
    require VersionCheck;
 };
 
+sub version_check {
+   eval {
+      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+         PTDEBUG && _d('--version-check is disabled by PERCONA_VERSION_CHECK');
+         $ENV{PTVCDEBUG} && _d('--version-check is disabled by the',
+            'PERCONA_VERSION_CHECK environment variable');
+         return;
+      } 
+
+      if ( !time_to_check($check_time_file) ) {
+         PTDEBUG && _d('Not time to do --version-check');
+         $ENV{PTVCDEBUG} && _d('It is not time to --version-checka again;',
+            'only 1 check per', $check_time_limit, 'seconds, and the last',
+            'check was performed on the modified time of',  $check_time_file);
+         return;
+      }
+
+      my $dbh = shift;  # optional
+      my $advice = pingback(
+         url => 'http://staging.upgrade.percona.com',
+         dbh => $dbh,
+      );
+      if ( $advice ) {
+         print "# Percona suggests these upgrades:\n";
+         print join("\n", map { "#   * $_" } @$advice);
+         print "\n# Specify --no-version-check to disable these suggestions.\n\n";
+      }
+      elsif ( $ENV{PTVCDEBUG} ) {
+         _d('--version-check worked, but there were no suggestions');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d('Error doing --version-check:', $EVAL_ERROR);
+      $ENV{PTVCDEBUG} && _d('Error doing --version-check:', $EVAL_ERROR);
+   }
+
+   return;
+}
+
 sub pingback {
    my (%args) = @_;
    my @required_args = qw(url);
@@ -4033,23 +4079,30 @@ sub pingback {
 
    my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 5 );
+   $ua ||= HTTPMicro->new( timeout => 2 );
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
    PTDEBUG && _d('Server response:', Dumper($response));
-   return unless $response && $response->{status} == 200 && $response->{content};
+   die "No response from GET $url"
+      if !$response;
+   die "GET $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+   die "GET $url did not return any programs to check"
+      if !$response->{content};
 
    my $items = $vc->parse_server_response(
       response => $response->{content}
    );
-   return unless scalar keys %$items;
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
 
    my $versions = $vc->get_versions(
       items => $items,
       dbh   => $dbh,
    );
-   return unless scalar keys %$versions;
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
 
    my $client_content = encode_client_response(
       items    => $items,
@@ -4064,18 +4117,57 @@ sub pingback {
 
    $response = $ua->request('POST', $url, $client_response);
    PTDEBUG && _d('Server suggestions:', Dumper($response));
-   return unless $response && $response->{status} == 200 && $response->{content};
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   return unless $response->{content};
 
    $items = $vc->parse_server_response(
       response   => $response->{content},
       split_vars => 0,
    );
-   return unless scalar keys %$items;
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
    my @suggestions = map { $_->{vars} }
                      sort { $a->{item} cmp $b->{item} }
                      values %$items;
 
    return \@suggestions;
+}
+
+sub time_to_check {
+   my ($file) = @_;
+   die "I need a file argument" unless $file;
+
+   if ( !-f $file ) {
+      PTDEBUG && _d('Creating', $file);
+      _touch($file);
+      return 1;
+   }
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      PTDEBUG && _d('Error getting modified time of', $file);
+      return 0;
+   }
+
+   my $time = int(time());
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      _touch($file);
+      return 1;
+   }
+
+   return 0;
+}
+
+sub _touch {
+   my ($file) = @_;
+   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+      or die "Cannot create $file : $!";
+   close $fh or die "Cannot close $file : $!";
 }
 
 sub encode_client_response {
@@ -4089,7 +4181,7 @@ sub encode_client_response {
    my @lines;
    foreach my $item ( sort keys %$items ) {
       next unless exists $versions->{$item};
-      push @lines, join(';', $item,$items->{$item}->{type},$versions->{$item});
+      push @lines, join(';', $item, $versions->{$item});
    }
 
    my $client_response = join("\n", @lines) . "\n";
