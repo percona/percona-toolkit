@@ -28,8 +28,11 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use File::Basename ();
-use Data::Dumper ();
+use File::Basename qw();
+use Data::Dumper   qw();
+use Fcntl          qw(:DEFAULT);
+
+use File::Spec;
 
 sub Dumper {
    local $Data::Dumper::Indent    = 1;
@@ -122,6 +125,42 @@ sub pingback {
                      values %$items;
 
    return \@suggestions;
+}
+
+my $one_day = 60 * 60 * 24;
+sub time_to_check {
+   my ($file) = @_;
+
+   if ( !$file ) {
+      my $dir = File::Spec->tmpdir();
+      $file   = File::Spec->catfile($dir, 'percona-toolkit-version-check');
+   }
+   my $mtime  = (stat $file)[9];
+
+   # If there isn't an mtime, the file (probably) doesn't exist, so
+   # touch it and return true.
+   if ( !defined $mtime ) {
+      _touch($file);
+      return 1;
+   }
+
+   # Otherwise, if there's been more than a day since the last check,
+   # update the file and return true.
+   my $time = int(time());
+   if ( ($time - $mtime) > $one_day ) {
+      _touch($file);
+      return 1;
+   }
+
+   # Otherwise, we're still within the day, so don't do the version check.
+   return;
+}
+
+sub _touch {
+   my ($file) = @_;
+   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+      or die "Cannot create $file : $!";
+   close $fh or die "Cannot close $file : $!";
 }
 
 sub encode_client_response {
