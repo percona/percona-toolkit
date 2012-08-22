@@ -323,10 +323,13 @@ sub make_UPDATE {
    else {
       @cols = $self->sort_cols($row);
    }
+   my $types = $self->{tbl_struct}->{type_for};
    return "UPDATE $self->{dst_db_tbl} SET "
       . join(', ', map {
+            my $is_char = ($types->{$_} || '') =~ m/char|text/i;
             $self->{Quoter}->quote($_)
-            . '=' .  $self->{Quoter}->quote_val($row->{$_})
+            . '=' .  $self->{Quoter}->quote_val($row->{$_},
+                                              is_char => $is_char);
          } grep { !$in_where{$_} } @cols)
       . " WHERE $where LIMIT 1";
 }
@@ -391,11 +394,15 @@ sub make_row {
    else {
       @cols = $self->sort_cols($row);
    }
-   my $q = $self->{Quoter};
+   my $q     = $self->{Quoter};
+   my $type_for = $self->{tbl_struct}->{type_for};
    return "$verb INTO $self->{dst_db_tbl}("
       . join(', ', map { $q->quote($_) } @cols)
       . ') VALUES ('
-      . join(', ', map { $q->quote_val($_) } @{$row}{@cols} )
+      . join(', ', map {
+               my $is_char = ($type_for->{$_} || '') =~ m/char|text/i;
+               $q->quote_val($row->{$_},
+                           is_char => $is_char) } @cols )
       . ')';
 }
 
@@ -413,7 +420,9 @@ sub make_where_clause {
    my @clauses = map {
       my $val = $row->{$_};
       my $sep = defined $val ? '=' : ' IS ';
-      $self->{Quoter}->quote($_) . $sep . $self->{Quoter}->quote_val($val);
+      my $is_char = ($self->{tbl_struct}->{type_for}->{$_} || '') =~ m/char|text/i;
+      $self->{Quoter}->quote($_) . $sep . $self->{Quoter}->quote_val($val,
+                                              is_char => $is_char);
    } @$cols;
    return join(' AND ', @clauses);
 }
