@@ -31,8 +31,12 @@ my $output;
 my $cmd = "$trunk/bin/pt-slave-delay -F /tmp/12346/my.sandbox.cnf h=127.1";
 my $pid_file = "/tmp/pt-slave-delay-test.$PID";
 
-# Check daemonization
-system("$cmd --delay 1m --interval 1s --run-time 5s --daemonize --pid $pid_file 2>&1");
+# Check daemonization.  This test used to print to STDOUT, causing
+# false-positive test errors.  The output isn't needed.  The tool
+# said "Reconnected to slave" every time it did SHOW SLAVE STATUS,
+# so needlessly.  That was removed.  Now it will print stuff when
+# we kill the process, which we don't want either.
+system("$cmd --delay 1m --interval 1s --run-time 5s --daemonize --pid $pid_file >/dev/null 2>&1");
 PerconaTest::wait_for_files($pid_file);
 chomp(my $pid = `cat $pid_file`);
 $output = `ps x | grep "^[ ]*$pid"`;
