@@ -4281,7 +4281,7 @@ sub version_check {
 
       my $dbh = shift;  # optional
       my $advice = pingback(
-         url => 'http://staging.upgrade.percona.com',
+         url => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
          dbh => $dbh,
       );
       if ( $advice ) {
@@ -4400,6 +4400,7 @@ sub _touch {
    sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
+   utime(undef, undef, $file);
 }
 
 sub encode_client_response {
