@@ -21,8 +21,9 @@ use POSIX qw(mkfifo);
 # #########################################################################
 my $pid_file = '/tmp/mqd.pid';
 my $fifo     = '/tmp/mqd.fifo';
-unlink $pid_file and diag("Unlinking existing $pid_file");
-unlink $fifo and diag("Unlinking existing $fifo");
+
+unlink $pid_file if $pid_file;
+unlink $fifo     if $fifo;
 
 my ($start, $end, $waited, $timeout);
 SKIP: {
@@ -40,7 +41,7 @@ SKIP: {
     );
     $end    = time;
     $waited = $end - $start;
-    if ( $timeout ) {
+    if ( $timeout && -f $pid_file ) {
         # mqd ran longer than --read-timeout
         chomp(my $pid = slurp_file($pid_file));
         kill SIGTERM => $pid if $pid;
@@ -52,7 +53,7 @@ SKIP: {
     );
 }
 
-unlink $pid_file;
+unlink $pid_file if $pid_file;
 mkfifo $fifo, 0700;
 system("$trunk/t/pt-query-digest/samples/write-to-fifo.pl $fifo 4 &");
 
@@ -66,7 +67,7 @@ $timeout = wait_for(
 );
 $end    = time;
 $waited = $end - $start;
-if ( $timeout ) {
+if ( $timeout && $pid_file ) {
    # mqd ran longer than --read-timeout
    chomp(my $pid = slurp_file($pid_file));
    kill SIGTERM => $pid if $pid;
@@ -77,8 +78,8 @@ ok(
    sprintf("--read-timeout waited %.1f seconds reading a file", $waited)
 );
 
-unlink $pid_file;
-unlink $fifo;
+unlink $pid_file if $pid_file;
+unlink $fifo if $fifo;
 
 # #############################################################################
 # Done.

@@ -204,11 +204,22 @@ wait_for_files() {
    for file in "$@"; do
       local slept=0
       while ! [ -f $file ]; do
-         sleep 0.1;
+         sleep 0.2;
          slept=$((slept + 1))
-         [ $slept -ge 50 ] && break  # 5s
+         [ $slept -ge 150 ] && break  # 30s
       done
    done
+}
+
+diag() {
+   if [ $# -eq 1 -a -f "$1" ]; then
+      echo "# $1:"
+      awk '{print "# " $0}' "$1"
+   else
+      for line in "$@"; do
+         echo "# $line"
+      done
+   fi
 }
 
 # ############################################################################
