@@ -3927,6 +3927,12 @@ sub _chunk_char {
    }
    PTDEBUG && _d("Base", $base, "chars:", @chars);
 
+   die "Cannot chunk table $db_tbl using the character column "
+     . "$chunk_col, most likely because all values start with the "
+     . "same character.  This table must be synced separately by "
+     . "specifying a list of --algorithms without the Chunk algorithm"
+      if $base == 1;
+
 
    $sql = "SELECT MAX(LENGTH($qchunk_col)) FROM $db_tbl "
         . ($args{where} ? "WHERE $args{where} " : "") 
@@ -10197,6 +10203,10 @@ traffic and memory consumption.  If a chunk's rows must be examined, only the
 primary key columns and a checksum are sent over the network, not the entire
 row.  If a row is found to be different, the entire row will be fetched, but not
 before.
+
+Note that this algorithm will not work if chunking a char column where all
+the values start with the same character. In that case, the tool will exit
+and suggest picking a different algorithm.
 
 =item Nibble
 
