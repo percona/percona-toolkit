@@ -68,6 +68,7 @@ cmd_ok \
    "Finds MySQL error log"
 
 if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
+   wait_for_files "$p-log_error"
    cmd_ok \
       "grep -qE 'Memory status|Open streams|Begin safemalloc' $p-log_error" \
       "debug"
