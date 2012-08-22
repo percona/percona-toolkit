@@ -4609,7 +4609,7 @@ sub version_check {
 
       my $dbh = shift;  # optional
       my $advice = pingback(
-         url => 'http://staging.upgrade.percona.com',
+         url => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
          dbh => $dbh,
       );
       if ( $advice ) {
