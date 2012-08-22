@@ -576,7 +576,6 @@ $dst->{dbh} = $dst_dbh;
 # ###########################################################################
 make_plugins();
 $sb->load_file('master', 't/lib/samples/before-TableSyncGroupBy.sql');
-sleep 1;
 
 sync_table(
    src     => "test.test1",
@@ -606,7 +605,6 @@ is_deeply(
 # #############################################################################
 make_plugins();
 $sb->load_file('master', 't/lib/samples/issue_96.sql');
-sleep 1;
 
 # Make paranoid-sure that the tables differ.
 my $r1 = $src_dbh->selectall_arrayref('SELECT from_city FROM issue_96.t WHERE package_id=4');
@@ -1051,7 +1049,9 @@ my $output = '';
       "Retries wait"
    );
 }
-diag(`$trunk/sandbox/test-env reset`);
+diag(`/tmp/12347/use -e "stop slave"`);
+diag(`/tmp/12346/use -e "start slave"`);
+diag(`/tmp/12347/use -e "start slave"`);
 
 # #############################################################################
 # Done.

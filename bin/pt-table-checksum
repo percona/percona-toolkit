@@ -10009,17 +10009,21 @@ won't break replication (or simply fail to replicate).  If you are sure that
 it's OK to run the checksum queries, you can negate this option to disable the
 checks.  See also L<"--replicate-database">.
 
+See also L<"REPLICA CHECKS">.
+
 =item --check-slave-lag
 
 type: string; group: Throttle
 
 Pause checksumming until this replica's lag is less than L<"--max-lag">.  The
 value is a DSN that inherits properties from the master host and the connection
-options (L<"--port">, L<"--user">, etc.).  This option overrides the normal
-behavior of finding and continually monitoring replication lag on ALL connected
-replicas.  If you don't want to monitor ALL replicas, but you want more than
-just one replica to be monitored, then use the DSN option to the
-L<"--recursion-method"> option instead of this option.
+options (L<"--port">, L<"--user">, etc.).  By default, pt-table-checksum
+monitors lag on all connected replicas, but this option limits lag monitoring
+to the specified replica.  This is useful if certain replicas are intentionally
+lagged (with L<pt-slave-delay> for example), in which case you can specify
+a normal replica to monitor.
+
+See also L<"REPLICA CHECKS">.
 
 =item --chunk-index
 
@@ -10292,8 +10296,7 @@ all replicas to which it connects, using Seconds_Behind_Master. If any replica
 is lagging more than the value of this option, then pt-table-checksum will sleep
 for L<"--check-interval"> seconds, then check all replicas again.  If you
 specify L<"--check-slave-lag">, then the tool only examines that server for
-lag, not all servers.  If you want to control exactly which servers the tool
-monitors, use the DSN value to L<"--recursion-method">.
+lag, not all servers.
 
 The tool waits forever for replicas to stop lagging.  If any replica is
 stopped, the tool waits forever until the replica is started.  Checksumming
@@ -10302,6 +10305,8 @@ continues once all replicas are running and not lagging too much.
 The tool prints progress reports while waiting.  If a replica is stopped, it
 prints a progress report immediately, then again at every progress report
 interval.
+
+See also L<"REPLICA CHECKS">.
 
 =item --max-load
 
@@ -10384,13 +10389,15 @@ or checksum differences.
 type: int
 
 Number of levels to recurse in the hierarchy when discovering replicas.
-Default is infinite.  See also L<"--recursion-method">.
+Default is infinite.  See also L<"--recursion-method"> and L<"REPLICA CHECKS">.
 
 =item --recursion-method
 
 type: array; default: processlist,hosts
 
-Preferred recursion method for discovering replicas.  Possible methods are:
+Preferred recursion method for discovering replicas.  pt-table-checksum
+performs several L<"REPLICA CHECKS"> before and while running.
+Possible methods are:
 
   METHOD       USES
   ===========  ==================
@@ -10399,18 +10406,21 @@ Preferred recursion method for discovering replicas.  Possible methods are:
   dsn=DSN      DSNs from a table
   none         Do not find slaves
 
-The processlist method is the default, because SHOW SLAVE HOSTS is not
-reliable.  However, the hosts method can work better if the server uses a
-non-standard port (not 3306).  The tool usually does the right thing and
-finds all replicas, but you may give a preferred method and it will be used
-first.
+The C<processlist> method is the default, because C<SHOW SLAVE HOSTS> is not
+reliable.  However, if the server uses a non-standard port (not 3306), then
+the C<hosts> method becomes the default because it works better in this case.
 
-The hosts method requires replicas to be configured with report_host,
-report_port, etc.
+The C<hosts> method requires replicas to be configured with C<report_host>,
+C<report_port>, etc.
 
-The dsn method is special: it specifies a table from which other DSN strings
-are read.  The specified DSN must specify a D and t, or a database-qualified
-t.  The DSN table should have the following structure:
+The C<dsn> method is special: rather than automatically discovering replicas,
+this method specifies a table with replica DSNs.  The tool will only connect
+to these replicas.  This method works best when replicas do not use the same
+MySQL username or password as the master, or when you want to prevent the tool
+from connecting to certain replicas.  The C<dsn> method is specified like:
+C<--recursion-method dsn=h=host,D=percona,t=dsns>.  The specified DSN must
+have D and t parts, or just a database-qualified t part, which specify the
+DSN table.  The DSN table must have the following structure:
 
   CREATE TABLE `dsns` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -10419,10 +10429,13 @@ t.  The DSN table should have the following structure:
     PRIMARY KEY (`id`)
   );
 
-To make the tool monitor only the hosts 10.10.1.16 and 10.10.1.17 for
-replication lag and checksum differences, insert the values C<h=10.10.1.16> and
-C<h=10.10.1.17> into the table. Currently, the DSNs are ordered by id, but id
-and parent_id are otherwise ignored.  
+DSNs are ordered by C<id>, but C<id> and C<parent_id> are otherwise ignored.
+The C<dsn> column contains a replica DSN like it would be given on the command
+line, for example: C<"h=replica_host,u=repl_user,p=repl_pass">.
+
+The C<none> method prevents the tool from connecting to any replicas.
+This effectively disables all the L<"REPLICA CHECKS"> because there will
+not be any replicas to check.  Thefore, this method is not recommended.
 
 =item --replicate
 
@@ -10596,6 +10609,60 @@ keyword.  You might need to quote the value.  Here is an example:
 
 =back
 
+=head1 REPLICA CHECKS
+
+By default, pt-table-checksum attempts to find and connect to all replicas
+connected to the master host.  This automated process is called
+"slave recursion" and is controlled by the L<"--recursion-method"> and
+L<"--recurse"> options.  The tool performs these checks on all replicas:
+
+=over
+
+=item 1. L<"--[no]check-replication-filters">
+
+pt-table-checksum checks for replication filters on all replicas because
+they can complicate or break the checksum process.  By default, the tool
+will exit if any replication filters are found, but this check can be
+disabled by specifying C<--no-check-replication-filters>.
+
+=item 2. L<"--replicate"> table
+
+pt-table-cheksum checks that the L<"--replicate"> table exists on all
+replicas, else checksumming can break replication when updates to the table
+on the master replicate to a replica that doesn't have the table.  This
+check cannot be disabled, and the tool wait forever until the table
+exists on all replicas, printing L<"--progress"> messages while it waits.
+
+=item 3. Single chunk size
+
+If a table can be checksummed in a single chunk on the master,
+pt-table-checksum will check that the table size on all replicas is
+approximately the same.  This prevents a rare problem where the table
+on the master is empty or small, but on a replica it is much larger.
+In this case, the single chunk checksum on the master would overload
+the replica.  This check cannot be disabled.
+
+=item 4. Lag
+
+After each chunk, pt-table-checksum checks the lag on all replicas, or only
+the replica specified by L<"--check-slave-lag">.  This helps the tool
+not to overload the replicas with checksum data.  There is no way to
+disable this check, but you can specify a single replica to check with
+L<"--check-slave-lag">, and if that replica is the fastest, it will help
+prevent the tool from waiting too long for replica lag to abate.
+
+=item 5. Checksum chunks
+
+When pt-table-checksum finishes checksumming a table, it waits for the last
+checksum chunk to replicate to all replicas so it can perform the
+L<"--[no]replicate-check">.  Disabling that option by specifying
+L<--no-replicate-check> disables this check, but it also disables
+immediate reporting of checksum differences, thereby requiring a second run
+of the tool with L<"--replicate-check-only"> to find and print checksum
+differences.
+
+=back
+
 =head1 DSN OPTIONS
 
 These DSN options are used to create a DSN.  Each option is given like
@@ -10620,9 +10687,9 @@ DSN table database.
 
 =item * F
 
-dsn: mysql_read_default_file; copy: no
+dsn: mysql_read_default_file; copy: yes
 
-Only read default options from the given file
+Defaults file for connection values.
 
 =item * h
 

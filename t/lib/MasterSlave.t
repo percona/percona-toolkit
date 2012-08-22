@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "lib/MasterSlave.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
+
 use MasterSlave;
 use DSNParser;
 use VersionParser;
@@ -734,8 +738,6 @@ $sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/stop-sandbox 2903 2902 2901 2900`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 diag(`/tmp/12347/use -e "set global read_only=1"`);
-$sb->wait_for_slaves();
-diag(`$trunk/sandbox/test-env reset`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
 exit;
