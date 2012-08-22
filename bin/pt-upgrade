@@ -8288,9 +8288,12 @@ sub get_report {
       my $vals = $_;
       my $i    = 0;
       my @vals = map {
-            defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value}
+            my $val = defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value};
+            $val = '' if !defined $val;
+            $val =~ s/\n/ /g;
+            $val;
       } @$vals;
-      my $line = sprintf($fmt, map { defined $_ ? $_ : '' } @vals);
+      my $line = sprintf($fmt, @vals);
       if ( $self->{extend_right} ) {
          $line;
       }
