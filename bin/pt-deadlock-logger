@@ -3152,17 +3152,19 @@ eval {
 sub version_check {
    eval {
       if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-         PTDEBUG && _d('--version-check is disabled by PERCONA_VERSION_CHECK');
-         $ENV{PTVCDEBUG} && _d('--version-check is disabled by the',
-            'PERCONA_VERSION_CHECK environment variable');
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('--version-check is disabled by the PERCONA_VERSION_CHECK',
+               'environment variable');
+         }
          return;
       } 
 
       if ( !time_to_check($check_time_file) ) {
-         PTDEBUG && _d('Not time to do --version-check');
-         $ENV{PTVCDEBUG} && _d('It is not time to --version-checka again;',
-            'only 1 check per', $check_time_limit, 'seconds, and the last',
-            'check was performed on the modified time of',  $check_time_file);
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('It is not time to --version-checka again;',
+               'only 1 check per', $check_time_limit, 'seconds, and the last',
+               'check was performed on the modified time of', $check_time_file);
+         }
          return;
       }
 
@@ -3176,13 +3178,14 @@ sub version_check {
          print join("\n", map { "#   * $_" } @$advice);
          print "\n# Specify --no-version-check to disable these suggestions.\n\n";
       }
-      elsif ( $ENV{PTVCDEBUG} ) {
+      elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
          _d('--version-check worked, but there were no suggestions');
       }
    };
    if ( $EVAL_ERROR ) {
-      PTDEBUG && _d('Error doing --version-check:', $EVAL_ERROR);
-      $ENV{PTVCDEBUG} && _d('Error doing --version-check:', $EVAL_ERROR);
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Error doing --version-check:', $EVAL_ERROR);
+      }
    }
 
    return;
@@ -3502,7 +3505,6 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
       Pingback::version_check($dbh);
-      return 0 if $ENV{PTVCDEBUG} && PTDEBUG;
    }
 
    # ########################################################################
