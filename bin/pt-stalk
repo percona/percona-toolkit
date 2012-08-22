@@ -795,7 +795,7 @@ collect() {
          fi
       fi
 
-      (echo $ts; df -h) >> "$d/$p-df" &
+      (echo $ts; df -k) >> "$d/$p-df" &
 
       (echo $ts; netstat -antp) >> "$d/$p-netstat"   &
       (echo $ts; netstat -s)    >> "$d/$p-netstat_s" &

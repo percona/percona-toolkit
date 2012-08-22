@@ -369,24 +369,6 @@ case $opt in
          exit_status=1
       fi
       ;;
-   reset)
-      # Several tests reset the bin logs so that queries from prior tests
-      # don't replicate to new sandbox servers.  This makes creating new
-      # sandbox servers a lot faster.  There's no check if this works or
-      # not, so... yeah.
-      echo "RESETTING SLAVE. This is DANGEROUS and DOESN'T WORK. FIXME." >&2
-      /tmp/12347/use -e "STOP SLAVE; FLUSH SLAVE;"
-      /tmp/12346/use -e "STOP SLAVE; FLUSH SLAVE; FLUSH MASTER;"
-      /tmp/12345/use -e "FLUSH MASTER"
-
-      /tmp/12346/use -e "CHANGE MASTER TO master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12345, master_log_file='mysql-bin.000001', master_log_pos=0"
-      /tmp/12346/use -e "START SLAVE"
-
-      /tmp/12347/use -e "CHANGE MASTER TO master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12346, master_log_file='mysql-bin.000001', master_log_pos=0"
-      /tmp/12347/use -e "START SLAVE"
-
-      exit_status=0
-      ;;
    version)
       set_mysql_version
       echo $MYSQL_VERSION

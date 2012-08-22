@@ -3565,7 +3565,6 @@ sub main {
          try          => sub {
             return unless $oktorun;
             $status = $slave_dbh->selectrow_hashref("SHOW SLAVE STATUS");
-            info("Reconnected to slave");
             return $status;
          },
          fail         => sub {

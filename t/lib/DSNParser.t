@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 37;
+use Test::More;
 
 use DSNParser;
 use OptionParser;
@@ -545,6 +545,9 @@ foreach my $password_comma ( @password_commas ) {
 # #############################################################################
 # Bug 984915: SQL calls after creating the dbh aren't checked
 # #############################################################################
+# Make sure to disconnect any lingering dbhs, since full_output will fork
+# and then die, which will cause rollback warnings for connected dbhs.
+$dbh->disconnect() if $dbh;
 
 $dsn = $dp->parse('h=127.1,P=12345,u=msandbox,p=msandbox');
 my @opts = $dp->get_cxn_params($dsn);
@@ -569,5 +572,4 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-$dbh->disconnect() if $dbh;
-exit;
+done_testing;

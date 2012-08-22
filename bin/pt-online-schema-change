@@ -5685,6 +5685,10 @@ sub new {
    my $self = {
       task => $task,
    };
+   open $self->{stdout_copy}, ">&=", *STDOUT
+      or die "Cannot dup stdout: $OS_ERROR";
+   open $self->{stderr_copy}, ">&=", *STDERR
+      or die "Cannot dup stderr: $OS_ERROR";
    PTDEBUG && _d('Created cleanup task', $task);
    return bless $self, $class;
 }
@@ -5694,6 +5698,10 @@ sub DESTROY {
    my $task = $self->{task};
    if ( ref $task ) {
       PTDEBUG && _d('Calling cleanup task', $task);
+      open local(*STDOUT), ">&=", $self->{stdout_copy}
+         if $self->{stdout_copy};
+      open local(*STDERR), ">&=", $self->{stderr_copy}
+         if $self->{stderr_copy};
       $task->();
    }
    else {
@@ -8977,6 +8985,17 @@ The tool will not copy the original column's data to the new column.
 If you add a column without a default value and make it NOT NULL, the tool
 will fail, as it will not try to guess a default value for you; You must
 specify the default.
+
+=item *
+
+C<DROP FOREIGN KEY constraint_name> requires specifying C<_constraint_name>
+rather than the real C<constraint_name>.  Due to a limitation in MySQL,
+pt-online-schema-change adds a leading underscore to foreign key constraint
+names when creating the new table.  For example, to drop this contraint:
+
+  CONSTRAINT `fk_foo` FOREIGN KEY (`foo_id`) REFERENCES `bar` (`foo_id`)
+
+You must specify C<--alter "DROP FOREIGN KEY _fk_foo">.
 
 =back
 

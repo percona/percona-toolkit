@@ -85,6 +85,7 @@ is \
    "$cnf_file" \
    "/tmp/12345/my.sandbox.cnf" \
    "find_my_cnf_file gets the correct file"
+[ $? -ne 0 ] && diag "$p/mysqld-instances"
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-001.txt")
 is "$res" "/tmp/12345/my.sandbox.cnf" "ps-mysqld-001.txt"

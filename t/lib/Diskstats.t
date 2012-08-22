@@ -9,14 +9,12 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 108;
-
-use PerconaTest;
-
-use OptionParser;
-
+use Test::More;
 use File::Spec;
 use File::Temp ();
+
+use PerconaTest;
+use OptionParser;
 
 BEGIN {
    use_ok "Diskstats";
@@ -25,7 +23,7 @@ BEGIN {
    use_ok "DiskstatsGroupBySample";
 }
 
-my $o   = new OptionParser(description => 'Diskstats');
+my $o = new OptionParser(description => 'Diskstats');
 $o->get_specs("$trunk/bin/pt-diskstats");
 $o->get_opts();
 
@@ -476,6 +474,7 @@ is_deeply(
 $obj->clear_state();
 
 }
+
 # ############################################################################
 # The three subclasses
 # ############################################################################
@@ -491,7 +490,8 @@ for my $test (
       {
          class               => "DiskstatsGroupBySample",
          results_file_prefix => "sample",
-      }) {
+      },
+) {
    my $obj    = $test->{class}->new(OptionParser => $o, show_inactive => 1);
    my $prefix = $test->{results_file_prefix};
 
@@ -502,9 +502,8 @@ for my $test (
    $obj->set_show_line_between_samples(0);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
-      my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
-      my $file_with_trunk = File::Spec->catfile( $trunk, $file );
-
+      my $file = File::Spec->catfile(qw(t pt-diskstats samples), $filename);
+      my $file_with_trunk = File::Spec->catfile($trunk, $file);
       my $expected = "t/pt-diskstats/expected/${prefix}_$filename";
 
       ok(
@@ -571,10 +570,10 @@ EOF
       qr/Time between samples should be > 0, is /,
       "$test->{class}, ->_calc_deltas fails if the time elapsed is negative"
    );
-
 }
 
 # ###########################################################################
 # Done.
 # ###########################################################################
+done_testing;
 exit;
