@@ -3321,15 +3321,19 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+local $EVAL_ERROR;
+eval {
+   require Quoter;
+};
+
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(Quoter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
    my $self = { %args };
+   $self->{Quoter} ||= Quoter->new();
    return bless $self, $class;
 }
+
+sub Quoter { shift->{Quoter} }
 
 sub get_create_table {
    my ( $self, $dbh, $db, $tbl ) = @_;
@@ -3574,6 +3578,73 @@ sub check_table {
 
    PTDEBUG && _d('User has all privs');
    return 1;
+}
+
+
+sub check_table_against_slave {
+   my ($self, %args) = @_;
+
+   my @required_args = qw(tbl_name slave_tbl slave_name master_tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($tbl_name, $slave_tbl, $slave_name, $master_tbl) = @args{@required_args};
+
+   my $columns_in_slave  = { map { $_ => 1 } @{$slave_tbl->{cols}}  };
+   my $columns_in_master = { map { $_ => 1 } @{$master_tbl->{cols}} };
+
+   my @extra_columns_in_slave;
+   for my $column (keys %$columns_in_slave) {
+      if ( $columns_in_master->{$column} ) {
+         $columns_in_master->{$column}++
+      }
+      else {
+         push @extra_columns_in_slave, $column;
+      }
+   }
+
+   my @not_in_slave = grep { $columns_in_master->{$_} != 2 }
+                        keys %$columns_in_master;
+
+   die "Table $tbl_name in $slave_name differs from master: "
+     . "Columns @not_in_slave are missing\n  "
+     if @not_in_slave;
+
+   print STDERR "Table $tbl_name in $slave_name has more columns than "
+      . "its master: @extra_columns_in_slave\n"
+      if @extra_columns_in_slave;
+
+   return 1;
+}
+
+sub check_table_against_slaves {
+   my ($self, %args) = @_;
+
+   my @required_args = qw(tbl_struct db table slaves);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   my ($tbl_struct, $db, $tbl, $slaves) = @args{@required_args};
+   
+   for my $slave_cxn (@$slaves) {
+      my $slave_has_table = $self->check_table(
+            dbh => $slave_cxn->dbh(),
+            db  => $db,
+            tbl => $tbl,
+      );
+      die "Table $db.$tbl doesn't exist in slave " . $slave_cxn->name()
+         unless $slave_has_table;
+
+      my $ddl       = $self->get_create_table( $slave_cxn->dbh, $db, $tbl );
+      my $slave_tbl = $self->parse( $ddl );
+      $self->check_table_against_slave(
+         tbl_name   => "$db.$tbl",
+         master_tbl => $tbl_struct,
+         slave_tbl  => $slave_tbl,
+         slave_name => $slave_cxn->name(),
+      );
+   }
 }
 
 sub get_engine {
@@ -8801,6 +8872,15 @@ sub main {
                         : $o->get('chunk-size');
          $tbl->{chunk_size} = $chunk_size;
 
+         if ( $o->get('check-replicate-table-columns') ) {
+            $tp->check_table_against_slaves(
+               tbl_struct => $tbl->{tbl_struct},
+               db         => $tbl->{db},
+               table      => $tbl->{tbl},
+               slaves     => $slaves,
+            ) if $slaves;
+         }
+
          # Make a nibble iterator for this table.  This should only fail
          # if the table has no indexes and is too large to checksum in
          # one chunk.
@@ -9204,19 +9284,26 @@ sub check_repl_table {
       $sql = "CREATE DATABASE IF NOT EXISTS "
             . $q->quote($db)
             . " /* pt-table-checksum */";
-#      local $@;
+      local $EVAL_ERROR;
       PTDEBUG && _d($sql);
       eval {
          $dbh->do($sql);
       };
       if ( $EVAL_ERROR ) {
          if ( @db_exists ) {
-            die "Error executing $sql: $EVAL_ERROR\n"
-              . "The database exists on the master, but replication will "
-              . "break if it does not also exist on all replicas. If the "
-              . "--replicate database and table already exist on the master "
-              . "and all replicas, or if you created them manually, then "
-              . "specify --no-create-replicate-table to avoid this error."
+            my $e = $EVAL_ERROR;
+            for my $slave_cxn (@$slaves) {
+               my $slave_dbh = $slave_cxn->dbh();
+               my $check_sql = "SHOW DATABASES LIKE '$db'";
+               PTDEBUG && _d($check_sql);
+               my @db_exists_in_slave = $slave_dbh->selectrow_array($check_sql);
+               die "Error executing $sql: $e\n"
+                 . "The $db database exists on the master, but doesn't in slave "
+                 . $slave_cxn->name() . "; This can cause replication to fail.  "
+                 . "If you understand the risks, you can specify "
+                 . "--no-create-replicate-table to avoid this error."
+                 unless @db_exists_in_slave;
+            }
          }
          else {
             die "--replicate database $db does not exist and it cannot be "
@@ -9238,32 +9325,39 @@ sub check_repl_table {
 
    # Always create the table, unless --no-create-replicate-table
    # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
-   if ( !$tbl_exists ) {
-      if ( !$o->get('create-replicate-table') ) {
-         die "--replicate table $repl_table does not exist and "
-         . "--no-create-replicate-table was specified.  "
-         . "You need to create the table.\n";
-      }
+   if ( !$tbl_exists && !$o->get('create-replicate-table') ) {
+      die "--replicate table $repl_table does not exist and "
+        . "--no-create-replicate-table was specified.  "
+        . "You need to create the table.\n";
    }
-   else {
-      PTDEBUG && _d('--replicate table', $repl_table, 'already exists');
-      # We used to check the table privs here, but:
-      # https://bugs.launchpad.net/percona-toolkit/+bug/916168
-   }
+   PTDEBUG && $tbl_exists && _d('--replicate table', $repl_table, 'already exists');
+   # We used to check the table privs here, but:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/916168
 
    if ( $o->get('create-replicate-table') ) {
-      local $@;
+      local $EVAL_ERROR;
       eval {
          create_repl_table(%args);
       };
       if ( $EVAL_ERROR ) {
          if ( $tbl_exists ) {
-            die "Error executing $sql: $EVAL_ERROR\n"
-              . "The table exists on the master, but replication will "
-              . "break if it does not also exist on all replicas. If the "
-              . "--replicate database and table already exist on the master "
-              . "and all replicas, or if you created them manually, then "
-              . "specify --no-create-replicate-table to avoid this error."
+            my $e   = $EVAL_ERROR;
+            my $ddl = $tp->get_create_table( $dbh, $db, $tbl );
+            my $tbl_struct = $tp->parse( $ddl );
+            eval {
+               $tp->check_table_against_slaves(
+                  tbl_struct => $tbl_struct,
+                  db         => $db,
+                  table      => $tbl,
+                  slaves     => $slaves,
+               ) if $slaves;
+            };
+            die "Error executing $sql: $e\n"
+              . $EVAL_ERROR
+              . "\nThis can cause replication to fail.  "
+              . "If you understand the risks, you can specify "
+              . "--no-create-replicate-table to avoid this error."
+              if $EVAL_ERROR;
          }
          else {
             die "--replicate table $tbl does not exist and it cannot be "
@@ -9987,6 +10081,14 @@ not intrusive for MySQL, it results in more round-trips to the server, which
 consumes time. Making chunks too small will cause the overhead to become
 relatively larger. It is therefore recommended that you not make chunks too
 small, because the tool may take a very long time to complete if you do.
+
+=item --[no]check-replicate-table-columns
+
+default: yes; group: Safety
+
+Checks that tables in slaves don't differ from the table in master before
+checksumming.  Tables with missing columns will be skipped with an error;
+Tables with extra columns will generate a warning.
 
 =item --[no]check-replication-filters
 
