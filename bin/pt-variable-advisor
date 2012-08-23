@@ -4468,7 +4468,7 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
-   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check($dbh);
    }
 
