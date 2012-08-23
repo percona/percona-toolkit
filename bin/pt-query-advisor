@@ -6,7 +6,52 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      Percona::Toolkit
+      DSNParser
+      OptionParser
+      Quoter
+      SlowLogParser
+      GeneralLogParser
+      QueryParser
+      QueryRewriter
+      Transformers
+      Daemon
+      Advisor
+      AdvisorRules
+      QueryAdvisorRules
+      PodParser
+      SQLParser
+      TableParser
+      ReportFormatter
+      VersionCheck
+      HTTPMicro
+      Pingback
+   ));
+}
+
+# ###########################################################################
+# Percona::Toolkit package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/Toolkit.pm
+#   t/lib/Percona/Toolkit.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::Toolkit;
+our $VERSION = '2.1.3';
+1;
+}
+# ###########################################################################
+# End Percona::Toolkit package
+# ###########################################################################
 
 # ###########################################################################
 # DSNParser package
@@ -5995,6 +6040,939 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# VersionCheck package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionCheck.pm
+#   t/lib/VersionCheck.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package VersionCheck;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use File::Basename ();
+use Data::Dumper ();
+
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+
+   Data::Dumper::Dumper(@_);
+}
+
+sub new {
+   my ($class, %args) = @_;
+   my $self = {
+      valid_types => qr/
+         ^(?:
+             os_version
+            |perl_version
+            |perl_module_version
+            |mysql_variable
+            |bin_version
+         )$/x,
+   };
+   return bless $self, $class;
+}
+
+sub parse_server_response {
+   my ($self, %args) = @_;
+   my @required_args = qw(response);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($response) = @args{@required_args};
+
+   my %items = map {
+      my ($item, $type, $vars) = split(";", $_);
+      if ( !defined $args{split_vars} || $args{split_vars} ) {
+         $vars = [ split(",", ($vars || '')) ];
+      }
+      $item => {
+         item => $item,
+         type => $type,
+         vars => $vars,
+      };
+   } split("\n", $response);
+
+   PTDEBUG && _d('Items:', Dumper(\%items));
+
+   return \%items;
+}
+
+sub get_versions {
+   my ($self, %args) = @_;
+   my @required_args = qw(items);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items) = @args{@required_args};
+   my $dbh     = $args{dbh}; # optional
+
+   my %versions;
+   foreach my $item ( values %$items ) {
+      next unless $self->valid_item($item);
+      
+      eval {
+         my $func    = 'get_' . $item->{type};
+         my $version = $self->$func(
+            item => $item,
+            dbh  => $dbh,
+         );
+         if ( $version ) {
+            chomp $version;
+            $versions{$item->{item}} = $version;
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error getting version for', Dumper($item), $EVAL_ERROR);
+      }
+   }
+
+   return \%versions;
+}
+
+sub valid_item {
+   my ($self, $item) = @_;
+   return unless $item;
+
+   if ( ($item->{type} || '') !~ m/$self->{valid_types}/ ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return;
+   }
+
+   return 1;
+}
+
+sub get_os_version {
+   my ($self) = @_;
+
+  chomp(my $platform = `uname -s`);
+  PTDEBUG && _d('platform:', $platform);
+  return $OSNAME unless $platform;
+
+   chomp(my $lsb_release
+            = `which lsb_release 2>/dev/null | awk '{print \$1}'` || '');
+   PTDEBUG && _d('lsb_release:', $lsb_release);
+
+   my $release = "";
+
+   if ( $platform eq 'Linux' ) {
+      if ( -f "/etc/fedora-release" ) {
+         $release = `cat /etc/fedora-release`;
+      }
+      elsif ( -f "/etc/redhat-release" ) {
+         $release = `cat /etc/redhat-release`;
+      }
+      elsif ( -f "/etc/system-release" ) {
+         $release = `cat /etc/system-release`;
+      }
+      elsif ( $lsb_release ) {
+         $release = `$lsb_release -ds`;
+      }
+      elsif ( -f "/etc/lsb-release" ) {
+         $release = `grep DISTRIB_DESCRIPTION /etc/lsb-release`;
+         $release =~ s/^\w+="([^"]+)".+/$1/;
+      }
+      elsif ( -f "/etc/debian_version" ) {
+         chomp(my $rel = `cat /etc/debian_version`);
+         $release = "Debian $rel";
+         if ( -f "/etc/apt/sources.list" ) {
+             chomp(my $code_name = `awk '/^deb/ {print \$3}' /etc/apt/sources.list | awk -F/ '{print \$1}'| awk 'BEGIN {FS="|"} {print \$1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print \$2}'`);
+             $release .= " ($code_name)" if $code_name;
+         }
+      }
+      elsif ( `ls /etc/*release 2>/dev/null` ) {
+         if ( `grep DISTRIB_DESCRIPTION /etc/*release 2>/dev/null` ) {
+            $release = `grep DISTRIB_DESCRIPTION /etc/*release | head -n1`;
+         }
+         else {
+            $release = `cat /etc/*release | head -n1`;
+         }
+      }
+   }
+   elsif ( $platform =~ m/^(BSD|Darwin)$/ ) {
+      my $rel = `uname -r`;
+      $release = "$platform $rel";
+   }
+   elsif ( $platform eq "SunOS" ) {
+      my $rel = `head -n1 /etc/release` || `uname -r`;
+      $release = "$platform $rel";
+   }
+
+   if ( !$release ) {
+      PTDEBUG && _d('Failed to get the release, using platform');
+      $release = $platform;
+   }
+   chomp($release);
+
+   PTDEBUG && _d('OS version =', $release);
+   return $release;
+}
+
+sub get_perl_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+
+   my $version = sprintf '%vd', $PERL_VERSION;
+   PTDEBUG && _d('Perl version', $version);
+   return $version;
+}
+
+sub get_perl_module_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+   
+   my $var          = $item->{item} . '::VERSION';
+   my $version      = _get_scalar($var);
+   PTDEBUG && _d('Perl version for', $var, '=', "$version");
+
+   return $version ? "$version" : $version;
+}
+
+sub _get_scalar {
+   no strict;
+   return ${*{shift()}};
+}
+
+sub get_mysql_variable {
+   my $self = shift;
+   return $self->_get_from_mysql(
+      show => 'VARIABLES',
+      @_,
+   );
+}
+
+
+sub _get_from_mysql {
+   my ($self, %args) = @_;
+   my $show = $args{show};
+   my $item = $args{item};
+   my $dbh  = $args{dbh};
+   return unless $show && $item && $dbh;
+
+   local $dbh->{FetchHashKeyName} = 'NAME_lc';
+   my $sql = qq/SHOW $show/;
+   PTDEBUG && _d($sql);
+   my $rows = $dbh->selectall_hashref($sql, 'variable_name');
+
+   my @versions;
+   foreach my $var ( @{$item->{vars}} ) {
+      $var = lc($var);
+      my $version = $rows->{$var}->{value};
+      PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version);
+      push @versions, $version;
+   }
+
+   return join(' ', @versions);
+}
+
+sub get_bin_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   my $cmd  = $item->{item};
+   return unless $cmd;
+
+   my $sanitized_command = File::Basename::basename($cmd);
+   PTDEBUG && _d('cmd:', $cmd, 'sanitized:', $sanitized_command);
+   return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
+
+   my $output = `$sanitized_command --version 2>&1`;
+   PTDEBUG && _d('output:', $output);
+
+   my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
+
+   PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
+   return $version;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End VersionCheck package
+# ###########################################################################
+
+# ###########################################################################
+# HTTPMicro package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/HTTPMicro.pm
+#   t/lib/HTTPMicro.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+
+package HTTPMicro;
+BEGIN {
+  $HTTPMicro::VERSION = '0.001';
+}
+use strict;
+use warnings;
+
+use Carp ();
+
+
+my @attributes;
+BEGIN {
+    @attributes = qw(agent timeout);
+    no strict 'refs';
+    for my $accessor ( @attributes ) {
+        *{$accessor} = sub {
+            @_ > 1 ? $_[0]->{$accessor} = $_[1] : $_[0]->{$accessor};
+        };
+    }
+}
+
+sub new {
+    my($class, %args) = @_;
+    (my $agent = $class) =~ s{::}{-}g;
+    my $self = {
+        agent        => $agent . "/" . ($class->VERSION || 0),
+        timeout      => 60,
+    };
+    for my $key ( @attributes ) {
+        $self->{$key} = $args{$key} if exists $args{$key}
+    }
+    return bless $self, $class;
+}
+
+sub request {
+    my ($self, $method, $url, $args) = @_;
+    @_ == 3 || (@_ == 4 && ref $args eq 'HASH')
+      or Carp::croak(q/Usage: $http->request(METHOD, URL, [HASHREF])/);
+    $args ||= {}; # we keep some state in this during _request
+
+    my $response;
+    for ( 0 .. 1 ) {
+        $response = eval { $self->_request($method, $url, $args) };
+        last unless $@ && $method eq 'GET'
+            && $@ =~ m{^(?:Socket closed|Unexpected end)};
+    }
+
+    if (my $e = "$@") {
+        $response = {
+            success => q{},
+            status  => 599,
+            reason  => 'Internal Exception',
+            content => $e,
+            headers => {
+                'content-type'   => 'text/plain',
+                'content-length' => length $e,
+            }
+        };
+    }
+    return $response;
+}
+
+sub _request {
+    my ($self, $method, $url, $args) = @_;
+
+    my ($scheme, $host, $port, $path_query) = $self->_split_url($url);
+
+    my $request = {
+        method    => $method,
+        scheme    => $scheme,
+        host_port => ($port == 80 ? $host : "$host:$port"),
+        uri       => $path_query,
+        headers   => {},
+    };
+
+    my $handle  = HTTPMicro::Handle->new(timeout => $self->{timeout});
+
+    $handle->connect($scheme, $host, $port);
+
+    $self->_prepare_headers_and_cb($request, $args);
+    $handle->write_request_header(@{$request}{qw/method uri headers/});
+    $handle->write_content_body($request) if $request->{content};
+
+    my $response;
+    do { $response = $handle->read_response_header }
+        until (substr($response->{status},0,1) ne '1');
+
+    if (!($method eq 'HEAD' || $response->{status} =~ /^[23]04/)) {
+        $response->{content} = '';
+        $handle->read_content_body(sub { $_[1]->{content} .= $_[0] }, $response);
+    }
+
+    $handle->close;
+    $response->{success} = substr($response->{status},0,1) eq '2';
+    return $response;
+}
+
+sub _prepare_headers_and_cb {
+    my ($self, $request, $args) = @_;
+
+    for ($args->{headers}) {
+        next unless defined;
+        while (my ($k, $v) = each %$_) {
+            $request->{headers}{lc $k} = $v;
+        }
+    }
+    $request->{headers}{'host'}         = $request->{host_port};
+    $request->{headers}{'connection'}   = "close";
+    $request->{headers}{'user-agent'} ||= $self->{agent};
+
+    if (defined $args->{content}) {
+        $request->{headers}{'content-type'} ||= "application/octet-stream";
+        utf8::downgrade($args->{content}, 1)
+            or Carp::croak(q/Wide character in request message body/);
+        $request->{headers}{'content-length'} = length $args->{content};
+        $request->{content} = $args->{content};
+    }
+    return;
+}
+
+sub _split_url {
+    my $url = pop;
+
+    my ($scheme, $authority, $path_query) = $url =~ m<\A([^:/?#]+)://([^/?#]*)([^#]*)>
+      or Carp::croak(qq/Cannot parse URL: '$url'/);
+
+    $scheme     = lc $scheme;
+    $path_query = "/$path_query" unless $path_query =~ m<\A/>;
+
+    my $host = (length($authority)) ? lc $authority : 'localhost';
+       $host =~ s/\A[^@]*@//;   # userinfo
+    my $port = do {
+       $host =~ s/:([0-9]*)\z// && length $1
+         ? $1
+         : ($scheme eq 'http' ? 80 : undef);
+    };
+
+    return ($scheme, $host, $port, $path_query);
+}
+
+package
+    HTTPMicro::Handle; # hide from PAUSE/indexers
+use strict;
+use warnings;
+
+use Carp       qw[croak];
+use Errno      qw[EINTR EPIPE];
+use IO::Socket qw[SOCK_STREAM];
+
+sub BUFSIZE () { 32768 }
+
+my $Printable = sub {
+    local $_ = shift;
+    s/\r/\\r/g;
+    s/\n/\\n/g;
+    s/\t/\\t/g;
+    s/([^\x20-\x7E])/sprintf('\\x%.2X', ord($1))/ge;
+    $_;
+};
+
+sub new {
+    my ($class, %args) = @_;
+    return bless {
+        rbuf             => '',
+        timeout          => 60,
+        max_line_size    => 16384,
+        %args
+    }, $class;
+}
+
+sub connect {
+    @_ == 4 || croak(q/Usage: $handle->connect(scheme, host, port)/);
+    my ($self, $scheme, $host, $port) = @_;
+
+    if ( $scheme ne 'http' ) {
+      croak(qq/Unsupported URL scheme '$scheme'/);
+    }
+
+    $self->{fh} = 'IO::Socket::INET'->new(
+        PeerHost  => $host,
+        PeerPort  => $port,
+        Proto     => 'tcp',
+        Type      => SOCK_STREAM,
+        Timeout   => $self->{timeout}
+    ) or croak(qq/Could not connect to '$host:$port': $@/);
+
+    binmode($self->{fh})
+      or croak(qq/Could not binmode() socket: '$!'/);
+
+    $self->{host} = $host;
+    $self->{port} = $port;
+
+    return $self;
+}
+
+sub close {
+    @_ == 1 || croak(q/Usage: $handle->close()/);
+    my ($self) = @_;
+    CORE::close($self->{fh})
+      or croak(qq/Could not close socket: '$!'/);
+}
+
+sub write {
+    @_ == 2 || croak(q/Usage: $handle->write(buf)/);
+    my ($self, $buf) = @_;
+
+    my $len = length $buf;
+    my $off = 0;
+
+    local $SIG{PIPE} = 'IGNORE';
+
+    while () {
+        $self->can_write
+          or croak(q/Timed out while waiting for socket to become ready for writing/);
+        my $r = syswrite($self->{fh}, $buf, $len, $off);
+        if (defined $r) {
+            $len -= $r;
+            $off += $r;
+            last unless $len > 0;
+        }
+        elsif ($! == EPIPE) {
+            croak(qq/Socket closed by remote server: $!/);
+        }
+        elsif ($! != EINTR) {
+            croak(qq/Could not write to socket: '$!'/);
+        }
+    }
+    return $off;
+}
+
+sub read {
+    @_ == 2 || @_ == 3 || croak(q/Usage: $handle->read(len)/);
+    my ($self, $len) = @_;
+
+    my $buf  = '';
+    my $got = length $self->{rbuf};
+
+    if ($got) {
+        my $take = ($got < $len) ? $got : $len;
+        $buf  = substr($self->{rbuf}, 0, $take, '');
+        $len -= $take;
+    }
+
+    while ($len > 0) {
+        $self->can_read
+          or croak(q/Timed out while waiting for socket to become ready for reading/);
+        my $r = sysread($self->{fh}, $buf, $len, length $buf);
+        if (defined $r) {
+            last unless $r;
+            $len -= $r;
+        }
+        elsif ($! != EINTR) {
+            croak(qq/Could not read from socket: '$!'/);
+        }
+    }
+    if ($len) {
+        croak(q/Unexpected end of stream/);
+    }
+    return $buf;
+}
+
+sub readline {
+    @_ == 1 || croak(q/Usage: $handle->readline()/);
+    my ($self) = @_;
+
+    while () {
+        if ($self->{rbuf} =~ s/\A ([^\x0D\x0A]* \x0D?\x0A)//x) {
+            return $1;
+        }
+        $self->can_read
+          or croak(q/Timed out while waiting for socket to become ready for reading/);
+        my $r = sysread($self->{fh}, $self->{rbuf}, BUFSIZE, length $self->{rbuf});
+        if (defined $r) {
+            last unless $r;
+        }
+        elsif ($! != EINTR) {
+            croak(qq/Could not read from socket: '$!'/);
+        }
+    }
+    croak(q/Unexpected end of stream while looking for line/);
+}
+
+sub read_header_lines {
+    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->read_header_lines([headers])/);
+    my ($self, $headers) = @_;
+    $headers ||= {};
+    my $lines   = 0;
+    my $val;
+
+    while () {
+         my $line = $self->readline;
+
+         if ($line =~ /\A ([^\x00-\x1F\x7F:]+) : [\x09\x20]* ([^\x0D\x0A]*)/x) {
+             my ($field_name) = lc $1;
+             $val = \($headers->{$field_name} = $2);
+         }
+         elsif ($line =~ /\A [\x09\x20]+ ([^\x0D\x0A]*)/x) {
+             $val
+               or croak(q/Unexpected header continuation line/);
+             next unless length $1;
+             $$val .= ' ' if length $$val;
+             $$val .= $1;
+         }
+         elsif ($line =~ /\A \x0D?\x0A \z/x) {
+            last;
+         }
+         else {
+            croak(q/Malformed header line: / . $Printable->($line));
+         }
+    }
+    return $headers;
+}
+
+sub write_header_lines {
+    (@_ == 2 && ref $_[1] eq 'HASH') || croak(q/Usage: $handle->write_header_lines(headers)/);
+    my($self, $headers) = @_;
+
+    my $buf = '';
+    while (my ($k, $v) = each %$headers) {
+        my $field_name = lc $k;
+         $field_name =~ /\A [\x21\x23-\x27\x2A\x2B\x2D\x2E\x30-\x39\x41-\x5A\x5E-\x7A\x7C\x7E]+ \z/x
+            or croak(q/Invalid HTTP header field name: / . $Printable->($field_name));
+         $field_name =~ s/\b(\w)/\u$1/g;
+         $buf .= "$field_name: $v\x0D\x0A";
+    }
+    $buf .= "\x0D\x0A";
+    return $self->write($buf);
+}
+
+sub read_content_body {
+    @_ == 3 || @_ == 4 || croak(q/Usage: $handle->read_content_body(callback, response, [read_length])/);
+    my ($self, $cb, $response, $len) = @_;
+    $len ||= $response->{headers}{'content-length'};
+
+    croak("No content-length in the returned response, and this "
+        . "UA doesn't implement chunking") unless defined $len;
+
+    while ($len > 0) {
+        my $read = ($len > BUFSIZE) ? BUFSIZE : $len;
+        $cb->($self->read($read), $response);
+        $len -= $read;
+    }
+
+    return;
+}
+
+sub write_content_body {
+    @_ == 2 || croak(q/Usage: $handle->write_content_body(request)/);
+    my ($self, $request) = @_;
+    my ($len, $content_length) = (0, $request->{headers}{'content-length'});
+
+    $len += $self->write($request->{content});
+
+    $len == $content_length
+      or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+
+    return $len;
+}
+
+sub read_response_header {
+    @_ == 1 || croak(q/Usage: $handle->read_response_header()/);
+    my ($self) = @_;
+
+    my $line = $self->readline;
+
+    $line =~ /\A (HTTP\/(0*\d+\.0*\d+)) [\x09\x20]+ ([0-9]{3}) [\x09\x20]+ ([^\x0D\x0A]*) \x0D?\x0A/x
+      or croak(q/Malformed Status-Line: / . $Printable->($line));
+
+    my ($protocol, $version, $status, $reason) = ($1, $2, $3, $4);
+
+    return {
+        status   => $status,
+        reason   => $reason,
+        headers  => $self->read_header_lines,
+        protocol => $protocol,
+    };
+}
+
+sub write_request_header {
+    @_ == 4 || croak(q/Usage: $handle->write_request_header(method, request_uri, headers)/);
+    my ($self, $method, $request_uri, $headers) = @_;
+
+    return $self->write("$method $request_uri HTTP/1.1\x0D\x0A")
+         + $self->write_header_lines($headers);
+}
+
+sub _do_timeout {
+    my ($self, $type, $timeout) = @_;
+    $timeout = $self->{timeout}
+        unless defined $timeout && $timeout >= 0;
+
+    my $fd = fileno $self->{fh};
+    defined $fd && $fd >= 0
+      or croak(q/select(2): 'Bad file descriptor'/);
+
+    my $initial = time;
+    my $pending = $timeout;
+    my $nfound;
+
+    vec(my $fdset = '', $fd, 1) = 1;
+
+    while () {
+        $nfound = ($type eq 'read')
+            ? select($fdset, undef, undef, $pending)
+            : select(undef, $fdset, undef, $pending) ;
+        if ($nfound == -1) {
+            $! == EINTR
+              or croak(qq/select(2): '$!'/);
+            redo if !$timeout || ($pending = $timeout - (time - $initial)) > 0;
+            $nfound = 0;
+        }
+        last;
+    }
+    $! = 0;
+    return $nfound;
+}
+
+sub can_read {
+    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_read([timeout])/);
+    my $self = shift;
+    return $self->_do_timeout('read', @_)
+}
+
+sub can_write {
+    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_write([timeout])/);
+    my $self = shift;
+    return $self->_do_timeout('write', @_)
+}
+
+1;
+}
+# ###########################################################################
+# End HTTPMicro package
+# ###########################################################################
+
+# ###########################################################################
+# Pingback package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Pingback.pm
+#   t/lib/Pingback.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Pingback;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use File::Basename qw();
+use Data::Dumper   qw();
+use Fcntl          qw(:DEFAULT);
+
+use File::Spec;
+
+my $dir = File::Spec->tmpdir();
+my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $check_time_limit = 60 * 60 * 24;  # one day
+
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+
+   Data::Dumper::Dumper(@_);
+}
+
+local $EVAL_ERROR;
+eval {
+   require HTTPMicro;
+   require VersionCheck;
+};
+
+sub version_check {
+   eval {
+      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('--version-check is disabled by the PERCONA_VERSION_CHECK',
+               'environment variable');
+         }
+         return;
+      } 
+
+      if ( !time_to_check($check_time_file) ) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('It is not time to --version-checka again;',
+               'only 1 check per', $check_time_limit, 'seconds, and the last',
+               'check was performed on the modified time of', $check_time_file);
+         }
+         return;
+      }
+
+      my $dbh = shift;  # optional
+      my $advice = pingback(
+         url => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
+         dbh => $dbh,
+      );
+      if ( $advice ) {
+         print "# Percona suggests these upgrades:\n";
+         print join("\n", map { "#   * $_" } @$advice);
+         print "\n# Specify --no-version-check to disable these suggestions.\n\n";
+      }
+      elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('--version-check worked, but there were no suggestions');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Error doing --version-check:', $EVAL_ERROR);
+      }
+   }
+
+   return;
+}
+
+sub pingback {
+   my (%args) = @_;
+   my @required_args = qw(url);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($url) = @args{@required_args};
+
+   my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
+
+   $ua ||= HTTPMicro->new( timeout => 2 );
+   $vc ||= VersionCheck->new();
+
+   my $response = $ua->request('GET', $url);
+   PTDEBUG && _d('Server response:', Dumper($response));
+   die "No response from GET $url"
+      if !$response;
+   die "GET $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+   die "GET $url did not return any programs to check"
+      if !$response->{content};
+
+   my $items = $vc->parse_server_response(
+      response => $response->{content}
+   );
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
+
+   my $versions = $vc->get_versions(
+      items => $items,
+      dbh   => $dbh,
+   );
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
+
+   my $client_content = encode_client_response(
+      items    => $items,
+      versions => $versions,
+   );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+   PTDEBUG && _d('Client response:', Dumper($client_response));
+
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   return unless $response->{content};
+
+   $items = $vc->parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
+}
+
+sub time_to_check {
+   my ($file) = @_;
+   die "I need a file argument" unless $file;
+
+   if ( !-f $file ) {
+      PTDEBUG && _d('Creating', $file);
+      _touch($file);
+      return 1;
+   }
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      PTDEBUG && _d('Error getting modified time of', $file);
+      return 0;
+   }
+
+   my $time = int(time());
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      _touch($file);
+      return 1;
+   }
+
+   return 0;
+}
+
+sub _touch {
+   my ($file) = @_;
+   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+      or die "Cannot create $file : $!";
+   close $fh or die "Cannot close $file : $!";
+   utime(undef, undef, $file);
+}
+
+sub encode_client_response {
+   my (%args) = @_;
+   my @required_args = qw(items versions);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items, $versions) = @args{@required_args};
+
+   my @lines;
+   foreach my $item ( sort keys %$items ) {
+      next unless exists $versions->{$item};
+      push @lines, join(';', $item, $versions->{$item});
+   }
+
+   my $client_response = join("\n", @lines) . "\n";
+   PTDEBUG && _d('Client response:', $client_response);
+   return $client_response;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Pingback package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -6014,6 +6992,7 @@ $Data::Dumper::Quotekeys = 0;
 
 Transformers->import(qw(make_checksum));
 
+use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 # Some rules report their match pos.  This sets how many
@@ -6026,7 +7005,7 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 my $oktorun = 1;  # global for sig handler
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
+   local @ARGV = @_;  # set global ARGV for this package
 
    my %seen_id;           # already printed rule info (advice)
    my %seen_fingerprint;  # already seen queries
@@ -6379,6 +7358,13 @@ sub main {
       # We're not daemoninzing, it just handles PID stuff.
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
+   }
+
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && ($o->has('quiet') && !$o->get('quiet')) ) {
+      Pingback::version_check($dbh);
    }
 
    # #########################################################################
@@ -7147,6 +8133,24 @@ L<"--report-format">.
 =item --version
 
 Show version and exit.
+
+=item --[no]version-check
+
+default: yes
+
+Send program versions to Percona and print suggested upgrades and problems.
+
+The version check feature causes the tool to send and receive data from
+Percona over the web.  The data contains program versions from the local
+machine.  Percona uses the data to focus development on the most widely
+used versions of programs, and to suggest to customers possible upgrades
+and known bad versions of programs.
+
+This feature can be disabled by specifying C<--no-version-check> on the
+command line or in one of several L<"--config"> files, or by setting the
+environment variable C<PERCONA_VERSION_CHECK=0>.
+
+For more information, visit L<http://www.percona.com/version-check>.
 
 =item --where
 

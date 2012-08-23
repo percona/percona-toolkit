@@ -1359,6 +1359,23 @@ is_deeply(
 );
 
 # #############################################################################
+# base_count fails on n = 1000, base = 10
+# https://bugs.launchpad.net/percona-toolkit/+bug/1028710
+# #############################################################################
+
+my $res = TableChunker->base_count(
+   count_to => 1000,
+   base     => 10,
+   symbols  => ["a".."z"],
+);
+
+is(
+   $res,
+   "baaa",
+   "base_count's floor()s account for floating point arithmetics",
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);

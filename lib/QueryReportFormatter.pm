@@ -811,7 +811,7 @@ sub distro_sparkline {
    # Divide the range by 4 because there are 4 char codes: _.-^
    $min = 0 if $min == $max;
    my @range_min;
-   my $d = floor(($max-$min) / 4);
+   my $d = floor((($max+0.00001)-$min) / 4);
    for my $x ( 1..4 ) {
       push @range_min, $min + ($d * $x);
    }
