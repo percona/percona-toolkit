@@ -6196,30 +6196,6 @@ sub lock_and_wait {
    return $result;
 }
 
-sub have_all_privs {
-   my ( $self, $dbh, $db, $tbl ) = @_;
-   my $db_tbl = $self->{Quoter}->quote($db, $tbl);
-   my $sql    = "SHOW FULL COLUMNS FROM $db_tbl";
-   PTDEBUG && _d('Permissions check:', $sql);
-   my $cols       = $dbh->selectall_arrayref($sql, {Slice => {}});
-   my ($hdr_name) = grep { m/privileges/i } keys %{$cols->[0]};
-   my $privs      = $cols->[0]->{$hdr_name};
-   $sql = "DELETE FROM $db_tbl LIMIT 0"; # FULL COLUMNS doesn't show all privs
-   PTDEBUG && _d('Permissions check:', $sql);
-   eval { $dbh->do($sql); };
-   my $can_delete = $EVAL_ERROR ? 0 : 1;
-
-   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
-      ($can_delete ? 'delete' : ''));
-   if ( $privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/ 
-        && $can_delete ) {
-      PTDEBUG && _d('User has all privs');
-      return 1;
-   }
-   PTDEBUG && _d('User does not have all privs');
-   return 0;
-}
-
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -10296,7 +10272,7 @@ sub make_action_subs {
          my ( $sql, $dbh ) = @_;
          # Use $dbh if given.  It's from a bidirectional callback.
          $dbh ||= $change_dbh;
-         PTDEBUG && _d('Execute on dbh', $dbh, $sql);
+         PTDEBUG && _d('Execute on dbh', $dbh, $sql);;
          $dbh->do($sql);
       };
    }
@@ -10501,21 +10477,6 @@ sub ok_to_sync {
    if ( !$dst_has_table ) {
       die "Table $dst->{db}.$dst->{tbl} does not exist on "
          . $dp->as_string($dst->{dsn}) . "\n";
-   }
-
-   # Check that the user has all the necessary privs on the tbls.
-   if ( $o->get('check-privileges') ) {
-      PTDEBUG && _d('Checking privileges');
-      if ( !$syncer->have_all_privs($src->{dbh}, $src->{db}, $src->{tbl}) ) {
-         my $user = get_current_user($src->{dbh}) || "";
-         die "User $user does not have all necessary privileges on ",
-            $q->quote($src->{db}, $src->{tbl});
-      }
-      if ( !$syncer->have_all_privs($dst->{dbh}, $dst->{db}, $dst->{tbl}) ) {
-         my $user = get_current_user($dst->{dbh}) || "";
-         die "User $user does not have all necessary privileges on ",
-            $q->quote($dst->{db}, $dst->{tbl});
-      }
    }
 
    # Check that no triggers are defined on the dst tbl.
@@ -11426,12 +11387,6 @@ default: yes
 
 With L<"--sync-to-master">, try to verify that the detected
 master is the real master.
-
-=item --[no]check-privileges
-
-default: yes
-
-Check that user has all necessary privileges on source and destination table.
 
 =item --[no]check-slave
 
