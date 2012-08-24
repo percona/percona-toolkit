@@ -38,6 +38,7 @@ BEGIN {
       MySQLStatusWaiter
       WeightedAvgRate
       IndexLength
+      Runtime
    ));
 }
 
@@ -2924,11 +2925,8 @@ sub set_dbh {
 
    PTDEBUG && _d($dbh, 'Setting dbh');
 
-   if ( !exists $self->{NAME_lc}
-        || (defined $self->{NAME_lc} && $self->{NAME_lc}) ) {
-      $dbh->{FetchHashKeyName} = 'NAME_lc';
-   }
-   
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
    my $sql = 'SELECT @@hostname, @@server_id';
    PTDEBUG && _d($dbh, $sql);
    my ($hostname, $server_id) = $dbh->selectrow_array($sql);
@@ -7757,6 +7755,134 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Runtime package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Runtime.pm
+#   t/lib/Runtime.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Runtime;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(now);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+
+   if ( ($args{runtime} || 0) < 0 ) {
+      die "runtime argument must be greater than zero"
+   }
+
+   my $self = {
+      %args,
+      start_time => undef,
+      end_time   => undef,
+      time_left  => undef,
+      stop       => 0,
+   };
+
+   return bless $self, $class;
+}
+
+sub time_left {
+   my ( $self, %args ) = @_;
+
+   if ( $self->{stop} ) {
+      PTDEBUG && _d("No time left because stop was called");
+      return 0;
+   }
+
+   my $now = $self->{now}->(%args);
+   PTDEBUG && _d("Current time:", $now);
+
+   if ( !defined $self->{start_time} ) {
+      $self->{start_time} = $now;
+   }
+
+   return unless defined $now;
+
+   my $runtime = $self->{runtime};
+   return unless defined $runtime;
+
+   if ( !$self->{end_time} ) {
+      $self->{end_time} = $now + $runtime;
+      PTDEBUG && _d("End time:", $self->{end_time});
+   }
+
+   $self->{time_left} = $self->{end_time} - $now;
+   PTDEBUG && _d("Time left:", $self->{time_left});
+   return $self->{time_left};
+}
+
+sub have_time {
+   my ( $self, %args ) = @_;
+   my $time_left = $self->time_left(%args);
+   return 1 if !defined $time_left;  # run forever
+   return $time_left <= 0 ? 0 : 1;   # <=0s means runtime has elapsed
+}
+
+sub time_elapsed {
+   my ( $self, %args ) = @_;
+
+   my $start_time = $self->{start_time};
+   return 0 unless $start_time;
+
+   my $now = $self->{now}->(%args);
+   PTDEBUG && _d("Current time:", $now);
+
+   my $time_elapsed = $now - $start_time;
+   PTDEBUG && _d("Time elapsed:", $time_elapsed);
+   if ( $time_elapsed < 0 ) {
+      warn "Current time $now is earlier than start time $start_time";
+   }
+   return $time_elapsed;
+}
+
+sub reset {
+   my ( $self ) = @_;
+   $self->{start_time} = undef;
+   $self->{end_time}   = undef;
+   $self->{time_left}  = undef;
+   $self->{stop}       = 0;
+   PTDEBUG && _d("Reset runtime");
+   return;
+}
+
+sub stop {
+   my ( $self ) = @_;
+   $self->{stop} = 1;
+   return;
+}
+
+sub start {
+   my ( $self ) = @_;
+   $self->{stop} = 0;
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Runtime package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -8315,6 +8441,21 @@ sub main {
    }
 
    # ########################################################################
+   # Set up the run time, if any.
+   # ########################################################################
+   my $have_time;
+   if ( my $run_time = $o->get('run-time') ) {
+      my $rt = Runtime->new(
+         now     => sub { return time; },
+         runtime => $run_time,
+      );
+      $have_time = sub { return $rt->have_time(); };
+   }
+   else {
+      $have_time = sub { return 1; };
+   }
+
+   # ########################################################################
    # Various variables and modules for checksumming the tables.
    # ########################################################################
    my $total_rows = 0;
@@ -8537,7 +8678,7 @@ sub main {
          # done in these callbacks.  This callback is the only place where we
          # can prematurely stop nibbling by returning false.  This allows
          # Ctrl-C to stop the tool between nibbles instead of between tables.
-         return $oktorun; # continue nibbling table?
+         return $oktorun && $have_time->(); # continue nibbling table?
       },
       exec_nibble => sub {
          my (%args) = @_;
@@ -8782,7 +8923,7 @@ sub main {
    # ########################################################################
 
    TABLE:
-   while ( $oktorun &&  (my $tbl = $schema_iter->next()) ) {
+   while ( $oktorun && $have_time->() && (my $tbl = $schema_iter->next()) ) {
       eval {
          # Results, stats, and info related to checksuming this table can
          # be saved here.  print_checksum_results() uses this info.
@@ -8889,7 +9030,9 @@ sub main {
       }
    }
 
-   PTDEBUG && _d('Exit status', $exit_status, 'oktorun', $oktorun);
+   PTDEBUG && _d('Exit status', $exit_status,
+                 'oktorun',     $oktorun,
+                 'have time',   $have_time->());
    return $exit_status;
 }
 
@@ -10524,6 +10667,16 @@ type: int; default: 2
 
 Retry a chunk this many times when there is a nonfatal error.  Nonfatal errors
 are problems such as a lock wait timeout or the query being killed.
+
+=item --run-time
+
+type: time
+
+How long to run.  Default is to run until all tables have been checksummed.
+These time value suffixes are allowed: s (seconds), m (minutes), h (hours),
+and d (days).  Combine this option with L<"--resume"> to checksum as many
+tables within an allotted time, resuming from where the tool left off next
+time it is ran.
 
 =item --separator
 
