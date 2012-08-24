@@ -169,23 +169,25 @@ fio_status_minus_a () {
       $adapter =~ tr/ /:/;
       $adapter .= "::" . scalar(@adapters); # To differentiate two adapters with the same name
       push @adapters, $adapter;
-      my ($connected_modules) = /Connected ioDimm modules?:\s*\n(.+?\n)\n/smg;
+      my ($connected_modules) = /Connected \S+ modules?:\s*\n(.+?\n)\n/smg;
       my @connected_modules   = $connected_modules =~ /\s+([^:]+):.+\n/g;
 
       print "${adapter}_general     $adapter_general";
       print "${adapter}_modules     @connected_modules";
       
       for my $module (@connected_modules) {
-         my ($attached, $general, $firmware, $media_status) = /
+         my ($attached, $general, $firmware, $temperature, $media_status) = /
             ^ \s* $module  \s+ (Attached[^\n]+) \n
               \s+ ([^\n]+)                      \n # All the second line
               .+? (Firmware\s+[^\n]+)           \n
-              .+? (Media \s+ status:[^\n]+)
+              .+? (Internal \s+ temperature:[^\n]+) \n
+              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+)
          /xsm;
          print "${adapter}_${module}_attached_as      $attached";
          print "${adapter}_${module}_general          $general";
          print "${adapter}_${module}_firmware         $firmware";
          print "${adapter}_${module}_media_status     $media_status";
+         print "${adapter}_${module}_temperature      $temperature";
       }
    } while <>;
 
