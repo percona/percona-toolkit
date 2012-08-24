@@ -176,18 +176,21 @@ fio_status_minus_a () {
       print "${adapter}_modules     @connected_modules";
       
       for my $module (@connected_modules) {
-         my ($attached, $general, $firmware, $temperature, $media_status) = /
+         my ($rest, $attached, $general, $firmware, $temperature, $media_status) = /(
             ^ \s* $module  \s+ (Attached[^\n]+) \n
               \s+ ([^\n]+)                      \n # All the second line
               .+? (Firmware\s+[^\n]+)           \n
               .+? (Internal \s+ temperature:[^\n]+) \n
-              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+)
-         /xsm;
+              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+) \n
+              .+?(?:\n\n|\z)
+         )/xsm;
+         my ($pbw) = $rest =~ /.+?(Rated \s+ PBW:[^\n]+)/xsm;
          print "${adapter}_${module}_attached_as      $attached";
          print "${adapter}_${module}_general          $general";
          print "${adapter}_${module}_firmware         $firmware";
          print "${adapter}_${module}_media_status     $media_status";
          print "${adapter}_${module}_temperature      $temperature";
+         print "${adapter}_${module}_rated_pbw        $pbw" if $pbw;
       }
    } while <>;
 

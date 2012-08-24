@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 40
+plan 44
 
 PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
@@ -314,7 +314,7 @@ test_dmidecode_system_info "$PT_TMPDIR/dmidecode_system_info"
 
 # fio_status_minus_a
 
-for i in $( seq 1 3 ); do
+for i in $( seq 1 4 ); do
    fake_command "fio-status" "\"; cat $samples/fio-status-00${i}.txt; echo \""
    fio_status_minus_a "$PT_TMPDIR/got"
 
