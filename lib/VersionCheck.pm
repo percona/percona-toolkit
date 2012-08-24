@@ -86,8 +86,8 @@ sub get_versions {
       die "I need a $arg arugment" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
-   my $dbh     = $args{dbh}; # optional
-
+   my $instances = $args{instances};
+   
    my %versions;
    foreach my $item ( values %$items ) {
       next unless $self->valid_item($item);
@@ -96,10 +96,10 @@ sub get_versions {
          my $func    = 'get_' . $item->{type};
          my $version = $self->$func(
             item => $item,
-            dbh  => $dbh,
+            instances => $instances,
          );
          if ( $version ) {
-            chomp $version;
+            chomp $version unless ref($version);
             $versions{$item->{item}} = $version;
          }
       };
@@ -243,23 +243,29 @@ sub _get_from_mysql {
    my ($self, %args) = @_;
    my $show = $args{show};
    my $item = $args{item};
-   my $dbh  = $args{dbh};
-   return unless $show && $item && $dbh;
+   my $instances = $args{instances};
+   return unless $show && $item && %$instances;
 
-   local $dbh->{FetchHashKeyName} = 'NAME_lc';
-   my $sql = qq/SHOW $show/;
-   PTDEBUG && _d($sql);
-   my $rows = $dbh->selectall_hashref($sql, 'variable_name');
+   my %version_for;
+   for my $id ( keys %$instances ) {
+      my $dbh = $instances->{$id};
+      local $dbh->{FetchHashKeyName} = 'NAME_lc';
+      my $sql = qq/SHOW $show/;
+      PTDEBUG && _d($sql);
+      my $rows = $dbh->selectall_hashref($sql, 'variable_name');
 
-   my @versions;
-   foreach my $var ( @{$item->{vars}} ) {
-      $var = lc($var);
-      my $version = $rows->{$var}->{value};
-      PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version);
-      push @versions, $version;
+      my @versions;
+      foreach my $var ( @{$item->{vars}} ) {
+         $var = lc($var);
+         my $version = $rows->{$var}->{value};
+         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version);
+         push @versions, $version;
+      }
+
+      $version_for{$id} = join(' ', @versions);
    }
 
-   return join(' ', @versions);
+   return \%version_for;
 }
 
 sub get_bin_version {

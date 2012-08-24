@@ -20,6 +20,7 @@ use PerconaTest;
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+my $slave_dbh = $sb->get_dbh_for('slave1');
 
 my $vc = VersionCheck->new();
 
@@ -36,8 +37,8 @@ sub test_v {
    );
 
    my $versions = $vc->get_versions(
-      items => $items,
-      dbh   => $dbh,
+      items     => $items,
+      instances => { "0xDEADBEEF" => $dbh, "0x8BADF00D" => $slave_dbh },
    );
    diag(Dumper($versions));
    is_deeply(
@@ -142,7 +143,10 @@ SKIP: {
          },
       },
       versions => {
-         'MySQL' => "$mysql_distro $mysql_version",
+         'MySQL' => {
+            "0xDEADBEEF" => "$mysql_distro $mysql_version",
+            "0x8BADF00D" => "$mysql_distro $mysql_version"
+         },
       },
    );
 }

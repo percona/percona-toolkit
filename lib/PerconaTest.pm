@@ -33,6 +33,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
+use Percona::Toolkit;
+
 use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
@@ -211,13 +213,7 @@ sub load_file {
    return $contents;
 }
 
-sub slurp_file {
-   my ($file) = @_;
-   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
-   my $contents = do { local $/ = undef; <$fh> };
-   close $fh;
-   return $contents;
-}
+sub slurp_file { Percona::Toolkit::slurp_file(@_) }
 
 sub parse_file {
    my ( $file, $p, $ea ) = @_;

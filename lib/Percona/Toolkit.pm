@@ -20,6 +20,15 @@
 {
 package Percona::Toolkit;
 our $VERSION = '2.1.3';
+
+sub slurp_file {
+   my ($file) = @_;
+   open my $fh, "<", $file or die "Cannot open $file: $!";
+   my $contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   return $contents;
+}
+
 1;
 }
 # ###########################################################################
