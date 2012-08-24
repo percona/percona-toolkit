@@ -3246,6 +3246,9 @@ sub _packet_from_server {
          return;
       }
       else {
+         # Most keep raw_packets trimmed, else memory usage will grow.
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1029178
+         pop @{$session->{raw_packets}};
          PTDEBUG && _d('Ignoring mid-stream server response');
          return;
       }
