@@ -893,23 +893,25 @@ fio_status_minus_a () {
       $adapter =~ tr/ /:/;
       $adapter .= "::" . scalar(@adapters); # To differentiate two adapters with the same name
       push @adapters, $adapter;
-      my ($connected_modules) = /Connected ioDimm modules?:\s*\n(.+?\n)\n/smg;
+      my ($connected_modules) = /Connected \S+ modules?:\s*\n(.+?\n)\n/smg;
       my @connected_modules   = $connected_modules =~ /\s+([^:]+):.+\n/g;
 
       print "${adapter}_general     $adapter_general";
       print "${adapter}_modules     @connected_modules";
       
       for my $module (@connected_modules) {
-         my ($attached, $general, $firmware, $media_status) = /
+         my ($attached, $general, $firmware, $temperature, $media_status) = /
             ^ \s* $module  \s+ (Attached[^\n]+) \n
               \s+ ([^\n]+)                      \n # All the second line
               .+? (Firmware\s+[^\n]+)           \n
-              .+? (Media \s+ status:[^\n]+)
+              .+? (Internal \s+ temperature:[^\n]+) \n
+              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+)
          /xsm;
          print "${adapter}_${module}_attached_as      $attached";
          print "${adapter}_${module}_general          $general";
          print "${adapter}_${module}_firmware         $firmware";
          print "${adapter}_${module}_media_status     $media_status";
+         print "${adapter}_${module}_temperature      $temperature";
       }
    } while <>;
 
@@ -2060,7 +2062,8 @@ report_fio_minus_a () {
    
    local adapters="$( get_var "adapters" "$file" )"
    for adapter in $( echo $adapters | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
-      name_val "$(echo "$adapter" | sed 's/:/ /' | sed 's/::[0-9]*$//')"         "$(get_var "${adapter}_general" "$file")"
+      local adapter_for_output="$(echo "$adapter" | sed 's/::[0-9]*$//' | tr ':' ' ')"
+      name_val "$adapter_for_output"         "$(get_var "${adapter}_general" "$file")"
 
       local modules="$(get_var "${adapter}_modules" "$file")"
       for module in $( echo $modules | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
@@ -2069,6 +2072,7 @@ report_fio_minus_a () {
          name_val "$module" "$(get_var "${adapter}_${module}_attached_as"  "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_general"      "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_firmware"     "$file")"
+         name_val ""              "$(get_var "${adapter}_${module}_temperature"  "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_media_status" "$file")"
          local NAME_VAL_LEN=$name_val_len_orig;
       done
