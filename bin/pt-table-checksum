@@ -9784,7 +9784,7 @@ pt-table-checksum - Verify MySQL replication integrity.
 
 =head1 SYNOPSIS
 
-Usage: pt-table-checksum [OPTION...] [DSN]
+Usage: pt-table-checksum [OPTIONS] [DSN]
 
 pt-table-checksum performs an online replication consistency check by executing
 checksum queries on the master, which produces different results on replicas
@@ -9818,15 +9818,12 @@ all replicas.  Replication will break if, for example, a replica does not
 have a schema that exists on the master (and that schema is checksummed),
 or if the structure of a table on a replica is different than on the master.
 
-At the time of this release, we know of no bugs that could cause harm to
-users.
-
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
 L<http://www.percona.com/bugs/pt-table-checksum>.
 
-See also L<"BUGS"> for more information on filing bugs and getting help.
+See also L<"LIMITATIONS"> and L<"BUGS">.
 
 =head1 DESCRIPTION
 
@@ -10899,6 +10896,20 @@ of output.
 
 You need Perl, DBI, DBD::mysql, and some core packages that ought to be
 installed in any reasonably new version of Perl.
+
+=head1 LIMITATIONS
+
+=over
+
+=item Replicas using row-based replication
+
+pt-table-checksum requires statement-based replication, and it sets
+C<binlog_format=STATEMENT> on the master, but due to a MySQL limitation
+replicas do not honor this change.  Therefore, checksums will not replicate
+past any replicas using row-based replication that are masters for
+further replicas.  (L<Bug 899415|https://bugs.launchpad.net/percona-toolkit/+bug/899415>)
+
+=back
 
 =head1 BUGS
 
