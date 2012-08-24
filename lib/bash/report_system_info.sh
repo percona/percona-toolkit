@@ -903,6 +903,9 @@ report_fio_minus_a () {
          name_val ""              "$(get_var "${adapter}_${module}_firmware"     "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_temperature"  "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_media_status" "$file")"
+         if [ "$(get_var "${adapter}_${module}_rated_pbw" "$file")" ]; then
+            name_val ""           "$(get_var "${adapter}_${module}_rated_pbw" "$file")"
+         fi
          local NAME_VAL_LEN=$name_val_len_orig;
       done
    done

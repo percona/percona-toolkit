@@ -1661,11 +1661,13 @@ Dual Controller Adapter | Fusion-io ioDrive2 Duo 2.41TB, Product Number:F01-001-
                  | Firmware v7.0.0, rev 107322 Public
                  | Internal temperature: 51.68 degC, max 58.08 degC
                  | Reserve space status: Healthy; Reserves: 100.00%, warn at 10.00%
+                 | Rated PBW: 17.00 PB, 98.41% remaining
             fct1 | Attached as 'fiob' (block device)
                  | SN:1150D0121-1111
                  | Firmware v7.0.0, rev 107322 Public
                  | Internal temperature: 46.76 degC, max 51.19 degC
                  | Reserve space status: Healthy; Reserves: 100.00%, warn at 10.00%
+                 | Rated PBW: 17.00 PB, 98.95% remaining
 EOF
 
 report_fio_minus_a "$samples/Linux/004/fio-004" > "$PT_TMPDIR/got"
