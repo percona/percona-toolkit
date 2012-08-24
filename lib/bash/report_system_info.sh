@@ -891,7 +891,8 @@ report_fio_minus_a () {
    
    local adapters="$( get_var "adapters" "$file" )"
    for adapter in $( echo $adapters | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
-      name_val "$(echo "$adapter" | sed 's/:/ /' | sed 's/::[0-9]*$//')"         "$(get_var "${adapter}_general" "$file")"
+      local adapter_for_output="$(echo "$adapter" | sed 's/::[0-9]*$//' | tr ':' ' ')"
+      name_val "$adapter_for_output"         "$(get_var "${adapter}_general" "$file")"
 
       local modules="$(get_var "${adapter}_modules" "$file")"
       for module in $( echo $modules | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
@@ -900,6 +901,7 @@ report_fio_minus_a () {
          name_val "$module" "$(get_var "${adapter}_${module}_attached_as"  "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_general"      "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_firmware"     "$file")"
+         name_val ""              "$(get_var "${adapter}_${module}_temperature"  "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_media_status" "$file")"
          local NAME_VAL_LEN=$name_val_len_orig;
       done
