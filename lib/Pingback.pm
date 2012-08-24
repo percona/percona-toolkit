@@ -28,9 +28,11 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use File::Basename qw();
 use Data::Dumper   qw();
+use Digest::MD5    qw(md5_hex);
+use Sys::Hostname  qw(hostname);
 use Fcntl          qw(:DEFAULT);
+use File::Basename qw();
 
 use File::Spec;
 
@@ -48,12 +50,13 @@ sub Dumper {
 
 local $EVAL_ERROR;
 eval {
+   require Percona::Toolkit;
    require HTTPMicro;
    require VersionCheck;
 };
 
 sub version_check {
-   my %args = @_;
+   my @instances = @_;
    # If this blows up, oh well, don't bother the user about it.
    # This feature is a "best effort" only; we don't want it to
    # get in the way of the tool's real work.
@@ -66,9 +69,8 @@ sub version_check {
          return;
       } 
 
-      my $dbhs          = $args{instances};
-      my %instance_ids  = map { _generate_identifier($_) => $_ } @$dbhs;
-      my $time_to_check = time_to_check($check_time_file, [ keys %instance_ids ]);
+      my %id_to_dbh  = map { _generate_identifier($_) => $_->{dbh} } @instances;
+      my $time_to_check = time_to_check($check_time_file, [ keys %id_to_dbh ]);
       if ( !$time_to_check ) {
          if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
             _d('It is not time to --version-check again;',
@@ -79,7 +81,7 @@ sub version_check {
       }
 
       my $instances_to_check = ref($time_to_check)
-                             ? { map { $_ => $instance_ids{$_} } @$time_to_check }
+                             ? { map { $_ => $id_to_dbh{$_} } @$time_to_check }
                              : {};
       my $advice = pingback(
          url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
@@ -112,7 +114,7 @@ sub pingback {
    my ($url) = @args{@required_args};
 
    # Optional args
-   my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
+   my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
    $ua ||= HTTPMicro->new( timeout => 2 );
    $vc ||= VersionCheck->new();
@@ -145,13 +147,13 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-
+      
    # Get the versions for those items in another hashref also keyed on
    # the items like:
    #    "MySQL" => "MySQL Community Server 5.1.49-log",
    my $versions = $vc->get_versions(
-      items => $items,
-      dbh   => $dbh,
+      items     => $items,
+      instances => $instances,
    );
    die "Failed to get any program versions; should have at least gotten Perl"
       if !scalar keys %$versions;
@@ -160,8 +162,9 @@ sub pingback {
    # them in same simple plaintext item-per-line protocol, and send
    # it back to Percona.
    my $client_content = encode_client_response(
-      items    => $items,
-      versions => $versions,
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
    );
 
    my $client_response = {
@@ -234,8 +237,8 @@ sub _time_to_check_by_instances {
    my ($file, $instance_ids, $time) = @_;
    
    chomp(my $file_contents = Percona::Toolkit::slurp_file($file));
-   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/g;
-
+   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
+   
    my @instances_to_check = grep {
       my $update;
       if ( my $mtime = $cached_instances{$_} ) {
@@ -271,18 +274,26 @@ sub _touch {
 }
 
 sub _generate_identifier {
-   my $dbh = shift;
+   my $instance = shift;
+   my $dbh      = $instance->{dbh};
+   my $dsn      = $instance->{dsn};
 
-   
+   my $sql  = q{SELECT MD5(CONCAT(@@hostname, @@port))};
+   my ($id) = eval { $dbh->selectrow_array($sql) };
+   if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
+      $id = md5_hex( $dsn->{h}, $dsn->{P} || 3306 );
+   }
+
+   return $id;
 }
 
 sub encode_client_response {
    my (%args) = @_;
-   my @required_args = qw(items versions);
+   my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
    }
-   my ($items, $versions) = @args{@required_args};
+   my ($items, $versions, $general_id) = @args{@required_args};
 
    # There may not be a version for each item.  For example, the server
    # may have requested the "MySQL" (version) item, but if the tool
@@ -292,7 +303,15 @@ sub encode_client_response {
    my @lines;
    foreach my $item ( sort keys %$items ) {
       next unless exists $versions->{$item};
-      push @lines, join(';', $item, $versions->{$item});
+      if ( ref($versions->{$item}) eq 'HASH' ) {
+         my $mysql_versions = $versions->{$item};
+         for my $id ( keys %$mysql_versions ) {
+            push @lines, join(';', $id, $item, $mysql_versions->{$id});
+         }
+      }
+      else {
+         push @lines, join(';', $general_id, $item, $versions->{$item});
+      }
    }
 
    my $client_response = join("\n", @lines) . "\n";

@@ -15,9 +15,15 @@ use Pingback;
 use PerconaTest;
 use DSNParser;
 use Sandbox;
+
+use Digest::MD5 qw(md5_hex);
+use Sys::Hostname  qw(hostname);
+
 my $dp  = DSNParser->new(opts=>$dsn_opts);
 my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+
+my $general_id = md5_hex( hostname() );
 
 # #############################################################################
 # Fake User Agent package, so we can simulate server responses
@@ -62,9 +68,9 @@ sub test_pingback {
    my $sug;
    eval {
       $sug = Pingback::pingback(
-         url => $url,
-         dbh => $args{dbh},
-         ua  => $fake_ua,
+         url       => $url,
+         instances => $args{instances},
+         ua        => $fake_ua,
       );
    };
    if ( $args{no_response} ) {
@@ -84,7 +90,7 @@ sub test_pingback {
 
    is(
       $post ? ($post->{content} || '') : '',
-      $args{post},
+      join("", map { "$general_id;$_\n" } split /\n/, $args{post}),
       "$args{name} client response"
    );
 
@@ -169,10 +175,10 @@ SKIP: {
       = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
    my (undef, $mysql_distro)
       = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
-
+      
    test_pingback(
       name => "MySQL version",
-      dbh  => $dbh,
+      instances => { $general_id => $dbh },
       response => [
          # in response to client's GET
          { status  => 200,
@@ -200,12 +206,12 @@ my $file  = File::Spec->catfile($dir, 'percona-toolkit-version-check-test');
 unlink $file;
 
 ok(
-   Pingback::time_to_check($file),
+   Pingback::time_to_check($file, []),
    "time_to_check() returns true if the file doesn't exist",
 );
 
 ok(
-   !Pingback::time_to_check($file),
+   !Pingback::time_to_check($file, []),
    "...but false if it exists and it's been less than 24 hours",
 );
 
@@ -222,16 +228,76 @@ cmp_ok(
 );
 
 ok(
-   Pingback::time_to_check($file),
-   "time_to_check true if file exists and mtime < one day",
+   Pingback::time_to_check($file, []),
+   "time_to_check true if file exists and mtime < one day", #>"
 );
 
 ok(
-   !Pingback::time_to_check($file),
+   !Pingback::time_to_check($file, []),
    "...but fails if tried a second time, as the mtime has been updated",
 );
 
-unlink $file;
+# #############################################################################
+# _generate_identifier
+# #############################################################################
+
+is(
+   Pingback::_generate_identifier( { dbh => undef, dsn => { h => "localhost", P => 12345 } } ),
+   md5_hex("localhost", 12345),
+   "_generate_identifier() works as expected for 4.1",
+);
+
+SKIP: {
+   skip 'Cannot connect to sandbox master', 2 unless $dbh;
+   skip 'These tests are for MySQL 5.0.38 onwards', unless $sandbox_version ge '5.0.38';
+
+   my $sql  = q{SELECT MD5(CONCAT(@@hostname, @@port))};
+   my ($id) = eval { $dbh->selectrow_array($sql) };
+
+   is(
+      Pingback::_generate_identifier( { dbh => $dbh, dsn => undef } ),
+      $id,
+      "_generate_identifier() works with a dbh"
+   );
+
+   
+   is_deeply(
+      Pingback::time_to_check($file, [ $id ]),
+      [ $id ],
+      "But even in an old file, it'll return true, and an arrayref, if we pass a new id",
+   );
+
+   ok(
+      !Pingback::time_to_check($file, [ $id ]),
+      "...but not the second time around",
+   );
+
+   open my $fh, q{>}, $file or die $!;
+   print { $fh } "$id," . (time() - $one_day * 2) . "\n";
+   close $fh;
+
+   is_deeply(
+      Pingback::time_to_check($file, [ $id ]),
+      [ $id ],
+      "...unless more than a day has gone past",
+   );
+
+   my $slave_dbh = $sb->get_dbh_for('slave1');
+   my ($id2)     = Pingback::_generate_identifier( { dbh => $slave_dbh, dsn => undef } );
+   is_deeply(
+      Pingback::time_to_check($file, [ $id, $id2 ]),
+      [ $id2 ],
+      "With multiple ids, time_to_check() returns only those that need checking",
+   );
+
+   my $check = Pingback::time_to_check($file, [ $id, $id2 ]);
+   ok(
+      !$check,
+      "...and false if there isn't anything to check",
+   ) or diag(Dumper($check));
+}
+
+1 while unlink $file;
 
 # #############################################################################
 # Done.
