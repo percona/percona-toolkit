@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 49
+plan 52
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -1578,3 +1578,70 @@ no_diff "$PT_TMPDIR/got" "$samples/Linux/output_002.txt" "Linux/002 (CentOS 5.7,
 
 report_system_summary "$samples/Linux/003" | tail -n +3 > "$PT_TMPDIR/got"
 no_diff "$PT_TMPDIR/got" "$samples/Linux/output_003.txt" "Linux/003 (CentOS 5.7, as non-root)"
+
+# pt-summary to show information about Fusion-io cards
+# https://bugs.launchpad.net/percona-toolkit/+bug/952722
+
+cat <<EOF > "$PT_TMPDIR/expected"
+  fio Driver | 2.3.1 build 123
+ ioDrive Duo | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:40123
+            fct0 | Attached as 'fioa' (block device)
+                 | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06665
+                 | Firmware v5.0.7, rev 101971
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+            fct1 | Attached as 'fiob' (block device)
+                 | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06478
+                 | Firmware v5.0.7, rev 101971
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+EOF
+
+report_fio_minus_a "$samples/Linux/004/fio-001" > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$PT_TMPDIR/expected" \
+   "report_fio_minus_a works with one adapter and two modules"
+
+cat <<EOF > "$PT_TMPDIR/expected"
+  fio Driver | 2.3.1 build 123
+  ioDrive :0 | Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+            fct0 | Attached as 'fioa' (block device)
+                 | Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+                 | Firmware v5.0.5, rev 43674
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+EOF
+
+report_fio_minus_a "$samples/Linux/004/fio-002" > "$PT_TMPDIR/got"
+
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$PT_TMPDIR/expected" \
+   "report_fio_minus_a works with one adapter and one module"
+
+cat <<EOF > "$PT_TMPDIR/expected"
+  fio Driver | 2.3.1 build 123
+ ioDrive Duo | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:40123
+            fct0 | Attached as 'fioa' (block device)
+                 | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06665
+                 | Firmware v5.0.7, rev 101971
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+            fct1 | Attached as 'fiob' (block device)
+                 | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06478
+                 | Firmware v5.0.7, rev 101971
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+ ioDrive Duo | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:40124
+            fct2 | Attached as 'fioc' (block device)
+                 | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06665
+                 | Firmware v5.0.7, rev 101971
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+            fct3 | Attached as 'fiod' (block device)
+                 | Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06478
+                 | Firmware v5.0.7, rev 101971
+                 | Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+EOF
+
+report_fio_minus_a "$samples/Linux/004/fio-003" > "$PT_TMPDIR/got"
+
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$PT_TMPDIR/expected" \
+   "report_fio_minus_a works with two adapters, each with two modules"

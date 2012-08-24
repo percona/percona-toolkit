@@ -884,6 +884,28 @@ parse_uptime () {
 ' "$file"
 }
 
+report_fio_minus_a () {
+   local file="$1"
+
+   name_val "fio Driver" "$(get_var driver_version "$file")"
+   
+   local adapters="$( get_var "adapters" "$file" )"
+   for adapter in $( echo $adapters | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
+      name_val "$(echo "$adapter" | sed 's/:/ /' | sed 's/::[0-9]*$//')"         "$(get_var "${adapter}_general" "$file")"
+
+      local modules="$(get_var "${adapter}_modules" "$file")"
+      for module in $( echo $modules | awk '{for (i=1; i<=NF; i++) print $i;}' ); do
+         local name_val_len_orig=$NAME_VAL_LEN;
+         local NAME_VAL_LEN=16
+         name_val "$module" "$(get_var "${adapter}_${module}_attached_as"  "$file")"
+         name_val ""              "$(get_var "${adapter}_${module}_general"      "$file")"
+         name_val ""              "$(get_var "${adapter}_${module}_firmware"     "$file")"
+         name_val ""              "$(get_var "${adapter}_${module}_media_status" "$file")"
+         local NAME_VAL_LEN=$name_val_len_orig;
+      done
+   done
+}
+
 # The sum of all of the above
 report_system_summary () { local PTFUNCNAME=report_system_summary;
    local data_dir="$1"
@@ -938,6 +960,11 @@ report_system_summary () { local PTFUNCNAME=report_system_summary;
    # ########################################################################
    # TODO: Add info about software RAID
 
+   if [ -s "$data_dir/fusion-io_card" ]; then
+      section "Fusion-io Card"
+      report_fio_minus_a "$data_dir/fusion-io_card"
+   fi
+   
    if [ -s "$data_dir/mounted_fs" ]; then
       section "Mounted Filesystems"
       parse_filesystems "$data_dir/mounted_fs" "${platform}"
