@@ -7772,11 +7772,14 @@ sub main {
                tbl => $tbl,
                %crc_args
             );
-         } or do {
-               warn ts("Skipping table $tbl->{db}.$tbl->{tbl} because "
-                  . "$EVAL_ERROR\n");
-               return;
          };
+
+         if ( $EVAL_ERROR ) {
+            warn ts("Skipping table $tbl->{db}.$tbl->{tbl} because "
+                  . "$EVAL_ERROR\n");
+            return;
+         }
+
          my $nibble_iter;
          eval {
             $nibble_iter = new OobNibbleIterator(
