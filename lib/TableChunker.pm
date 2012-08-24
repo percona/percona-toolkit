@@ -627,6 +627,13 @@ sub _chunk_char {
    }
    PTDEBUG && _d("Base", $base, "chars:", @chars);
 
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/1034717
+   die "Cannot chunk table $db_tbl using the character column "
+     . "$chunk_col, most likely because all values start with the "
+     . "same character.  This table must be synced separately by "
+     . "specifying a list of --algorithms without the Chunk algorithm"
+      if $base == 1;
+
    # Now we begin calculating how to chunk the char column.  This is
    # completely different from _chunk_numeric because we're not dealing
    # with the values to chunk directly (the characters) but rather a map.
