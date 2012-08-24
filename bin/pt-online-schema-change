@@ -2318,11 +2318,12 @@ sub quote {
 }
 
 sub quote_val {
-   my ( $self, $val ) = @_;
+   my ( $self, $val, %args ) = @_;
 
    return 'NULL' unless defined $val;          # undef = NULL
    return "''" if $val eq '';                  # blank string = ''
-   return $val if $val =~ m/^0x[0-9a-fA-F]+$/;  # hex data
+   return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
+                  && !$args{is_char};          # unless is_char is true
 
    $val =~ s/(['\\])/\\$1/g;
    return "'$val'";
