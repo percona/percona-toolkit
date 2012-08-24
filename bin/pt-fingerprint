@@ -1097,10 +1097,9 @@ sub get_tables {
 
    $query =~ s/ (?:LOW_PRIORITY|IGNORE|STRAIGHT_JOIN)//ig;
 
-   if ( $query =~ /^\s*LOCK TABLES/i ) {
+   if ( $query =~ s/^\s*LOCK TABLES\s+//i ) {
       PTDEBUG && _d('Special table type: LOCK TABLES');
-      $query =~ s/^(\s*LOCK TABLES\s+)//;
-      $query =~ s/\s+(?:READ|WRITE|LOCAL)+\s*//g;
+      $query =~ s/\s+(?:READ(?:\s+LOCAL)?|WRITE)\s*//gi;
       PTDEBUG && _d('Locked tables:', $query);
       $query = "FROM $query";
    }

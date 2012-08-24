@@ -10,7 +10,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 135;
+use Test::More;
 use English qw(-no_match_vars);
 
 use QueryRewriter;
@@ -823,7 +823,12 @@ is_deeply(
    [qw(mytable)], 'Does not consider subquery SELECT as a table (issue 781)',
 );
 
+is_deeply(
+   [ $qp->get_tables('lock tables t1 as t5 read local, t2 low_priority write') ],
+   [qw(t1 t2)], 'get_tables works for lowercased LOCK TABLES',
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
