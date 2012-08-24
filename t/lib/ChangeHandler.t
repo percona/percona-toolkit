@@ -357,7 +357,7 @@ $ch = new ChangeHandler(
 
 is(
    $ch->make_fetch_back_query('1=1'),
-   "SELECT `a`, IF(`x`='', '', CONCAT('0x', HEX(`x`))) AS `x`, `b` FROM `test`.`lt` WHERE 1=1 LIMIT 1",
+   "SELECT `a`, IF(BINARY(`x`)='', '', CONCAT('0x', HEX(`x`))) AS `x`, `b` FROM `test`.`lt` WHERE 1=1 LIMIT 1",
    "Wraps BLOB column in CONCAT('0x', HEX(col)) AS col"
 );
 
@@ -402,7 +402,7 @@ $ch = new ChangeHandler(
 
 is(
    $ch->make_fetch_back_query('1=1'),
-   "SELECT IF(`t`='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
+   "SELECT IF(BINARY(`t`)='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
    "Don't prepend 0x to blank blob/text column value (issue 1052)"
 );
 

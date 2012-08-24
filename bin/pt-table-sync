@@ -3563,7 +3563,7 @@ sub make_fetch_back_query {
             my $col = $_;
             if (    $self->{hex_blob}
                  && $tbl_struct->{type_for}->{$col} =~ m/blob|text|binary/ ) {
-               $col = "IF(`$col`='', '', CONCAT('0x', HEX(`$col`))) AS `$col`";
+               $col = "IF(BINARY(`$col`)='', '', CONCAT('0x', HEX(`$col`))) AS `$col`";
             }
             else {
                $col = "`$col`";
