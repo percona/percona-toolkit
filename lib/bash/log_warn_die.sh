@@ -29,7 +29,7 @@ PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
-   TS=$(date +%F-%T | tr :- _);
+   TS=$(date +%F-%T | tr ':-' '_');
    echo "$TS $*"
 }
 

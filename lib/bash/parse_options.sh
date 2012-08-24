@@ -274,7 +274,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -485,7 +485,7 @@ _parse_command_line() {
 
       if [ "$opt_is_ok" ]; then
          # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          # Convert sizes.
          if grep "^type:size" "$spec" >/dev/null; then

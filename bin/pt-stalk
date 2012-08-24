@@ -23,7 +23,7 @@ PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
-   TS=$(date +%F-%T | tr :- _);
+   TS=$(date +%F-%T | tr ':-' '_');
    echo "$TS $*"
 }
 
@@ -243,7 +243,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -409,7 +409,7 @@ _parse_command_line() {
       fi
 
       if [ "$opt_is_ok" ]; then
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          if grep "^type:size" "$spec" >/dev/null; then
             val=$(size_to_bytes $val)
@@ -979,7 +979,7 @@ set_trg_func() {
       return 0  # success
    else
       # Trigger function is name of a built-in function.
-      func=$(echo "$func" | tr [:upper:] [:lower:])
+      func=$(echo "$func" | tr '[:upper:]' '[:lower:]')
       if [ "$func" = "status" -o "$func" = "processlist" ]; then
          TRIGGER_FUNCTION="trg_$func"
          return 0  # success
@@ -1106,7 +1106,7 @@ stalk() {
          fi
 
          if [ "$OPT_COLLECT" ]; then
-            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr :- _)}"
+            local prefix="${OPT_PREFIX:-$(date +%F-%T | tr ':-' '_')}"
 
             # Check if we'll have enough disk space to collect.  Disk space
             # is also checked every interval while collecting.
