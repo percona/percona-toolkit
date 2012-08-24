@@ -364,6 +364,12 @@ sub _compare_rows {
 
       $event->{row_count} = 0;
 
+      if ( !$right ) {
+         PTDEBUG && _d('No results sth on host', $i);
+         delete $event->{results_sth};
+         next EVENT;
+      }
+
       # Identical rows are ignored.  Once a difference on either side is found,
       # we gobble the remaining rows in that sth and print them to an outfile.
       # This short circuits RowDiff::compare_sets() which is what we want to do.
