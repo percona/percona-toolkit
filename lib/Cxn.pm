@@ -150,11 +150,8 @@ sub set_dbh {
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
-   if ( !exists $self->{NAME_lc}
-        || (defined $self->{NAME_lc} && $self->{NAME_lc}) ) {
-      $dbh->{FetchHashKeyName} = 'NAME_lc';
-   }
-   
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
    my $sql = 'SELECT @@hostname, @@server_id';
