@@ -34,8 +34,8 @@ use Fcntl          qw(:DEFAULT);
 
 use File::Spec;
 
-my $dir = File::Spec->tmpdir();
-my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $dir              = File::Spec->tmpdir();
+my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
 my $check_time_limit = 60 * 60 * 24;  # one day
 
 sub Dumper {
@@ -53,6 +53,7 @@ eval {
 };
 
 sub version_check {
+   my %args = @_;
    # If this blows up, oh well, don't bother the user about it.
    # This feature is a "best effort" only; we don't want it to
    # get in the way of the tool's real work.
@@ -65,19 +66,24 @@ sub version_check {
          return;
       } 
 
-      if ( !time_to_check($check_time_file) ) {
+      my $dbhs          = $args{instances};
+      my %instance_ids  = map { _generate_identifier($_) => $_ } @$dbhs;
+      my $time_to_check = time_to_check($check_time_file, [ keys %instance_ids ]);
+      if ( !$time_to_check ) {
          if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('It is not time to --version-checka again;',
+            _d('It is not time to --version-check again;',
                'only 1 check per', $check_time_limit, 'seconds, and the last',
                'check was performed on the modified time of', $check_time_file);
          }
          return;
       }
 
-      my $dbh = shift;  # optional
+      my $instances_to_check = ref($time_to_check)
+                             ? { map { $_ => $instance_ids{$_} } @$time_to_check }
+                             : {};
       my $advice = pingback(
-         url => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
-         dbh => $dbh,
+         url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
+         instances => $instances_to_check,
       );
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
@@ -192,7 +198,7 @@ sub pingback {
 }
 
 sub time_to_check {
-   my ($file) = @_;
+   my ($file, $instance_ids) = @_;
    die "I need a file argument" unless $file;
 
    if ( !-f $file ) {
@@ -201,6 +207,11 @@ sub time_to_check {
       return 1;
    }
 
+   # If we have instances to check, 
+   my $time = int(time());
+   return _time_to_check_by_instances($file, $instance_ids, $time)
+            if @$instance_ids;
+   
    my $mtime  = (stat $file)[9];
    if ( !defined $mtime ) {
       PTDEBUG && _d('Error getting modified time of', $file);
@@ -209,7 +220,6 @@ sub time_to_check {
 
    # Otherwise, if there's been more than a day since the last check,
    # update the file and return true.
-   my $time = int(time());
    PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
    if ( ($time - $mtime) > $check_time_limit ) {
       _touch($file);
@@ -220,12 +230,50 @@ sub time_to_check {
    return 0;
 }
 
+sub _time_to_check_by_instances {
+   my ($file, $instance_ids, $time) = @_;
+   
+   chomp(my $file_contents = Percona::Toolkit::slurp_file($file));
+   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/g;
+
+   my @instances_to_check = grep {
+      my $update;
+      if ( my $mtime = $cached_instances{$_} ) {
+         $update = ($time - $mtime) > $check_time_limit;
+      }
+
+      if ( !$cached_instances{$_} || $update ) {
+         $cached_instances{$_} = $time;
+         $update = 1;
+      }
+
+      $update
+   } @$instance_ids;
+
+   open my $fh, ">", $file
+      or die "Cannot open $file for writing: $OS_ERROR";
+
+   while ( my ($k,$v) = each %cached_instances ) {
+      print { $fh } "$k,$v\n";
+   }
+
+   close $fh or die "Cannot close: $OS_ERROR";
+
+   return @instances_to_check ? \@instances_to_check : 0;
+}
+
 sub _touch {
    my ($file) = @_;
    sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
    utime(undef, undef, $file);
+}
+
+sub _generate_identifier {
+   my $dbh = shift;
+
+   
 }
 
 sub encode_client_response {
