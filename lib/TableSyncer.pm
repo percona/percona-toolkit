@@ -513,9 +513,10 @@ sub lock_and_wait {
          my $ms    = $self->{MasterSlave};
          my $tries = $args{wait_retry_args}->{tries} || 3;
          my $wait;
+         my $sleep = $args{wait_retry_args}->{wait}  || 10;
          $self->{Retry}->retry(
             tries => $tries,
-            wait  => sub { sleep $args{wait_retry_args}->{wait}  || 10 },
+            wait  => sub { sleep($sleep) },
             try   => sub {
                my ( %args ) = @_;
                # Be careful using $args{...} in this callback!  %args in
@@ -558,7 +559,7 @@ sub lock_and_wait {
                           . "the slave is running.";
                   }
                   if ( $tries - $args{tryno} ) {
-                     $msg .= "  Sleeping $wait seconds then retrying "
+                     $msg .= "  Sleeping $sleep seconds then retrying "
                            . ($tries - $args{tryno}) . " more times.";
                   }
                   warn "$msg\n";
