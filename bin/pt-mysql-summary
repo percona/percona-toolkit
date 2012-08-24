@@ -1535,7 +1535,7 @@ format_overall_db_stats () {
             dbs[0]      = db;
          }
          engine=substr($2, index($2, "=") + 1);
-         if ( engine_seen[engine]++ == 0 ) {
+         if ( engine_seen[tolower(engine)]++ == 0 ) {
             engines[num_engines] = engine;
             num_engines++;
          }
