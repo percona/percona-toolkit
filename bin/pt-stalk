@@ -1675,7 +1675,19 @@ This tool does not use any environment variables for configuration.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires Bash v3 or newer.
+This tool requires Bash v3 or newer.  Certain options require other programs:
+
+=over
+
+=item L<"--collect-gdb"> requires C<gdb>
+
+=item L<"--collect-oprofile"> requires C<opcontrol> and C<opreport>
+
+=item L<"--collect-strace"> requires C<strace>
+
+=item L<"--collect-tcpdump"> requires C<tcpdump>
+
+=back
 
 =head1 BUGS
 
