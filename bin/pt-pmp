@@ -316,7 +316,9 @@ This tool does not use any environment variables.
 
 =head1 SYSTEM REQUIREMENTS
 
-This tool requires Bash v3 or newer.
+This tool requires Bash v3 or newer.  If no backtrace files are given,
+then gdb is also required to create backtraces for the process specified
+on the command line.
 
 =head1 BUGS
 
