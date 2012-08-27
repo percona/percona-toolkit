@@ -386,7 +386,7 @@ is(
 # #############################################################################
 $tbl_struct = {
    cols     => [qw(t)],
-   type_for => {t=>'text'},
+   type_for => {t=>'blob'},
 };
 $ch = new ChangeHandler(
    Quoter     => $q,
@@ -403,6 +403,33 @@ $ch = new ChangeHandler(
 is(
    $ch->make_fetch_back_query('1=1'),
    "SELECT IF(BINARY(`t`)='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
+   "Don't prepend 0x to blank blob/text column value (issue 1052)"
+);
+
+# #############################################################################
+# An update to the above bug; It should only hexify for blob and binary, not
+# for text columns; The latter not only breaks for UTF-8 data, but also
+# breaks now that hex-looking columns aren't automatically left unquoted.
+# #############################################################################
+$tbl_struct = {
+   cols     => [qw(t)],
+   type_for => {t=>'text'},
+};
+$ch = new ChangeHandler(
+   Quoter     => $q,
+   left_db    => 'test',
+   left_tbl   => 't',
+   right_db   => 'test',
+   right_tbl  => 't',
+   actions    => [ sub {} ],
+   replace    => 0,
+   queue      => 0,
+   tbl_struct => $tbl_struct,
+);
+
+is(
+   $ch->make_fetch_back_query('1=1'),
+   "SELECT `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
    "Don't prepend 0x to blank blob/text column value (issue 1052)"
 );
 
