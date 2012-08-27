@@ -68,8 +68,16 @@ sub version_check {
          return;
       } 
 
-      my %id_to_dbh  = map { _generate_identifier($_) => $_->{dbh} } @instances;
-      my $time_to_check = time_to_check($check_time_file, [ keys %id_to_dbh ]);
+      # Name and ID the instances.  The name is for debugging; the ID is
+      # what the code uses.
+      foreach my $instance ( @instances ) {
+         my ($name, $id) = _generate_identifier($instance);
+         $instance->{name} = $name;
+         $instance->{id}   = $id;
+      }
+
+      my ($time_to_check, $instances_to_check)
+         = time_to_check($check_time_file, \@instances);
       if ( !$time_to_check ) {
          if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
             _d('It is not time to --version-check again;',
@@ -79,9 +87,6 @@ sub version_check {
          return;
       }
 
-      my $instances_to_check = ref($time_to_check)
-                             ? { map { $_ => $id_to_dbh{$_} } @$time_to_check }
-                             : {};
       my $advice = pingback(
          url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
          instances => $instances_to_check,
@@ -170,7 +175,9 @@ sub pingback {
       headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
       content => $client_content,
    };
-   PTDEBUG && _d('Client response:', Dumper($client_response));
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Client response:', Dumper($client_response));
+   }
 
    $response = $ua->request('POST', $url, $client_response);
    PTDEBUG && _d('Server suggestions:', Dumper($response));
@@ -200,23 +207,36 @@ sub pingback {
 }
 
 sub time_to_check {
-   my ($file, $instance_ids) = @_;
+   my ($file, $instances) = @_;
    die "I need a file argument" unless $file;
 
    # If there's no time limit file, then create it and check everything.
+   # Don't return yet, let _time_to_check_by_instances() write any MySQL
+   # instances to the file, then return.
+   my $created_file = 0;
    if ( !-f $file ) {
-      PTDEBUG && _d('Creating', $file);
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Creating time limit file', $file);
+      }
       _touch($file);
-      return 1;
+      $created_file = 1;
+   }
+   elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Time limit file already exists:', $file);
    }
 
    my $time = int(time());  # current time
 
    # If we have MySQL instances, check only the ones that haven't been
    # seen/checked before or were check > 24 hours ago.
-   if ( $instance_ids && @$instance_ids ) {
-      return _time_to_check_by_instances($file, $instance_ids, $time);
+   if ( @$instances ) {
+      my $instances_to_check = instances_to_check($file, $instances, $time);
+      return scalar @$instances_to_check, $instances_to_check;
    }
+
+   # No need to check the file's mtime because we just created it;
+   # return now that any MySQL instances have been written to it.
+   return 1 if $created_file;
 
    # No MySQL instances (happens with tools like pt-diskstats), so just
    # check the file's mtime and check if it was updated > 24 hours ago.
@@ -235,43 +255,43 @@ sub time_to_check {
    return 0;
 }
 
-sub _time_to_check_by_instances {
-   my ($file, $instance_ids, $time) = @_;
+sub instances_to_check {
+   my ($file, $instances, $time) = @_;
 
    # The time limit file contains "ID,time" lines for each MySQL instance
    # that the last tool connected to.  The last tool may have seen fewer
    # or more MySQL instances than the current tool, but we'll read them
    # all and check only the MySQL instances for the current tool.
-   chomp(my $file_contents = Percona::Toolkit::slurp_file($file));
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   my $file_contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   chomp($file_contents);
    my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
 
    # Check the MySQL instances that have either 1) never been checked
    # (or seen) before, or 2) were check > 24 hours ago.
-   my @instances_to_check = grep {
-      my $update;
-      if ( my $mtime = $cached_instances{$_} ) {
-         $update = ($time - $mtime) > $check_time_limit;
+   my @instances_to_check;
+   foreach my $instance ( @$instances ) {
+      my $mtime = $cached_instances{ $instance->{id} };
+      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('Time to check MySQL instance', $instance->{name});
+         }
+         push @instances_to_check, $instance;
+         $cached_instances{ $instance->{id} } = $time;
       }
-
-      if ( !$cached_instances{$_} || $update ) {
-         $cached_instances{$_} = $time;
-         $update = 1;
-      }
-
-      $update
-   } @$instance_ids;
+   }
 
    # Overwrite the time limit file with the check times for instances
    # we're going to check or with the original check time for instances
    # that we're still waiting on.
-   open my $fh, ">", $file
-      or die "Cannot open $file for writing: $OS_ERROR";
-   while ( my ($k,$v) = each %cached_instances ) {
-      print { $fh } "$k,$v\n";
+   open $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
+   while ( my ($id, $time) = each %cached_instances ) {
+      print { $fh } "$id,$time\n";
    }
    close $fh or die "Cannot close $file: $OS_ERROR";
 
-   return @instances_to_check ? \@instances_to_check : 0;
+   return \@instances_to_check;
 }
 
 sub _touch {
@@ -287,13 +307,18 @@ sub _generate_identifier {
    my $dbh      = $instance->{dbh};
    my $dsn      = $instance->{dsn};
 
-   my $sql  = q{SELECT MD5(CONCAT(@@hostname, @@port))};
-   my ($id) = eval { $dbh->selectrow_array($sql) };
+   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
+   my ($name) = eval { $dbh->selectrow_array($sql) };
    if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
-      $id = md5_hex( ($dsn->{h} || 'localhost'), ($dsn->{P} || 3306) );
+      $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+   }
+   my $id = md5_hex($name);
+
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('MySQL instance', $name, 'is', $id);
    }
 
-   return $id;
+   return $name, $id;
 }
 
 sub encode_client_response {
@@ -324,7 +349,6 @@ sub encode_client_response {
    }
 
    my $client_response = join("\n", @lines) . "\n";
-   PTDEBUG && _d('Client response:', $client_response);
    return $client_response;
 }
 

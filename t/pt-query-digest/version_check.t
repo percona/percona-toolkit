@@ -56,7 +56,7 @@ $output = `PTVCDEBUG=1 $cmd 2>&1`;
 
 like(
    $output,
-   qr/It is not time to --version-checka again/,
+   qr/It is not time to --version-check again/,
    "Doesn't always check because of time limit"
 );
 
