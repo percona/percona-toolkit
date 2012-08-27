@@ -56,6 +56,7 @@ setup_commands () {
    CMD_LSB_RELEASE="$( _which lsb_release 2>/dev/null )"
    CMD_ETHTOOL="$( _which ethtool 2>/dev/null )"
    CMD_GETCONF="$( _which getconf 2>/dev/null )"
+   CMD_FIO_STATUS="$( _which fio-status 2>/dev/null )"
 }
 
 collect_system_data () { local PTFUNCNAME=collect_system_data;
@@ -132,12 +133,73 @@ collect_system_data () { local PTFUNCNAME=collect_system_data;
       fi
    fi
 
+   # Fusion-io cards
+   fio_status_minus_a "$data_dir/fusion-io_card"
+   
    # Clean the data directory, don't leave empty files
    for file in $data_dir/*; do
       # The vmstat file gets special treatmeant, see above.
       [ "$file" = "vmstat" ] && continue
       [ ! -s "$file" ] && rm "$file"
    done
+}
+
+fio_status_minus_a () {
+   local file="$1"
+   local full_output="${file}_original_output"
+   [ -z "$CMD_FIO_STATUS" ] && return;
+   $CMD_FIO_STATUS -a > "$full_output"
+
+   cat <<'EOP' > "$PT_TMPDIR/fio_status_format.pl"
+   my $tmp_adapter;
+   while (<>) {
+      if ( /Fusion-io driver version:\s*(.+)/ ) {
+         print "driver_version    $1"
+      }
+      next unless /^Adapter:(.+)/;
+      $tmp_adapter = $1;
+      last;
+   }
+
+   $/ = "\nAdapter: ";
+   $_ = $tmp_adapter . "\n" . scalar(<>);
+   my @adapters;
+   do {
+      my ($adapter, $adapter_general) = /\s*(.+)\s*\n\s*(.+)/m;
+      $adapter =~ tr/ /:/;
+      $adapter .= "::" . scalar(@adapters); # To differentiate two adapters with the same name
+      push @adapters, $adapter;
+      my ($connected_modules) = /Connected \S+ modules?:\s*\n(.+?\n)\n/smg;
+      my @connected_modules   = $connected_modules =~ /\s+([^:]+):.+\n/g;
+
+      print "${adapter}_general     $adapter_general";
+      print "${adapter}_modules     @connected_modules";
+      
+      for my $module (@connected_modules) {
+         my ($rest, $attached, $general, $firmware, $temperature, $media_status) = /(
+            ^ \s* $module  \s+ (Attached[^\n]+) \n
+              \s+ ([^\n]+)                      \n # All the second line
+              .+? (Firmware\s+[^\n]+)           \n
+              .+? (Internal \s+ temperature:[^\n]+) \n
+              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+) \n
+              .+?(?:\n\n|\z)
+         )/xsm;
+         my ($pbw) = $rest =~ /.+?(Rated \s+ PBW:[^\n]+)/xsm;
+         print "${adapter}_${module}_attached_as      $attached";
+         print "${adapter}_${module}_general          $general";
+         print "${adapter}_${module}_firmware         $firmware";
+         print "${adapter}_${module}_media_status     $media_status";
+         print "${adapter}_${module}_temperature      $temperature";
+         print "${adapter}_${module}_rated_pbw        $pbw" if $pbw;
+      }
+   } while <>;
+
+   print "adapters     @adapters\n";
+   
+   exit;
+EOP
+
+   perl -wln "$PT_TMPDIR/fio_status_format.pl" "$full_output" > "$file"
 }
 
 linux_exclusive_collection () { local PTFUNCNAME=linux_exclusive_collection;

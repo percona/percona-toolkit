@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 40
+plan 44
 
 PT_TMPDIR="$TEST_PT_TMPDIR"
 PATH="$PATH:$PERCONA_TOOLKIT_SANDBOX/bin"
@@ -155,7 +155,7 @@ fake_command () {
 
    printf "#!/usr/bin/env bash\necho \"${output}\"\n" > "$PT_TMPDIR/${cmd}_replacement"
    chmod +x "$PT_TMPDIR/${cmd}_replacement"
-   eval "CMD_$(echo $cmd | tr '[a-z]' '[A-Z]')=\"$PT_TMPDIR/${cmd}_replacement\""
+   eval "CMD_$(echo $cmd | tr '[a-z]' '[A-Z]' | tr '\-' '_')=\"$PT_TMPDIR/${cmd}_replacement\""
 }
 
 test_linux_exclusive_collection () {
@@ -312,3 +312,11 @@ EOF
 mkdir "$PT_TMPDIR/dmidecode_system_info"
 test_dmidecode_system_info "$PT_TMPDIR/dmidecode_system_info"
 
+# fio_status_minus_a
+
+for i in $( seq 1 4 ); do
+   fake_command "fio-status" "\"; cat $samples/fio-status-00${i}.txt; echo \""
+   fio_status_minus_a "$PT_TMPDIR/got"
+
+   no_diff "$PT_TMPDIR/got" "$samples/Linux/004/fio-00$i" "fio_status_minus_a works for fio-status-00${i}.txt"
+done

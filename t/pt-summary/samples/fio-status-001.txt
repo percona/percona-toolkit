@@ -1,0 +1,71 @@
+Found 2 ioDrives in this system with 1 ioDrive Duo
+Fusion-io driver version: 2.3.1 build 123
+
+Adapter: ioDrive Duo
+        Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:40123
+        ioDrive Duo HL, PN:00190000003, Mfr:003, Date:20100621
+        External Power Override: ON
+        External Power: NOT connected
+        Powerloss protection: available
+        PCIE Bus voltage: avg 12.04V, min 12.00V, max 12.27V
+        PCIE Bus current: avg 1.49A, max 2.81A
+        PCIE Bus power: avg 15.07W, max 33.77W
+        PCIE Power limit threshold: 24.75W
+        PCIE slot available power: unavailable
+        PCIE bus errors: correctable, unsupported request
+        PCIE negotiated link: 8 lanes at 5.00 Gbits/sec each, 4000 MBytes/sec total
+        Connected ioDimm modules:
+          fct0: Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06665
+          fct1: Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06478
+
+fct0 Attached as 'fioa' (block device)
+        Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06665
+        ioDIMM3, PN:00119401203, Mfr:003, Date:20100621
+        Located in slot 0 Upper of ioDrive Duo SN:40123
+        Powerloss protection: protected
+        PCI:0b:00.0
+        Vendor:1aed, Device:1005, Sub vendor:1aed, Sub device:1010
+        Firmware v5.0.7, rev 101971
+        322.55 GBytes block device size, 396 GBytes physical device size
+        Format: block, v300, 78,748,288 sectors, 4096 bytes per sector
+        Error correction: 11 bits per 240 bytes
+        FPGA ID:0 Format UID:000000001a090132b60d001c77abcc03
+        PCIE slot available power: 25.00W
+        PCIE negotiated link: 4 lanes at 2.50 Gbits/sec each, 1000 MBytes/sec total
+        Internal temperature: 47.7 degC, max 48.2 degC
+        Board temperature: 42 degC
+        Internal voltage: avg 1.025V, max 1.028V
+        Aux voltage: avg 2.464V, max 2.467V
+        Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+        Lifetime data volumes:
+           Physical bytes written: 275,933,273,649,736
+           Physical bytes read : 226,433,727,856,720
+        RAM usage:
+           Current: 284,895,232 bytes
+           Peak : 284,895,232 bytes
+
+fct1 Attached as 'fiob' (block device)
+        Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06478
+        ioDIMM3, PN:00119401203, Mfr:003, Date:20100621
+        Located in slot 1 Lower of ioDrive Duo SN:40123
+        Powerloss protection: protected
+        PCI:0c:00.0
+        Vendor:1aed, Device:1005, Sub vendor:1aed, Sub device:1010
+        Firmware v5.0.7, rev 101971
+        322.55 GBytes block device size, 396 GBytes physical device size
+        Format: block, v300, 78,748,288 sectors, 4096 bytes per sector
+        Error correction: 11 bits per 240 bytes
+        FPGA ID:0 Format UID:00000000194e0132b60d001c77abcc03
+        PCIE slot available power: 25.00W
+        PCIE negotiated link: 4 lanes at 2.50 Gbits/sec each, 1000 MBytes/sec total
+        Internal temperature: 42.8 degC, max 47.7 degC
+        Board temperature: 35 degC
+        Internal voltage: avg 1.008V, max 1.011V
+        Aux voltage: avg 2.461V, max 2.461V
+        Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+        Lifetime data volumes:
+           Physical bytes written: 189,256,225,503,040
+           Physical bytes read : 166,909,962,030,960
+        RAM usage:
+           Current: 52,754,432 bytes
+           Peak : 52,754,432 bytes
