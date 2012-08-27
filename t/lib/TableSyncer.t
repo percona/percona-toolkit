@@ -49,9 +49,6 @@ if ( !$src_dbh || !$dbh ) {
 elsif ( !$dst_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 61;
-}
 
 $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', 't/lib/samples/before-TableSyncChunk.sql');
@@ -636,52 +633,8 @@ is(
 # Test check_permissions().
 # #############################################################################
 
-SKIP: {
-   skip "Not tested on MySQL $sandbox_version", 5
-      unless $sandbox_version gt '4.0';
-
-# Re-using issue_96.t from above.
-is(
-   $syncer->have_all_privs($src->{dbh}, 'issue_96', 't'),
-   1,
-   'Have all privs'
-);
-
-diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'\%' IDENTIFIED BY 'bob'"`);
-diag(`/tmp/12345/use -u root -e "GRANT select ON issue_96.t TO 'bob'\@'\%'"`);
-my $bob_dbh = DBI->connect(
-   "DBI:mysql:;host=127.0.0.1;port=12345", 'bob', 'bob',
-      { PrintError => 0, RaiseError => 1 });
-
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   0,
-   "Don't have all privs, just select"
-);
-
-diag(`/tmp/12345/use -u root -e "GRANT insert ON issue_96.t TO 'bob'\@'\%'"`);
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   0,
-   "Don't have all privs, just select and insert"
-);
-
-diag(`/tmp/12345/use -u root -e "GRANT update ON issue_96.t TO 'bob'\@'\%'"`);
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   0,
-   "Don't have all privs, just select, insert and update"
-);
-
-diag(`/tmp/12345/use -u root -e "GRANT delete ON issue_96.t TO 'bob'\@'\%'"`);
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   1,
-   "Bob got his privs"
-);
-
-diag(`/tmp/12345/use -u root -e "DROP USER 'bob'"`);
-}
+# have_all_privs() removed due to
+# https://bugs.launchpad.net/percona-toolkit/+bug/1036747
 
 # ###########################################################################
 # Test that the calback gives us the src and dst sql.
@@ -930,6 +883,7 @@ SKIP: {
    );
 
    diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null &`);
+   $dbh3->disconnect();
 }
 
 # #############################################################################
@@ -1066,7 +1020,9 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-$sb->wipe_clean($src_dbh);
-$sb->wipe_clean($dst_dbh);
+$src_dbh->disconnect() if $src_dbh;
+$dst_dbh->disconnect() if $dst_dbh;
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

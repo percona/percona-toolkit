@@ -6,7 +6,32 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      DSNParser
+      OptionParser
+      SlowLogParser
+      Transformers
+      QueryRewriter
+      QueryParser
+      FileIterator
+      SQLParser
+      TableUsage
+      Daemon
+      Runtime
+      Progress
+      Pipeline
+      Quoter
+      TableParser
+      MysqldumpParser
+      SchemaQualifier
+   ));
+}
 
 # ###########################################################################
 # DSNParser package
