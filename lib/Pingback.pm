@@ -33,7 +33,6 @@ use Digest::MD5    qw(md5_hex);
 use Sys::Hostname  qw(hostname);
 use Fcntl          qw(:DEFAULT);
 use File::Basename qw();
-
 use File::Spec;
 
 my $dir              = File::Spec->tmpdir();
@@ -204,41 +203,50 @@ sub time_to_check {
    my ($file, $instance_ids) = @_;
    die "I need a file argument" unless $file;
 
+   # If there's no time limit file, then create it and check everything.
    if ( !-f $file ) {
       PTDEBUG && _d('Creating', $file);
       _touch($file);
       return 1;
    }
 
-   # If we have instances to check, 
-   my $time = int(time());
-   return _time_to_check_by_instances($file, $instance_ids, $time)
-            if @$instance_ids;
-   
+   my $time = int(time());  # current time
+
+   # If we have MySQL instances, check only the ones that haven't been
+   # seen/checked before or were check > 24 hours ago.
+   if ( $instance_ids && @$instance_ids ) {
+      return _time_to_check_by_instances($file, $instance_ids, $time);
+   }
+
+   # No MySQL instances (happens with tools like pt-diskstats), so just
+   # check the file's mtime and check if it was updated > 24 hours ago.
    my $mtime  = (stat $file)[9];
    if ( !defined $mtime ) {
       PTDEBUG && _d('Error getting modified time of', $file);
       return 0;
    }
-
-   # Otherwise, if there's been more than a day since the last check,
-   # update the file and return true.
    PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
    if ( ($time - $mtime) > $check_time_limit ) {
       _touch($file);
       return 1;
    }
 
-   # Otherwise, we're still within the day, so don't do the version check.
+   # File was updated less than a day ago; don't check yet.
    return 0;
 }
 
 sub _time_to_check_by_instances {
    my ($file, $instance_ids, $time) = @_;
-   
+
+   # The time limit file contains "ID,time" lines for each MySQL instance
+   # that the last tool connected to.  The last tool may have seen fewer
+   # or more MySQL instances than the current tool, but we'll read them
+   # all and check only the MySQL instances for the current tool.
    chomp(my $file_contents = Percona::Toolkit::slurp_file($file));
    my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
-   
+
+   # Check the MySQL instances that have either 1) never been checked
+   # (or seen) before, or 2) were check > 24 hours ago.
    my @instances_to_check = grep {
       my $update;
       if ( my $mtime = $cached_instances{$_} ) {
@@ -253,14 +261,15 @@ sub _time_to_check_by_instances {
       $update
    } @$instance_ids;
 
+   # Overwrite the time limit file with the check times for instances
+   # we're going to check or with the original check time for instances
+   # that we're still waiting on.
    open my $fh, ">", $file
       or die "Cannot open $file for writing: $OS_ERROR";
-
    while ( my ($k,$v) = each %cached_instances ) {
       print { $fh } "$k,$v\n";
    }
-
-   close $fh or die "Cannot close: $OS_ERROR";
+   close $fh or die "Cannot close $file: $OS_ERROR";
 
    return @instances_to_check ? \@instances_to_check : 0;
 }
@@ -281,7 +290,7 @@ sub _generate_identifier {
    my $sql  = q{SELECT MD5(CONCAT(@@hostname, @@port))};
    my ($id) = eval { $dbh->selectrow_array($sql) };
    if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
-      $id = md5_hex( $dsn->{h}, $dsn->{P} || 3306 );
+      $id = md5_hex( ($dsn->{h} || 'localhost'), ($dsn->{P} || 3306) );
    }
 
    return $id;

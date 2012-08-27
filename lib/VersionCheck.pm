@@ -91,11 +91,11 @@ sub get_versions {
    my %versions;
    foreach my $item ( values %$items ) {
       next unless $self->valid_item($item);
-      
+
       eval {
          my $func    = 'get_' . $item->{type};
          my $version = $self->$func(
-            item => $item,
+            item      => $item,
             instances => $instances,
          );
          if ( $version ) {
@@ -228,16 +228,6 @@ sub get_mysql_variable {
       @_,
    );
 }
-
-# This isn't implemented yet.  It's easy to do (TYPE=mysql_status),
-# but it may be overkill.
-#sub get_mysql_status {
-#   my $self = shift;
-#   return $self->_get_from_mysql(
-#      show => 'STATUS',
-#      @_,
-#   );
-#}
 
 sub _get_from_mysql {
    my ($self, %args) = @_;

@@ -90,7 +90,7 @@ sub test_pingback {
 
    is(
       $post ? ($post->{content} || '') : '',
-      join("", map { "$general_id;$_\n" } split /\n/, $args{post}),
+      $args{post},
       "$args{name} client response"
    );
 
@@ -114,7 +114,7 @@ test_pingback(
       }
    ],
    # client should POST this
-   post => "Data::Dumper;$dd_ver\nPerl;$perl_ver\n",
+   post => "$general_id;Data::Dumper;$dd_ver\n$general_id;Perl;$perl_ver\n",
    # Server should return these suggetions after the client posts
    sug  => [
       'Data::Printer is nicer.',
@@ -136,7 +136,7 @@ test_pingback(
         content => "",
       }
    ],
-   post => "Data::Dumper;$dd_ver\nPerl;$perl_ver\n",
+   post => "$general_id;Data::Dumper;$dd_ver\n$general_id;Perl;$perl_ver\n",
    sug  => undef,
 );
 
@@ -161,7 +161,7 @@ test_pingback(
         content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
       },
    ],
-   post => "Data::Dumper;$dd_ver\nPerl;$perl_ver\n",
+   post => "$general_id;Data::Dumper;$dd_ver\n$general_id;Perl;$perl_ver\n",
    sug  => undef,
 );
 
@@ -190,7 +190,7 @@ SKIP: {
          }
       ],
       # client should POST this
-      post => "MySQL;$mysql_ver $mysql_distro\n",
+      post => "$general_id;MySQL;$mysql_ver $mysql_distro\n",
       # Server should return these suggetions after the client posts
       sug => ['Percona Server is fast.'],
    );
@@ -203,7 +203,7 @@ SKIP: {
 my $dir   = File::Spec->tmpdir();
 my $file  = File::Spec->catfile($dir, 'percona-toolkit-version-check-test');
 
-unlink $file;
+unlink $file if -f $file;
 
 ok(
    Pingback::time_to_check($file, []),
@@ -260,11 +260,12 @@ SKIP: {
       "_generate_identifier() works with a dbh"
    );
 
-   
+   # The time limit file already exists (see previous tests), but this is
+   # a new MySQL instance, so it should be time to check it.
    is_deeply(
       Pingback::time_to_check($file, [ $id ]),
       [ $id ],
-      "But even in an old file, it'll return true, and an arrayref, if we pass a new id",
+      "Time to check a new MySQL instance ID",
    );
 
    ok(
@@ -297,7 +298,8 @@ SKIP: {
    ) or diag(Dumper($check));
 }
 
-1 while unlink $file;
+unlink $file if -f $file;
+PerconaTest::wait_until( sub { !-f $file } );
 
 # #############################################################################
 # Done.
