@@ -21,9 +21,37 @@ use Sys::Hostname  qw(hostname);
 
 my $dp  = DSNParser->new(opts=>$dsn_opts);
 my $sb  = Sandbox->new(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
 
 my $general_id = md5_hex( hostname() );
+my $master_id;  # the instance ID, _not_ 12345 etc.
+my $slave1_id;  # the instance ID, _not_ 12346 etc.
+my ($mysql_ver, $mysql_distro);
+my ($master_inst, $slave1_inst);
+if ( $master_dbh ) {
+   (undef, $mysql_ver)
+      = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
+   (undef, $mysql_distro)
+      = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
+
+   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
+   my ($name) = $master_dbh->selectrow_array($sql);
+   $master_id = md5_hex($name);
+
+   (undef, $slave1_id) = Pingback::_generate_identifier( { dbh => $slave1_dbh } );
+
+   $master_inst = {
+      id   => $master_id,
+      name => "master",
+      dbh  => $master_dbh,
+   };
+   $slave1_inst = {
+      id   => $slave1_id,
+      name => "slave1",
+      dbh  => $slave1_dbh,
+   };
+}
 
 # #############################################################################
 # Fake User Agent package, so we can simulate server responses
@@ -66,13 +94,24 @@ sub test_pingback {
    $post = "";  # clear previous test
 
    my $sug;
-   eval {
-      $sug = Pingback::pingback(
-         url       => $url,
-         instances => $args{instances},
-         ua        => $fake_ua,
-      );
-   };
+   if ( $args{version_check} ) {
+      eval {
+         $sug = Pingback::pingback(
+            url       => $url,
+            instances => $args{instances},
+            ua        => $fake_ua,
+         );
+      };
+   }
+   else {
+      eval {
+         $sug = Pingback::pingback(
+            url       => $url,
+            instances => $args{instances},
+            ua        => $fake_ua,
+         );
+      };
+   }
    if ( $args{no_response} ) {
       like(
          $EVAL_ERROR,
@@ -169,16 +208,11 @@ test_pingback(
 # MySQL version
 # #############################################################################
 SKIP: {
-   skip 'Cannot connect to sandbox master', 2 unless $dbh;
-
-   my (undef, $mysql_ver)
-      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
-   my (undef, $mysql_distro)
-      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
-      
+   skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
+ 
    test_pingback(
       name => "MySQL version",
-      instances => { $general_id => $dbh },
+      instances => [ $master_inst ],
       response => [
          # in response to client's GET
          { status  => 200,
@@ -190,7 +224,7 @@ SKIP: {
          }
       ],
       # client should POST this
-      post => "$general_id;MySQL;$mysql_ver $mysql_distro\n",
+      post => "$master_id;MySQL;$mysql_ver $mysql_distro\n",
       # Server should return these suggetions after the client posts
       sug => ['Percona Server is fast.'],
    );
@@ -248,63 +282,126 @@ is(
 );
 
 SKIP: {
-   skip 'Cannot connect to sandbox master', 2 unless $dbh;
-   skip 'These tests are for MySQL 5.0.38 onwards', unless $sandbox_version ge '5.0.38';
-
-   my $sql  = q{SELECT MD5(CONCAT(@@hostname, @@port))};
-   my ($id) = eval { $dbh->selectrow_array($sql) };
+   skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
+   skip 'Requires MySQL 5.0.38 or newer', unless $sandbox_version ge '5.0.38';
 
    is(
-      Pingback::_generate_identifier( { dbh => $dbh, dsn => undef } ),
-      $id,
+      Pingback::_generate_identifier( { dbh => $master_dbh, dsn => undef } ),
+      $master_id,
       "_generate_identifier() works with a dbh"
    );
 
    # The time limit file already exists (see previous tests), but this is
    # a new MySQL instance, so it should be time to check it.
-   is_deeply(
-      Pingback::time_to_check($file, [ $id ]),
-      [ $id ],
-      "Time to check a new MySQL instance ID",
+   my ($is_time, $check_inst) = Pingback::time_to_check(
+      $file,
+      [ $master_inst ],
    );
 
    ok(
-      !Pingback::time_to_check($file, [ $id ]),
+      $is_time,
+      "Time to check a new MySQL instance ID",
+   );
+
+   is_deeply(
+      $check_inst,
+      [ $master_inst ],
+      "Check just the new instance"
+   );
+
+   
+   ($is_time, $check_inst) = Pingback::time_to_check(
+      $file,
+      [ $master_inst ],
+   );
+
+   ok(
+      !$is_time,
       "...but not the second time around",
    );
 
    open my $fh, q{>}, $file or die $!;
-   print { $fh } "$id," . (time() - $one_day * 2) . "\n";
+   print { $fh } "$master_id," . (time() - $one_day * 2) . "\n";
    close $fh;
 
+   ($is_time, $check_inst) = Pingback::time_to_check(
+      $file,
+      [ $master_inst ],
+   );
+
    is_deeply(
-      Pingback::time_to_check($file, [ $id ]),
-      [ $id ],
+      $check_inst,
+      [ $master_inst ],
       "...unless more than a day has gone past",
    );
 
-   my $slave_dbh = $sb->get_dbh_for('slave1');
-   my ($id2)     = Pingback::_generate_identifier( { dbh => $slave_dbh, dsn => undef } );
+   ($is_time, $check_inst) = Pingback::time_to_check(
+      $file,
+      [ $master_inst, $slave1_inst ],
+   );
+
    is_deeply(
-      Pingback::time_to_check($file, [ $id, $id2 ]),
-      [ $id2 ],
+      $check_inst,
+      [ $slave1_inst ],
       "With multiple ids, time_to_check() returns only those that need checking",
    );
 
-   my $check = Pingback::time_to_check($file, [ $id, $id2 ]);
    ok(
-      !$check,
+      $is_time,
+      "...and is time to check"
+   );
+
+   ($is_time, $check_inst) = Pingback::time_to_check(
+      $file,
+      [ $master_inst, $slave1_inst ],
+   );
+
+   ok(
+      !$is_time,
       "...and false if there isn't anything to check",
-   ) or diag(Dumper($check));
+   );
 }
+
+# ############################################################################
+# Make sure the MySQL version checks happen for all instances
+# if the file doesn't exist.
+# #############################################################################
 
 unlink $file if -f $file;
 PerconaTest::wait_until( sub { !-f $file } );
 
+SKIP: {
+   skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
+
+   test_pingback(
+      name => "Create file and get MySQL versions",
+      version_check => 1,
+      instances => [ $master_inst, $slave1_inst ],
+      response => [
+         # in response to client's GET
+         { status  => 200,
+           content => "MySQL;mysql_variable;version,version_comment\n",
+         },
+         # in response to client's POST
+         { status  => 200,
+           content => "$master_id;MySQL;Percona Server is fast.\n$slave1_id;MySQL;Percona Server is fast.\n",
+         }
+      ],
+      # client should POST this
+      post => "$master_id;MySQL;$mysql_ver $mysql_distro\n$slave1_id;MySQL;$mysql_ver $mysql_distro\n",
+      # Server should return these suggetions after the client posts
+      sug => [
+         'Percona Server is fast.',
+         'Percona Server is fast.',
+      ], 
+   );
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
+$sb->wipe_clean($master_dbh) if $master_dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox")
-   if $dbh;
+   if $master_dbh;
 done_testing;
 exit;

@@ -86,8 +86,7 @@ sub get_versions {
       die "I need a $arg arugment" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
-   my $instances = $args{instances};
-   
+
    my %versions;
    foreach my $item ( values %$items ) {
       next unless $self->valid_item($item);
@@ -96,7 +95,7 @@ sub get_versions {
          my $func    = 'get_' . $item->{type};
          my $version = $self->$func(
             item      => $item,
-            instances => $instances,
+            instances => $args{instances},
          );
          if ( $version ) {
             chomp $version unless ref($version);
@@ -231,14 +230,22 @@ sub get_mysql_variable {
 
 sub _get_from_mysql {
    my ($self, %args) = @_;
-   my $show = $args{show};
-   my $item = $args{item};
+   my $show      = $args{show};
+   my $item      = $args{item};
    my $instances = $args{instances};
-   return unless $show && $item && %$instances;
+   return unless $show && $item;
 
+   if ( !$instances || !@$instances ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Cannot check', $item, 'because there are no MySQL instances');
+      }
+      return;
+   }
+
+   my @versions;
    my %version_for;
-   for my $id ( keys %$instances ) {
-      my $dbh = $instances->{$id};
+   foreach my $instance ( @$instances ) {
+      my $dbh = $instance->{dbh};
       local $dbh->{FetchHashKeyName} = 'NAME_lc';
       my $sql = qq/SHOW $show/;
       PTDEBUG && _d($sql);
@@ -248,11 +255,12 @@ sub _get_from_mysql {
       foreach my $var ( @{$item->{vars}} ) {
          $var = lc($var);
          my $version = $rows->{$var}->{value};
-         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version);
+         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version,
+            'on', $instance->{name});
          push @versions, $version;
       }
 
-      $version_for{$id} = join(' ', @versions);
+      $version_for{ $instance->{id} } = join(' ', @versions);
    }
 
    return \%version_for;

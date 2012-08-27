@@ -71,7 +71,7 @@ $output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge
 
 like(
    $output,
-   qr/It is not time to --version-checka again/,
+   qr/It is not time to --version-check again/,
    "Doesn't always check because of time limit"
 );
 
