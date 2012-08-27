@@ -1,0 +1,15 @@
+driver_version    2.3.1 build 123
+ioDrive:Duo::0_general     Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:40123
+ioDrive:Duo::0_modules     fct0 fct1
+ioDrive:Duo::0_fct0_attached_as      Attached as 'fioa' (block device)
+ioDrive:Duo::0_fct0_general          Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06665
+ioDrive:Duo::0_fct0_firmware         Firmware v5.0.7, rev 101971
+ioDrive:Duo::0_fct0_media_status     Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+ioDrive:Duo::0_fct0_temperature      Internal temperature: 47.7 degC, max 48.2 degC
+ioDrive:Duo::0_fct1_attached_as      Attached as 'fiob' (block device)
+ioDrive:Duo::0_fct1_general          Fusion-io ioDrive Duo 640GB, Product Number:FS3-202-321-CS SN:06478
+ioDrive:Duo::0_fct1_firmware         Firmware v5.0.7, rev 101971
+ioDrive:Duo::0_fct1_media_status     Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+ioDrive:Duo::0_fct1_temperature      Internal temperature: 42.8 degC, max 47.7 degC
+adapters     ioDrive:Duo::0
+

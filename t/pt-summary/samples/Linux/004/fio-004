@@ -1,0 +1,17 @@
+driver_version    3.1.5 build 126
+Dual:Controller:Adapter::0_general     Fusion-io ioDrive2 Duo 2.41TB, Product Number:F01-001-2T41-CS-0001, SN:1150D0121, FIO SN:1150D0121
+Dual:Controller:Adapter::0_modules     fct0 fct1
+Dual:Controller:Adapter::0_fct0_attached_as      Attached as 'fioa' (block device)
+Dual:Controller:Adapter::0_fct0_general          SN:1150D0121-1121
+Dual:Controller:Adapter::0_fct0_firmware         Firmware v7.0.0, rev 107322 Public
+Dual:Controller:Adapter::0_fct0_media_status     Reserve space status: Healthy; Reserves: 100.00%, warn at 10.00%
+Dual:Controller:Adapter::0_fct0_temperature      Internal temperature: 51.68 degC, max 58.08 degC
+Dual:Controller:Adapter::0_fct0_rated_pbw        Rated PBW: 17.00 PB, 98.41% remaining
+Dual:Controller:Adapter::0_fct1_attached_as      Attached as 'fiob' (block device)
+Dual:Controller:Adapter::0_fct1_general          SN:1150D0121-1111
+Dual:Controller:Adapter::0_fct1_firmware         Firmware v7.0.0, rev 107322 Public
+Dual:Controller:Adapter::0_fct1_media_status     Reserve space status: Healthy; Reserves: 100.00%, warn at 10.00%
+Dual:Controller:Adapter::0_fct1_temperature      Internal temperature: 46.76 degC, max 51.19 degC
+Dual:Controller:Adapter::0_fct1_rated_pbw        Rated PBW: 17.00 PB, 98.95% remaining
+adapters     Dual:Controller:Adapter::0
+
