@@ -388,7 +388,7 @@ SKIP: {
          }
       ],
       # client should POST this
-      post => "$master_id;MySQL;$mysql_ver $mysql_distro\n$slave1_id;MySQL;$mysql_ver $mysql_distro\n",
+      post => "$slave1_id;MySQL;$mysql_ver $mysql_distro\n$master_id;MySQL;$mysql_ver $mysql_distro\n",
       # Server should return these suggetions after the client posts
       sug => [
          'Percona Server is fast.',
