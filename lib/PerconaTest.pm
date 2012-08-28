@@ -213,7 +213,13 @@ sub load_file {
    return $contents;
 }
 
-sub slurp_file { Percona::Toolkit::slurp_file(@_) }
+sub slurp_file {
+   my ($file) = @_;
+   open my $fh, "<", $file or die "Cannot open $file: $OS_ERROR";
+   my $contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   return $contents;
+}
 
 sub parse_file {
    my ( $file, $p, $ea ) = @_;

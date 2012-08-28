@@ -339,7 +339,7 @@ sub encode_client_response {
       next unless exists $versions->{$item};
       if ( ref($versions->{$item}) eq 'HASH' ) {
          my $mysql_versions = $versions->{$item};
-         for my $id ( keys %$mysql_versions ) {
+         for my $id ( sort keys %$mysql_versions ) {
             push @lines, join(';', $id, $item, $mysql_versions->{$id});
          }
       }

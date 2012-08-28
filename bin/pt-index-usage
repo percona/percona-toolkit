@@ -5950,11 +5950,11 @@ sub main {
    # are given on the cmd line then parse_options() will return undef,
    # but get_cxn() required a defined dsn arg so use an empty hashref.
    # ########################################################################## 
-   my ($dbh, $si_dbh, $res_dbh);
+   my ($dsn, $dbh, $si_dbh, $res_dbh);
    my $res_dsn;
    my $res_db;
    eval {
-      my $dsn = $dp->parse_options($o) || {};
+      $dsn = $dp->parse_options($o) || {};
 
       # dbh for EXPLAIN-ing.
       $dbh = get_cxn(
@@ -6086,7 +6086,7 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check(
-         { dbh => $dbh,     dsn => $dsn     },
+         { dbh => $dbh, dsn => $dsn },
          ($res_dbh ? { dbh => $res_dbh, dsn => $res_dsn } : ()),
       );
    }
