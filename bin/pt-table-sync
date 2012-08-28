@@ -9533,16 +9533,28 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
+
+   # This tool has way too many dbhs and doesn't use Cxn, so we have to
+   # manually disconnect them else they'll throw a warning.  Also, it
+   # creates some dbh late, so here we need to create a dbh and then
+   # disconnect it only if we created it, i.e. don't disconnect the few
+   # dbh created early by the tool.
+   my @vc_dbhs;
+   my @instances = map {
+      my $dsn = $_;
+      my $dbh = $dsn->{dbh};
+      if ( !$dbh ) {
+         $dbh = get_cxn($dsn, %modules);
+         push @vc_dbhs, $dbh;  # disconnect this dbh after version check
+      }
+      +{ dbh => $dbh, dsn => $dsn }
+   } @dsns;
+
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check(
-         map {
-            +{
-               dbh => $_->{dbh} || get_cxn($_, %args),
-               dsn => $_,
-            }
-         } @dsns
-      );
+      Pingback::version_check(@instances);
    }
+
+   map { $_->disconnect } @vc_dbhs;  # disconnect dbh created for version check
 
    # ########################################################################
    # Sync!

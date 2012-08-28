@@ -4028,6 +4028,7 @@ sub main {
    my $last_dsn;
    my @configs;       # MySQLConfig objects
    my @config_names;  # Human-readable names for those ^ objs
+   my @cxn;
    foreach my $config_src ( @ARGV ) {
       if ( -f $config_src ) {
          PTDEBUG && _d('Config source', $config_src, 'is a file');
@@ -4054,6 +4055,7 @@ sub main {
             %common_modules,
          );
          push @config_names, $cxn->name();
+         push @cxn, $cxn;
       }
    }
 
@@ -4077,7 +4079,7 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check(
-         map { +{ dbh => $_->{dbh}, dsn => $_->{dsn} } } @configs
+         map  { +{ dbh => $_->dbh, dsn => $_->dsn } } @cxn
       );
    }
 
