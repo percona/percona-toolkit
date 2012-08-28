@@ -9534,7 +9534,14 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dsns[0]->{dbh});
+      Pingback::version_check(
+         map {
+            +{
+               dbh => $_->{dbh} || get_cxn($_, %args),
+               dsn => $_,
+            }
+         } @dsns
+      );
    }
 
    # ########################################################################

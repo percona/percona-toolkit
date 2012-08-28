@@ -4280,13 +4280,6 @@ sub main {
    }
 
    # ########################################################################
-   # Do the version-check
-   # ########################################################################
-   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dbh);
-   }
-
-   # ########################################################################
    # Start monitoring the slave.
    # ########################################################################
    my $exit_status = 0; 
@@ -4327,6 +4320,15 @@ sub main {
       }
    );
 
+   # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+      Pingback::version_check(
+         { dbh => $dbh, dsn => $dsn }, @servers_to_watch,
+      );
+   }
+   
    # Watch each server found.
    my $must_fork = @servers_to_watch > 1;
    foreach my $host ( @servers_to_watch ) {

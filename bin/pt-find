@@ -3621,7 +3621,7 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dbh);
+      Pingback::version_check({dbh => $dbh, dsn => $dsn});
    }
 
    # ########################################################################

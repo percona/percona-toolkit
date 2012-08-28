@@ -7187,10 +7187,11 @@ sub main {
    # #########################################################################
    # Try to connect to MySQL.
    # #########################################################################
-   my $dbh;
+   my ($dbh, $dsn);
    eval {
+      $dsn = $dp->parse_options($o);
       $dbh = get_cxn(
-         dsn => $dp->parse_options($o),
+         dsn => $dsn,
          %common_modules
       );
    };
@@ -7460,7 +7461,10 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dbh);
+      Pingback::version_check(
+         ($review_dbh ? { dbh => $review_dbh, dsn => $review_dsn } : ()),
+         ($dbh        ? { dbh => $dbh,        dsn => $dsn        } : ()),
+      );
    }
 
    # #########################################################################
