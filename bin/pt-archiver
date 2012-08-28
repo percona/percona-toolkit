@@ -5393,7 +5393,7 @@ sub main {
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check(
          { dbh => $src->{dbh}, dsn => $src->{dsn} },
-         ( $dst ? { dbh => $dst->{dbh}, dsn => $dst->{dsn} } : () )
+         ( $dst ? { dbh => $dst->{dbh}, dsn => $dst->{dsn} } : () ),
       );
    }
 

@@ -13324,9 +13324,10 @@ sub main {
       );
    } # input
 
+   my $ps_dsn;
    { # event
       my $misc;
-      if ( my $ps_dsn = $o->get('processlist') ) {
+      if ( $ps_dsn = $o->get('processlist') ) {
          my $ms = new MasterSlave(
             OptionParser => $o,
             DSNParser    => $dp,
@@ -14022,6 +14023,7 @@ sub main {
       }
    } # sample
 
+   my $ex_dsn;
    { # execute throttle and execute
       my $et;
       if ( my $et_args = $o->get('execute-throttle') ) {
@@ -14060,7 +14062,7 @@ sub main {
          );
       } # execute throttle
 
-      if ( my $ex_dsn = $o->get('execute') ) {
+      if ( $ex_dsn = $o->get('execute') ) {
          if ( $o->get('ask-pass') ) {
             $ex_dsn->{p} = OptionParser::prompt_noecho("Enter password for "
                . "--execute: ");
@@ -14258,7 +14260,11 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($qv_dbh || $ps_dbh || $ex_dbh);
+      Pingback::version_check(
+         ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn } : ()),
+         ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn     } : ()),
+         ($ex_dbh ? { dbh => $ex_dbh, dsn => $ex_dsn     } : ()),
+      );
    }
 
    # ##########################################################################

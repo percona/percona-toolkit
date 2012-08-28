@@ -5951,6 +5951,7 @@ sub main {
    # but get_cxn() required a defined dsn arg so use an empty hashref.
    # ########################################################################## 
    my ($dbh, $si_dbh, $res_dbh);
+   my $res_dsn;
    my $res_db;
    eval {
       my $dsn = $dp->parse_options($o) || {};
@@ -5971,7 +5972,7 @@ sub main {
       );
 
       # dbh for --save-results-database
-      if ( my $res_dsn = $o->get('save-results-database') ) {
+      if ( $res_dsn = $o->get('save-results-database') ) {
          
          # To make --create-save-results-database work we have to
          # temporarily remove the D from the DSN to avoid the error
@@ -6084,7 +6085,10 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dbh);
+      Pingback::version_check(
+         { dbh => $dbh,     dsn => $dsn     },
+         ($res_dbh ? { dbh => $res_dbh, dsn => $res_dsn } : ()),
+      );
    }
 
    # ########################################################################

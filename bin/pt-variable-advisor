@@ -4532,10 +4532,10 @@ sub main {
    # ##########################################################################
    # Connect to MySQL if any of the input sources is mysql.
    # ##########################################################################
-   my $dbh;
+   my ($dbh, $dsn);
    if ( $need_dbh ) {
       my $dsn_defaults = $dp->parse_options($o);
-      my $dsn          = $dp->parse(shift @ARGV, $dsn_defaults);
+      $dsn             = $dp->parse(shift @ARGV, $dsn_defaults);
 
       if ( $o->get('ask-pass') ) {
          $dsn->{p} = OptionParser::prompt_noecho("Enter password: ");
@@ -4565,7 +4565,9 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dbh);
+      Pingback::version_check(
+         ($dbh ? { dbh => $dbh, dsn => $dsn } : ()),
+      );
    }
 
    # #########################################################################

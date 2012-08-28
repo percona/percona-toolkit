@@ -3600,7 +3600,10 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($dbh);
+      Pingback::version_check(
+         { dbh => $dbh, dsn => $source_dsn },
+         ($dest_dsn ? { dbh => $dest_dsn, dsn => $dest_dsn } : ()),
+      );
    }
 
    # ########################################################################

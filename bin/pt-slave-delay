@@ -3639,7 +3639,13 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check($slave_dbh);
+      my $tmp_master_dsn = $master_dsn
+                         ? $master_dsn
+                         : { h => $status->{master_host}, P => $status->{master_port} };
+      Pingback::version_check(
+         { dbh => $slave_dbh,  dsn => $slave_dsn      },
+         { dbh => $master_dbh, dsn => $tmp_master_dsn },
+      );
    }
 
    # If the I/O thread isn't running when the program starts,
