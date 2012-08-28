@@ -28,14 +28,15 @@ use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use File::Basename qw();
 use Data::Dumper   qw();
+use Digest::MD5    qw(md5_hex);
+use Sys::Hostname  qw(hostname);
 use Fcntl          qw(:DEFAULT);
-
+use File::Basename qw();
 use File::Spec;
 
-my $dir = File::Spec->tmpdir();
-my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $dir              = File::Spec->tmpdir();
+my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
 my $check_time_limit = 60 * 60 * 24;  # one day
 
 sub Dumper {
@@ -48,11 +49,13 @@ sub Dumper {
 
 local $EVAL_ERROR;
 eval {
+   require Percona::Toolkit;
    require HTTPMicro;
    require VersionCheck;
 };
 
 sub version_check {
+   my @instances = @_;
    # If this blows up, oh well, don't bother the user about it.
    # This feature is a "best effort" only; we don't want it to
    # get in the way of the tool's real work.
@@ -65,19 +68,28 @@ sub version_check {
          return;
       } 
 
-      if ( !time_to_check($check_time_file) ) {
+      # Name and ID the instances.  The name is for debugging; the ID is
+      # what the code uses.
+      foreach my $instance ( @instances ) {
+         my ($name, $id) = _generate_identifier($instance);
+         $instance->{name} = $name;
+         $instance->{id}   = $id;
+      }
+
+      my ($time_to_check, $instances_to_check)
+         = time_to_check($check_time_file, \@instances);
+      if ( !$time_to_check ) {
          if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('It is not time to --version-checka again;',
+            _d('It is not time to --version-check again;',
                'only 1 check per', $check_time_limit, 'seconds, and the last',
                'check was performed on the modified time of', $check_time_file);
          }
          return;
       }
 
-      my $dbh = shift;  # optional
       my $advice = pingback(
-         url => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
-         dbh => $dbh,
+         url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
+         instances => $instances_to_check,
       );
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
@@ -106,7 +118,7 @@ sub pingback {
    my ($url) = @args{@required_args};
 
    # Optional args
-   my ($dbh, $ua, $vc) = @args{qw(dbh ua VersionCheck)};
+   my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
    $ua ||= HTTPMicro->new( timeout => 2 );
    $vc ||= VersionCheck->new();
@@ -139,13 +151,13 @@ sub pingback {
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
-
+      
    # Get the versions for those items in another hashref also keyed on
    # the items like:
    #    "MySQL" => "MySQL Community Server 5.1.49-log",
    my $versions = $vc->get_versions(
-      items => $items,
-      dbh   => $dbh,
+      items     => $items,
+      instances => $instances,
    );
    die "Failed to get any program versions; should have at least gotten Perl"
       if !scalar keys %$versions;
@@ -154,15 +166,18 @@ sub pingback {
    # them in same simple plaintext item-per-line protocol, and send
    # it back to Percona.
    my $client_content = encode_client_response(
-      items    => $items,
-      versions => $versions,
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
    );
 
    my $client_response = {
       headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
       content => $client_content,
    };
-   PTDEBUG && _d('Client response:', Dumper($client_response));
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Client response:', Dumper($client_response));
+   }
 
    $response = $ua->request('POST', $url, $client_response);
    PTDEBUG && _d('Server suggestions:', Dumper($response));
@@ -192,32 +207,91 @@ sub pingback {
 }
 
 sub time_to_check {
-   my ($file) = @_;
+   my ($file, $instances) = @_;
    die "I need a file argument" unless $file;
 
+   # If there's no time limit file, then create it and check everything.
+   # Don't return yet, let _time_to_check_by_instances() write any MySQL
+   # instances to the file, then return.
+   my $created_file = 0;
    if ( !-f $file ) {
-      PTDEBUG && _d('Creating', $file);
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Creating time limit file', $file);
+      }
       _touch($file);
-      return 1;
+      $created_file = 1;
+   }
+   elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Time limit file already exists:', $file);
    }
 
+   my $time = int(time());  # current time
+
+   # If we have MySQL instances, check only the ones that haven't been
+   # seen/checked before or were check > 24 hours ago.
+   if ( @$instances ) {
+      my $instances_to_check = instances_to_check($file, $instances, $time);
+      return scalar @$instances_to_check, $instances_to_check;
+   }
+
+   # No need to check the file's mtime because we just created it;
+   # return now that any MySQL instances have been written to it.
+   return 1 if $created_file;
+
+   # No MySQL instances (happens with tools like pt-diskstats), so just
+   # check the file's mtime and check if it was updated > 24 hours ago.
    my $mtime  = (stat $file)[9];
    if ( !defined $mtime ) {
       PTDEBUG && _d('Error getting modified time of', $file);
       return 0;
    }
-
-   # Otherwise, if there's been more than a day since the last check,
-   # update the file and return true.
-   my $time = int(time());
    PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
    if ( ($time - $mtime) > $check_time_limit ) {
       _touch($file);
       return 1;
    }
 
-   # Otherwise, we're still within the day, so don't do the version check.
+   # File was updated less than a day ago; don't check yet.
    return 0;
+}
+
+sub instances_to_check {
+   my ($file, $instances, $time) = @_;
+
+   # The time limit file contains "ID,time" lines for each MySQL instance
+   # that the last tool connected to.  The last tool may have seen fewer
+   # or more MySQL instances than the current tool, but we'll read them
+   # all and check only the MySQL instances for the current tool.
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   my $file_contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   chomp($file_contents);
+   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
+
+   # Check the MySQL instances that have either 1) never been checked
+   # (or seen) before, or 2) were check > 24 hours ago.
+   my @instances_to_check;
+   foreach my $instance ( @$instances ) {
+      my $mtime = $cached_instances{ $instance->{id} };
+      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('Time to check MySQL instance', $instance->{name});
+         }
+         push @instances_to_check, $instance;
+         $cached_instances{ $instance->{id} } = $time;
+      }
+   }
+
+   # Overwrite the time limit file with the check times for instances
+   # we're going to check or with the original check time for instances
+   # that we're still waiting on.
+   open $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
+   while ( my ($id, $time) = each %cached_instances ) {
+      print { $fh } "$id,$time\n";
+   }
+   close $fh or die "Cannot close $file: $OS_ERROR";
+
+   return \@instances_to_check;
 }
 
 sub _touch {
@@ -228,13 +302,32 @@ sub _touch {
    utime(undef, undef, $file);
 }
 
+sub _generate_identifier {
+   my $instance = shift;
+   my $dbh      = $instance->{dbh};
+   my $dsn      = $instance->{dsn};
+
+   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
+   my ($name) = eval { $dbh->selectrow_array($sql) };
+   if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
+      $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+   }
+   my $id = md5_hex($name);
+
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('MySQL instance', $name, 'is', $id);
+   }
+
+   return $name, $id;
+}
+
 sub encode_client_response {
    my (%args) = @_;
-   my @required_args = qw(items versions);
+   my @required_args = qw(items versions general_id);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
    }
-   my ($items, $versions) = @args{@required_args};
+   my ($items, $versions, $general_id) = @args{@required_args};
 
    # There may not be a version for each item.  For example, the server
    # may have requested the "MySQL" (version) item, but if the tool
@@ -244,11 +337,18 @@ sub encode_client_response {
    my @lines;
    foreach my $item ( sort keys %$items ) {
       next unless exists $versions->{$item};
-      push @lines, join(';', $item, $versions->{$item});
+      if ( ref($versions->{$item}) eq 'HASH' ) {
+         my $mysql_versions = $versions->{$item};
+         for my $id ( sort keys %$mysql_versions ) {
+            push @lines, join(';', $id, $item, $mysql_versions->{$id});
+         }
+      }
+      else {
+         push @lines, join(';', $general_id, $item, $versions->{$item});
+      }
    }
 
    my $client_response = join("\n", @lines) . "\n";
-   PTDEBUG && _d('Client response:', $client_response);
    return $client_response;
 }
 

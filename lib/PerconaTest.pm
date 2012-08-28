@@ -33,6 +33,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
+use Percona::Toolkit;
+
 use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
