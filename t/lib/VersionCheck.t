@@ -19,7 +19,8 @@ use PerconaTest;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
+my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
 
 my $vc = VersionCheck->new();
 
@@ -36,8 +37,19 @@ sub test_v {
    );
 
    my $versions = $vc->get_versions(
-      items => $items,
-      dbh   => $dbh,
+      items     => $items,
+      instances => [
+         {
+            id   => "0xDEADBEEF",
+            name => "master",
+            dbh  => $master_dbh,
+         },
+         {
+            id   => "0x8BADF00D",
+            name => "slave1",
+            dbh  => $slave1_dbh,
+         },
+      ],
    );
    diag(Dumper($versions));
    is_deeply(
@@ -124,12 +136,12 @@ use File::Spec;
 }
 
 SKIP: {
-   skip "Cannot cannot to sandbox master", 2 unless $dbh;
+   skip "Cannot cannot to sandbox master", 2 unless $master_dbh;
 
    my (undef, $mysql_version)
-      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
+      = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version'");
    my (undef, $mysql_distro)
-      = $dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
+      = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
 
    test_v(
       name     => "mysql_variable",
@@ -142,7 +154,10 @@ SKIP: {
          },
       },
       versions => {
-         'MySQL' => "$mysql_distro $mysql_version",
+         'MySQL' => {
+            "0xDEADBEEF" => "$mysql_distro $mysql_version",
+            "0x8BADF00D" => "$mysql_distro $mysql_version"
+         },
       },
    );
 }
@@ -174,7 +189,6 @@ ok(
    "Newline stripped from OS"
 );
 
-
 # #############################################################################
 # Validate items
 # #############################################################################
@@ -199,6 +213,6 @@ is_deeply(
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox")
-   if $dbh;
+   if $master_dbh;
 done_testing;
 exit;

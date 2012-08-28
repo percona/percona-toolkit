@@ -86,20 +86,19 @@ sub get_versions {
       die "I need a $arg arugment" unless $args{$arg};
    }
    my ($items) = @args{@required_args};
-   my $dbh     = $args{dbh}; # optional
 
    my %versions;
    foreach my $item ( values %$items ) {
       next unless $self->valid_item($item);
-      
+
       eval {
          my $func    = 'get_' . $item->{type};
          my $version = $self->$func(
-            item => $item,
-            dbh  => $dbh,
+            item      => $item,
+            instances => $args{instances},
          );
          if ( $version ) {
-            chomp $version;
+            chomp $version unless ref($version);
             $versions{$item->{item}} = $version;
          }
       };
@@ -229,37 +228,42 @@ sub get_mysql_variable {
    );
 }
 
-# This isn't implemented yet.  It's easy to do (TYPE=mysql_status),
-# but it may be overkill.
-#sub get_mysql_status {
-#   my $self = shift;
-#   return $self->_get_from_mysql(
-#      show => 'STATUS',
-#      @_,
-#   );
-#}
-
 sub _get_from_mysql {
    my ($self, %args) = @_;
-   my $show = $args{show};
-   my $item = $args{item};
-   my $dbh  = $args{dbh};
-   return unless $show && $item && $dbh;
+   my $show      = $args{show};
+   my $item      = $args{item};
+   my $instances = $args{instances};
+   return unless $show && $item;
 
-   local $dbh->{FetchHashKeyName} = 'NAME_lc';
-   my $sql = qq/SHOW $show/;
-   PTDEBUG && _d($sql);
-   my $rows = $dbh->selectall_hashref($sql, 'variable_name');
-
-   my @versions;
-   foreach my $var ( @{$item->{vars}} ) {
-      $var = lc($var);
-      my $version = $rows->{$var}->{value};
-      PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version);
-      push @versions, $version;
+   if ( !$instances || !@$instances ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Cannot check', $item, 'because there are no MySQL instances');
+      }
+      return;
    }
 
-   return join(' ', @versions);
+   my @versions;
+   my %version_for;
+   foreach my $instance ( @$instances ) {
+      my $dbh = $instance->{dbh};
+      local $dbh->{FetchHashKeyName} = 'NAME_lc';
+      my $sql = qq/SHOW $show/;
+      PTDEBUG && _d($sql);
+      my $rows = $dbh->selectall_hashref($sql, 'variable_name');
+
+      my @versions;
+      foreach my $var ( @{$item->{vars}} ) {
+         $var = lc($var);
+         my $version = $rows->{$var}->{value};
+         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version,
+            'on', $instance->{name});
+         push @versions, $version;
+      }
+
+      $version_for{ $instance->{id} } = join(' ', @versions);
+   }
+
+   return \%version_for;
 }
 
 sub get_bin_version {

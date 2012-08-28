@@ -79,9 +79,10 @@ system("$cmd --daemonize -D test --update --run-time 3s --pid $pid_file 1>/dev/n
 $output = `$ps_grep_cmd`;
 like($output, qr/$cmd/, 'It is running');
 
+PerconaTest::wait_for_files($pid_file);
 ok(-f $pid_file, 'PID file created');
 my ($pid) = $output =~ /^\s*(\d+)\s+/;
-$output = `cat $pid_file`;
+$output = `cat $pid_file` if -f $pid_file;
 is($output, $pid, 'PID file has correct PID');
 
 $output = `$cmd -D test --monitor --run-time 1s`;
