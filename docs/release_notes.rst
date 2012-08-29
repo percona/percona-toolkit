@@ -1,6 +1,76 @@
 Release Notes
 *************
 
+v2.1.3 released 2012-08-03
+==========================
+
+Percona Toolkit 2.1.3 has been released.  This release includes 31 bug fixes and one new feature: pt-kill --log-dsn to log information about killed queries to a table.  The bug fixes are widely assorted.  The following highlights some of the more interesting and "hot" bugs:
+
+* Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5
+
+pt-table-checksum used to check the user's privileges, but the method was not always reliable, and due to http://bugs.mysql.com/bug.php?id=61846 it became quite unreliable on MySQL 5.5.  So the privs check was removed altogether, meaning that the tool may fail later if the user's privileges are insufficient.
+
+* Fixed bug 950294: pt-table-checksum should always create schema and tables with IF NOT EXISTS
+
+In certain cases where the master and replicas have different schemas and/or tables, pt-table-checksum could break replication because the checksums table did not exist on a replica.
+
+* Fixed bug 821703: pt-query-digest --processlist may crash
+* Fixed bug 883098: pt-query-digest crashes if processlist has extra columns
+
+Certain distributions of MySQL add extra columns to SHOW PROCESSLIST which caused pt-query-digest --processlist to crash at times.
+
+* Fixed bug 941469: pt-kill doesn't reconnect if its connection is lost
+
+pt-kill is meant to be a long-running daemon, so naturally it's important that it stays connected to MySQL.
+
+* Fixed bug 1004567: pt-heartbeat --update --replace causes duplicate key error
+
+The combination of these pt-heartbeat options could cause replication to break due to a duplicate key error.
+
+* Fixed bug 1022628: pt-online-schema-change error: Use of uninitialized value in numeric lt (<) at line 6519
+
+This bug was related to how --quiet was handled, and it could happen even if --quiet wasn't given on the command line.
+
+All in all, this is solid bug fix release, and 2.1 users are encouraged to upgrade.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* pt-kill: Implemented --log-dsn to log info about killed queries to a table
+* Fixed bug 1016127: Install hint for DBD::mysql is wrong
+* Fixed bug 984915: DSNParser does not check success of --set-vars
+* Fixed bug 889739: pt-config-diff doesn't diff quoted strings properly
+* Fixed bug 969669: pt-duplicate-key-checker --key-types=k doesn't work
+* Fixed bug 1004567: pt-heartbeat --update --replace causes duplicate key error
+* Fixed bug 1028614: pt-index-usage ignores --database
+* Fixed bug 940733: pt-ioprofile leaves behind temp directory
+* Fixed bug 941469: pt-kill doesn't reconnect if its connection is lost
+* Fixed bug 1016114: pt-online-schema-change docs don't mention default values
+* Fixed bug 1020997: pt-online-schema-change fails when table is empty
+* Fixed bug 1022628: pt-online-schema-change error: Use of uninitialized value in numeric lt (<) at line 6519
+* Fixed bug 937225: pt-query-advisor OUTER JOIN advice in JOI.003 is confusing
+* Fixed bug 821703: pt-query-digest --processlist may crash
+* Fixed bug 883098: pt-query-digest crashes if processlist has extra columns
+* Fixed bug 924950: pt-query-digest --group-by db may crash profile report
+* Fixed bug 1022851: pt-sift error: PREFIX: unbound variable
+* Fixed bug 969703: pt-sift defaults to '.' instead of '/var/lib/pt-talk'
+* Fixed bug 962330: pt-slave-delay incorrectly computes lag if started when slave is already lagging
+* Fixed bug 954990: pt-stalk --nostalk does not work
+* Fixed bug 977226: pt-summary doesn't detect LSI RAID control
+* Fixed bug 1030031: pt-table-checksum reports wrong number of DIFFS
+* Fixed bug 916168: pt-table-checksum privilege check fails on MySQL 5.5 
+* Fixed bug 950294: pt-table-checksum should always create schema and tables with IF NOT EXISTS
+* Fixed bug 953141: pt-table-checksum ignores its default and explicit --recursion-method
+* Fixed bug 1030975: pt-table-sync crashes if sql_mode includes ANSI_QUOTES
+* Fixed bug 869005: pt-table-sync should always set REPEATABLE READ
+* Fixed bug 903510: pt-tcp-model crashes in --type=requests mode on empty file
+* Fixed bug 934310: pt-tcp-model --quantile docs wrong
+* Fixed bug 980318: pt-upgrade results truncated if hostnames are long
+* Fixed bug 821696: pt-variable-advisor shows too long of a snippet
+* Fixed bug 844880: pt-variable-advisor shows binary logging as both enabled and disabled
+
 v2.1.2 released 2012-06-12
 ==========================
 

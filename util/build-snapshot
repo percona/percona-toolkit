@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+
+# This script builds a snapshot: a lightweight tarball of the current
+# bzr branch _without_ updating the changelog, docs, etc.  Snapshots
+# are meant to allow early access and real-world testing by Percona
+# support staff.  They're fetched from percona.com/trunk/.
+#
+# The current version of the tools is used plus "-snapshot-YYYY.MM.DD"
+# to indicate that it's a snapshot, not a full release.
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+set -ue # bail out on errors, be strict
+
+EXIT_STATUS=0
+
+die() {
+   echo "$1" >&2
+   exit 1
+}
+
+warn() {
+   echo "$1" >&2
+   EXIT_STATUS=1
+}
+
+CWD=$PWD
+PERCONA_TOOLKIT_BRANCH=${PERCONA_TOOLKIT_BRANCH:-""}
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+   cd $BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $PWD != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+   fi
+   BRANCH=`pwd`
+fi
+cd $CWD
+
+# ############################################################################
+# Paths
+# ############################################################################
+
+SNAPSHOT_DIR=$BRANCH/snapshot
+
+# ############################################################################
+# Programs and their options
+# ############################################################################
+
+TAR=${TAR:-tar}
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+prep_release_dir() {
+   echo -n "Preparing $SNAPSHOT_DIR... "
+   cd $BRANCH
+
+   # Make temp snapshot dir so we can copy and modify files in it
+   # without affecting the underlying bzr branch because, unlike
+   # a release, we don't want to commit anything, but we do want
+   # to modify stuff, namely the tools' version. 
+   if [ ! -d $SNAPSHOT_DIR ]; then
+      mkdir $SNAPSHOT_DIR
+   elif [ -d $SNAPSHOT_DIR/$PKG ]; then
+      rm -rf $SNAPSHOT_DIR/$PKG/*
+   fi
+
+   # Copy the tools, of course.   
+   mkdir -p $SNAPSHOT_DIR/$PKG/bin
+   cp bin/* $SNAPSHOT_DIR/$PKG/bin
+
+   # Copy the originals of these files for reference.
+   for file in Changelog COPYING README; do
+      cp $file $SNAPSHOT_DIR/$PKG
+   done
+
+   # Pretend that someone will actually read this special readme
+   # and discover that this isn't a full release.
+   echo "This is a snapshot of Percona Toolkit created on $DATE, based on the full $VERSION release.  Snapshots are previews of the current code and should only be used for testing.  The code in this snapshot can change or be removed in later snapshots and is no guarantee of what will be included in the next full release.  Contact Percona (http://www.percona.com/) if you have any questions.
+
+The README and Changelog from the full $VERSION release are included for reference.  See DIFF for a diff of all changes since the $VERSION release." \
+   >$SNAPSHOT_DIR/$PKG/README.SNAPSHOT
+
+   echo "OK"
+
+   # Make a diff of all changes since the last full release.
+   # This may be long, but it shows what actually has changed
+   # in this snapshot (otherwise one needs access to lp/bzr).
+   # This can take a few seconds, so it gets its own status line.
+   local last_release_rev=$(bzr tags | tail -n 1 | awk '{print $2 + 1}')
+   local cmd="bzr log -r$last_release_rev.. --show-diff"
+   echo -n "Creating DIFF ($cmd)... "
+   $cmd > $SNAPSHOT_DIR/$PKG/DIFF
+   echo "OK"
+}
+
+update_manifest() {
+   echo -n "Updating MANIFEST... "
+   # Just in case someone actually uses/trusts the manifest.
+   cd $SNAPSHOT_DIR/$PKG
+   echo -n > MANIFEST
+   for file in * bin/*; do
+      if [ -f $file ]; then
+         echo $file >> MANIFEST
+      fi
+   done
+   echo "OK"
+}
+
+update_version() {
+   echo -n "Updating version in tools... "
+   cd $SNAPSHOT_DIR/$PKG/bin
+   for tool_file in *; do
+      sed -i'.bak' -e "s/^$tool_file [0-9]\.[0-9][^ ]\+/$tool_file $SNAPSHOT_VERSION/" $tool_file
+      if [ $? -ne 0 ]; then
+         die "Error updating version in $tool_file"
+      fi
+      rm "$tool_file.bak"
+   done
+
+   local new_versions=$(grep --no-filename '^pt-[^ ]\+ [0-9]\.' * | cut -d' ' -f2 | sort -u)
+   if [ "$new_versions" != "$SNAPSHOT_VERSION" ]; then
+      die "The version in some tools did not update correctly"
+   fi
+   echo "OK"
+}
+
+build_tar() {
+   echo -n "Building $PKG.tar.gz... "
+   cd $SNAPSHOT_DIR
+   $TAR czf "$PKG.tar.gz" $PKG
+   echo "OK"
+}
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+if [ $# -gt 0 ]; then
+   die "Usage: $0"
+fi
+
+VERSION=$(awk '/VERSION/ {print $3; exit;}' $BRANCH/Makefile.PL | sed -e "s/[',]//g")
+DATE=$(date -u +'%Y.%m.%d')
+SNAPSHOT_VERSION="$VERSION-snapshot-$DATE"
+PKG="percona-toolkit-$SNAPSHOT_VERSION"
+
+prep_release_dir
+update_manifest
+update_version
+build_tar
+
+if [ -d $SNAPSHOT_DIR/$PKG ]; then
+   rm -rf  $SNAPSHOT_DIR/$PKG
+fi
+
+if [ $EXIT_STATUS -eq 0 ] && [ -f "$SNAPSHOT_DIR/$PKG.tar.gz" ]; then
+   echo "Snapshot built successfully:"
+   echo "$SNAPSHOT_DIR/$PKG.tar.gz"
+else
+   warn "Error building snapshot"
+fi
+
+exit $EXIT_STATUS

@@ -9,8 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 38;
+use Test::More;
 
+use VersionParser;
 use DuplicateKeyFinder;
 use Quoter;
 use TableParser;
@@ -26,7 +27,7 @@ my $callback = sub {
    push @$dupes, $_[0];
 };
 
-my $opt = { version => '004001000' };
+my $opt = { mysql_version => VersionParser->new('4.1.0') };
 my $ddl;
 my $tbl;
 
@@ -785,4 +786,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+done_testing;
 exit;

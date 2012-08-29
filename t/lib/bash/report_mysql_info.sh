@@ -107,8 +107,8 @@ cat <<EOF > $PT_TMPDIR/expected
 EOF
 
 summarize_processlist "$samples/processlist-001.txt" > "$PT_TMPDIR/got"
-no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "summarize_processlist"
-
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "summarize_processlist" \
+   || cat "$PT_TMPDIR/got" "$PT_TMPDIR/expected" >&2
 
 # ###########################################################################
 # summarize_binlogs
@@ -548,7 +548,8 @@ Mutexes/Locks Waited For
 EOF
 
 format_innodb_status $samples/innodb-status.001.txt > $PT_TMPDIR/got
-no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.001.txt"
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.001.txt" \
+   || cat "$PT_TMPDIR/got" "$PT_TMPDIR/expected" >&2
 
 cat <<'EOF' > $PT_TMPDIR/expected
       Checkpoint Age | 348M
@@ -600,7 +601,8 @@ Tables Locked
 EOF
 
 format_innodb_status $samples/innodb-status.003.txt > $PT_TMPDIR/got
-no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.003.txt"
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.003.txt" \
+   || cat "$PT_TMPDIR/got" "$PT_TMPDIR/expected" >&2
 
 cat <<'EOF' > $PT_TMPDIR/expected
       Checkpoint Age | 93M
@@ -628,7 +630,8 @@ Mutexes/Locks Waited For
 EOF
 
 format_innodb_status $samples/innodb-status.004.txt > $PT_TMPDIR/got
-no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.004.txt" 
+no_diff $PT_TMPDIR/got $PT_TMPDIR/expected "innodb-status.004.txt" \
+   || cat "$PT_TMPDIR/got" "$PT_TMPDIR/expected" >&2
 
 # ###########################################################################
 # section_innodb

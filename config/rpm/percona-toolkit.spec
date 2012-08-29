@@ -10,6 +10,7 @@ Source:    percona-toolkit-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 Requires:  perl(DBI) >= 1.13, perl(DBD::mysql) >= 1.0, perl(Term::ReadKey) >= 2.10
+AutoReq:   no
 
 %description
 Percona Toolkit is a collection of advanced command-line tools used by

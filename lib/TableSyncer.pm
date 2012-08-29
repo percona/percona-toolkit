@@ -35,13 +35,12 @@ $Data::Dumper::Quotekeys = 0;
 # Arguments:
 #   * MasterSlave    A MasterSlave module
 #   * Quoter         A Quoter module
-#   * VersionParser  A VersionParser module
 #   * TableChecksum  A TableChecksum module
 #   * Retry          A Retry module
 #   * DSNParser      (optional)
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(MasterSlave Quoter VersionParser TableChecksum Retry);
+   my @required_args = qw(MasterSlave Quoter TableChecksum Retry);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless defined $args{$arg};
    }
@@ -127,7 +126,6 @@ sub sync_table {
    $args{timeout_ok}  ||= 0;
 
    my $q  = $self->{Quoter};
-   my $vp = $self->{VersionParser};
 
    # ########################################################################
    # Get and prepare the first plugin that can sync this table.
@@ -145,16 +143,13 @@ sub sync_table {
    # Make an index hint for either the explicitly given chunk_index
    # or the chunk_index chosen by the plugin if index_hint is true.
    my $index_hint;
-   my $hint = ($vp->version_ge($src->{dbh}, '4.0.9')
-               && $vp->version_ge($dst->{dbh}, '4.0.9') ? 'FORCE' : 'USE')
-            . ' INDEX';
    if ( $args{chunk_index} ) {
       PTDEBUG && _d('Using given chunk index for index hint');
-      $index_hint = "$hint (" . $q->quote($args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($args{chunk_index}) . ")";
    }
    elsif ( $plugin_args{chunk_index} && $args{index_hint} ) {
       PTDEBUG && _d('Using chunk index chosen by plugin for index hint');
-      $index_hint = "$hint (" . $q->quote($plugin_args{chunk_index}) . ")";
+      $index_hint = "FORCE INDEX (" . $q->quote($plugin_args{chunk_index}) . ")";
    }
    PTDEBUG && _d('Index hint:', $index_hint);
 
@@ -518,9 +513,10 @@ sub lock_and_wait {
          my $ms    = $self->{MasterSlave};
          my $tries = $args{wait_retry_args}->{tries} || 3;
          my $wait;
+         my $sleep = $args{wait_retry_args}->{wait}  || 10;
          $self->{Retry}->retry(
             tries => $tries,
-            wait  => sub { sleep $args{wait_retry_args}->{wait}  || 10 },
+            wait  => sub { sleep($sleep) },
             try   => sub {
                my ( %args ) = @_;
                # Be careful using $args{...} in this callback!  %args in
@@ -563,7 +559,7 @@ sub lock_and_wait {
                           . "the slave is running.";
                   }
                   if ( $tries - $args{tryno} ) {
-                     $msg .= "  Sleeping $wait seconds then retrying "
+                     $msg .= "  Sleeping $sleep seconds then retrying "
                            . ($tries - $args{tryno}) . " more times.";
                   }
                   warn "$msg\n";
@@ -621,34 +617,6 @@ sub lock_and_wait {
    }
 
    return $result;
-}
-
-# This query will check all needed privileges on the table without actually
-# changing anything in it.  We can't use REPLACE..SELECT because that doesn't
-# work inside of LOCK TABLES.  Returns 1 if user has all needed privs to
-# sync table, else returns 0.
-sub have_all_privs {
-   my ( $self, $dbh, $db, $tbl ) = @_;
-   my $db_tbl = $self->{Quoter}->quote($db, $tbl);
-   my $sql    = "SHOW FULL COLUMNS FROM $db_tbl";
-   PTDEBUG && _d('Permissions check:', $sql);
-   my $cols       = $dbh->selectall_arrayref($sql, {Slice => {}});
-   my ($hdr_name) = grep { m/privileges/i } keys %{$cols->[0]};
-   my $privs      = $cols->[0]->{$hdr_name};
-   $sql = "DELETE FROM $db_tbl LIMIT 0"; # FULL COLUMNS doesn't show all privs
-   PTDEBUG && _d('Permissions check:', $sql);
-   eval { $dbh->do($sql); };
-   my $can_delete = $EVAL_ERROR ? 0 : 1;
-
-   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
-      ($can_delete ? 'delete' : ''));
-   if ( $privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/ 
-        && $can_delete ) {
-      PTDEBUG && _d('User has all privs');
-      return 1;
-   }
-   PTDEBUG && _d('User does not have all privs');
-   return 0;
 }
 
 sub _d {

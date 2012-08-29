@@ -7,17 +7,29 @@
 # Exist 0 on success/no errors, or 1 on any warnings or errors.
 
 err() {
-   echo "MySQL processes:" >&2
-   ps x | grep mysql >&2
-
-   echo "Sandbox servers:" >&2
-   ls /tmp/1234? >&2
-   ls /tmp/290? >&2
-
-   echo
    for msg; do
       echo "$msg" >&2
    done
+
+   if [ "$DEBUG_SANDBOXES" ]; then 
+      echo
+      echo "MySQL processes:" >&2
+      ps x | grep mysql >&2
+
+      echo
+      for p in 12345 12346 12347; do
+         echo "Sandbox $p:" >&2
+         if [ -d "/tmp/$p" ]; then
+            ls -lh /tmp/$p/* >&2
+            echo
+            cat /tmp/$p/data/mysqld.log >&2
+            echo
+            tail -n 100 /tmp/$p/data/genlog >&2
+         else
+            echo "/tmp/$p does not exist" >&2
+         fi
+      done
+   fi
 }
 
 usage() {
@@ -184,7 +196,6 @@ sandbox_is_running() {
 
 kill_sandbox() {
    local p=$1
-   local rmdir=1
 
    # See if the sandbox server is running.
    sandbox_is_running $p
@@ -194,7 +205,7 @@ kill_sandbox() {
       mysqladmin -h127.1 -P$p -umsandbox -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot -pmsandbox shutdown >/dev/null 2>&1
       mysqladmin -h127.1 -P$p -uroot shutdown >/dev/null 2>&1
-      sleep 1
+      sleep 2
 
       # See if the sandbox server is still running.
       sandbox_is_running $p 
@@ -204,13 +215,13 @@ kill_sandbox() {
          pid2=`ps xw | grep -v grep | grep -v mysqld_safe | grep mysqld | grep /tmp/$p | awk '{print $1}'`
          [ "$pid1" ] && kill -9 $pid1  # Die, damn you, die!
          [ "$pid2" ] && kill -9 $pid2
-         sleep 1
+         sleep 2
 
          # Third and finaly check if the sandbox server is running.
          sandbox_is_running $p
          if [ $? -eq 0 ]; then
             err "Failed to kill MySQL test server on port $p (PID $pid1, $pid2)"
-            rmdir=0
+            return 1
          else 
             echo "Killed MySQL test server on port $p (PID $pid1, $pid2)"
          fi
@@ -219,12 +230,12 @@ kill_sandbox() {
       fi
    fi
 
-   if [ $rmdir -eq 1 ] && [ -d "/tmp/$p" ]; then
+   if [ -d "/tmp/$p" ]; then
       rm -rf /tmp/$p
       echo "Removed /tmp/$p"
    fi
 
-   return
+   return 0
 }
 
 MYSQL_VERSION=""
@@ -290,7 +301,16 @@ case $opt in
             else
                echo "OK"
             fi
+
+            # Create percona_test db and checksum all the tables.
             ../util/checksum-test-dataset
+
+            # LOAD DATA is disabled or broken on some boxes.
+            # PerconaTest exports $can_load_data which is true
+            # if percona_test.load_data has the 42 row,
+            # signaling that LOAD DATA LOCAL INFILE worked.
+            ../util/check-load-data
+
             ping=$(/tmp/12345/use -ss -e "SELECT MD5(RAND())")
             /tmp/12345/use -e "create table percona_test.sentinel(id int primary key, ping varchar(64) not null default '')"
             /tmp/12345/use -e "insert into percona_test.sentinel(id, ping) values(1, '$ping')";
@@ -307,6 +327,7 @@ case $opt in
       if [ $exit_status -eq 0 ]; then
          echo "Percona Toolkit test environment started with MySQL v$MYSQL_VERSION."
       else
+         DEBUG_SANDBOXES=1
          err "There was an error starting the Percona Toolkit test environment."
       fi
       ;;
@@ -319,14 +340,16 @@ case $opt in
       if [ $exit_status -eq 0 ]; then
          echo "Percona Toolkit test environment stopped."
       else
+         DEBUG_SANDBOXES=1
          err "Error stopping the Percona Toolkit test environment."
       fi
       ;;
    kill)
-      # This is a blunt approach for killing the entire mk test env
+      # This is a blunt approach for killing the entire test env
       # when a polite stop fails.  It uses kill -9 as a last resort.
       for port in 12349 12348 12347 12346 12345 2903 2902 2901 2900; do
          kill_sandbox $port
+         exit_status=$((exit_status | $?))
       done
       ;;
    restart)
@@ -345,24 +368,6 @@ case $opt in
          echo "invalid."
          exit_status=1
       fi
-      ;;
-   reset)
-      # Several tests reset the bin logs so that queries from prior tests
-      # don't replicate to new sandbox servers.  This makes creating new
-      # sandbox servers a lot faster.  There's no check if this works or
-      # not, so... yeah.
-      echo "RESETTING SLAVE. This is DANGEROUS and DOESN'T WORK. FIXME." >&2
-      /tmp/12347/use -e "STOP SLAVE; FLUSH SLAVE;"
-      /tmp/12346/use -e "STOP SLAVE; FLUSH SLAVE; FLUSH MASTER;"
-      /tmp/12345/use -e "FLUSH MASTER"
-
-      /tmp/12346/use -e "CHANGE MASTER TO master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12345, master_log_file='mysql-bin.000001', master_log_pos=0"
-      /tmp/12346/use -e "START SLAVE"
-
-      /tmp/12347/use -e "CHANGE MASTER TO master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=12346, master_log_file='mysql-bin.000001', master_log_pos=0"
-      /tmp/12347/use -e "START SLAVE"
-
-      exit_status=0
       ;;
    version)
       set_mysql_version

@@ -18,13 +18,17 @@ require "$trunk/bin/pt-slave-delay";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $slave1_dbh  = $sb->get_dbh_for('slave1');
+my $slave2_dbh  = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
-   plan skip_all => 'Cannot connect to second sandbox master';
+elsif ( !$slave1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave1';
+}
+elsif ( !$slave2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
    plan tests => 6;
@@ -50,7 +54,7 @@ unlike($output, qr/Missing DSN part 'h'/, 'Does not require h DSN part');
 # just disable log-bin and log-slave-updates on the slave.
 # #####1#######################################################################
 diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/my.sandbox.cnf-original`);
-diag(`sed -i.bak -e '/log.bin\\|log.slave/d' /tmp/12346/my.sandbox.cnf`);
+diag(`sed -i.bak -e '/log-bin/d' -e '/log_slave_updates/d' /tmp/12346/my.sandbox.cnf`);
 diag(`/tmp/12346/stop >/dev/null`);
 diag(`/tmp/12346/start >/dev/null`);
 
@@ -65,6 +69,9 @@ diag(`/tmp/12346/stop >/dev/null`);
 diag(`mv /tmp/12346/my.sandbox.cnf-original /tmp/12346/my.sandbox.cnf`);
 diag(`/tmp/12346/start >/dev/null`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
+
+$slave2_dbh->do('STOP SLAVE');
+$slave2_dbh->do('START SLAVE');
 
 # #############################################################################
 # Check --use-master
@@ -85,11 +92,10 @@ like(
 );
 
 # Sometimes the slave will be in a state of "reconnecting to master" that will
-# take a while. Help that along. But, we've disconnected $slave_dbh by doing
+# take a while. Help that along. But, we've disconnected $slave1_dbh by doing
 # 'stop' on the sandbox above, so we need to reconnect.
-$slave_dbh  = $sb->get_dbh_for('slave2');
-$slave_dbh->do('STOP SLAVE');
-$slave_dbh->do('START SLAVE');
+$slave2_dbh->do('STOP SLAVE');
+$slave2_dbh->do('START SLAVE');
 
 # #############################################################################
 # Done.

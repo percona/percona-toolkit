@@ -9,14 +9,13 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 108;
-
-use PerconaTest;
-
-use OptionParser;
+use Test::More;
 
 use File::Spec;
 use File::Temp ();
+
+use PerconaTest;
+use OptionParser;
 
 BEGIN {
    use_ok "Diskstats";
@@ -25,7 +24,7 @@ BEGIN {
    use_ok "DiskstatsGroupBySample";
 }
 
-my $o   = new OptionParser(description => 'Diskstats');
+my $o = new OptionParser(description => 'Diskstats');
 $o->get_specs("$trunk/bin/pt-diskstats");
 $o->get_opts();
 
@@ -476,6 +475,7 @@ is_deeply(
 $obj->clear_state();
 
 }
+
 # ############################################################################
 # The three subclasses
 # ############################################################################
@@ -491,7 +491,8 @@ for my $test (
       {
          class               => "DiskstatsGroupBySample",
          results_file_prefix => "sample",
-      }) {
+      },
+) {
    my $obj    = $test->{class}->new(OptionParser => $o, show_inactive => 1);
    my $prefix = $test->{results_file_prefix};
 
@@ -502,9 +503,8 @@ for my $test (
    $obj->set_show_line_between_samples(0);
 
    for my $filename ( map "diskstats-00$_.txt", 1..5 ) {
-      my $file = File::Spec->catfile( "t", "pt-diskstats", "samples", $filename );
-      my $file_with_trunk = File::Spec->catfile( $trunk, $file );
-
+      my $file = File::Spec->catfile(qw(t pt-diskstats samples), $filename);
+      my $file_with_trunk = File::Spec->catfile($trunk, $file);
       my $expected = "t/pt-diskstats/expected/${prefix}_$filename";
 
       ok(
@@ -518,7 +518,7 @@ for my $test (
       ok(
          no_diff(
             sub {
-               open my $fh, "<", $file_with_trunk or die $!;
+               open my $fh, "<", $file_with_trunk or die $!; # "<">"
                $obj->group_by(filehandle => $fh);
             },
             $expected,
@@ -571,10 +571,36 @@ EOF
       qr/Time between samples should be > 0, is /,
       "$test->{class}, ->_calc_deltas fails if the time elapsed is negative"
    );
+}
 
+# ###########################################################################
+# --group-by sample + --devices-regex show the wrong device
+# https://bugs.launchpad.net/percona-toolkit/+bug/1035311
+# ###########################################################################
+my $sample_obj = DiskstatsGroupBySample->new( OptionParser => $o, devices_regex => qr/./ );
+
+$sample_obj->ordered_devs( [ "aaaa", "bbbb" ] );
+
+for (
+   [ 1, "aaaa", "with 1 dev shows the first device" ],
+   [ 5, "{5}",  'with 5 devs shows "{5}"'],
+   [ 2, "{2}",  'with 2 devs shows "{2}"' ],
+   [ 1, "bbbb", 'with 1 devs and a filtering devices_regex, shows "bbbb"'],
+)
+{
+   my ($num_devs, $expected, $test) = @$_;
+   is(
+      $sample_obj->compute_dev($num_devs),
+      $expected,
+      "DiskstatsGroupBySample->compute_dev $test"
+   );
+
+   # After the first iteration, change the 
+   $sample_obj->set_devices_regex(qr/^bbbb/);
 }
 
 # ###########################################################################
 # Done.
 # ###########################################################################
+done_testing;
 exit;

@@ -40,9 +40,8 @@ else {
 my $mysql = $sb->_use_for('master');
 
 my $q  = new Quoter();
-my $ms = new MasterSlave();
+my $ms = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $tp = new TableParser(Quoter=>$q);
-my $vp = new VersionParser();
 my $rr = new Retry();
 
 my $nibbler = new TableNibbler(
@@ -51,7 +50,6 @@ my $nibbler = new TableNibbler(
 );
 my $checksum = new TableChecksum(
    Quoter        => $q,
-   VersionParser => $vp,
 );
 my $chunker = new TableChunker(
    TableParser => $tp,
@@ -62,7 +60,6 @@ my $t = new TableSyncNibble(
    TableParser   => $tp,
    TableChunker  => $chunker,
    Quoter        => $q,
-   VersionParser => $vp,
 );
 
 my @rows;
@@ -81,7 +78,6 @@ my $syncer = new TableSyncer(
    MasterSlave   => $ms,
    TableChecksum => $checksum,
    Quoter        => $q,
-   VersionParser => $vp,
    Retry         => $rr,
 );
 

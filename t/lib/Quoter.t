@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 55;
+use Test::More;
 
 use Quoter;
 use PerconaTest;
@@ -59,6 +59,8 @@ is( $q->quote_val('\\\''), "'\\\\\\\''", 'embedded backslash');
 is( $q->quote_val('123-abc'), "'123-abc'", 'looks numeric but is string');
 is( $q->quote_val('123abc'), "'123abc'", 'looks numeric but is string');
 is( $q->quote_val('0x89504E470'), '0x89504E470', 'hex string');
+is( $q->quote_val('0x89504E470', is_char => 0), '0x89504E470', 'hex string, with is_char => 0');
+is( $q->quote_val('0x89504E470', is_char => 1), "'0x89504E470'", 'hex string, with is_char => 1');
 is( $q->quote_val('0x89504I470'), "'0x89504I470'", 'looks like hex string');
 is( $q->quote_val('eastside0x3'), "'eastside0x3'", 'looks like hex str (issue 1110');
 
@@ -219,4 +221,5 @@ SKIP: {
 # Done.
 # ###########################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;

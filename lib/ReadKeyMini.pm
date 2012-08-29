@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -15,8 +15,14 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# ReadKeyMini
+# ReadKeyMini package
 # ###########################################################################
+
+# Package: ReadKeyMini
+# ReadKeyMini is a wrapper around Term::ReadKey. If that's available,
+# we use ReadMode and GetTerminalSize from there. Otherwise, we use homebrewn
+# definitions.
+
 BEGIN {
 
 package ReadKeyMini;
@@ -28,11 +34,6 @@ package ReadKeyMini;
 # Costs us nothing though, so worth trying. Putting this on top of the file
 # would solve the issue.
 BEGIN { $INC{"ReadKeyMini.pm"} ||= 1 }
-
-# Package: ReadKeyMini
-# ReadKeyMini is a wrapper around Term::ReadKey. If that's available,
-# we use ReadMode and GetTerminalSize from there. Otherwise, we use homebrewn
-# definitions.
 
 use warnings;
 use strict;
@@ -65,14 +66,12 @@ my %modes = (
 );
 
 # This primarily comes from the Perl Cookbook, recipe 15.8
-
 {
-
    my $fd_stdin = fileno(STDIN);
    my $flags;
    unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
       $flags = fcntl(STDIN, F_GETFL, 0)
-                     or die "can't fcntl F_GETFL: $!";
+         or warn "Error getting STDIN flags with fcntl: $OS_ERROR";
    }
    my $term     = POSIX::Termios->new();
    $term->getattr($fd_stdin);
@@ -104,14 +103,13 @@ my %modes = (
       $term->setlflag($oterm);
       $term->setcc( VTIME, 0 );
       $term->setattr( $fd_stdin, TCSANOW );
-      unless ( $PerconaTest::DONT_RESTORE_STDIN ) {
-         fcntl(STDIN, F_SETFL, $flags)
-                        or die "can't fcntl F_SETFL: $!";
+      if ( !$PerconaTest::DONT_RESTORE_STDIN ) {
+         fcntl(STDIN, F_SETFL, int($flags))
+            or warn "Error restoring STDIN flags with fcntl: $OS_ERROR";
       }
    }
 
    END { cooked() }
-
 }
 
 sub readkey {
@@ -120,17 +118,16 @@ sub readkey {
    sysread(STDIN, $key, 1);
    my $timeout = 0.1;
    if ( $key eq "\033" ) {
-   # Ugly and broken hack, but good enough for the two minutes it took to write.
-   # Namely, Ctrl escapes, the F-NUM keys, and other stuff you can send from the keyboard
-   # take more than one "character" to represent, and would be wrong to break into pieces.
-      {
-         my $x = '';
-         STDIN->blocking(0);
-         sysread(STDIN, $x, 2);
-         STDIN->blocking(1);
-         $key .= $x;
-         redo if $key =~ /\[[0-2](?:[0-9];)?$/
-      }
+      # Ugly and broken hack, but good enough for the two minutes it took
+      # to write. Namely, Ctrl escapes, the F-NUM keys, and other stuff
+      # you can send from the keyboard take more than one "character" to
+      # represent, and would be wrong to break into pieces.
+      my $x = '';
+      STDIN->blocking(0);
+      sysread(STDIN, $x, 2);
+      STDIN->blocking(1);
+      $key .= $x;
+      redo if $key =~ /\[[0-2](?:[0-9];)?$/
    }
    cooked();
    return $key;
@@ -157,7 +154,8 @@ sub _GetTerminalSize {
       die "My::Term::ReadKey doesn't implement GetTerminalSize with arguments";
    }
 
-   my ( $rows, $cols );
+   my $cols = $ENV{COLUMNS} || 80;
+   my $rows = $ENV{LINES}   || 24;
 
    if ( open( TTY, "+<", "/dev/tty" ) ) { # Got a tty
       my $winsize = '';
@@ -167,11 +165,11 @@ sub _GetTerminalSize {
       }
    }
 
-   if ( $rows = `tput lines` ) {
+   if ( $rows = `tput lines 2>/dev/null` ) {
       chomp($rows);
       chomp($cols = `tput cols`);
    }
-   elsif ( my $stty = `stty -a` ) {
+   elsif ( my $stty = `stty -a 2>/dev/null` ) {
       ($rows, $cols) = $stty =~ /([0-9]+) rows; ([0-9]+) columns;/;
    }
    else {

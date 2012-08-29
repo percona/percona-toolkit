@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2012 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -25,12 +25,12 @@ package UpgradeReportFormatter;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+
 use constant PTDEBUG           => $ENV{PTDEBUG};
-
-Transformers->import(qw(make_checksum percentage_of shorten micro_t));
-
 use constant LINE_LENGTH       => 74;
 use constant MAX_STRING_LENGTH => 10;
+
+Transformers->import(qw(make_checksum percentage_of shorten micro_t));
 
 # Special formatting functions
 my %formatting_function = (
@@ -64,11 +64,19 @@ sub event_report {
    my $line = sprintf(
       '# Query %d: ID 0x%s at byte %d ',
       $rank || 0,
-      make_checksum($where),
+      make_checksum($where) || '0x0',
       0, # $sample->{pos_in_log} || 0
    );
    $line .= ('_' x (LINE_LENGTH - length($line)));
    push @result, $line;
+
+   # Second line: full host names
+   # https://bugs.launchpad.net/percona-toolkit/+bug/980318
+   my $hostno = 0;
+   foreach my $host ( @$hosts ) {
+      $hostno++;
+      push @result, "# host$hostno: " . ($host->{name} || '?')
+   }
 
    # Differences report.  This relies on a sampleno attrib in each class
    # since all other attributes (except maybe Query_time) are optional.
@@ -81,7 +89,7 @@ sub event_report {
    my @diffs = grep { $_ =~ m/^different_/ } keys %$class;
    foreach my $diff ( sort @diffs ) {
       push @result,
-         sprintf $fmt, '  ' . make_label($diff), $class->{$diff}->{sum};
+         sprintf $fmt, '  ' . (make_label($diff) || ''), ($class->{$diff}->{sum} || 0);
    }
 
    # Side-by-side hosts report.
@@ -89,9 +97,10 @@ sub event_report {
       underline_header => 0,
       strip_whitespace => 0,
    );
+   $hostno = 0;
    $report->set_columns(
       { name => '' },
-      map { { name => $_->{name}, right_justify => 1 } } @$hosts,
+      map { $hostno++; { name => "host$hostno", right_justify => 1 } } @$hosts,
    );
    # Bool values.
    foreach my $thing ( qw(Errors Warnings) ) {

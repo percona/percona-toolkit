@@ -9,10 +9,11 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 83;
+use Test::More;
 
 use PodParser;
 use AdvisorRules;
+use VersionParser;
 use VariableAdvisorRules;
 use Advisor;
 use PerconaTest;
@@ -278,6 +279,10 @@ my @cases = (
       vars   => [qw(expire_log_days 0 log_bin ON)],
       advice => [qw(expire_log_days)],
    },
+   {  name   => "expire_log_days, log_bin OFF, only warns about log_bin",
+      vars   => [qw(expire_log_days 0 log_bin OFF)],
+      advice => [qw(log_bin)],
+   },
    {  name   => "innodb_file_io_threads",
       vars   => [qw(innodb_file_io_threads 16)],
       advice => [qw(innodb_file_io_threads)],
@@ -294,9 +299,17 @@ my @cases = (
       vars   => [qw(innodb_locks_unsafe_for_binlog ON log_bin ON)],
       advice => [qw(innodb_locks_unsafe_for_binlog)],
    },
+   {  name   => "innodb_locks_unsafe_for_binlog, log_bin off, only warns about log_bin",
+      vars   => [qw(innodb_locks_unsafe_for_binlog ON log_bin OFF)],
+      advice => [qw(log_bin)],
+   },
    {  name   => "innodb_support_xa",
       vars   => [qw(innodb_support_xa OFF log_bin ON)],
       advice => [qw(innodb_support_xa)],
+   },
+   {  name   => "innodb_support_xa, log_bin OFF, only warns about log_bin",
+      vars   => [qw(innodb_support_xa OFF log_bin OFF)],
+      advice => [qw(log_bin)],
    },
    {  name   => "log_bin ON",
       vars   => [qw(log_bin ON)],
@@ -338,32 +351,36 @@ my @cases = (
       vars   => [qw(sync_binlog 2 log_bin ON)],
       advice => [qw(sync_binlog)],
    },
+   {  name   => "log_bin OFF, sync_binlog 0, doesn't warn about sync_binlog",
+      vars   => [qw(sync_binlog 0 log_bin OFF)],
+      advice => [qw(log_bin)],
+   },
    {  name   => "tmp_table_size",
       vars   => [qw(tmp_table_size 1024 max_heap_table_size 512)],
       advice => [qw(tmp_table_size)],
    },
    {  name          => "end-of-life mysql version",
-      mysql_version => '005000087',
+      mysql_version => VersionParser->new('5.0.87'),
       advice        => ['end-of-life mysql version'],
    },
    {  name          => "old mysql version 3.22.00",
-      mysql_version => '00302200',
+      mysql_version => VersionParser->new('3.22.00'),
       advice        => ['old mysql version', 'end-of-life mysql version'],
    },
    {  name          => "old mysql version 4.1.1",
-      mysql_version => '004001001',
+      mysql_version => VersionParser->new('4.1.1'),
       advice        => ['old mysql version', 'end-of-life mysql version'],
    },
    {  name          => "old mysql version 5.0.36",
-      mysql_version => '005000036',
+      mysql_version => VersionParser->new('5.0.36'),
       advice        => ['old mysql version', 'end-of-life mysql version'],
    },
    {  name          => "old mysql version 5.1.29",
-      mysql_version => '005001029',
+      mysql_version => VersionParser->new('5.1.29'),
       advice        => ['old mysql version'],
    },
    {  name          => "old mysql version 5.5.0",
-      mysql_version => '005005000',
+      mysql_version => VersionParser->new('5.5.0'),
       advice        => [],
    },
 );
@@ -403,4 +420,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-exit;
+
+done_testing;

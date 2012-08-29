@@ -1,0 +1,9 @@
+DROP DATABASE IF EXISTS bug_1036804;
+CREATE DATABASE bug_1036804;
+USE bug_1036804;
+CREATE TABLE `t` (
+  `col1` int(11) DEFAULT NULL,
+  `col2` int(11) DEFAULT NULL,
+  KEY `col1` (`col1`),
+  KEY `col2` (`col2`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;

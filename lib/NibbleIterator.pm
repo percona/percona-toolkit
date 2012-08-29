@@ -286,6 +286,11 @@ sub next {
             return;
          }
       }
+      if ( !$self->{one_nibble} && !$self->{first_lower} ) {
+         PTDEBUG && _d('No first lower boundary, table must be empty');
+         $self->{no_more_boundaries} = 1;
+         return;
+      }
    }
 
    # If there's another nibble, fetch the rows within it.

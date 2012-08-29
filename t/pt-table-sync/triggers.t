@@ -16,7 +16,6 @@ use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
 my $output;
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -28,7 +27,7 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-elsif ( !$vp->version_ge($master_dbh, '5.0.2') ) {
+elsif ( VersionParser->new($master_dbh) < '5.0.2' ) {
    plan skip_all => 'Sever does not support triggers (< 5.0.2)';
 }
 else {

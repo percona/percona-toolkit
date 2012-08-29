@@ -328,6 +328,11 @@ CREATE TABLE `checksums` (
   PRIMARY KEY (`db_tbl`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 
+percona_test.load_data
+CREATE TABLE `load_data` (
+  `i` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+
 percona_test.sentinel
 CREATE TABLE `sentinel` (
   `id` int(11) NOT NULL,

@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 35;
+use Test::More;
 
 use DSNParser;
 use OptionParser;
@@ -543,7 +543,33 @@ foreach my $password_comma ( @password_commas ) {
 }
 
 # #############################################################################
+# Bug 984915: SQL calls after creating the dbh aren't checked
+# #############################################################################
+# Make sure to disconnect any lingering dbhs, since full_output will fork
+# and then die, which will cause rollback warnings for connected dbhs.
+$dbh->disconnect() if $dbh;
+
+$dsn = $dp->parse('h=127.1,P=12345,u=msandbox,p=msandbox');
+my @opts = $dp->get_cxn_params($dsn);
+$opts[0] .= ";charset=garbage_eh";
+my ($out, undef) = full_output(sub { $dp->get_dbh(@opts, {}) });
+
+like(
+   $out,
+   qr/\QUnknown character set/,
+   "get_dbh dies with an unknown charset"
+);
+
+$dp->prop('set-vars', "time_zoen='UTC'");
+($out, undef) = full_output(sub { $dp->get_dbh($dp->get_cxn_params($dsn), {}) });
+
+like(
+   $out,
+   qr/\QUnknown system variable 'time_zoen'/,
+   "get_dbh dies with an unknown system variable"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-$dbh->disconnect() if $dbh;
-exit;
+done_testing;

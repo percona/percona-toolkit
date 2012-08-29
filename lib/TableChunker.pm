@@ -627,6 +627,13 @@ sub _chunk_char {
    }
    PTDEBUG && _d("Base", $base, "chars:", @chars);
 
+   # See https://bugs.launchpad.net/percona-toolkit/+bug/1034717
+   die "Cannot chunk table $db_tbl using the character column "
+     . "$chunk_col, most likely because all values start with the "
+     . "same character.  This table must be synced separately by "
+     . "specifying a list of --algorithms without the Chunk algorithm"
+      if $base == 1;
+
    # Now we begin calculating how to chunk the char column.  This is
    # completely different from _chunk_numeric because we're not dealing
    # with the values to chunk directly (the characters) but rather a map.
@@ -665,7 +672,7 @@ sub _chunk_char {
    # 2 chars to express enough vals for 1 chunk, then we'll increment through
    # the map 2 chars at a time, like [a, b], [c, d], etc.
    my $n_chunks = $args{rows_in_range} / $args{chunk_size};
-   my $interval = floor($n_values / $n_chunks) || 1;
+   my $interval = floor(($n_values+0.00001) / $n_chunks) || 1;
 
    my $range_func = sub {
       my ( $self, $dbh, $start, $interval, $max ) = @_;
@@ -1382,7 +1389,7 @@ sub base_count {
    # zeroth symbol in any other base.
    return $symbols->[0] if $n == 0;
 
-   my $highest_power = floor(log($n)/log($base));
+   my $highest_power = floor(log($n+0.00001)/log($base));
    if ( $highest_power == 0 ){
       return $symbols->[$n];
    }
@@ -1394,11 +1401,10 @@ sub base_count {
 
    my @base_multiples;
    foreach my $base_power ( reverse @base_powers ) {
-      my $multiples = floor($n / $base_power);
+      my $multiples = floor(($n+0.00001) / $base_power);
       push @base_multiples, $multiples;
       $n -= $multiples * $base_power;
    }
-
    return join('', map { $symbols->[$_] } @base_multiples);
 }
 

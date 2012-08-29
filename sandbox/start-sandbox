@@ -1,18 +1,36 @@
 #!/bin/sh
 
-# This script makes Maatkit sandbox servers for mk-test-env.
-# It's a "low level" script that is not usually called directly.
-# Exit 0 means everything was successful, else exit 1 on problems.
+# This script starts a Percona Toolkit sandbox sever.  sandbox/test-env
+# uses it, and many tests use it to create special, temporary sandbox
+# servers.  The actual startup is done by /tmp/PORT/start, which this
+# script calls after doing a bunch of sanity checks.
+#
+# Exit 0 if the sandbox server started ok, else 1 and debug_sandbox()
+# is caleld to print some info to STDERR about what state the sandbox
+# server might have been in.
 
 die() {
    echo $1 >&2
    exit 1
 }
 
+debug_sandbox() {
+   set -x
+   local port="$1"
+   ps x | grep mysql >&2
+   if [ -d "/tmp/$port" ]; then
+      ls -lh /tmp/$port/* >&2
+      cat /tmp/$port/data/mysqld.log >&2
+      tail -n 100 /tmp/$port/data/genlog >&2
+   else
+      echo "/tmp/$port does not exist" >&2
+   fi
+}
+
 make_sandbox() {
    # Make the sandbox dir and extract the base files.
-   rm -rf /tmp/$port || die "can't rm /tmp/$port"
-   mkdir /tmp/$port || die "mkdir /tmp/$port failed"
+   rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
+   mkdir /tmp/$port  || die "Failed to mkdir /tmp/$port"
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
@@ -51,6 +69,9 @@ make_sandbox() {
    if [ -n "$MULTIPLE_BUFFER_POOLS" ]; then
       echo "innodb_buffer_pool_instances=$MULTIPLE_BUFFER_POOLS" >> /tmp/$port/my.sandbox.cnf
    fi
+   if [ -n "$LOCAL_INFILE" ]; then
+      echo "local-infile=$LOCAL_INFILE" >> /tmp/$port/my.sandbox.cnf
+   fi
 
    # If the sandbox is a slave, set it read_only.
    if [ "$type" = "slave" ]; then
@@ -64,14 +85,14 @@ make_sandbox() {
          /tmp/$port/use -e 'SHOW /*!40100 ENGINE*/ INNODB STATUS' | grep 'INNODB MONITOR OUTPUT' >/dev/null 2>&1
          # grep exits 0 if lines are found
          if [ $? -ne 0 ]; then
-            echo "****** WARNING sandbox doesn't have a working InnoDB! ******" >&2
-            cat /tmp/$port/data/mysqld.log >&2
+            echo "Sandbox $type $port doesn't have InnoDB." >&2
+            debug_sandbox $port
             exit 1
          fi
       fi
    else
       echo "Sandbox $type $port failed to start." >&2
-      cat /tmp/$port/data/mysqld.log >&2
+      debug_sandbox $port
       exit 1
    fi
 
@@ -126,7 +147,7 @@ fi
 
 cd $PERCONA_TOOLKIT_BRANCH/sandbox
 
-# This script is usually called by mk-test-env which discovers and
+# This script is usually called by test-env which discovers and
 # sets PERCONA_TOOLKIT_SANDBOX.  If this script is called directly,
 # then the caller is reponsible for setting PERCONA_TOOLKIT_SANDBOX.
 # PERCONA_TOOLKIT_SANDBOX points to a base directory containing the

@@ -16,7 +16,6 @@ use Sandbox;
 require "$trunk/bin/pt-table-sync";
 
 
-my $vp = new VersionParser();
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -27,9 +26,6 @@ if ( !$master_dbh ) {
 }
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
-}
-else {
-   plan tests => 3;
 }
 
 $sb->wipe_clean($master_dbh);
@@ -56,31 +52,18 @@ $slave_dbh->do('insert into issue_907.t values (1)');
 # On 5.1 user needs SUPER to set binlog_format, which mk-table-sync does.
 `/tmp/12345/use -uroot -e "GRANT SUPER, SELECT, SHOW DATABASES ON *.* TO 'test_907'\@'localhost' IDENTIFIED BY 'msandbox'"`;
 
-#2) run and get output to see what it's like when it's broken.  
-$output = output(
+#2) run again to see what output is like when it works
+chomp($output = output(
    sub { pt_table_sync::main(@args) },
-   stderr => 1,
-);
-like(
-   $output,
-   qr/User test_907\@localhost does not have all necessary privileges/,
-   "Can't --print without all privs"
-);
-
-#3) run again to see what output is like when it works 
-$output = output(
-   sub { pt_table_sync::main(@args, '--no-check-privileges') },
-   stderr => 1,
    trf    => \&remove_traces,
-);
+));
 is(
    $output,
-   "DELETE FROM `issue_907`.`t` WHERE `i`='1' LIMIT 1;
-",
-   "Can --print without all privs and --no-check-privileges"
+   "DELETE FROM `issue_907`.`t` WHERE `i`='1' LIMIT 1;",
+   "Privs are not checked, can --print without extra options"
 );
 
-#4) clean up user
+#3) clean up user
 $master_dbh->do('DROP USER \'test_907\'@\'localhost\'');
 
 # #############################################################################
@@ -89,4 +72,5 @@ $master_dbh->do('DROP USER \'test_907\'@\'localhost\'');
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;

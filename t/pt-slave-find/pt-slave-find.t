@@ -13,23 +13,33 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
+
 require "$trunk/bin/pt-slave-find";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh  = $sb->get_dbh_for('master');
-my $slave_dbh   = $sb->get_dbh_for('slave1');
-my $slave_2_dbh = $sb->get_dbh_for('slave2');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
-diag(`$trunk/sandbox/test-env reset`);
+# This test is sensitive to ghost/old slaves created/destroyed by other
+# tests.  So we stop the slaves, restart the master, and start everything
+# again.  Hopefully this will return the env to its original state.
+$slave2_dbh->do("STOP SLAVE");
+$slave1_dbh->do("STOP SLAVE");
+diag(`/tmp/12345/stop >/dev/null`);
+diag(`/tmp/12345/start >/dev/null`);
+$slave1_dbh->do("START SLAVE");
+$slave2_dbh->do("START SLAVE");
+
+my $master_dbh = $sb->get_dbh_for('master');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
+elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-elsif ( !$slave_2_dbh ) {
+elsif ( !$slave2_dbh ) {
    plan skip_all => 'Cannot connect to second sandbox slave';
 }
 else {
@@ -42,7 +52,7 @@ my $output = `$trunk/bin/pt-slave-find --help`;
 like($output, qr/Prompt for a password/, 'It compiles');
 
 # Double check that we're setup correctly.
-my $row = $slave_2_dbh->selectall_arrayref('SHOW SLAVE STATUS', {Slice => {}});
+my $row = $slave2_dbh->selectall_arrayref('SHOW SLAVE STATUS', {Slice => {}});
 is(
    $row->[0]->{master_port},
    '12346',
@@ -107,23 +117,25 @@ my $innodb_re = qr/InnoDB version\s+(.*)/;
 my (@innodb_versions) = $result =~ /$innodb_re/g;
 $result =~ s/$innodb_re/InnoDB version  BUILTIN/g;
 
-my $vp = new VersionParser;
+my $master_version = VersionParser->new($master_dbh);
+my $slave_version  = VersionParser->new($slave1_dbh);
+my $slave2_version = VersionParser->new($slave2_dbh);
 
 is(
    $innodb_versions[0],
-   $vp->innodb_version($master_dbh),
+   $master_version->innodb_version(),
    "pt-slave-find gets the right InnoDB version for the master"
 );
 
 is(
    $innodb_versions[1],
-   $vp->innodb_version($slave_dbh),
+   $slave_version->innodb_version(),
    "...and for the first slave"
 );
 
 is(
    $innodb_versions[2],
-   $vp->innodb_version($slave_2_dbh),
+   $slave2_version->innodb_version(),
    "...and for the first slave"
 );
 

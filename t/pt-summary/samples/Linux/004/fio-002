@@ -1,0 +1,10 @@
+driver_version    2.3.1 build 123
+ioDrive::0_general     Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+ioDrive::0_modules     fct0
+ioDrive::0_fct0_attached_as      Attached as 'fioa' (block device)
+ioDrive::0_fct0_general          Fusion-io ioDrive 720GB, Product Number:FS1-003-721-CS SN:122210
+ioDrive::0_fct0_firmware         Firmware v5.0.5, rev 43674
+ioDrive::0_fct0_media_status     Media status: Healthy; Reserves: 100.00%, warn at 10.00%
+ioDrive::0_fct0_temperature      Internal temperature: 53.2 degC, max 62.5 degC
+adapters     ioDrive::0
+
