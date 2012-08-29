@@ -18,9 +18,6 @@ use File::Spec;
 use Time::HiRes qw(time);
 require "$trunk/bin/pt-query-digest";
 
-# PerconaTest.pm sets this because normal tests shouldn't v-c.
-delete $ENV{PERCONA_VERSION_CHECK};
-
 my $output;
 my $cmd  = "$trunk/bin/pt-query-digest --limit 1 $trunk/t/lib/samples/slowlogs/slow001.txt";
 
@@ -29,7 +26,7 @@ my $dir = File::Spec->tmpdir();
 my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
 unlink $check_time_file if -f $check_time_file;
 
-$output = `PTVCDEBUG=1 $cmd 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --version-check 2>&1`;
 
 like(
    $output,
@@ -52,7 +49,7 @@ ok(
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
 
-$output = `PTVCDEBUG=1 $cmd 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --version-check 2>&1`;
 
 like(
    $output,
@@ -68,7 +65,7 @@ unlink $check_time_file if -f $check_time_file;
 
 my $t0 = time;
 
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --version-check 2>&1`;
 
 my $t = time - $t0;
 
@@ -90,12 +87,13 @@ cmp_ok(
 );
 
 # ###########################################################################
-# Disable the v-c.
+# Disable the v-c (for now it's disabled by default, so by "disable" here
+# we just mean "don't pass --version-check").
 # ###########################################################################
 
 unlink $check_time_file if -f $check_time_file;
 
-$output = `PTVCDEBUG=1 $cmd --no-version-check 2>&1`;
+$output = `PTVCDEBUG=1 $cmd 2>&1`;
 
 unlike(
    $output,
@@ -111,7 +109,7 @@ ok(
 # PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
 # for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
 # create the file which also signifies that it didn't run.
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --version-check 2>&1`;
 
 ok(
    !-f $check_time_file,

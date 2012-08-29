@@ -18,9 +18,6 @@ use File::Spec;
 use Time::HiRes qw(time);
 require "$trunk/bin/pt-archiver";
 
-# PerconaTest.pm sets this because normal tests shouldn't v-c.
-delete $ENV{PERCONA_VERSION_CHECK};
-
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
@@ -43,7 +40,7 @@ unlink $check_time_file if -f $check_time_file;
 $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 like(
    $output,
@@ -67,7 +64,7 @@ ok(
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 like(
    $output,
@@ -83,7 +80,7 @@ unlink $check_time_file if -f $check_time_file;
 
 my $t0 = time;
 
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 my $t = time - $t0;
 
@@ -105,17 +102,18 @@ cmp_ok(
 );
 
 # ###########################################################################
-# Disable the v-c.
+# Disable the v-c (for now it's disabled by default, so by "disable" here
+# we just mean "don't pass --version-check").
 # ###########################################################################
 
 unlink $check_time_file if -f $check_time_file;
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --no-version-check 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
 
 unlike(
    $output,
    qr/(?:VersionCheck|Pingback|Percona suggests)/,
-   "Looks like --no-version-check disabled the version-check"
+   "Looks like no --version-check disabled the version-check"
 ) or diag($output);
 
 ok(
@@ -126,7 +124,7 @@ ok(
 # PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
 # for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
 # create the file which also signifies that it didn't run.
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 ok(
    !-f $check_time_file,
