@@ -12054,9 +12054,7 @@ See L<"OUTPUT"> for more details about the output.
 
 Show version and exit.
 
-=item --[no]version-check
-
-default: yes
+=item --version-check
 
 Send program versions to Percona and print suggested upgrades and problems.
 
@@ -12065,10 +12063,6 @@ Percona over the web.  The data contains program versions from the local
 machine.  Percona uses the data to focus development on the most widely
 used versions of programs, and to suggest to customers possible upgrades
 and known bad versions of programs.
-
-This feature can be disabled by specifying C<--no-version-check> on the
-command line or in one of several L<"--config"> files, or by setting the
-environment variable C<PERCONA_VERSION_CHECK=0>.
 
 For more information, visit L<http://www.percona.com/version-check>.
 
