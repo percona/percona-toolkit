@@ -83,10 +83,6 @@ eval {
 
 our $can_load_data = can_load_data();
 
-# We do not want every test doing the version-check;
-# that would be quite slow.
-$ENV{PERCONA_VERSION_CHECK} = 0;
-
 our $dsn_opts = [
    {
       key  => 'A',
