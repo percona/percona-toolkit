@@ -8548,7 +8548,7 @@ sub main {
                     . "(db, tbl, chunk, chunk_index,"
                     . " lower_boundary, upper_boundary, this_cnt, this_crc) "
                     . "SELECT"
-                    . ($master_cxn->is_cluster_node() ? '/*!99997*/' : '')
+                    . ($master_cxn->is_cluster_node() ? ' /*!99997*/' : '')
                     . " ?, ?, ?, ?, ?, ?,";
    my $past_cols    = " COUNT(*), '0'";
 
