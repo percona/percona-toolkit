@@ -2987,6 +2987,7 @@ sub new {
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
+      is_cluster_node => undef,
    };
 
    return bless $self, $class;
@@ -3054,6 +3055,19 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub is_cluster_node {
+   my ($self) = @_;
+   return $self->{is_cluster_node} if defined $self->{is_cluster_node};
+   
+   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
+   PTDEBUG && _d($sql);
+   my $row = $self->{dbh}->selectrow_arrayref($sql);
+   PTDEBUG && _d(defined $row ? @$row : 'undef');
+   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+  
+   return $self->{is_cluster_node};
 }
 
 sub DESTROY {
@@ -8295,6 +8309,12 @@ sub main {
       );
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
 
+      if ( $master_cxn->is_cluster_node() && !@$slaves ) {
+         die $master_cxn->name() . " is a cluster node but no other nodes "
+            . "or regular replicas were found.  Use --recursion-method=dsn "
+            . "to specify the other nodes in the cluster.\n";
+      }
+
       if ( $o->get('check-slave-lag') ) {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
@@ -8307,6 +8327,23 @@ sub main {
          PTDEBUG && _d('Will check slave lag on all slaves');
          $slave_lag_cxns = $slaves;
       }
+
+      # Cluster nodes aren't slaves, so SHOW SLAVE STATUS doesn't work.
+      # Nodes shouldn't be out of sync anyway because the cluster is
+      # (virtually) synchronous, so waiting for the last checksum chunk
+      # to appear should be sufficient.
+      @$slave_lag_cxns = grep {
+         my $slave_cxn = $_;
+         if ( $slave_cxn->is_cluster_node() ) {
+            warn "Not checking replica lag on " . $slave_cxn->name()
+               . " because it is a cluster node.\n";
+            0;
+         }
+         else {
+            PTDEBUG && _d('Will check slave lag on', $slave_cxn->name());
+            $slave_cxn;
+         }
+      } @$slave_lag_cxns;
 
       # #####################################################################
       # Possibly check replication slaves and exit.
@@ -8510,7 +8547,9 @@ sub main {
    my $checksum_dml = "REPLACE INTO $repl_table "
                     . "(db, tbl, chunk, chunk_index,"
                     . " lower_boundary, upper_boundary, this_cnt, this_crc) "
-                    . "SELECT ?, ?, ?, ?, ?, ?,";
+                    . "SELECT"
+                    . ($master_cxn->is_cluster_node() ? ' /*!99997*/' : '')
+                    . " ?, ?, ?, ?, ?, ?,";
    my $past_cols    = " COUNT(*), '0'";
 
    # ########################################################################
@@ -11002,6 +11041,14 @@ C<binlog_format=STATEMENT> on the master, but due to a MySQL limitation
 replicas do not honor this change.  Therefore, checksums will not replicate
 past any replicas using row-based replication that are masters for
 further replicas.  (L<Bug 899415|https://bugs.launchpad.net/percona-toolkit/+bug/899415>)
+
+=item Percona XtraDB Cluster
+
+pt-table-checksum works with Percona XtraDB Cluster 5.5.27-23.6 and newer.
+The C<dsn> method for L<"--recursion-method"> must be used to specify cluster
+nodes and regular replicas because nodes are not regular replicas so they
+cannot be detected automatically.  The lag check (see L<"REPLICA CHECKS">)
+is not performed for cluster nodes.
 
 =back
 
