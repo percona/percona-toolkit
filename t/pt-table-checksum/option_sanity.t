@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 19;
+use Test::More;
 
 use PerconaTest;
 shift @INC;  # our unshift (above)
@@ -95,6 +95,18 @@ like(
    "Default --replicate-check=TRUE"
 );
 
+like(
+   $output,
+   qr/^\s+--recursion-method=a/m,
+   "--recursion-method is an array"
+);
+
+like(
+   $output,
+   qr/^\s+--recursion-method\s+processlist,hosts/m,
+   "Default --recursion-method is processlist,hosts"
+);
+
 # ############################################################################
 # Check opts that disable other opts.
 # ############################################################################
@@ -170,4 +182,4 @@ like(
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

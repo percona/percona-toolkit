@@ -118,12 +118,24 @@ usage_or_errors() {
       echo
       echo "Options and values after processing arguments:"
       echo
-      for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
-         local varvalue="${!varname}"
-         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
-         echo
-      done
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               # Typeless option, like --version, so it's given/TRUE
+               # or not given/FALSE.
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
       return 1
    fi
 
@@ -204,7 +216,7 @@ parse_options() {
    fi
 
    # Finally, parse the command line.
-   _parse_command_line "$@"
+   _parse_command_line "${@:-""}"
 }
 
 _parse_pod() {
@@ -262,7 +274,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -309,7 +321,7 @@ _eval_po() {
 
 _parse_config_files() {
 
-   for config_file in "$@"; do
+   for config_file in "${@:-""}"; do
       # Next config file if this one doesn't exist.
       test -f "$config_file" || continue
 
@@ -368,7 +380,7 @@ _parse_command_line() {
    local required_arg=""
    local spec=""
 
-   for opt in "$@"; do
+   for opt in "${@:-""}"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
          HAVE_EXT_ARGV=1
          continue
@@ -406,13 +418,28 @@ _parse_command_line() {
          # Save real opt from cmd line for error messages.
          real_opt="$opt"
 
-         # Strip leading -- or --no- from option.
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
+         # Handle the --nofoo variant of --no-foo.
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            # Only long options can be negated, so if there's no spec file
+            # for the base option name, then we've been fooled: the leading
+            # --no is actually part of the option's real name, like --north.
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
+            # Handle normal cases: --option and --no-option.
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          fi
 
          # Split opt=val pair.
@@ -461,7 +488,7 @@ _parse_command_line() {
 
       if [ "$opt_is_ok" ]; then
          # Get and transform the opt's long form.  E.g.: -q == --quiet == QUIET.
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          # Convert sizes.
          if grep "^type:size" "$spec" >/dev/null; then

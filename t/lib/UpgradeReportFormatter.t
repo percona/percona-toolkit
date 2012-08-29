@@ -110,6 +110,8 @@ $meta_events = [
 
 $expected = <<EOF;
 # Query 1: ID 0x82860EDA9A88FCC5 at byte 0 _______________________________
+# host1: host1.domain.com:3306
+# host2: host2.domain.com:3307
 # Found 1 differences in 3 samples:
 #   checksums       0
 #   row counts      1
@@ -130,8 +132,8 @@ aggregate();
 
 $result = $urf->event_report(
    meta_ea  => $meta_ea,
-   hosts    => [ {name=>'host1', ea=>$ea1},
-                 {name=>'host2', ea=>$ea2} ],
+   hosts    => [ {name=>'host1.domain.com:3306', ea=>$ea1},
+                 {name=>'host2.domain.com:3307', ea=>$ea2} ],
    where   => 'select id from users where name=?',
    rank    => 1,
    worst   => 'differences',

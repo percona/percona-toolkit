@@ -292,8 +292,10 @@ sub report {
    my $query_id_col = {
       name        => 'Query ID',
    };
+   my $hostno = 0;
    my @host_cols = map {
-      my $col = { name => $_->{name} };
+      $hostno++;
+      my $col = { name => "host$hostno" };
       $col;
    } @$hosts;
 
@@ -336,7 +338,7 @@ sub _report_diff_warnings {
          my ($hostno, $code, $message) = @{$diff_warnings->{$item}->{$_}};
          $report->add_line(
             $get_id->($item) . '-' . $_,
-            $args{hosts}->[$hostno]->{name}, $code, $message,
+            "host" . ($hostno + 1), $code, $message,
          );
       } sort { $a <=> $b } keys %{$diff_warnings->{$item}};
    }
@@ -357,13 +359,15 @@ sub _report_diff_levels {
 
    my $report = new ReportFormatter(extend_right => 1);
    $report->set_title('Warning level differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
       { name => 'Code', right_justify => 1 },
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
       { name => 'Message' },
    );
 
@@ -393,12 +397,14 @@ sub _report_diff_warning_counts {
 
    my $report = new ReportFormatter();
    $report->set_title('Warning count differences');
+   my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
-      map {
-         my $col = { name => $_->{name}, right_justify => 1  };
+      (map {
+         $hostno++;
+         my $col = { name => "host$hostno", right_justify => 1  };
          $col;
-      } @{$args{hosts}},
+      } @{$args{hosts}}),
    );
 
    my $diff_warning_counts = $self->{diffs}->{warning_counts};

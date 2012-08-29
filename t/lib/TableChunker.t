@@ -25,9 +25,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 94;
-}
 
 $sb->create_dbs($dbh, ['test']);
 
@@ -1358,9 +1355,59 @@ is_deeply(
    "Caclulate chunks for `key` col (bug 967451)"
 );
 
+# ############################################################################# ">
+# base_count fails on n = 1000, base = 10
+# https://bugs.launchpad.net/percona-toolkit/+bug/1028710
+# #############################################################################
+my $res = TableChunker->base_count(
+   count_to => 1000,
+   base     => 10,
+   symbols  => ["a".."z"],
+);
+
+is(
+   $res,
+   "baaa",
+   "base_count's floor()s account for floating point arithmetics",
+);
+
+# #############################################################################
+# Bug 1034717: Divison by zero error when all columns tsart with the same char
+# https://bugs.launchpad.net/percona-toolkit/+bug/1034717
+# #############################################################################
+$sb->load_file('master', "t/lib/samples/bug_1034717.sql", 'test');
+$t = $tp->parse( $tp->get_create_table($dbh, 'bug_1034717', 'table1') );
+
+%params = $c->get_range_statistics(
+   dbh        => $dbh,
+   db         => 'bug_1034717',
+   tbl        => 'table1',
+   chunk_col  => 'field1',
+   tbl_struct => $t,
+);
+
+local $EVAL_ERROR;
+eval {
+   $c->calculate_chunks(
+      dbh        => $dbh,
+      db         => 'bug_1034717',
+      tbl        => 'table1',
+      tbl_struct => $t,
+      chunk_col  => 'field1',
+      chunk_size => '50',
+      %params,
+   );
+};
+like(
+   $EVAL_ERROR,
+   qr/^\QCannot chunk table `bug_1034717`.`table1` using the character column field1, most likely because all values start with the /,
+   "Bug 1034717: Catches the base == 1 case and dies"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;

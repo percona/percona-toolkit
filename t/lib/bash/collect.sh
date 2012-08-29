@@ -23,6 +23,8 @@ p="$PT_TMPDIR/collect/2011_12_05"
 # Default collect, no extras like gdb, tcpdump, etc.
 collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
 
+wait_for_files "$p-hostname" "$p-opentables2" "$p-variables" "$p-df" "$p-innodbstatus2"
+
 # Even if this system doesn't have all the cmds, collect should still
 # have created some files for cmds that (hopefully) all systems have.
 ls -1 $PT_TMPDIR/collect | sort > $PT_TMPDIR/collect-files
@@ -66,6 +68,7 @@ cmd_ok \
    "Finds MySQL error log"
 
 if [[ "$SANDBOX_VERSION" > "5.0" ]]; then
+   wait_for_files "$p-log_error"
    cmd_ok \
       "grep -qE 'Memory status|Open streams|Begin safemalloc' $p-log_error" \
       "debug"

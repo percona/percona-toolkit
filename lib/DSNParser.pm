@@ -291,7 +291,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
@@ -302,57 +302,10 @@ sub get_dbh {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
-      eval {
-         $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
+      $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
 
-         # If it's a MySQL connection, set some options.
-         if ( $cxn_string =~ m/mysql/i ) {
-            my $sql;
-
-            # Set SQL_MODE and options for SHOW CREATE TABLE.
-            # Get current, server SQL mode.  Don't clobber this;
-            # append our SQL mode to whatever is already set.
-            # http://code.google.com/p/maatkit/issues/detail?id=801
-            $sql = 'SELECT @@SQL_MODE';
-            PTDEBUG && _d($dbh, $sql);
-            my ($sql_mode) = $dbh->selectrow_array($sql);
-
-            $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-                 . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-                 . ($sql_mode ? ",$sql_mode" : '')
-                 . '\'*/';
-            PTDEBUG && _d($dbh, $sql);
-            $dbh->do($sql);
-
-            # Set character set and binmode on STDOUT.
-            if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-               $sql = "/*!40101 SET NAMES $charset*/";
-               PTDEBUG && _d($dbh, ':', $sql);
-               $dbh->do($sql);
-               PTDEBUG && _d('Enabling charset for STDOUT');
-               if ( $charset eq 'utf8' ) {
-                  binmode(STDOUT, ':utf8')
-                     or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
-               }
-               else {
-                  binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
-               }
-            }
-
-            if ( $self->prop('set-vars') ) {
-               $sql = "SET " . $self->prop('set-vars');
-               PTDEBUG && _d($dbh, ':', $sql);
-               $dbh->do($sql);
-            }
-         }
-      };
       if ( !$dbh && $EVAL_ERROR ) {
-         PTDEBUG && _d($EVAL_ERROR);
-         if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            PTDEBUG && _d('Going to try again without utf8 support');
-            delete $defaults->{mysql_enable_utf8};
-         }
-         elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
+         if ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
             die "Cannot connect to MySQL because the Perl DBD::mysql module is "
                . "not installed or not found.  Run 'perl -MDBD::mysql' to see "
                . "the directories that Perl searches for DBD::mysql.  If "
@@ -361,8 +314,67 @@ sub get_dbh {
                . "  RHEL/CentOS    yum install perl-DBD-MySQL\n"
                . "  OpenSolaris    pgk install pkg:/SUNWapu13dbd-mysql\n";
          }
+         elsif ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
+            PTDEBUG && _d('Going to try again without utf8 support');
+            delete $defaults->{mysql_enable_utf8};
+         }
          if ( !$tries ) {
             die $EVAL_ERROR;
+         }
+      }
+   }
+
+   # If it's a MySQL connection, set some options.
+   if ( $cxn_string =~ m/mysql/i ) {
+      my $sql;
+
+      # Set SQL_MODE and options for SHOW CREATE TABLE.
+      # Get current, server SQL mode.  Don't clobber this;
+      # append our SQL mode to whatever is already set.
+      # http://code.google.com/p/maatkit/issues/detail?id=801
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
+      }
+
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
+      }
+
+      # Set character set and binmode on STDOUT.
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
+         PTDEBUG && _d($dbh, ':', $sql);
+         eval { $dbh->do($sql) };
+         if ( $EVAL_ERROR ) {
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
+         }
+         PTDEBUG && _d('Enabling charset for STDOUT');
+         if ( $charset eq 'utf8' ) {
+            binmode(STDOUT, ':utf8')
+               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         }
+         else {
+            binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
+         }
+      }
+
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
+         PTDEBUG && _d($dbh, ':', $sql);
+         eval { $dbh->do($sql) };
+         if ( $EVAL_ERROR ) {
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }

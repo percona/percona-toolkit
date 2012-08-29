@@ -49,9 +49,6 @@ if ( !$src_dbh || !$dbh ) {
 elsif ( !$dst_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 62;
-}
 
 $sb->create_dbs($dbh, ['test']);
 $sb->load_file('master', 't/lib/samples/before-TableSyncChunk.sql');
@@ -74,28 +71,20 @@ throws_ok(
 );
 throws_ok(
    sub { new TableSyncer(MasterSlave=>1, Quoter=>1) },
-   qr/I need a VersionParser/,
-   'VersionParser required'
-);
-throws_ok(
-   sub { new TableSyncer(MasterSlave=>1, Quoter=>1, VersionParser=>1) },
    qr/I need a TableChecksum/,
    'TableChecksum required'
 );
 
 my $rd       = new RowDiff(dbh=>$src_dbh);
-my $ms       = new MasterSlave();
-my $vp       = new VersionParser();
+my $ms       = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $rt       = new Retry();
 my $checksum = new TableChecksum(
    Quoter         => $q,
-   VersionParser => $vp,
 );
 my $syncer = new TableSyncer(
    MasterSlave   => $ms,
    Quoter        => $q,
    TableChecksum => $checksum,
-   VersionParser => $vp,
    DSNParser     => $dp,
    Retry         => $rt,
 );
@@ -584,7 +573,6 @@ $dst->{dbh} = $dst_dbh;
 # ###########################################################################
 make_plugins();
 $sb->load_file('master', 't/lib/samples/before-TableSyncGroupBy.sql');
-sleep 1;
 
 sync_table(
    src     => "test.test1",
@@ -614,7 +602,6 @@ is_deeply(
 # #############################################################################
 make_plugins();
 $sb->load_file('master', 't/lib/samples/issue_96.sql');
-sleep 1;
 
 # Make paranoid-sure that the tables differ.
 my $r1 = $src_dbh->selectall_arrayref('SELECT from_city FROM issue_96.t WHERE package_id=4');
@@ -646,52 +633,8 @@ is(
 # Test check_permissions().
 # #############################################################################
 
-SKIP: {
-   skip "Not tested on MySQL $sandbox_version", 5
-      unless $sandbox_version gt '4.0';
-
-# Re-using issue_96.t from above.
-is(
-   $syncer->have_all_privs($src->{dbh}, 'issue_96', 't'),
-   1,
-   'Have all privs'
-);
-
-diag(`/tmp/12345/use -u root -e "CREATE USER 'bob'\@'\%' IDENTIFIED BY 'bob'"`);
-diag(`/tmp/12345/use -u root -e "GRANT select ON issue_96.t TO 'bob'\@'\%'"`);
-my $bob_dbh = DBI->connect(
-   "DBI:mysql:;host=127.0.0.1;port=12345", 'bob', 'bob',
-      { PrintError => 0, RaiseError => 1 });
-
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   0,
-   "Don't have all privs, just select"
-);
-
-diag(`/tmp/12345/use -u root -e "GRANT insert ON issue_96.t TO 'bob'\@'\%'"`);
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   0,
-   "Don't have all privs, just select and insert"
-);
-
-diag(`/tmp/12345/use -u root -e "GRANT update ON issue_96.t TO 'bob'\@'\%'"`);
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   0,
-   "Don't have all privs, just select, insert and update"
-);
-
-diag(`/tmp/12345/use -u root -e "GRANT delete ON issue_96.t TO 'bob'\@'\%'"`);
-is(
-   $syncer->have_all_privs($bob_dbh, 'issue_96', 't'),
-   1,
-   "Bob got his privs"
-);
-
-diag(`/tmp/12345/use -u root -e "DROP USER 'bob'"`);
-}
+# have_all_privs() removed due to
+# https://bugs.launchpad.net/percona-toolkit/+bug/1036747
 
 # ###########################################################################
 # Test that the calback gives us the src and dst sql.
@@ -940,6 +883,7 @@ SKIP: {
    );
 
    diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null &`);
+   $dbh3->disconnect();
 }
 
 # #############################################################################
@@ -1059,7 +1003,9 @@ my $output = '';
       "Retries wait"
    );
 }
-diag(`$trunk/sandbox/test-env reset`);
+diag(`/tmp/12347/use -e "stop slave"`);
+diag(`/tmp/12346/use -e "start slave"`);
+diag(`/tmp/12347/use -e "start slave"`);
 
 # #############################################################################
 # Done.
@@ -1074,7 +1020,9 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-$sb->wipe_clean($src_dbh);
-$sb->wipe_clean($dst_dbh);
+$src_dbh->disconnect() if $src_dbh;
+$dst_dbh->disconnect() if $dst_dbh;
+$sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

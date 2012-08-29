@@ -4,7 +4,7 @@
 # Standard startup, find the branch's root directory
 # ############################################################################
 
-exit_status=0
+EXIT_STATUS=0
 
 die() {
    echo $1  >&2
@@ -13,7 +13,7 @@ die() {
 
 warn() {
    echo $1 >&2
-   exit_status=$((exit_status | 1))
+   EXIT_STATUS=$((EXIT_STATUS | 1))
 }
 
 cwd="$PWD"
@@ -34,25 +34,16 @@ cd "$cwd"
 # Global variables
 # ############################################################################
 
-CHECK=${CHECK:-1}
+# None
 
 # ############################################################################
 # Subroutines
 # ############################################################################
 
-file_is_modified() {
-   local file=$1
-   if [ $CHECK -eq 1 ]; then
-      bzr status $file | grep -q modified
-   else
-      return 1
-   fi
-}
-
 pkgs_in_tool() {
    local tool=$1
    if [ "$tool_lang" = "perl" ]; then
-      pkgs=$(grep '^package [A-Za-z]*;' $tool | cut -d' ' -f2 | cut -d';' -f1)
+      pkgs=$(grep '^package [A-Za-z:]*;' $tool | cut -d' ' -f2 | cut -d';' -f1)
    else
       pkgs=$(grep '^# [a-z_]* package' $tool | awk '{print $2}')
    fi
@@ -82,8 +73,8 @@ replace_pkg_in_tool() {
       echo "# $pkg package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/$pkg.pm
-#   t/lib/$pkg.t
+#   lib/$pkg_file_base.pm
+#   t/lib/$pkg_file_base.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {" >> $tmp_file
@@ -108,9 +99,29 @@ echo "# ########################################################################
 # End $pkg package" >> $tmp_file
 
    tail -n +$pkg_end_line  $tool_file >> $tmp_file
-
+ 
    mv $tmp_file $tool_file
 } 
+
+update_tool_header() {
+   local tool_file=$1
+
+   local start_line=$(grep -m 1 -n "^# ###" $tool_file | cut -d':' -f1)
+   if [ -z "$start_line" ]; then
+      warn "$tool_file does not have a package header line"
+      return 1
+   fi
+   start_line=$((start_line - 1))
+
+   tail -n +$start_line $tool_file > $tool_file-code
+   $BRANCH/util/tool-header $tool_file > $tool_file-header
+   if [ $? -ne 0 ]; then
+      warn "Failed to update tool header for $tool_file"
+      return 1
+   fi
+   cat $tool_file-header $tool_file-code > $tool_file
+   [ $? -eq 0 ] && rm $tool_file-header $tool_file-code
+}
 
 # ############################################################################
 # Script starts here
@@ -119,7 +130,7 @@ echo "# ########################################################################
 tool_file=$1
 
 if [ -z "$tool_file" ]; then
-   die "Usage: $0 TOOL [MODULE...]"
+   die "Usage: $0 TOOL [MODULES]"
 fi
 
 if [ ! -f $tool_file ]; then
@@ -150,7 +161,10 @@ for pkg in $pkgs; do
    fi
 
    if [ "$tool_lang" = "perl" ]; then
+      # Perl :: package separators translate to directory slashes.
       pkg_file="$BRANCH/lib/$pkg.pm"
+      pkg_file=${pkg_file//"::"/"/"}
+      pkg_file_base=${pkg//"::"/"/"}
    else
       pkg_file="$BRANCH/lib/bash/$pkg.sh"
    fi
@@ -160,11 +174,6 @@ for pkg in $pkgs; do
       continue
    fi
 
-   # if file_is_modified $pkg_file; then
-      # warn "$pkg_file has uncommitted changes"
-      # continue
-   # fi 
-
    replace_pkg_in_tool $tmp_tool_file
    if [ $? -eq 0 ]; then
       echo "Updated $pkg"
@@ -172,14 +181,19 @@ for pkg in $pkgs; do
    fi
 done
 
-if [ $pkgs_updated -ne 0 ]; then
-   cp $tmp_tool_file $tool_file
+if [ $pkgs_updated -gt 0 ]; then
+   update_tool_header $tmp_tool_file
    if [ $? -ne 0 ]; then
-      warn "Failed to copy $tmp_tool_file to $tool_file"
-   else
-      rm $tmp_tool_file > /dev/null
-      exit_status=$((exit_status | $?))
+      warn "Failed to update tool header"
+   else 
+      cp $tmp_tool_file $tool_file
+      if [ $? -ne 0 ]; then
+         warn "Failed to copy $tmp_tool_file to $tool_file"
+      else
+         rm $tmp_tool_file > /dev/null
+         EXIT_STATUS=$((EXIT_STATUS | $?))
+      fi
    fi
 fi
 
-exit $exit_status
+exit $EXIT_STATUS

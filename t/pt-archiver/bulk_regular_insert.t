@@ -22,8 +22,8 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 5;
+elsif ( !$can_load_data ) {
+    plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
 }
 
 my $output;
@@ -95,4 +95,5 @@ is_deeply(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

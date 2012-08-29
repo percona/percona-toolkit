@@ -33,6 +33,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
+use Percona::Toolkit;
+
 use Test::More;
 use Time::HiRes qw(sleep time);
 use File::Temp qw(tempfile);
@@ -68,6 +70,7 @@ our @EXPORT      = qw(
    $trunk
    $dsn_opts
    $sandbox_version
+   $can_load_data
 );
 
 our $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -77,6 +80,8 @@ eval {
    chomp(my $v = `$trunk/sandbox/test-env version 2>/dev/null`);
    $sandbox_version = $v if $v;
 };
+
+our $can_load_data = can_load_data();
 
 our $dsn_opts = [
    {
@@ -147,31 +152,35 @@ sub output {
    my ($file, $stderr, $die, $trf) = @args{qw(file stderr die trf)};
 
    my $output = '';
-   if ( $file ) { 
-      open *output_fh, '>', $file
-         or die "Cannot open file $file: $OS_ERROR";
-   }
-   else {
-      open *output_fh, '>', \$output
-         or die "Cannot capture output to variable: $OS_ERROR";
-   }
-   local *STDOUT = *output_fh;
+   {
+      if ( $file ) { 
+         open *output_fh, '>', $file
+            or die "Cannot open file $file: $OS_ERROR";
+      }
+      else {
+         open *output_fh, '>', \$output
+            or die "Cannot capture output to variable: $OS_ERROR";
+      }
+      local *STDOUT = *output_fh;
 
-   # If capturing STDERR we must dynamically scope (local) STDERR
-   # in the outer scope of the sub.  If we did,
-   #   if ( $args{stderr} ) { local *STDERR; ... }
-   # then STDERR would revert to its original value outside the if
-   # block.
-   local *STDERR     if $args{stderr};  # do in outer scope of this sub
-   *STDERR = *STDOUT if $args{stderr};
+      # If capturing STDERR we must dynamically scope (local) STDERR
+      # in the outer scope of the sub.  If we did,
+      #   if ( $args{stderr} ) { local *STDERR; ... }
+      # then STDERR would revert to its original value outside the if
+      # block.
+      local *STDERR     if $args{stderr};  # do in outer scope of this sub
+      *STDERR = *STDOUT if $args{stderr};
 
-   eval { $code->() };
-   close *output_fh;
-   if ( $EVAL_ERROR ) {
-      die $EVAL_ERROR if $die;
-      warn $EVAL_ERROR unless $args{stderr};
-      return $EVAL_ERROR;
+      eval { $code->() };
+      if ( $EVAL_ERROR ) {
+         die $EVAL_ERROR if $die;
+         warn $EVAL_ERROR;
+      }
+
+      close *output_fh;
    }
+
+   select STDOUT;
 
    # Possible transform output before returning it.  This doesn't work
    # if output was captured to a file.
@@ -717,12 +726,17 @@ sub full_output {
    my ( $code, %args ) = @_;
    die "I need a code argument" unless $code;
 
-   my (undef, $file) = tempfile();
-   open *output_fh, '>', $file
-         or die "Cannot open file $file: $OS_ERROR";
-   local *STDOUT = *output_fh;
+   local (*STDOUT, *STDERR);
+   require IO::File;
 
-   *STDERR = *STDOUT;
+   my (undef, $file) = tempfile();
+   open *STDOUT, '>', $file
+         or die "Cannot open file $file: $OS_ERROR";
+   *STDOUT->autoflush(1);
+
+   open *STDERR, '>', $file
+      or die "Cannot open file $file: $OS_ERROR";
+   *STDERR->autoflush(1);
 
    my $status;
    if (my $pid = fork) {
@@ -745,7 +759,7 @@ sub full_output {
    else {
       exit $code->();
    }
-   close *output_fh;
+   close $_ or die "Cannot close $_: $OS_ERROR" for qw(STDOUT STDERR);
    my $output = do { local $/; open my $fh, "<", $file or die $!; <$fh> };
 
    return ($output, $status);
@@ -770,6 +784,11 @@ sub tables_used {
       $chunk =~ m/(?:FROM|INTO|UPDATE)\s+(\S+)/gi;
    }
    return [ sort keys %tables ];
+}
+
+sub can_load_data {
+    my $output = `/tmp/12345/use -e "SELECT * FROM percona_test.load_data" 2>/dev/null`;
+    return ($output || '') =~ /42/;
 }
 
 1;

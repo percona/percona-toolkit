@@ -18,9 +18,17 @@ require "$trunk/bin/pt-table-sync";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
+}
+elsif ( !$slave1_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave1';
+}
+elsif ( !$slave2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave2';
 }
 else {
    plan tests => 9;
@@ -42,20 +50,20 @@ foreach my $db (qw(test1 test2)) {
    $master_dbh->do("INSERT INTO $db.foo VALUES (1),(2),(9)");
 }
 
+$sb->wait_for_slaves();
+
 # Stop slave 12346, add replicate-do-db to its config, and restart it.
+$slave1_dbh->disconnect;
 diag('Restarting slave 12346 with replicate-do-db=test1');
 diag(`/tmp/12346/stop >/dev/null`);
 diag(`echo "replicate-do-db = test1" >> /tmp/12346/my.sandbox.cnf`);
 diag(`/tmp/12346/start >/dev/null`);
-my $slave1_dbh = $sb->get_dbh_for('slave1');
+$slave1_dbh = $sb->get_dbh_for('slave1');
+$slave2_dbh->do("stop slave");
+$slave2_dbh->do("start slave");
 
 my $r = $slave1_dbh->selectrow_hashref('show slave status');
 is($r->{replicate_do_db}, 'test1', 'Server reconfigured');
-
-my $slave2_dbh = $sb->get_dbh_for('slave2');
-$slave2_dbh->do("stop slave");
-$slave2_dbh->do("start slave");
-PerconaTest::wait_for_table($slave2_dbh, "test2.foo", "i=9");
 
 # #############################################################################
 # IMPORTANT: anything you want to replicate must now USE test1 first!
@@ -83,7 +91,7 @@ is_deeply( $r, [], 'master has no test2.foo.i=2');
 $r = $slave2_dbh->selectall_arrayref('select * from test1.foo where i=2');
 is_deeply( $r, [[2]], 'slave2 has test1.foo.i=2');
 $r = $slave2_dbh->selectall_arrayref('select * from test2.foo where i=2'),
-is_deeply( $r, [[2]], 'slave2 has test2.foo.i=2');
+is_deeply( $r, [[2]], 'slave2 has test2.foo.i=2') or diag(`/tmp/12346/use -e "show slave status\\G"; /tmp/12347/use -e "show slave status\\G"`);
 
 # Now we sync, and if pt-table-sync USE's the db it's syncing, then test1 should
 # be in sync afterwards, and test2 shouldn't.
@@ -109,8 +117,9 @@ diag('MySQL processes on master: ', join(', ', @$procs));
 $r = $slave2_dbh->selectall_arrayref('select * from test1.foo where i=2');
 is_deeply( $r, [], 'slave2 has NO test1.foo.i=2 after sync');
 $r = $slave2_dbh->selectall_arrayref('select * from test2.foo where i=2'),
-is_deeply( $r, [[2]], 'slave2 has test2.foo.i=2 after sync');
+is_deeply( $r, [[2]], 'slave2 has test2.foo.i=2 after sync') or diag(`/tmp/12346/use -e "show slave status\\G"; /tmp/12347/use -e "show slave status\\G"`);
 
+$slave1_dbh->disconnect;
 diag('Reconfiguring instance 12346 without replication filters');
 diag(`grep -v replicate.do.db /tmp/12346/my.sandbox.cnf > /tmp/new.cnf`);
 diag(`mv /tmp/new.cnf /tmp/12346/my.sandbox.cnf`);

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # This program is part of Percona Toolkit: http://www.percona.com/software/
 # See "COPYRIGHT, LICENSE, AND WARRANTY" at the end of this file for legal
@@ -23,7 +23,7 @@ PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
 log() {
-   TS=$(date +%F-%T | tr :- _);
+   TS=$(date +%F-%T | tr ':-' '_');
    echo "$TS $*"
 }
 
@@ -121,12 +121,22 @@ usage_or_errors() {
       echo
       echo "Options and values after processing arguments:"
       echo
-      for opt in $(ls "$PO_DIR"); do
-         local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
-         local varvalue="${!varname}"
-         printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
-         echo
-      done
+      (
+         cd "$PO_DIR"
+         for opt in *; do
+            local varname="OPT_$(echo "$opt" | tr a-z- A-Z_)"
+            eval local varvalue=\$$varname
+            if ! grep -q "type:" "$PO_DIR/$opt" >/dev/null; then
+               if [ "$varvalue" -a "$varvalue" = "yes" ];
+                  then varvalue="TRUE"
+               else
+                  varvalue="FALSE"
+               fi
+            fi
+            printf -- "  --%-30s %s" "$opt" "${varvalue:-(No value)}"
+            echo
+         done
+      )
       return 1
    fi
 
@@ -186,7 +196,7 @@ parse_options() {
       _parse_config_files "/etc/percona-toolkit/percona-toolkit.conf" "/etc/percona-toolkit/$TOOL.conf" "$HOME/.percona-toolkit.conf" "$HOME/.$TOOL.conf"
    fi
 
-   _parse_command_line "$@"
+   _parse_command_line "${@:-""}"
 }
 
 _parse_pod() {
@@ -233,7 +243,7 @@ _eval_po() {
       while read key val; do
          case "$key" in
             long)
-               opt=$(echo $val | sed 's/-/_/g' | tr [:lower:] [:upper:])
+               opt=$(echo $val | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
                ;;
             default)
                default_val="$val"
@@ -278,7 +288,7 @@ _eval_po() {
 
 _parse_config_files() {
 
-   for config_file in "$@"; do
+   for config_file in "${@:-""}"; do
       test -f "$config_file" || continue
 
       while read config_opt; do
@@ -312,7 +322,7 @@ _parse_command_line() {
    local required_arg=""
    local spec=""
 
-   for opt in "$@"; do
+   for opt in "${@:-""}"; do
       if [ "$opt" = "--" -o "$opt" = "----" ]; then
          HAVE_EXT_ARGV=1
          continue
@@ -346,12 +356,23 @@ _parse_command_line() {
 
          real_opt="$opt"
 
-         if $(echo $opt | grep '^--no-' >/dev/null); then
-            opt_is_negated=1
-            opt=$(echo $opt | sed 's/^--no-//')
+         if $(echo $opt | grep '^--no[^-]' >/dev/null); then
+            local base_opt=$(echo $opt | sed 's/^--no//')
+            if [ -f "$PT_TMPDIR/po/$base_opt" ]; then
+               opt_is_negated=1
+               opt="$base_opt"
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          else
-            opt_is_negated=""
-            opt=$(echo $opt | sed 's/^-*//')
+            if $(echo $opt | grep '^--no-' >/dev/null); then
+               opt_is_negated=1
+               opt=$(echo $opt | sed 's/^--no-//')
+            else
+               opt_is_negated=""
+               opt=$(echo $opt | sed 's/^-*//')
+            fi
          fi
 
          if $(echo $opt | grep '^[a-z-][a-z-]*=' >/dev/null 2>&1); then
@@ -391,7 +412,7 @@ _parse_command_line() {
       fi
 
       if [ "$opt_is_ok" ]; then
-         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr [:lower:] [:upper:])
+         opt=$(cat "$spec" | grep '^long:' | cut -d':' -f2 | sed 's/-/_/g' | tr '[:lower:]' '[:upper:]')
 
          if grep "^type:size" "$spec" >/dev/null; then
             val=$(size_to_bytes $val)
@@ -2299,7 +2320,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    # Set up temporary dir.
    mk_tmpdir
    # Parse command line options.
-   parse_options "$0" "$@"
+   parse_options "$0" "${@:-""}"
 
    # Verify that --sleep, if present, is positive
    if [ -n "$OPT_SLEEP" ] && [ "$OPT_SLEEP" -lt 0 ]; then
@@ -2320,7 +2341,7 @@ if    [ "${0##*/}" = "$TOOL" ] \
    # a connection then.
    [ "$OPT_READ_SAMPLES" ] || check_mysql
 
-   main "$@"
+   main "${@:-""}"
 fi
 
 # ############################################################################
@@ -2884,7 +2905,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-mysql-summary 2.1.2
+pt-mysql-summary 2.1.3
 
 =cut
 

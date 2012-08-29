@@ -29,16 +29,17 @@ require "$trunk/bin/pt-table-checksum";
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
+my $slave1_dbh = $sb->get_dbh_for('slave1');
+my $slave2_dbh = $sb->get_dbh_for('slave2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$slave_dbh ) {
+elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
 }
-else {
-   plan tests => 8;
+elsif ( !$slave2_dbh ) {
+   plan skip_all => 'Cannot connect to sandbox slave2';
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
@@ -135,8 +136,49 @@ is(
 );
 
 # #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1030031
+# pt-table-checksum reports wrong number of DIFFS
+# #############################################################################
+$sb->load_file('master', "$sample/a-z.sql");
+$sb->wait_for_slaves();
+
+# Create 2 diffs on slave1 and 1 diff on slave2.
+$slave1_dbh->do("UPDATE test.t SET c='' WHERE id=5");  # diff on slave1 & 2
+$slave1_dbh->do("SET SQL_LOG_BIN=0");
+$slave1_dbh->do("UPDATE test.t SET c='' WHERE id=20"); # diff only on slave1
+
+# Restore sql_log_bin on slave1 in case later tests use it.
+$slave1_dbh->do("SET SQL_LOG_BIN=1");
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t test.t --chunk-size 10)) },
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   2,
+   "Bug 1030031 (wrong DIFFS): 2 diffs"
+);
+
+# Restore slave2, but then give it 1 diff that's not the same chunk#
+# as slave1, so there's 3 unique chunk that differ.
+$slave2_dbh->do("UPDATE test.t SET c='e' WHERE id=5");
+$slave2_dbh->do("UPDATE test.t SET c='' WHERE id=26");
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(-t test.t --chunk-size 10)) },
+);
+
+is(
+   PerconaTest::count_checksum_results($output, 'diffs'),
+   3,
+   "Bug 1030031 (wrong DIFFS): 3 diffs"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

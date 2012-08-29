@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+# This script prints the standard header that should be at the start
+# of every Perl tool.
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+exit_status=0
+
+die() {
+   echo $1  >&2
+   exit 1
+}
+
+warn() {
+   echo $1 >&2
+   exit_status=$((exit_status | 1))
+}
+
+cwd="$PWD"
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+   fi
+   BRANCH=`pwd`
+fi
+cd "$cwd"
+
+# ############################################################################
+# Global variables
+# ############################################################################
+
+EXIT_STATUS=0
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+# None
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+tool_file=$1
+
+if [ -z "$tool_file" ]; then
+   die "Usage: $0 TOOL"
+fi
+
+if [ ! -f $tool_file ]; then
+   die "$tool_file does not exist"
+fi
+
+if ! grep -m 1 -q '^use ' $tool_file; then
+   die "This only works for Perl tools"
+fi
+
+echo "#!/usr/bin/env perl
+
+# This program is part of Percona Toolkit: http://www.percona.com/software/
+# See \"COPYRIGHT, LICENSE, AND WARRANTY\" at the end of this file for legal
+# notices and disclaimers.
+
+use strict;
+use warnings FATAL => 'all';
+
+# This tool is \"fat-packed\": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   \$INC{\$_} = __FILE__ for map { (my \$pkg = \"\$_.pm\") =~ s!::!/!g; \$pkg } (qw(" 
+
+for pkg in $(grep '^package [A-Za-z:]*;' $tool_file | cut -d' ' -f2 | cut -d';' -f1); do
+   echo "      $pkg"
+done
+
+echo "   ));
+}";
+
+exit $EXIT_STATUS

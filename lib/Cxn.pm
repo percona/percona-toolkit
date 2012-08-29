@@ -98,15 +98,16 @@ sub new {
    }
 
    my $self = {
-      dsn             => $dsn,
-      dbh             => $args{dbh},
-      dsn_name        => $dp->as_string($dsn, [qw(h P S)]),
-      hostname        => '',
-      set             => $args{set},
-      dbh_set         => 0,
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
+      set          => $args{set},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set      => 0,
+      OptionParser => $o,
+      DSNParser    => $dp,
       is_cluster_node => undef,
-      OptionParser    => $o,
-      DSNParser       => $dp,
    };
 
    return bless $self, $class;
@@ -150,8 +151,8 @@ sub set_dbh {
    PTDEBUG && _d($dbh, 'Setting dbh');
 
    # Set stuff for this dbh (i.e. initialize it).
-   $dbh->{FetchHashKeyName} = 'NAME_lc';
-   
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
    # Update the cxn's name.  Until we connect, the DSN parts
    # h and P are used.  Once connected, use @@hostname.
    my $sql = 'SELECT @@hostname, @@server_id';

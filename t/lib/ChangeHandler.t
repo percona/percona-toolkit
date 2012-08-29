@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 33;
+use Test::More;
 
 use ChangeHandler;
 use Quoter;
@@ -357,7 +357,7 @@ $ch = new ChangeHandler(
 
 is(
    $ch->make_fetch_back_query('1=1'),
-   "SELECT `a`, IF(`x`='', '', CONCAT('0x', HEX(`x`))) AS `x`, `b` FROM `test`.`lt` WHERE 1=1 LIMIT 1",
+   "SELECT `a`, IF(BINARY(`x`)='', '', CONCAT('0x', HEX(`x`))) AS `x`, `b` FROM `test`.`lt` WHERE 1=1 LIMIT 1",
    "Wraps BLOB column in CONCAT('0x', HEX(col)) AS col"
 );
 
@@ -402,7 +402,7 @@ $ch = new ChangeHandler(
 
 is(
    $ch->make_fetch_back_query('1=1'),
-   "SELECT IF(`t`='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
+   "SELECT IF(BINARY(`t`)='', '', CONCAT('0x', HEX(`t`))) AS `t` FROM `test`.`t` WHERE 1=1 LIMIT 1",
    "Don't prepend 0x to blank blob/text column value (issue 1052)"
 );
 
@@ -469,9 +469,51 @@ is_deeply(
 );
 
 # #############################################################################
+# ChangeHandler doesn't quote varchar columns with hex-looking values
+# https://bugs.launchpad.net/percona-toolkit/+bug/1038276
+# #############################################################################
+SKIP: {
+   skip 'Cannot connect to sandbox master', 1 unless $master_dbh;
+   $sb->load_file('master', "t/lib/samples/bug_1038276.sql");
+
+   @rows = ();
+   $tbl_struct = {
+      cols      => [qw(id b)],
+      col_posn  => {id=>0, b=>1},
+      type_for  => {id=>'int', b=>'varchar'},
+   };
+   $ch = new ChangeHandler(
+      Quoter     => $q,
+      left_db    => 'bug_1038276',
+      left_tbl   => 'lt',
+      right_db   => 'bug_1038276',
+      right_tbl  => 'rt',
+      actions   => [ sub { push @rows, $_[0]; } ],
+      replace    => 0,
+      queue      => 0,
+      tbl_struct => $tbl_struct,
+   );
+   $ch->fetch_back($master_dbh);
+
+   $ch->change('UPDATE', {id=>1}, [qw(id)] );
+   $ch->change('INSERT', {id=>1}, [qw(id)] );
+
+   is_deeply(
+      \@rows,
+      [
+         "UPDATE `bug_1038276`.`rt` SET `b`='0x89504E470D0A1A0A0000000D4948445200000079000000750802000000E55AD965000000097048597300000EC300000EC301C76FA8640000200049444154789C4CBB7794246779FFBBF78F7B7EBE466177677772CE3D9D667AA67BA62776CE39545557CE3974EE9EB049AB9556392210414258083' WHERE `id`='1' LIMIT 1",
+         "INSERT INTO `bug_1038276`.`rt`(`id`, `b`) VALUES ('1', '0x89504E470D0A1A0A0000000D4948445200000079000000750802000000E55AD965000000097048597300000EC300000EC301C76FA8640000200049444154789C4CBB7794246779FFBBF78F7B7EBE466177677772CE3D9D667AA67BA62776CE39545557CE3974EE9EB049AB9556392210414258083')",
+      ],
+      "UPDATE and INSERT quote data regardless of how it looks if tbl_struct->quote_val is true"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave1_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
+   

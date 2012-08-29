@@ -1,5 +1,7 @@
 
 # Query 1: ID 0x4AF1501167533D97 at byte 0 _______________________________
+# host1: 127.1:12345
+# host2: 127.1:12348
 # Found 0 differences in 1 samples:
 #   checksums       0
 #   column counts   0
@@ -8,25 +10,25 @@
 #   warning counts  0
 #   warning levels  0
 #   warnings        0
-#            127.1:12345 127.1:12348
-# Errors               0           0
-# Warnings             0           0
-# Query_time                        
-#   sum                0           0
-#   min                0           0
-#   max                0           0
-#   avg                0           0
-#   pct_95             0           0
-#   stddev             0           0
-#   median             0           0
-# row_count                         
-#   sum                1           1
-#   min                1           1
-#   max                1           1
-#   avg                1           1
-#   pct_95             1           1
-#   stddev             0           0
-#   median             1           1
+#            host1 host2
+# Errors         0     0
+# Warnings       0     0
+# Query_time            
+#   sum          0     0
+#   min          0     0
+#   max          0     0
+#   avg          0     0
+#   pct_95       0     0
+#   stddev       0     0
+#   median       0     0
+# row_count             
+#   sum          1     1
+#   min          1     1
+#   max          1     1
+#   avg          1     1
+#   pct_95       1     1
+#   stddev       0     0
+#   median       1     1
 use `test`;
 select id, name, last_login from test.t where id=0
 

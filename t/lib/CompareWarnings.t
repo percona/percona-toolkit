@@ -257,7 +257,7 @@ is_deeply(
 
 $report = <<EOF;
 # Warning level differences
-# Query ID           Code dbh-1   dbh-2 Message
+# Query ID           Code host1   host2 Message
 # ================== ==== ======= ===== ======================================
 # 4336C4AAA4EEF76B-1 1264 Warning Error Out of range value for column 'i' at row 1
 EOF
@@ -291,10 +291,10 @@ $report = <<EOF;
 # New warnings
 # Query ID           Host  Code Message
 # ================== ===== ==== ==========================================
-# 4336C4AAA4EEF76B-1 dbh-1 1264 Out of range value for column 'i' at row 1
+# 4336C4AAA4EEF76B-1 host1 1264 Out of range value for column 'i' at row 1
 
 # Warning count differences
-# Query ID           dbh-1 dbh-2
+# Query ID           host1 host2
 # ================== ===== =====
 # 4336C4AAA4EEF76B-1     1     0
 EOF
@@ -325,10 +325,10 @@ $report = <<EOF;
 # New warnings
 # Query ID           Host  Code Message
 # ================== ===== ==== ==========================================
-# 4336C4AAA4EEF76B-1 dbh-2 1264 Out of range value for column 'i' at row 1
+# 4336C4AAA4EEF76B-1 host2 1264 Out of range value for column 'i' at row 1
 
 # Warning count differences
-# Query ID           dbh-1 dbh-2
+# Query ID           host1 host2
 # ================== ===== =====
 # 4336C4AAA4EEF76B-1     0     1
 EOF

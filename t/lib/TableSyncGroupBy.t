@@ -9,7 +9,8 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 5;
+use Test::More;
+use Data::Dumper;
 
 use TableSyncGroupBy;
 use Quoter;
@@ -19,7 +20,11 @@ use ChangeHandler;
 use PerconaTest;
 
 my $q = new Quoter();
-my $tbl_struct = { is_col => {} };  # fake tbl_struct
+my $tbl_struct = {
+   type_for => { a => 'int', b => 'int', c => 'int' },
+   col_posn => { a => 1, b => 2, c => 3 },
+   is_col   => { a => 1, b => 2, c => 3 },
+};
 my @rows;
 
 throws_ok(
@@ -40,6 +45,7 @@ my $ch = new ChangeHandler(
    replace   => 0,
    actions   => [ sub { push @rows, $_[0] }, ],
    queue     => 0,
+   tbl_struct => $tbl_struct,
 );
 
 $t->prepare_to_sync(
@@ -93,7 +99,7 @@ $d->compare_sets(
       { a => 4, b => 2, c => 3, __maatkit_count => 1 },
    ),
    syncer     => $t,
-   tbl_struct => {},
+   tbl_struct => $tbl_struct,
 );
 
 is_deeply(
@@ -107,4 +113,10 @@ is_deeply(
    "DELETE FROM `test`.`foo` WHERE `a`='4' AND `b`='2' AND `c`='3' LIMIT 1",
    ],
    'rows from handler',
-);
+) or diag(Dumper(\@rows));
+
+# #############################################################################
+# Done
+# #############################################################################
+done_testing;
+exit;

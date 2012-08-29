@@ -6,7 +6,50 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      Percona::Toolkit
+      OptionParser
+      Mo
+      DSNParser
+      Daemon
+      Transformers
+      TableParser
+      Processlist
+      TextResultSetParser
+      MasterSlave
+      Quoter
+      QueryRewriter
+      Retry
+      Cxn
+      VersionCheck
+      HTTPMicro
+      Pingback
+   ));
+}
+
+# ###########################################################################
+# Percona::Toolkit package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/Toolkit.pm
+#   t/lib/Percona/Toolkit.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::Toolkit;
+our $VERSION = '2.1.3';
+
+1;
+}
+# ###########################################################################
+# End Percona::Toolkit package
+# ###########################################################################
 
 # ###########################################################################
 # OptionParser package
@@ -1034,147 +1077,453 @@ if ( PTDEBUG ) {
 # ###########################################################################
 
 # ###########################################################################
-# VersionParser package
+# Mo package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/VersionParser.pm
-#   t/lib/VersionParser.t
+#   lib/Mo.pm
+#   t/lib/Mo.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-package VersionParser;
+BEGIN {
+$INC{"Mo.pm"} = __FILE__;
+package Mo;
+our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
+
+{
+   no strict 'refs';
+   sub _glob_for {
+      return \*{shift()}
+   }
+
+   sub _stash_for {
+      return \%{ shift() . "::" };
+   }
+}
 
 use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+use warnings qw( FATAL all );
 
-sub new {
-   my ( $class ) = @_;
-   bless {}, $class;
-}
+use Carp ();
+use Scalar::Util ();
 
-sub parse {
-   my ( $self, $str ) = @_;
-   my @version_parts = $str =~ m/(\d+)/g;
-   @version_parts = map { $_ || 0 } @version_parts[0..2];
-   my $result = sprintf('%03d%03d%03d', @version_parts);
-   PTDEBUG && _d($str, 'parses to', $result);
-   return $result;
-}
+our %TYPES = (
+   Bool   => sub { !$_[0] || (defined $_[0] && &Scalar::Util::looks_like_number && $_[0] == 1) },
+   Num    => sub { defined $_[0] && &Scalar::Util::looks_like_number },
+   Int    => sub { defined $_[0] && &Scalar::Util::looks_like_number && $_[0] == int $_[0] },
+   Str    => sub { defined $_[0] },
+   Object => sub { defined $_[0] && &Scalar::Util::blessed },
+   FileHandle => sub { local $@; require IO::Handle; fileno($_[0]) && $_[0]->opened },
 
-sub version_cmp {
-   my ($self, $dbh, $target, $cmp) = @_;
-   my $version = $self->version($dbh);
-   my $result;
+   map {
+      my $type = /R/ ? $_ : uc $_;
+      $_ . "Ref" => sub { ref $_[0] eq $type }
+   } qw(Array Code Hash Regexp Glob Scalar)
+);
 
-   if ( $cmp eq 'ge' ) {
-      $result = $self->{$dbh} ge $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'gt' ) {
-      $result = $self->{$dbh} gt $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'eq' ) {
-      $result = $self->{$dbh} eq $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'ne' ) {
-      $result = $self->{$dbh} ne $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'lt' ) {
-      $result = $self->{$dbh} lt $self->parse($target) ? 1 : 0;
-   }
-   elsif ( $cmp eq 'le' ) {
-      $result = $self->{$dbh} le $self->parse($target) ? 1 : 0;
-   }
-   else {
-      die "Asked for an unknown comparizon: $cmp"
-   }
+our %metadata_for;
+{
+   package Mo::Object;
 
-   PTDEBUG && _d($self->{$dbh}, $cmp, $target, ':', $result);
-   return $result;
-}
+   sub new {
+      my $class = shift;
+      my $args  = $class->BUILDARGS(@_);
 
-sub version_ge {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'ge');
-}
+      my @args_to_delete;
+      while ( my ($attr, $meta) = each %{$metadata_for{$class}} ) {
+         next unless exists $meta->{init_arg};
+         my $init_arg = $meta->{init_arg};
 
-sub version_gt {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'gt');
-}
-
-sub version_eq {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'eq');
-}
-
-sub version_ne {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'ne');
-}
-
-sub version_lt {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'lt');
-}
-
-sub version_le {
-   my ( $self, $dbh, $target ) = @_;
-   return $self->version_cmp($dbh, $target, 'le');
-}
-
-sub version {
-   my ( $self, $dbh ) = @_;
-   if ( !$self->{$dbh} ) {
-      $self->{$dbh} = $self->parse(
-         $dbh->selectrow_array('SELECT VERSION()'));
-   }
-   return $self->{$dbh};
-}
-
-sub innodb_version {
-   my ( $self, $dbh ) = @_;
-   return unless $dbh;
-   my $innodb_version = "NO";
-
-   my ($innodb) =
-      grep { $_->{engine} =~ m/InnoDB/i }
-      map  {
-         my %hash;
-         @hash{ map { lc $_ } keys %$_ } = values %$_;
-         \%hash;
+         if ( defined $init_arg ) {
+            $args->{$attr} = delete $args->{$init_arg};
+         }
+         else {
+            push @args_to_delete, $attr;
+         }
       }
-      @{ $dbh->selectall_arrayref("SHOW ENGINES", {Slice=>{}}) };
-   if ( $innodb ) {
-      PTDEBUG && _d("InnoDB support:", $innodb->{support});
-      if ( $innodb->{support} =~ m/YES|DEFAULT/i ) {
-         my $vars = $dbh->selectrow_hashref(
-            "SHOW VARIABLES LIKE 'innodb_version'");
-         $innodb_version = !$vars ? "BUILTIN"
-                         :          ($vars->{Value} || $vars->{value});
+
+      delete $args->{$_} for @args_to_delete;
+
+      for my $attribute ( keys %$args ) {
+         if ( my $coerce = $metadata_for{$class}{$attribute}{coerce} ) {
+            $args->{$attribute} = $coerce->($args->{$attribute});
+         }
+         if ( my $I = $metadata_for{$class}{$attribute}{isa} ) {
+            ( (my $I_name), $I ) = @{$I};
+            Mo::_check_type_constaints($attribute, $I, $I_name, $args->{$attribute});
+         }
+      }
+
+      while ( my ($attribute, $meta) = each %{$metadata_for{$class}} ) {
+         next unless $meta->{required};
+         Carp::confess("Attribute ($attribute) is required for $class")
+            if ! exists $args->{$attribute}
+      }
+
+      @_ = %$args;
+      my $self = bless $args, $class;
+
+      my @build_subs;
+      my $linearized_isa = mro::get_linear_isa($class);
+
+      for my $isa_class ( @$linearized_isa ) {
+         unshift @build_subs, *{ Mo::_glob_for "${isa_class}::BUILD" }{CODE};
+      }
+      exists &$_ && $_->( $self, @_ ) for grep { defined } @build_subs;
+      return $self;
+   }
+
+   sub BUILDARGS {
+      shift;
+      my $ref;
+      if ( @_ == 1 && ref($_[0]) ) {
+         Carp::confess("Single parameters to new() must be a HASH ref")
+            unless ref($_[0]) eq ref({});
+         $ref = {%{$_[0]}} # We want a new reference, always
       }
       else {
-         $innodb_version = $innodb->{support};  # probably DISABLED or NO
+         $ref = { @_ };
       }
+      return $ref;
+   }
+}
+
+my %export_for;
+sub Mo::import {
+    warnings->import(qw(FATAL all));
+    strict->import();
+    
+    my $caller     = scalar caller(); # Caller's package
+    my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
+    my (%exports, %options);
+
+    my (undef, @features) = @_;
+    my %ignore = ( map { $_ => 1 } qw( is isa init_arg builder buildargs clearer predicate build handles default required ) );
+    for my $feature (grep { !$ignore{$_} } @features) {
+      { local $@; require "Mo/$feature.pm"; }
+      {
+         no strict 'refs';
+         &{"Mo::${feature}::e"}(
+                  $caller_pkg,
+                  \%exports,
+                  \%options,
+                  \@_
+            );
+      }
+    }
+
+    return if $exports{M}; 
+
+    %exports = (
+        extends => sub {
+            for my $class ( map { "$_" } @_ ) {
+               $class =~ s{::|'}{/}g;
+               { local $@; eval { require "$class.pm" } } # or warn $@;
+            }
+            _set_package_isa($caller, @_);
+            _set_inherited_metadata($caller);
+        },
+        has => sub {
+            my $names = shift;
+            for my $attribute ( ref $names ? @$names : $names ) {
+               my %args   = @_;
+               my $method = ($args{is} || '') eq 'ro'
+                  ? sub {
+                     Carp::confess("Cannot assign a value to a read-only accessor at reader ${caller_pkg}${attribute}")
+                        if $#_;
+                     return $_[0]{$attribute};
+                  }
+                  : sub {
+                     return $#_
+                           ? $_[0]{$attribute} = $_[1]
+                           : $_[0]{$attribute};
+                  };
+
+               $metadata_for{$caller}{$attribute} = ();
+
+               if ( my $I = $args{isa} ) {
+                  my $orig_I = $I;
+                  my $type;
+                  if ( $I =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+                     $I = _nested_constraints($attribute, $1, $2);
+                  }
+                  $metadata_for{$caller}{$attribute}{isa} = [$orig_I, $I];
+                  my $orig_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        Mo::_check_type_constaints($attribute, $I, $orig_I, $_[1]);
+                     }
+                     goto &$orig_method;
+                  };
+               }
+
+               if ( my $builder = $args{builder} ) {
+                  my $original_method = $method;
+                  $method = sub {
+                        $#_
+                           ? goto &$original_method
+                           : ! exists $_[0]{$attribute}
+                              ? $_[0]{$attribute} = $_[0]->$builder
+                              : goto &$original_method
+                  };
+               }
+
+               if ( my $code = $args{default} ) {
+                  Carp::confess("${caller}::${attribute}'s default is $code, but should be a coderef")
+                        unless ref($code) eq 'CODE';
+                  my $original_method = $method;
+                  $method = sub {
+                        $#_
+                           ? goto &$original_method
+                           : ! exists $_[0]{$attribute}
+                              ? $_[0]{$attribute} = $_[0]->$code
+                              : goto &$original_method
+                  };
+               }
+
+               if ( my $role = $args{does} ) {
+                  my $original_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        Carp::confess(qq<Attribute ($attribute) doesn't consume a '$role' role">)
+                           unless blessed($_[1]) && $_[1]->does($role)
+                     }
+                     goto &$original_method
+                  };
+               }
+
+               if ( my $coercion = $args{coerce} ) {
+                  $metadata_for{$caller}{$attribute}{coerce} = $coercion;
+                  my $original_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        return $original_method->($_[0], $coercion->($_[1]))
+                     }
+                     goto &$original_method;
+                  }
+               }
+
+               $method = $options{$_}->($method, $attribute, @_)
+                  for sort keys %options;
+
+               *{ _glob_for "${caller}::$attribute" } = $method;
+
+               if ( $args{required} ) {
+                  $metadata_for{$caller}{$attribute}{required} = 1;
+               }
+
+               if ($args{clearer}) {
+                  *{ _glob_for "${caller}::$args{clearer}" }
+                     = sub { delete shift->{$attribute} }
+               }
+
+               if ($args{predicate}) {
+                  *{ _glob_for "${caller}::$args{predicate}" }
+                     = sub { exists shift->{$attribute} }
+               }
+
+               if ($args{handles}) {
+                  _has_handles($caller, $attribute, \%args);
+               }
+
+               if (exists $args{init_arg}) {
+                  $metadata_for{$caller}{$attribute}{init_arg} = $args{init_arg};
+               }
+            }
+        },
+        %exports,
+    );
+
+    $export_for{$caller} = [ keys %exports ];
+
+    for my $keyword ( keys %exports ) {
+      *{ _glob_for "${caller}::$keyword" } = $exports{$keyword}
+    }
+    *{ _glob_for "${caller}::extends" }{CODE}->( "Mo::Object" )
+      unless @{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] };
+};
+
+sub _check_type_constaints {
+   my ($attribute, $I, $I_name, $val) = @_;
+   ( ref($I) eq 'CODE'
+      ? $I->($val)
+      : (ref $val eq $I
+         || ($val && $val eq $I)
+         || (exists $TYPES{$I} && $TYPES{$I}->($val)))
+   )
+   || Carp::confess(
+         qq<Attribute ($attribute) does not pass the type constraint because: >
+      . qq<Validation failed for '$I_name' with value >
+      . (defined $val ? Mo::Dumper($val) : 'undef') )
+}
+
+sub _has_handles {
+   my ($caller, $attribute, $args) = @_;
+   my $handles = $args->{handles};
+
+   my $ref = ref $handles;
+   my $kv;
+   if ( $ref eq ref [] ) {
+         $kv = { map { $_,$_ } @{$handles} };
+   }
+   elsif ( $ref eq ref {} ) {
+         $kv = $handles;
+   }
+   elsif ( $ref eq ref qr// ) {
+         Carp::confess("Cannot delegate methods based on a Regexp without a type constraint (isa)")
+            unless $args->{isa};
+         my $target_class = $args->{isa};
+         $kv = {
+            map   { $_, $_     }
+            grep  { $_ =~ $handles }
+            grep  { !exists $Mo::Object::{$_} && $target_class->can($_) }
+            grep  { $_ ne 'has' && $_ ne 'extends' }
+            keys %{ _stash_for $target_class }
+         };
+   }
+   else {
+         Carp::confess("handles for $ref not yet implemented");
    }
 
-   PTDEBUG && _d("InnoDB version:", $innodb_version);
-   return $innodb_version;
+   while ( my ($method, $target) = each %{$kv} ) {
+         my $name = _glob_for "${caller}::$method";
+         Carp::confess("You cannot overwrite a locally defined method ($method) with a delegation")
+            if defined &$name;
+
+         my ($target, @curried_args) = ref($target) ? @$target : $target;
+         *$name = sub {
+            my $self        = shift;
+            my $delegate_to = $self->$attribute();
+            my $error = "Cannot delegate $method to $target because the value of $attribute";
+            Carp::confess("$error is not defined") unless $delegate_to;
+            Carp::confess("$error is not an object (got '$delegate_to')")
+               unless Scalar::Util::blessed($delegate_to) || (!ref($delegate_to) && $delegate_to->can($target));
+            return $delegate_to->$target(@curried_args, @_);
+         }
+   }
 }
 
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+sub _nested_constraints {
+   my ($attribute, $aggregate_type, $type) = @_;
+
+   my $inner_types;
+   if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+      $inner_types = _nested_constraints($1, $2);
+   }
+   else {
+      $inner_types = $TYPES{$type};
+   }
+
+   if ( $aggregate_type eq 'ArrayRef' ) {
+      return sub {
+         my ($val) = @_;
+         return unless ref($val) eq ref([]);
+
+         if ($inner_types) {
+            for my $value ( @{$val} ) {
+               return unless $inner_types->($value) 
+            }
+         }
+         else {
+            for my $value ( @{$val} ) {
+               return unless $value && ($value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type)));
+            }
+         }
+         return 1;
+      };
+   }
+   elsif ( $aggregate_type eq 'Maybe' ) {
+      return sub {
+         my ($value) = @_;
+         return 1 if ! defined($value);
+         if ($inner_types) {
+            return unless $inner_types->($value) 
+         }
+         else {
+            return unless $value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type));
+         }
+         return 1;
+      }
+   }
+   else {
+      Carp::confess("Nested aggregate types are only implemented for ArrayRefs and Maybe");
+   }
 }
 
+sub _set_package_isa {
+   my ($package, @new_isa) = @_;
+
+   *{ _glob_for "${package}::ISA" } = [@new_isa];
+}
+
+sub _set_inherited_metadata {
+   my $class = shift;
+   my $linearized_isa = mro::get_linear_isa($class);
+   my %new_metadata;
+
+   for my $isa_class (reverse @$linearized_isa) {
+      %new_metadata = (
+         %new_metadata,
+         %{ $metadata_for{$isa_class} || {} },
+      );
+   }
+   $metadata_for{$class} = \%new_metadata;
+}
+
+sub unimport {
+   my $caller = scalar caller();
+   my $stash  = _stash_for( $caller );
+
+   delete $stash->{$_} for @{$export_for{$caller}};
+}
+
+sub Dumper {
+   require Data::Dumper;
+   local $Data::Dumper::Indent    = 0;
+   local $Data::Dumper::Sortkeys  = 0;
+   local $Data::Dumper::Quotekeys = 0;
+   local $Data::Dumper::Terse     = 1;
+
+   Data::Dumper::Dumper(@_)
+}
+
+BEGIN {
+   if ($] >= 5.010) {
+      { local $@; require mro; }
+   }
+   else {
+      local $@;
+      eval {
+         require MRO::Compat;
+      } or do {
+         *mro::get_linear_isa = *mro::get_linear_isa_dfs = sub {
+            no strict 'refs';
+
+            my $classname = shift;
+
+            my @lin = ($classname);
+            my %stored;
+            foreach my $parent (@{"$classname\::ISA"}) {
+               my $plin = mro::get_linear_isa_dfs($parent);
+               foreach (@$plin) {
+                     next if exists $stored{$_};
+                     push(@lin, $_);
+                     $stored{$_} = 1;
+               }
+            }
+            return \@lin;
+         };
+      }
+   }
+}
+
+}
 1;
 }
 # ###########################################################################
-# End VersionParser package
+# End Mo package
 # ###########################################################################
 
 # ###########################################################################
@@ -1396,7 +1745,7 @@ sub get_dbh {
          . "that Perl searches for DBI.  If DBI is not installed, try:\n"
          . "  Debian/Ubuntu  apt-get install libdbi-perl\n"
          . "  RHEL/CentOS    yum install perl-DBI\n"
-         . "  OpenSolaris    pgk install pkg:/SUNWpmdbi\n";
+         . "  OpenSolaris    pkg install pkg:/SUNWpmdbi\n";
 
    }
 
@@ -1406,51 +1755,10 @@ sub get_dbh {
       PTDEBUG && _d($cxn_string, ' ', $user, ' ', $pass, 
          join(', ', map { "$_=>$defaults->{$_}" } keys %$defaults ));
 
-      eval {
-         $dbh = DBI->connect($cxn_string, $user, $pass, $defaults);
+      $dbh = eval { DBI->connect($cxn_string, $user, $pass, $defaults) };
 
-         if ( $cxn_string =~ m/mysql/i ) {
-            my $sql;
-
-            $sql = 'SELECT @@SQL_MODE';
-            PTDEBUG && _d($dbh, $sql);
-            my ($sql_mode) = $dbh->selectrow_array($sql);
-
-            $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-                 . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-                 . ($sql_mode ? ",$sql_mode" : '')
-                 . '\'*/';
-            PTDEBUG && _d($dbh, $sql);
-            $dbh->do($sql);
-
-            if ( my ($charset) = $cxn_string =~ m/charset=(\w+)/ ) {
-               $sql = "/*!40101 SET NAMES $charset*/";
-               PTDEBUG && _d($dbh, ':', $sql);
-               $dbh->do($sql);
-               PTDEBUG && _d('Enabling charset for STDOUT');
-               if ( $charset eq 'utf8' ) {
-                  binmode(STDOUT, ':utf8')
-                     or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
-               }
-               else {
-                  binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
-               }
-            }
-
-            if ( $self->prop('set-vars') ) {
-               $sql = "SET " . $self->prop('set-vars');
-               PTDEBUG && _d($dbh, ':', $sql);
-               $dbh->do($sql);
-            }
-         }
-      };
       if ( !$dbh && $EVAL_ERROR ) {
-         PTDEBUG && _d($EVAL_ERROR);
-         if ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
-            PTDEBUG && _d('Going to try again without utf8 support');
-            delete $defaults->{mysql_enable_utf8};
-         }
-         elsif ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
+         if ( $EVAL_ERROR =~ m/locate DBD\/mysql/i ) {
             die "Cannot connect to MySQL because the Perl DBD::mysql module is "
                . "not installed or not found.  Run 'perl -MDBD::mysql' to see "
                . "the directories that Perl searches for DBD::mysql.  If "
@@ -1459,8 +1767,61 @@ sub get_dbh {
                . "  RHEL/CentOS    yum install perl-DBD-MySQL\n"
                . "  OpenSolaris    pgk install pkg:/SUNWapu13dbd-mysql\n";
          }
+         elsif ( $EVAL_ERROR =~ m/not a compiled character set|character set utf8/ ) {
+            PTDEBUG && _d('Going to try again without utf8 support');
+            delete $defaults->{mysql_enable_utf8};
+         }
          if ( !$tries ) {
             die $EVAL_ERROR;
+         }
+      }
+   }
+
+   if ( $cxn_string =~ m/mysql/i ) {
+      my $sql;
+
+      $sql = 'SELECT @@SQL_MODE';
+      PTDEBUG && _d($dbh, $sql);
+      my ($sql_mode) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error getting the current SQL_MODE: $EVAL_ERROR";
+      }
+
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
+      }
+
+      if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
+         $sql = qq{/*!40101 SET NAMES "$charset"*/};
+         PTDEBUG && _d($dbh, ':', $sql);
+         eval { $dbh->do($sql) };
+         if ( $EVAL_ERROR ) {
+            die "Error setting NAMES to $charset: $EVAL_ERROR";
+         }
+         PTDEBUG && _d('Enabling charset for STDOUT');
+         if ( $charset eq 'utf8' ) {
+            binmode(STDOUT, ':utf8')
+               or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+         }
+         else {
+            binmode(STDOUT) or die "Can't binmode(STDOUT): $OS_ERROR";
+         }
+      }
+
+      if ( my $var = $self->prop('set-vars') ) {
+         $sql = "SET $var";
+         PTDEBUG && _d($dbh, ':', $sql);
+         eval { $dbh->do($sql) };
+         if ( $EVAL_ERROR ) {
+            die "Error setting $var: $EVAL_ERROR";
          }
       }
    }
@@ -2077,6 +2438,447 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# TableParser package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/TableParser.pm
+#   t/lib/TableParser.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package TableParser;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $self = { %args };
+   return bless $self, $class;
+}
+
+sub get_create_table {
+   my ( $self, $dbh, $db, $tbl ) = @_;
+   die "I need a dbh parameter" unless $dbh;
+   die "I need a db parameter"  unless $db;
+   die "I need a tbl parameter" unless $tbl;
+   my $q = $self->{Quoter};
+
+   my $new_sql_mode
+      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+
+   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+
+   PTDEBUG && _d($new_sql_mode);
+   eval { $dbh->do($new_sql_mode); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+
+   my $use_sql = 'USE ' . $q->quote($db);
+   PTDEBUG && _d($dbh, $use_sql);
+   $dbh->do($use_sql);
+
+   my $show_sql = "SHOW CREATE TABLE " . $q->quote($db, $tbl);
+   PTDEBUG && _d($show_sql);
+   my $href;
+   eval { $href = $dbh->selectrow_hashref($show_sql); };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+
+      PTDEBUG && _d($old_sql_mode);
+      $dbh->do($old_sql_mode);
+
+      return;
+   }
+
+   PTDEBUG && _d($old_sql_mode);
+   $dbh->do($old_sql_mode);
+
+   my ($key) = grep { m/create (?:table|view)/i } keys %$href;
+   if ( !$key ) {
+      die "Error: no 'Create Table' or 'Create View' in result set from "
+         . "$show_sql: " . Dumper($href);
+   }
+
+   return $href->{$key};
+}
+
+sub parse {
+   my ( $self, $ddl, $opts ) = @_;
+   return unless $ddl;
+
+   if ( $ddl =~ m/CREATE (?:TEMPORARY )?TABLE "/ ) {
+      $ddl = $self->ansi_to_legacy($ddl);
+   }
+   elsif ( $ddl !~ m/CREATE (?:TEMPORARY )?TABLE `/ ) {
+      die "TableParser doesn't handle CREATE TABLE without quoting.";
+   }
+
+   my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
+   (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
+
+   $ddl =~ s/(`[^`]+`)/\L$1/g;
+
+   my $engine = $self->get_engine($ddl);
+
+   my @defs   = $ddl =~ m/^(\s+`.*?),?$/gm;
+   my @cols   = map { $_ =~ m/`([^`]+)`/ } @defs;
+   PTDEBUG && _d('Table cols:', join(', ', map { "`$_`" } @cols));
+
+   my %def_for;
+   @def_for{@cols} = @defs;
+
+   my (@nums, @null);
+   my (%type_for, %is_nullable, %is_numeric, %is_autoinc);
+   foreach my $col ( @cols ) {
+      my $def = $def_for{$col};
+      my ( $type ) = $def =~ m/`[^`]+`\s([a-z]+)/;
+      die "Can't determine column type for $def" unless $type;
+      $type_for{$col} = $type;
+      if ( $type =~ m/(?:(?:tiny|big|medium|small)?int|float|double|decimal|year)/ ) {
+         push @nums, $col;
+         $is_numeric{$col} = 1;
+      }
+      if ( $def !~ m/NOT NULL/ ) {
+         push @null, $col;
+         $is_nullable{$col} = 1;
+      }
+      $is_autoinc{$col} = $def =~ m/AUTO_INCREMENT/i ? 1 : 0;
+   }
+
+   my ($keys, $clustered_key) = $self->get_keys($ddl, $opts, \%is_nullable);
+
+   my ($charset) = $ddl =~ m/DEFAULT CHARSET=(\w+)/;
+
+   return {
+      name           => $name,
+      cols           => \@cols,
+      col_posn       => { map { $cols[$_] => $_ } 0..$#cols },
+      is_col         => { map { $_ => 1 } @cols },
+      null_cols      => \@null,
+      is_nullable    => \%is_nullable,
+      is_autoinc     => \%is_autoinc,
+      clustered_key  => $clustered_key,
+      keys           => $keys,
+      defs           => \%def_for,
+      numeric_cols   => \@nums,
+      is_numeric     => \%is_numeric,
+      engine         => $engine,
+      type_for       => \%type_for,
+      charset        => $charset,
+   };
+}
+
+sub sort_indexes {
+   my ( $self, $tbl ) = @_;
+
+   my @indexes
+      = sort {
+         (($a ne 'PRIMARY') <=> ($b ne 'PRIMARY'))
+         || ( !$tbl->{keys}->{$a}->{is_unique} <=> !$tbl->{keys}->{$b}->{is_unique} )
+         || ( $tbl->{keys}->{$a}->{is_nullable} <=> $tbl->{keys}->{$b}->{is_nullable} )
+         || ( scalar(@{$tbl->{keys}->{$a}->{cols}}) <=> scalar(@{$tbl->{keys}->{$b}->{cols}}) )
+      }
+      grep {
+         $tbl->{keys}->{$_}->{type} eq 'BTREE'
+      }
+      sort keys %{$tbl->{keys}};
+
+   PTDEBUG && _d('Indexes sorted best-first:', join(', ', @indexes));
+   return @indexes;
+}
+
+sub find_best_index {
+   my ( $self, $tbl, $index ) = @_;
+   my $best;
+   if ( $index ) {
+      ($best) = grep { uc $_ eq uc $index } keys %{$tbl->{keys}};
+   }
+   if ( !$best ) {
+      if ( $index ) {
+         die "Index '$index' does not exist in table";
+      }
+      else {
+         ($best) = $self->sort_indexes($tbl);
+      }
+   }
+   PTDEBUG && _d('Best index found is', $best);
+   return $best;
+}
+
+sub find_possible_keys {
+   my ( $self, $dbh, $database, $table, $quoter, $where ) = @_;
+   return () unless $where;
+   my $sql = 'EXPLAIN SELECT * FROM ' . $quoter->quote($database, $table)
+      . ' WHERE ' . $where;
+   PTDEBUG && _d($sql);
+   my $expl = $dbh->selectrow_hashref($sql);
+   $expl = { map { lc($_) => $expl->{$_} } keys %$expl };
+   if ( $expl->{possible_keys} ) {
+      PTDEBUG && _d('possible_keys =', $expl->{possible_keys});
+      my @candidates = split(',', $expl->{possible_keys});
+      my %possible   = map { $_ => 1 } @candidates;
+      if ( $expl->{key} ) {
+         PTDEBUG && _d('MySQL chose', $expl->{key});
+         unshift @candidates, grep { $possible{$_} } split(',', $expl->{key});
+         PTDEBUG && _d('Before deduping:', join(', ', @candidates));
+         my %seen;
+         @candidates = grep { !$seen{$_}++ } @candidates;
+      }
+      PTDEBUG && _d('Final list:', join(', ', @candidates));
+      return @candidates;
+   }
+   else {
+      PTDEBUG && _d('No keys in possible_keys');
+      return ();
+   }
+}
+
+sub check_table {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(dbh db tbl);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($dbh, $db, $tbl) = @args{@required_args};
+   my $q      = $self->{Quoter};
+   my $db_tbl = $q->quote($db, $tbl);
+   PTDEBUG && _d('Checking', $db_tbl);
+
+   my $sql = "SHOW TABLES FROM " . $q->quote($db)
+           . ' LIKE ' . $q->literal_like($tbl);
+   PTDEBUG && _d($sql);
+   my $row;
+   eval {
+      $row = $dbh->selectrow_arrayref($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return 0;
+   }
+   if ( !$row->[0] || $row->[0] ne $tbl ) {
+      PTDEBUG && _d('Table does not exist');
+      return 0;
+   }
+
+   PTDEBUG && _d('Table exists; no privs to check');
+   return 1 unless $args{all_privs};
+
+   $sql = "SHOW FULL COLUMNS FROM $db_tbl";
+   PTDEBUG && _d($sql);
+   eval {
+      $row = $dbh->selectrow_hashref($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return 0;
+   }
+   if ( !scalar keys %$row ) {
+      PTDEBUG && _d('Table has no columns:', Dumper($row));
+      return 0;
+   }
+   my $privs = $row->{privileges} || $row->{Privileges};
+
+   $sql = "DELETE FROM $db_tbl LIMIT 0";
+   PTDEBUG && _d($sql);
+   eval {
+      $dbh->do($sql);
+   };
+   my $can_delete = $EVAL_ERROR ? 0 : 1;
+
+   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
+      ($can_delete ? 'delete' : ''));
+
+   if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
+          && $can_delete) ) {
+      PTDEBUG && _d('User does not have all privs');
+      return 0;
+   }
+
+   PTDEBUG && _d('User has all privs');
+   return 1;
+}
+
+sub get_engine {
+   my ( $self, $ddl, $opts ) = @_;
+   my ( $engine ) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;
+   PTDEBUG && _d('Storage engine:', $engine);
+   return $engine || undef;
+}
+
+sub get_keys {
+   my ( $self, $ddl, $opts, $is_nullable ) = @_;
+   my $engine        = $self->get_engine($ddl);
+   my $keys          = {};
+   my $clustered_key = undef;
+
+   KEY:
+   foreach my $key ( $ddl =~ m/^  ((?:[A-Z]+ )?KEY .*)$/gm ) {
+
+      next KEY if $key =~ m/FOREIGN/;
+
+      my $key_ddl = $key;
+      PTDEBUG && _d('Parsed key:', $key_ddl);
+
+      if ( !$engine || $engine !~ m/MEMORY|HEAP/ ) {
+         $key =~ s/USING HASH/USING BTREE/;
+      }
+
+      my ( $type, $cols ) = $key =~ m/(?:USING (\w+))? \((.+)\)/;
+      my ( $special ) = $key =~ m/(FULLTEXT|SPATIAL)/;
+      $type = $type || $special || 'BTREE';
+      my ($name) = $key =~ m/(PRIMARY|`[^`]*`)/;
+      my $unique = $key =~ m/PRIMARY|UNIQUE/ ? 1 : 0;
+      my @cols;
+      my @col_prefixes;
+      foreach my $col_def ( $cols =~ m/`[^`]+`(?:\(\d+\))?/g ) {
+         my ($name, $prefix) = $col_def =~ m/`([^`]+)`(?:\((\d+)\))?/;
+         push @cols, $name;
+         push @col_prefixes, $prefix;
+      }
+      $name =~ s/`//g;
+
+      PTDEBUG && _d( $name, 'key cols:', join(', ', map { "`$_`" } @cols));
+
+      $keys->{$name} = {
+         name         => $name,
+         type         => $type,
+         colnames     => $cols,
+         cols         => \@cols,
+         col_prefixes => \@col_prefixes,
+         is_unique    => $unique,
+         is_nullable  => scalar(grep { $is_nullable->{$_} } @cols),
+         is_col       => { map { $_ => 1 } @cols },
+         ddl          => $key_ddl,
+      };
+
+      if ( ($engine || '') =~ m/InnoDB/i && !$clustered_key ) {
+         my $this_key = $keys->{$name};
+         if ( $this_key->{name} eq 'PRIMARY' ) {
+            $clustered_key = 'PRIMARY';
+         }
+         elsif ( $this_key->{is_unique} && !$this_key->{is_nullable} ) {
+            $clustered_key = $this_key->{name};
+         }
+         PTDEBUG && $clustered_key && _d('This key is the clustered key');
+      }
+   }
+
+   return $keys, $clustered_key;
+}
+
+sub get_fks {
+   my ( $self, $ddl, $opts ) = @_;
+   my $q   = $self->{Quoter};
+   my $fks = {};
+
+   foreach my $fk (
+      $ddl =~ m/CONSTRAINT .* FOREIGN KEY .* REFERENCES [^\)]*\)/mg )
+   {
+      my ( $name ) = $fk =~ m/CONSTRAINT `(.*?)`/;
+      my ( $cols ) = $fk =~ m/FOREIGN KEY \(([^\)]+)\)/;
+      my ( $parent, $parent_cols ) = $fk =~ m/REFERENCES (\S+) \(([^\)]+)\)/;
+
+      my ($db, $tbl) = $q->split_unquote($parent, $opts->{database});
+      my %parent_tbl = (tbl => $tbl);
+      $parent_tbl{db} = $db if $db;
+
+      if ( $parent !~ m/\./ && $opts->{database} ) {
+         $parent = $q->quote($opts->{database}) . ".$parent";
+      }
+
+      $fks->{$name} = {
+         name           => $name,
+         colnames       => $cols,
+         cols           => [ map { s/[ `]+//g; $_; } split(',', $cols) ],
+         parent_tbl     => \%parent_tbl,
+         parent_tblname => $parent,
+         parent_cols    => [ map { s/[ `]+//g; $_; } split(',', $parent_cols) ],
+         parent_colnames=> $parent_cols,
+         ddl            => $fk,
+      };
+   }
+
+   return $fks;
+}
+
+sub remove_auto_increment {
+   my ( $self, $ddl ) = @_;
+   $ddl =~ s/(^\).*?) AUTO_INCREMENT=\d+\b/$1/m;
+   return $ddl;
+}
+
+sub get_table_status {
+   my ( $self, $dbh, $db, $like ) = @_;
+   my $q = $self->{Quoter};
+   my $sql = "SHOW TABLE STATUS FROM " . $q->quote($db);
+   my @params;
+   if ( $like ) {
+      $sql .= ' LIKE ?';
+      push @params, $like;
+   }
+   PTDEBUG && _d($sql, @params);
+   my $sth = $dbh->prepare($sql);
+   eval { $sth->execute(@params); };
+   if ($EVAL_ERROR) {
+      PTDEBUG && _d($EVAL_ERROR);
+      return;
+   }
+   my @tables = @{$sth->fetchall_arrayref({})};
+   @tables = map {
+      my %tbl; # Make a copy with lowercased keys
+      @tbl{ map { lc $_ } keys %$_ } = values %$_;
+      $tbl{engine} ||= $tbl{type} || $tbl{comment};
+      delete $tbl{type};
+      \%tbl;
+   } @tables;
+   return @tables;
+}
+
+my $ansi_quote_re = qr/" [^"]* (?: "" [^"]* )* (?<=.) "/ismx;
+sub ansi_to_legacy {
+   my ($self, $ddl) = @_;
+   $ddl =~ s/($ansi_quote_re)/ansi_quote_replace($1)/ge;
+   return $ddl;
+}
+
+sub ansi_quote_replace {
+   my ($val) = @_;
+   $val =~ s/^"|"$//g;
+   $val =~ s/`/``/g;
+   $val =~ s/""/"/g;
+   return "`$val`";
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End TableParser package
+# ###########################################################################
+
+# ###########################################################################
 # Processlist package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -2125,6 +2927,7 @@ sub new {
       last_poll   => 0,
       active_cxn  => {},  # keyed off ID
       event_cache => [],
+      _reasons_for_matching => {},
    };
    return bless $self, $class;
 }
@@ -2208,11 +3011,11 @@ sub parse_event {
             else {
                PTDEBUG && _d('Saving new query, state', $curr->[STATE]);
                push @new_cxn, [
-                  @$curr,                   # proc info
+                  @{$curr}[0..7],           # proc info
                   int($query_start),        # START
                   $etime,                   # ETIME
                   $time,                    # FSEEN
-                  { $curr->[STATE] => 0 },  # PROFILE
+                  { ($curr->[STATE] || "") => 0 }, # PROFILE
                ];
             }
          }
@@ -2222,11 +3025,11 @@ sub parse_event {
          if ( $curr->[INFO] && defined $curr->[TIME] ) {
             PTDEBUG && _d('Saving query of new cxn, state', $curr->[STATE]);
             push @new_cxn, [
-               @$curr,                   # proc info
+               @{$curr}[0..7],           # proc info
                int($query_start),        # START
                $etime,                   # ETIME
                $time,                    # FSEEN
-               { $curr->[STATE] => 0 },  # PROFILE
+               { ($curr->[STATE] || "") => 0 }, # PROFILE
             ];
          }
       }
@@ -2335,7 +3138,9 @@ sub find {
             PTDEBUG && _d("Query isn't running long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds busy time');
+         my $reason = 'Exceeds busy time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
 
@@ -2345,7 +3150,9 @@ sub find {
             PTDEBUG && _d("Query isn't idle long enough");
             next QUERY;
          }
-         PTDEBUG && _d('Exceeds idle time');
+         my $reason = 'Exceeds idle time';
+         PTDEBUG && _d($reason);
+         push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
          $matched++;
       }
  
@@ -2362,7 +3169,9 @@ sub find {
                PTDEBUG && _d('Query does not match', $property, 'spec');
                next QUERY;
             }
-            PTDEBUG && _d('Query matches', $property, 'spec');
+            my $reason = 'Query matches ' . $property . ' spec';
+            PTDEBUG && _d($reason);
+            push @{$self->{_reasons_for_matching}->{$query} ||= []}, $reason;
             $matched++;
          }
       }
@@ -2592,8 +3401,31 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+sub check_recursion_method {
+   my ($methods) = @_;
+
+   if ( @$methods != 1 ) {
+      if ( grep({ !m/processlist|hosts/i } @$methods)
+            && $methods->[0] !~ /^dsn=/i )
+      {
+         die  "Invalid combination of recursion methods: "
+            . join(", ", map { defined($_) ? $_ : 'undef' } @$methods) . ". "
+            . "Only hosts and processlist may be combined.\n"
+      }
+   }
+   else {
+      my ($method) = @$methods;
+      die "Invalid recursion method: " . ( $method || 'undef' )
+         unless $method && $method =~ m/^(?:processlist$|hosts$|none$|dsn=)/i;
+   }
+}
+
 sub new {
    my ( $class, %args ) = @_;
+   my @required_args = qw(OptionParser DSNParser Quoter);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
    my $self = {
       %args,
       replication_thread => {},
@@ -2603,28 +3435,27 @@ sub new {
 
 sub get_slaves {
    my ($self, %args) = @_;
-   my @required_args = qw(make_cxn OptionParser DSNParser Quoter);
+   my @required_args = qw(make_cxn);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($make_cxn, $o, $dp) = @args{@required_args};
+   my ($make_cxn) = @args{@required_args};
 
-   my $slaves = [];
-   my $method = $o->get('recursion-method');
-   PTDEBUG && _d('Slave recursion method:', $method);
-   if ( !$method || $method =~ m/processlist|hosts/i ) {
+   my $slaves  = [];
+   my $dp      = $self->{DSNParser};
+   my $methods = $self->_resolve_recursion_methods($args{dsn});
+
+   if ( grep { m/processlist|hosts/i } @$methods ) {
       my @required_args = qw(dbh dsn);
       foreach my $arg ( @required_args ) {
          die "I need a $arg argument" unless $args{$arg};
       }
       my ($dbh, $dsn) = @args{@required_args};
+      
       $self->recurse_to_slaves(
-         {  dbh        => $dbh,
-            dsn        => $dsn,
-            dsn_parser => $dp,
-            recurse    => $o->get('recurse'),
-            method     => $o->get('recursion-method'),
-            callback   => sub {
+         {  dbh       => $dbh,
+            dsn       => $dsn,
+            callback  => sub {
                my ( $dsn, $dbh, $level, $parent ) = @_;
                return unless $level;
                PTDEBUG && _d('Found slave:', $dp->as_string($dsn));
@@ -2634,31 +3465,48 @@ sub get_slaves {
          }
       );
    }
-   elsif ( $method =~ m/^dsn=/i ) {
-      my ($dsn_table_dsn) = $method =~ m/^dsn=(.+)/i;
+   elsif ( $methods->[0] =~ m/^dsn=/i ) {
+      (my $dsn_table_dsn = join ",", @$methods) =~ s/^dsn=//i;
       $slaves = $self->get_cxn_from_dsn_table(
          %args,
          dsn_table_dsn => $dsn_table_dsn,
       );
    }
-   elsif ( $method =~ m/none/i ) {
+   elsif ( $methods->[0] =~ m/none/i ) {
       PTDEBUG && _d('Not getting to slaves');
    }
    else {
-      die "Invalid --recursion-method: $method.  Valid values are: "
-        . "dsn=DSN, hosts, or processlist.\n";
+      die "Unexpected recursion methods: @$methods";
    }
-
+   
    return $slaves;
+}
+
+sub _resolve_recursion_methods {
+   my ($self, $dsn) = @_;
+   my $o = $self->{OptionParser};
+   if ( $o->got('recursion-method') ) {
+      return $o->get('recursion-method');
+   }
+   elsif ( $dsn && ($dsn->{P} || 3306) != 3306 ) {
+      PTDEBUG && _d('Port number is non-standard; using only hosts method');
+      return [qw(hosts)];
+   }
+   else {
+      return $o->get('recursion-method');
+   }
 }
 
 sub recurse_to_slaves {
    my ( $self, $args, $level ) = @_;
    $level ||= 0;
-   my $dp   = $args->{dsn_parser};
-   my $dsn  = $args->{dsn};
+   my $dp      = $self->{DSNParser};
+   my $recurse = $args->{recurse} || $self->{OptionParser}->get('recurse');
+   my $dsn     = $args->{dsn};
 
-   if ( lc($args->{method} || '') eq 'none' ) {
+   my $methods = $self->_resolve_recursion_methods($dsn);
+   PTDEBUG && _d('Recursion methods:', @$methods);
+   if ( lc($methods->[0]) eq 'none' ) {
       PTDEBUG && _d('Not recursing to slaves');
       return;
    }
@@ -2693,11 +3541,11 @@ sub recurse_to_slaves {
 
    $args->{callback}->($dsn, $dbh, $level, $args->{parent});
 
-   if ( !defined $args->{recurse} || $level < $args->{recurse} ) {
+   if ( !defined $recurse || $level < $recurse ) {
 
       my @slaves =
          grep { !$_->{master_id} || $_->{master_id} == $id } # Only my slaves.
-         $self->find_slave_hosts($dp, $dbh, $dsn, $args->{method});
+         $self->find_slave_hosts($dp, $dbh, $dsn, $methods);
 
       foreach my $slave ( @slaves ) {
          PTDEBUG && _d('Recursing from',
@@ -2709,25 +3557,14 @@ sub recurse_to_slaves {
 }
 
 sub find_slave_hosts {
-   my ( $self, $dsn_parser, $dbh, $dsn, $method ) = @_;
+   my ( $self, $dsn_parser, $dbh, $dsn, $methods ) = @_;
 
-   my @methods = qw(processlist hosts);
-   if ( $method ) {
-      @methods = grep { $_ ne $method } @methods;
-      unshift @methods, $method;
-   }
-   else {
-      if ( ($dsn->{P} || 3306) != 3306 ) {
-         PTDEBUG && _d('Port number is non-standard; using only hosts method');
-         @methods = qw(hosts);
-      }
-   }
    PTDEBUG && _d('Looking for slaves on', $dsn_parser->as_string($dsn),
-      'using methods', @methods);
+      'using methods', @$methods);
 
    my @slaves;
    METHOD:
-   foreach my $method ( @methods ) {
+   foreach my $method ( @$methods ) {
       my $find_slaves = "_find_slaves_by_$method";
       PTDEBUG && _d('Finding slaves with', $find_slaves);
       @slaves = $self->$find_slaves($dsn_parser, $dbh, $dsn);
@@ -2790,11 +3627,6 @@ sub get_connected_slaves {
 
    my $show = "SHOW GRANTS FOR ";
    my $user = 'CURRENT_USER()';
-   my $vp   = $self->{VersionParser};
-   if ( $vp && !$vp->version_ge($dbh, '4.1.2') ) {
-      $user = $dbh->selectrow_arrayref('SELECT USER()')->[0];
-      $user =~ s/([^@]+)@(.+)/'$1'\@'$2'/;
-   }
    my $sql = $show . $user;
    PTDEBUG && _d($dbh, $sql);
 
@@ -3235,12 +4067,15 @@ sub reset_known_replication_threads {
 
 sub get_cxn_from_dsn_table {
    my ($self, %args) = @_;
-   my @required_args = qw(dsn_table_dsn make_cxn DSNParser Quoter);
+   my @required_args = qw(dsn_table_dsn make_cxn);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($dsn_table_dsn, $make_cxn, $dp, $q) = @args{@required_args};
+   my ($dsn_table_dsn, $make_cxn) = @args{@required_args};
    PTDEBUG && _d('DSN table DSN:', $dsn_table_dsn);
+
+   my $dp = $self->{DSNParser};
+   my $q  = $self->{Quoter};
 
    my $dsn = $dp->parse($dsn_table_dsn);
    my $dsn_table;
@@ -3282,6 +4117,126 @@ sub _d {
 }
 # ###########################################################################
 # End MasterSlave package
+# ###########################################################################
+
+# ###########################################################################
+# Quoter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Quoter.pm
+#   t/lib/Quoter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Quoter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   return bless {}, $class;
+}
+
+sub quote {
+   my ( $self, @vals ) = @_;
+   foreach my $val ( @vals ) {
+      $val =~ s/`/``/g;
+   }
+   return join('.', map { '`' . $_ . '`' } @vals);
+}
+
+sub quote_val {
+   my ( $self, $val, %args ) = @_;
+
+   return 'NULL' unless defined $val;          # undef = NULL
+   return "''" if $val eq '';                  # blank string = ''
+   return $val if $val =~ m/^0x[0-9a-fA-F]+$/  # quote hex data
+                  && !$args{is_char};          # unless is_char is true
+
+   $val =~ s/(['\\])/\\$1/g;
+   return "'$val'";
+}
+
+sub split_unquote {
+   my ( $self, $db_tbl, $default_db ) = @_;
+   $db_tbl =~ s/`//g;
+   my ( $db, $tbl ) = split(/[.]/, $db_tbl);
+   if ( !$tbl ) {
+      $tbl = $db;
+      $db  = $default_db;
+   }
+   return ($db, $tbl);
+}
+
+sub literal_like {
+   my ( $self, $like ) = @_;
+   return unless $like;
+   $like =~ s/([%_])/\\$1/g;
+   return "'$like'";
+}
+
+sub join_quote {
+   my ( $self, $default_db, $db_tbl ) = @_;
+   return unless $db_tbl;
+   my ($db, $tbl) = split(/[.]/, $db_tbl);
+   if ( !$tbl ) {
+      $tbl = $db;
+      $db  = $default_db;
+   }
+   $db  = "`$db`"  if $db  && $db  !~ m/^`/;
+   $tbl = "`$tbl`" if $tbl && $tbl !~ m/^`/;
+   return $db ? "$db.$tbl" : $tbl;
+}
+
+sub serialize_list {
+   my ( $self, @args ) = @_;
+   return unless @args;
+
+   return $args[0] if @args == 1 && !defined $args[0];
+
+   die "Cannot serialize multiple values with undef/NULL"
+      if grep { !defined $_ } @args;
+
+   return join ',', map { quotemeta } @args;
+}
+
+sub deserialize_list {
+   my ( $self, $string ) = @_;
+   return $string unless defined $string;
+   my @escaped_parts = $string =~ /
+         \G             # Start of string, or end of previous match.
+         (              # Each of these is an element in the original list.
+            [^\\,]*     # Anything not a backslash or a comma
+            (?:         # When we get here, we found one of the above.
+               \\.      # A backslash followed by something so we can continue
+               [^\\,]*  # Same as above.
+            )*          # Repeat zero of more times.
+         )
+         ,              # Comma dividing elements
+      /sxgc;
+
+   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+
+   my @unescaped_parts = map {
+      my $part = $_;
+
+      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
+                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
+                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
+      $part =~ s/\\($char_class)/$1/g;
+      $part;
+   } @escaped_parts;
+
+   return @unescaped_parts;
+}
+
+1;
+}
+# ###########################################################################
+# End Quoter package
 # ###########################################################################
 
 # ###########################################################################
@@ -3676,6 +4631,1257 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Retry package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Retry;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub retry {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(try fail final_fail);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
+   my $tries = $args{tries} || 3;
+
+   my $last_error;
+   my $tryno = 0;
+   TRY:
+   while ( ++$tryno <= $tries ) {
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
+      my $result;
+      eval {
+         $result = $try->(tryno=>$tryno);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
+
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
+         }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
+         return $result;
+      }
+   }
+
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Retry package
+# ###########################################################################
+
+# ###########################################################################
+# Cxn package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Cxn.pm
+#   t/lib/Cxn.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Cxn;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(DSNParser OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
+   if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
+      $dsn = $dp->parse(
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+   }
+
+   my $self = {
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
+      set          => $args{set},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set      => 0,
+      OptionParser => $o,
+      DSNParser    => $dp,
+   };
+
+   return bless $self, $class;
+}
+
+sub connect {
+   my ( $self ) = @_;
+   my $dsn = $self->{dsn};
+   my $dp  = $self->{DSNParser};
+   my $o   = $self->{OptionParser};
+
+   my $dbh = $self->{dbh};
+   if ( !$dbh || !$dbh->ping() ) {
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
+      }
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+   }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+
+   return $self->set_dbh($dbh);
+}
+
+sub set_dbh {
+   my ($self, $dbh) = @_;
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   PTDEBUG && _d($dbh, 'Setting dbh');
+
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
+   my $sql = 'SELECT @@hostname, @@server_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
+
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
+   return $dbh;
+}
+
+sub dbh {
+   my ($self) = @_;
+   return $self->{dbh};
+}
+
+sub dsn {
+   my ($self) = @_;
+   return $self->{dsn};
+}
+
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   if ( $self->{dbh}
+         && blessed($self->{dbh})
+         && $self->{dbh}->can("disconnect") ) {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      $self->{dbh}->disconnect();
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Cxn package
+# ###########################################################################
+
+# ###########################################################################
+# VersionCheck package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/VersionCheck.pm
+#   t/lib/VersionCheck.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package VersionCheck;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use File::Basename ();
+use Data::Dumper ();
+
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+
+   Data::Dumper::Dumper(@_);
+}
+
+sub new {
+   my ($class, %args) = @_;
+   my $self = {
+      valid_types => qr/
+         ^(?:
+             os_version
+            |perl_version
+            |perl_module_version
+            |mysql_variable
+            |bin_version
+         )$/x,
+   };
+   return bless $self, $class;
+}
+
+sub parse_server_response {
+   my ($self, %args) = @_;
+   my @required_args = qw(response);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($response) = @args{@required_args};
+
+   my %items = map {
+      my ($item, $type, $vars) = split(";", $_);
+      if ( !defined $args{split_vars} || $args{split_vars} ) {
+         $vars = [ split(",", ($vars || '')) ];
+      }
+      $item => {
+         item => $item,
+         type => $type,
+         vars => $vars,
+      };
+   } split("\n", $response);
+
+   PTDEBUG && _d('Items:', Dumper(\%items));
+
+   return \%items;
+}
+
+sub get_versions {
+   my ($self, %args) = @_;
+   my @required_args = qw(items);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items) = @args{@required_args};
+
+   my %versions;
+   foreach my $item ( values %$items ) {
+      next unless $self->valid_item($item);
+
+      eval {
+         my $func    = 'get_' . $item->{type};
+         my $version = $self->$func(
+            item      => $item,
+            instances => $args{instances},
+         );
+         if ( $version ) {
+            chomp $version unless ref($version);
+            $versions{$item->{item}} = $version;
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error getting version for', Dumper($item), $EVAL_ERROR);
+      }
+   }
+
+   return \%versions;
+}
+
+sub valid_item {
+   my ($self, $item) = @_;
+   return unless $item;
+
+   if ( ($item->{type} || '') !~ m/$self->{valid_types}/ ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return;
+   }
+
+   return 1;
+}
+
+sub get_os_version {
+   my ($self) = @_;
+
+  chomp(my $platform = `uname -s`);
+  PTDEBUG && _d('platform:', $platform);
+  return $OSNAME unless $platform;
+
+   chomp(my $lsb_release
+            = `which lsb_release 2>/dev/null | awk '{print \$1}'` || '');
+   PTDEBUG && _d('lsb_release:', $lsb_release);
+
+   my $release = "";
+
+   if ( $platform eq 'Linux' ) {
+      if ( -f "/etc/fedora-release" ) {
+         $release = `cat /etc/fedora-release`;
+      }
+      elsif ( -f "/etc/redhat-release" ) {
+         $release = `cat /etc/redhat-release`;
+      }
+      elsif ( -f "/etc/system-release" ) {
+         $release = `cat /etc/system-release`;
+      }
+      elsif ( $lsb_release ) {
+         $release = `$lsb_release -ds`;
+      }
+      elsif ( -f "/etc/lsb-release" ) {
+         $release = `grep DISTRIB_DESCRIPTION /etc/lsb-release`;
+         $release =~ s/^\w+="([^"]+)".+/$1/;
+      }
+      elsif ( -f "/etc/debian_version" ) {
+         chomp(my $rel = `cat /etc/debian_version`);
+         $release = "Debian $rel";
+         if ( -f "/etc/apt/sources.list" ) {
+             chomp(my $code_name = `awk '/^deb/ {print \$3}' /etc/apt/sources.list | awk -F/ '{print \$1}'| awk 'BEGIN {FS="|"} {print \$1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print \$2}'`);
+             $release .= " ($code_name)" if $code_name;
+         }
+      }
+      elsif ( `ls /etc/*release 2>/dev/null` ) {
+         if ( `grep DISTRIB_DESCRIPTION /etc/*release 2>/dev/null` ) {
+            $release = `grep DISTRIB_DESCRIPTION /etc/*release | head -n1`;
+         }
+         else {
+            $release = `cat /etc/*release | head -n1`;
+         }
+      }
+   }
+   elsif ( $platform =~ m/^(BSD|Darwin)$/ ) {
+      my $rel = `uname -r`;
+      $release = "$platform $rel";
+   }
+   elsif ( $platform eq "SunOS" ) {
+      my $rel = `head -n1 /etc/release` || `uname -r`;
+      $release = "$platform $rel";
+   }
+
+   if ( !$release ) {
+      PTDEBUG && _d('Failed to get the release, using platform');
+      $release = $platform;
+   }
+   chomp($release);
+
+   PTDEBUG && _d('OS version =', $release);
+   return $release;
+}
+
+sub get_perl_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+
+   my $version = sprintf '%vd', $PERL_VERSION;
+   PTDEBUG && _d('Perl version', $version);
+   return $version;
+}
+
+sub get_perl_module_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+   
+   my $var          = $item->{item} . '::VERSION';
+   my $version      = _get_scalar($var);
+   PTDEBUG && _d('Perl version for', $var, '=', "$version");
+
+   return $version ? "$version" : $version;
+}
+
+sub _get_scalar {
+   no strict;
+   return ${*{shift()}};
+}
+
+sub get_mysql_variable {
+   my $self = shift;
+   return $self->_get_from_mysql(
+      show => 'VARIABLES',
+      @_,
+   );
+}
+
+sub _get_from_mysql {
+   my ($self, %args) = @_;
+   my $show      = $args{show};
+   my $item      = $args{item};
+   my $instances = $args{instances};
+   return unless $show && $item;
+
+   if ( !$instances || !@$instances ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Cannot check', $item, 'because there are no MySQL instances');
+      }
+      return;
+   }
+
+   my @versions;
+   my %version_for;
+   foreach my $instance ( @$instances ) {
+      my $dbh = $instance->{dbh};
+      local $dbh->{FetchHashKeyName} = 'NAME_lc';
+      my $sql = qq/SHOW $show/;
+      PTDEBUG && _d($sql);
+      my $rows = $dbh->selectall_hashref($sql, 'variable_name');
+
+      my @versions;
+      foreach my $var ( @{$item->{vars}} ) {
+         $var = lc($var);
+         my $version = $rows->{$var}->{value};
+         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version,
+            'on', $instance->{name});
+         push @versions, $version;
+      }
+
+      $version_for{ $instance->{id} } = join(' ', @versions);
+   }
+
+   return \%version_for;
+}
+
+sub get_bin_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   my $cmd  = $item->{item};
+   return unless $cmd;
+
+   my $sanitized_command = File::Basename::basename($cmd);
+   PTDEBUG && _d('cmd:', $cmd, 'sanitized:', $sanitized_command);
+   return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
+
+   my $output = `$sanitized_command --version 2>&1`;
+   PTDEBUG && _d('output:', $output);
+
+   my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
+
+   PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
+   return $version;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End VersionCheck package
+# ###########################################################################
+
+# ###########################################################################
+# HTTPMicro package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/HTTPMicro.pm
+#   t/lib/HTTPMicro.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+
+package HTTPMicro;
+BEGIN {
+  $HTTPMicro::VERSION = '0.001';
+}
+use strict;
+use warnings;
+
+use Carp ();
+
+
+my @attributes;
+BEGIN {
+    @attributes = qw(agent timeout);
+    no strict 'refs';
+    for my $accessor ( @attributes ) {
+        *{$accessor} = sub {
+            @_ > 1 ? $_[0]->{$accessor} = $_[1] : $_[0]->{$accessor};
+        };
+    }
+}
+
+sub new {
+    my($class, %args) = @_;
+    (my $agent = $class) =~ s{::}{-}g;
+    my $self = {
+        agent        => $agent . "/" . ($class->VERSION || 0),
+        timeout      => 60,
+    };
+    for my $key ( @attributes ) {
+        $self->{$key} = $args{$key} if exists $args{$key}
+    }
+    return bless $self, $class;
+}
+
+sub request {
+    my ($self, $method, $url, $args) = @_;
+    @_ == 3 || (@_ == 4 && ref $args eq 'HASH')
+      or Carp::croak(q/Usage: $http->request(METHOD, URL, [HASHREF])/);
+    $args ||= {}; # we keep some state in this during _request
+
+    my $response;
+    for ( 0 .. 1 ) {
+        $response = eval { $self->_request($method, $url, $args) };
+        last unless $@ && $method eq 'GET'
+            && $@ =~ m{^(?:Socket closed|Unexpected end)};
+    }
+
+    if (my $e = "$@") {
+        $response = {
+            success => q{},
+            status  => 599,
+            reason  => 'Internal Exception',
+            content => $e,
+            headers => {
+                'content-type'   => 'text/plain',
+                'content-length' => length $e,
+            }
+        };
+    }
+    return $response;
+}
+
+sub _request {
+    my ($self, $method, $url, $args) = @_;
+
+    my ($scheme, $host, $port, $path_query) = $self->_split_url($url);
+
+    my $request = {
+        method    => $method,
+        scheme    => $scheme,
+        host_port => ($port == 80 ? $host : "$host:$port"),
+        uri       => $path_query,
+        headers   => {},
+    };
+
+    my $handle  = HTTPMicro::Handle->new(timeout => $self->{timeout});
+
+    $handle->connect($scheme, $host, $port);
+
+    $self->_prepare_headers_and_cb($request, $args);
+    $handle->write_request_header(@{$request}{qw/method uri headers/});
+    $handle->write_content_body($request) if $request->{content};
+
+    my $response;
+    do { $response = $handle->read_response_header }
+        until (substr($response->{status},0,1) ne '1');
+
+    if (!($method eq 'HEAD' || $response->{status} =~ /^[23]04/)) {
+        $response->{content} = '';
+        $handle->read_content_body(sub { $_[1]->{content} .= $_[0] }, $response);
+    }
+
+    $handle->close;
+    $response->{success} = substr($response->{status},0,1) eq '2';
+    return $response;
+}
+
+sub _prepare_headers_and_cb {
+    my ($self, $request, $args) = @_;
+
+    for ($args->{headers}) {
+        next unless defined;
+        while (my ($k, $v) = each %$_) {
+            $request->{headers}{lc $k} = $v;
+        }
+    }
+    $request->{headers}{'host'}         = $request->{host_port};
+    $request->{headers}{'connection'}   = "close";
+    $request->{headers}{'user-agent'} ||= $self->{agent};
+
+    if (defined $args->{content}) {
+        $request->{headers}{'content-type'} ||= "application/octet-stream";
+        utf8::downgrade($args->{content}, 1)
+            or Carp::croak(q/Wide character in request message body/);
+        $request->{headers}{'content-length'} = length $args->{content};
+        $request->{content} = $args->{content};
+    }
+    return;
+}
+
+sub _split_url {
+    my $url = pop;
+
+    my ($scheme, $authority, $path_query) = $url =~ m<\A([^:/?#]+)://([^/?#]*)([^#]*)>
+      or Carp::croak(qq/Cannot parse URL: '$url'/);
+
+    $scheme     = lc $scheme;
+    $path_query = "/$path_query" unless $path_query =~ m<\A/>;
+
+    my $host = (length($authority)) ? lc $authority : 'localhost';
+       $host =~ s/\A[^@]*@//;   # userinfo
+    my $port = do {
+       $host =~ s/:([0-9]*)\z// && length $1
+         ? $1
+         : ($scheme eq 'http' ? 80 : undef);
+    };
+
+    return ($scheme, $host, $port, $path_query);
+}
+
+package
+    HTTPMicro::Handle; # hide from PAUSE/indexers
+use strict;
+use warnings;
+
+use Carp       qw[croak];
+use Errno      qw[EINTR EPIPE];
+use IO::Socket qw[SOCK_STREAM];
+
+sub BUFSIZE () { 32768 }
+
+my $Printable = sub {
+    local $_ = shift;
+    s/\r/\\r/g;
+    s/\n/\\n/g;
+    s/\t/\\t/g;
+    s/([^\x20-\x7E])/sprintf('\\x%.2X', ord($1))/ge;
+    $_;
+};
+
+sub new {
+    my ($class, %args) = @_;
+    return bless {
+        rbuf             => '',
+        timeout          => 60,
+        max_line_size    => 16384,
+        %args
+    }, $class;
+}
+
+sub connect {
+    @_ == 4 || croak(q/Usage: $handle->connect(scheme, host, port)/);
+    my ($self, $scheme, $host, $port) = @_;
+
+    if ( $scheme ne 'http' ) {
+      croak(qq/Unsupported URL scheme '$scheme'/);
+    }
+
+    $self->{fh} = 'IO::Socket::INET'->new(
+        PeerHost  => $host,
+        PeerPort  => $port,
+        Proto     => 'tcp',
+        Type      => SOCK_STREAM,
+        Timeout   => $self->{timeout}
+    ) or croak(qq/Could not connect to '$host:$port': $@/);
+
+    binmode($self->{fh})
+      or croak(qq/Could not binmode() socket: '$!'/);
+
+    $self->{host} = $host;
+    $self->{port} = $port;
+
+    return $self;
+}
+
+sub close {
+    @_ == 1 || croak(q/Usage: $handle->close()/);
+    my ($self) = @_;
+    CORE::close($self->{fh})
+      or croak(qq/Could not close socket: '$!'/);
+}
+
+sub write {
+    @_ == 2 || croak(q/Usage: $handle->write(buf)/);
+    my ($self, $buf) = @_;
+
+    my $len = length $buf;
+    my $off = 0;
+
+    local $SIG{PIPE} = 'IGNORE';
+
+    while () {
+        $self->can_write
+          or croak(q/Timed out while waiting for socket to become ready for writing/);
+        my $r = syswrite($self->{fh}, $buf, $len, $off);
+        if (defined $r) {
+            $len -= $r;
+            $off += $r;
+            last unless $len > 0;
+        }
+        elsif ($! == EPIPE) {
+            croak(qq/Socket closed by remote server: $!/);
+        }
+        elsif ($! != EINTR) {
+            croak(qq/Could not write to socket: '$!'/);
+        }
+    }
+    return $off;
+}
+
+sub read {
+    @_ == 2 || @_ == 3 || croak(q/Usage: $handle->read(len)/);
+    my ($self, $len) = @_;
+
+    my $buf  = '';
+    my $got = length $self->{rbuf};
+
+    if ($got) {
+        my $take = ($got < $len) ? $got : $len;
+        $buf  = substr($self->{rbuf}, 0, $take, '');
+        $len -= $take;
+    }
+
+    while ($len > 0) {
+        $self->can_read
+          or croak(q/Timed out while waiting for socket to become ready for reading/);
+        my $r = sysread($self->{fh}, $buf, $len, length $buf);
+        if (defined $r) {
+            last unless $r;
+            $len -= $r;
+        }
+        elsif ($! != EINTR) {
+            croak(qq/Could not read from socket: '$!'/);
+        }
+    }
+    if ($len) {
+        croak(q/Unexpected end of stream/);
+    }
+    return $buf;
+}
+
+sub readline {
+    @_ == 1 || croak(q/Usage: $handle->readline()/);
+    my ($self) = @_;
+
+    while () {
+        if ($self->{rbuf} =~ s/\A ([^\x0D\x0A]* \x0D?\x0A)//x) {
+            return $1;
+        }
+        $self->can_read
+          or croak(q/Timed out while waiting for socket to become ready for reading/);
+        my $r = sysread($self->{fh}, $self->{rbuf}, BUFSIZE, length $self->{rbuf});
+        if (defined $r) {
+            last unless $r;
+        }
+        elsif ($! != EINTR) {
+            croak(qq/Could not read from socket: '$!'/);
+        }
+    }
+    croak(q/Unexpected end of stream while looking for line/);
+}
+
+sub read_header_lines {
+    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->read_header_lines([headers])/);
+    my ($self, $headers) = @_;
+    $headers ||= {};
+    my $lines   = 0;
+    my $val;
+
+    while () {
+         my $line = $self->readline;
+
+         if ($line =~ /\A ([^\x00-\x1F\x7F:]+) : [\x09\x20]* ([^\x0D\x0A]*)/x) {
+             my ($field_name) = lc $1;
+             $val = \($headers->{$field_name} = $2);
+         }
+         elsif ($line =~ /\A [\x09\x20]+ ([^\x0D\x0A]*)/x) {
+             $val
+               or croak(q/Unexpected header continuation line/);
+             next unless length $1;
+             $$val .= ' ' if length $$val;
+             $$val .= $1;
+         }
+         elsif ($line =~ /\A \x0D?\x0A \z/x) {
+            last;
+         }
+         else {
+            croak(q/Malformed header line: / . $Printable->($line));
+         }
+    }
+    return $headers;
+}
+
+sub write_header_lines {
+    (@_ == 2 && ref $_[1] eq 'HASH') || croak(q/Usage: $handle->write_header_lines(headers)/);
+    my($self, $headers) = @_;
+
+    my $buf = '';
+    while (my ($k, $v) = each %$headers) {
+        my $field_name = lc $k;
+         $field_name =~ /\A [\x21\x23-\x27\x2A\x2B\x2D\x2E\x30-\x39\x41-\x5A\x5E-\x7A\x7C\x7E]+ \z/x
+            or croak(q/Invalid HTTP header field name: / . $Printable->($field_name));
+         $field_name =~ s/\b(\w)/\u$1/g;
+         $buf .= "$field_name: $v\x0D\x0A";
+    }
+    $buf .= "\x0D\x0A";
+    return $self->write($buf);
+}
+
+sub read_content_body {
+    @_ == 3 || @_ == 4 || croak(q/Usage: $handle->read_content_body(callback, response, [read_length])/);
+    my ($self, $cb, $response, $len) = @_;
+    $len ||= $response->{headers}{'content-length'};
+
+    croak("No content-length in the returned response, and this "
+        . "UA doesn't implement chunking") unless defined $len;
+
+    while ($len > 0) {
+        my $read = ($len > BUFSIZE) ? BUFSIZE : $len;
+        $cb->($self->read($read), $response);
+        $len -= $read;
+    }
+
+    return;
+}
+
+sub write_content_body {
+    @_ == 2 || croak(q/Usage: $handle->write_content_body(request)/);
+    my ($self, $request) = @_;
+    my ($len, $content_length) = (0, $request->{headers}{'content-length'});
+
+    $len += $self->write($request->{content});
+
+    $len == $content_length
+      or croak(qq/Content-Length missmatch (got: $len expected: $content_length)/);
+
+    return $len;
+}
+
+sub read_response_header {
+    @_ == 1 || croak(q/Usage: $handle->read_response_header()/);
+    my ($self) = @_;
+
+    my $line = $self->readline;
+
+    $line =~ /\A (HTTP\/(0*\d+\.0*\d+)) [\x09\x20]+ ([0-9]{3}) [\x09\x20]+ ([^\x0D\x0A]*) \x0D?\x0A/x
+      or croak(q/Malformed Status-Line: / . $Printable->($line));
+
+    my ($protocol, $version, $status, $reason) = ($1, $2, $3, $4);
+
+    return {
+        status   => $status,
+        reason   => $reason,
+        headers  => $self->read_header_lines,
+        protocol => $protocol,
+    };
+}
+
+sub write_request_header {
+    @_ == 4 || croak(q/Usage: $handle->write_request_header(method, request_uri, headers)/);
+    my ($self, $method, $request_uri, $headers) = @_;
+
+    return $self->write("$method $request_uri HTTP/1.1\x0D\x0A")
+         + $self->write_header_lines($headers);
+}
+
+sub _do_timeout {
+    my ($self, $type, $timeout) = @_;
+    $timeout = $self->{timeout}
+        unless defined $timeout && $timeout >= 0;
+
+    my $fd = fileno $self->{fh};
+    defined $fd && $fd >= 0
+      or croak(q/select(2): 'Bad file descriptor'/);
+
+    my $initial = time;
+    my $pending = $timeout;
+    my $nfound;
+
+    vec(my $fdset = '', $fd, 1) = 1;
+
+    while () {
+        $nfound = ($type eq 'read')
+            ? select($fdset, undef, undef, $pending)
+            : select(undef, $fdset, undef, $pending) ;
+        if ($nfound == -1) {
+            $! == EINTR
+              or croak(qq/select(2): '$!'/);
+            redo if !$timeout || ($pending = $timeout - (time - $initial)) > 0;
+            $nfound = 0;
+        }
+        last;
+    }
+    $! = 0;
+    return $nfound;
+}
+
+sub can_read {
+    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_read([timeout])/);
+    my $self = shift;
+    return $self->_do_timeout('read', @_)
+}
+
+sub can_write {
+    @_ == 1 || @_ == 2 || croak(q/Usage: $handle->can_write([timeout])/);
+    my $self = shift;
+    return $self->_do_timeout('write', @_)
+}
+
+1;
+}
+# ###########################################################################
+# End HTTPMicro package
+# ###########################################################################
+
+# ###########################################################################
+# Pingback package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Pingback.pm
+#   t/lib/Pingback.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Pingback;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper   qw();
+use Digest::MD5    qw(md5_hex);
+use Sys::Hostname  qw(hostname);
+use Fcntl          qw(:DEFAULT);
+use File::Basename qw();
+use File::Spec;
+
+my $dir              = File::Spec->tmpdir();
+my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $check_time_limit = 60 * 60 * 24;  # one day
+
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+
+   Data::Dumper::Dumper(@_);
+}
+
+local $EVAL_ERROR;
+eval {
+   require Percona::Toolkit;
+   require HTTPMicro;
+   require VersionCheck;
+};
+
+sub version_check {
+   my @instances = @_;
+   eval {
+      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('--version-check is disabled by the PERCONA_VERSION_CHECK',
+               'environment variable');
+         }
+         return;
+      } 
+
+      foreach my $instance ( @instances ) {
+         my ($name, $id) = _generate_identifier($instance);
+         $instance->{name} = $name;
+         $instance->{id}   = $id;
+      }
+
+      my ($time_to_check, $instances_to_check)
+         = time_to_check($check_time_file, \@instances);
+      if ( !$time_to_check ) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('It is not time to --version-check again;',
+               'only 1 check per', $check_time_limit, 'seconds, and the last',
+               'check was performed on the modified time of', $check_time_file);
+         }
+         return;
+      }
+
+      my $advice = pingback(
+         url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
+         instances => $instances_to_check,
+      );
+      if ( $advice ) {
+         print "# Percona suggests these upgrades:\n";
+         print join("\n", map { "#   * $_" } @$advice);
+         print "\n# Specify --no-version-check to disable these suggestions.\n\n";
+      }
+      elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('--version-check worked, but there were no suggestions');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Error doing --version-check:', $EVAL_ERROR);
+      }
+   }
+
+   return;
+}
+
+sub pingback {
+   my (%args) = @_;
+   my @required_args = qw(url);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($url) = @args{@required_args};
+
+   my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
+
+   $ua ||= HTTPMicro->new( timeout => 2 );
+   $vc ||= VersionCheck->new();
+
+   my $response = $ua->request('GET', $url);
+   PTDEBUG && _d('Server response:', Dumper($response));
+   die "No response from GET $url"
+      if !$response;
+   die "GET $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+   die "GET $url did not return any programs to check"
+      if !$response->{content};
+
+   my $items = $vc->parse_server_response(
+      response => $response->{content}
+   );
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
+      
+   my $versions = $vc->get_versions(
+      items     => $items,
+      instances => $instances,
+   );
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
+
+   my $client_content = encode_client_response(
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
+   );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Client response:', Dumper($client_response));
+   }
+
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   return unless $response->{content};
+
+   $items = $vc->parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
+}
+
+sub time_to_check {
+   my ($file, $instances) = @_;
+   die "I need a file argument" unless $file;
+
+   my $created_file = 0;
+   if ( !-f $file ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Creating time limit file', $file);
+      }
+      _touch($file);
+      $created_file = 1;
+   }
+   elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Time limit file already exists:', $file);
+   }
+
+   my $time = int(time());  # current time
+
+   if ( @$instances ) {
+      my $instances_to_check = instances_to_check($file, $instances, $time);
+      return scalar @$instances_to_check, $instances_to_check;
+   }
+
+   return 1 if $created_file;
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      PTDEBUG && _d('Error getting modified time of', $file);
+      return 0;
+   }
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      _touch($file);
+      return 1;
+   }
+
+   return 0;
+}
+
+sub instances_to_check {
+   my ($file, $instances, $time) = @_;
+
+   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
+   my $file_contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   chomp($file_contents);
+   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
+
+   my @instances_to_check;
+   foreach my $instance ( @$instances ) {
+      my $mtime = $cached_instances{ $instance->{id} };
+      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('Time to check MySQL instance', $instance->{name});
+         }
+         push @instances_to_check, $instance;
+         $cached_instances{ $instance->{id} } = $time;
+      }
+   }
+
+   open $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
+   while ( my ($id, $time) = each %cached_instances ) {
+      print { $fh } "$id,$time\n";
+   }
+   close $fh or die "Cannot close $file: $OS_ERROR";
+
+   return \@instances_to_check;
+}
+
+sub _touch {
+   my ($file) = @_;
+   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+      or die "Cannot create $file : $!";
+   close $fh or die "Cannot close $file : $!";
+   utime(undef, undef, $file);
+}
+
+sub _generate_identifier {
+   my $instance = shift;
+   my $dbh      = $instance->{dbh};
+   my $dsn      = $instance->{dsn};
+
+   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
+   my ($name) = eval { $dbh->selectrow_array($sql) };
+   if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
+      $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+   }
+   my $id = md5_hex($name);
+
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('MySQL instance', $name, 'is', $id);
+   }
+
+   return $name, $id;
+}
+
+sub encode_client_response {
+   my (%args) = @_;
+   my @required_args = qw(items versions general_id);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items, $versions, $general_id) = @args{@required_args};
+
+   my @lines;
+   foreach my $item ( sort keys %$items ) {
+      next unless exists $versions->{$item};
+      if ( ref($versions->{$item}) eq 'HASH' ) {
+         my $mysql_versions = $versions->{$item};
+         for my $id ( keys %$mysql_versions ) {
+            push @lines, join(';', $id, $item, $mysql_versions->{$id});
+         }
+      }
+      else {
+         push @lines, join(';', $general_id, $item, $versions->{$item});
+      }
+   }
+
+   my $client_response = join("\n", @lines) . "\n";
+   return $client_response;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Pingback package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -3685,6 +5891,8 @@ sub _d {
 # ###########################################################################
 package pt_kill;
 
+use strict;
+use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use POSIX qw(setsid);
 use List::Util qw(max);
@@ -3696,6 +5904,7 @@ $Data::Dumper::Quotekeys = 0;
 
 Transformers->import(qw(ts));
 
+use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 $OUTPUT_AUTOFLUSH = 1;
@@ -3707,12 +5916,7 @@ my $o;
 # ########################################################################
 
 sub main {
-   @ARGV = @_;  # set global ARGV for this package
-
-   my $ms = new MasterSlave();
-   my $pl = new Processlist(MasterSlave => $ms);
-   my $vp = new VersionParser();
-   my $qr = new QueryRewriter();
+   local @ARGV = @_;  # set global ARGV for this package
 
    # ########################################################################
    # Get configuration information.
@@ -3788,10 +5992,21 @@ sub main {
    # ########################################################################
    # Make input sub that will either get processlist from MySQL or a file.
    # ########################################################################
-   my $dsn;
-   my $dbh;
+   my $ms = new MasterSlave(
+      OptionParser => $o,
+      DSNParser    => $dp,
+      Quoter       => "Quoter",
+   );
+   my $pl = new Processlist(MasterSlave => $ms);
+   my $qr = new QueryRewriter();
+
+   my $cxn;
+   my $dbh;           # $cxn->dbh
+   my $get_proclist;  # callback to SHOW PROCESSLIST
+   my $proc_sth;
+   my $kill;          # callback to KILL
    my $kill_sth;
-   my $get_proclist;
+   my $kill_sql = $o->get('kill-query') ? 'KILL QUERY ?' : 'KILL ?';
    my $files;
    if ( $files = $o->get('test-matching') ) {
       PTDEBUG && _d('Getting processlist from files:', @$files);
@@ -3830,14 +6045,170 @@ sub main {
    }
    else {
       PTDEBUG && _d('Getting processlist from MySQL');
-      $dsn      = $dp->parse_options($o);
-      $dbh      = get_cxn($dp, $dsn, 1); 
-      $kill_sth = $o->get('kill-query') ? $dbh->prepare('KILL QUERY ?')
-                :                         $dbh->prepare('KILL ?');
-      my $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
+      $cxn = Cxn->new(
+         dsn_string   => shift @ARGV,
+         NAME_lc      => 0,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      $dbh = $cxn->connect();
+
+      # Make the get_proclist and kill callbacks.  Use Retry in case
+      # the connection to MySQL is lost, then the dbh and the sths
+      # will need to be re-initialized.
+      my $retry = Retry->new();
+
+      $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
       $get_proclist = sub {
-         $proc_sth->execute();
-         return $proc_sth->fetchall_arrayref({});
+         return $retry->retry(
+            # Retry for an hour: 1,200 tries x 3 seconds = 3600s/1hr
+            tries => 1200,
+            wait  => sub { sleep 3; }, 
+            try => sub {
+               $proc_sth->execute();
+               return $proc_sth->fetchall_arrayref({});
+            },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               # The 1st pattern means that MySQL itself died or was stopped.
+               # The 2nd pattern means that our cxn was killed (KILL <id>).
+               if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                     $dbh      = $cxn->connect();
+                     $proc_sth = $dbh->prepare('SHOW FULL PROCESSLIST');
+                     msg('Reconnected to ' . $cxn->name());
+                  };
+                  return 1 unless $EVAL_ERROR; # try again
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
+         );
+      };
+
+
+      $kill_sth = $dbh->prepare($kill_sql);
+      $kill = sub {
+         my ($id) = @_;
+         PTDEBUG && _d('Killing process', $id);
+         return $retry->retry(
+            tries => 2,
+            try => sub {
+               return $kill_sth->execute($id);
+            },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               # The 1st pattern means that MySQL itself died or was stopped.
+               # The 2nd pattern means that our cxn was killed (KILL <id>).
+               if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                     $dbh      = $cxn->connect();
+                     $kill_sth = $dbh->prepare($kill_sql);
+                     msg('Reconnected to ' . $cxn->name());
+                  };
+                  return 1 unless $EVAL_ERROR; # try again
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
+         );
+      };
+   }
+
+   # Set up --log-dsn if specified.
+   my ($log, $log_sth);
+   my @processlist_columns = qw(
+      Id User Host db Command
+      Time State Info Time_ms
+   );
+   if ( my $log_dsn = $o->get('log-dsn') ) {
+      my $db    = $log_dsn->{D};
+      my $table = $log_dsn->{t};
+      die "--log-dsn does not specify a database (D) "
+        . "or a database-qualified table (t)"
+         unless defined $table && defined $db;
+      my $log_cxn   = Cxn->new(
+         dsn_string   => ($dp->get_cxn_params($log_dsn))[0],
+         NAME_lc      => 0,
+         DSNParser    => $dp,
+         OptionParser => $o,
+      );
+      my $log_dbh   = $log_cxn->connect();
+      my $log_table = Quoter->quote($db, $table);
+
+      # Create the log-table table if it doesn't exist and --create-log-table
+      # was passed in
+      my $tp = TableParser->new( Quoter => "Quoter" );
+      if ( !$tp->check_table( dbh => $log_dbh, db => $db, tbl => $table ) ) {
+         if ($o->get('create-log-table') ) {
+            my $sql = $o->read_para_after(
+               __FILE__, qr/MAGIC_create_log_table/);
+            $sql =~ s/kill_log/IF NOT EXISTS $log_table/;
+            PTDEBUG && _d($sql);
+            $log_dbh->do($sql);
+         }
+         else {
+            die "--log-dsn table does not exist. Please create it or specify "
+            . "--create-log-table.";
+         }
+      }
+
+      # All the columns of the table that we care about
+      my @all_log_columns = ( qw( server_id timestamp reason kill_error ),
+                              @processlist_columns );
+
+      my $sql = 'SELECT @@SERVER_ID';
+      PTDEBUG && _d($sql);
+      my ($server_id) = $dbh->selectrow_array($sql);
+
+      $sql = "INSERT INTO $log_table ("
+           . join(", ", @all_log_columns)
+           . ") VALUES("
+           . join(", ", $server_id, ("?") x (@all_log_columns-1))
+           . ")";
+      PTDEBUG && _d($sql);
+      $log_sth = $log_dbh->prepare($sql); 
+
+      my $retry = Retry->new();
+
+      $log = sub {
+         my (@params) = @_;
+         PTDEBUG && _d('Logging values:', @params);
+         return $retry->retry(
+            tries => 20,
+            wait  => sub { sleep 3; },
+            try   => sub { return $log_sth->execute(@params); },
+            fail  => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               # The 1st pattern means that MySQL itself died or was stopped.
+               # The 2nd pattern means that our cxn was killed (KILL <id>).
+               if (    $error =~ m/MySQL server has gone away/
+                    || $error =~ m/Lost connection to MySQL server/ ) {
+                  eval {
+                     $log_dbh = $log_cxn->connect();
+                     $log_sth = $log_dbh->prepare( $sql );
+                     msg('Reconnected to ' . $cxn->name());
+                  };
+                  return 1 unless $EVAL_ERROR; # try again
+               }
+               return 0; # call final_fail
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            },
+         );
       };
    }
 
@@ -3857,10 +6228,19 @@ sub main {
    }
 
    # ########################################################################
+   # Do the version-check
+   # ########################################################################
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+      Pingback::version_check(
+         ($dbh ? { dbh => $dbh, dsn => $cxn->dsn() } : ())
+      );
+   }
+
+   # ########################################################################
    # Start working.
    # ########################################################################
    msg("$PROGRAM_NAME starting");
-   msg($dbh ? "Connected to host " . $dp->as_string($dsn)
+   msg($dbh ? "Connected to host " . $cxn->name()
             : "Test matching files @$files");
 
    # Class-based match criteria.
@@ -4044,7 +6424,17 @@ sub main {
                      . " seconds before kill");
                   sleep $o->get('wait-before-kill');
                }
-               eval { $kill_sth->execute($query->{Id}); };
+               local $@;
+               eval { $kill->($query->{Id}) };
+               if ( $log ) {
+                  log_to_table(
+                     log        => $log,
+                     query      => $query,
+                     proclist   => $pl,
+                     columns    => \@processlist_columns,
+                     eval_error => $EVAL_ERROR,
+                  );
+               }
                if ( $EVAL_ERROR ) {
                   msg("Error killing $query->{Id}: $EVAL_ERROR");
                }
@@ -4083,16 +6473,6 @@ sub main {
 # Subroutines.
 # ############################################################################
 
-sub get_cxn {
-   my ( $dp, $dsn, $ac ) = @_;
-   if ( $o->get('ask-pass') ) {
-      $dsn->{p} = OptionParser::prompt_noecho("Enter password: "); 
-   }
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => $ac});
-   $dbh->{InactiveDestroy} = 1; # Because of forking.
-   return $dbh;
-}
-
 # Forks and detaches from parent to execute the given command;
 # does not block parent.
 sub exec_cmd {
@@ -4120,6 +6500,21 @@ sub msg {
    print '# ', ts(time), " $msg\n" if $o->get('verbose');
    PTDEBUG && _d($msg);
    return;
+}
+
+sub log_to_table {
+   my (%args) = @_;
+   my ($log, $query, $pl, $processlist_columns)
+            = @args{qw( log query proclist columns )};
+
+   my $ts      = Transformers::ts(localtime);
+   my $reasons = join "\n", map {
+         defined($_) ? $_ : "Unkown reason"
+      } @{ $pl->{_reasons_for_matching}->{$query} };
+   $log->(
+         $ts, $reasons, $args{eval_error},
+         @{$query}{@$processlist_columns}
+   );
 }
 
 sub group_queries {
@@ -4177,7 +6572,7 @@ pt-kill - Kill MySQL queries that match certain criteria.
 
 =head1 SYNOPSIS
 
-Usage: pt-kill [OPTIONS]
+Usage: pt-kill [OPTIONS] [DSN]
 
 pt-kill kills MySQL connections.  pt-kill connects to MySQL and gets queries
 from SHOW PROCESSLIST if no FILE is given.  Else, it reads queries from one
@@ -4316,6 +6711,9 @@ L<"--kill"> and L<"--kill-query"> are mutually exclusive.
 
 L<"--daemonize"> and L<"--test-matching"> are mutually exclusive.
 
+This tool accepts additional command-line arguments.  Refer to the
+L<"SYNOPSIS"> and usage information for details.
+
 =over
 
 =item --ask-pass
@@ -4337,6 +6735,19 @@ type: Array
 
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
+
+=item --database
+
+short form: -D; type: string
+
+The database to use for the connection.
+
+=item --create-log-table
+
+Create the L<"--log-dsn"> table if it does not exist.
+
+This option causes the table specified by L<"--log-dsn"> to be created with the
+default structure shown in the documentation for that option.
 
 =item --daemonize
 
@@ -4442,6 +6853,37 @@ type: string
 
 Print all output to this file when daemonized.
 
+=item --log-dsn
+
+type: DSN
+
+Store each query killed in this DSN.
+
+The argument specifies a table to store all killed queries.  The DSN
+passed in must have the databse (D) and table (t) options. The
+table must have at least the following columns.  You can add more columns for
+your own special purposes, but they won't be used by pt-kill.  The
+following CREATE TABLE definition is also used for L<"--create-log-table">.
+MAGIC_create_log_table:
+
+   CREATE TABLE kill_log (
+      kill_id     int(10) unsigned NOT NULL AUTO_INCREMENT,
+      server_id   bigint(4) NOT NULL DEFAULT '0',
+      timestamp   DATETIME,
+      reason      TEXT,
+      kill_error  TEXT,
+      Id          bigint(4) NOT NULL DEFAULT '0',
+      User        varchar(16) NOT NULL DEFAULT '',
+      Host        varchar(64) NOT NULL DEFAULT '',
+      db          varchar(64) DEFAULT NULL,
+      Command     varchar(16) NOT NULL DEFAULT '',
+      Time        int(7) NOT NULL DEFAULT '0',
+      State       varchar(64) DEFAULT NULL,
+      Info        longtext,
+      Time_ms     bigint(21) DEFAULT '0', # NOTE, TODO: currently not used
+      PRIMARY KEY (kill_id)
+   ) DEFAULT CHARSET=utf8
+
 =item --password
 
 short form: -p; type: string
@@ -4518,6 +6960,18 @@ User for login if not current user.
 =item --version
 
 Show version and exit.
+
+=item --version-check
+
+Send program versions to Percona and print suggested upgrades and problems.
+
+The version check feature causes the tool to send and receive data from
+Percona over the web.  The data contains program versions from the local
+machine.  Percona uses the data to focus development on the most widely
+used versions of programs, and to suggest to customers possible upgrades
+and known bad versions of programs.
+
+For more information, visit L<http://www.percona.com/version-check>.
 
 =item --victims
 
@@ -4947,6 +7401,10 @@ dsn: user; copy: yes
 
 User for login if not current user.
 
+=item * t
+
+Table to log actions in, if passed through --log-dsn.
+
 =back
 
 =head1 ENVIRONMENT
@@ -5040,6 +7498,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 2.1.2
+pt-kill 2.1.3
 
 =cut

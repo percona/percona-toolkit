@@ -11,13 +11,13 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use VersionParser;
 use Quoter;
 use TableParser;
 use DSNParser;
 use QueryParser;
 use TableSyncer;
 use TableChecksum;
-use VersionParser;
 use TableSyncGroupBy;
 use MockSyncStream;
 use MockSth;
@@ -42,28 +42,22 @@ if ( !$dbh1 ) {
 elsif ( !$dbh2 ) {
    plan skip_all => "Cannot connect to sandbox slave";
 }
-else {
-   plan tests => 57;
-}
 
 Transformers->import(qw(make_checksum));
 
-my $vp = new VersionParser();
 my $q  = new Quoter();
 my $qp = new QueryParser();
 my $tp = new TableParser(Quoter => $q);
-my $tc = new TableChecksum(Quoter => $q, VersionParser => $vp);
+my $tc = new TableChecksum(Quoter => $q);
 my $of = new Outfile();
 my $rr = new Retry();
 my $ts = new TableSyncer(
    Quoter        => $q,
-   VersionParser => $vp,
    TableChecksum => $tc,
    Retry         => $rr,
    MasterSlave   => 1,
 );
 my %modules = (
-   VersionParser => $vp,
    Quoter        => $q,
    TableParser   => $tp,
    TableSyncer   => $ts,
@@ -279,14 +273,14 @@ is_deeply(
 
 $report = <<EOF;
 # Checksum differences
-# Query ID           master    slave
+# Query ID           host1     host2
 # ================== ========= ==========
 # D2D386B840D3BEEA-1 $events[0]->{checksum} $events[1]->{checksum}
 
 # Row count differences
-# Query ID           master slave
-# ================== ====== =====
-# D2D386B840D3BEEA-1      3     4
+# Query ID           host1 host2
+# ================== ===== =====
+# D2D386B840D3BEEA-1     3     4
 EOF
 
 is(
@@ -307,8 +301,10 @@ is_deeply(
 # #############################################################################
 # Test the rows method.
 # #############################################################################
-
 my $tmpdir = '/tmp/mk-upgrade-res';
+SKIP: {
+   skip "LOAD DATA LOCAL INFILE is disabled", 30 unless $can_load_data;
+
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
 $sb->load_file('master', "t/lib/samples/compare-results.sql");
@@ -488,14 +484,14 @@ is_deeply(
 
 $report = <<EOF;
 # Column value differences
-# Query ID           Column master slave
-# ================== ====== ====== ===========
-# CFC309761E9131C5-3 c      c      should be c
+# Query ID           Column host1 host2
+# ================== ====== ===== ===========
+# CFC309761E9131C5-3 c      c     should be c
 
 # Row count differences
-# Query ID           master slave
-# ================== ====== =====
-# B8B721D77EA1FD78-0      3     4
+# Query ID           host1 host2
+# ================== ===== =====
+# B8B721D77EA1FD78-0     3     4
 EOF
 
 is(
@@ -552,9 +548,9 @@ is_deeply(
 
 $report = <<EOF;
 # Column value differences
-# Query ID           Column master slave
-# ================== ====== ====== ===========
-# CFC309761E9131C5-3 c      a      should be a
+# Query ID           Column host1 host2
+# ================== ====== ===== ===========
+# CFC309761E9131C5-3 c      a     should be a
 EOF
 
 is(
@@ -674,9 +670,9 @@ is_deeply(
 
 $report = <<EOF;
 # Row count differences
-# Query ID           master slave
-# ================== ====== =====
-# D56E6FABA26D1F1C-3      3     1
+# Query ID           host1 host2
+# ================== ===== =====
+# D56E6FABA26D1F1C-3     3     1
 EOF
 
 is(
@@ -684,6 +680,7 @@ is(
    $report,
    'rows: report, left with more rows'
 );
+}
 
 # #############################################################################
 # Try to compare without having done the actions.
@@ -729,6 +726,9 @@ is_deeply(
    'No differences after bad compare()'
 );
 
+SKIP: {
+   skip "LOAD DATA LOCAL INFILE is disabled", 2 unless $can_load_data;
+
 $cr = new CompareResults(
    method     => 'rows',
    'base-dir' => $tmpdir,
@@ -758,6 +758,8 @@ is_deeply(
    'No differences after bad compare()'
 );
 
+}
+
 # #############################################################################
 # Done.
 # #############################################################################
@@ -777,4 +779,5 @@ diag(`rm -rf /tmp/*outfile.txt`);
 $sb->wipe_clean($dbh1);
 $sb->wipe_clean($dbh2);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

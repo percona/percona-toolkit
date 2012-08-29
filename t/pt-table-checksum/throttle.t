@@ -11,6 +11,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+if ( !$ENV{SLOW_TESTS} ) {
+   plan skip_all => "pt-table-checksum/throttle.t is a top 5 slowest file; set SLOW_TESTS=1 to enable it.";
+}
+
 $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
@@ -69,7 +73,7 @@ wait_until(sub {
 # wait for it to stop "lagging".
 ($output) = PerconaTest::full_output(
    sub { pt_table_checksum::main(@args, qw(-t sakila.city)) },
-   wait_for => 3,
+   wait_for => 10,
 );
 
 like(

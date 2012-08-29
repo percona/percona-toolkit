@@ -22,8 +22,8 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 10;
+elsif ( !$can_load_data ) {
+   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
 }
 
 my $output;
@@ -58,7 +58,6 @@ $output = `/tmp/12345/use -N -e "checksum table test.table_5_dest, test.table_5_
 my ( $chks ) = $output =~ m/dest\s+(\d+)/;
 like($output, qr/copy\s+$chks/, 'copy checksum');
 
-
 # ############################################################################
 # Issue 1260: mk-archiver --bulk-insert data loss
 # ############################################################################
@@ -89,4 +88,5 @@ is_deeply(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

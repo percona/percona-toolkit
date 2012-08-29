@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 2;
+use Test::More;
 
 use PerconaTest;
 shift @INC;  # our unshift (above)
@@ -45,7 +45,19 @@ ok(
    'Analysis for sorted001.txt (issue 1341)'
 );
 
+($output) = full_output(
+    sub { pt_tcp_model::main(@args,
+            '--type=requests', "$trunk/t/lib/samples/empty.txt"
+    ) }
+);
+
+is(
+   $output,
+   '',
+   "--type=requests doesn't die on an empty file",
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

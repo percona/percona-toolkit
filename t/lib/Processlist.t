@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 34;
+use Test::More;
 
 use Processlist;
 use PerconaTest;
@@ -23,7 +23,7 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
-my $ms  = new MasterSlave();
+my $ms  = new MasterSlave(OptionParser=>1,DSNParser=>1,Quoter=>1);
 my $rsp = new TextResultSetParser();
 my $pl;
 my $procs;
@@ -600,6 +600,17 @@ my %find_spec = (
    },
 );
 
+my $matching_query =
+      {  'Time'    => '91',
+         'Command' => 'Query',
+         'db'      => undef,
+         'Id'      => '43',
+         'Info'    => 'select * from foo',
+         'User'    => 'msandbox',
+         'State'   => 'executing',
+         'Host'    => 'localhost'
+      };
+
 my @queries = $pl->find(
    [  {  'Time'    => '488',
          'Command' => 'Connect',
@@ -675,32 +686,23 @@ my @queries = $pl->find(
          'State'   => 'Locked',
          'Host'    => 'localhost'
       },
-      {  'Time'    => '91',
-         'Command' => 'Query',
-         'db'      => undef,
-         'Id'      => '43',
-         'Info'    => 'select * from foo',
-         'User'    => 'msandbox',
-         'State'   => 'executing',
-         'Host'    => 'localhost'
-      },
+      $matching_query,
    ],
    %find_spec,
 );
 
-my $expected = [
-      {  'Time'    => '91',
-         'Command' => 'Query',
-         'db'      => undef,
-         'Id'      => '43',
-         'Info'    => 'select * from foo',
-         'User'    => 'msandbox',
-         'State'   => 'executing',
-         'Host'    => 'localhost'
-      },
-   ];
+my $expected = [ $matching_query ];
 
 is_deeply(\@queries, $expected, 'Basic find()');
+
+{
+   # Internal, fragile test!
+   is_deeply(
+      $pl->{_reasons_for_matching}->{$matching_query},
+      [ 'Exceeds busy time', 'Query matches Command spec', 'Query matches Info spec', ],
+      "_reasons_for_matching works"
+   );
+}
 
 %find_spec = (
    busy_time    => 1,
@@ -861,6 +863,61 @@ ok !$@,
  "Bug 923896: NULL Time in processlist doesn't fail for idle_time+Command=Sleep";
 
 # #############################################################################
+# NULL STATE doesn't generate warnings
+# https://bugs.launchpad.net/percona-toolkit/+bug/821703
+# #############################################################################
+
+$procs = [
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 7,
+    'some state', 1] ],
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 8,
+    undef, 2] ],
+],
+
+eval {
+   parse_n_times(
+      2,
+      code  => sub {
+         return shift @$procs;
+      },
+      time  => Transformers::unix_timestamp('2001-01-01 00:05:00'),
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "NULL STATE shouldn't cause warnings"
+);
+
+# #############################################################################
+# Extra processlist fields are ignored and don't cause errors
+# https://bugs.launchpad.net/percona-toolkit/+bug/883098
+# #############################################################################
+
+$procs = [
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 7,
+    'some state', 1, 0, 0, 1] ],
+   [ [1, 'unauthenticated user', 'localhost', undef, 'Connect', 8,
+    undef, 2, 1, 2, 0] ],
+],
+
+eval {
+   parse_n_times(
+      2,
+      code  => sub {
+         return shift @$procs;
+      },
+      time  => Transformers::unix_timestamp('2001-01-01 00:05:00'),
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "Extra processlist fields don't cause errors"
+);
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
