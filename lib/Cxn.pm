@@ -107,6 +107,7 @@ sub new {
       dbh_set      => 0,
       OptionParser => $o,
       DSNParser    => $dp,
+      is_cluster_node => undef,
    };
 
    return bless $self, $class;
@@ -192,6 +193,19 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub is_cluster_node {
+   my ($self) = @_;
+   return $self->{is_cluster_node} if defined $self->{is_cluster_node};
+   
+   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
+   PTDEBUG && _d($sql);
+   my $row = $self->{dbh}->selectrow_arrayref($sql);
+   PTDEBUG && _d(defined $row ? @$row : 'undef');
+   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+  
+   return $self->{is_cluster_node};
 }
 
 sub DESTROY {
