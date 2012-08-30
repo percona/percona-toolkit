@@ -182,10 +182,13 @@ for pkg in $pkgs; do
 done
 
 if [ $pkgs_updated -gt 0 ]; then
-   update_tool_header $tmp_tool_file
-   if [ $? -ne 0 ]; then
-      warn "Failed to update tool header"
-   else 
+   if [ "$tool_lang" = "perl" ]; then
+      update_tool_header $tmp_tool_file
+      if [ $? -ne 0 ]; then
+         warn "Failed to update tool header"
+      fi
+   fi
+   if [ $EXIT_STATUS -eq 0 ]; then
       cp $tmp_tool_file $tool_file
       if [ $? -ne 0 ]; then
          warn "Failed to copy $tmp_tool_file to $tool_file"
