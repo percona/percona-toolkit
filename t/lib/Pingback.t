@@ -35,11 +35,10 @@ if ( $master_dbh ) {
    (undef, $mysql_distro)
       = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
 
-   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
-   my ($name) = $master_dbh->selectrow_array($sql);
-   $master_id = md5_hex($name);
-
-   (undef, $slave1_id) = Pingback::_generate_identifier( { dbh => $slave1_dbh } );
+   (undef, $master_id) = Pingback::_generate_identifier(
+      { dbh => $master_dbh, dsn => { h => '127.1', P => 12345 }});
+   (undef, $slave1_id) = Pingback::_generate_identifier(
+      { dbh => $slave1_dbh, dsn => { h => '127.1', P => 12346 }});
 
    $master_inst = {
       id   => $master_id,
@@ -283,12 +282,28 @@ is(
 
 SKIP: {
    skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
-   skip 'Requires MySQL 5.0.38 or newer', unless $sandbox_version ge '5.0.38';
 
+   my $expect_master_id;
+   if ( $sandbox_version ge '5.1' ) {
+      my $sql           = q{SELECT CONCAT(@@hostname, @@port)};
+      my ($name)        = $master_dbh->selectrow_array($sql);
+      $expect_master_id = md5_hex($name);
+   }
+   elsif ( $sandbox_version eq '5.0' ) {
+      my $sql           = q{SELECT @@hostname};
+      my ($hostname)    = $master_dbh->selectrow_array($sql);
+      $sql              = q{SHOW VARIABLES LIKE 'port'};
+      my (undef, $port) = $master_dbh->selectrow_array($sql);
+      $expect_master_id = md5_hex($hostname . $port);
+   }
+   else {
+      $expect_master_id = md5_hex("localhost", 12345);
+   }
+   
    is(
-      Pingback::_generate_identifier( { dbh => $master_dbh, dsn => undef } ),
       $master_id,
-      "_generate_identifier() works with a dbh"
+      $expect_master_id,
+      "_generate_identifier() for MySQL $sandbox_version"
    );
 
    # The time limit file already exists (see previous tests), but this is
