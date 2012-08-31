@@ -307,10 +307,31 @@ sub _generate_identifier {
    my $dbh      = $instance->{dbh};
    my $dsn      = $instance->{dsn};
 
-   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
+   # MySQL 5.1+ has @@hostname and @@port
+   # MySQL 5.0  has @@hostname but port only in SHOW VARS
+   # MySQL 4.x  has nothing, so we use the dsn
+   my $sql = q{SELECT CONCAT(@@hostname, @@port)};
+   PTDEBUG && _d($sql);
    my ($name) = eval { $dbh->selectrow_array($sql) };
-   if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
-      $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+   if ( $EVAL_ERROR ) {
+      # MySQL 4.x or 5.0
+      PTDEBUG && _d($EVAL_ERROR);
+      $sql = q{SELECT @@hostname};
+      PTDEBUG && _d($sql);
+      ($name) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         # MySQL 4.x
+         PTDEBUG && _d($EVAL_ERROR);
+         $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+      }
+      else {
+         # MySQL 5.0
+         $sql = q{SHOW VARIABLES LIKE 'port'};
+         PTDEBUG && _d($sql);
+         my (undef, $port) = eval { $dbh->selectrow_array($sql) };
+         PTDEBUG && _d('port:', $port);
+         $name .= $port || '';
+      }
    }
    my $id = md5_hex($name);
 
