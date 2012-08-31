@@ -244,7 +244,7 @@ sub get_cxn_params {
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
                      qw(F h P S A))
-         . ';mysql_read_default_group=client';
+         . ';mysql_read_default_group=client;mysql_local_infile=1';
    }
    PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
