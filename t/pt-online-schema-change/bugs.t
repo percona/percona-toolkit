@@ -159,6 +159,40 @@ like $output,
    );
 }
 
+# ############################################################################
+# Bug 1041372: ptc-osc and long table names
+# https://bugs.launchpad.net/percona-toolkit/+bug/1041372
+# ############################################################################
+my $orig_tbl = 'very_very_very_very_very_very_very_very_very_long_table_name';  
+
+$master_dbh->do(q{DROP DATABASE IF EXISTS `bug_1041372`});
+$master_dbh->do(q{CREATE DATABASE `bug_1041372`});
+
+for my $i ( 0..4 ) {
+   my $tbl = $orig_tbl . ("a" x $i);
+   $master_dbh->do(qq{create table `bug_1041372`.$tbl (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY )});
+   $master_dbh->do(qq{insert into `bug_1041372`.$tbl values (1), (2), (3), (4), (5)});
+
+   ($output) = full_output(sub { pt_online_schema_change::main(@args,
+                                 '--alter', "ADD COLUMN ptosc INT",
+                                 '--execute', "$master_dsn,D=bug_1041372,t=$tbl")});
+
+   like(
+      $output,
+      qr/\QSuccessfully altered `bug_1041372`.`$tbl`/,
+      "pt-osc works on long table names (length " . length($tbl) . ")"
+   );
+}
+
+my $triggers = $master_dbh->selectall_arrayref(qq{SHOW TRIGGERS FROM `bug_1041372`});
+is_deeply(
+   $triggers,
+   [],
+   "No triggers left for long table names"
+) or diag(Dumper($triggers));
+
+$master_dbh->do(q{DROP DATABASE IF EXISTS `bug_1041372`});
+
 # #############################################################################
 # Done.
 # #############################################################################

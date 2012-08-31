@@ -7479,7 +7479,6 @@ sub main {
    eval {
       $new_tbl = create_new_table(
          orig_tbl     => $orig_tbl,
-         suffix       => '_new',
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
@@ -8196,7 +8195,7 @@ sub create_new_table{
 
    my $tries      = $args{tries}  || 10;  # don't try forever
    my $prefix     = $args{prefix} || '_';
-   my $suffix     = $args{suffix} || '_new';
+   my $suffix     = '_new';
    my $table_name = $orig_tbl->{tbl} . $suffix;
 
    print "Creating new table...\n";
@@ -8204,6 +8203,14 @@ sub create_new_table{
    my @old_tables;
    while ( $tryno++ < $tries ) {
       $table_name = $prefix . $table_name;
+
+      if ( length($table_name) > 64 ) {
+         my $truncated_table_name = substr($table_name, 0, 60) . $suffix;
+         PTDEBUG && _d($table_name, 'is over 64 characters long, truncating to',
+                       $truncated_table_name);
+         $table_name = $truncated_table_name;
+      }
+      
       my $quoted  = $q->quote($orig_tbl->{db}, $table_name);
 
       # Generate SQL to create the new table.  We do not use CREATE TABLE LIKE
@@ -8282,9 +8289,17 @@ sub swap_tables {
    }
    elsif ( $o->get('execute') ) {
       print "Swapping tables...\n";
-
+      
       while ( $tries-- ) {
          $table_name = $prefix . $table_name;
+         
+         if ( length($table_name) > 64 ) {
+            my $truncated_table_name = substr($table_name, 0, 64);
+            PTDEBUG && _d($table_name, 'is over 64 characters long, truncating to',
+                          $truncated_table_name);
+            $table_name = $truncated_table_name;
+         }
+         
          my $sql     = "RENAME TABLE $orig_tbl->{name} "
                      . "TO " . $q->quote($orig_tbl->{db}, $table_name)
                      . ", $new_tbl->{name} TO $orig_tbl->{name}"; 
@@ -8622,6 +8637,13 @@ sub create_triggers {
    # so multiple instances of the tool can run on different tables.
    my $prefix = 'pt_osc_' . $orig_tbl->{db} . '_' . $orig_tbl->{tbl};
    $prefix   =~ s/\W/_/g;
+
+   if ( length($prefix) > 60 ) {
+      my $truncated_prefix = substr($prefix, 0, 60);
+      PTDEBUG && _d('Trigger prefix', $prefix, 'is over 60 characters long,',
+                     'truncating to', $truncated_prefix);
+      $prefix = $truncated_prefix;
+   }
 
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.  We use null-safe equals, because unique
