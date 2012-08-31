@@ -186,7 +186,6 @@ cmp_ok(
 # Bug 903387: pt-archiver doesn't honor b=1 flag to create SQL_LOG_BIN statement
 # #############################################################################
 SKIP: {
-   skip('LOAD DATA LOCAL INFILE is disabled', 3) if !$can_load_data;
    $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
    $sb->wait_for_slaves();
 

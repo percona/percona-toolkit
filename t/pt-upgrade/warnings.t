@@ -15,13 +15,6 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
-# This test calls pt-upgrade with --compare-results-method rows
-# which use LOAD DATA LOCAL INFILE.  If LOAD DATA is disabled,
-# then this this test can't run.
-if ( !$can_load_data ) {
-   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
-}
-
 # This runs immediately if the server is already running, else it starts it.
 diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 

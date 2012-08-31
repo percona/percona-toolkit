@@ -61,9 +61,6 @@ ok(
    'Report for multiple queries (checksum method)'
 );
 
-SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 2 unless $can_load_data;
-   
    ok(
       no_diff(
          sub { pt_upgrade::main(@args, "$trunk/$sample/001/select-one.log",
@@ -81,7 +78,6 @@ SKIP: {
       ),
       'Report for multiple queries (rows method)'
    );
-}
 
 ok(
    no_diff(
