@@ -218,7 +218,7 @@ is_deeply (
             { S => 'bar', h => 'host' } ))
    ],
    [
-      'DBI:mysql:foo;host=me;mysql_socket=bar;mysql_read_default_group=client',
+      'DBI:mysql:foo;host=me;mysql_socket=bar;mysql_read_default_group=client;mysql_local_infile=1',
       'a',
       'b',
    ],
@@ -234,7 +234,7 @@ is_deeply (
             { S => 'bar', h => 'host' } ))
    ],
    [
-      'DBI:mysql:foo;host=me;mysql_socket=bar;charset=foo;mysql_read_default_group=client',
+      'DBI:mysql:foo;host=me;mysql_socket=bar;charset=foo;mysql_read_default_group=client;mysql_local_infile=1',
       'a',
       'b',
    ],
@@ -568,6 +568,42 @@ like(
    qr/\QUnknown system variable 'time_zoen'/,
    "get_dbh dies with an unknown system variable"
 );
+$dp->prop('set-vars', undef);
+
+# #############################################################################
+# LOAD DATA LOCAL INFILE broken in some platforms
+# https://bugs.launchpad.net/percona-toolkit/+bug/821715
+# #############################################################################
+
+SKIP: {
+   skip "LOAD DATA LOCAL INFILE already works here", 1 if $can_load_data;
+   my $dbh = $dp->get_dbh( $dp->get_cxn_params( $dsn ) );
+
+   use File::Temp qw(tempfile);
+
+   my ($fh, $filename) = tempfile( 'load_data_test.XXXXXXX', TMPDIR => 1 );
+   print { $fh } "42\n";
+   close $fh or die "Cannot close $filename: $!";
+
+   $dbh->do(q{DROP DATABASE IF EXISTS bug_821715});
+   $dbh->do(q{CREATE DATABASE bug_821715});
+   $dbh->do(q{CREATE TABLE IF NOT EXISTS bug_821715.load_data (i int)});
+
+   eval {
+      $dbh->do(qq{LOAD DATA LOCAL INFILE '$filename' INTO TABLE bug_821715.load_data});
+   };
+
+   is(
+      $EVAL_ERROR,
+      '',
+      "Even though LOCAL INFILE is off by default, the dbhs returned by DSNParser can use it"
+   );
+   
+   unlink $filename;
+
+   $dbh->do(q{DROP DATABASE IF EXISTS bug_821715});
+   $dbh->disconnect();
+}
 
 # #############################################################################
 # Done.
