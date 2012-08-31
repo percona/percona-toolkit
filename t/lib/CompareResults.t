@@ -303,7 +303,6 @@ is_deeply(
 # #############################################################################
 my $tmpdir = '/tmp/mk-upgrade-res';
 SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 30 unless $can_load_data;
 
 diag(`rm -rf $tmpdir 2>/dev/null; mkdir $tmpdir`);
 
@@ -727,7 +726,6 @@ is_deeply(
 );
 
 SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 2 unless $can_load_data;
 
 $cr = new CompareResults(
    method     => 'rows',

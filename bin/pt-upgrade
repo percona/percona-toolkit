@@ -245,7 +245,7 @@ sub get_cxn_params {
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
                      qw(F h P S A))
-         . ';mysql_read_default_group=client';
+         . ';mysql_read_default_group=client;mysql_local_infile=1';
    }
    PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
@@ -11334,7 +11334,7 @@ sub encode_client_response {
       next unless exists $versions->{$item};
       if ( ref($versions->{$item}) eq 'HASH' ) {
          my $mysql_versions = $versions->{$item};
-         for my $id ( keys %$mysql_versions ) {
+         for my $id ( sort keys %$mysql_versions ) {
             push @lines, join(';', $id, $item, $mysql_versions->{$id});
          }
       }

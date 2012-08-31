@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$can_load_data ) {
-   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
-}
 
 my $output;
 my $rows;
