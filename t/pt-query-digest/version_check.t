@@ -11,6 +11,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
+use File::Spec::Functions;
+
 use PerconaTest;
 use Sandbox;
 use Data::Dumper;
@@ -19,14 +21,15 @@ use Time::HiRes qw(time);
 require "$trunk/bin/pt-query-digest";
 
 my $output;
-my $cmd  = "$trunk/bin/pt-query-digest --limit 1 $trunk/t/lib/samples/slowlogs/slow001.txt";
+my $cmd  = catfile($trunk, "bin", "pt-query-digest");
+my @args = (qw(--limit 1), catfile($trunk, qw(t lib samples slowlogs slow001.txt)));
 
 # Pingback.pm does this too.
 my $dir = File::Spec->tmpdir();
 my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
 unlink $check_time_file if -f $check_time_file;
 
-$output = `PTVCDEBUG=1 $cmd --version-check 2>&1`;
+$output = `PTVCDEBUG=1 $cmd @args --version-check http 2>&1`;
 
 like(
    $output,
@@ -49,7 +52,7 @@ ok(
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
 
-$output = `PTVCDEBUG=1 $cmd --version-check 2>&1`;
+$output = `PTVCDEBUG=1 $cmd @args --version-check http 2>&1`;
 
 like(
    $output,
@@ -65,13 +68,13 @@ unlink $check_time_file if -f $check_time_file;
 
 my $t0 = time;
 
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --version-check 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd @args --version-check http 2>&1`;
 
 my $t = time - $t0;
 
 like(
    $output,
-   qr/Error.+?GET http:\/\/x\.percona\.com.+?HTTP status 5\d+/,
+   qr/Error.+?(?:GET http:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
    "The Percona server didn't respond"
 );
 
@@ -93,7 +96,7 @@ cmp_ok(
 
 unlink $check_time_file if -f $check_time_file;
 
-$output = `PTVCDEBUG=1 $cmd 2>&1`;
+$output = `PTVCDEBUG=1 $cmd @args 2>&1`;
 
 unlike(
    $output,
@@ -109,7 +112,7 @@ ok(
 # PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
 # for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
 # create the file which also signifies that it didn't run.
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --version-check 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd @args --version-check http 2>&1`;
 
 ok(
    !-f $check_time_file,
