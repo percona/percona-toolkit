@@ -810,7 +810,8 @@ collect() {
          >> "$d/$p-processlist" &
 
       if [ "$have_lock_waits_table" ]; then
-         (echo $ts; lock_waits) >>"$d/$p-lock-waits" &
+         (echo $ts; lock_waits)   >>"$d/$p-lock-waits" &
+         (echo $ts; transactions) >>"$d/$p-transactions" &
       fi
    done
    log "Loop end: $(date +'TS %s.%N %F %T')"
@@ -910,6 +911,12 @@ lock_waits() {
    ORDER BY wait_time DESC\G"
    $CMD_MYSQL $EXT_ARGV -e "$sql2"
 } 
+
+transactions() {
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS\G"
+   $CMD_MYSQL $EXT_ARGV -e "SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS\G"
+}
 
 # ###########################################################################
 # End collect package
