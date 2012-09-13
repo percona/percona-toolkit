@@ -238,20 +238,37 @@ my $file  = File::Spec->catfile($dir, 'percona-toolkit-version-check-test');
 
 unlink $file if -f $file;
 
+my $time = int(time());
+
 ok(
-   Pingback::time_to_check($file, []),
+   Pingback::time_to_check($file, [], $time),
    "time_to_check() returns true if the file doesn't exist",
 );
 
 ok(
-   !Pingback::time_to_check($file, []),
-   "...but false if it exists and it's been less than 24 hours",
+   !-f $file,
+   "time_to_check doesn't create the checks file"   
+);
+
+Pingback::update_checks_file($file, [], $time);
+
+ok(
+   -f $file,
+   "...but update_checks_file does"
+);
+
+ok(
+   !Pingback::time_to_check($file, [], $time),
+   "...and time_to_check is false if the file exists and it's been less than 24 hours",
 );
 
 my $one_day = 60 * 60 * 24;
-my ($old_atime, $old_mtime) = (stat($file))[8,9];
+my ($orig_atime, $orig_mtime) = (stat($file))[8,9];
 
-utime($old_atime - $one_day * 2, $old_mtime - $one_day * 2, $file);
+my $mod_atime = $orig_atime - $one_day * 2;
+my $mod_mtime = $orig_mtime - $one_day * 2;
+
+utime($mod_atime, $mod_mtime, $file);
 
 cmp_ok(
    (stat($file))[9],
@@ -261,13 +278,24 @@ cmp_ok(
 );
 
 ok(
-   Pingback::time_to_check($file, []),
+   Pingback::time_to_check($file, [], $time),
    "time_to_check true if file exists and mtime < one day", #>"
 );
 
+my ($atime, $mtime) = (stat($file))[8,9];
+
+is($mod_atime, $atime, "time_to_check doesn't update the atime");
+is($mod_mtime, $mtime, "time_to_check doesn't update the mtime");
+
+Pingback::update_checks_file($file, [], $time);
+
+($atime, $mtime) = (stat($file))[8,9];
+
+ok($orig_atime == $atime && $orig_mtime == $mtime, "but update_checks_file does");
+
 ok(
-   !Pingback::time_to_check($file, []),
-   "...but fails if tried a second time, as the mtime has been updated",
+   !Pingback::time_to_check($file, [], $time),
+   "...and time_to_check fails after update_checks_file, as the mtime has been updated",
 );
 
 # #############################################################################
@@ -312,7 +340,8 @@ SKIP: {
       $file,
       [ $master_inst ],
    );
-
+   Pingback::update_checks_file($file, $check_inst, int(time()));
+   
    ok(
       $is_time,
       "Time to check a new MySQL instance ID",
@@ -330,6 +359,8 @@ SKIP: {
       [ $master_inst ],
    );
 
+   Pingback::update_checks_file($file, $check_inst, int(time()));
+   
    ok(
       !$is_time,
       "...but not the second time around",
@@ -344,6 +375,8 @@ SKIP: {
       [ $master_inst ],
    );
 
+   Pingback::update_checks_file($file, $check_inst, int(time()));
+   
    is_deeply(
       $check_inst,
       [ $master_inst ],
@@ -355,6 +388,8 @@ SKIP: {
       [ $master_inst, $slave1_inst ],
    );
 
+   Pingback::update_checks_file($file, $check_inst, int(time()));
+   
    is_deeply(
       $check_inst,
       [ $slave1_inst ],
@@ -371,6 +406,8 @@ SKIP: {
       [ $master_inst, $slave1_inst ],
    );
 
+   Pingback::update_checks_file($file, $check_inst, int(time()));
+   
    ok(
       !$is_time,
       "...and false if there isn't anything to check",
