@@ -176,6 +176,10 @@ sub get_os_version {
 
   chomp(my $platform = `uname -s`);
   PTDEBUG && _d('platform:', $platform);
+  if ( !$platform ) {
+      return $OSNAME if $OSNAME ne 'MSWin32';
+      return Win32::GetOSDisplayName();
+  }
   return $OSNAME unless $platform;
 
    chomp(my $lsb_release
@@ -387,6 +391,11 @@ sub new {
     return bless $self, $class;
 }
 
+my %DefaultPort = (
+    http => 80,
+    https => 443,
+);
+
 sub request {
     my ($self, $method, $url, $args) = @_;
     @_ == 3 || (@_ == 4 && ref $args eq 'HASH')
@@ -423,7 +432,7 @@ sub _request {
     my $request = {
         method    => $method,
         scheme    => $scheme,
-        host_port => ($port == 80 ? $host : "$host:$port"),
+        host_port => ($port == $DefaultPort{$scheme} ? $host : "$host:$port"),
         uri       => $path_query,
         headers   => {},
     };
@@ -487,7 +496,7 @@ sub _split_url {
     my $port = do {
        $host =~ s/:([0-9]*)\z// && length $1
          ? $1
-         : ($scheme eq 'http' ? 80 : undef);
+         : $DefaultPort{$scheme}
     };
 
     return ($scheme, $host, $port, $path_query);
@@ -523,12 +532,24 @@ sub new {
     }, $class;
 }
 
+my $ssl_verify_args = {
+    check_cn => "when_only",
+    wildcards_in_alt => "anywhere",
+    wildcards_in_cn => "anywhere"
+};
+
 sub connect {
     @_ == 4 || croak(q/Usage: $handle->connect(scheme, host, port)/);
     my ($self, $scheme, $host, $port) = @_;
 
-    if ( $scheme ne 'http' ) {
-      croak(qq/Unsupported URL scheme '$scheme'/);
+    if ( $scheme eq 'https' ) {
+        eval "require IO::Socket::SSL"
+            unless exists $INC{'IO/Socket/SSL.pm'};
+        croak(qq/IO::Socket::SSL must be installed for https support\n/)
+            unless $INC{'IO/Socket/SSL.pm'};
+    }
+    elsif ( $scheme ne 'http' ) {
+      croak(qq/Unsupported URL scheme '$scheme'\n/);
     }
 
     $self->{fh} = 'IO::Socket::INET'->new(
@@ -542,6 +563,14 @@ sub connect {
     binmode($self->{fh})
       or croak(qq/Could not binmode() socket: '$!'/);
 
+    if ( $scheme eq 'https') {
+        IO::Socket::SSL->start_SSL($self->{fh});
+        ref($self->{fh}) eq 'IO::Socket::SSL'
+            or die(qq/SSL connection failed for $host\n/);
+        $self->{fh}->verify_hostname( $host, $ssl_verify_args )
+            or die(qq/SSL certificate not valid for $host\n/);
+    }
+      
     $self->{host} = $host;
     $self->{port} = $port;
 
@@ -832,52 +861,54 @@ eval {
 };
 
 sub version_check {
-   my @instances = @_;
-   eval {
-      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('--version-check is disabled by the PERCONA_VERSION_CHECK',
-               'environment variable');
-         }
-         return;
-      } 
+   my $args        = pop @_;
+   my (@instances) = @_;
 
+   if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+      print STDERR '--version-check is disabled by the PERCONA_VERSION_CHECK ',
+                   "environment variable.\n\n";
+      return;
+   }
+   
+   my $instances_to_check = [];
+   my $time               = int(time());
+   eval {
       foreach my $instance ( @instances ) {
          my ($name, $id) = _generate_identifier($instance);
          $instance->{name} = $name;
          $instance->{id}   = $id;
       }
 
-      my ($time_to_check, $instances_to_check)
-         = time_to_check($check_time_file, \@instances);
+      my $time_to_check;
+      ($time_to_check, $instances_to_check)
+         = time_to_check($check_time_file, \@instances, $time);
       if ( !$time_to_check ) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('It is not time to --version-check again;',
-               'only 1 check per', $check_time_limit, 'seconds, and the last',
-               'check was performed on the modified time of', $check_time_file);
-         }
+         print STDERR 'It is not time to --version-check again; ',
+                      "only 1 check per day.\n\n";
          return;
       }
 
+      my $protocol = $args->{protocol} || 'https';
       my $advice = pingback(
-         url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
+         url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
          instances => $instances_to_check,
+         protocol  => $args->{protocol},
       );
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
-         print join("\n", map { "#   * $_" } @$advice);
-         print "\n# Specify --no-version-check to disable these suggestions.\n\n";
+         print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
       elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
          _d('--version-check worked, but there were no suggestions');
       }
    };
    if ( $EVAL_ERROR ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Error doing --version-check:', $EVAL_ERROR);
-      }
+      warn "Error doing --version-check: $EVAL_ERROR";
    }
-
+   else {
+      update_checks_file($check_time_file, $instances_to_check, $time);
+   }
+   
    return;
 }
 
@@ -895,12 +926,12 @@ sub pingback {
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
-   PTDEBUG && _d('Server response:', Dumper($response));
+   ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
    die "No response from GET $url"
       if !$response;
-   die "GET $url returned HTTP status $response->{status}; expected 200"
-      if $response->{status} != 200;
-   die "GET $url did not return any programs to check"
+   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
+       ($response->{content} || '')) if $response->{status} != 200;
+   die("GET on $url did not return any programs to check")
       if !$response->{content};
 
    my $items = $vc->parse_server_response(
@@ -953,38 +984,24 @@ sub pingback {
 }
 
 sub time_to_check {
-   my ($file, $instances) = @_;
+   my ($file, $instances, $time) = @_;
    die "I need a file argument" unless $file;
-
-   my $created_file = 0;
-   if ( !-f $file ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Creating time limit file', $file);
-      }
-      _touch($file);
-      $created_file = 1;
-   }
-   elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('Time limit file already exists:', $file);
-   }
-
-   my $time = int(time());  # current time
+   $time ||= int(time());  # current time
 
    if ( @$instances ) {
       my $instances_to_check = instances_to_check($file, $instances, $time);
       return scalar @$instances_to_check, $instances_to_check;
    }
 
-   return 1 if $created_file;
-
+   return 1 if !-f $file;
+   
    my $mtime  = (stat $file)[9];
    if ( !defined $mtime ) {
       PTDEBUG && _d('Error getting modified time of', $file);
-      return 0;
+      return 1;
    }
    PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
    if ( ($time - $mtime) > $check_time_limit ) {
-      _touch($file);
       return 1;
    }
 
@@ -992,12 +1009,13 @@ sub time_to_check {
 }
 
 sub instances_to_check {
-   my ($file, $instances, $time) = @_;
+   my ($file, $instances, $time, %args) = @_;
 
-   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
-   my $file_contents = do { local $/ = undef; <$fh> };
-   close $fh;
-   chomp($file_contents);
+   my $file_contents = '';
+   if (open my $fh, '<', $file) {
+      chomp($file_contents = do { local $/ = undef; <$fh> });
+      close $fh;
+   }
    my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
 
    my @instances_to_check;
@@ -1012,13 +1030,44 @@ sub instances_to_check {
       }
    }
 
-   open $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
-   while ( my ($id, $time) = each %cached_instances ) {
-      print { $fh } "$id,$time\n";
+   if ( $args{update_file} ) {
+      open my $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
+      while ( my ($id, $time) = each %cached_instances ) {
+         print { $fh } "$id,$time\n";
+      }
+      close $fh or die "Cannot close $file: $OS_ERROR";
    }
-   close $fh or die "Cannot close $file: $OS_ERROR";
 
    return \@instances_to_check;
+}
+
+sub update_checks_file {
+   my ($file, $instances, $time) = @_;
+
+   if ( !-f $file ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Creating time limit file', $file);
+      }
+      _touch($file);
+   }
+
+   if ( $instances && @$instances ) {
+      instances_to_check($file, $instances, $time, update_file => 1);
+      return;
+   }
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      _touch($file);
+      return;
+   }
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      _touch($file);
+      return;
+   }
+
+   return;
 }
 
 sub _touch {
@@ -1034,10 +1083,25 @@ sub _generate_identifier {
    my $dbh      = $instance->{dbh};
    my $dsn      = $instance->{dsn};
 
-   my $sql    = q{SELECT CONCAT(@@hostname, @@port)};
+   my $sql = q{SELECT CONCAT(@@hostname, @@port)};
+   PTDEBUG && _d($sql);
    my ($name) = eval { $dbh->selectrow_array($sql) };
-   if ( $EVAL_ERROR ) { # assume that it's MySQL 4.x
-      $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $sql = q{SELECT @@hostname};
+      PTDEBUG && _d($sql);
+      ($name) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+      }
+      else {
+         $sql = q{SHOW VARIABLES LIKE 'port'};
+         PTDEBUG && _d($sql);
+         my (undef, $port) = eval { $dbh->selectrow_array($sql) };
+         PTDEBUG && _d('port:', $port);
+         $name .= $port || '';
+      }
    }
    my $id = md5_hex($name);
 
@@ -1061,7 +1125,7 @@ sub encode_client_response {
       next unless exists $versions->{$item};
       if ( ref($versions->{$item}) eq 'HASH' ) {
          my $mysql_versions = $versions->{$item};
-         for my $id ( keys %$mysql_versions ) {
+         for my $id ( sort keys %$mysql_versions ) {
             push @lines, join(';', $id, $item, $mysql_versions->{$id});
          }
       }
@@ -1500,6 +1564,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'value_is_optional' => 1,
    );
 
    my $self = {
@@ -1741,9 +1806,10 @@ sub _parse_specs {
             $opt->{short} = undef;
          }
 
-         $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
-         $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
-         $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
+         $opt->{is_negatable}   = $opt->{spec} =~ m/!/        ? 1 : 0;
+         $opt->{is_cumulative}  = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{optional_value} = $opt->{spec} =~ m/:/        ? 1 : 0;
+         $opt->{is_required}    = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
          $self->{groups}->{ $opt->{group} }->{$long} = 1;
@@ -1879,7 +1945,7 @@ sub _set_option {
    if ( $opt->{is_cumulative} ) {
       $opt->{value}++;
    }
-   else {
+   elsif ( !($opt->{optional_value} && !$val) ) {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
@@ -2420,11 +2486,12 @@ sub _parse_size {
 sub _parse_attribs {
    my ( $self, $option, $attribs ) = @_;
    my $types = $self->{types};
+   my $eq    = $attribs->{'value_is_optional'} ? ':' : '=';
    return $option
       . ($attribs->{'short form'} ? '|' . $attribs->{'short form'}   : '' )
       . ($attribs->{'negatable'}  ? '!'                              : '' )
       . ($attribs->{'cumulative'} ? '+'                              : '' )
-      . ($attribs->{'type'}       ? '=' . $types->{$attribs->{type}} : '' );
+      . ($attribs->{'type'}       ? $eq . $types->{$attribs->{type}} : '' );
 }
 
 sub _parse_synopsis {
@@ -8533,10 +8600,11 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
-   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+   if ( $o->got('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check(
          { dbh => $master_dbh, dsn => $master_dsn },
-         map { +{ dbh => $_->dbh(), dsn => $_->dsn() } } @$slaves
+         map({ +{ dbh => $_->dbh(), dsn => $_->dsn() } } @$slaves),
+         { protocol => $o->get('version-check') },
       );
    }
 
@@ -10869,7 +10937,14 @@ Show version and exit.
 
 =item --version-check
 
+type: string; value_is_optional: yes; default: https
+
 Send program versions to Percona and print suggested upgrades and problems.
+
+If specified without a value, it will use https by default; However, this
+might fail if C<IO::Socket::SSL> is not installed on your system, in which
+case you may choose to use C<--version-check http>, which will forgo
+encryption but should work out of the box.
 
 The version check feature causes the tool to send and receive data from
 Percona over the web.  The data contains program versions from the local

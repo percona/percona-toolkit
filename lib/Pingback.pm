@@ -55,19 +55,21 @@ eval {
 };
 
 sub version_check {
-   my @instances = @_;
+   my $args        = pop @_;
+   my (@instances) = @_;
    # If this blows up, oh well, don't bother the user about it.
    # This feature is a "best effort" only; we don't want it to
    # get in the way of the tool's real work.
-   eval {
-      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('--version-check is disabled by the PERCONA_VERSION_CHECK',
-               'environment variable');
-         }
-         return;
-      } 
 
+   if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+      print STDERR '--version-check is disabled by the PERCONA_VERSION_CHECK ',
+                   "environment variable.\n\n";
+      return;
+   }
+   
+   my $instances_to_check = [];
+   my $time               = int(time());
+   eval {
       # Name and ID the instances.  The name is for debugging; the ID is
       # what the code uses.
       foreach my $instance ( @instances ) {
@@ -76,36 +78,36 @@ sub version_check {
          $instance->{id}   = $id;
       }
 
-      my ($time_to_check, $instances_to_check)
-         = time_to_check($check_time_file, \@instances);
+      my $time_to_check;
+      ($time_to_check, $instances_to_check)
+         = time_to_check($check_time_file, \@instances, $time);
       if ( !$time_to_check ) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('It is not time to --version-check again;',
-               'only 1 check per', $check_time_limit, 'seconds, and the last',
-               'check was performed on the modified time of', $check_time_file);
-         }
+         print STDERR 'It is not time to --version-check again; ',
+                      "only 1 check per day.\n\n";
          return;
       }
 
+      my $protocol = $args->{protocol} || 'https';
       my $advice = pingback(
-         url       => $ENV{PERCONA_VERSION_CHECK_URL} || 'http://v.percona.com',
+         url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
          instances => $instances_to_check,
+         protocol  => $args->{protocol},
       );
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
-         print join("\n", map { "#   * $_" } @$advice);
-         print "\n# Specify --no-version-check to disable these suggestions.\n\n";
+         print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
       elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
          _d('--version-check worked, but there were no suggestions');
       }
    };
    if ( $EVAL_ERROR ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Error doing --version-check:', $EVAL_ERROR);
-      }
+      warn "Error doing --version-check: $EVAL_ERROR";
    }
-
+   else {
+      update_checks_file($check_time_file, $instances_to_check, $time);
+   }
+   
    return;
 }
 
@@ -123,7 +125,7 @@ sub pingback {
    $ua ||= HTTPMicro->new( timeout => 2 );
    $vc ||= VersionCheck->new();
 
-   # GET http://upgrade.percona.com, the server will return
+   # GET https://upgrade.percona.com, the server will return
    # a plaintext list of items/programs it wants the tool
    # to get, one item per line with the format ITEM;TYPE[;VARS]
    # ITEM is the pretty name of the item/program; TYPE is
@@ -131,12 +133,12 @@ sub pingback {
    # get the item's version; and VARS is optional for certain
    # items/types that need extra hints.
    my $response = $ua->request('GET', $url);
-   PTDEBUG && _d('Server response:', Dumper($response));
+   ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
    die "No response from GET $url"
       if !$response;
-   die "GET $url returned HTTP status $response->{status}; expected 200"
-      if $response->{status} != 200;
-   die "GET $url did not return any programs to check"
+   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
+       ($response->{content} || '')) if $response->{status} != 200;
+   die("GET on $url did not return any programs to check")
       if !$response->{content};
 
    # Parse the plaintext server response into a hashref keyed on
@@ -207,25 +209,9 @@ sub pingback {
 }
 
 sub time_to_check {
-   my ($file, $instances) = @_;
+   my ($file, $instances, $time) = @_;
    die "I need a file argument" unless $file;
-
-   # If there's no time limit file, then create it and check everything.
-   # Don't return yet, let _time_to_check_by_instances() write any MySQL
-   # instances to the file, then return.
-   my $created_file = 0;
-   if ( !-f $file ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Creating time limit file', $file);
-      }
-      _touch($file);
-      $created_file = 1;
-   }
-   elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('Time limit file already exists:', $file);
-   }
-
-   my $time = int(time());  # current time
+   $time ||= int(time());  # current time
 
    # If we have MySQL instances, check only the ones that haven't been
    # seen/checked before or were check > 24 hours ago.
@@ -234,20 +220,17 @@ sub time_to_check {
       return scalar @$instances_to_check, $instances_to_check;
    }
 
-   # No need to check the file's mtime because we just created it;
-   # return now that any MySQL instances have been written to it.
-   return 1 if $created_file;
-
+   return 1 if !-f $file;
+   
    # No MySQL instances (happens with tools like pt-diskstats), so just
    # check the file's mtime and check if it was updated > 24 hours ago.
    my $mtime  = (stat $file)[9];
    if ( !defined $mtime ) {
       PTDEBUG && _d('Error getting modified time of', $file);
-      return 0;
+      return 1;
    }
    PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
    if ( ($time - $mtime) > $check_time_limit ) {
-      _touch($file);
       return 1;
    }
 
@@ -256,16 +239,17 @@ sub time_to_check {
 }
 
 sub instances_to_check {
-   my ($file, $instances, $time) = @_;
+   my ($file, $instances, $time, %args) = @_;
 
    # The time limit file contains "ID,time" lines for each MySQL instance
    # that the last tool connected to.  The last tool may have seen fewer
    # or more MySQL instances than the current tool, but we'll read them
    # all and check only the MySQL instances for the current tool.
-   open my $fh, '<', $file or die "Cannot open $file: $OS_ERROR";
-   my $file_contents = do { local $/ = undef; <$fh> };
-   close $fh;
-   chomp($file_contents);
+   my $file_contents = '';
+   if (open my $fh, '<', $file) {
+      chomp($file_contents = do { local $/ = undef; <$fh> });
+      close $fh;
+   }
    my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
 
    # Check the MySQL instances that have either 1) never been checked
@@ -282,16 +266,50 @@ sub instances_to_check {
       }
    }
 
-   # Overwrite the time limit file with the check times for instances
-   # we're going to check or with the original check time for instances
-   # that we're still waiting on.
-   open $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
-   while ( my ($id, $time) = each %cached_instances ) {
-      print { $fh } "$id,$time\n";
+   if ( $args{update_file} ) {
+      # Overwrite the time limit file with the check times for instances
+      # we're going to check or with the original check time for instances
+      # that we're still waiting on.
+      open my $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
+      while ( my ($id, $time) = each %cached_instances ) {
+         print { $fh } "$id,$time\n";
+      }
+      close $fh or die "Cannot close $file: $OS_ERROR";
    }
-   close $fh or die "Cannot close $file: $OS_ERROR";
 
    return \@instances_to_check;
+}
+
+sub update_checks_file {
+   my ($file, $instances, $time) = @_;
+
+   # If there's no time limit file, then create it, but
+   # don't return yet, let _time_to_check_by_instances() write any MySQL
+   # instances to the file, then return.
+   if ( !-f $file ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Creating time limit file', $file);
+      }
+      _touch($file);
+   }
+
+   if ( $instances && @$instances ) {
+      instances_to_check($file, $instances, $time, update_file => 1);
+      return;
+   }
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      _touch($file);
+      return;
+   }
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      _touch($file);
+      return;
+   }
+
+   return;
 }
 
 sub _touch {

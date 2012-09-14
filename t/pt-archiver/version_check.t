@@ -40,7 +40,7 @@ unlink $check_time_file if -f $check_time_file;
 $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
 
 like(
    $output,
@@ -64,7 +64,7 @@ ok(
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
+$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
 
 like(
    $output,
@@ -80,13 +80,13 @@ unlink $check_time_file if -f $check_time_file;
 
 my $t0 = time;
 
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
 
 my $t = time - $t0;
 
 like(
    $output,
-   qr/Error.+?GET http:\/\/x\.percona\.com.+?HTTP status 5\d+/,
+   qr/Error.+?(?:GET http:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
    "The Percona server didn't respond"
 );
 
@@ -124,7 +124,7 @@ ok(
 # PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
 # for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
 # create the file which also signifies that it didn't run.
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
+$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
 
 ok(
    !-f $check_time_file,

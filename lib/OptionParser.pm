@@ -107,6 +107,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'value_is_optional' => 1,
    );
 
    my $self = {
@@ -413,9 +414,10 @@ sub _parse_specs {
             $opt->{short} = undef;
          }
 
-         $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
-         $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
-         $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
+         $opt->{is_negatable}   = $opt->{spec} =~ m/!/        ? 1 : 0;
+         $opt->{is_cumulative}  = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{optional_value} = $opt->{spec} =~ m/:/        ? 1 : 0;
+         $opt->{is_required}    = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
          $self->{groups}->{ $opt->{group} }->{$long} = 1;
@@ -598,7 +600,7 @@ sub _set_option {
    if ( $opt->{is_cumulative} ) {
       $opt->{value}++;
    }
-   else {
+   elsif ( !($opt->{optional_value} && !$val) ) {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
@@ -1273,11 +1275,12 @@ sub _parse_size {
 sub _parse_attribs {
    my ( $self, $option, $attribs ) = @_;
    my $types = $self->{types};
+   my $eq    = $attribs->{'value_is_optional'} ? ':' : '=';
    return $option
       . ($attribs->{'short form'} ? '|' . $attribs->{'short form'}   : '' )
       . ($attribs->{'negatable'}  ? '!'                              : '' )
       . ($attribs->{'cumulative'} ? '+'                              : '' )
-      . ($attribs->{'type'}       ? '=' . $types->{$attribs->{type}} : '' );
+      . ($attribs->{'type'}       ? $eq . $types->{$attribs->{type}} : '' );
 }
 
 sub _parse_synopsis {

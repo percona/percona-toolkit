@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 151;
+use Test::More;
 
 use OptionParser;
 use DSNParser;
@@ -145,6 +145,7 @@ is_deeply(
          type           => 's',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'port'       => {
          spec           => 'port|p=i',
@@ -158,6 +159,7 @@ is_deeply(
          type           => 'i',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'price'      => {
          spec           => 'price=f',
@@ -171,6 +173,7 @@ is_deeply(
          type           => 'f',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'hash-req'   => {
          spec           => 'hash-req=s',
@@ -184,6 +187,7 @@ is_deeply(
          type           => 'H',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'hash-opt'   => {
          spec           => 'hash-opt=s',
@@ -197,6 +201,7 @@ is_deeply(
          type           => 'h',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'array-req'  => {
          spec           => 'array-req=s',
@@ -210,6 +215,7 @@ is_deeply(
          type           => 'A',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'array-opt'  => {
          spec           => 'array-opt=s',
@@ -223,6 +229,7 @@ is_deeply(
          type           => 'a',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'host'       => {
          spec           => 'host=s',
@@ -236,6 +243,7 @@ is_deeply(
          type           => 'd',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'chunk-size' => {
          spec           => 'chunk-size=s',
@@ -249,6 +257,7 @@ is_deeply(
          type           => 'z',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'time'       => {
          spec           => 'time=s',
@@ -262,6 +271,7 @@ is_deeply(
          type           => 'm',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'help'       => {
          spec           => 'help+',
@@ -275,6 +285,7 @@ is_deeply(
          type           => undef,
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'other'      => {
          spec           => 'other!',
@@ -288,6 +299,7 @@ is_deeply(
          type           => undef,
          got            => 0,
          value          => undef,
+         optional_value => 0,
       }
    },
    'Parse opt specs'
@@ -508,6 +520,7 @@ is_deeply(
          type           => undef,
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'defaultset'    => {
          spec           => 'defaultset!',
@@ -523,6 +536,7 @@ is_deeply(
          type           => undef,
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'defaults-file' => {
          spec           => 'defaults-file|F=s',
@@ -536,6 +550,7 @@ is_deeply(
          type           => 's',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'dog'           => {
          spec           => 'dog|D=s',
@@ -549,6 +564,7 @@ is_deeply(
          type           => 's',
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
       'love'          => {
          spec           => 'love|l+',
@@ -562,6 +578,7 @@ is_deeply(
          type           => undef,
          got            => 0,
          value          => undef,
+         optional_value => 0,
       },
    },
    'Parse dog specs'
@@ -961,6 +978,7 @@ is_deeply(
       long          => 'bar',
       type          => undef,
       parsed        => 1,
+      optional_value=> 0,
    },
    'Disabled opt is not destroyed'
 );
@@ -1990,11 +2008,53 @@ $o->get_opts();
 $output = output(
    sub { $o->usage_or_errors(undef, 1); },
 );
-$synop{usage} =~ s/([\[\]])/\\$1/g;
 like(
    $output,
-   qr/^$synop{description}  For more details.+\nUsage: $synop{usage}$/m,
+   qr/^$synop{description}  For more details.+\nUsage: \Q$synop{usage}\E\n?$/m,
    "Uses desc and usage from SYNOPSIS for help"
+);
+
+# Add a value_is_optional option
+@ARGV = qw();
+$o->get_opts();
+
+ok(
+   !$o->got('version-check'),
+   "version-check is not true by default"
+);
+
+is(
+   $o->get('version-check'),
+   "https",
+   "..but it still has a value",
+);
+
+@ARGV = qw(--version-check);
+$o->get_opts();
+
+ok(
+   $o->got('version-check'),
+   "version-check is true if specified without arguments"
+);
+
+is(
+   $o->get('version-check'),
+   "https",
+   "..and has the default value",
+);
+
+@ARGV = qw(--version-check http);
+$o->get_opts();
+
+ok(
+   $o->got('version-check'),
+   "version-check is true if specified with arguments"
+);
+
+is(
+   $o->get('version-check'),
+   "http",
+   "..and has the specified value",
 );
 
 # #############################################################################
@@ -2010,4 +2070,5 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-exit;
+
+done_testing;
