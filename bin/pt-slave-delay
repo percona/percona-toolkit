@@ -2664,6 +2664,10 @@ sub get_os_version {
              $release .= " ($code_name)" if $code_name;
          }
       }
+      elsif ( -f "/etc/os-release" ) { # openSUSE
+         chomp($release = `grep PRETTY_NAME /etc/os-release`);
+         $release =~ s/^PRETTY_NAME="(.+)"$/$1/;
+      }
       elsif ( `ls /etc/*release 2>/dev/null` ) {
          if ( `grep DISTRIB_DESCRIPTION /etc/*release 2>/dev/null` ) {
             $release = `grep DISTRIB_DESCRIPTION /etc/*release | head -n1`;
