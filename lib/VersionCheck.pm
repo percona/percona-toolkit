@@ -177,7 +177,7 @@ sub get_os_version {
          }
       }
    }
-   elsif ( $platform =~ m/^(BSD|Darwin)$/ ) {
+   elsif ( $platform =~ m/(?:BSD|^Darwin)$/ ) {
       my $rel = `uname -r`;
       $release = "$platform $rel";
    }
@@ -191,6 +191,9 @@ sub get_os_version {
       $release = $platform;
    }
    chomp($release);
+
+   # For Gentoo, which returns a value in quotes
+   $release =~ s/^"|"$//g;
 
    PTDEBUG && _d('OS version =', $release);
    return $release;
