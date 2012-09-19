@@ -496,7 +496,7 @@ sub make_fetch_back_query {
          map {
             my $col = $_;
             if (    $self->{hex_blob}
-                 && $tbl_struct->{type_for}->{$col} =~ m/blob|text|binary/ ) {
+                 && $tbl_struct->{type_for}->{$col} =~ m/b(?:lob|inary)/ ) {
                # Here we cast to binary, as otherwise, since text columns are
                # space padded, MySQL would compare ' ' and '' to be the same.
                # See https://bugs.launchpad.net/percona-toolkit/+bug/930693
