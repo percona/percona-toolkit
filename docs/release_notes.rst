@@ -1,6 +1,67 @@
 Release Notes
 *************
 
+v2.1.4 released 2012-09-20
+==========================
+
+Percona Toolkit 2.1.4 has been released.  This release includes 26 bug fixes and three new features: Making pt-table-checksum work with Percona XtraDB Cluster, adding a --run-time option to pt-table-checksum, and implementing the "Version Check" feature, enabled through the --version-check switch.  For further information on --version-check, see http://www.mysqlperformanceblog.com/2012/09/10/introducing-the-version-check-feature-in-percona-toolkit/.  The bug fixes are widely assorted.  The following highlights some of the more interesting and "hot" bugs:
+
+* Fixed bug 1017626: pt-table-checksum doesn't work with Percona XtraDB Cluster
+
+Note that this requires Percona XtraDB Cluster 5.5.27-23.6 or newer, as the fix depends on this bug https://bugs.launchpad.net/codership-mysql/+bug/1023911 being resolved.
+
+* Fixed bug 1034170: pt-table-checksum --defaults-file isn't used for slaves
+
+Previously, users had no recourse but using --recursion-method in conjunction with a dsn table to sidestep this bug, so this fix is a huge usability gain.  This was caused by the toolkit not copying the -F portion of the main dsn.
+
+* Fixed bug 1039184: pt-upgrade error "I need a right_sth argument"
+
+Which were stopping pt-upgrade from working on a MySQL 4.1 host.
+
+* Fixed bug 1036747: pt-table-sync priv checks need to be removed
+
+The same checks were removed in the previous release from pt-table-checksum, so this continues the trend.
+
+* Fixed bug 1038995: pt-stalk --notify-by-email fails
+
+This was a bug in our shell option parsing library, and would potentially affect any option starting with 'no'.
+
+Like 2.1.3, this is another solid bug fix release, and 2.1 users are encouraged to upgrade.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* pt-table-checksum: Percona XtraDB Cluster support
+* pt-table-checksum: Implemented the standard --run-time option
+* Implemented the version-check feature in several tools, enabled with the --version-check option
+* Fixed bug 856060: Document gdb dependency
+* Fixed bug 1041394: Unquoted arguments to tr break the bash tools
+* Fixed bug 1035311: pt-diskstats shows wrong device names
+* Fixed bug 1036804: pt-duplicate-key-checker error parsing InnoDB table with no PK or unique keys
+* Fixed bug 1022658: pt-online-schema-change dropping FK limitation isn't documented
+* Fixed bug 1041372: pt-online-schema-changes fails if db+tbl name exceeds 64 characters
+* Fixed bug 1029178: pt-query-digest --type tcpdump memory usage keeps increasing
+* Fixed bug 1037211: pt-query-digest won't distill LOCK TABLES in lowercase
+* Fixed bug 942114: pt-stalk warns about bad "find" usage
+* Fixed bug 1035319: pt-stalk df -h throws away needed details
+* Fixed bug 1038995: pt-stalk --notify-by-email fails
+* Fixed bug 1038995: pt-stalk does not get all InnoDB lock data
+* Fixed bug 952722: pt-summary should show information about Fusion-io cards
+* Fixed bug 899415: pt-table-checksum doesn't work if slaves use RBR
+* Fixed bug 954588: pt-table-checksum --check-slave-lag docs aren't clear
+* Fixed bug 1034170: pt-table-checksum --defaults-file isn't used for slaves
+* Fixed bug 930693: pt-table-sync and text columns with just whitespace
+* Fixed bug 1028710: pt-table-sync base_count fails on n = 1000, base = 10
+* Fixed bug 1034717: pt-table-sync division by zero error with varchar primary key
+* Fixed bug 1036747: pt-table-sync priv checks need to be removed
+* Fixed bug 1039184: pt-upgrade error "I need a right_sth argument"
+* Fixed bug 1035260: sh warnings in pt-summary and pt-mysql-summary
+* Fixed bug 1038276: ChangeHandler doesn't quote varchar columns with hex-looking values
+* Fixed bug 916925: CentOS 5 yum dependency resolution for perl module is wrong
+* Fixed bug 1035950: Percona Toolkit RPM should contain a dependency on perl-Time-HiRes
+
 v2.1.3 released 2012-08-03
 ==========================
 

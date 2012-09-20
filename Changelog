@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.4 released 2012-09-20
+
   * pt-table-checksum: Percona XtraDB Cluster support
   * pt-table-checksum: Implemented the standard --run-time option
   * Implemented the version-check feature in several tools, enabled with the --version-check option
