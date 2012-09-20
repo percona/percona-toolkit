@@ -49,7 +49,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.3';
+our $VERSION = '2.1.4';
 
 1;
 }
@@ -9903,6 +9903,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.1.3
+pt-online-schema-change 2.1.4
 
 =cut

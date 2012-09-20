@@ -1,3 +1,36 @@
+percona-toolkit (2.1.4) unstable; urgency=low
+
+  * pt-table-checksum: Percona XtraDB Cluster support
+  * pt-table-checksum: Implemented the standard --run-time option
+  * Implemented the version-check feature in several tools, enabled with the --version-check option
+  * Fixed bug 856060: Document gdb dependency
+  * Fixed bug 1041394: Unquoted arguments to tr break the bash tools
+  * Fixed bug 1035311: pt-diskstats shows wrong device names
+  * Fixed bug 1036804: pt-duplicate-key-checker error parsing InnoDB table with no PK or unique keys
+  * Fixed bug 1022658: pt-online-schema-change dropping FK limitation isn't documented
+  * Fixed bug 1041372: pt-online-schema-changes fails if db+tbl name exceeds 64 characters
+  * Fixed bug 1029178: pt-query-digest --type tcpdump memory usage keeps increasing
+  * Fixed bug 1037211: pt-query-digest won't distill LOCK TABLES in lowercase
+  * Fixed bug 942114: pt-stalk warns about bad "find" usage
+  * Fixed bug 1035319: pt-stalk df -h throws away needed details
+  * Fixed bug 1038995: pt-stalk --notify-by-email fails
+  * Fixed bug 1038995: pt-stalk does not get all InnoDB lock data
+  * Fixed bug 952722: pt-summary should show information about Fusion-io cards
+  * Fixed bug 899415: pt-table-checksum doesn't work if slaves use RBR
+  * Fixed bug 954588: pt-table-checksum --check-slave-lag docs aren't clear
+  * Fixed bug 1034170: pt-table-checksum --defaults-file isn't used for slaves
+  * Fixed bug 930693: pt-table-sync and text columns with just whitespace
+  * Fixed bug 1028710: pt-table-sync base_count fails on n = 1000, base = 10
+  * Fixed bug 1034717: pt-table-sync division by zero error with varchar primary key
+  * Fixed bug 1036747: pt-table-sync priv checks need to be removed
+  * Fixed bug 1039184: pt-upgrade error "I need a right_sth argument"
+  * Fixed bug 1035260: sh warnings in pt-summary and pt-mysql-summary
+  * Fixed bug 1038276: ChangeHandler doesn't quote varchar columns with hex-looking values
+  * Fixed bug 916925: CentOS 5 yum dependency resolution for perl module is wrong
+  * Fixed bug 1035950: Percona Toolkit RPM should contain a dependency on perl-Time-HiRes
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 20 Sep 2012 12:41:45 +0000
+
 percona-toolkit (2.1.3) unstable; urgency=low
 
   * pt-kill: Implemented --log-dsn to log info about killed queries to a table
