@@ -3248,12 +3248,13 @@ sub valid_item {
 sub get_os_version {
    my ($self) = @_;
 
+   if ( $OSNAME eq 'MSWin32' ) {
+      require Win32;
+      return Win32::GetOSDisplayName();
+   }
+
   chomp(my $platform = `uname -s`);
   PTDEBUG && _d('platform:', $platform);
-  if ( !$platform ) {
-      return $OSNAME if $OSNAME ne 'MSWin32';
-      return Win32::GetOSDisplayName();
-  }
   return $OSNAME unless $platform;
 
    chomp(my $lsb_release
@@ -3300,7 +3301,7 @@ sub get_os_version {
          }
       }
    }
-   elsif ( $platform =~ m/^(BSD|Darwin)$/ ) {
+   elsif ( $platform =~ m/(?:BSD|^Darwin)$/ ) {
       my $rel = `uname -r`;
       $release = "$platform $rel";
    }
@@ -3314,6 +3315,8 @@ sub get_os_version {
       $release = $platform;
    }
    chomp($release);
+
+   $release =~ s/^"|"$//g;
 
    PTDEBUG && _d('OS version =', $release);
    return $release;
@@ -4150,7 +4153,7 @@ sub update_checks_file {
 
 sub _touch {
    my ($file) = @_;
-   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+   sysopen my $fh, $file, O_WRONLY|O_CREAT
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
    utime(undef, undef, $file);
