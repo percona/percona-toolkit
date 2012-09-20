@@ -125,12 +125,13 @@ sub valid_item {
 sub get_os_version {
    my ($self) = @_;
 
+   if ( $OSNAME eq 'MSWin32' ) {
+      require Win32;
+      return Win32::GetOSDisplayName();
+   }
+
   chomp(my $platform = `uname -s`);
   PTDEBUG && _d('platform:', $platform);
-  if ( !$platform ) {
-      return $OSNAME if $OSNAME ne 'MSWin32';
-      return Win32::GetOSDisplayName();
-  }
   return $OSNAME unless $platform;
 
    chomp(my $lsb_release
