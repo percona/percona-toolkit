@@ -6,7 +6,18 @@
 
 use strict;
 use warnings FATAL => 'all';
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+# This tool is "fat-packed": most of its dependent modules are embedded
+# in this file.  Setting %INC to this file for each module makes Perl aware
+# of this so it will not try to load the module from @INC.  See the tool's
+# documentation for a full list of dependencies.
+BEGIN {
+   $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
+      OptionParser
+      DSNParser
+      Daemon
+   ));
+}
 
 # ###########################################################################
 # OptionParser package
@@ -47,6 +58,7 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
+      'value_is_optional' => 1,
    );
 
    my $self = {
@@ -288,9 +300,10 @@ sub _parse_specs {
             $opt->{short} = undef;
          }
 
-         $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
-         $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
-         $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
+         $opt->{is_negatable}   = $opt->{spec} =~ m/!/        ? 1 : 0;
+         $opt->{is_cumulative}  = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{optional_value} = $opt->{spec} =~ m/:/        ? 1 : 0;
+         $opt->{is_required}    = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
          $self->{groups}->{ $opt->{group} }->{$long} = 1;
@@ -426,7 +439,7 @@ sub _set_option {
    if ( $opt->{is_cumulative} ) {
       $opt->{value}++;
    }
-   else {
+   elsif ( !($opt->{optional_value} && !$val) ) {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
@@ -967,11 +980,12 @@ sub _parse_size {
 sub _parse_attribs {
    my ( $self, $option, $attribs ) = @_;
    my $types = $self->{types};
+   my $eq    = $attribs->{'value_is_optional'} ? ':' : '=';
    return $option
       . ($attribs->{'short form'} ? '|' . $attribs->{'short form'}   : '' )
       . ($attribs->{'negatable'}  ? '!'                              : '' )
       . ($attribs->{'cumulative'} ? '+'                              : '' )
-      . ($attribs->{'type'}       ? '=' . $types->{$attribs->{type}} : '' );
+      . ($attribs->{'type'}       ? $eq . $types->{$attribs->{type}} : '' );
 }
 
 sub _parse_synopsis {
