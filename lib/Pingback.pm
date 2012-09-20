@@ -314,7 +314,7 @@ sub update_checks_file {
 
 sub _touch {
    my ($file) = @_;
-   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+   sysopen my $fh, $file, O_WRONLY|O_CREAT
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
    utime(undef, undef, $file);
