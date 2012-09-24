@@ -12740,8 +12740,10 @@ sub version_check {
          print "# Percona suggests these upgrades:\n";
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
-      elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('--version-check worked, but there were no suggestions');
+      else {
+         print "# No suggestions at this time.\n\n";
+         ($ENV{PTVCDEBUG} || PTDEBUG )
+            && _d('--version-check worked, but there were no suggestions');
       }
    };
    if ( $EVAL_ERROR ) {
