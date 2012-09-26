@@ -74,7 +74,7 @@ my $t = time - $t0;
 
 like(
    $output,
-   qr/Error.+?(?:GET http:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
+   qr/Error.+?(?:GET on http:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
    "The Percona server didn't respond"
 );
 
