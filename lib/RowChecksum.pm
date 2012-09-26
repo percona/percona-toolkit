@@ -67,6 +67,11 @@ sub make_row_checksum {
    my $func       = $args{func} || uc($o->get('function'));
    my $cols       = $self->get_checksum_columns(%args);
 
+   # Skip tables that have all their columns skipped; See
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1016131
+   die "all columns are excluded by --columns or --ignore-columns"
+      unless @{$cols->{select}};
+      
    # Prepend columns to query, resulting in "col1, col2, FUNC(..col1, col2...)",
    # unless caller says not to.  The only caller that says not to is
    # make_chunk_checksum() which uses this row checksum as part of a larger
