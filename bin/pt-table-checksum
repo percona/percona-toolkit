@@ -5146,6 +5146,9 @@ sub make_row_checksum {
    my $func       = $args{func} || uc($o->get('function'));
    my $cols       = $self->get_checksum_columns(%args);
 
+   die "all columns are excluded by --columns or --ignore-columns"
+      unless @{$cols->{select}};
+      
    my $query;
    if ( !$args{no_cols} ) {
       $query = join(', ',
@@ -9340,11 +9343,21 @@ sub main {
          # Make a nibble iterator for this table.  This should only fail
          # if the table has no indexes and is too large to checksum in
          # one chunk.
-         my $checksum_cols = $rc->make_chunk_checksum(
-            dbh => $master_cxn->dbh(),
-            tbl => $tbl,
-            %crc_args
-         );
+         local $EVAL_ERROR;
+         my $checksum_cols = eval {
+            $rc->make_chunk_checksum(
+               dbh => $master_cxn->dbh(),
+               tbl => $tbl,
+               %crc_args
+            );
+         };
+
+         if ( $EVAL_ERROR ) {
+            warn ts("Skipping table $tbl->{db}.$tbl->{tbl} because "
+                  . "$EVAL_ERROR\n");
+            return;
+         }
+
          my $nibble_iter;
          eval {
             $nibble_iter = new OobNibbleIterator(
@@ -10664,7 +10677,8 @@ of leaving it at the default.
 
 short form: -c; type: array; group: Filter
 
-Checksum only this comma-separated list of columns.
+Checksum only this comma-separated list of columns. If a table doesn't have
+any of the specified columns it will be skipped.
 
 =item --config
 
@@ -10780,6 +10794,8 @@ Host to connect to.
 type: Hash; group: Filter
 
 Ignore this comma-separated list of columns when calculating the checksum.
+If a table has all of its columns filtered by --ignore-columns, it will
+be skipped.
 
 =item --ignore-databases
 
