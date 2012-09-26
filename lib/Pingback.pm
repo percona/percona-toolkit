@@ -97,8 +97,10 @@ sub version_check {
          print "# Percona suggests these upgrades:\n";
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
-      elsif ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('--version-check worked, but there were no suggestions');
+      else {
+         print "# No suggestions at this time.\n\n";
+         ($ENV{PTVCDEBUG} || PTDEBUG )
+            && _d('--version-check worked, but there were no suggestions');
       }
    };
    if ( $EVAL_ERROR ) {
@@ -314,7 +316,7 @@ sub update_checks_file {
 
 sub _touch {
    my ($file) = @_;
-   sysopen my $fh, $file, O_WRONLY|O_CREAT|O_NONBLOCK
+   sysopen my $fh, $file, O_WRONLY|O_CREAT
       or die "Cannot create $file : $!";
    close $fh or die "Cannot close $file : $!";
    utime(undef, undef, $file);

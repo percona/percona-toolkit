@@ -20,15 +20,16 @@ if ( $EVAL_ERROR ) {
 }
 
 # Need a simple URL that won't try to do chunking.
-my $test_url = "http://www.percona.com/robots.txt";
-my $tiny     = HTTP::Tiny->new(max_redirect => 0)->request('GET', $test_url);
-my $micro    = HTTPMicro->new->request('GET', $test_url);
+for my $test_url ( "http://www.percona.com/robots.txt", "https://v.percona.com" ) {
+   my $tiny     = HTTP::Tiny->new(max_redirect => 0)->request('GET', $test_url);
+   my $micro    = HTTPMicro->new->request('GET', $test_url);
 
-is_deeply(
-   $micro->{content},
-   $tiny->{content},
-   "HTTPMicro behaves like HTTP::Tiny (max_redirect=0)"
-);
+   is_deeply(
+      $micro->{content},
+      $tiny->{content},
+      "HTTPMicro behaves like HTTP::Tiny (max_redirect=0)"
+   );
+}
 
 done_testing;
 exit;

@@ -906,18 +906,21 @@ fio_status_minus_a () {
       print "${adapter}_modules     @connected_modules";
       
       for my $module (@connected_modules) {
-         my ($attached, $general, $firmware, $temperature, $media_status) = /
+         my ($rest, $attached, $general, $firmware, $temperature, $media_status) = /(
             ^ \s* $module  \s+ (Attached[^\n]+) \n
               \s+ ([^\n]+)                      \n # All the second line
               .+? (Firmware\s+[^\n]+)           \n
               .+? (Internal \s+ temperature:[^\n]+) \n
-              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+)
-         /xsm;
+              .+? ((?:Media | Reserve \s+ space) \s+ status:[^\n]+) \n
+              .+?(?:\n\n|\z)
+         )/xsm;
+         my ($pbw) = $rest =~ /.+?(Rated \s+ PBW:[^\n]+)/xsm;
          print "${adapter}_${module}_attached_as      $attached";
          print "${adapter}_${module}_general          $general";
          print "${adapter}_${module}_firmware         $firmware";
          print "${adapter}_${module}_media_status     $media_status";
          print "${adapter}_${module}_temperature      $temperature";
+         print "${adapter}_${module}_rated_pbw        $pbw" if $pbw;
       }
    } while <>;
 
@@ -2080,6 +2083,9 @@ report_fio_minus_a () {
          name_val ""              "$(get_var "${adapter}_${module}_firmware"     "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_temperature"  "$file")"
          name_val ""              "$(get_var "${adapter}_${module}_media_status" "$file")"
+         if [ "$(get_var "${adapter}_${module}_rated_pbw" "$file")" ]; then
+            name_val ""           "$(get_var "${adapter}_${module}_rated_pbw" "$file")"
+         fi
          local NAME_VAL_LEN=$name_val_len_orig;
       done
    done
@@ -2667,7 +2673,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-summary 2.1.3
+pt-summary 2.1.4
 
 =cut
 
