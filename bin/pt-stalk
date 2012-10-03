@@ -933,6 +933,30 @@ OKTORUN=1
 ITER=1
 
 # ###########################################################################
+# Plugin hooks
+# ###########################################################################
+
+before_stalk_hook() {
+   :
+}
+
+before_collect_hook() {
+   :
+}
+
+after_collect_hook() {
+   :
+}
+
+after_collect_sleep_hook() {
+   :
+}
+
+after_stalk_hook() {
+   :
+}
+
+# ###########################################################################
 # Subroutines
 # ###########################################################################
 
@@ -1136,6 +1160,9 @@ stalk() {
                log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
                last_prefix="$prefix"
 
+               # Plugin hook:
+               before_collect_hook
+
                # Fork and background the collect subroutine which will
                # run for --run-time seconds.  We (the parent) sleep
                # while its collecting (hopefully --sleep is longer than
@@ -1143,7 +1170,11 @@ stalk() {
                (
                   collect "$OPT_DEST" "$prefix"
                ) >> "$OPT_DEST/$prefix-output" 2>&1 &
-               log "Collector PID $!"
+               local collector_pid=$!
+               log "Collector PID $collector_pid"
+
+               # Plugin hook:
+               after_collect_hook $collector_pid
             else 
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
@@ -1156,6 +1187,9 @@ stalk() {
          ITER=$((ITER + 1))
          cycles_true=0
          sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
+
+         # Plugin hook:
+         after_collect_sleep_hook
       else
          # Trigger/check/value is ok, sleep until next check.
          sleep_ok "$OPT_INTERVAL"
@@ -1178,7 +1212,7 @@ main() {
    # Note: $$ is the parent's PID, but we're a child proc.
    # Bash 4 has $BASHPID but we can't rely on that.  Consequently,
    # we don't know our own PID.  See the usage of $! below.
-   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID"
+   RAN_WITH="--function=$OPT_FUNCTION --variable=$OPT_VARIABLE --threshold=$OPT_THRESHOLD --match=$OPT_MATCH --cycles=$OPT_CYCLES --interval=$OPT_INTERVAL --iterations=$OPT_ITERATIONS --run-time=$OPT_RUN_TIME --sleep=$OPT_SLEEP --dest=$OPT_DEST --prefix=$OPT_PREFIX --notify-by-email=$OPT_NOTIFY_BY_EMAIL --log=$OPT_LOG --pid=$OPT_PID --plugin=$OPT_PLUGIN"
 
    log "Starting $0 $RAN_WITH"
 
@@ -1190,8 +1224,14 @@ main() {
    # Make a secure tmpdir.
    mk_tmpdir
 
+   # Plugin hook:
+   before_stalk_hook
+
    # Stalk while oktorun.
    stalk
+
+   # Plugin hook:
+   after_stalk_hook
 
    # Clean up.
    rm_tmpdir
@@ -1215,6 +1255,15 @@ if    [ "${0##*/}" = "$TOOL" ] \
    # Verify and set TRIGGER_FUNCTION based on --function.
    if ! set_trg_func "$OPT_FUNCTION"; then
       option_error "Invalid --function value: $OPT_FUNCTION"
+   fi
+
+   # Verify and source the --plugin.
+   if [ "$OPT_PLUGIN" ]; then
+      if [ -f "$OPT_PLUGIN" ]; then
+         . "$OPT_PLUGIN"
+      else
+         option_error "Invalid --plugin value: $OPT_PLUGIN is not a file"
+      fi
    fi
 
    if [ -z "$OPT_STALK" -a "$OPT_COLLECT" ]; then
@@ -1610,6 +1659,39 @@ Send mail to this list of addresses when data is collected.
 type: string; default: /var/run/pt-stalk.pid
 
 Create a PID file when daemonized.
+
+=item --plugin
+
+type: string
+
+Load a plugin script to hook into the tool and extend is functionality.
+
+=over
+
+=item before_stalk_hook
+
+Called before stalking.
+
+=item before_collect_hook
+
+Called when the stalk condition is triggered, before running a collector
+process as a backgrounded subshell.
+
+=item after_collect_hook
+
+Called after running a collector process.  The PID of the collector process
+is passed as the first argument.
+
+=item after_collect_sleep_hook
+
+Called after sleeping L<"--sleep"> seconds for the collector process to finish.
+
+=item after_stalk_hook
+
+Called after stalking.  Since pt-stalk stalks forever by default,
+this hook is only called if L<"--iterations"> is specified.
+
+=back
 
 =item --prefix 
 
