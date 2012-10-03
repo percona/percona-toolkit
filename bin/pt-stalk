@@ -936,23 +936,23 @@ ITER=1
 # Plugin hooks
 # ###########################################################################
 
-before_stalk_hook() {
+before_stalk() {
    :
 }
 
-before_collect_hook() {
+before_collect() {
    :
 }
 
-after_collect_hook() {
+after_collect() {
    :
 }
 
-after_collect_sleep_hook() {
+after_collect_sleep() {
    :
 }
 
-after_stalk_hook() {
+after_stalk() {
    :
 }
 
@@ -1040,12 +1040,12 @@ trg_processlist() {
 
 oktorun() {
    if [ $OKTORUN -eq 0 ]; then
-      EXIT_REASON="OKTORUN is false"
+      [ -z "$EXIT_REASON" ] && EXIT_REASON="OKTORUN is false"
       return 1  # stop running
    fi
 
    if [ -n "$OPT_ITERATIONS" ] && [ $ITER -gt $OPT_ITERATIONS ]; then
-      EXIT_REASON="no more iterations"
+      [ -z "$EXIT_REASON" ] && EXIT_REASON="no more iterations"
       return 1  # stop running
    fi
 
@@ -1161,7 +1161,7 @@ stalk() {
                last_prefix="$prefix"
 
                # Plugin hook:
-               before_collect_hook
+               before_collect
 
                # Fork and background the collect subroutine which will
                # run for --run-time seconds.  We (the parent) sleep
@@ -1174,7 +1174,7 @@ stalk() {
                log "Collector PID $collector_pid"
 
                # Plugin hook:
-               after_collect_hook $collector_pid
+               after_collect $collector_pid
             else 
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
@@ -1189,7 +1189,7 @@ stalk() {
          sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
 
          # Plugin hook:
-         after_collect_sleep_hook
+         after_collect_sleep
       else
          # Trigger/check/value is ok, sleep until next check.
          sleep_ok "$OPT_INTERVAL"
@@ -1225,13 +1225,13 @@ main() {
    mk_tmpdir
 
    # Plugin hook:
-   before_stalk_hook
+   before_stalk
 
    # Stalk while oktorun.
    stalk
 
    # Plugin hook:
-   after_stalk_hook
+   after_stalk
 
    # Clean up.
    rm_tmpdir
@@ -1664,36 +1664,61 @@ Create a PID file when daemonized.
 
 type: string
 
-Load a plugin script to hook into the tool and extend is functionality.
+Load a plugin to hook into the tool and extend is functionality.
+The specified file does not need to be executable, nor does its first line
+need to be shebang line.  It only needs to define one or more of these
+Bash functions:
 
 =over
 
-=item before_stalk_hook
+=item before_stalk
 
 Called before stalking.
 
-=item before_collect_hook
+=item before_collect
 
 Called when the stalk condition is triggered, before running a collector
 process as a backgrounded subshell.
 
-=item after_collect_hook
+=item after_collect
 
 Called after running a collector process.  The PID of the collector process
 is passed as the first argument.  This hook is called before
-C<after_collect_sleep_hook>.
+C<after_collect_sleep>.
 
-=item after_collect_sleep_hook
+=item after_collect_sleep
 
 Called after sleeping L<"--sleep"> seconds for the collector process to finish.
-This hook is called after C<after_collect_hook>.
+This hook is called after C<after_collect>.
 
-=item after_stalk_hook
+=item after_stalk
 
 Called after stalking.  Since pt-stalk stalks forever by default,
 this hook is only called if L<"--iterations"> is specified.
 
 =back
+
+For example, a very simple plugin that touches a file when a collector
+process is triggered:
+
+   before_colllect() {
+      touch /tmp/foo
+   }
+
+Since the plugin is completely sourced (imported) into the tool's namespace,
+be careful not to define other functions or global variables that already
+exist in the tool.  You should prefix all plugin-specific functions and
+global variables with C<plugin_> or C<PLUGIN_>.
+
+Plugins have access to all command line options but they should not modify
+them.  Each option is a global variable like C<$OPT_DEST> which corresponds
+to L<"--dest">.  Therefore, the global variable for each command line option
+is C<OPT_> plus the option name in all caps with hyphens replaced by
+underscores.
+
+Plugins can stop the tool by setting the global variable C<OKTORUN>
+to C<1>.  In this case, the global variable C<EXIT_REASON> should also
+be set to indicate why the tool was stopped.
 
 =item --prefix 
 
