@@ -15160,8 +15160,10 @@ However, there are some that don't exist in the slow log, and slow logs
 may actually include different kinds of attributes (for example, you may have a
 server with the Percona patches).
 
-For a full list of attributes, see
-L<http://code.google.com/p/maatkit/wiki/EventAttributes>.
+See L<"ATTRIBUTES REFERENCE"> near the end of this documentation for a list
+of common and L<"--type"> specific attributes.  A familiarity with these
+attributes is necessary for working with L<"--filter">,
+L<"--ignore-attributes">, and other attribute-related options.
 
 With creative use of L<"--filter">, you can create new attributes derived
 from existing attributes.  For example, to create an attribute called
@@ -15189,8 +15191,8 @@ command (get, set, delete, etc.), Memc_error and Memc_miss.
 These attributes are no different from slow log attributes, so you can use them
 with L<"--[no]report">, L<"--group-by">, in a L<"--filter">, etc.
 
-These attributes and more are documented at
-L<http://code.google.com/p/maatkit/wiki/EventAttributes>.
+See the memcached section of L<"ATTRIBUTES REFERENCE"> for a list of
+memcached-specific attributes.
 
 =head1 OUTPUT
 
@@ -15835,8 +15837,8 @@ This is compiled into a subroutine like the following:
 
 It is permissible for the code to have side effects (to alter C<$event>).
 
-You can find an explanation of the structure of $event at
-L<http://code.google.com/p/maatkit/wiki/EventAttributes>.
+See L<"ATTRIBUTES REFERENCE"> for a list of common and L<"--type"> specific
+attributes.
 
 Here are more examples of filter code:
 
@@ -17068,6 +17070,206 @@ You can also get individual tools from the latest release:
    wget percona.com/get/TOOL
 
 Replace C<TOOL> with the name of any tool.
+
+=head1 ATTRIBUTES REFERENCE
+
+Events may have the following attributes.  If writing a L<"--filter">,
+be sure to check that an attribute is defined in each event before
+using it, else the filter code may crash the tool with a
+"use of uninitialized value" error.
+
+You can dump event attributes for any input like:
+
+  $ pt-query-digest \
+      slowlog \
+      --filter 'print Dumper $event' \
+      --no-report \
+      --sample 1
+
+That will produce a lot of output with "attribute => value" pairs like:
+
+   $VAR1 = {
+     Query_time => '0.033384',
+     Rows_examined => '0',
+     Rows_sent => '0',
+     Thread_id => '10',
+     Tmp_table => 'No',
+     Tmp_table_on_disk => 'No',
+     arg => 'SELECT col FROM tbl WHERE id=5',
+     bytes => 103,
+     cmd => 'Query',
+     db => 'db1',
+     fingerprint => 'select col from tbl where id=?',
+     host => '',
+     pos_in_log => 1334,
+     ts => '071218 11:48:27',
+     user => '[SQL_SLAVE]'
+   };
+
+=head2 COMMON
+
+These attribute are common to all input L<"--type"> and L<"--processlist">,
+except where noted.
+
+=over
+
+=item arg
+
+The query text, or the command for admin commands like C<Ping>.
+
+=item bytes
+
+The byte length of the C<arg>.
+
+=item cmd
+
+"Query" or "Admin" for all except memcached. For memcached it's
+the memcached command: get, set, etc.
+
+=item db
+
+The current database, except for memcached.  The value comes from USE
+database statements.  By default, C<Schema> is an alias which is automatically
+changed to C<db>; see L<"--attribute-aliases">.
+
+=item fingerprint 
+
+An abstracted form of the query.  See L<"FINGERPRINTS">.
+
+=item host
+
+Client host which executed the query.
+
+=item pos_in_log
+
+The byte offset of the event in the log or tcpdump,
+except for L<"--processlist">.
+
+=item Query_time
+
+The total time the query took, including lock time.
+
+=item ts
+
+The timestamp of when the query ended.
+
+=back
+
+=head2 SLOW, GENERAL, AND BINARY LOGS
+
+Events have all available attributes from the log file.  Therefore, you only
+need to look at the log file to see which events are available, but remember:
+not all events have the same attributes.
+
+Percona Server adds many attributes to the slow log; see
+http://www.percona.com/doc/percona-server/5.1/diagnostics/slow_extended.html#changes-to-the-log-format
+for more information.
+
+=head2 TCPDUMP
+
+These attributes are available when parsing L<"--type"> tcpdump.
+
+=over
+
+=item Error_no
+
+The MySQL error number if the query caused an error.
+
+=item ip
+
+The client's IP address.  Certain log files may also contain this attribute.
+
+=item No_good_index_used
+
+Yes or No if no good index existed for the query (flag set by server).
+
+=item No_index_used
+
+Yes or No if the query did not use any index (flag set by server).
+
+=item port
+
+The client's port number.
+
+=item Warning_count
+
+The number of warnings, as otherwise shown by C<SHOW WARNINGS>.
+
+=back
+
+=head2 PROCESSLIST
+
+If using L<"--processlist">, an C<id> attribute is available for
+the process ID, in addition to the commmon attributes.
+
+=head2 MEMCACHED
+
+These attributes are available when parsing L<"--type"> memcached.
+
+=over
+
+=item exptime
+
+Expiration time.
+
+=item key
+
+The key used by cmd.
+
+=item key_print
+
+An abstracted form of the key.
+
+=item Memc_add
+
+Yes/No if the command is add.
+
+=item Memc_append
+
+Yes/No if the command is append.
+
+=item Memc_cas
+
+Yes/No if the command is cas.
+
+=item Memc_error
+
+Yes/No if command caused an error. Currently, the only error is when
+a retrieval command is interrupted.
+
+=item Memc_get
+
+Yes/No if the command is get.
+
+=item Memc_gets
+
+Yes/No if the command is gets.
+
+=item Memc_miss
+
+Yes/No if the command tried to access a nonexistent key.
+
+=item Memc_prepend
+
+Yes/No if the command is prepend.
+
+=item Memc_replace
+
+Yes/No if the command is replace.
+
+=item Memc_set
+
+Yes/No if the command is set.
+
+=item res
+
+Result of cmd.
+
+=item val
+
+The return value of cmd, if any.
+
+=back
 
 =head1 AUTHORS
 
