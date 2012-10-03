@@ -1680,11 +1680,13 @@ process as a backgrounded subshell.
 =item after_collect_hook
 
 Called after running a collector process.  The PID of the collector process
-is passed as the first argument.
+is passed as the first argument.  This hook is called before
+C<after_collect_sleep_hook>.
 
 =item after_collect_sleep_hook
 
 Called after sleeping L<"--sleep"> seconds for the collector process to finish.
+This hook is called after C<after_collect_hook>.
 
 =item after_stalk_hook
 
