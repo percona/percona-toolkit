@@ -52,15 +52,15 @@ is(
 );
 
 foreach my $hook (qw(
-   before_stalk_hook
-   before_collect_hook
-   after_collect_hook
-   after_collect_sleep_hook
-   after_stalk_hook
+   before_stalk
+   before_collect
+   after_collect
+   after_collect_sleep
+   after_stalk
 )) {
    ok(
       -f "$dest/$hook",
-      "$hook called"
+      "$hook hook called"
    );
 }
 

@@ -1,21 +1,21 @@
 #!/bin/sh
 
-before_stalk_hook() {
-   date >> "$OPT_DEST/before_stalk_hook"
+before_stalk() {
+   date >> "$OPT_DEST/before_stalk"
 }
 
-before_collect_hook() {
-   date >> "$OPT_DEST/before_collect_hook"
+before_collect() {
+   date >> "$OPT_DEST/before_collect"
 }
 
-after_collect_hook() {
-   date >> "$OPT_DEST/after_collect_hook"
+after_collect() {
+   date >> "$OPT_DEST/after_collect"
 }
 
-after_collect_sleep_hook() {
-   date >> "$OPT_DEST/after_collect_sleep_hook"
+after_collect_sleep() {
+   date >> "$OPT_DEST/after_collect_sleep"
 }
 
-after_stalk_hook() {
-   date >> "$OPT_DEST/after_stalk_hook"
+after_stalk() {
+   date >> "$OPT_DEST/after_stalk"
 }
