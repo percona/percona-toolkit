@@ -17200,7 +17200,7 @@ The number of warnings, as otherwise shown by C<SHOW WARNINGS>.
 =head2 PROCESSLIST
 
 If using L<"--processlist">, an C<id> attribute is available for
-the process ID, in addition to the commmon attributes.
+the process ID, in addition to the common attributes.
 
 =head2 MEMCACHED
 
