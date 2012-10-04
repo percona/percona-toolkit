@@ -9343,7 +9343,6 @@ sub main {
          # Make a nibble iterator for this table.  This should only fail
          # if the table has no indexes and is too large to checksum in
          # one chunk.
-         local $EVAL_ERROR;
          my $checksum_cols = eval {
             $rc->make_chunk_checksum(
                dbh => $master_cxn->dbh(),
