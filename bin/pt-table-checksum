@@ -8580,7 +8580,7 @@ sub main {
       }
       else {
          PTDEBUG && _d('Will check slave lag on all slaves');
-         $slave_lag_cxns = $slaves;
+         $slave_lag_cxns = [ map { $_ } @$slaves ];
       }
 
       # Cluster nodes aren't slaves, so SHOW SLAVE STATUS doesn't work.
