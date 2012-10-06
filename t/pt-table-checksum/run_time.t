@@ -38,16 +38,16 @@ my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '');
 my $output;
 my $exit_status;
 
-# On my 2.4 GHz with SSD this takes a little more than 3s,
+# On my 2.4 GHz with SSD this takes a little more than 5s,
 # so no test servers should be faster, hopefully.
 my $t0 = time;
 $exit_status = pt_table_checksum::main(@args,
-   qw(--quiet --quiet -d sakila --chunk-size 100 --run-time 1));
+   qw(--quiet --quiet -d sakila --chunk-size 50 --run-time 1));
 my $t  = time - $t0;
 
 ok(
-   $t >= 1.5 && $t <= 2.0,
-   "Run in roughly --run-time 1 second"
+   $t >= 1.5 && $t <= 2.5,
+   "Ran in roughly --run-time 1 second"
 ) or diag("Actual run time: $t");
 
 my $rows = $master_dbh->selectall_arrayref("SELECT DISTINCT CONCAT(db, '.', tbl) FROM percona.checksums ORDER by db, tbl");
