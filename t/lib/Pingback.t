@@ -126,9 +126,19 @@ sub test_pingback {
       );
    }
 
+   my $expect_post;
+   if ( $args{post} ) {
+      $expect_post = join("\n",
+         map { "$_->{id};$_->{item};$_->{val}" }
+         sort {
+         $a->{item} cmp $b->{item} ||
+         $a->{id}   cmp $b->{id}
+      } @{$args{post}});
+      $expect_post .= "\n";
+   }
    is(
       $post ? ($post->{content} || '') : '',
-      $args{post},
+      $expect_post || '',
       "$args{name} client response"
    );
 
@@ -152,7 +162,18 @@ test_pingback(
       }
    ],
    # client should POST this
-   post => "$general_id;Data::Dumper;$dd_ver\n$general_id;Perl;$perl_ver\n",
+   post => [
+      {
+         item => 'Data::Dumper',
+         id   => $general_id,
+         val  => $dd_ver,
+      },
+      {
+         item => 'Perl',
+         id   => $general_id,
+         val  => $perl_ver,
+      },
+   ],
    # Server should return these suggetions after the client posts
    sug  => [
       'Data::Printer is nicer.',
@@ -174,7 +195,18 @@ test_pingback(
         content => "",
       }
    ],
-   post => "$general_id;Data::Dumper;$dd_ver\n$general_id;Perl;$perl_ver\n",
+   post => [
+      {
+         item => 'Data::Dumper',
+         id   => $general_id,
+         val  => $dd_ver,
+      },
+      {
+         item => 'Perl',
+         id   => $general_id,
+         val  => $perl_ver,
+      },
+   ],
    sug  => undef,
 );
 
@@ -184,7 +216,7 @@ test_pingback(
    name => "No response to GET",
    response => [],
    no_response => 1,
-   post => "",
+   post => undef,
    sug  => undef,
 );
 
@@ -199,7 +231,18 @@ test_pingback(
         content => "Perl;perl_version;PERL_VERSION\nData::Dumper;perl_module_version\n",
       },
    ],
-   post => "$general_id;Data::Dumper;$dd_ver\n$general_id;Perl;$perl_ver\n",
+   post => [
+      {
+         id   => $general_id,
+         item => 'Data::Dumper',
+         val  => $dd_ver,
+      },
+      {
+         id   => $general_id,
+         item => 'Perl',
+         val  => $perl_ver,
+      },
+   ],
    sug  => undef,
 );
 
@@ -223,7 +266,13 @@ SKIP: {
          }
       ],
       # client should POST this
-      post => "$master_id;MySQL;$mysql_ver $mysql_distro\n",
+      post => [
+         {
+            id   => $master_id,
+            item => 'MySQL',
+            val  => "$mysql_ver $mysql_distro",
+         }
+      ],
       # Server should return these suggetions after the client posts
       sug => ['Percona Server is fast.'],
    );
@@ -440,7 +489,18 @@ SKIP: {
          }
       ],
       # client should POST this
-      post => "$slave1_id;MySQL;$mysql_ver $mysql_distro\n$master_id;MySQL;$mysql_ver $mysql_distro\n",
+      post => [
+         {
+            id   => $slave1_id,
+            item => 'MySQL',
+            val  => "$mysql_ver $mysql_distro",
+         },
+         {
+            id   => $master_id,
+            item => 'MySQL',
+            val  => "$mysql_ver $mysql_distro",
+         }
+      ],
       # Server should return these suggetions after the client posts
       sug => [
          'Percona Server is fast.',
