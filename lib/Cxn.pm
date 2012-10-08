@@ -203,7 +203,9 @@ sub is_cluster_node {
    PTDEBUG && _d($sql);
    my $row = $self->{dbh}->selectrow_arrayref($sql);
    PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+   $self->{is_cluster_node} = $row && $row->[1]
+                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+                            : 0;
   
    return $self->{is_cluster_node};
 }
