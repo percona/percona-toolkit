@@ -1,6 +1,33 @@
 Release Notes
 *************
 
+v2.1.5 released 2012-10-08
+==========================
+
+Percona Toolkit 2.1.5 has been released.  This release is less than two weeks after the release of 2.1.4 because we wanted to address these bugs quickly:
+
+* Bug 1062563: pt-table-checksum 2.1.4 doesn't detect diffs on Percona XtraDB Cluster nodes
+
+* Bug 1063912: pt-table-checksum 2.1.4 miscategorizes Percona XtraDB Cluster-based slaves as cluster nodes
+
+* Bug 1064016: pt-table-sync 2.1.4 --version-check may not work with HTTPS/SSL
+
+The first two bugs fix how pt-table-checksum works with Percona XtraDB Cluster (PXC).  Although the 2.1.4 release did introduce support for PXC, these bugs prevented pt-table-checksum from working correctly with a cluster.
+
+The third bug is also related to a feature new in 2.1.4: --version-check.  The feature uses HTTPS/SSL by default, but some modules in pt-table-sync weren't update which could prevent it from working on older systems.  Related, the version check web page mentioned in tools' documentation was also created.
+
+If you're using pt-table-checksum with a Percona XtraDB Cluster, you should definitely upgrade.  Otherwise, users can wait until 2.1.6 for another full release.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Fixed bug 1062563: pt-table-checksum 2.1.4 doesn't detect diffs on Percona XtraDB Cluster nodes
+* Fixed bug 1063912: pt-table-checksum 2.1.4 miscategorizes Percona XtraDB Cluster-based slaves as cluster nodes
+* Fixed bug 1064016: pt-table-sync 2.1.4 --version-check may not work with HTTPS/SSL
+* Fixed bug 1060423: Missing version-check page
+
 v2.1.4 released 2012-09-20
 ==========================
 
