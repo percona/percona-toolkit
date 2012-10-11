@@ -2467,10 +2467,9 @@ bookmark lookup into the film_actor table.
 =back
 
 For more information on how to read EXPLAIN output, please see
-L<http://dev.mysql.com/doc/en/explain.html>, and this talk titled "Query
-Optimizer Internals and What's New in the MySQL 5.2 Optimizer," from Timour
-Katchaounov, one of the MySQL developers:
-L<http://maatkit.org/presentations/katchaounov_timour.pdf>.
+L<http://dev.mysql.com/doc/en/explain.html>, and this talk titled
+"MySQL query optimizer internals and upcoming features in v. 5.2":
+from Timour Katchaounov, one of the MySQL developers: L<http://goo.gl/VIWvo>
 
 =head1 MODULES
 
