@@ -1945,6 +1945,11 @@ sub main {
    my $fi  = new FileIterator();
    my $tst = new TimeSeriesTrender(callback => \&print_report);
 
+   # Print headers.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/956981
+   printf "%10s %10s %10s %10s %10s %10s\n",
+      qw(TS CNT SUM MIN MAX AVG STDDEV);
+
    # ########################################################################
    # If --pid, check it first since we'll die if it already exists.
    # ########################################################################
@@ -2039,10 +2044,12 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-trend - Compute statistics over a set of time-series data points.
+pt-trend - (DEPRECATED) Compute statistics over a set of time-series data points.
 
 =head1 SYNOPSIS
 
+This tool is deprecated and will be removed in Percona Toolkit 2.2.
+ 
 Usage: pt-trend [OPTION...] [FILE ...]
 
 pt-trend reads a slow query log and outputs statistics on it.
