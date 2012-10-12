@@ -27,7 +27,7 @@ for my $test_url ( "http://www.percona.com/robots.txt", "https://v.percona.com" 
    is_deeply(
       $micro->{content},
       $tiny->{content},
-      "HTTPMicro behaves like HTTP::Tiny (max_redirect=0)"
+      "HTTPMicro == HTTP::Tiny for $test_url"
    );
 }
 
