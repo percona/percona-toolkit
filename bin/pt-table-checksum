@@ -8527,6 +8527,23 @@ sub main {
    my $master_dsn = $master_cxn->dsn();  # just for brevity
 
    # ########################################################################
+   # Set up the run time, if any.  Anything that waits should check this
+   # between waits, else this will happen:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1043438
+   # ########################################################################
+   my $have_time;
+   if ( my $run_time = $o->get('run-time') ) {
+      my $rt = Runtime->new(
+         now     => sub { return time; },
+         runtime => $run_time,
+      );
+      $have_time = sub { return $rt->have_time(); };
+   }
+   else {
+      $have_time = sub { return 1; };
+   }
+
+   # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
    # checks.  Else, this all can be skipped because all we need for a
@@ -8725,7 +8742,7 @@ sub main {
       $replica_lag = new ReplicaLagWaiter(
          slaves   => $slave_lag_cxns,
          max_lag  => $o->get('max-lag'),
-         oktorun  => sub { return $oktorun },
+         oktorun  => sub { return $oktorun && $have_time->(); },
          get_lag  => $get_lag,
          sleep    => $sleep,
       );
@@ -8748,7 +8765,7 @@ sub main {
          $sys_load = new MySQLStatusWaiter(
             max_spec   => $o->get('max-load'),
             get_status => $get_status,
-            oktorun    => sub { return $oktorun },
+            oktorun    => sub { return $oktorun && $have_time->(); },
             sleep      => $sleep,
          );
       };
@@ -8836,21 +8853,6 @@ sub main {
       PTDEBUG && _d('Ignoring last table', @{$last_chunk}{qw(db tbl)},
          'and resuming from next table');
       $last_chunk = undef;
-   }
-
-   # ########################################################################
-   # Set up the run time, if any.
-   # ########################################################################
-   my $have_time;
-   if ( my $run_time = $o->get('run-time') ) {
-      my $rt = Runtime->new(
-         now     => sub { return time; },
-         runtime => $run_time,
-      );
-      $have_time = sub { return $rt->have_time(); };
-   }
-   else {
-      $have_time = sub { return 1; };
    }
 
    # ########################################################################
