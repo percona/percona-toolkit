@@ -688,6 +688,17 @@ EOF
 test_format_innodb_filters
 
 # ###########################################################################
+# format_overall_db_stats
+# ###########################################################################
+
+format_overall_db_stats "$samples/mysqldump-001.txt" > "$PT_TMPDIR/got"
+
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_format_db_stats.txt" \
+   "Bug 903229: Format overall DB stats should be case-insensitive for engines"
+
+# ###########################################################################
 # report_mysql_summary
 # ###########################################################################
 
