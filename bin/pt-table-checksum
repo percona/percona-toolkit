@@ -3320,7 +3320,9 @@ sub is_cluster_node {
    PTDEBUG && _d($sql);
    my $row = $self->{dbh}->selectrow_arrayref($sql);
    PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+   $self->{is_cluster_node} = $row && $row->[1]
+                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+                            : 0;
   
    return $self->{is_cluster_node};
 }
@@ -11330,6 +11332,12 @@ nodes and regular replicas because nodes are not regular replicas so they
 cannot be detected automatically.  The lag check (see L<"REPLICA CHECKS">)
 is not performed for cluster nodes.
 
+Mixed replication setups are not currently supported.  For example, the tool
+does not work completely if the master host is replicating to a cluster,
+or if the cluster is replicating to another cluster.  In short, the only
+supported setup is a single cluster with nodes optionally having traditional
+replication slaves.
+
 =back
 
 =head1 BUGS
@@ -11413,6 +11421,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.1.4
+pt-table-checksum 2.1.5
 
 =cut

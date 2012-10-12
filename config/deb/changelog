@@ -1,3 +1,12 @@
+percona-toolkit (2.1.5) unstable; urgency=low
+
+  * Fixed bug 1062563: pt-table-checksum 2.1.4 doesn't detect diffs on Percona XtraDB Cluster nodes
+  * Fixed bug 1063912: pt-table-checksum 2.1.4 miscategorizes Percona XtraDB Cluster-based slaves as cluster nodes
+  * Fixed bug 1064016: pt-table-sync 2.1.4 --version-check may not work with HTTPS/SSL
+  * Fixed bug 1060423: Missing version-check page
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Mon, 08 Oct 2012 21:00:06 +0000
+
 percona-toolkit (2.1.4) unstable; urgency=low
 
   * pt-table-checksum: Percona XtraDB Cluster support
