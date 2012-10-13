@@ -59,6 +59,15 @@ export PERCONA_TOOLKIT_SANDBOX="$MYSQL_BASE_DIR"
 export PATH="$PATH:/usr/sbin:$MYSQL_BASE_DIR/bin"
 export LANG="en_US.UTF-8"
 
+# ######################################### #
+# Remove conf files that's shouldn't exist. #
+# ######################################### #
+rm -rf /tmp/pt-*     || true
+rm -rf /tmp/pt_*     || true
+rm -rf /tmp/percona* || true
+rm ~/.pt-*conf*      || true
+rm ~/.my*            || true
+
 #############################
 # Check and start test env. #
 #############################

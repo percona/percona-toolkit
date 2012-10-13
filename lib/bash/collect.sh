@@ -286,7 +286,19 @@ collect() {
 
    # Remove "empty" files, i.e. ones that are truly empty or
    # just contain timestamp lines.  When a command above fails,
-   # it may leave an empty file.
+   # it may leave an empty file.  But first wait another --run-time
+   # seconds for any slow process to finish:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1047701
+   local slept=0
+   while [ -n "$(jobs)" -a $slept -lt $OPT_RUN_TIME ]; do
+      sleep 1
+      slept=$((slept + 1))
+   done
+
+   for pid in $(jobs -p); do
+      kill $pid >/dev/null 2>&1
+   done
+
    for file in "$d/$p-"*; do
       # If there's not at least 1 line that's not a TS,
       # then the file is empty.
