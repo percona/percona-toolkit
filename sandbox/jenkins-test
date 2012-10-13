@@ -62,8 +62,11 @@ export LANG="en_US.UTF-8"
 # ######################################### #
 # Remove conf files that's shouldn't exist. #
 # ######################################### #
-rm ~/.pt-*conf* || true
-rm ~/.my*       || true
+rm -rf /tmp/pt-*     || true
+rm -rf /tmp/pt_*     || true
+rm -rf /tmp/percona* || true
+rm ~/.pt-*conf*      || true
+rm ~/.my*            || true
 
 #############################
 # Check and start test env. #
