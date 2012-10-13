@@ -65,6 +65,7 @@ export LANG="en_US.UTF-8"
 (
    rm ~/.pt-*conf*
    rm ~/.my*
+   true
 )
 
 #############################
