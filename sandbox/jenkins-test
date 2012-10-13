@@ -62,8 +62,10 @@ export LANG="en_US.UTF-8"
 # ######################################### #
 # Remove conf files that's shouldn't exist. #
 # ######################################### #
-rm ~/.pt-*conf*
-rm ~/.my*
+(
+   rm ~/.pt-*conf*
+   rm ~/.my*
+)
 
 #############################
 # Check and start test env. #
