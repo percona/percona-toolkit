@@ -862,6 +862,16 @@ collect() {
 
    hostname > "$d/$p-hostname"
 
+   local slept=0
+   while [ -n "$(jobs)" -a $slept -lt $OPT_RUN_TIME ]; do
+      sleep 1
+      slept=$((slept + 1))
+   done
+
+   for pid in $(jobs -p); do
+      kill $pid >/dev/null 2>&1
+   done
+
    for file in "$d/$p-"*; do
       if [ -z "$(grep -v '^TS ' --max-count 1 "$file")" ]; then
          log "Removing empty file $file";
