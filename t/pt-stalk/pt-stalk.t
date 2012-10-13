@@ -149,9 +149,9 @@ like(
 # the samples may not be precisely 1 second apart.
 chomp($output = `cat $dest/*-df | grep -c '^TS'`);
 ok(
-   $output >= 1 && $output <= 2,
+   $output >= 1 && $output <= 3,
    "Collect ran for --run-time"
-);
+) or diag("Run time: $output");
 
 ok(
    PerconaTest::not_running("pt-stalk --iterations 1"),
