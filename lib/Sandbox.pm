@@ -80,7 +80,7 @@ sub use {
    if ( $? >> 8 ) {
       die "Failed to execute $cmd on $server: $out";
    }
-   return;
+   return $out;
 }
 
 sub create_dbs {
@@ -203,6 +203,7 @@ sub master_is_ok {
 # Returns a string if there is a problem with the slave.
 sub slave_is_ok {
    my ($self, $slave, $master, $ro) = @_;
+   return if $self->is_cluster_node($slave);
    PTDEBUG && _d('Checking if slave', $slave, $port_for{$slave},
       'to', $master, $port_for{$master}, 'is ok');
 
@@ -345,7 +346,8 @@ sub verify_test_data {
          'SELECT * FROM percona_test.checksums',
          'db_tbl');
    $self->{checksum_ref} = $ref unless $self->{checksum_ref};
-   my @tables_in_mysql  = @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
+   my @tables_in_mysql  = grep { !/^innodb_(?:table|index)_stats$/ }
+                          @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
    my @tables_in_sakila = qw(actor address category city country customer
                              film film_actor film_category film_text inventory
                              language payment rental staff store);
@@ -394,6 +396,20 @@ sub clear_genlogs {
       Test::More::diag(`echo > /tmp/$port_for{$host}/data/genlog`);
    }
    return;
+}
+
+sub is_cluster_node {
+   my ($self, $server) = @_;
+   
+   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
+   PTDEBUG && _d($sql);
+   my $row = $self->use($server, qq{-ss -e "$sql"});
+   PTDEBUG && _d($row);
+   $row = [split " ", $row];
+  
+   return $row && $row->[1]
+            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+            : 0;
 }
 
 1;
