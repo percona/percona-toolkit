@@ -284,17 +284,17 @@ fi
 case $opt in
    start)
       cd $PERCONA_TOOLKIT_BRANCH/sandbox
-      ./start-sandbox master 12345
+      ./start-sandbox "${2:-"master"}" 12345
       exit_status=$((exit_status | $?))
       set_mysql_version
       if [ $exit_status -eq 0 ]; then
-         ./start-sandbox slave 12346 12345
+         ./start-sandbox "${2:-"slave"}" 12346 12345
          exit_status=$((exit_status | $?))
-         ./start-sandbox slave 12347 12346
+         ./start-sandbox "${2:-"slave"}" 12347 12346
          exit_status=$((exit_status | $?))
          if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
             echo -n "Loading sakila database... "
-            ./load-sakila-db 12345
+            ./load-sakila-db 12345 "${2:-""}"
             exit_status=$((exit_status | $?)) 
             if [ $exit_status -ne 0 ]; then
                echo "FAILED"

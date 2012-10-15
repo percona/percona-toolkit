@@ -43,6 +43,12 @@ exit_status=0
 /tmp/$PORT/use < sakila-db/sakila-schema.sql
 exit_status=$((exit_status | $?))
 
+# We can remove this once PXC's triggers can handle myisam tables
+if [ "${2:-""}" = "cluster" ]; then
+   /tmp/$PORT/use -e "ALTER TABLE sakila.film_text DROP KEY idx_title_description"
+   /tmp/$PORT/use -e "ALTER TABLE sakila.film_text ENGINE = 'InnoDB'"
+fi
+
 /tmp/$PORT/use < sakila-db/sakila-data.sql
 exit_status=$((exit_status | $?))
 
