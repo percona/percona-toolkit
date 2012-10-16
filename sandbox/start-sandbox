@@ -34,13 +34,17 @@ make_sandbox() {
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
+   if [ -f $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/sys.sql ]; then
+      cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/sys.sql /tmp/$port
+   fi
+
    for script in `ls $PERCONA_TOOLKIT_BRANCH/sandbox/servers/*`; do
       if [ -f $script ]; then
         cp $script /tmp/$port
       fi
    done
 
-   for file in `grep -rl PORT /tmp/$port`; do
+   for file in `grep -l PORT /tmp/$port/*`; do
       sed -e "s/PORT/$port/g" -i.bak $file
       # Use ! instead of / because the replacment has / (it's a directory)
       sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
@@ -94,6 +98,10 @@ make_sandbox() {
       echo "Sandbox $type $port failed to start." >&2
       debug_sandbox $port
       exit 1
+   fi
+
+   if [ -f "/tmp/$port/sys.sql" ]; then
+      /tmp/$port/use < /tmp/$port/sys.sql
    fi
 
    # If the sandbox is a slave, start the slave.
