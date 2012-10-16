@@ -11,7 +11,8 @@ tarball="$1"
 version=$(echo $tarball | awk -F'-' '{print $2}')
 full_dir=${tarball%".tar.gz"}
 
-tar xvfz $tarball \
+tar xvfz --wildcards \
+   "$tarball" \
    "$full_dir/COPYING" \
    "$full_dir/README" \
    "$full_dir/share/errmsg*" \
