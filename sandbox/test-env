@@ -292,6 +292,17 @@ case $opt in
          exit_status=$((exit_status | $?))
          ./start-sandbox "${2:-"slave"}" 12347 12346
          exit_status=$((exit_status | $?))
+
+         if [ "${2:-""}" = "cluster" ]; then
+            echo "Checking that the cluster size is correct... "
+            size=$(/tmp/12345/use -ss -e "SHOW STATUS LIKE 'wsrep_cluster_size'" 2>/dev/null)
+            if [ "${size:-""}" -ne 3 ]; then
+               echo "FAILED"
+            else
+               echo "OK"
+            fi
+         fi
+
          if [ $? -eq 0 -a "$MYSQL_VERSION" '>' "4.1" ]; then
             echo -n "Loading sakila database... "
             ./load-sakila-db 12345 "${2:-""}"
