@@ -294,9 +294,9 @@ case $opt in
          exit_status=$((exit_status | $?))
 
          if [ "${2:-""}" = "cluster" ]; then
-            echo "Checking that the cluster size is correct... "
-            size=$(/tmp/12345/use -ss -e "SHOW STATUS LIKE 'wsrep_cluster_size'" 2>/dev/null)
-            if [ "${size:-""}" -ne 3 ]; then
+            echo -n "Checking that the cluster size is correct... "
+            size=$(/tmp/12345/use -ss -e "SHOW STATUS LIKE 'wsrep_cluster_size'" | awk '{print $2}')
+            if [ ${size:-0} -ne 3 ]; then
                echo "FAILED"
             else
                echo "OK"
