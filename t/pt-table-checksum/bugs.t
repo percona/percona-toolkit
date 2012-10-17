@@ -192,6 +192,35 @@ like(
 );
 
 # #############################################################################
+# pt-table-checksum doesn't warn if binlog_format=row or mixed on slaves
+# https://bugs.launchpad.net/percona-toolkit/+bug/938068
+# #############################################################################
+
+{
+diag("Adding two new slaves to master");
+local $ENV{BINLOG_FORMAT} = 'ROW';
+diag(`$trunk/sandbox/start-sandbox slave 12348 12345`);
+local $ENV{BINLOG_FORMAT} = 'MIXED';
+diag(`$trunk/sandbox/start-sandbox slave 12349 12348`);
+
+$output = output( sub { pt_table_checksum::main(@args) }, stderr => 1 );
+
+my $re = qr/ has binlog_format .*? has format (\S+)\. This can break replication/msi;
+like(
+   $output,
+   $re,
+   "Bug 938068: doesn't warn if binlog_format=row or mixed on slaves"
+);
+
+is_deeply(
+   [ $output =~ /$re/g ],
+   [ 'ROW', 'MIXED' ],
+   "...and warns for both level 1 and level 2 slaves"
+) or diag($output);
+
+diag(`$trunk/sandbox/stop-sandbox slave 12348 12349`);
+}
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
