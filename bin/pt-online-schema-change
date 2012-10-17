@@ -2712,9 +2712,15 @@ sub get_create_table {
    die "I need a tbl parameter" unless $tbl;
    my $q = $self->{Quoter};
 
+
+   my $replace = q{@@SQL_MODE};
+   for my $mode ( qw(ANSI_QUOTES ANSI DB2 MAXDB MSSQL ORACLE POSTGRESQL) ) {
+      $replace = "REPLACE($replace, '$mode', '')"
+   }
+   $replace = qq{REPLACE($replace, ',,', ',')};
    my $new_sql_mode
       = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@@SQL_MODE := ' . $replace . ', '
       . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
       . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
 
@@ -3470,7 +3476,9 @@ sub is_cluster_node {
    PTDEBUG && _d($sql);
    my $row = $self->{dbh}->selectrow_arrayref($sql);
    PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+   $self->{is_cluster_node} = $row && $row->[1]
+                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+                            : 0;
   
    return $self->{is_cluster_node};
 }
@@ -8231,10 +8239,9 @@ sub main {
       # the user specified --chunk-size=N on the cmd line, in which
       # case the max child table size is their specified chunk size
       # times the fudge factor.
-      my $max_rows
-         = $o->get('dry-run') ? $o->get('chunk-size') * $limit
-         : $chunk_time        ? $avg_rate * $chunk_time * $limit
-         :                      $o->get('chunk-size') * $limit;
+      my $max_rows = $o->get('dry-run') ? $o->get('chunk-size') * $limit
+            : $chunk_time && $avg_rate ? $avg_rate * $chunk_time * $limit
+            : $o->get('chunk-size') * $limit;
       PTDEBUG && _d('Max allowed child table size:', $max_rows);
 
       $alter_fk_method = determine_alter_fk_method(

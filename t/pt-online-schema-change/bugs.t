@@ -193,6 +193,65 @@ is_deeply(
 
 $master_dbh->do(q{DROP DATABASE IF EXISTS `bug_1041372`});
 
+# ############################################################################
+# pt-online-schema-change foreign key error 
+# Customer issue 26211
+# ############################################################################
+$sb->load_file('master', "$sample/issue-26211.sql");
+
+my $retval;
+# There's two bugs here. First, see that it lives ok:
+($output, $retval) = full_output(sub { pt_online_schema_change::main(@args,
+                              '--alter-foreign-keys-method', 'auto',
+                              '--no-check-replication-filters',
+                              '--alter', "ENGINE=InnoDB",
+                              '--execute', "$master_dsn,D=bug_26211,t=prm_inst")});
+
+is(
+   $retval,
+   0,
+   "Issue 26211: Lives ok"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/\QI need a max_rows argument/,
+   "Issue 26211: No error message"
+);
+
+$sb->load_file('master', "$sample/issue-26211.sql");
+# And now check that it works with this SQL mode
+
+my ($old_mode) = $master_dbh->selectrow_array('select @@sql_mode');
+chomp $old_mode;
+diag("Old SQL mode: $old_mode");
+my $new_mode = 'NO_AUTO_VALUE_ON_ZERO,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ORACLE,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS,NO_AUTO_CREATE_USER';
+diag("New SQL mode: $new_mode");
+$master_dbh->do("SET GLOBAL sql_mode='$new_mode'");
+
+# There's two bugs here. First, see that it lives ok:
+($output, $retval) = full_output(sub { pt_online_schema_change::main(@args,
+                              '--alter-foreign-keys-method', 'auto',
+                              '--no-check-replication-filters',
+                              '--alter', "ENGINE=InnoDB",
+                              '--execute', "$master_dsn,D=bug_26211,t=prm_inst")});
+
+is(
+   $retval,
+   0,
+   "Issue 26211 part 2: Lives ok"
+);
+
+unlike(
+   $output,
+   qr/Error/i,
+   "Issue 26211 part 2: No error message"
+);
+
+diag("Restoring SQL mode to $old_mode");
+$master_dbh->do("set global sql_mode='$old_mode'");
+$master_dbh->do(q{DROP DATABASE IF EXISTS `bug_26211`});
+
 # #############################################################################
 # Done.
 # #############################################################################
