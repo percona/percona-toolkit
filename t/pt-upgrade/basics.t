@@ -30,7 +30,7 @@ elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to second sandbox master';
 }
 
-my @host_args = ('h=127.1,P=12345', 'P=12348');
+my @host_args = ('h=127.1,P=12345,L=1', 'P=12348');
 my @op_args   = (qw(-u msandbox -p msandbox),
                  '--compare', 'results,warnings',
                  '--zero-query-times',
@@ -104,9 +104,6 @@ $sb->wipe_clean($dbh2);
 # Issue 951: mk-upgrade "I need a db argument" error with
 # compare-results-method=rows
 # #############################################################################
-SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 4 unless $can_load_data;
-
    $sb->load_file('master',  "$sample/002/tables.sql");
    $sb->load_file('master1', "$sample/002/tables.sql");
 
@@ -116,7 +113,7 @@ SKIP: {
    ok(
       no_diff(
          sub { pt_upgrade::main(@op_args, "$log/002/no-db.log",
-            'h=127.1,P=12345,D=test', 'P=12348,D=test',
+            'h=127.1,P=12345,D=test,L=1', 'P=12348,D=test',
             qw(--compare-results-method rows --temp-database test)) },
          "$sample/002/report-01.txt",
       ),
@@ -130,7 +127,7 @@ SKIP: {
    ok(
       no_diff(
          sub { pt_upgrade::main(@op_args, "$log/002/no-db.log",
-            'h=127.1,P=12345,D=test', 'P=12348,D=test',
+            'h=127.1,P=12345,D=test,L=1', 'P=12348,D=test',
             qw(--compare-results-method rows --temp-database tmp_db)) },
          "$sample/002/report-01.txt",
       ),
@@ -151,15 +148,11 @@ SKIP: {
    
    $sb->wipe_clean($dbh1);
    $sb->wipe_clean($dbh2);
-}
 
 # #############################################################################
 # Bug 926598: DBD::mysql bug causes pt-upgrade to use wrong 
 # precision (M) and scale (D) 
 # #############################################################################
-SKIP: {
-   skip "LOAD DATA LOCAL INFILE is disabled", 2 unless $can_load_data;
-
    $sb->load_file('master',  "$sample/003/tables.sql");
    $sb->load_file('master1', "$sample/003/tables.sql");
 
@@ -181,7 +174,6 @@ SKIP: {
       qr/[`"]SUM\(total\)[`"]\s+double\sDEFAULT/i,
       "No M,D in table def (bug 926598)"
    );
-}
 
 # #############################################################################
 # Done.

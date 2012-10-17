@@ -41,17 +41,21 @@ my $dbh = DBI->connect(
 
 $dbh->do("CREATE TABLE IF NOT EXISTS percona_test.load_data (i int)");
 
-`echo 42 > /tmp/load_data_test.$$`;
+`echo 1 > /tmp/load_data_test.$$`;
 
 eval {
    $dbh->do("LOAD DATA LOCAL INFILE '/tmp/load_data_test.$$' INTO TABLE percona_test.load_data");
 };
 
+if ( $EVAL_ERROR ) {
+   $dbh->do("INSERT INTO percona_test.load_data (i) VALUES (0)");
+}
+
 unlink "/tmp/load_data_test.$$";
 
 my ($val) = $dbh->selectrow_array("SELECT i FROM percona_test.load_data");
 
-if ( ($val || 0) == 42 ) {
+if ( ($val || 0) == 1 ) {
    print "LOAD DATA LOCAL INFILE is enabled\n";
 }
 else {
