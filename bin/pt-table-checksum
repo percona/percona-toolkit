@@ -8586,10 +8586,39 @@ sub main {
       );
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
 
-      if ( $master_cxn->is_cluster_node() && !@$slaves ) {
-         die $master_cxn->name() . " is a cluster node but no other nodes "
-            . "or regular replicas were found.  Use --recursion-method=dsn "
-            . "to specify the other nodes in the cluster.\n";
+      if ( $master_cxn->is_cluster_node() ) {
+         if ( !@$slaves ) {
+            die $master_cxn->name() . " is a cluster node but no other nodes "
+               . "or regular replicas were found.  Use --recursion-method=dsn "
+               . "to specify the other nodes in the cluster.\n";
+         }
+         else {
+            my $err = '';
+            for my $slave (@$slaves) {
+               if (   $slave->is_cluster_node()
+                  && !$slave->same_cluster($master_cxn) ) {
+                  $err .= $slave->name() . " is a cluster node, but doesn't "
+                       .  "belong to the same cluster as " . $master_cxn->name()
+                       .  ". This is not currently supported; You can try "
+                       .  "using --recursion-method=dsn to specify all nodes "
+                       .  "in the slave cluster.\n"
+               }
+            }
+            warn $err if $err;
+         }
+      }
+      elsif ( @$slaves ) {
+         my $err = '';
+         for my $slave (@$slaves) {
+            if ( $slave->is_cluster_node() ) {
+               $err .= $slave->name() . " is a cluster node, but "
+                    .  $master_cxn->name() . " is not. This is not currently "
+                    .  "supported; You can try to specify "
+                    .  "all nodes in the cluster with "
+                    .  "--recursion-method=dsn if you want them checksummed.\n"
+            }
+         }
+         warn $err if $err;
       }
 
       if ( $o->get('check-slave-lag') ) {
@@ -8611,7 +8640,8 @@ sub main {
       # to appear should be sufficient.
       @$slave_lag_cxns = grep {
          my $slave_cxn = $_;
-         if ( $slave_cxn->is_cluster_node() ) {
+         if (  $slave_cxn->is_cluster_node()
+            && $master_cxn->same_cluster($slave_cxn) ) {
             warn "Not checking replica lag on " . $slave_cxn->name()
                . " because it is a cluster node.\n";
             0;
