@@ -44,7 +44,8 @@ my $dbh = DBI->connect(
 # Sandbox::ok() will throw "ERROR: Tables are different on master: mysql.proc"
 $dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
 
-my @tables_in_mysql  = @{$dbh->selectcol_arrayref('SHOW TABLES FROM mysql')};
+my @tables_in_mysql  = grep { !/^innodb_(?:table|index)_stats$/ }
+                       @{$dbh->selectcol_arrayref('SHOW TABLES FROM mysql')};
 my @tables_in_sakila = qw( actor address category city country customer
                            film film_actor film_category film_text inventory
                            language payment rental staff store );

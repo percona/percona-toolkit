@@ -40,6 +40,28 @@ make_sandbox() {
       fi
    done
 
+   if [ "${type}" = "cluster" ]; then
+      cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/pxc/$version/my.sandbox.cnf /tmp/$port
+
+      local ip="$(perl -MNet::Address::IP::Local -le 'print Net::Address::IP::Local->public')"
+      local libgalera="$PERCONA_TOOLKIT_SANDBOX/lib/libgalera_smm.so"
+      local cluster_name="${CLUSTER_NAME:-"pt_sandbox_cluster"}"
+      local cluster_address="gcomm://"
+      local listen_port=$(($port + 10))
+      local receive_port=$(($port + 20))
+      if [ -n "${master_port}" ]; then
+         local master_listen_port=$(($master_port + 10))
+         cluster_address="gcomm://$ip:$master_listen_port"
+      fi
+
+      sed -e "s/ADDR/$ip/g" -i.bak "/tmp/$port/my.sandbox.cnf"
+      sed -e "s!CLUSTER_AD!$cluster_address!g" -i.bak "/tmp/$port/my.sandbox.cnf"
+      sed -e "s/CLUSTER_NAME/$cluster_name/g" -i.bak "/tmp/$port/my.sandbox.cnf"
+      sed -e "s/RECEIVE_PRT/$receive_port/g" -i.bak "/tmp/$port/my.sandbox.cnf"
+      sed -e "s/LISTEN_PRT/$listen_port/g" -i.bak "/tmp/$port/my.sandbox.cnf"
+      sed -e "s!LIBGALERA!$libgalera!g" -i.bak "/tmp/$port/my.sandbox.cnf"
+   fi
+
    for file in `grep -l PORT /tmp/$port/*`; do
       sed -e "s/PORT/$port/g" -i.bak $file
       # Use ! instead of / because the replacment has / (it's a directory)
@@ -116,7 +138,7 @@ type=$1         # master, slave or master-master
 port=$2         # sandbox port number, e.g. 12345
 master_port=$3  # master port if slave or master-master
 
-if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ]; then
+if [ "$type" != "master" ] && [ "$type" != "slave" ] && [ "$type" != "master-master" ] && [ "$type" != "cluster" ]; then
    die "Invalid sandbox type: $type.  Valid types are master, slave, and master-master."
 fi
 
@@ -154,7 +176,7 @@ cd $PERCONA_TOOLKIT_BRANCH/sandbox
 # MySQL executables like PERCONA_TOOLKIT_SANDBOX/bin/mysqld_safe.
 
 if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
-   PERCONA_TOOLKIT_SANDBOX=`./mk-test-env checkconfig | grep PERCONA_TOOLKIT_SANDBOX | cut -d= -f2 | awk '{print $1}'`
+   PERCONA_TOOLKIT_SANDBOX=`./test-env checkconfig | grep PERCONA_TOOLKIT_SANDBOX | cut -d= -f2 | awk '{print $1}'`
    if [ -z "$PERCONA_TOOLKIT_SANDBOX" ]; then
       die "PERCONA_TOOLKIT_SANDBOX environment variable is not set."
    fi
