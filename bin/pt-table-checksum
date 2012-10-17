@@ -8586,6 +8586,22 @@ sub main {
       );
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
 
+      if ( $o->get('check-binlog-format') ) {
+         my ($master_binlog) = $master_dbh->selectrow_array('SELECT @@binlog_format');
+         my $err = '';
+         for my $slave_cxn (@$slaves) {
+            my ($slave_binlog) = $slave_cxn->dbh->selectrow_array('SELECT @@binlog_format');
+            if ( $master_binlog ne $slave_binlog ) {
+               $err .= $master_cxn->name() . " has binlog_format $master_binlog "
+                  .  "but its slave " . $slave_cxn->name() . " has format "
+                  .  $slave_binlog . ". This can break replication. If you "
+                  .  "understand the risks, you can specify "
+                  .  "--no-check-binlog-format to avoid this error.\n"
+            }
+         }
+         die $err if $err;
+      }
+
       if ( $master_cxn->is_cluster_node() && !@$slaves ) {
          die $master_cxn->name() . " is a cluster node but no other nodes "
             . "or regular replicas were found.  Use --recursion-method=dsn "
@@ -10505,6 +10521,12 @@ Prompt for a password when connecting to MySQL.
 type: time; default: 1; group: Throttle
 
 Sleep time between checks for L<"--max-lag">.
+
+=item --[no]check-binlog-format
+
+default: yes
+
+Check that the binlog_format is the same in all servers.
 
 =item --[no]check-plan
 
