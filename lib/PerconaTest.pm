@@ -765,8 +765,8 @@ sub full_output {
    close $_ or die "Cannot close $_: $OS_ERROR" for qw(STDOUT STDERR);
    my $output = slurp_file($file) . slurp_file($file2);
 
-   1 while unlink $file;
-   1 while unlink $file2;
+   unlink $file;
+   unlink $file2;
    
    return ($output, $status);
 }
