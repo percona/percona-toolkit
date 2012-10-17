@@ -58,9 +58,18 @@ sub get_create_table {
    # To ensure a consistent output, we save the current (old) SQL mode,
    # then set it to the new SQL mode that what we need.  When done, even
    # if an error occurs, we restore the old SQL mode.
+
+   # We don't want ANSI_QUOTES on here, nor any of the modes that
+   # implicitly turn that on.
+   my $replace = q{@@SQL_MODE};
+   # The others automatically turn on ANSI_QUOTES
+   for my $mode ( qw(ANSI_QUOTES ANSI DB2 MAXDB MSSQL ORACLE POSTGRESQL) ) {
+      $replace = "REPLACE($replace, '$mode', '')"
+   }
+   $replace = qq{REPLACE($replace, ',,', ',')};
    my $new_sql_mode
       = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@@SQL_MODE := ' . $replace . ', '
       . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
       . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
 
