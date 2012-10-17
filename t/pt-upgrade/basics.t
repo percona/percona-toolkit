@@ -196,7 +196,9 @@ $sb->load_file('master1', "$sample/004/tables.sql");
 
 ok(
    no_diff(
-      sub { pt_upgrade::main(@args, "$log/004/select-func.log") },
+      sub { pt_upgrade::main(@args,
+         qw(--compare-results-method rows),
+         "$log/004/select-func.log") },
       "$sample/004/select-func.txt",
    ),
    'SELECT FUNC() (bug 1060774)'
