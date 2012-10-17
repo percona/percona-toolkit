@@ -3626,7 +3626,8 @@ sub check_table_against_slaves {
    }
 
    my ($tbl_struct, $db, $tbl, $slaves) = @args{@required_args};
-   
+
+   my $errors;
    for my $slave_cxn (@$slaves) {
       my $slave_has_table = $self->check_table(
             dbh => $slave_cxn->dbh(),
@@ -3638,13 +3639,20 @@ sub check_table_against_slaves {
 
       my $ddl       = $self->get_create_table( $slave_cxn->dbh, $db, $tbl );
       my $slave_tbl = $self->parse( $ddl );
-      $self->check_table_against_slave(
-         tbl_name   => "$db.$tbl",
-         master_tbl => $tbl_struct,
-         slave_tbl  => $slave_tbl,
-         slave_name => $slave_cxn->name(),
-      );
+      local $EVAL_ERROR;
+      eval {
+         $self->check_table_against_slave(
+            tbl_name   => "$db.$tbl",
+            master_tbl => $tbl_struct,
+            slave_tbl  => $slave_tbl,
+            slave_name => $slave_cxn->name(),
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         $errors .= $EVAL_ERROR;
+      }
    }
+   die $errors if $errors;
 }
 
 sub get_engine {
@@ -8872,13 +8880,13 @@ sub main {
                         : $o->get('chunk-size');
          $tbl->{chunk_size} = $chunk_size;
 
-         if ( $o->get('check-replicate-table-columns') ) {
+         if ( $o->get('check-replicate-table-columns') && $slaves && @$slaves ) {
             $tp->check_table_against_slaves(
                tbl_struct => $tbl->{tbl_struct},
                db         => $tbl->{db},
                table      => $tbl->{tbl},
                slaves     => $slaves,
-            ) if $slaves;
+            );
          }
 
          # Make a nibble iterator for this table.  This should only fail
@@ -9352,12 +9360,15 @@ sub check_repl_table {
                   slaves     => $slaves,
                ) if $slaves;
             };
-            die "Error executing $sql: $e\n"
-              . $EVAL_ERROR
-              . "\nThis can cause replication to fail.  "
-              . "If you understand the risks, you can specify "
-              . "--no-create-replicate-table to avoid this error."
-              if $EVAL_ERROR;
+            if ( $EVAL_ERROR ) {
+               die "--create-replicate-table $tbl failed: $e\nThe table "
+                 . "already exists on the master, but has problems "
+                 . "on these replicas:\n"
+                 . $EVAL_ERROR
+                 . "\nSpecifying --no-create-replicate table disables this "
+                 . "check, but it could also break replication. See "
+                 . "<http://kb link> for more information.";
+            }
          }
          else {
             die "--replicate table $tbl does not exist and it cannot be "
