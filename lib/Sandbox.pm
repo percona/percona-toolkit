@@ -39,6 +39,7 @@ $Data::Dumper::Quotekeys = 0;
 use constant PTDEBUG    => $ENV{PTDEBUG}    || 0;
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
+use IO::Socket::INET;
 $Sandbox::Percona::Toolkit::VERSION = "2.1.4";
 
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
@@ -129,7 +130,7 @@ sub get_dbh_for {
 }
 
 sub load_file {
-   my ( $self, $server, $file, $use_db ) = @_;
+   my ( $self, $server, $file, $use_db, %args ) = @_;
    _check_server($server);
    $file = "$trunk/$file";
    if ( !-f $file ) {
@@ -144,7 +145,7 @@ sub load_file {
    if ( $? >> 8 ) {
       die "Failed to execute $file on $server: $out";
    }
-   $self->wait_for_slaves();
+   $self->wait_for_slaves() unless $args{no_wait};
 }
 
 sub _use_for {
@@ -410,6 +411,85 @@ sub is_cluster_node {
    return $row && $row->[1]
             ? ($row->[1] eq 'ON' || $row->[1] eq '1')
             : 0;
+}
+
+sub set_as_slave {
+   my ($self, $server, $master_server, @extras) = @_;
+   PTDEBUG && _d("Setting $server as slave of $master_server");
+   my $master_port = $port_for{$master_server};
+   my $sql = join ", ", qq{change master to master_host='127.0.0.1'},
+                        qq{master_user='msandbox'},
+                        qq{master_password='msandbox'},
+                        qq{master_port=$master_port},
+                        @extras;
+   for my $sql_to_run ($sql, "start slave") {
+      my $out = $self->use($server, qq{-e "$sql_to_run"});
+      PTDEBUG && _d($out);
+   }
+}
+
+sub start_sandbox {
+   my ($self, $mode, $server, $master_server) = @_;
+   my $port        = $port_for{$server};
+   my $master_port = $master_server ? $port_for{$master_server} : '';
+   my $out = `$trunk/sandbox/start-sandbox $mode $port $master_port 2>&1`;
+   die $out if $CHILD_ERROR;
+   return $out;
+}
+
+sub stop_sandbox {
+   my ($self, @sandboxes) = @_;
+   my @ports = @port_for{@sandboxes};
+   my $out = `$trunk/sandbox/stop-sandbox @ports 2>&1`;
+   die $out if $CHILD_ERROR;
+   return $out;
+}
+
+sub start_cluster {
+   my ($self, %args) = @_;
+   my $cluster_size  = $args{cluster_size} || 3;
+
+   my $out = '';
+
+   my ($node1, @nodes) = map {
+      my $node_name = "node$_";
+      $node_name    = "_$node_name" while exists $port_for{$node_name};
+      $port_for{$node_name} = $self->_get_unused_port();
+      $node_name
+   } 1..$cluster_size;
+
+   local $ENV{CLUSTER_NAME} = $args{cluster_name} if $args{cluster_name};
+   $self->start_sandbox("cluster", $node1);
+   for my $node ( @nodes ) {
+      $self->start_sandbox("cluster", $node, $node1);
+   }
+
+   return ($node1, @nodes);
+}
+
+# Lifted from Nginx::Test on CPAN
+sub _get_unused_port {
+    my $port = 50000 + int (rand() * 5000);
+
+    while ($port++ < 64000) {
+        my $sock = IO::Socket::INET->new (
+            Listen    => 5,
+            LocalAddr => '127.0.0.1',
+            LocalPort => $port,
+            Proto     => 'tcp',
+            ReuseAddr => 1
+        ) or next;
+
+        $sock->close;
+        return $port;
+    }
+
+    die "Cannot find an open port";
+}
+
+sub port_for {
+   my ($self, $server) = @_;
+   return $port_for{$server};
 }
 
 1;
