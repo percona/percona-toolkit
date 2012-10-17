@@ -214,18 +214,20 @@ SKIP: {
    diag("Creating a slave for $node2...");
    {
       local $ENV{BINLOG_FORMAT} = 'ROW';
-      $sb->start_sandbox("slave", $node2_slave, $node2);
+      diag($sb->start_sandbox("slave", $node2_slave, $node2));
    }
    my $node_slave_dbh = $sb->get_dbh_for($node2_slave);
 
    make_dbh_differ($node2_dbh);
 
    # And make its slave differ as well
+   PerconaTest::wait_for_table($sb->get_dbh_for($nodes[-1]), "bug_1062563.ptc_pxc");
    PerconaTest::wait_for_table($node_slave_dbh, "bug_1062563.ptc_pxc");
    $node_slave_dbh->do("INSERT INTO bug_1062563.ptc_pxc (i) VALUES ($_)") for 3, 4;
 
    my $dsns_table_sql = catfile(qw(t lib samples MasterSlave dsn_table.sql));
    $sb->load_file($node2, $dsns_table_sql, undef, no_wait => 1);
+   $node2_dbh->do("DELETE FROM dsn_t.dsns"); # Delete 12346
    my $sth = $node2_dbh->prepare("INSERT INTO dsn_t.dsns VALUES (null, null, ?)");
    for my $dsn ( map { $sb->dsn_for($_) } @nodes[0,2..$#nodes], $node2_slave ) {
       $sth->execute($dsn);
@@ -245,16 +247,15 @@ SKIP: {
       PerconaTest::count_checksum_results($output, 'diffs'),
       1,
       "Bug 1062563: Detects diffs between PXC nodes"
-   );
-
+   ) or diag($output);
+   
    my @cluster_nodes = $output =~ /(because it is a cluster node)/g;
    is(
       scalar(@cluster_nodes),
       4,
       "Skips all the cluster nodes in the dsns table"
    ) or diag($output);
-
-
+   
    # Now try with just the slave
 
    $node2_dbh->do("DELETE FROM dsn_t.dsns");
@@ -295,11 +296,14 @@ SKIP: {
    make_dbh_differ($cluster1_dbh);
 
    # And make its slave differ as well
+   PerconaTest::wait_for_table($sb->get_dbh_for($cluster2[-1]), "bug_1062563.ptc_pxc");
+   PerconaTest::wait_for_table($sb->get_dbh_for($cluster1[-1]), "bug_1062563.ptc_pxc");
    PerconaTest::wait_for_table($cluster2_dbh, "bug_1062563.ptc_pxc");
    $cluster2_dbh->do("INSERT INTO bug_1062563.ptc_pxc (i) VALUES ($_)") for 3, 4;
    
    $dsns_table_sql = catfile(qw(t lib samples MasterSlave dsn_table.sql));
    $sb->load_file($cluster1[0], $dsns_table_sql, undef, no_wait => 1);
+   $cluster1_dbh->do("DELETE FROM dsn_t.dsns"); # Delete 12346
    $sth = $cluster1_dbh->prepare("INSERT INTO dsn_t.dsns VALUES (null, null, ?)");
    for my $dsn ( map { $sb->dsn_for($_) } @cluster1[1..$#cluster1], $cluster2[0] ) {
       $sth->execute($dsn);
@@ -320,7 +324,7 @@ SKIP: {
       PerconaTest::count_checksum_results($output, 'diffs'),
       1,
       "Bug 1062563: Detects diffs between PXC nodes when cluster -> cluster"
-   );
+   ) or diag($output);
 
    like(
       $output,
