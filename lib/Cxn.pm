@@ -36,6 +36,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Scalar::Util qw(blessed);
+
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    # Hostnames make testing less accurate.  Tests need to see
@@ -44,6 +45,15 @@ use constant {
    # the same hostname.
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
 };
+
+use Data::Dumper ();
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
+
+   Data::Dumper::Dumper(@_);
+}
 
 # Sub: new
 #
@@ -260,13 +270,20 @@ sub is_master_of {
 
    my $cxn_dbh = $cxn->dbh;
    local $cxn_dbh->{FetchHashKeyName} = 'NAME_lc';
-   my $slave_status = $cxn_dbh->selectrow_hashref(q{SHOW SLAVE STATUS});
+   my $sql = q{SHOW SLAVE STATUS};
+   PTDEBUG && _d($sql);
+   my $slave_status = $cxn_dbh->selectrow_hashref($sql);
    return unless ref($slave_status) eq 'HASH';
-   my $port = $self->dsn->{P};
-   my $host = $self->dsn->{h};
 
-   return 1 if $slave_status->{master_host} eq $host
-            && $slave_status->{master_port} eq $port;
+   my $port = $self->dsn->{P};
+   return unless $slave_status->{master_port} eq $port;
+   return 1 if $self->dsn->{h} eq $slave_status->{master_host};
+   
+   # They might be the same but in different format
+   my $host        = scalar gethostbyname($self->dsn->{h});
+   my $master_host = scalar gethostbyname($slave_status->{master_host});
+   return 1 if $master_host eq $host;
+   return;
 }
 
 sub _find_full_gcomm_addr {

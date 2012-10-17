@@ -276,6 +276,11 @@ SKIP: {
       $cxn1->is_cluster_node(),
       "is_cluster_node works correctly for cluster nodes"
    );
+
+   ok(
+      !$cxn->is_master_of($cxn1),
+      "->is_master_of works correctly for a server unrelated to a cluster"
+   );
    
    diag("Setting node as a slave of master1");
    $sb->set_as_slave($node, "master1");
@@ -292,7 +297,7 @@ SKIP: {
       "->same_cluster works for master -> cluster"
    );
    diag("Restarting the cluster");
-   $sb->stop_sandbox($node);
+   diag($sb->stop_sandbox($node));
    ($node) = $sb->start_cluster(cluster_size => 1);
    $cxn1 = make_cxn( dsn_string => $sb->dsn_for($node) );
    $cxn1->connect();
@@ -391,5 +396,5 @@ diag($sb->stop_sandbox("master1"));
 # #############################################################################
 $master_dbh->disconnect() if $master_dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-done_testing
+done_testing;
 exit;
