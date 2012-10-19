@@ -13452,14 +13452,16 @@ sub main {
          $qv_dbh->do($sql);
       }
 
-      # Check for existence and the permissions to insert into the
-      # table.
+      # Check for the existence of the table.
       if ( !$tp->check_table(
-            dbh       => $qv_dbh,
-            db        => $db_tbl[0],
-            tbl       => $db_tbl[1]) )
+            dbh => $qv_dbh,
+            db  => $db_tbl[0],
+            tbl => $db_tbl[1]) )
       {
-         die "The query review table $db_tbl does not exist";
+         die "The query review table $db_tbl does not exist.  "
+            . "Specify --create-review-table to create it, "
+            . "and ensure that the MySQL user has privileges to create "
+            . "and update the table.\n";
       }
 
       # Set up the new QueryReview object.
@@ -13493,14 +13495,16 @@ sub main {
             $qv_dbh2->do($sql);
          }
 
-         # Check for existence and the permissions to insert into the
-         # table.
+         # Check for the existence of the table.
          if ( !$tp->check_table(
                dbh       => $qv_dbh2,
                db        => $hdb_tbl[0],
                tbl       => $hdb_tbl[1]) )
          {
-            die "The query review history table $hdb_tbl does not exist";
+            die "The query review history table $hdb_tbl does not exist.  "
+               . "Specify --create-review-history-table to create it, "
+               . "and ensure that the MySQL user has privileges to create "
+               . "and update the table.\n";
          }
 
          # Inspect for MAGIC_history_cols.  Add them to the --select list
