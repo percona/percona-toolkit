@@ -1,0 +1,4 @@
+# User@Host: root[root] @ localhost []
+# Query_time: 1  Lock_time: 0  Rows_sent: 1  Rows_examined: 1
+use test;
+SELECT (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP('2012-09-16 10:16:36')) / 60, SLEEP(1);
