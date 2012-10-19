@@ -319,47 +319,11 @@ sub check_table {
       return 0;
    }
 
-   # Table exists, return true unless we have privs to check.
-   PTDEBUG && _d('Table exists; no privs to check');
-   return 1 unless $args{all_privs};
-
-   # Get privs select,insert,update.
-   $sql = "SHOW FULL COLUMNS FROM $db_tbl";
-   PTDEBUG && _d($sql);
-   eval {
-      $row = $dbh->selectrow_hashref($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-      return 0;
-   }
-   if ( !scalar keys %$row ) {
-      # This should never happen.
-      PTDEBUG && _d('Table has no columns:', Dumper($row));
-      return 0;
-   }
-   my $privs = $row->{privileges} || $row->{Privileges};
-
-   # Get delete priv since FULL COLUMNS doesn't show it.   
-   $sql = "DELETE FROM $db_tbl LIMIT 0";
-   PTDEBUG && _d($sql);
-   eval {
-      $dbh->do($sql);
-   };
-   my $can_delete = $EVAL_ERROR ? 0 : 1;
-
-   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
-      ($can_delete ? 'delete' : ''));
-
-   # Check that we have all privs.
-   if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
-          && $can_delete) ) {
-      PTDEBUG && _d('User does not have all privs');
-      return 0;
-   }
-
-   PTDEBUG && _d('User has all privs');
+   PTDEBUG && _d('Table', $db, $tbl, 'exists');
    return 1;
+
+   # No more privs check:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1036747
 }
 
 sub get_engine {

@@ -38,6 +38,7 @@ BEGIN {
       MemcachedEvent
       BinaryLogParser
       GeneralLogParser
+      RawLogParser
       ProtocolParser
       HTTPProtocolParser
       ExecutionThrottler
@@ -8318,42 +8319,9 @@ sub check_table {
       return 0;
    }
 
-   PTDEBUG && _d('Table exists; no privs to check');
-   return 1 unless $args{all_privs};
-
-   $sql = "SHOW FULL COLUMNS FROM $db_tbl";
-   PTDEBUG && _d($sql);
-   eval {
-      $row = $dbh->selectrow_hashref($sql);
-   };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-      return 0;
-   }
-   if ( !scalar keys %$row ) {
-      PTDEBUG && _d('Table has no columns:', Dumper($row));
-      return 0;
-   }
-   my $privs = $row->{privileges} || $row->{Privileges};
-
-   $sql = "DELETE FROM $db_tbl LIMIT 0";
-   PTDEBUG && _d($sql);
-   eval {
-      $dbh->do($sql);
-   };
-   my $can_delete = $EVAL_ERROR ? 0 : 1;
-
-   PTDEBUG && _d('User privs on', $db_tbl, ':', $privs,
-      ($can_delete ? 'delete' : ''));
-
-   if ( !($privs =~ m/select/ && $privs =~ m/insert/ && $privs =~ m/update/
-          && $can_delete) ) {
-      PTDEBUG && _d('User does not have all privs');
-      return 0;
-   }
-
-   PTDEBUG && _d('User has all privs');
+   PTDEBUG && _d('Table', $db, $tbl, 'exists');
    return 1;
+
 }
 
 sub get_engine {
@@ -13452,16 +13420,16 @@ sub main {
          $qv_dbh->do($sql);
       }
 
-      # Check for existence and the permissions to insert into the
-      # table.
+      # Check for the existence of the table.
       if ( !$tp->check_table(
-            dbh       => $qv_dbh,
-            db        => $db_tbl[0],
-            tbl       => $db_tbl[1],
-            all_privs => 1) )
+            dbh => $qv_dbh,
+            db  => $db_tbl[0],
+            tbl => $db_tbl[1]) )
       {
-         die "The query review table $db_tbl "
-            . "does not exist or you do not have INSERT privileges";
+         die "The query review table $db_tbl does not exist.  "
+            . "Specify --create-review-table to create it, "
+            . "and ensure that the MySQL user has privileges to create "
+            . "and update the table.\n";
       }
 
       # Set up the new QueryReview object.
@@ -13495,16 +13463,16 @@ sub main {
             $qv_dbh2->do($sql);
          }
 
-         # Check for existence and the permissions to insert into the
-         # table.
+         # Check for the existence of the table.
          if ( !$tp->check_table(
                dbh       => $qv_dbh2,
                db        => $hdb_tbl[0],
-               tbl       => $hdb_tbl[1],
-               all_privs => 1) )
+               tbl       => $hdb_tbl[1]) )
          {
-            die "The query review history table $hdb_tbl "
-               . "does not exist or you do not have INSERT privileges";
+            die "The query review history table $hdb_tbl does not exist.  "
+               . "Specify --create-review-history-table to create it, "
+               . "and ensure that the MySQL user has privileges to create "
+               . "and update the table.\n";
          }
 
          # Inspect for MAGIC_history_cols.  Add them to the --select list
