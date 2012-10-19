@@ -198,6 +198,7 @@ ok(
    no_diff(
       sub { pt_upgrade::main(@args,
          qw(--compare-results-method rows),
+         qw(--no-clear-warnings),
          "$log/004/select-func.log") },
       "$sample/004/select-func.txt",
    ),
