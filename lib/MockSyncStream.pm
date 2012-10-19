@@ -94,7 +94,17 @@ sub pending_changes {
 # uses sth attributes to return a pseudo table struct for the query's columns.
 sub get_result_set_struct {
    my ( $dbh, $sth ) = @_;
-   my @cols     = @{$sth->{NAME}};
+   my @cols     = map { 
+      my $name = $_;
+      my $name_len = length($name);
+      if ( $name_len > 64 ) {
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1060774
+         # Chop off the left end because right-side data tends to be
+         # the difference, e.g. load_the_canons vs. load_the_cantos.
+         $name = substr($name, ($name_len - 64), 64);
+      }
+      $name;
+   } @{$sth->{NAME}};
    my @types    = map { $dbh->type_info($_)->{TYPE_NAME} } @{$sth->{TYPE}};
    my @nullable = map { $dbh->type_info($_)->{NULLABLE} == 1 ? 1 : 0 } @{$sth->{TYPE}};
 
