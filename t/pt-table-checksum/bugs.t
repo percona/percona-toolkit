@@ -205,7 +205,7 @@ diag(`$trunk/sandbox/start-sandbox slave 12349 12348`);
 
 $output = output( sub { pt_table_checksum::main(@args) }, stderr => 1 );
 
-my $re = qr/ has binlog_format .*? has format (\S+)\. This can break replication/msi;
+my $re = qr/ has binlog_format .*? has binlog_format (\S+)\./msi;
 like(
    $output,
    $re,
@@ -218,7 +218,7 @@ is_deeply(
    "...and warns for both level 1 and level 2 slaves"
 ) or diag($output);
 
-diag(`$trunk/sandbox/stop-sandbox slave 12348 12349`);
+diag(`$trunk/sandbox/stop-sandbox 12348 12349`);
 }
 # #############################################################################
 # Done.
