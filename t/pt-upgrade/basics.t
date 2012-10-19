@@ -188,6 +188,24 @@ SKIP: {
 }
 
 # #############################################################################
+# SELECT FUNC(), so there are no tables.
+# https://bugs.launchpad.net/percona-toolkit/+bug/1060774
+# #############################################################################
+$sb->load_file('master',  "$sample/004/tables.sql");
+$sb->load_file('master1', "$sample/004/tables.sql");
+
+ok(
+   no_diff(
+      sub { pt_upgrade::main(@args,
+         qw(--compare-results-method rows),
+         qw(--no-clear-warnings),
+         "$log/004/select-func.log") },
+      "$sample/004/select-func.txt",
+   ),
+   'SELECT FUNC() (bug 1060774)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 diag(`rm /tmp/left-outfile.txt /tmp/right-outfile.txt 2>/dev/null`);
