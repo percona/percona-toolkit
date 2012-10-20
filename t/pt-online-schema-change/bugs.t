@@ -193,6 +193,26 @@ is_deeply(
 
 $master_dbh->do(q{DROP DATABASE IF EXISTS `bug_1041372`});
 
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1068562
+# pt-online-schema-change loses data when renaming columns
+# ############################################################################
+$sb->load_file('master', "$sample/data-loss-bug-1068562.sql");
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=bug1068562,t=simon",
+      "--alter", "change old_column_name new_column_name varchar(255) NULL",
+      qw(--execute)) },
+);
+
+my $rows = $master_dbh->selectall_arrayref("SELECT * FROM bug1068562.simon ORDER BY id");
+is_deeply(
+   $rows,
+   [  [qw(1 a)], [qw(2 b)], [qw(3 c)] ],
+   "Bug 1068562: no data lost"
+) or diag(Dumper($rows));
+
 # #############################################################################
 # Done.
 # #############################################################################
