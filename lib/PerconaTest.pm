@@ -386,7 +386,7 @@ sub test_log_parser {
          \@e,
          $args{result},
          "$base_file_name: results"
-      ) or print "Got: ", Dumper(\@e);
+      ) or diag(Dumper(\@e));
    }
 
    if ( defined $args{num_events} ) {
@@ -443,7 +443,7 @@ sub test_protocol_parser {
          \@e,
          $args{result},
          "$base_file_name: " . ($args{desc} || "results")
-      ) or print "Got: ", Dumper(\@e);
+      ) or diag(Dumper(\@e));
    }
 
    if ( defined $args{num_events} ) {
@@ -496,7 +496,7 @@ sub test_packet_parser {
          $args{result},
          "$args{file}" . ($args{desc} ? ": $args{desc}" : '')
       ) ) {
-      print Dumper(\@packets);
+      diag(Dumper(\@packets));
    }
 
    return;
@@ -601,7 +601,7 @@ sub no_diff {
       diag($out);
       if ( $ENV{UPDATE_SAMPLES} || $args{update_sample} ) {
          `cat $tmp_file > $expected_output`;
-         print STDERR "Updated $expected_output\n";
+         diag("Updated $expected_output");
       }
    }
 

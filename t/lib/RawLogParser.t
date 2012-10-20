@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 3;
+use Test::More;
 
 use RawLogParser;
 use PerconaTest;
@@ -25,13 +25,13 @@ test_log_parser(
    oktorun => sub { $oktorun = $_[0]; },
    result  => [
       {  pos_in_log => 0,
-         args       => 'SELECT c FROM t WHERE id=1',
+         arg        => 'SELECT c FROM t WHERE id=1',
          bytes      => 26,
          cmd        => 'Query',
          Query_time => 0,
       },
       {  pos_in_log => 27,
-         args       => '/* Hello, world! */ SELECT * FROM t2 LIMIT 1',
+         arg        => '/* Hello, world! */ SELECT * FROM t2 LIMIT 1',
          bytes      => 44,
          cmd        => 'Query',
          Query_time => 0,
@@ -49,4 +49,5 @@ $oktorun = 1;
 # #############################################################################
 # Done.
 # #############################################################################
+done_testing;
 exit;
