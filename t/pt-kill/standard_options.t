@@ -54,20 +54,20 @@ SKIP: {
       'PID file removed'
    );
 
-   diag(`rm -rf /tmp/pt-kill.log`);
+   diag(`rm -rf /tmp/pt-kill.log 2>/dev/null`);
 }
 
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
 # #########################################################################
-`touch /tmp/pt-script.pid`;
+diag(`touch /tmp/pt-script.pid`);
 $output = `$cmd --test-matching $trunk/t/lib/samples/pl/recset006.txt --match-state Locked  --print --pid /tmp/pt-script.pid 2>&1`;
 like(
    $output,
    qr{PID file /tmp/pt-script.pid already exists},
    'Dies if PID file already exists (--pid without --daemonize) (issue 391)'
 );
-`rm -rf /tmp/pt-script.pid`;
+diag(`rm -rf /tmp/pt-script.pid 2>/dev/null`);
 
 # #############################################################################
 # Done.
