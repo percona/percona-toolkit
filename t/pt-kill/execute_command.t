@@ -36,14 +36,14 @@ is(
    'No output without --print'
 );
 
-chomp($output = `cat $out`),
+chomp($output = `cat $out 2>/dev/null`),
 is(
    $output,
    'hello',
    '--execute-command'
 );
 
-diag(`rm $out`);
+diag(`rm $out 2>/dev/null`);
 
 SKIP: {
    skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
@@ -59,7 +59,7 @@ SKIP: {
       '--print with --execute-command'
    );
 
-   chomp($output = `cat $out`);
+   chomp($output = `cat $out 2>/dev/null`);
    is(
       $output,
       'batty',
@@ -68,7 +68,7 @@ SKIP: {
 
    # Let our select sleep(2) go away before other tests are ran.
    sleep 1;
-   diag(`rm $out`);
+   diag(`rm $out 2>/dev/null`);
 
    # Don't make zombies (https://bugs.launchpad.net/percona-toolkit/+bug/919819)
    $master_dbh->do("USE pt_kill_zombie_test");
