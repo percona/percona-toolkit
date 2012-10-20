@@ -672,24 +672,6 @@ SKIP: {
       ),
       "Table does not exist and user can't see it"
    );
-   ok(
-      $tp->check_table(
-         dbh       => $dbh,
-         db        => 'test',
-         tbl       => 't',
-         all_privs => 1,
-      ),
-      "Table exists and user has full privs"
-   );
-   ok(
-      !$tp->check_table(
-         dbh       => $user_dbh,
-         db        => 'test',
-         tbl       => 't',
-         all_privs => 1,
-      ),
-      "Table exists but user doesn't have full privs"
-   );
 
    ok(
       $tp->check_table(
