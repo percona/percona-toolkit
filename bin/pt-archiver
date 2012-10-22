@@ -524,7 +524,7 @@ sub get_opts {
       else {
          print "Error parsing version.  See the VERSION section of the tool's documentation.\n";
       }
-      exit 0;
+      exit 1;
    }
 
    if ( @ARGV && $self->{strict} ) {
@@ -779,7 +779,7 @@ sub usage_or_errors {
    }
    elsif ( scalar @{$self->{errors}} ) {
       print $self->print_errors() or die "Cannot print errors: $OS_ERROR";
-      exit 0 unless $return;
+      exit 1 unless $return;
    }
 
    return;

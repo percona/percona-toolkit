@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 use PerconaTest;
 
@@ -37,6 +37,19 @@ like(
    $output,
    qr/requires a 't'/,
    'Dest DSN requires t'
+);
+
+# #############################################################################
+# Bug 1039074: Tools exit 0 on error parsing options, should exit non-zero
+# #############################################################################
+
+system("$trunk/bin/pt-deadlock-logger --i-am-the-error >/dev/null 2>&1");
+my $exit_status = $CHILD_ERROR >> 8;
+
+is(
+   $exit_status,
+   1,
+   "Non-zero exit on option error (bug 1039074)"
 );
 
 # #############################################################################
