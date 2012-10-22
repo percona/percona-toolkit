@@ -9,6 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use File::Temp qw(tempfile);
 use Test::More;
 
 if ( !$ENV{SLOW_TESTS} ) {
@@ -25,6 +26,62 @@ my $cmd = "$trunk/bin/pt-fifo-split";
 
 my $output = `$cmd --help`;
 like($output, qr/Options and values/, 'It lives');
+
+require IO::File;
+my ($fh, $filename) = tempfile("pt-fifo-split-data.XXXXXXXXX", OPEN => 1, TMPDIR => 1, UNLINK => 1);
+$fh->autoflush(1);
+print { $fh } "$_\n" for 1..9;
+
+local $SIG{CHLD} = 'IGNORE';
+my $pid = fork();
+die "Cannot fork: $OS_ERROR" unless defined $pid;
+if ( !$pid ) {
+   exec { $cmd } $cmd, qw(--lines 2), $filename;
+   exit 1;
+}
+
+PerconaTest::wait_for_files($fifo);
+my @fifo;
+while (kill 0, $pid) {
+   push @fifo, slurp_file($fifo) if -e $fifo;
+}
+waitpid($pid, 0);
+
+is_deeply(
+   \@fifo,
+   [
+      "1\n2\n",
+      "3\n4\n",
+      "5\n6\n",
+      "7\n8\n",
+      "9\n",
+   ],
+   "--lines=2 with 9 lines works as expected"
+);
+
+$pid = fork();
+die "Cannot fork: $OS_ERROR" unless defined $pid;
+if ( !$pid ) {
+   exec { $cmd } $cmd, qw(--lines 15), $filename;
+   exit 1;
+}
+PerconaTest::wait_for_files($fifo);
+
+@fifo = ();
+while (kill 0, $pid) {
+   push @fifo, slurp_file($fifo) if -e $fifo;
+}
+waitpid($pid, 0);
+
+is_deeply(
+   \@fifo,
+   [
+      "1\n2\n3\n4\n5\n6\n7\n8\n9\n",
+   ],
+   "--lines=15 with 9 lines works as expected"
+);
+
+close $fh or die "Cannot close $filename: $OS_ERROR";
 
 system("($cmd --lines 10000 $trunk/bin/pt-fifo-split > /dev/null 2>&1 < /dev/null)&");
 PerconaTest::wait_for_files($fifo);
@@ -47,6 +104,8 @@ is($contents, <<EOF
      6	d
 EOF
 , 'Offset works');
+
+#>"
 
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
