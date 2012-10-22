@@ -2058,6 +2058,28 @@ is(
 );
 
 # #############################################################################
+# Bug 1039074: Tools exit 0 on error parsing options, should exit non-zero
+# #############################################################################
+
+# pt-archiver requires at least one of --dest, --file or --purge, as well as
+# --where and --source.  So specifying no options should cause errors.
+@ARGV = qw();
+$o = new OptionParser(file => "$trunk/bin/pt-archiver");
+$o->get_specs();
+$o->get_opts();
+
+my $exit_status = 0;
+($output, $exit_status) = full_output(
+   sub { $o->usage_or_errors("$trunk/bin/pt-archiver"); },
+);
+
+is(
+   $exit_status,
+   1,
+   "Non-zero exit status on error parsing options (bug 1039074)"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 {
