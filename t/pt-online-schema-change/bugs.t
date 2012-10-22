@@ -77,7 +77,7 @@ $sb->load_file('master', "$sample/bug-1002448.sql");
 
 
 unlike $output,
-    qr/\QThe original table `test1002448`.`table_name` does not have a PRIMARY KEY or a unique index which is required for the DELETE trigger/,
+    qr/\QThe new table `test1002448`.`_table_name_new` does not have a PRIMARY KEY or a unique index which is required for the DELETE trigger/,
     "Bug 1002448: mistakenly uses indexes instead of keys";
 
 # ############################################################################
@@ -192,6 +192,48 @@ is_deeply(
 ) or diag(Dumper($triggers));
 
 $master_dbh->do(q{DROP DATABASE IF EXISTS `bug_1041372`});
+
+# ############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1062324
+# pt-online-schema-change sets bad DELETE trigger when changing Primary Key
+# ############################################################################
+$sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
+
+{
+   # pt-osc has no --no-drop-triggers option, so we hijack its sub.
+   no warnings;
+   local *pt_online_schema_change::drop_triggers = sub { return };
+
+   # Run the tool but leave the original and new tables as-is,
+   # and leave the triggers.
+   ($output, $exit_status) = full_output(
+      sub { pt_online_schema_change::main(@args,
+         "$master_dsn,D=test,t=t1",
+         "--alter", "drop key 2bpk, drop key c3, drop primary key, drop c1, add primary key (c2, c3(4)), add key (c3(4))",
+         qw(--execute --no-drop-new-table --no-swap-tables)) },
+   );
+
+   # Since _t1_new no longer has the c1 column, the bug caused this
+   # query to throw "ERROR 1054 (42S22): Unknown column 'test._t1_new.c1'
+   # in 'where clause'".
+   eval {
+      $master_dbh->do("DELETE FROM test.t1 WHERE c1=1");
+   };
+   is(
+      $EVAL_ERROR,
+      "",
+      "No delete trigger error after altering PK (bug 1062324)"
+   ) or diag($output);
+
+   # The original row was (c1,c2,c3) = (1,1,1).  We deleted where c1=1,
+   # so the row where c2=1 AND c3=1 should no longer exist.
+   my $row = $master_dbh->selectrow_arrayref("SELECT * FROM test._t1_new WHERE c2=1 AND c3=1");
+   is(
+      $row,
+      undef,
+      "Delete trigger works after altering PK (bug 1062324)"
+   );
+}
 
 # #############################################################################
 # Done.
