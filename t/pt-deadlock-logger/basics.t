@@ -23,9 +23,6 @@ my $dbh2 = $sb->get_dbh_for('master', { PrintError => 0, RaiseError => 1, AutoCo
 if ( !$dbh1 || !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 10;
-}
 
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
@@ -44,46 +41,50 @@ $dbh2->commit;
 $dbh1->{InactiveDestroy} = 1;
 $dbh2->{InactiveDestroy} = 1;
 
-# Fork off two children to deadlock against each other.
-my %children;
-foreach my $child ( 0..1 ) {
-   my $pid = fork();
-   if ( defined($pid) && $pid == 0 ) { # I am a child
-      eval {
-         my $dbh = ($dbh1, $dbh2)[$child];
-         my @stmts = (
-            "set transaction isolation level serializable",
-            "begin",
-            "select * from test.dl where a = $child",
-            "update test.dl set a = $child where a <> $child",
-         );
-         foreach my $stmt (@stmts[0..2]) {
-            $dbh->do($stmt);
+sub make_deadlock {
+   # Fork off two children to deadlock against each other.
+   my %children;
+   foreach my $child ( 0..1 ) {
+      my $pid = fork();
+      if ( defined($pid) && $pid == 0 ) { # I am a child
+         eval {
+            my $dbh = ($dbh1, $dbh2)[$child];
+            my @stmts = (
+               "set transaction isolation level serializable",
+               "begin",
+               "select * from test.dl where a = $child",
+               "update test.dl set a = $child where a <> $child",
+            );
+            foreach my $stmt (@stmts[0..2]) {
+               $dbh->do($stmt);
+            }
+            sleep(1 + $child);
+            $dbh->do($stmts[-1]);
+         };
+         if ( $EVAL_ERROR ) {
+            if ( $EVAL_ERROR !~ m/Deadlock found/ ) {
+               die $EVAL_ERROR;
+            }
          }
-         sleep(1 + $child);
-         $dbh->do($stmts[-1]);
-      };
-      if ( $EVAL_ERROR ) {
-         if ( $EVAL_ERROR !~ m/Deadlock found/ ) {
-            die $EVAL_ERROR;
-         }
+         exit(0);
       }
-      exit(0);
-   }
-   elsif ( !defined($pid) ) {
-      die("Unable to fork for clearing deadlocks!\n");
+      elsif ( !defined($pid) ) {
+         die("Unable to fork for clearing deadlocks!\n");
+      }
+
+      # I already exited if I'm a child, so I'm the parent.
+      $children{$child} = $pid;
    }
 
-   # I already exited if I'm a child, so I'm the parent.
-   $children{$child} = $pid;
+   # Wait for the children to exit.
+   foreach my $child ( keys %children ) {
+      my $pid = waitpid($children{$child}, 0);
+   }
+   $dbh1->commit;
+   $dbh2->commit;
 }
 
-# Wait for the children to exit.
-foreach my $child ( keys %children ) {
-   my $pid = waitpid($children{$child}, 0);
-}
-$dbh1->commit;
-$dbh2->commit;
+make_deadlock();
 
 # Test that there is a deadlock
 $output = $dbh1->selectrow_hashref('show /*!40101 engine*/ innodb status')->{status};
@@ -163,10 +164,40 @@ ok(
 );
 
 # #############################################################################
+# Bug 1043528: pt-deadlock-logger can't parse db/tbl/index on partitioned tables
+# #############################################################################
+SKIP: {
+   skip "Deadlock with partitions test requires MySQL 5.1 and newer", 1
+      unless $sandbox_version ge '5.1';
+
+   $dbh1->do('rollback');
+   $dbh2->do('rollback');
+   $output = 'foo';
+   $dbh1->do('TRUNCATE TABLE test.deadlocks');
+
+   $sb->load_file('master', "t/pt-deadlock-logger/samples/dead-lock-with-partitions.sql");
+
+   make_deadlock();
+
+   $output = output(
+      sub { pt_deadlock_logger::main("F=/tmp/12345/my.sandbox.cnf",
+         qw(--print) );
+      }
+   );
+
+   like(
+      $output,
+      qr/test dl PRIMARY RECORD/,
+      "Deadlock with partitions (bug 1043528)"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $dbh1->commit;
 $dbh2->commit;
 $sb->wipe_clean($dbh1);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
