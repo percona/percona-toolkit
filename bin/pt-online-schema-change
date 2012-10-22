@@ -9773,8 +9773,8 @@ percentage, seconds, or number of iterations.
 
 short form: -q
 
-Do not print messages to STDOUT.  Errors and warnings are still printed to
-STDERR.
+Do not print messages to STDOUT (disables L<"--progress">).
+Errors and warnings are still printed to STDERR.
 
 =item --recurse
 
