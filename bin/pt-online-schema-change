@@ -7824,6 +7824,22 @@ sub main {
                      keys %$orig_cols;
    PTDEBUG && _d('Common columns', @common_cols);
 
+   # Find a pk or unique index to use for the delete trigger.  can_nibble()
+   # above returns an index, but NibbleIterator will use non-unique indexes,
+   # so we have to do this again here.
+   my $indexes = $new_tbl->{tbl_struct}->{keys}; # brevity
+   foreach my $index ( $tp->sort_indexes($new_tbl->{tbl_struct}) ) {
+      if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+         PTDEBUG && _d('Delete trigger index:', Dumper($index));
+         $new_tbl->{del_index} = $index;
+         last;
+      }
+   }
+   if ( !$new_tbl->{del_index} ) {
+      die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
+        . "or a unique index which is required for the DELETE trigger.\n";
+   }
+
    # ########################################################################
    # Step 3: Create the triggers to capture changes on the original table and
    # apply them to the new table.
@@ -8618,22 +8634,6 @@ sub check_orig_table {
       die "Cannot chunk the original table $orig_tbl->{name}: $EVAL_ERROR\n";
    }
 
-   # Find a pk or unique index to use for the delete trigger.  can_nibble()
-   # above returns an index, but NibbleIterator will use non-unique indexes,
-   # so we have to do this again here.
-   my $indexes = $orig_tbl->{tbl_struct}->{keys}; # brevity
-   foreach my $index ( $tp->sort_indexes($orig_tbl->{tbl_struct}) ) {
-      if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
-         PTDEBUG && _d('Delete trigger index:', Dumper($index));
-         $orig_tbl->{del_index} = $index;
-         last;
-      }
-   }
-   if ( !$orig_tbl->{del_index} ) {
-      die "The original table $orig_tbl->{name} does not have a PRIMARY KEY "
-        . "or a unique index which is required for the DELETE trigger.\n";
-   }
-
    return;  # success
 }
 
@@ -8882,8 +8882,8 @@ sub create_triggers {
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.  We use null-safe equals, because unique
    # unique indexes can be nullable.
-   my $tbl_struct     = $orig_tbl->{tbl_struct};
-   my $del_index      = $orig_tbl->{del_index};
+   my $tbl_struct     = $new_tbl->{tbl_struct};
+   my $del_index      = $new_tbl->{del_index};
    my $del_index_cols = join(" AND ",
                            map {
                               my $col = $q->quote($_);

@@ -83,7 +83,7 @@ like( $output,
 );
 $master_dbh->do('DROP TRIGGER pt_osc.pt_osc_test');
 
-# The orig table must have a pk or unique index so the delete trigger is safe.
+# The new table must have a pk or unique index so the delete trigger is safe.
 $master_dbh->do("ALTER TABLE pt_osc.t DROP COLUMN id");
 $master_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
 ($output, undef) = full_output(
@@ -92,8 +92,8 @@ $master_dbh->do("ALTER TABLE pt_osc.t DROP INDEX c");
 );
 
 like( $output,
-   qr/`pt_osc`.`t` does not have a PRIMARY KEY or a unique index/,
-   "Original table must have a PK or unique index"
+   qr/`pt_osc`.`_t_new` does not have a PRIMARY KEY or a unique index/,
+   "New table must have a PK or unique index"
 );
 
 # #############################################################################
