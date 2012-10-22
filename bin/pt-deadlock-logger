@@ -4072,7 +4072,7 @@ sub parse_deadlocks {
             $hash->{wait_hold} = $what eq 'WAITING FOR THIS LOCK TO BE GRANTED' ? 'w' : 'h';
             @{$hash}{ qw(lock_type idx db tbl txn_id lock_mode) }
                = $body
-               =~ m{^(RECORD|TABLE) LOCKS? (?:space id \d+ page no \d+ n bits \d+ index `?$n`? of )?table `$n(?:/|`\.`)$n` trx id $t lock.mode (\S+)}m;
+               =~ m{^(RECORD|TABLE) LOCKS? (?:space id \d+ page no \d+ n bits \d+ index `?$n`? of )?table `$n(?:/|`\.`)$n`.*?trx id $t lock.mode (\S+)}m;
             if ( $hash->{txn_id} ) {
                my ( $high, $low ) = $hash->{txn_id} =~ m/^(\d+) (\d+)$/;
                $hash->{txn_id} = $high ? ( $low + ($high << 32) ) : $low;
