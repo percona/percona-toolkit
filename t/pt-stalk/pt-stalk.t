@@ -100,7 +100,7 @@ like(
    $output,
    qr/Check results: Threads_running=\d+, matched=no, cycles_true=0/,
    "Check results logged"
-) or diag(`cat $log_file 2>/dev/null`);
+) or diag(`cat $log_file 2>/dev/null`, `cat $dest/*-output 2>/dev/null`);
 
 $retval = system("kill $pid 2>/dev/null");
 is(
@@ -121,7 +121,7 @@ like(
    $output,
    qr/Caught signal, exiting/,
    "Caught signal logged"
-) or diag(`cat $log_file 2>/dev/null`);
+) or diag(`cat $log_file 2>/dev/null`, `cat $dest/*-output 2>/dev/null`);
 
 # ###########################################################################
 # Test collect.
@@ -146,10 +146,11 @@ like(
    "Collect triggered"
 )
 or diag(
-   'output', $output,
-   'log file', `cat $log_file 2>/dev/null`,
-   'dest', `ls -l $dest/ 2>/dev/null`,
-   'df', `cat $dest/*-df 2>/dev/null`,
+   'output',    $output,
+   'log file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+   'dest',      `ls -l $dest/ 2>/dev/null`,
+   'df',        `cat $dest/*-df 2>/dev/null`,
 );
 
 # There is some nondeterminism here. Sometimes it'll run for 2 samples because
@@ -160,10 +161,11 @@ ok(
    "Collect ran for --run-time"
 )
 or diag(
-   'output', $output,
-   'log file', `cat $log_file 2>/dev/null`,
-   'dest', `ls -l $dest/ 2>/dev/null`,
-   'df', `cat $dest/*-df 2>/dev/null`,
+   'output',    $output,
+   'log file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+   'dest',      `ls -l $dest/ 2>/dev/null`,
+   'df',        `cat $dest/*-df 2>/dev/null`,
 );
 
 ok(
@@ -183,7 +185,12 @@ like(
    $output,
    qr/Collector PID \d+/,
    "Collector PID logged"
-) or diag('output', $output, 'log file', `cat $log_file 2>/dev/null`);
+)
+or diag(
+   'output',    $output,
+   'log file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+);
 
 # ###########################################################################
 # Triggered but --no-collect.
@@ -209,7 +216,7 @@ like(
 ok(
    ! -f "$dest/*",
    "No files collected"
-);
+) or diag(`ls -l $dest/ 2>/dev/null`);
 
 ok(
    PerconaTest::not_running("pt-stalk --no-collect"),
@@ -234,7 +241,7 @@ is(
    "Killed pt-stalk"
 );
 
-$output = `cat $log_file`;
+$output = `cat $log_file 2>/dev/null`;
 like(
    $output,
    qr/Check results: Aborted_connects=|variable=Aborted_connects/,
@@ -260,14 +267,24 @@ like(
    $output,
    qr/Not stalking/,
    "Not stalking, collect triggered"
-) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
+)
+or diag(
+   'dest',      `ls -l $dest/ 2>/dev/null`,
+   'log_file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+);
 
 chomp($output = `grep -c '^TS' $dest/nostalk-df 2>/dev/null`);
 is(
    $output,
    2,
    "Not stalking, collect ran for --run-time"
-) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
+)
+or diag(
+   'dest',      `ls -l $dest/ 2>/dev/null`,
+   'log_file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+);
 
 my $vmstat = `which vmstat 2>/dev/null`;
 SKIP: {
@@ -284,12 +301,22 @@ is(
    `cat $dest/nostalk-hostname 2>/dev/null`,
    `hostname`,
    "Not stalking, collect gathered data"
-) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
+)
+or diag(
+   'dest',      `ls -l $dest/ 2>/dev/null`,
+   'log_file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+);
 
 ok(
    PerconaTest::not_running("pt-stalk --no-stalk"),
    "Not stalking, pt-stalk is not running"
-) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
+)
+or diag(
+   'dest',      `ls -l $dest/ 2>/dev/null`,
+   'log_file',  `cat $log_file 2>/dev/null`,
+   'collector', `cat $dest/*-output 2>/dev/null`,
+);
 
 # ############################################################################
 # bad "find" usage in purge_samples gives 
