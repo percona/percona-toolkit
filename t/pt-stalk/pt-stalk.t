@@ -260,14 +260,14 @@ like(
    $output,
    qr/Not stalking/,
    "Not stalking, collect triggered"
-);
+) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
 
 chomp($output = `grep -c '^TS' $dest/nostalk-df 2>/dev/null`);
 is(
    $output,
    2,
    "Not stalking, collect ran for --run-time"
-);
+) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
 
 my $vmstat = `which vmstat 2>/dev/null`;
 SKIP: {
@@ -284,12 +284,12 @@ is(
    `cat $dest/nostalk-hostname 2>/dev/null`,
    `hostname`,
    "Not stalking, collect gathered data"
-);
+) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
 
 ok(
    PerconaTest::not_running("pt-stalk --no-stalk"),
    "Not stalking, pt-stalk is not running"
-);
+) or diag(`cat $log_file 2>/dev/null`, `ls $dest/ 2>/dev/null`);
 
 # ############################################################################
 # bad "find" usage in purge_samples gives 
