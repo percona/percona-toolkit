@@ -86,20 +86,21 @@ ok(
    "Creates --dest (collect) dir"
 );
 
-chomp($pid = `cat $pid_file`);
+chomp($pid = `cat $pid_file 2>/dev/null`);
 $retval = system("kill -0 $pid");
 is(
    $retval >> 0,
    0,
-   "pt-stalk is running ($pid)"
+   "pt-stalk is running"
 );
 
-$output = `cat $log_file`;
+PerconaTest::wait_for_sh("grep -q 'Check results' $log_file >/dev/null");
+$output = `cat $log_file 2>/dev/null`;
 like(
    $output,
    qr/Check results: Threads_running=\d+, matched=no, cycles_true=0/,
    "Check results logged"
-);
+) or diag(`cat $log_file 2>/dev/null`);
 
 $retval = system("kill $pid 2>/dev/null");
 is(
@@ -108,19 +109,19 @@ is(
    "Killed pt-stalk"
 );
 
-sleep 1;
+PerconaTest::wait_until(sub { !-f $pid_file });
 
 ok(
    ! -f $pid_file,
    "Removes PID file"
 );
 
-$output = `cat $log_file`;
+$output = `cat $log_file 2>/dev/null`;
 like(
    $output,
    qr/Caught signal, exiting/,
    "Caught signal logged"
-);
+) or diag(`cat $log_file 2>/dev/null`);
 
 # ###########################################################################
 # Test collect.
