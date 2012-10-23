@@ -198,7 +198,7 @@ $retval = system("$trunk/bin/pt-stalk --no-collect --iterations 1 --dest $dest  
 
 PerconaTest::wait_until(sub { !-f $pid_file });
 
-$output = `cat $log_file`;
+$output = `cat $log_file 2>/dev/null`;
 like(
    $output,
    qr/Collect triggered/,
@@ -250,19 +250,18 @@ diag(`rm $pid_file 2>/dev/null`);
 diag(`rm $log_file 2>/dev/null`);
 diag(`rm $dest/*   2>/dev/null`);
 
-$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --no-stalk --run-time 2 --dest $dest --prefix nostalk --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
 
-PerconaTest::wait_for_files("$dest/nostalk-trigger");
-$output = `cat $dest/nostalk-trigger`;
+PerconaTest::wait_until(sub { !-f $pid_file });
+
+$output = `cat $dest/nostalk-trigger 2>/dev/null`;
 like(
    $output,
    qr/Not stalking/,
    "Not stalking, collect triggered"
 );
 
-PerconaTest::wait_for_files("$dest/nostalk-hostname");
-PerconaTest::wait_for_sh("test \$(grep -c '^TS' $dest/nostalk-df) -ge 2");
-chomp($output = `grep -c '^TS' $dest/nostalk-df`);
+chomp($output = `grep -c '^TS' $dest/nostalk-df 2>/dev/null`);
 is(
    $output,
    2,
@@ -281,7 +280,7 @@ SKIP: {
 };
 
 is(
-   `cat $dest/nostalk-hostname`,
+   `cat $dest/nostalk-hostname 2>/dev/null`,
    `hostname`,
    "Not stalking, collect gathered data"
 );
