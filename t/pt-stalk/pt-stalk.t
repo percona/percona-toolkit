@@ -134,43 +134,55 @@ diag(`rm $dest/*   2>/dev/null`);
 my (undef, $uptime) = $dbh->selectrow_array("SHOW STATUS LIKE 'Uptime'");
 my $threshold = $uptime + 2;
 
-$retval = system("$trunk/bin/pt-stalk --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 2 --run-time 2 --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
+$retval = system("$trunk/bin/pt-stalk --iterations 1 --dest $dest --variable Uptime --threshold $threshold --cycles 2 --run-time 2 --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
 
-sleep 3;
+PerconaTest::wait_until(sub { !-f $pid_file });
 
-$output = `cat $dest/*-trigger`;
+$output = `cat $dest/*-trigger 2>/dev/null`;
 like(
    $output,
    qr/Check results: Uptime=\d+, matched=yes, cycles_true=2/,
    "Collect triggered"
+)
+or diag(
+   'output', $output,
+   'log file', `cat $log_file 2>/dev/null`,
+   'dest', `ls -l $dest/ 2>/dev/null`,
+   'df', `cat $dest/*-df 2>/dev/null`,
 );
 
 # There is some nondeterminism here. Sometimes it'll run for 2 samples because
 # the samples may not be precisely 1 second apart.
-chomp($output = `cat $dest/*-df | grep -c '^TS'`);
+chomp($output = `cat $dest/*-df 2>/dev/null | grep -c '^TS'`);
 ok(
    $output >= 1 && $output <= 3,
    "Collect ran for --run-time"
-) or diag("Run time: $output");
+)
+or diag(
+   'output', $output,
+   'log file', `cat $log_file 2>/dev/null`,
+   'dest', `ls -l $dest/ 2>/dev/null`,
+   'df', `cat $dest/*-df 2>/dev/null`,
+);
 
 ok(
    PerconaTest::not_running("pt-stalk --iterations 1"),
    "pt-stalk is not running"
 );
 
-$output = `cat $dest/*-trigger`;
+$output = `cat $dest/*-trigger 2>/dev/null`;
 like(
    $output,
    qr/pt-stalk ran with --function=status --variable=Uptime --threshold=$threshold/,
    "Trigger file logs how pt-stalk was ran"
 );
 
-chomp($output = `cat $log_file | grep 'Collector PID'`);
+chomp($output = `cat $log_file 2>/dev/null | grep 'Collector PID'`);
 like(
    $output,
    qr/Collector PID \d+/,
    "Collector PID logged"
-);
+) or diag('output', $output, 'log file', `cat $log_file 2>/dev/null`);
 
 # ###########################################################################
 # Triggered but --no-collect.
@@ -184,7 +196,7 @@ $threshold = $uptime + 2;
 
 $retval = system("$trunk/bin/pt-stalk --no-collect --iterations 1 --dest $dest  --variable Uptime --threshold $threshold --cycles 1 --run-time 1 --pid $pid_file -- --defaults-file=$cnf >$log_file 2>&1");
 
-sleep 2;
+PerconaTest::wait_until(sub { !-f $pid_file });
 
 $output = `cat $log_file`;
 like(

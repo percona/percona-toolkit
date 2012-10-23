@@ -1210,6 +1210,37 @@ stalk() {
          purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
       fi
    done
+
+   # Before exiting, the last collector may still be running.
+   # Wait for it to finish in case the tool is part of a script,
+   # or part of a test, so the caller has access to the collected
+   # data when the tool exists.  collect() waits an additional
+   # --run-time seconds for itself to complete, which means we
+   # have to wait for 2 * run-time like it plus some overhead else
+   # we may get in sync with the collector and kill it a microsecond
+   # before it kills itself, thus 3 * run-time.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1070434
+   if [ "$(jobs)" ]; then
+      local sleep_time=$((OPT_RUN_TIME * 3))
+      log "Waiting up to $sleep_time seconds for collectors to finish..."
+      local slept=0
+      while [ -n "$(jobs)" -a $slept -lt $sleep_time ]; do
+         sleep 1
+         slept=$((slept + 1))
+      done
+
+      if [ "$(jobs)" ]; then
+         for pid in $(jobs -p); do
+            # This isn't an warning (we don't want exit status 1) because
+            # the system may be running slowly so it's just "natural" that
+            # a collector may get stuck or run really slowly.
+            log "Killing collector $pid"
+            kill $pid >/dev/null 2>&1
+         done
+      else
+         log "All collectors have finished"
+      fi
+   fi
 }
 
 # ###########################################################################
