@@ -32,13 +32,14 @@ ok(
    "Using --save-samples doesn't mistakenly delete the target dir"
 );
 
+# If the box has a default my.cnf (e.g. /etc/my.cnf) there
+# should be 15 files, else 14.
 my @files = glob("$dir/*");
-
-is(
-   scalar @files,
-   15,
+my $n_files = scalar @files;
+ok(
+   $n_files == 15 || $n_files == 14,
    "And leaves all files in there"
-);
+) or diag($n_files, `ls -l $dir`);
 
 undef($dir);
 
