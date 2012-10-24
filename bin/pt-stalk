@@ -1210,6 +1210,37 @@ stalk() {
          purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
       fi
    done
+
+   # Before exiting, the last collector may still be running.
+   # Wait for it to finish in case the tool is part of a script,
+   # or part of a test, so the caller has access to the collected
+   # data when the tool exists.  collect() waits an additional
+   # --run-time seconds for itself to complete, which means we
+   # have to wait for 2 * run-time like it plus some overhead else
+   # we may get in sync with the collector and kill it a microsecond
+   # before it kills itself, thus 3 * run-time.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1070434
+   if [ "$(jobs)" ]; then
+      local sleep_time=$((OPT_RUN_TIME * 3))
+      log "Waiting up to $sleep_time seconds for collectors to finish..."
+      local slept=0
+      while [ -n "$(jobs)" -a $slept -lt $sleep_time ]; do
+         sleep 1
+         slept=$((slept + 1))
+      done
+
+      if [ "$(jobs)" ]; then
+         for pid in $(jobs -p); do
+            # This isn't an warning (we don't want exit status 1) because
+            # the system may be running slowly so it's just "natural" that
+            # a collector may get stuck or run really slowly.
+            log "Killing collector $pid"
+            kill $pid >/dev/null 2>&1
+         done
+      else
+         log "All collectors have finished"
+      fi
+   fi
 }
 
 # ###########################################################################
@@ -1753,6 +1784,18 @@ How long the tool will collect data when it triggers.  This should not be longer
 than L<"--sleep">. It is usually not necessary to change this; if the default 30
 seconds hasn't gathered enough diagnostic data, running longer is not likely to
 do so. In fact, in many cases a shorter collection period is appropriate.
+
+This value is used two other times.  After collecting, the collect subprocess
+will wait another L<"--run-time"> seconds for its commands to finish.  Some
+commands can take awhile if the system is running very slowly (which can
+likely be the case given that a collection was triggered).  Since empty files
+are deleted, the extra wait gives commands time to finish and write their
+data.  The value is potentially used again just before the tool exits to wait
+again for any collect subprocesses to finish.  In most cases this won't
+happen because of the aforementioned extra wait.  If it happens, the tool
+will log "Waiting up to N seconds for collectors to finish..." where N is
+three times L<"--run-time">.  In both cases, after waiting, the tool kills
+all of its subprocesses.
 
 =item --sleep
 
