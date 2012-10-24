@@ -80,13 +80,24 @@ is \
 
 # find_my_cnf_file
 
+# Test machines may have one of these, and find_my_cnf_file will use
+# the same if the specific port-based cnf file isn't found.
+if [ -e "/etc/my.cnf" ]; then
+   sys_cnf_file="/etc/my.cnf"
+elif [ -e "/etc/mysql/my.cnf" ]; then
+   sys_cnf_file="/etc/mysql/my.cnf"
+elif [ -e "/var/db/mysql/my.cnf" ]; then
+   sys_cnf_file="/var/db/mysql/my.cnf";
+else
+   sys_cnf_file=""
+fi
+
 # We know the port is 12345 (2nd to last test), but the sandbox is started
 # with just --defaults-file, no --port, so find_my_cnf_file isn't going to
-# be able to get the specific cnf file, and the test machine shouldn't have
-# any of the default files (/etc/my.cnf, etc.).
+# be able to get the specific cnf file.
 cnf_file=$(find_my_cnf_file "$p/mysqld-instances" ${port});
 
-is "$cnf_file" "" "find_my_cnf_file gets the correct file"
+is "$cnf_file" "$sys_cnf_file" "find_my_cnf_file gets the correct file"
 [ $? -ne 0 ] && diag "$p/mysqld-instances"
 
 # ps-mysqld-001.txt has several instances:
@@ -95,13 +106,13 @@ is "$cnf_file" "" "find_my_cnf_file gets the correct file"
 # port 12346 cnf /tmp/12346/my.sandbox.cnf
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-001.txt")
-is "$res" "" "ps-mysqld-001.txt no port"
+is "$res" "$sys_cnf_file" "ps-mysqld-001.txt no port"
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-001.txt" 3306)
-is "$res" "" "ps-mysqld-001.txt port but no cnf"
+is "$res" "$sys_cnf_file" "ps-mysqld-001.txt port but no cnf"
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-001.txt" 999)
-is "$res" "" "ps-mysqld-001.txt nonexistent port"
+is "$res" "$sys_cnf_file" "ps-mysqld-001.txt nonexistent port"
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-001.txt" 12346)
 is "$res" "/tmp/12346/my.sandbox.cnf" "ps-mysqld-001.txt port 12346"
@@ -116,13 +127,13 @@ res=$(find_my_cnf_file "$samples/ps-mysqld-004.txt")
 is "$res" "/var/lib/mysql/my.cnf" "ps-mysqld-004.txt no port"
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-004.txt" 12345)
-is "$res" "" "ps-mysqld-004.txt port 12345"
+is "$res" "$sys_cnf_file" "ps-mysqld-004.txt port 12345"
 
 # ps-mysqld-005.txt has the 3 sandbox instances, but 12347
 # is first, which was causing bug 1070916.
 
 res=$(find_my_cnf_file "$samples/ps-mysqld-005.txt" 12345)
-is "$res" "" "ps-mysqld-005.txt port 12345 (bug 1070916)"
+is "$res" "$sys_cnf_file" "ps-mysqld-005.txt port 12345 (bug 1070916)"
 
 # collect_mysql_databases
 $CMD_MYSQL $EXT_ARGV -ss -e 'SHOW DATABASES' > "$PT_TMPDIR/mysql_collect_databases" 2>/dev/null
