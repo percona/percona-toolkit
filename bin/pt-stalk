@@ -1785,6 +1785,18 @@ than L<"--sleep">. It is usually not necessary to change this; if the default 30
 seconds hasn't gathered enough diagnostic data, running longer is not likely to
 do so. In fact, in many cases a shorter collection period is appropriate.
 
+This value is used two other times.  After collecting, the collect subprocess
+will wait another L<"--run-time"> seconds for its commands to finish.  Some
+commands can take awhile if the system is running very slowly (which can
+likely be the case given that a collection was triggered).  Since empty files
+are deleted, the extra wait gives commands time to finish and write their
+data.  The value is potentially used again just before the tool exits to wait
+again for any collect subprocesses to finish.  In most cases this won't
+happen because of the aforementioned extra wait.  If it happens, the tool
+will log "Waiting up to N seconds for collectors to finish..." where N is
+three times L<"--run-time">.  In both cases, after waiting, the tool kills
+all of its subprocesses.
+
 =item --sleep
 
 type: int; default: 300
