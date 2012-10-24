@@ -60,23 +60,24 @@ find_my_cnf_file() {
    local port="${2:-""}"
 
    local cnf_file=""
-   if test -n "$port" && grep -- "/mysqld.*--port=$port" "${file}" >/dev/null 2>&1 ; then
-      cnf_file="$(grep -- "/mysqld.*--port=$port" "${file}" \
-         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
-         | head -n1)"
+
+   if [ "$port" ]; then
+      # Find the cnf file for the specific port.
+      cnf_file="$(grep --max-count 1 "/mysqld.*--port=$port" "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
    else
-      cnf_file="$(grep '/mysqld' "${file}" \
-         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }' \
-         | head -n1)"
+      # Find the cnf file for the first mysqld instance.
+      cnf_file="$(grep --max-count 1 '/mysqld' "$file" \
+         | awk 'BEGIN{RS=" "; FS="=";} $1 ~ /--defaults-file/ { print $2; }')"
    fi
 
-   if [ ! -n "${cnf_file}" ]; then
-      # "Cannot autodetect config file, trying common locations"
-      cnf_file="/etc/my.cnf";
-      if [ ! -e "${cnf_file}" ]; then
-         cnf_file="/etc/mysql/my.cnf";
-      fi
-      if [ ! -e "${cnf_file}" ]; then
+   if [ -z "$cnf_file" ]; then
+      # Cannot autodetect config file, try common locations.
+      if [ -e "/etc/my.cnf" ]; then
+         cnf_file="/etc/my.cnf"
+      elif [ -e "/etc/mysql/my.cnf" ]; then
+         cnf_file="/etc/mysql/my.cnf"
+      elif [ -e "/var/db/mysql/my.cnf" ]; then
          cnf_file="/var/db/mysql/my.cnf";
       fi
    fi
