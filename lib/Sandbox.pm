@@ -39,8 +39,6 @@ $Data::Dumper::Quotekeys = 0;
 use constant PTDEBUG    => $ENV{PTDEBUG}    || 0;
 use constant PTDEVDEBUG => $ENV{PTDEVDEBUG} || 0;
 
-$Sandbox::Percona::Toolkit::VERSION = "2.1.4";
-
 my $trunk = $ENV{PERCONA_TOOLKIT_BRANCH};
 
 my %port_for = (
