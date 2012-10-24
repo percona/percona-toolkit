@@ -16,6 +16,7 @@ use VersionCheck;
 use DSNParser;
 use Sandbox;
 use PerconaTest;
+use Percona::Toolkit;
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
 my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -130,7 +131,7 @@ use File::Spec;
          },
       },
       versions => {
-         'pt-archiver' => $Sandbox::Percona::Toolkit::VERSION,
+         'pt-archiver' => $Percona::Toolkit::VERSION,
       },
    );
 }
