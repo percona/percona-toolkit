@@ -234,7 +234,7 @@ collect_mysql_info () {
    local port="$(get_var port "$dir/mysql-variables")"
    local cnf_file="$(find_my_cnf_file "$dir/mysqld-instances" ${port})"
 
-   cat "$cnf_file" > "$dir/mysql-config-file"
+   [ -e "$cnf_file" ] && cat "$cnf_file" > "$dir/mysql-config-file"
 
    local pid_file="$(get_var "pid_file" "$dir/mysql-variables")"
    local pid_file_exists=""
