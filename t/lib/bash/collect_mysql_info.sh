@@ -18,6 +18,19 @@ samples="$PERCONA_TOOLKIT_BRANCH/t/pt-mysql-summary/samples"
 
 mkdir "$p"
 
+# This is mostly for the find_my_cnf_file tests.
+# Test machines may have one of these, and find_my_cnf_file will use
+# the same if the specific port-based cnf file isn't found.
+if [ -e "/etc/my.cnf" ]; then
+   sys_cnf_file="/etc/my.cnf"
+elif [ -e "/etc/mysql/my.cnf" ]; then
+   sys_cnf_file="/etc/mysql/my.cnf"
+elif [ -e "/var/db/mysql/my.cnf" ]; then
+   sys_cnf_file="/var/db/mysql/my.cnf";
+else
+   sys_cnf_file=""
+fi
+
 parse_options "$BIN_DIR/pt-mysql-summary" --sleep 1 -- --defaults-file=/tmp/12345/my.sandbox.cnf
 
 CMD_MYSQL="$(_which mysql)"
@@ -28,7 +41,13 @@ wait
 
 file_count=$(ls "$p" | wc -l)
 
-is $file_count 13 "Creates the correct number of files (without --databases)"
+if [ "$sys_cnf_file" ]; then
+   n_files=14
+else
+   n_files=13
+fi
+
+is $file_count $n_files "Creates the correct number of files (without --databases)"
 
 awk '{print $1}' "$p/mysqld-instances" > "$PT_TMPDIR/collect_mysqld_instances1.test"
 pids="$(_pidof mysqld)"
@@ -79,18 +98,6 @@ is \
    "collect_internal_vars works"
 
 # find_my_cnf_file
-
-# Test machines may have one of these, and find_my_cnf_file will use
-# the same if the specific port-based cnf file isn't found.
-if [ -e "/etc/my.cnf" ]; then
-   sys_cnf_file="/etc/my.cnf"
-elif [ -e "/etc/mysql/my.cnf" ]; then
-   sys_cnf_file="/etc/mysql/my.cnf"
-elif [ -e "/var/db/mysql/my.cnf" ]; then
-   sys_cnf_file="/var/db/mysql/my.cnf";
-else
-   sys_cnf_file=""
-fi
 
 # We know the port is 12345 (2nd to last test), but the sandbox is started
 # with just --defaults-file, no --port, so find_my_cnf_file isn't going to
