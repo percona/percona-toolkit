@@ -29,12 +29,8 @@ if ( !$dbh ) {
 elsif ( !@{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")} ) {
    plan skip_all => 'sakila db not loaded';
 }
-else {
-   plan tests => 3;
-}
 
 my $cnf = '/tmp/12346/my.sandbox.cnf';
-my $cmd = "$trunk/bin/pt-slave-delay -F $cnf";
 my $output;
 
 # #############################################################################
@@ -49,10 +45,13 @@ my $output;
 my $pid = fork();
 if ( $pid ) {
    # parent
-   $output = `$cmd --interval 1 --run-time 4 2>&1`;
+   $output = output(
+      sub { pt_slave_delay::main('-F', $cnf, qw(--interval 1 --run-time 4)) },
+      stderr => 1,
+   );
    like(
       $output,
-      qr/Lost connection.+?Reconnected to slave.+Setting slave to run/ms,
+      qr/Lost connection.+?Setting slave to run/ms,
       "Reconnect to slave"
    );
 }
@@ -70,14 +69,20 @@ else {
 # Reap the child.
 waitpid ($pid, 0);
 
+$sb->wait_for_slaves;
+
 # Do it all over again, but this time KILL instead of restart.
 $pid = fork();
 if ( $pid ) {
    # parent. Note the --database mysql
-   $output = `$cmd --database mysql --interval 1 --run-time 4 2>&1`;
+   $output = output(
+      sub { pt_slave_delay::main('-F', $cnf, qw(--interval 1 --run-time 4),
+         qw(--database mysql)) },
+      stderr => 1,
+   );
    like(
       $output,
-      qr/Lost connection.+?Reconnected to slave.+Setting slave to run/ms,
+      qr/Lost connection.+?Setting slave to run/ms,
       "Reconnect to slave when KILL'ed"
    );
 }
@@ -106,4 +111,5 @@ waitpid ($pid, 0);
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
