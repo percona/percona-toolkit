@@ -153,34 +153,32 @@ $sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
 # with limit 10 to get all 19 rows.  It should --sleep 1 between each fetch,
 # not between each row, which is the bug.
 
-my $t = time;
+my $t0 = time;
 $output = output(
    sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
       qw(--where 1=1 --purge --sleep 1 --no-check-charset --limit 10)) },
 );
+my $t = time - $t0;
 
-cmp_ok(
-   int(time - $t),
-   '<',
-   3,
+ok(
+   $t >= 2 && $t <= 3.5,
    "--sleep between SELECT (bug 979092)"
-);
+) or diag($output, "t=", $t);
 
 # Try again with --bulk-delete.  The tool should work the same.
 $sb->load_file('master', 't/pt-archiver/samples/gt_n.sql');
-$t = time;
+$t0 = time;
 $output = output(
    sub { pt_archiver::main(@args, '--source', "D=gt_n,t=t1,F=$cnf",
       qw(--where 1=1 --purge --sleep 1 --no-check-charset --limit 10),
       qw(--bulk-delete)) },
 );
+$t = time - $t0;
 
-cmp_ok(
-   int(time - $t),
-   '<',
-   3,
+ok(
+   $t >= 2 && $t <= 3.5,
    "--sleep between SELECT --bulk-delete (bug 979092)"
-);
+) or diag($output, "t=", $t);
 
 # #############################################################################
 # Bug 903387: pt-archiver doesn't honor b=1 flag to create SQL_LOG_BIN statement
