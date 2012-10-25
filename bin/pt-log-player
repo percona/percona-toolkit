@@ -3056,6 +3056,8 @@ pt-log-player - Replay MySQL query logs.
 
 =head1 SYNOPSIS
 
+This tool is deprecated and will be removed in Percona Toolkit 2.2.
+
 Usage: pt-log-player [OPTION...] [DSN]
 
 pt-log-player splits and plays slow log files.
