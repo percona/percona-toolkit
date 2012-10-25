@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
@@ -25,9 +26,6 @@ if ( !$master_dbh ) {
 }
 elsif ( !$slave1_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave1';
-}
-else {
-   plan tests => 22;
 }
 
 $sb->create_dbs($master_dbh, ['test']);
@@ -46,13 +44,30 @@ $master_dbh->do(q{CREATE TABLE test.heartbeat (
              id int NOT NULL PRIMARY KEY,
              ts datetime NOT NULL
           ) ENGINE=MEMORY});
+$sb->wait_for_slaves;
 
 # Issue: pt-heartbeat should check that the heartbeat table has a row
-$output = `$cmd -D test --check --no-insert-heartbeat-row 2>&1`;
-like($output, qr/heartbeat table is empty/ms, 'Dies on empty heartbeat table with --check (issue 45)');
+$output = output(
+   sub { pt_heartbeat::main('-F', $cnf,
+      qw(-D test --check --no-insert-heartbeat-row)) },
+   stderr => 1,
+);
+like(
+   $output,
+   qr/heartbeat table is empty/ms,
+   'Dies on empty heartbeat table with --check (issue 45)'
+);
 
-$output = `$cmd -D test --monitor --run-time 1s --no-insert-heartbeat-row 2>&1`;
-like($output, qr/heartbeat table is empty/ms, 'Dies on empty heartbeat table with --monitor (issue 45)');
+$output = output(
+   sub { pt_heartbeat::main('-F', $cnf,
+      qw(-D test --monitor --run-time 1s --no-insert-heartbeat-row)) },
+   stderr => 1,
+);
+like(
+   $output,
+   qr/heartbeat table is empty/ms,
+   'Dies on empty heartbeat table with --monitor (issue 45)'
+);
 
 $output = output(
    sub { pt_heartbeat::main('-F', $cnf, qw(-D test --check)) },
@@ -65,34 +80,47 @@ is(
 );
 
 # Run one instance with --replace to create the table.
-`$cmd -D test --update --replace --run-time 1s`;
-ok($master_dbh->selectrow_array('select id from test.heartbeat'), 'Record is there');
+output(
+   sub { pt_heartbeat::main('-F', $cnf,
+      qw(-D test --update --replace --run-time 1s)) },
+   stderr => 1,
+);
+ok(
+   $master_dbh->selectrow_array('select id from test.heartbeat'),
+   'Record is there'
+);
 
 # Check the delay and ensure it is only a single line with nothing but the
 # delay (no leading whitespace or anything).
-$output = `$cmd -D test --check`;
+output(
+   sub { pt_heartbeat::main('-F', $cnf, qw(-D test --check)) },
+   stderr => 1,
+);
 chomp $output;
 like($output, qr/^\d+$/, 'Output is just a number');
 
 # Start one daemonized instance to update it
 system("$cmd --daemonize -D test --update --run-time 3s --pid $pid_file 1>/dev/null 2>/dev/null");
+PerconaTest::wait_for_files($pid_file);
 $output = `$ps_grep_cmd`;
 like($output, qr/$cmd/, 'It is running');
-
-PerconaTest::wait_for_files($pid_file);
 ok(-f $pid_file, 'PID file created');
 my ($pid) = $output =~ /^\s*(\d+)\s+/;
 $output = `cat $pid_file` if -f $pid_file;
 is($output, $pid, 'PID file has correct PID');
 
 $output = `$cmd -D test --monitor --run-time 1s`;
-chomp ($output);
-is (
+if ( $output ) {
+   chomp ($output);
+   $output =~ s/\d/0/g;
+}
+is(
    $output,
    '   0s [  0.00s,  0.00s,  0.00s ]',
    'It is being updated',
 );
-sleep(3);
+PerconaTest::wait_until(sub { !-f $pid_file });
+
 $output = `$ps_grep_cmd`;
 chomp $output;
 unlike($output, qr/$cmd/, 'It is not running anymore');
@@ -120,20 +148,32 @@ $master_dbh->do('drop table if exists test.heartbeat'); # This will kill it
 # old format, so tests from here on may need --master-server-id.
 
 $master_dbh->do('drop table if exists test.heartbeat');
-diag(`$cmd --update --run-time 1s --database test --table heartbeat --create-table`);
+$sb->wait_for_slaves;
+
+$output = output(
+   sub { pt_heartbeat::main('-F', $cnf,
+      qw(--update --run-time 1s --database test --table heartbeat),
+      qw(--create-table)) },
+   stderr => 1,
+);
 $master_dbh->do('use test');
-$output = $master_dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
+$row = $master_dbh->selectcol_arrayref("SHOW TABLES LIKE 'heartbeat'");
 is(
-   $output->[0],
+   $row->[0],
    'heartbeat', 
    '--create-table creates heartbeat table'
-); 
+) or diag($output, Dumper($row));
 
 # #############################################################################
 # Issue 352: Add port to mk-heartbeat --check output
 # #############################################################################
 sleep 1;
-$output = `$cmd --host 127.1 --user msandbox --password msandbox --port 12345 -D test --check --recurse 1 --master-server-id 12345`;
+$output = output(
+   sub { pt_heartbeat::main(
+      qw(--host 127.1 --user msandbox --password msandbox --port 12345),
+      qw(-D test --check --recurse 1 --master-server-id 12345)) },
+   stderr => 1,
+);
 like(
    $output,
    qr/:12346\s+\d/,
@@ -204,4 +244,5 @@ is(
 diag(`rm $pid_file $sent_file 2>/dev/null`);
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
