@@ -8555,12 +8555,20 @@ sub main {
 
       # https://bugs.launchpad.net/percona-toolkit/+bug/938068
       if ( $o->get('check-binlog-format') ) {
-         my ($master_binlog) = $master_dbh->selectrow_array(
-            'SELECT @@binlog_format');
+         my $master_binlog = 'STATEMENT';
+         if ( VersionParser->new($master_dbh) >= '5.1.5' ) {
+            ($master_binlog) = $master_dbh->selectrow_array(
+               'SELECT @@binlog_format');
+         }
+
          my $err = '';
          for my $slave_cxn (@$slaves) {
-            my ($slave_binlog) = $slave_cxn->dbh->selectrow_array(
-               'SELECT @@binlog_format');
+            my $slave_binlog = 'STATEMENT';
+            if ( VersionParser->new($slave_cxn->dbh) >= '5.1.5' ) {
+               ($slave_binlog) = $slave_cxn->dbh->selectrow_array(
+                  'SELECT @@binlog_format');
+            }
+
             if ( $master_binlog ne $slave_binlog ) {
                $err .= $master_cxn->name() . " has binlog_format "
                   . $master_binlog . " but replica " . $slave_cxn->name()
