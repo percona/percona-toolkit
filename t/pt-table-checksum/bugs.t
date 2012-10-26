@@ -180,9 +180,10 @@ is(
 # https://bugs.launchpad.net/percona-toolkit/+bug/1016131
 # #############################################################################
 
-($output) = full_output(
+($output) = output(
    sub { pt_table_checksum::main(@args, '--tables', 'mysql.user,mysql.host',
                                  '--columns', 'some_fale_column') },
+   stderr => 1,
 );
 
 like(
@@ -196,30 +197,33 @@ like(
 # https://bugs.launchpad.net/percona-toolkit/+bug/938068
 # #############################################################################
 
-{
-diag("Adding two new slaves to master");
-local $ENV{BINLOG_FORMAT} = 'ROW';
-diag(`$trunk/sandbox/start-sandbox slave 12348 12345`);
-local $ENV{BINLOG_FORMAT} = 'MIXED';
-diag(`$trunk/sandbox/start-sandbox slave 12349 12348`);
+SKIP: {
+   skip "binlog_format tests require MySQL 5.1 and newer", 2
+      unless $sandbox_version ge '5.1';
 
-$output = output( sub { pt_table_checksum::main(@args) }, stderr => 1 );
+   local $ENV{BINLOG_FORMAT} = 'ROW';
+   diag(`$trunk/sandbox/start-sandbox slave 12348 12345`);
+   local $ENV{BINLOG_FORMAT} = 'MIXED';
+   diag(`$trunk/sandbox/start-sandbox slave 12349 12348`);
 
-my $re = qr/ has binlog_format .*? has binlog_format (\S+)\./msi;
-like(
-   $output,
-   $re,
-   "Bug 938068: doesn't warn if binlog_format=row or mixed on slaves"
-);
+   $output = output( sub { pt_table_checksum::main(@args) }, stderr => 1 );
 
-is_deeply(
-   [ $output =~ /$re/g ],
-   [ 'ROW', 'MIXED' ],
-   "...and warns for both level 1 and level 2 slaves"
-) or diag($output);
+   my $re = qr/ has binlog_format .*? has binlog_format (\S+)\./msi;
+   like(
+      $output,
+      $re,
+      "Bug 938068: doesn't warn if binlog_format=row or mixed on slaves"
+   );
 
-diag(`$trunk/sandbox/stop-sandbox 12348 12349`);
+   is_deeply(
+      [ $output =~ /$re/g ],
+      [ 'ROW', 'MIXED' ],
+      "...and warns for both level 1 and level 2 slaves"
+   ) or diag($output);
+
+   diag(`$trunk/sandbox/stop-sandbox 12348 12349`);
 }
+
 # #############################################################################
 # Done.
 # #############################################################################
