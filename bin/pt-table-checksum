@@ -8554,11 +8554,13 @@ sub main {
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
 
       # https://bugs.launchpad.net/percona-toolkit/+bug/938068
-      if ( $o->get('check-binlog-format') ) {
+      if ( $o->get('check-binlog-format')
+           && VersionParser->new($master_dbh) >= '5.1.5' ) {
          my ($master_binlog) = $master_dbh->selectrow_array(
             'SELECT @@binlog_format');
          my $err = '';
          for my $slave_cxn (@$slaves) {
+            next unless VersionParser->new($slave_cxn->dbh) >= '5.1.5';
             my ($slave_binlog) = $slave_cxn->dbh->selectrow_array(
                'SELECT @@binlog_format');
             if ( $master_binlog ne $slave_binlog ) {
