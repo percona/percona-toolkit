@@ -4109,10 +4109,9 @@ print their names:
 
   pt-find --ctime +1 --engine MyISAM
 
-Find InnoDB tables that haven't been updated in a month, and convert them to
-MyISAM storage engine (data warehousing, anyone?):
+Find InnoDB tables and convert them to MyISAM:
 
-  pt-find --mtime +30 --engine InnoDB --exec "ALTER TABLE %D.%N ENGINE=MyISAM"
+  pt-find --engine InnoDB --exec "ALTER TABLE %D.%N ENGINE=MyISAM"
 
 Find tables created by a process that no longer exists, following the
 name_sid_pid naming convention, and remove them.
