@@ -5831,7 +5831,7 @@ sub can_nibble {
       $mysql_index = undef;
    }
 
-   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
+   my $chunk_size_limit = $o->get('chunk-size-limit');
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
@@ -8878,7 +8878,8 @@ sub main {
    # do || 1 so the limit is never 0 and empty tables are single-chunked.
    # See: https://bugs.launchpad.net/percona-toolkit/+bug/987393
    # This is used for the 1st purpose of --chunk-size-limit:
-   my $limit = $o->get('chunk-size-limit');
+   my $limit            = $o->get('chunk-size-limit') || 1;
+   my $chunk_size_limit = $o->get('chunk-size-limit');
 
    # ########################################################################
    # Callbacks for each table's nibble iterator.  All checksum work is done
@@ -8934,10 +8935,6 @@ sub main {
             if ( $nibble_iter->one_nibble() ) {
                PTDEBUG && _d('Getting table row estimate on replicas');
 
-               # This is used for the 2nd purpose for --chunkr-size-limit;
-               # see the large comment block above near my $limit = $o->...
-               my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
-
                my @too_large;
                foreach my $slave ( @$slaves ) {
                   # TODO: This duplicates NibbleIterator::can_nibble();
@@ -8957,7 +8954,7 @@ sub main {
                      push @too_large, [$slave->name(), $n_rows || 0];
                   }
                }
-               if ( @too_large ) {
+               if ( @too_large && $chunk_size_limit ) {
                   if ( $o->get('quiet') < 2 ) {
                      my $msg
                         = "Skipping table $tbl->{db}.$tbl->{tbl} because"
@@ -9054,7 +9051,8 @@ sub main {
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
          if (   lc($expl->{key} || '')
-             ne lc($nibble_iter->nibble_index() || '') ) {
+             ne lc($nibble_iter->nibble_index() || '')
+             && $chunk_size_limit) {
             PTDEBUG && _d('Cannot nibble next chunk, aborting table');
             if ( $o->get('quiet') < 2 ) {
                warn ts("Aborting table $tbl->{db}.$tbl->{tbl} at chunk "
