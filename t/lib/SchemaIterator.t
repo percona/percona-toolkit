@@ -464,12 +464,49 @@ my $w = '';
 
 like(
    $w,
-   qr/because SHOW CREATE TABLE failed:/,
+   qr/bug_1047335.crashed_table because SHOW CREATE TABLE failed:/,
    "->next() gives a warning if ->get_create_table dies from a strange error",
 );
 
+$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+$dbh3->do(q{CREATE DATABASE bug_1047335_2});
+
+my $broken_frm = File::Spec->catfile($trunk, qw(t lib samples broken_tbl.frm));
+my $db_dir_2   = File::Spec->catdir($master_basedir, "data", "bug_1047335_2");
+
+use File::Copy qw(copy);
+
+copy($broken_frm, $db_dir_2);
+
+$dbh3->do("FLUSH TABLES");
+
+$tmp_si = new SchemaIterator(
+         dbh          => $dbh3,
+         OptionParser => $o,
+         Quoter       => $q,
+         TableParser  => $tp,
+         # This is needed because the way we corrupt tables
+         # accidentally removes the database from SHOW DATABASES
+         db           => 'bug_1047335_2',
+      );
+
+$w = '';
+{
+   local $SIG{__WARN__} = sub { $w .= shift };
+   1 while $tmp_si->next();
+}
+
+like(
+   $w,
+   qr/\QSkipping bug_1047335_2.broken_tbl because SHOW CREATE TABLE failed:/,
+   "...same as above, but using t/lib/samples/broken_tbl.frm",
+);
+
 # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
-eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
+eval {
+   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335");
+   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335_2");
+};
 
 diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 

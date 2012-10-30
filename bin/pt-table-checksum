@@ -6782,7 +6782,6 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      local $EVAL_ERROR;
       my $ddl        = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
       if ( my $e = $EVAL_ERROR ) {
          my $table_name = "$self->{db}.$tbl";
