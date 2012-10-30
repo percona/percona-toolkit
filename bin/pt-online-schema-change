@@ -7800,10 +7800,17 @@ sub main {
       PTDEBUG && _d("Renamed columns (old => new): ", Dumper(\%renamed_cols));
 
       if ( %renamed_cols && $o->get('check-alter') ) {
-         die "Your --alter appears to be renaming a column. While "
-           . "the tool should handle this, we recommend testing it "
-           . "first with --dry-run before you run the tool with "
-           . "--no-check-alter to disable this error."
+         my $msg = "Your --alter appears to be renaming these columns: "
+                 . join ", ", map "$_ to $renamed_cols{$_}", keys %renamed_cols;
+         if ( $o->get('dry-run') ) {
+            print $msg . "\n"
+         }
+         else {
+            die  $msg
+               . ". While the tool should handle this, we recommend testing it "
+               . "first with --dry-run before you run the tool with "
+               . "--no-check-alter to disable this error."
+         }
       }
    }
 
@@ -8383,7 +8390,7 @@ sub _find_renamed_cols {
    /x;
 
    my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
-   my $alter_change_col_re = qr/CHANGE \s+ (?:COLUMN \s+)?
+   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
                                     ($table_ident) \s+ ($table_ident)/ix;
 
    my %renames;
@@ -8392,6 +8399,8 @@ sub _find_renamed_cols {
       next unless $orig && $new;
       my (undef, $orig_tbl) = Quoter->split_unquote($orig);
       my (undef, $new_tbl)  = Quoter->split_unquote($new);
+      # Silly but plausible: CHANGE COLUMN same_name same_name ...
+      next if lc($orig_tbl) eq lc($new_tbl);
       $renames{$orig_tbl} = $new_tbl;
    }
    return %renames;
@@ -9517,7 +9526,22 @@ Sleep time between checks for L<"--max-lag">.
 
 default: yes
 
-Parses the --alter specified and tries to warn for some dubious behavior.
+Parses the L<"--alter"> specified and tries to warn of possible unintended
+behavior. Currently, it checks for:
+
+=over
+
+=item Column renames
+
+In previous versions of the tool, renaming a column with
+C<CHANGE COLUMN name new_name> would lead to that column's data being lost.
+The tool now parses the alter statement and tries to catch these cases, so
+the renamed columns should have the same data as the originals. However, the
+code that does this is not a full-blown SQL parser, so we recommend that users
+run the tool with L<"--dry-run"> and check if it's detecting the renames
+correctly.
+
+=back
 
 =item --[no]check-plan
 

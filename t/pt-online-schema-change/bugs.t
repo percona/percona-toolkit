@@ -206,6 +206,11 @@ $sb->load_file('master', "$sample/data-loss-bug-1068562.sql");
       qw(--execute)) },
 );
 
+ok(
+   $exit_status,
+   "Bug 1068562: --execute dies if renaming a column without --no-check-alter"
+);
+
 like(
    $output,
    qr/--no-check-alter to disable this error/,
@@ -295,6 +300,39 @@ is_deeply(
    $orig,
    $mod2,
    "Bug 1068562: No columns went missing when renaming the columns back"
+);
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=sakila,t=staff",
+      "--alter", "change column first_name first_name_mod varchar(45) NOT NULL, change column last_name last_name_mod varchar(45) NOT NULL",
+      qw(--dry-run --alter-foreign-keys-method auto)) },
+);
+
+ok(
+   !$exit_status,
+   "Bug 1068562: No error with --dry-run"
+);
+
+like(
+   $output,
+   qr/first_name to first_name_mod, last_name to last_name_mod/ms,
+   "Bug 1068562: --dry-run warns about renaming columns"
+);
+
+# CHANGE COLUMN same_name same_name
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=sakila,t=staff",
+      "--alter", "change column first_name first_name varchar(45) NOT NULL",
+      qw(--execute --alter-foreign-keys-method auto)) },
+);
+
+unlike(
+   $output,
+   qr/fist_name to fist_name/,
+   "Bug 1068562: change column same_name same_name doesn't warn about renames"
 );
 
 # #############################################################################
