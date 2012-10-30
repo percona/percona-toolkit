@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More;
 
 use SchemaIterator;
 use FileIterator;
@@ -407,7 +407,75 @@ test_so(
 );
 
 # #############################################################################
+# Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
+# https://bugs.launchpad.net/percona-toolkit/+bug/1047335
+# #############################################################################
+
+use File::Spec;
+
+my $master3_port = 2900;
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+my $dbh3 = $sb->get_dbh_for("master3");
+
+$sb->load_file('master3', File::Spec->catfile(qw(t lib samples bug_1047335_crashed_table.sql)));
+my $sth = $dbh3->prepare("INSERT INTO bug_1047335.crashed_table (trx_id, etc) VALUES(?, ?)");
+$sth->execute($_, $_ x 100) for 1..1000;
+$sth->finish();
+
+# Create the SI object before crashing the table
+my $tmp_si = new SchemaIterator(
+         dbh          => $dbh3,
+         OptionParser => $o,
+         Quoter       => $q,
+         TableParser  => $tp,
+         # This is needed because the way we corrupt tables
+         # accidentally removes the database from SHOW DATABASES
+         db           => 'bug_1047335',
+      );
+
+my $master_basedir = File::Spec->catdir(File::Spec->tmpdir(), $master3_port);
+my $db_dir         = File::Spec->catdir($master_basedir, "data", "bug_1047335");
+my $myi            = glob(File::Spec->catfile($db_dir, "crashed_table.[Mm][Yy][Iy]"));
+my $frm            = glob(File::Spec->catfile($db_dir, "crashed_table.[Ff][Rr][Mm]"));
+
+die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+
+# Truncate the .myi file to corrupt it
+truncate($myi, 4096);
+
+use File::Slurp qw( prepend_file append_file write_file );
+
+# Corrupt the .frm file
+open my $urand_fh, q{<}, "/dev/urandom"
+   or die "Cannot open /dev/urandom";
+prepend_file($frm, scalar(<$urand_fh>));
+append_file($frm, scalar(<$urand_fh>));
+close $urand_fh;
+
+$dbh3->do("FLUSH TABLES");
+eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
+
+my $w = '';
+{
+   local $SIG{__WARN__} = sub { $w .= shift };
+   1 while $tmp_si->next();
+}
+
+like(
+   $w,
+   qr/because SHOW CREATE TABLE failed:/,
+   "->next() gives a warning if ->get_create_table dies from a strange error",
+);
+
+# This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
+
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;

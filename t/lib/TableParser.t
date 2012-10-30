@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 40;
+use Test::More;
 
 use TableParser;
 use Quoter;
@@ -32,10 +32,10 @@ SKIP: {
    skip 'Sandbox master does not have the sakila database', 2
       unless @{$dbh->selectcol_arrayref("SHOW DATABASES LIKE 'sakila'")};
 
-   is(
-      $tp->get_create_table($dbh, 'sakila', 'FOO'),
-      undef,
-      "get_create_table(nonexistent table)"
+   eval { $tp->get_create_table($dbh, 'sakila', 'FOO') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table(nonexistent table) dies"
    );
 
    my $ddl = $tp->get_create_table($dbh, 'sakila', 'actor');
@@ -893,8 +893,67 @@ is_deeply(
 );
 
 # #############################################################################
+# Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
+# https://bugs.launchpad.net/percona-toolkit/+bug/1047335
+# #############################################################################
+
+# We need to create a new server here, otherwise the whole test suite might die
+# if the crashed table can't be dropped.
+
+use File::Spec;
+
+my $master3_port = 2900;
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+my $dbh3 = $sb->get_dbh_for("master3");
+
+$sb->load_file('master3', File::Spec->catfile(qw(t lib samples bug_1047335_crashed_table.sql)));
+my $sth = $dbh3->prepare("INSERT INTO bug_1047335.crashed_table (trx_id, etc) VALUES(?, ?)");
+$sth->execute($_, $_ x 100) for 1..1000;
+$sth->finish();
+
+
+my $master_basedir = File::Spec->catdir(File::Spec->tmpdir(), $master3_port);
+my $db_dir         = File::Spec->catdir($master_basedir, "data", "bug_1047335");
+my $myi            = glob(File::Spec->catfile($db_dir, "crashed_table.[Mm][Yy][Iy]"));
+my $frm            = glob(File::Spec->catfile($db_dir, "crashed_table.[Ff][Rr][Mm]"));
+
+die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+
+# Truncate the .myi file to corrupt it
+truncate($myi, 4096);
+
+# Corrupt the .frm file
+open my $urand_fh, q{<}, "/dev/urandom"
+   or die "Cannot open /dev/urandom: $OS_ERROR";
+
+open my $tmp_fh, q{>}, $frm
+   or die "Cannot open $frm: $OS_ERROR";
+print { $tmp_fh } scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>);
+close $tmp_fh;
+   
+close $urand_fh;
+
+$dbh3->do("FLUSH TABLES");
+eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
+
+eval { $tp->get_create_table($dbh3, 'bug_1047335', 'crashed_table') };
+ok(
+   $EVAL_ERROR,
+   "get_create_table dies if SHOW CREATE TABLE failed",
+);
+
+# This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
+
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh) if $dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+
+done_testing;
+
 exit;
