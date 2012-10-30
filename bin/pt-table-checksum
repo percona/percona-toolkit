@@ -3639,7 +3639,6 @@ sub check_table_against_slaves {
 
       my $ddl       = $self->get_create_table( $slave_cxn->dbh, $db, $tbl );
       my $slave_tbl = $self->parse( $ddl );
-      local $EVAL_ERROR;
       eval {
          $self->check_table_against_slave(
             tbl_name   => "$db.$tbl",
@@ -9292,7 +9291,6 @@ sub check_repl_table {
       $sql = "CREATE DATABASE IF NOT EXISTS "
             . $q->quote($db)
             . " /* pt-table-checksum */";
-      local $EVAL_ERROR;
       PTDEBUG && _d($sql);
       eval {
          $dbh->do($sql);
@@ -9343,7 +9341,6 @@ sub check_repl_table {
    # https://bugs.launchpad.net/percona-toolkit/+bug/916168
 
    if ( $o->get('create-replicate-table') ) {
-      local $EVAL_ERROR;
       eval {
          create_repl_table(%args);
       };
