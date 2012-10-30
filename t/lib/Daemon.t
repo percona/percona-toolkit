@@ -106,8 +106,8 @@ unlike(
 # ##########################################################################
 rm_tmp_files();
 SKIP: {
-   skip 'No /proc', 1 unless -d '/proc';
-   skip 'No fd in /proc', 1 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
+   skip 'No /proc', 2 unless -d '/proc';
+   skip 'No fd in /proc', 2 unless -l "/proc/$PID/0" || -l "/proc/$PID/fd/0";
 
    system("$cmd 5 --daemonize --pid $pid_file --log $log_file");
    PerconaTest::wait_for_files($pid_file);
@@ -256,7 +256,7 @@ ok(
       'Dies if PID file already exists for non-daemon'
    );
 
-   `rm -rf /tmp/d2.pid`;
+   diag(`rm -rf /tmp/d2.pid >/dev/null`);
 }
 
 # #############################################################################
@@ -264,4 +264,3 @@ ok(
 # #############################################################################
 rm_tmp_files();
 done_testing;
-exit;
