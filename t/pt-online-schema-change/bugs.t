@@ -206,12 +206,96 @@ $sb->load_file('master', "$sample/data-loss-bug-1068562.sql");
       qw(--execute)) },
 );
 
+like(
+   $output,
+   qr/--no-check-alter to disable this error/,
+   "--check-alter works"
+);
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=bug1068562,t=simon",
+      "--alter", "change old_column_name new_column_name varchar(255) NULL",
+      qw(--execute --no-check-alter)) },
+);
+
 my $rows = $master_dbh->selectall_arrayref("SELECT * FROM bug1068562.simon ORDER BY id");
 is_deeply(
    $rows,
    [  [qw(1 a)], [qw(2 b)], [qw(3 c)] ],
    "Bug 1068562: no data lost"
 ) or diag(Dumper($rows));
+
+# Now try with sakila.city.
+
+my $orig = $master_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=sakila,t=city",
+      "--alter", "change column `city` `some_cities` varchar(50) NOT NULL",
+      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+);
+
+ok(
+   !$exit_status,
+   "Bug 1068562: Renamed column correctly"
+);
+
+my $mod = $master_dbh->selectall_arrayref(q{SELECT some_cities FROM sakila.city});
+
+is_deeply(
+   $orig,
+   $mod,
+   "Bug 1068562: No columns went missing"
+);
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=sakila,t=city",
+      "--alter", "change column `some_cities` city varchar(50) NOT NULL",
+      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+);
+
+my $mod2 = $master_dbh->selectall_arrayref(q{SELECT city FROM sakila.city});
+
+is_deeply(
+   $orig,
+   $mod2,
+   "Bug 1068562: No columns went missing after a second rename"
+);
+
+$orig = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=sakila,t=staff",
+      "--alter", "change column first_name first_name_mod varchar(45) NOT NULL, change column last_name last_name_mod varchar(45) NOT NULL",
+      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+);
+
+$mod = $master_dbh->selectall_arrayref(q{SELECT first_name_mod, last_name_mod FROM sakila.staff});
+
+is_deeply(
+   $orig,
+   $mod,
+   "Bug 1068562: No columns went missing with a double rename"
+);
+
+($output, $exit_status) = full_output(
+   sub { pt_online_schema_change::main(@args,
+      "$master_dsn,D=sakila,t=staff",
+      "--alter", "change column first_name_mod first_name varchar(45) NOT NULL, change column last_name_mod last_name varchar(45) NOT NULL",
+      qw(--execute --alter-foreign-keys-method auto --no-check-alter)) },
+);
+
+$mod2 = $master_dbh->selectall_arrayref(q{SELECT first_name, last_name FROM sakila.staff});
+
+is_deeply(
+   $orig,
+   $mod2,
+   "Bug 1068562: No columns went missing when renaming the columns back"
+);
 
 # #############################################################################
 # Done.

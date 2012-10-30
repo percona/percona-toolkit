@@ -7783,6 +7783,7 @@ sub main {
    # Step 2: Alter the new, empty table.  This should be very quick,
    # or die if the user specified a bad alter statement.
    # #####################################################################
+   my %renamed_cols;
    if ( my $alter = $o->get('alter') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
@@ -7794,7 +7795,16 @@ sub main {
       if ( $EVAL_ERROR ) {
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
       }
-      print "Altered $new_tbl->{name} OK.\n"
+      print "Altered $new_tbl->{name} OK.\n";
+      %renamed_cols = _find_renamed_cols($alter, $tp);
+      PTDEBUG && _d("Renamed columns (old => new): ", Dumper(\%renamed_cols));
+
+      if ( %renamed_cols && $o->get('check-alter') ) {
+         die "Your --alter appears to be renaming a column. While "
+           . "the tool should handle this, we recommend testing it "
+           . "first with --dry-run before you run the tool with "
+           . "--no-check-alter to disable this error."
+      }
    }
 
    # Get the new table struct.  This shouldn't die because
@@ -7822,6 +7832,7 @@ sub main {
    my @common_cols = sort { $col_posn->{$a} <=> $col_posn->{$b} }
                      grep { $new_cols->{$_} }
                      keys %$orig_cols;
+   @renamed_cols{@common_cols} = @common_cols;
    PTDEBUG && _d('Common columns', @common_cols);
 
    # ########################################################################
@@ -7853,7 +7864,7 @@ sub main {
       create_triggers(
          orig_tbl     => $orig_tbl,
          new_tbl      => $new_tbl,
-         columns      => \@common_cols,
+         columns      => \%renamed_cols,
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
@@ -8025,8 +8036,6 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
-         my $sth         = $nibble_iter->statements();
-         my $boundary    = $nibble_iter->boundaries();
 
          return if $o->get('dry-run');
 
@@ -8128,9 +8137,9 @@ sub main {
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
    my $dml    = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
-              . "(" . join(', ', map { $q->quote($_) } @common_cols) . ") "
+              . "(" . join(', ', map { $q->quote($_) } values %renamed_cols) . ") "
               . "SELECT";
-   my $select = join(', ', map { $q->quote($_) } @common_cols);
+   my $select = join(', ', map { $q->quote($_) } keys %renamed_cols);
 
    # The chunk size is auto-adjusted, so use --chunk-size as
    # the initial value, but then save and update the adjusted
@@ -8342,6 +8351,51 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub _find_renamed_cols {
+   my ($alter, $tp) = @_;
+
+   my $unquoted_ident = qr/
+      (?!\p{Digit}+[.\s])            # Not all digits
+      [0-9a-zA-Z_\x{80}-\x{FFFF}\$]+ # As per the spec
+   /x;
+
+   my $quoted_ident = do {
+      my $quoted_ident_character = qr/
+         [\x{01}-\x{5F}\x{61}-\x{FFFF}] # Any character but the null byte and `
+      /x;
+      qr{
+         # The following alternation is there because something like (?<=.)
+         # would match if this regex was used like /.$re/,
+         # or even more tellingly, would match on "``" =~ /`$re`/
+            $quoted_ident_character+               # One or more characters
+               (?: `` $quoted_ident_character*  )* # possibly followed by `` and
+                                                   # more characters, zero or more times
+         |  $quoted_ident_character*               # OR, zero or more characters
+               (?: `` $quoted_ident_character*  )+ # Followed by `` and maybe more
+                                                   # characters, one or more times.
+      }x
+   };
+
+   my $ansi_quotes_ident = qr/
+            [^"]+ (?: "" [^"]* )*
+         |  [^"]* (?: "" [^"]* )+
+   /x;
+
+   my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
+   my $alter_change_col_re = qr/CHANGE \s+ (?:COLUMN \s+)?
+                                    ($table_ident) \s+ ($table_ident)/ix;
+
+   my %renames;
+   while ( $alter =~ /$alter_change_col_re/g ) {
+      my ($orig, $new) = map { $tp->ansi_to_legacy($_) } $1, $2;
+      next unless $orig && $new;
+      my (undef, $orig_tbl) = Quoter->split_unquote($orig);
+      my (undef, $new_tbl)  = Quoter->split_unquote($new);
+      $renames{$orig_tbl} = $new_tbl;
+   }
+   return %renames;
+}
 
 sub nibble_is_safe {
    my (%args) = @_;
@@ -8887,7 +8941,7 @@ sub create_triggers {
    my $del_index_cols = join(" AND ",
                            map {
                               my $col = $q->quote($_);
-                              "$new_tbl->{name}.$col <=> OLD.$col"
+                              "$new_tbl->{name}.$col <=> OLD.$cols->{$_}"
                            } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
@@ -8895,10 +8949,11 @@ sub create_triggers {
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
 
-   # The insert and update triggers should only use values for columns
-   # that exist in both tables.
-   my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
-   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
+   # values %$cols has the new names, keys has the old ones. These
+   # are probably the same, unless the user is doing a
+   # CHANGE COLUMN col col_different_name
+   my $qcols    = join(', ', map { $q->quote($_) }        values %$cols);
+   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } keys   %$cols);
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
@@ -9023,6 +9078,8 @@ sub exec_nibble {
       },
    );
 
+   my %stats;
+
    return $retry->retry(
       tries => $o->get('retries'),
       wait  => sub { sleep 0.25; return; },
@@ -9058,6 +9115,7 @@ sub exec_nibble {
             my $code    = ($warning->{code} || 0);
             my $message = $warning->{message};
             if ( $ignore_code{$code} ) {
+               push @{$stats{ignored_code}->{$code} ||= []}, $message;
                PTDEBUG && _d('Ignoring warning:', $code, $message);
                next;
             }
@@ -9065,15 +9123,16 @@ sub exec_nibble {
                     && (!$warn_code{$code}->{pattern}
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
-               if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
+               if ( !$stats{warned_code}->{$code} ) {  # warn once per table
                   warn "Copying rows caused a MySQL error $code: "
                      . ($warn_code{$code}->{message}
                         ? $warn_code{$code}->{message}
                         : $message)
                      . "\nThis MySQL error is being ignored and further "
                      . "occurrences of it will not be reported.\n";
-                  $tbl->{"warned_code_$code"} = 1;
                }
+               push @{$stats{warned_code}->{$code} ||= []},
+                  $warn_code{$code}->{message} || $message;
             }
             else {
                # This die will propagate to fail which will return 0
@@ -9452,6 +9511,13 @@ without the utf8 layer, and runs SET NAMES after connecting to MySQL.
 type: time; default: 1
 
 Sleep time between checks for L<"--max-lag">.
+
+
+=item --[no]check-alter
+
+default: yes
+
+Parses the --alter specified and tries to warn for some dubious behavior.
 
 =item --[no]check-plan
 
