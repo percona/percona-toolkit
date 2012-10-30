@@ -109,6 +109,19 @@ ok(
    "percona-toolkit-version-check file not created with --no-version-check"
 );
 
+$output = `PTVCDEBUG=1 $cmd --version-check off @args 2>&1`;
+
+unlike(
+   $output,
+   qr/(?:VersionCheck|Pingback|Percona suggests)/,
+   "Looks like --version-check off disabled the version-check"
+) or diag($output);
+
+ok(
+   !-f $check_time_file,
+   "percona-toolkit-version-check file not created with --version-check off"
+);
+
 # PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
 # for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
 # create the file which also signifies that it didn't run.

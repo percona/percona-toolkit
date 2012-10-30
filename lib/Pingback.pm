@@ -87,17 +87,31 @@ sub version_check {
          return;
       }
 
-      my $protocol = $args->{protocol} || 'https';
-      my $advice = pingback(
-         url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
-         instances => $instances_to_check,
-         protocol  => $args->{protocol},
-      );
+      # We got here if the protocol wasn't "off", but we haven't validated
+      # other possible values. I don't want it to die here, so if it isn't
+      # https or http, assume that it's 'auto'.
+      $args->{protocol} ||= 'https';
+      my @protocols = $args->{protocol} ne 'https' && $args->{protocol} ne 'http'
+                    ? qw(https http)
+                    : $args->{protocol};
+      my $advice;
+      my $e;
+      for my $protocol ( @protocols ) {
+         $advice = eval { pingback(
+            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
+            instances => $instances_to_check,
+            protocol  => $protocol,
+         ) };
+         # No advice, and no error, so no reason to keep trying.
+         last if !$advice && !$EVAL_ERROR;
+         $e ||= $EVAL_ERROR;
+      }
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
       else {
+         die $e if $e;
          print "# No suggestions at this time.\n\n";
          ($ENV{PTVCDEBUG} || PTDEBUG )
             && _d('--version-check worked, but there were no suggestions');
