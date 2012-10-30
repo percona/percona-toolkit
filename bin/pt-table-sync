@@ -2990,7 +2990,7 @@ sub dump {
    my ( $self, $dbh, $quoter, $db, $tbl, $what ) = @_;
 
    if ( $what eq 'table' ) {
-      my $ddl = $self->get_create_table($dbh, $quoter, $db, $tbl);
+      my $ddl = $self->get_create_table($dbh, $dbh, $db, $tbl);
       return unless $ddl;
       if ( $ddl->[0] eq 'table' ) {
          return $before
@@ -3033,7 +3033,7 @@ sub dump {
       }
    }
    elsif ( $what eq 'view' ) {
-      my $ddl = $self->get_create_table($dbh, $quoter, $db, $tbl);
+      my $ddl = $self->get_create_table($dbh, $dbh, $db, $tbl);
       return '/*!50001 DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
          . '/*!50001 DROP VIEW IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
          . '/*!50001 ' . $ddl->[1] . "*/;\n";

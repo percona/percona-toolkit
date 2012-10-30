@@ -82,18 +82,12 @@ sub get_create_table {
    PTDEBUG && _d($show_sql);
    my $href;
    eval { $href = $dbh->selectrow_hashref($show_sql); };
-   if ( $EVAL_ERROR ) {
-      # TODO: I think we fail silently for tools which may try to call
-      # this on temp tables, or don't care if the table goes away.  We
-      # should warn $EVAL_ERROR and require callers to eval us and do
-      # what they want with the warning.
-      PTDEBUG && _d($EVAL_ERROR);
-
+   if ( my $e = $EVAL_ERROR ) {
       # Restore old SQL mode.
       PTDEBUG && _d($old_sql_mode);
       $dbh->do($old_sql_mode);
 
-      return;
+      die $e;
    }
 
    # Restore old SQL mode.

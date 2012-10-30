@@ -2733,13 +2733,11 @@ sub get_create_table {
    PTDEBUG && _d($show_sql);
    my $href;
    eval { $href = $dbh->selectrow_hashref($show_sql); };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-
+   if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
       $dbh->do($old_sql_mode);
 
-      return;
+      die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
@@ -3437,7 +3435,9 @@ sub is_cluster_node {
    PTDEBUG && _d($sql);
    my $row = $self->{dbh}->selectrow_arrayref($sql);
    PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+   $self->{is_cluster_node} = $row && $row->[1]
+                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+                            : 0;
   
    return $self->{is_cluster_node};
 }
