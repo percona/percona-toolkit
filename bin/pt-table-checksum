@@ -5831,7 +5831,7 @@ sub can_nibble {
       $mysql_index = undef;
    }
 
-   my $chunk_size_limit = $o->get('chunk-size-limit');
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
    my $one_nibble = !defined $args{one_nibble} || $args{one_nibble}
                   ? $row_est <= $chunk_size * $chunk_size_limit
                   : 0;
