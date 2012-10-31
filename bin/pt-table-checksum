@@ -8956,7 +8956,7 @@ sub main {
                      push @too_large, [$slave->name(), $n_rows || 0];
                   }
                }
-               if ( @too_large && $chunk_size_limit ) {
+               if ( @too_large ) {
                   if ( $o->get('quiet') < 2 ) {
                      my $msg
                         = "Skipping table $tbl->{db}.$tbl->{tbl} because"
