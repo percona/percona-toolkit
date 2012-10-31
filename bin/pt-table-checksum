@@ -8892,9 +8892,12 @@ sub main {
    # so no checksum is written for the empty table.  To fix this and
    # preserve the two purposes of this option, usages of the 2nd purpose
    # do || 1 so the limit is never 0 and empty tables are single-chunked.
-   # See: https://bugs.launchpad.net/percona-toolkit/+bug/987393
-   # This is used for the 1st purpose of --chunk-size-limit:
-   my $limit = $o->get('chunk-size-limit');
+   # See:
+   #   https://bugs.launchpad.net/percona-toolkit/+bug/987393
+   #   https://bugs.launchpad.net/percona-toolkit/+bug/938660
+   #   https://bugs.launchpad.net/percona-toolkit/+bug/987495
+   # This is used for the 2nd purpose:
+   my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
 
    # ########################################################################
    # Callbacks for each table's nibble iterator.  All checksum work is done
@@ -8949,10 +8952,6 @@ sub main {
          else {
             if ( $nibble_iter->one_nibble() ) {
                PTDEBUG && _d('Getting table row estimate on replicas');
-
-               # This is used for the 2nd purpose for --chunkr-size-limit;
-               # see the large comment block above near my $limit = $o->...
-               my $chunk_size_limit = $o->get('chunk-size-limit') || 1;
 
                my @too_large;
                foreach my $slave ( @$slaves ) {
@@ -9505,9 +9504,7 @@ sub nibble_is_safe {
    # shouldn't have changed.  If chunking the table with a non-unique key,
    # oversize chunks are possible. 
    if ( my $limit = $o->get('chunk-size-limit') ) {
-      my $oversize_chunk
-         = $limit ? ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit
-         :          0;
+      my $oversize_chunk = ($expl->{rows} || 0) >= $tbl->{chunk_size} * $limit;
       if ( $oversize_chunk
            && $nibble_iter->identical_boundaries($boundary->{upper},
                                                  $boundary->{next_lower}) ) {
