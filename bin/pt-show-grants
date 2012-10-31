@@ -1226,7 +1226,8 @@ sub get_cxn_params {
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
                      qw(F h P S A))
-         . ';mysql_read_default_group=client';
+         . ';mysql_read_default_group=client'
+         . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
    PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
@@ -1255,6 +1256,9 @@ sub get_dbh {
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
+   if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
+      $defaults->{mysql_local_infile} = 1;
+   }
 
    if ( $opts->{mysql_use_result} ) {
       $defaults->{mysql_use_result} = 1;
