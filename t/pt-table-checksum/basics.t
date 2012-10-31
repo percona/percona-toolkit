@@ -41,9 +41,6 @@ elsif ( !$slave1_dbh ) {
 elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
-else {
-   plan tests => 38;
-}
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
@@ -335,6 +332,29 @@ is(
 );
 
 # #############################################################################
+# pt-table-checksum chunk-size-limit of 0 does not disable chunk size limit
+# checking
+# https://bugs.launchpad.net/percona-toolkit/+bug/938660
+# #############################################################################
+
+# Decided _not_ to do this; we want to always check slave table size when
+# single-chunking a table on the master.
+
+$output = output(
+   sub {
+      $exit_status = pt_table_checksum::main(@args,
+         qw(-d test --chunk-size 2 --chunk-size-limit 0)) 
+   },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/Skipping table test.t1/,
+   "--chunk-size-limit=0 does not disable #-of-rows checks on slaves"
+);
+
+# #############################################################################
 # Crash if no host in DSN.
 # https://bugs.launchpad.net/percona-toolkit/+bug/819450
 # http://code.google.com/p/maatkit/issues/detail?id=1332
@@ -481,4 +501,4 @@ is(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
