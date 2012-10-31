@@ -116,6 +116,10 @@ sub get_dbh_for {
    my $dp = $self->{DSNParser};
    my $dsn = $dp->parse('h=127.0.0.1,u=msandbox,p=msandbox,P=' . $port_for{$server});
    my $dbh;
+   # This is primarily for the benefit of CompareResults, but it's
+   # also quite convenient when using an affected OS
+   $cxn_ops->{L} = 1 if !exists $cxn_ops->{L}
+                     && !$self->can_load_data('master');
    eval { $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), $cxn_ops) };
    if ( $EVAL_ERROR ) {
       PTDEBUG && _d('Failed to get dbh for', $server, ':', $EVAL_ERROR);
@@ -396,6 +400,7 @@ sub clear_genlogs {
    return;
 }
 
+
 sub is_cluster_node {
    my ($self, $server) = @_;
    
@@ -408,6 +413,12 @@ sub is_cluster_node {
    return $row && $row->[1]
             ? ($row->[1] eq 'ON' || $row->[1] eq '1')
             : 0;
+}
+
+sub can_load_data {
+    my ($self, $server) = @_;
+    my $output = $self->use($server, q{-e "SELECT * FROM percona_test.load_data"});
+    return ($output || '') =~ /1/;
 }
 
 1;

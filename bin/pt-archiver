@@ -2112,7 +2112,8 @@ sub get_cxn_params {
          . join(';', map  { "$opts{$_}->{dsn}=$info->{$_}" }
                      grep { defined $info->{$_} }
                      qw(F h P S A))
-         . ';mysql_read_default_group=client';
+         . ';mysql_read_default_group=client'
+         . ($info->{L} ? ';mysql_local_infile=1' : '');
    }
    PTDEBUG && _d($dsn);
    return ($dsn, $info->{u}, $info->{p});
@@ -2141,6 +2142,9 @@ sub get_dbh {
       mysql_enable_utf8 => ($cxn_string =~ m/charset=utf8/i ? 1 : 0),
    };
    @{$defaults}{ keys %$opts } = values %$opts;
+   if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
+      $defaults->{mysql_local_infile} = 1;
+   }
 
    if ( $opts->{mysql_use_result} ) {
       $defaults->{mysql_use_result} = 1;
@@ -6433,6 +6437,10 @@ waits until the insertion is successful.
 The L<"--low-priority-insert">, L<"--replace">, and L<"--ignore"> options work
 with this option, but L<"--delayed-insert"> does not.
 
+If C<LOAD DATA LOCAL INFILE> throws an error in the lines of C<The used
+command is not allowed with this MySQL version>, refer to the documentation
+for the C<L> DSN option.
+
 =item --charset
 
 short form: -A; type: string
@@ -7162,6 +7170,26 @@ Connect to host.
 copy: yes
 
 Index to use.
+
+=item * L
+
+copy: yes
+
+Explicitly enable LOAD DATA LOCAL INFILE.
+
+For some reason, some vendors compile libmysql without the
+--enable-local-infile option, which disables the statement.  This can
+lead to weird situations, like the server allowing LOCAL INFILE, but 
+the client throwing exceptions if it's used.
+
+However, as long as the server allows LOAD DATA, clients can easily
+reenable it; See L<https://dev.mysql.com/doc/refman/5.0/en/load-data-local.html>
+and L<http://search.cpan.org/~capttofu/DBD-mysql/lib/DBD/mysql.pm>.
+This option does exactly that.
+
+Although we've not found a case where turning this option leads to errors or
+differing behavior, to be on the safe side, this option is not
+on by default.
 
 =item * m
 

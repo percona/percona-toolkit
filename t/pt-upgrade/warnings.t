@@ -15,13 +15,6 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-upgrade";
 
-# This test calls pt-upgrade with --compare-results-method rows
-# which use LOAD DATA LOCAL INFILE.  If LOAD DATA is disabled,
-# then this this test can't run.
-if ( !$can_load_data ) {
-   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
-}
-
 # This runs immediately if the server is already running, else it starts it.
 diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
@@ -43,7 +36,7 @@ $sb->load_file('master', 't/pt-upgrade/samples/001/tables.sql');
 $sb->load_file('master1', 't/pt-upgrade/samples/001/tables.sql');
 
 my $output;
-my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox P=12348 --compare results,warnings --zero-query-times --compare-results-method rows --limit 10";
+my $cmd = "$trunk/bin/pt-upgrade h=127.1,P=12345,u=msandbox,p=msandbox,L=1 P=12348 --compare results,warnings --zero-query-times --compare-results-method rows --limit 10";
 
 # This test really deals with,
 #   http://code.google.com/p/maatkit/issues/detail?id=754
