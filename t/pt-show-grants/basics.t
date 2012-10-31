@@ -101,11 +101,31 @@ diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.c
 
 ok(
    no_diff(
-      sub { pt_show_grants::main('-F', $cnf, qw(--only sally)) },
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
       "t/pt-show-grants/samples/column-grants.txt",
       stderr => 1,
    ),
    "Column-level grants (bug 866075)"
+);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
+         qw(--separate)) },
+      "t/pt-show-grants/samples/column-grants-separate.txt",
+      stderr => 1,
+   ),
+   "Column-level grants --separate (bug 866075)"
+);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header),
+         qw(--separate --revoke)) },
+      "t/pt-show-grants/samples/column-grants-separate-revoke.txt",
+      stderr => 1,
+   ),
+   "Column-level grants --separate --revoke (bug 866075)"
 );
 
 diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);

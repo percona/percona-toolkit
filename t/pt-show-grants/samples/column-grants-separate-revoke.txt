@@ -1,0 +1,10 @@
+-- Revoke statements for 'sally'@'%'
+REVOKE INSERT (city) ON `sakila`.`city` FROM 'sally'@'%';
+REVOKE SELECT (SANumber, DateCreated, PaymentStat, PckPrice) ON `test`.`t` FROM 'sally'@'%';
+REVOKE SELECT (city_id) ON `sakila`.`city` FROM 'sally'@'%';
+REVOKE USAGE ON *.* FROM 'sally'@'%';
+-- Grants for 'sally'@'%'
+GRANT INSERT (city) ON `sakila`.`city` TO 'sally'@'%';
+GRANT SELECT (SANumber, DateCreated, PaymentStat, PckPrice) ON `test`.`t` TO 'sally'@'%';
+GRANT SELECT (city_id) ON `sakila`.`city` TO 'sally'@'%';
+GRANT USAGE ON *.* TO 'sally'@'%';
