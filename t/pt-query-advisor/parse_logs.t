@@ -9,7 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 2;
+use Test::More;
+
+use File::Spec;
 
 use PerconaTest;
 shift @INC;  # These two shifts are required for tools that use base and
@@ -40,6 +42,28 @@ like(
 );
 
 # #############################################################################
+# pt-query-advisor hangs on big queries
+# https://bugs.launchpad.net/percona-toolkit/+bug/823431
+# #############################################################################
+
+my $exit_status;
+$output = output(
+   sub { $exit_status = pt_query_advisor::main(@args,
+      File::Spec->catfile($sample, "bug_823431.log"))
+   });
+
+ok(
+   !$exit_status,
+   "Bug 823431: pqa doesn't hang on a big query"
+);
+
+like(
+   $output,
+   qr/COL.002/,
+   "Bug 823431: pqa doesn't hang on a big query and finds the correct rule"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
