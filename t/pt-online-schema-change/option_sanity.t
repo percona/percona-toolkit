@@ -51,6 +51,12 @@ like(
    "--execute FALSE by default"
 );
 
+like(
+   $output,
+   qr/--statistics\s+FALSE/,
+   "--statistics is FALSE by default"
+);
+
 $output = `$cmd h=127.1,P=12345,u=msandbox,p=msandbox --alter-foreign-keys-method drop_swap --no-drop-new-table`;
 like(
    $output,

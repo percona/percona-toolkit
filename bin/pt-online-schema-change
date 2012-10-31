@@ -19,6 +19,7 @@ BEGIN {
       VersionParser
       DSNParser
       Daemon
+      ReportFormatter
       Quoter
       TableNibbler
       TableParser
@@ -2293,6 +2294,359 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# ReportFormatter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/ReportFormatter.pm
+#   t/lib/ReportFormatter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package ReportFormatter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use List::Util qw(min max);
+use POSIX qw(ceil);
+
+eval { require Term::ReadKey };
+my $have_term = $EVAL_ERROR ? 0 : 1;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw();
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $self = {
+      underline_header     => 1,
+      line_prefix          => '# ',
+      line_width           => 78,
+      column_spacing       => ' ',
+      extend_right         => 0,
+      truncate_line_mark   => '...',
+      column_errors        => 'warn',
+      truncate_header_side => 'left',
+      strip_whitespace     => 1,
+      %args,              # args above can be overriden, args below cannot
+      n_cols              => 0,
+   };
+
+   if ( ($self->{line_width} || '') eq 'auto' ) {
+      die "Cannot auto-detect line width because the Term::ReadKey module "
+         . "is not installed" unless $have_term;
+      ($self->{line_width}) = GetTerminalSize();
+   }
+   PTDEBUG && _d('Line width:', $self->{line_width});
+
+   return bless $self, $class;
+}
+
+sub set_title {
+   my ( $self, $title ) = @_;
+   $self->{title} = $title;
+   return;
+}
+
+sub set_columns {
+   my ( $self, @cols ) = @_;
+   my $min_hdr_wid = 0;  # check that header fits on line
+   my $used_width  = 0;
+   my @auto_width_cols;
+
+   for my $i ( 0..$#cols ) {
+      my $col      = $cols[$i];
+      my $col_name = $col->{name};
+      my $col_len  = length $col_name;
+      die "Column does not have a name" unless defined $col_name;
+
+      if ( $col->{width} ) {
+         $col->{width_pct} = ceil(($col->{width} * 100) / $self->{line_width});
+         PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
+            $col->{width_pct}, '%');
+      }
+
+      if ( $col->{width_pct} ) {
+         $used_width += $col->{width_pct};
+      }
+      else {
+         PTDEBUG && _d('Auto width col:', $col_name);
+         $col->{auto_width} = 1;
+         push @auto_width_cols, $i;
+      }
+
+      $col->{truncate}        = 1 unless defined $col->{truncate};
+      $col->{truncate_mark}   = '...' unless defined $col->{truncate_mark};
+      $col->{truncate_side} ||= 'right';
+      $col->{undef_value}     = '' unless defined $col->{undef_value};
+
+      $col->{min_val} = 0;
+      $col->{max_val} = 0;
+
+      $min_hdr_wid        += $col_len;
+      $col->{header_width} = $col_len;
+
+      $col->{right_most} = 1 if $i == $#cols;
+
+      push @{$self->{cols}}, $col;
+   }
+
+   $self->{n_cols} = scalar @cols;
+
+   if ( ($used_width || 0) > 100 ) {
+      die "Total width_pct for all columns is >100%";
+   }
+
+   if ( @auto_width_cols ) {
+      my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
+      PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
+         'each auto width col:', $wid_per_col, '%');
+      map { $self->{cols}->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
+   }
+
+   $min_hdr_wid += ($self->{n_cols} - 1) * length $self->{column_spacing};
+   PTDEBUG && _d('min header width:', $min_hdr_wid);
+   if ( $min_hdr_wid > $self->{line_width} ) {
+      PTDEBUG && _d('Will truncate headers because min header width',
+         $min_hdr_wid, '> line width', $self->{line_width});
+      $self->{truncate_headers} = 1;
+   }
+
+   return;
+}
+
+sub add_line {
+   my ( $self, @vals ) = @_;
+   my $n_vals = scalar @vals;
+   if ( $n_vals != $self->{n_cols} ) {
+      $self->_column_error("Number of values $n_vals does not match "
+         . "number of columns $self->{n_cols}");
+   }
+   for my $i ( 0..($n_vals-1) ) {
+      my $col   = $self->{cols}->[$i];
+      my $val   = defined $vals[$i] ? $vals[$i] : $col->{undef_value};
+      if ( $self->{strip_whitespace} ) {
+         $val =~ s/^\s+//g;
+         $val =~ s/\s+$//;
+         $vals[$i] = $val;
+      }
+      my $width = length $val;
+      $col->{min_val} = min($width, ($col->{min_val} || $width));
+      $col->{max_val} = max($width, ($col->{max_val} || $width));
+   }
+   push @{$self->{lines}}, \@vals;
+   return;
+}
+
+sub get_report {
+   my ( $self, %args ) = @_;
+
+   $self->_calculate_column_widths();
+   $self->_truncate_headers() if $self->{truncate_headers};
+   $self->_truncate_line_values(%args);
+
+   my @col_fmts = $self->_make_column_formats();
+   my $fmt      = ($self->{line_prefix} || '')
+                . join($self->{column_spacing}, @col_fmts);
+   PTDEBUG && _d('Format:', $fmt);
+
+   (my $hdr_fmt = $fmt) =~ s/%([^-])/%-$1/g;
+
+   my @lines;
+   push @lines, sprintf "$self->{line_prefix}$self->{title}" if $self->{title};
+   push @lines, $self->_truncate_line(
+         sprintf($hdr_fmt, map { $_->{name} } @{$self->{cols}}),
+         strip => 1,
+         mark  => '',
+   );
+
+   if ( $self->{underline_header} ) {
+      my @underlines = map { '=' x $_->{print_width} } @{$self->{cols}};
+      push @lines, $self->_truncate_line(
+         sprintf($fmt, map { $_ || '' } @underlines),
+         mark  => '',
+      );
+   }
+
+   push @lines, map {
+      my $vals = $_;
+      my $i    = 0;
+      my @vals = map {
+            my $val = defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value};
+            $val = '' if !defined $val;
+            $val =~ s/\n/ /g;
+            $val;
+      } @$vals;
+      my $line = sprintf($fmt, @vals);
+      if ( $self->{extend_right} ) {
+         $line;
+      }
+      else {
+         $self->_truncate_line($line);
+      }
+   } @{$self->{lines}};
+
+   return join("\n", @lines) . "\n";
+}
+
+sub truncate_value {
+   my ( $self, $col, $val, $width, $side ) = @_;
+   return $val if length $val <= $width;
+   return $val if $col->{right_most} && $self->{extend_right};
+   $side  ||= $col->{truncate_side};
+   my $mark = $col->{truncate_mark};
+   if ( $side eq 'right' ) {
+      $val  = substr($val, 0, $width - length $mark);
+      $val .= $mark;
+   }
+   elsif ( $side eq 'left') {
+      $val = $mark . substr($val, -1 * $width + length $mark);
+   }
+   else {
+      PTDEBUG && _d("I don't know how to", $side, "truncate values");
+   }
+   return $val;
+}
+
+sub _calculate_column_widths {
+   my ( $self ) = @_;
+
+   my $extra_space = 0;
+   foreach my $col ( @{$self->{cols}} ) {
+      my $print_width = int($self->{line_width} * ($col->{width_pct} / 100));
+
+      PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
+         'char width:', $print_width,
+         'min val:', $col->{min_val}, 'max val:', $col->{max_val});
+
+      if ( $col->{auto_width} ) {
+         if ( $col->{min_val} && $print_width < $col->{min_val} ) {
+            PTDEBUG && _d('Increased to min val width:', $col->{min_val});
+            $print_width = $col->{min_val};
+         }
+         elsif ( $col->{max_val} &&  $print_width > $col->{max_val} ) {
+            PTDEBUG && _d('Reduced to max val width:', $col->{max_val});
+            $extra_space += $print_width - $col->{max_val};
+            $print_width  = $col->{max_val};
+         }
+      }
+
+      $col->{print_width} = $print_width;
+      PTDEBUG && _d('print width:', $col->{print_width});
+   }
+
+   PTDEBUG && _d('Extra space:', $extra_space);
+   while ( $extra_space-- ) {
+      foreach my $col ( @{$self->{cols}} ) {
+         if (    $col->{auto_width}
+              && (    $col->{print_width} < $col->{max_val}
+                   || $col->{print_width} < $col->{header_width})
+         ) {
+            $col->{print_width}++;
+         }
+      }
+   }
+
+   return;
+}
+
+sub _truncate_headers {
+   my ( $self, $col ) = @_;
+   my $side = $self->{truncate_header_side};
+   foreach my $col ( @{$self->{cols}} ) {
+      my $col_name    = $col->{name};
+      my $print_width = $col->{print_width};
+      next if length $col_name <= $print_width;
+      $col->{name}  = $self->truncate_value($col, $col_name, $print_width, $side);
+      PTDEBUG && _d('Truncated hdr', $col_name, 'to', $col->{name},
+         'max width:', $print_width);
+   }
+   return;
+}
+
+sub _truncate_line_values {
+   my ( $self, %args ) = @_;
+   my $n_vals = $self->{n_cols} - 1;
+   foreach my $vals ( @{$self->{lines}} ) {
+      for my $i ( 0..$n_vals ) {
+         my $col   = $self->{cols}->[$i];
+         my $val   = defined $vals->[$i] ? $vals->[$i] : $col->{undef_value};
+         my $width = length $val;
+
+         if ( $col->{print_width} && $width > $col->{print_width} ) {
+            if ( !$col->{truncate} ) {
+               $self->_column_error("Value '$val' is too wide for column "
+                  . $col->{name});
+            }
+
+            my $callback    = $args{truncate_callback};
+            my $print_width = $col->{print_width};
+            $val = $callback ? $callback->($col, $val, $print_width)
+                 :             $self->truncate_value($col, $val, $print_width);
+            PTDEBUG && _d('Truncated val', $vals->[$i], 'to', $val,
+               '; max width:', $print_width);
+            $vals->[$i] = $val;
+         }
+      }
+   }
+   return;
+}
+
+sub _make_column_formats {
+   my ( $self ) = @_;
+   my @col_fmts;
+   my $n_cols = $self->{n_cols} - 1;
+   for my $i ( 0..$n_cols ) {
+      my $col = $self->{cols}->[$i];
+
+      my $width = $col->{right_most} && !$col->{right_justify} ? ''
+                : $col->{print_width};
+
+      my $col_fmt  = '%' . ($col->{right_justify} ? '' : '-') . $width . 's';
+      push @col_fmts, $col_fmt;
+   }
+   return @col_fmts;
+}
+
+sub _truncate_line {
+   my ( $self, $line, %args ) = @_;
+   my $mark = defined $args{mark} ? $args{mark} : $self->{truncate_line_mark};
+   if ( $line ) {
+      $line =~ s/\s+$// if $args{strip};
+      my $len  = length($line);
+      if ( $len > $self->{line_width} ) {
+         $line  = substr($line, 0, $self->{line_width} - length $mark);
+         $line .= $mark if $mark;
+      }
+   }
+   return $line;
+}
+
+sub _column_error {
+   my ( $self, $err ) = @_;
+   my $msg = "Column error: $err";
+   $self->{column_errors} eq 'die' ? die $msg : warn $msg;
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End ReportFormatter package
+# ###########################################################################
+
+# ###########################################################################
 # Quoter package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -3470,7 +3824,9 @@ sub is_cluster_node {
    PTDEBUG && _d($sql);
    my $row = $self->{dbh}->selectrow_arrayref($sql);
    PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[0] ? 1 : 0;
+   $self->{is_cluster_node} = $row && $row->[1]
+                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+                            : 0;
   
    return $self->{is_cluster_node};
 }
@@ -7203,6 +7559,8 @@ my @drop_trigger_sqls;
 
 $OUTPUT_AUTOFLUSH = 1;
 
+our %statistics;
+
 sub main {
    # Reset global vars else tests will fail.
    local @ARGV        = @_;
@@ -8219,6 +8577,47 @@ sub main {
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
+   if ( $o->get('statistics') ) {
+      if ( keys %statistics ) {
+         my $report = new ReportFormatter(
+            line_width => 74,
+         );
+         $report->set_columns(
+            { name => 'Error Code',                },
+            { name => 'Count',  right_justify => 1 },
+            { name => 'Type',   right_justify => 1 },
+         );
+
+         foreach my $code (keys %{$statistics{ignored_code}}) {
+            next unless $statistics{ignored_code}->{$code};
+            $report->add_line(
+               $code,
+               $statistics{ignored_code}->{$code},
+               "Ignorable",
+            )
+         }
+         
+         my $warnings_seen;
+         foreach my $code (keys %{$statistics{warned_code}}) {
+            $report->add_line(
+               $code,
+               scalar @{$statistics{warned_code}->{$code}},
+               "Warning",
+            );
+            $warnings_seen .= join "\n",
+                              map { "# $_" }
+                              @{$statistics{warned_code}->{$code}};
+         }
+         
+         print $report->get_report();
+         if ( $warnings_seen ) {
+            print "#\n# The warnings seen were: \n$warnings_seen\n"
+         }
+      }
+      else {
+         print "# No statistics for errors or warnings.\n";
+      }
+   }
 
    # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables 
    # else everything will break because if drop_swap is chosen, then we
@@ -9091,6 +9490,7 @@ sub exec_nibble {
             my $code    = ($warning->{code} || 0);
             my $message = $warning->{message};
             if ( $ignore_code{$code} ) {
+               $statistics{ignored_code}->{$code}++;
                PTDEBUG && _d('Ignoring warning:', $code, $message);
                next;
             }
@@ -9098,15 +9498,18 @@ sub exec_nibble {
                     && (!$warn_code{$code}->{pattern}
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
-               if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
+               if ( !$statistics{warned_code}->{$code} ) {  # warn once per table
                   warn "Copying rows caused a MySQL error $code: "
                      . ($warn_code{$code}->{message}
                         ? $warn_code{$code}->{message}
                         : $message)
                      . "\nThis MySQL error is being ignored and further "
-                     . "occurrences of it will not be reported.\n";
-                  $tbl->{"warned_code_$code"} = 1;
+                     . "occurrences of it will not be reported, although "
+                     . "a total count will be shown if --statistics was "
+                     . "specified.\n";
                }
+               push @{ $statistics{warned_code}->{$code} ||= [] },
+                  $sth->{nibble}->{Statement};
             }
             else {
                # This die will propagate to fail which will return 0
@@ -9874,6 +10277,11 @@ will be appended to SET and executed.
 short form: -S; type: string
 
 Socket file to use for connection.
+
+=item --statistics
+
+Prints some statistics about the run. Currently, only prints how many times
+any error code that warned or was ignored during the run propped up.
 
 =item --[no]swap-tables
 
