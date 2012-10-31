@@ -1636,9 +1636,15 @@ sub _d {
 # ###########################################################################
 package pt_show_grants;
 
+use strict;
+use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Quotekeys = 0;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -1757,6 +1763,7 @@ sub main {
          PTDEBUG && _d($EVAL_ERROR);
          $exit_status = 1;
       }
+      PTDEBUG && _d('Grants:', Dumper(\@grants));
       next unless @grants;
 
       if ( $o->get('separate') ) { # List each grant separately.
@@ -1894,7 +1901,7 @@ pt-show-grants - Canonicalize and print MySQL grants so you can effectively repl
 
 =head1 SYNOPSIS
 
-Usage: pt-show-grants [OPTION...] [DSN]
+Usage: pt-show-grants [OPTIONS] [DSN]
 
 pt-show-grants shows grants (user privileges) from a MySQL server.
 
