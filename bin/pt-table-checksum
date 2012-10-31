@@ -9051,8 +9051,7 @@ sub main {
             vals => [ @{$boundary->{lower}}, $nibble_iter->chunk_size() ],
          );
          if (   lc($expl->{key} || '')
-             ne lc($nibble_iter->nibble_index() || '')
-             && $chunk_size_limit) {
+             ne lc($nibble_iter->nibble_index() || '') ) {
             PTDEBUG && _d('Cannot nibble next chunk, aborting table');
             if ( $o->get('quiet') < 2 ) {
                warn ts("Aborting table $tbl->{db}.$tbl->{tbl} at chunk "
