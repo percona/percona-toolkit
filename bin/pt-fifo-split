@@ -1296,12 +1296,8 @@ sub main {
    if ( $o->get('force') && -e $file ) {
       unlink($file) or die "Can't unlink $file: $OS_ERROR";
    }
-   mkfifo($file, 0777) or die "Can't make fifo $file: $OS_ERROR";
 
    my $fh;
-
-   $fh = IO::File->new($file, '>') or die "Can't open $file: $OS_ERROR";
-   $fh->autoflush(1);
 
    if ( $o->get('statistics') ) {
       printf("%5s %9s %5s %8s %8s\n", qw(chunks lines time overall current));
@@ -1311,21 +1307,25 @@ sub main {
    my $OFFSET = $o->get('offset');
    my $LINES  = $o->get('lines');
 
-   my $lines  = 0;
-   my $chunks = 0;
-   my $start  = time();
-   my $cstart = time();
+   my $chunks  = 0;
+   my $start   = time();
+   my $cstart  = time();
+   my $printed = 0;
    while ( my $line = <> ) {
-      $lines++;
+      my $lines = $INPUT_LINE_NUMBER;
       next if $OFFSET && $lines < $OFFSET;
-      if ( $lines % $LINES == 0 ) {
+      if ( $printed == 0 ) {
+         mkfifo($file, 0777) or die "Can't make fifo $file: $OS_ERROR";
+         $fh = IO::File->new($file, '>') or die "Can't open $file: $OS_ERROR";
+         $fh->autoflush(1);
+      }
+      print $fh $line or die "Can't print: $OS_ERROR";
+      $printed++;
+      if ( ($lines % $LINES) == 0 ) {
          close $fh or die "Can't close: $OS_ERROR";
 
          unlink($file) or die "Can't unlink $file: $OS_ERROR";
-         mkfifo($file, 0777) or die "Can't make fifo $file: $OS_ERROR";
-
-         $fh = IO::File->new($file, '>') or die "Can't open $file: $OS_ERROR";
-         $fh->autoflush(1);
+         $printed = 0;
 
          $chunks++;
          my $end = time();
@@ -1337,11 +1337,10 @@ sub main {
          }
          $cstart = $end;
       }
-      print $fh $line or die "Can't print: $OS_ERROR";
    }
-   close $fh or die "Can't close: $OS_ERROR";
 
-   unlink($file) or die "Can't unlink $file: $OS_ERROR";
+   close $fh or die "Can't close: $OS_ERROR" if $fh && $fh->opened;
+   unlink($file) or die "Can't unlink $file: $OS_ERROR" if -e $file;
 
    return 0;
 }
