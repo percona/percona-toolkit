@@ -118,8 +118,7 @@ sub get_dbh_for {
    my $dbh;
    eval { $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), $cxn_ops) };
    if ( $EVAL_ERROR ) {
-      PTDEBUG && _d('Failed to get dbh for', $server, ':', $EVAL_ERROR);
-      return 0;
+      die 'Failed to get dbh for' . $server . ': ' . $EVAL_ERROR;
    }
    $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
    $dbh->{FetchHashKeyName} = 'NAME_lc' unless $cxn_ops && $cxn_ops->{no_lc};
@@ -265,7 +264,7 @@ sub leftover_servers {
    PTDEBUG && _d('Checking for leftover servers');
    foreach my $serverno ( 1..6 ) {
       my $server = "master$serverno";
-      my $dbh = $self->get_dbh_for($server);
+      my $dbh = eval { $self->get_dbh_for($server) };
       if ( $dbh ) {
          $dbh->disconnect();
          return "Sandbox $server " . $port_for{$server} . " was left up.";
