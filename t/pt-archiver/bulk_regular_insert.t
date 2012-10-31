@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$can_load_data ) {
-    plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
-}
 
 my $output;
 my $cnf = "/tmp/12345/my.sandbox.cnf";
@@ -39,7 +36,7 @@ $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
 output(
-   sub { pt_archiver::main("--source", "F=$cnf,D=bri,t=t", qw(--dest t=t_arch --where 1=1 --bulk-insert --limit 3)) },
+   sub { pt_archiver::main("--source", "F=$cnf,D=bri,t=t,L=1", qw(--dest t=t_arch --where 1=1 --bulk-insert --limit 3)) },
 );
 
 my $t_rows      = $dbh->selectall_arrayref('select * from t order by id');
@@ -73,7 +70,7 @@ is_deeply(
 $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
 $dbh->do('use bri');
 
-`$cmd --source F=$cnf,D=bri,t=t --dest t=t_arch,m=bulk_regular_insert --where "1=1" --bulk-insert --limit 3`;
+`$cmd --source F=$cnf,D=bri,t=t,L=1 --dest t=t_arch,m=bulk_regular_insert --where "1=1" --bulk-insert --limit 3`;
 
 my $bri_t_rows      = $dbh->selectall_arrayref('select * from t order by id');
 my $bri_t_arch_rows = $dbh->selectall_arrayref('select * from t_arch order by id');

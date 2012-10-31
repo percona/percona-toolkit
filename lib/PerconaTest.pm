@@ -138,6 +138,12 @@ our $dsn_opts = [
       dsn  => 'user',
       copy => 1,
    },
+   {
+      key  => 'L',
+      desc => 'Pass mysql_local_infile to DBD::mysql',
+      dsn  => 'mysql_local_infile',
+      copy => 1,
+   },
 ];
 
 # Runs code, captures and returns its output.
@@ -788,7 +794,7 @@ sub tables_used {
 
 sub can_load_data {
     my $output = `/tmp/12345/use -e "SELECT * FROM percona_test.load_data" 2>/dev/null`;
-    return ($output || '') =~ /42/;
+    return ($output || '') =~ /1/;
 }
 
 1;

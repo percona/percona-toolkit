@@ -318,7 +318,7 @@ case $opt in
 
             # LOAD DATA is disabled or broken on some boxes.
             # PerconaTest exports $can_load_data which is true
-            # if percona_test.load_data has the 42 row,
+            # if percona_test.load_data has a row with 1,
             # signaling that LOAD DATA LOCAL INFILE worked.
             ../util/check-load-data
 

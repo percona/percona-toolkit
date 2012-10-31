@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-elsif ( !$can_load_data ) {
-   plan skip_all => 'LOAD DATA LOCAL INFILE is disabled';
-}
 
 my $output;
 my $rows;
@@ -41,7 +38,7 @@ $dbh->do('INSERT INTO `test`.`table_5_copy` SELECT * FROM `test`.`table_5`');
 $output = output(
    sub { pt_archiver::main(qw(--no-ascend --limit 50 --bulk-insert),
       qw(--bulk-delete --where 1=1 --statistics),
-      '--source', "D=test,t=table_5,F=$cnf",
+      '--source', "L=1,D=test,t=table_5,F=$cnf",
       '--dest',   "t=table_5_dest") },
 );
 like($output, qr/SELECT 105/, 'Fetched 105 rows');
@@ -66,7 +63,7 @@ $output = output(
    sub { pt_archiver::main(
        '--where', "id < 8", qw(--limit 100000 --txn-size 1000),
        qw(--why-quit --statistics --bulk-insert),
-      '--source', "D=bri,t=t,F=$cnf",
+      '--source', "L=1,D=bri,t=t,F=$cnf",
       '--dest',   "t=t_arch") },
 );
 $rows = $dbh->selectall_arrayref('select id from bri.t order by id');
