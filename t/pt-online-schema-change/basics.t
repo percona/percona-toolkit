@@ -32,9 +32,6 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 119;
-}
 
 my $q      = new Quoter();
 my $tp     = new TableParser(Quoter => $q);
@@ -635,9 +632,45 @@ test_alter_table(
 );
 
 # #############################################################################
+# --statistics
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug_1045317.sql");
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
+      '--dry-run', '--statistics', # We'll never get any statistics with --dry-run
+      '--alter', "modify column val ENUM('M','E','H') NOT NULL") }
+);
+
+like(
+   $output,
+   qr/\#\Q No statistics for errors or warnings./,
+   "--statistics works as expected with --dry-run"
+) or diag($output);
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
+      '--execute', '--statistics',
+      '--alter', "modify column val ENUM('E','H') NOT NULL") }
+);
+
+like(
+   $output,
+   qr/\#\Q Error Code Count Type\E\s*
+\#\Q ========== ===== =========\E\s*
+\#\Q 1592           1 Ignorable\E\s*
+\#\Q 1265           1   Warning\E\s*/x,
+   "--statistics works as expected with 1 ignore & 1 warning"
+);
+
+$master_dbh->do(q{DROP DATABASE bug_1045317});
+
+# #############################################################################
 # Done.
 # #############################################################################
 $master_dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
