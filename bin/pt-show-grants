@@ -1766,11 +1766,14 @@ sub main {
       PTDEBUG && _d('Grants:', Dumper(\@grants));
       next unless @grants;
 
-      if ( $o->get('separate') ) { # List each grant separately.
+      if ( $o->get('separate') ) {
+         # List each grant separately.
          @grants = map {
             my ( $grants, $on_what ) = $_ =~ m/GRANT (.*?) ON (.*)$/;
-            map { "GRANT $_ ON $on_what" } split(', ', $grants);
+            map { "GRANT $_ ON $on_what" } split_grants($grants);
          } @grants;
+         PTDEBUG && _d('Grants separated:', Dumper(\@grants));
+
          my $count;
          # If the row with IDENTIFIED BY has multiple grants, this will
          # create many such rows; strip it from all but the first.
@@ -1782,12 +1785,15 @@ sub main {
             }
             $_;
          } @grants;
+         PTDEBUG && _d('Grants separated:', Dumper(\@grants));
       }
-      else { # Sort the actual grants lexically within each row for consistency.
+      else {
+         # Sort the actual grants lexically within each row for consistency.
          @grants = map {
-            $_ =~ s/GRANT (.*?) ON (`|\*)/"GRANT " . join(', ', sort(split(', ', $1))) . " ON $2"/e;
+            $_ =~ s/GRANT (.*?) ON (`|\*)/"GRANT " . join(', ', sort(split_grants($1))) . " ON $2"/e;
             $_;
          } @grants;
+         PTDEBUG && _d('Grants grouped:', Dumper(\@grants));
       }
 
       # Sort the grant rows for consistency too, but the one with the password
@@ -1795,6 +1801,7 @@ sub main {
       @grants = sort {
          $b =~ m/IDENTIFIED BY/ <=> $a =~ m/IDENTIFIED BY/ || $a cmp $b
       } @grants;
+      PTDEBUG && _d('Grants sorted:', Dumper(\@grants));
 
       # Print REVOKE statements.
       if ( $o->get('revoke') ) {
@@ -1809,7 +1816,7 @@ sub main {
             my @result;
             if ( $o->get('separate') ) {
                @result = map { "REVOKE $_ ON $on_what FROM $user" }
-                  split(', ', $grants);
+                  split_grants($grants);
             }
             else {
                @result = "REVOKE $grants ON $on_what FROM $user";
@@ -1872,6 +1879,35 @@ sub parse_user {
          /xms;
    $host ||= '%';
    return ( $user, $host );
+}
+
+sub split_grants {
+   my ($grants) = @_;
+   return unless $grants;
+   my @grants;
+   if ( $grants =~ m/(?:INSERT|SELECT|UPDATE) \(/ ) {
+      PTDEBUG && _d('Splitting grants on keywords:', $grants);
+      @grants = map {
+         my $grant = $_;
+         $grant =~ s/^\s+//;
+         $grant =~ s/,\s*$//;
+         $grant;
+      } $grants =~ m/
+            \G    # Start matching after the previous match
+            \s?   # Space after previous match's separating comma
+            (?:   # Either match...
+                 (?: (?:INSERT|SELECT|UPDATE)\s\(.+?\) ) # a column grant
+               | (?: [A-Z\s]+ )                          # or a table grant
+            )
+            ,?    # Separted from the next grant, if any, by a comma
+      /xg;
+   }
+   else {
+      PTDEBUG && _d('Splitting grants on comma:', $grants);
+      @grants = split(', ', $grants);
+   }
+   PTDEBUG && _d('Grants split:', Dumper(\@grants));
+   return @grants;
 }
 
 sub _d {
