@@ -1,0 +1,4 @@
+-- Grants for 'sally'@'%'
+GRANT INSERT (city), SELECT, SELECT (city_id) ON `sakila`.`city` TO 'sally'@'%';
+GRANT SELECT (SANumber, DateCreated, PaymentStat, PckPrice) ON `test`.`t` TO 'sally'@'%';
+GRANT USAGE ON *.* TO 'sally'@'%';

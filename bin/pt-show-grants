@@ -1636,9 +1636,15 @@ sub _d {
 # ###########################################################################
 package pt_show_grants;
 
+use strict;
+use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Data::Dumper;
+$Data::Dumper::Quotekeys = 0;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
 
 sub main {
    @ARGV = @_;  # set global ARGV for this package
@@ -1757,13 +1763,17 @@ sub main {
          PTDEBUG && _d($EVAL_ERROR);
          $exit_status = 1;
       }
+      PTDEBUG && _d('Grants:', Dumper(\@grants));
       next unless @grants;
 
-      if ( $o->get('separate') ) { # List each grant separately.
+      if ( $o->get('separate') ) {
+         # List each grant separately.
          @grants = map {
             my ( $grants, $on_what ) = $_ =~ m/GRANT (.*?) ON (.*)$/;
-            map { "GRANT $_ ON $on_what" } split(', ', $grants);
+            map { "GRANT $_ ON $on_what" } split_grants($grants);
          } @grants;
+         PTDEBUG && _d('Grants separated:', Dumper(\@grants));
+
          my $count;
          # If the row with IDENTIFIED BY has multiple grants, this will
          # create many such rows; strip it from all but the first.
@@ -1775,12 +1785,15 @@ sub main {
             }
             $_;
          } @grants;
+         PTDEBUG && _d('Grants separated:', Dumper(\@grants));
       }
-      else { # Sort the actual grants lexically within each row for consistency.
+      else {
+         # Sort the actual grants lexically within each row for consistency.
          @grants = map {
-            $_ =~ s/GRANT (.*?) ON (`|\*)/"GRANT " . join(', ', sort(split(', ', $1))) . " ON $2"/e;
+            $_ =~ s/GRANT (.*?) ON (`|\*)/"GRANT " . join(', ', sort(split_grants($1))) . " ON $2"/e;
             $_;
          } @grants;
+         PTDEBUG && _d('Grants grouped:', Dumper(\@grants));
       }
 
       # Sort the grant rows for consistency too, but the one with the password
@@ -1788,6 +1801,7 @@ sub main {
       @grants = sort {
          $b =~ m/IDENTIFIED BY/ <=> $a =~ m/IDENTIFIED BY/ || $a cmp $b
       } @grants;
+      PTDEBUG && _d('Grants sorted:', Dumper(\@grants));
 
       # Print REVOKE statements.
       if ( $o->get('revoke') ) {
@@ -1802,7 +1816,7 @@ sub main {
             my @result;
             if ( $o->get('separate') ) {
                @result = map { "REVOKE $_ ON $on_what FROM $user" }
-                  split(', ', $grants);
+                  split_grants($grants);
             }
             else {
                @result = "REVOKE $grants ON $on_what FROM $user";
@@ -1867,6 +1881,31 @@ sub parse_user {
    return ( $user, $host );
 }
 
+sub split_grants {
+   my ($grants) = @_;
+   return unless $grants;
+   my @grants;
+   if ( $grants =~ m/(?:INSERT|SELECT|UPDATE) \(/ ) {
+      PTDEBUG && _d('Splitting grants on keywords:', $grants);
+      # TODO: the following .+? might break (e.g. on `annoying)column`).
+      # Remember to update this whenever we switch to using
+      # a common SQL regex module
+      @grants = $grants =~ m/
+            (
+                (?:INSERT|SELECT|UPDATE)\s\(.+?\) # a column grants
+              | [A-Z\s]+
+            )
+            (?:,\s)?    # Separted from the next grant, if any, by a comma
+      /xg;
+   }
+   else {
+      PTDEBUG && _d('Splitting grants on comma:', $grants);
+      @grants = split(', ', $grants);
+   }
+   PTDEBUG && _d('Grants split:', Dumper(\@grants));
+   return @grants;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -1894,7 +1933,7 @@ pt-show-grants - Canonicalize and print MySQL grants so you can effectively repl
 
 =head1 SYNOPSIS
 
-Usage: pt-show-grants [OPTION...] [DSN]
+Usage: pt-show-grants [OPTIONS] [DSN]
 
 pt-show-grants shows grants (user privileges) from a MySQL server.
 
