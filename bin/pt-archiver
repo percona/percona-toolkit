@@ -4790,14 +4790,19 @@ eval {
 };
 
 sub version_check {
-   my $args        = pop @_;
-   my (@instances) = @_;
+   my %args      = @_;
+   my @instances = $args{instances} ? @{ $args{instances} } : ();
 
    if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-      print STDERR '--version-check is disabled by the PERCONA_VERSION_CHECK ',
+      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
                    "environment variable.\n\n";
       return;
    }
+
+   $args{protocol} ||= 'https';
+   my @protocols = $args{protocol} eq 'auto'
+                 ? qw(https http)
+                 : $args{protocol};
    
    my $instances_to_check = [];
    my $time               = int(time());
@@ -4812,15 +4817,11 @@ sub version_check {
       ($time_to_check, $instances_to_check)
          = time_to_check($check_time_file, \@instances, $time);
       if ( !$time_to_check ) {
-         print STDERR 'It is not time to --version-check again; ',
+         warn 'It is not time to --version-check again; ',
                       "only 1 check per day.\n\n";
          return;
       }
 
-      $args->{protocol} ||= 'https';
-      my @protocols = $args->{protocol} ne 'https' && $args->{protocol} ne 'http'
-                    ? qw(https http)
-                    : $args->{protocol};
       my $advice;
       my $e;
       for my $protocol ( @protocols ) {
@@ -4863,7 +4864,7 @@ sub pingback {
 
    my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 2 );
+   $ua ||= HTTPMicro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
@@ -5079,6 +5080,21 @@ sub encode_client_response {
    return $client_response;
 }
 
+sub validate_options {
+   my ($o) = @_;
+
+   return if !$o->got('version-check');
+
+   my $value  = $o->get('version-check');
+   my @values = split /, /,
+                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
+   chomp(@values);
+                
+   return if grep { $value eq $_ } @values;
+   $o->save_error("--version-check invalud value $value. Accepted values are "
+                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -5222,6 +5238,8 @@ sub main {
       if ( $bulk_del && $limit < 2 ) {
          $o->save_error("--bulk-delete is meaningless with --limit 1");
       }
+
+      Pingback::validate_options($o);
 
    }
 
@@ -5622,9 +5640,11 @@ sub main {
    # ########################################################################
    if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check(
-         { dbh => $src->{dbh}, dsn => $src->{dsn} },
-         ( $dst ? { dbh => $dst->{dbh}, dsn => $dst->{dsn} } : () ),
-         { protocol => $o->get('version-check') },
+         instances => [
+            { dbh => $src->{dbh}, dsn => $src->{dsn} },
+            ( $dst ? { dbh => $dst->{dbh}, dsn => $dst->{dsn} } : () ),
+         ],
+         protocol => $o->get('version-check'),
       );
    }
 
@@ -7060,9 +7080,15 @@ Show version and exit.
 type: string; default: off
 
 Send program versions to Percona and print suggested upgrades and problems.
+Possible values for --version-check:
 
-Accepted values are https, http, off, and auto -- The latter tries both https
-and http, in that order. Keep in mind that 'https' might fail if
+=for comment ignore-pt-internal-value
+MAGIC_version_check
+
+https, http, auto, off
+
+C<auto> first tries using C<https>, and resolts to C<http> if that fails.
+Keep in mind that C<https> might not be available if
 C<IO::Socket::SSL> is not installed on your system, although
 C<--version-check http> should work everywhere.
 

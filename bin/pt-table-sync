@@ -99,7 +99,6 @@ sub new {
       'default'    => 1,
       'cumulative' => 1,
       'negatable'  => 1,
-      'value_is_optional' => 1,
    );
 
    my $self = {
@@ -341,10 +340,9 @@ sub _parse_specs {
             $opt->{short} = undef;
          }
 
-         $opt->{is_negatable}   = $opt->{spec} =~ m/!/        ? 1 : 0;
-         $opt->{is_cumulative}  = $opt->{spec} =~ m/\+/       ? 1 : 0;
-         $opt->{optional_value} = $opt->{spec} =~ m/:/        ? 1 : 0;
-         $opt->{is_required}    = $opt->{desc} =~ m/required/ ? 1 : 0;
+         $opt->{is_negatable}  = $opt->{spec} =~ m/!/        ? 1 : 0;
+         $opt->{is_cumulative} = $opt->{spec} =~ m/\+/       ? 1 : 0;
+         $opt->{is_required}   = $opt->{desc} =~ m/required/ ? 1 : 0;
 
          $opt->{group} ||= 'default';
          $self->{groups}->{ $opt->{group} }->{$long} = 1;
@@ -480,7 +478,7 @@ sub _set_option {
    if ( $opt->{is_cumulative} ) {
       $opt->{value}++;
    }
-   elsif ( !($opt->{optional_value} && !$val) ) {
+   else {
       $opt->{value} = $val;
    }
    $opt->{got} = 1;
@@ -1021,12 +1019,11 @@ sub _parse_size {
 sub _parse_attribs {
    my ( $self, $option, $attribs ) = @_;
    my $types = $self->{types};
-   my $eq    = $attribs->{'value_is_optional'} ? ':' : '=';
    return $option
       . ($attribs->{'short form'} ? '|' . $attribs->{'short form'}   : '' )
       . ($attribs->{'negatable'}  ? '!'                              : '' )
       . ($attribs->{'cumulative'} ? '+'                              : '' )
-      . ($attribs->{'type'}       ? $eq . $types->{$attribs->{type}} : '' );
+      . ($attribs->{'type'}       ? '=' . $types->{$attribs->{type}} : '' );
 }
 
 sub _parse_synopsis {
@@ -9229,14 +9226,19 @@ eval {
 };
 
 sub version_check {
-   my $args        = pop @_;
-   my (@instances) = @_;
+   my %args      = @_;
+   my @instances = $args{instances} ? @{ $args{instances} } : ();
 
    if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-      print STDERR '--version-check is disabled by the PERCONA_VERSION_CHECK ',
+      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
                    "environment variable.\n\n";
       return;
    }
+
+   $args{protocol} ||= 'https';
+   my @protocols = $args{protocol} eq 'auto'
+                 ? qw(https http)
+                 : $args{protocol};
    
    my $instances_to_check = [];
    my $time               = int(time());
@@ -9251,22 +9253,28 @@ sub version_check {
       ($time_to_check, $instances_to_check)
          = time_to_check($check_time_file, \@instances, $time);
       if ( !$time_to_check ) {
-         print STDERR 'It is not time to --version-check again; ',
+         warn 'It is not time to --version-check again; ',
                       "only 1 check per day.\n\n";
          return;
       }
 
-      my $protocol = $args->{protocol} || 'https';
-      my $advice = pingback(
-         url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
-         instances => $instances_to_check,
-         protocol  => $args->{protocol},
-      );
+      my $advice;
+      my $e;
+      for my $protocol ( @protocols ) {
+         $advice = eval { pingback(
+            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
+            instances => $instances_to_check,
+            protocol  => $protocol,
+         ) };
+         last if !$advice && !$EVAL_ERROR;
+         $e ||= $EVAL_ERROR;
+      }
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
       else {
+         die $e if $e;
          print "# No suggestions at this time.\n\n";
          ($ENV{PTVCDEBUG} || PTDEBUG )
             && _d('--version-check worked, but there were no suggestions');
@@ -9292,7 +9300,7 @@ sub pingback {
 
    my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 2 );
+   $ua ||= HTTPMicro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
@@ -9508,6 +9516,21 @@ sub encode_client_response {
    return $client_response;
 }
 
+sub validate_options {
+   my ($o) = @_;
+
+   return if !$o->got('version-check');
+
+   my $value  = $o->get('version-check');
+   my @values = split /, /,
+                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
+   chomp(@values);
+                
+   return if grep { $value eq $_ } @values;
+   $o->save_error("--version-check invalud value $value. Accepted values are "
+                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -9655,6 +9678,8 @@ sub main {
       $o->save_error("Invalid --recursion-method: $EVAL_ERROR")
    }
 
+   Pingback::validate_options($o);
+   
    $o->usage_or_errors();
 
    # ########################################################################
@@ -9766,7 +9791,10 @@ sub main {
    } @dsns;
 
    if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check(@instances, { protocol => $o->get('version-check') });
+      Pingback::version_check(
+         instances => [@instances],
+         protocol  => $o->get('version-check'),
+      );
    }
 
    map { $_->disconnect } @vc_dbhs;  # disconnect dbh created for version check
@@ -12281,9 +12309,15 @@ Show version and exit.
 type: string; default: off
 
 Send program versions to Percona and print suggested upgrades and problems.
+Possible values for --version-check:
 
-Accepted values are https, http, off, and auto -- The latter tries both https
-and http, in that order. Keep in mind that 'https' might fail if
+=for comment ignore-pt-internal-value
+MAGIC_version_check
+
+https, http, auto, off
+
+C<auto> first tries using C<https>, and resolts to C<http> if that fails.
+Keep in mind that C<https> might not be available if
 C<IO::Socket::SSL> is not installed on your system, although
 C<--version-check http> should work everywhere.
 
