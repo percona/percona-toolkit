@@ -42,6 +42,13 @@ my $sample  = "t/pt-online-schema-change/samples/";
 # ############################################################################
 $sb->load_file('master1', "$sample/sql-mode-bug-1058285.sql");
 
+my ($orig_sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
+is(
+   $orig_sql_mode,
+   "REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ANSI,NO_AUTO_VALUE_ON_ZERO",
+   "SQL_MODE set"
+);
+
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args,
       "$master_dsn,D=issue26211,t=process_model_inst",
@@ -59,6 +66,13 @@ unlike(
    $output,
    qr/errno: 121/,
    "No error 121 (bug 1058285)"
+);
+
+my ($sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
+is(
+   $sql_mode,
+   $orig_sql_mode,
+   "--dry-run SQL_MODE not changed"
 );
 
 ($output, $exit_status) = full_output(
@@ -86,6 +100,13 @@ like(
    $rows->[1],
    qr/"foo"\s+int/i,
    "--alter actually worked (bug 1058285)"
+);
+
+($sql_mode) = $dbh->selectrow_array(q{SELECT @@SQL_MODE});
+is(
+   $sql_mode,
+   $orig_sql_mode,
+   "--execute SQL_MODE not changed"
 );
 
 # #############################################################################
