@@ -510,6 +510,23 @@ SKIP: {
 }
 
 # #############################################################################
+# Check that the --v-c OPT validation works everywhere
+# #############################################################################
+
+for my $exec ( grep { slurp_file($_) =~ /package Pingback;/ }
+               grep { !/~/ }
+               glob("$trunk/bin/*")
+             )
+{
+   my $output = `$exec --version-check ftp`;
+   like(
+      $output,
+      qr/\Q* --version-check invalid value ftp. Accepted values are https, http, auto and off/,
+      "Valid values for v-c are checked in $exec"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh) if $master_dbh;

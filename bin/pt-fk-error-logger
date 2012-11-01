@@ -3387,7 +3387,7 @@ sub validate_options {
    chomp(@values);
                 
    return if grep { $value eq $_ } @values;
-   $o->save_error("--version-check invalud value $value. Accepted values are "
+   $o->save_error("--version-check invalid value $value. Accepted values are "
                 . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
 }
 
