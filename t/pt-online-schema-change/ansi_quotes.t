@@ -109,6 +109,33 @@ is(
    "--execute SQL_MODE not changed"
 );
 
+# ############################################################################
+# pt-online-schema-change foreign key error
+# Customer issue 26211
+# ############################################################################
+$sb->load_file('master1', "$sample/issue-26211.sql");
+
+my $retval;
+($output, $retval) = full_output(sub { pt_online_schema_change::main(@args,
+                              '--alter-foreign-keys-method', 'auto',
+                              '--no-check-replication-filters',
+                              '--alter', "ENGINE=InnoDB",
+                              '--execute', "$master_dsn,D=bug_26211,t=prm_inst")});
+
+is(
+   $retval,
+   0,
+   "Issue 26211: Lives ok"
+) or diag($output);
+
+unlike(
+   $output,
+   qr/\QI need a max_rows argument/,
+   "Issue 26211: No error message"
+);
+
+$dbh->do(q{DROP DATABASE IF EXISTS `bug_26211`});
+
 # #############################################################################
 # Done.
 # #############################################################################
