@@ -1887,19 +1887,15 @@ sub split_grants {
    my @grants;
    if ( $grants =~ m/(?:INSERT|SELECT|UPDATE) \(/ ) {
       PTDEBUG && _d('Splitting grants on keywords:', $grants);
-      @grants = map {
-         my $grant = $_;
-         $grant =~ s/^\s+//;
-         $grant =~ s/,\s*$//;
-         $grant;
-      } $grants =~ m/
-            \G    # Start matching after the previous match
-            \s?   # Space after previous match's separating comma
-            (?:   # Either match...
-                 (?: (?:INSERT|SELECT|UPDATE)\s\(.+?\) ) # a column grant
-               | (?: [A-Z\s]+ )                          # or a table grant
+      # TODO: the following .+? might break (e.g. on `annoying)column`).
+      # Remember to update this whenever we switch to using
+      # a common SQL regex module
+      @grants = $grants =~ m/
+            (
+                (?:INSERT|SELECT|UPDATE)\s\(.+?\) # a column grants
+              | [A-Z\s]+
             )
-            ,?    # Separted from the next grant, if any, by a comma
+            (?:,\s)?    # Separted from the next grant, if any, by a comma
       /xg;
    }
    else {
