@@ -128,6 +128,17 @@ ok(
    "Column-level grants --separate --revoke (bug 866075)"
 );
 
+diag(`/tmp/12345/use -u root -e "GRANT SELECT ON sakila.city TO 'sally'\@'%'"`);
+
+ok(
+   no_diff(
+      sub { pt_show_grants::main('-F', $cnf, qw(--only sally --no-header)) },
+      "t/pt-show-grants/samples/column-grants-combined.txt",
+      stderr => 1,   
+   ),
+   "Column-level grants combined with table-level grants on the same table (bug 866075)"
+);
+
 diag(`/tmp/12345/use -u root -e "DROP USER 'sally'\@'%'"`);
 
 # #############################################################################
