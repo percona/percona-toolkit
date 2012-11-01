@@ -2479,13 +2479,14 @@ sub get_create_table {
    my $q = $self->{Quoter};
 
    my $new_sql_mode
-      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+      = q{/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, }
+      . q{@@SQL_MODE := '', }
+      . q{@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := 1 */};
 
-   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   my $old_sql_mode
+      = q{/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */};
 
    PTDEBUG && _d($new_sql_mode);
    eval { $dbh->do($new_sql_mode); };
