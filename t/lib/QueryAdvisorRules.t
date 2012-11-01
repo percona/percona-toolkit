@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 87;
+use Test::More;
 
 use PerconaTest;
 use PodParser;
@@ -466,6 +466,11 @@ my @cases = (
       query  => "select col1, col2 from tbl where i=1 order by col1, col2 desc",
       advice => [qw(CLA.007)],
    },
+   {
+      name   => 'Bug 937234: wrong RES.001',
+      query  => q{select NULL, 1, COUNT(*), @@time_zone, foo as field2 from t1 group by field2},
+      advice => [qw(CLA.001)],
+   },
 );
 
 # Run the test cases.
@@ -524,4 +529,6 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+
+done_testing;
 exit;
