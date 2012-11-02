@@ -849,6 +849,12 @@ is(
   "..and removing comments doesn't leave trailing whitespace"
 );
 
+is_deeply(
+   [ sort keys %{$config->variables} ],
+   [qw( password something user )],
+   "start of line comments with # or ; are ignored"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
