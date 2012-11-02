@@ -3815,6 +3815,7 @@ sub get_rules {
          return unless scalar %groupby_col;
          my $cols = [
                       grep { _looks_like_column($_->{col}) }
+                      grep { ! exists $_->{func} }
                       @{$event->{query_struct}->{columns}}
                     ];
          foreach my $col ( @$cols ) {
