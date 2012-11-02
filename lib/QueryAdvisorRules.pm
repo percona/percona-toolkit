@@ -344,6 +344,7 @@ sub get_rules {
          # Skip non-columns -- NULL, digits, functions, variables
          my $cols = [
                       grep { _looks_like_column($_->{col}) }
+                      grep { ! exists $_->{func} }
                       @{$event->{query_struct}->{columns}}
                     ];
          # All SELECT cols must be in GROUP BY cols clause.

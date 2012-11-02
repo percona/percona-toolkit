@@ -471,6 +471,11 @@ my @cases = (
       query  => q{select NULL, 1, COUNT(*), @@time_zone, foo as field2 from t1 group by field2},
       advice => [qw(CLA.001)],
    },
+   {
+      name   => 'Bug 996069: wrong RES.001',
+      query  => q{SELECT cola, MAX(colb) FROM table WHERE cola = 123 GROUP BY cola},
+      advice => [qw()],
+   },
 );
 
 # Run the test cases.
