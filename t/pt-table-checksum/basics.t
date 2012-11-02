@@ -474,47 +474,8 @@ is(
 );
 
 # #############################################################################
-# pt-table-checksum doesn't check that tables exist on all replicas
-# https://bugs.launchpad.net/percona-toolkit/+bug/1009510
-# #############################################################################
-
-$master_dbh->do("DROP DATABASE IF EXISTS bug_1009510");
-$master_dbh->do("CREATE DATABASE bug_1009510");
-
-$sb->wait_for_slaves();
-$slave1_dbh->do("CREATE TABLE bug_1009510.bug_1009510 ( i int, b int )");
-$master_dbh->do("CREATE TABLE IF NOT EXISTS bug_1009510.bug_1009510 ( i int )");
-($output) = full_output(
-   sub { pt_table_checksum::main(@args,
-      qw(-t bug_1009510.bug_1009510)) },
-);
-
-like(
-   $output,
-   qr/has more columns than its master: b/,
-   "Bug 1009510: ptc warns about extra columns"
-);
-
-$slave1_dbh->do("DROP TABLE bug_1009510.bug_1009510");
-$slave1_dbh->do("CREATE TABLE bug_1009510.bug_1009510 ( b int )");
-
-($output) = full_output(
-   sub { $exit_status = pt_table_checksum::main(@args,
-      qw(-t bug_1009510.bug_1009510)) },
-);
-
-like(
-   $output,
-   qr/differs from master: Columns i/,
-   "Bug 1009510: ptc dies if the slave table has missing columns"
-);
-$sb->wipe_clean($master_dbh);
-$sb->wipe_clean($slave1_dbh);
-
-# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-
 done_testing;
