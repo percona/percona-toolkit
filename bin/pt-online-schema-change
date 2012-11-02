@@ -9087,8 +9087,6 @@ sub exec_nibble {
       },
    );
 
-   my %stats;
-
    return $retry->retry(
       tries => $o->get('retries'),
       wait  => sub { sleep 0.25; return; },
@@ -9124,7 +9122,6 @@ sub exec_nibble {
             my $code    = ($warning->{code} || 0);
             my $message = $warning->{message};
             if ( $ignore_code{$code} ) {
-               push @{$stats{ignored_code}->{$code} ||= []}, $message;
                PTDEBUG && _d('Ignoring warning:', $code, $message);
                next;
             }
@@ -9132,16 +9129,15 @@ sub exec_nibble {
                     && (!$warn_code{$code}->{pattern}
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
-               if ( !$stats{warned_code}->{$code} ) {  # warn once per table
+               if ( !$tbl->{"warned_code_$code"} ) {  # warn once per table
                   warn "Copying rows caused a MySQL error $code: "
                      . ($warn_code{$code}->{message}
                         ? $warn_code{$code}->{message}
                         : $message)
                      . "\nThis MySQL error is being ignored and further "
                      . "occurrences of it will not be reported.\n";
+                  $tbl->{"warned_code_$code"} = 1;
                }
-               push @{$stats{warned_code}->{$code} ||= []},
-                  $warn_code{$code}->{message} || $message;
             }
             else {
                # This die will propagate to fail which will return 0
