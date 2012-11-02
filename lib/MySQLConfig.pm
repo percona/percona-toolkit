@@ -310,7 +310,7 @@ sub parse_option_file {
    # Parse the "var=val" lines.
    my ($config, $dupes) = _parse_varvals(
       map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ }
-      grep { $_ !~ m/^\s*#/ }  # no # comment lines
+      grep { $_ !~ m/^\s*[#;]/ }  # no # comment lines
       split("\n", $mysqld_section)
    );
 
