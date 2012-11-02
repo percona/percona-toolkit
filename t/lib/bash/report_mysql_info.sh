@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 33
+plan 34
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -728,6 +728,18 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp004.txt" \
    "report_mysql_summary, dir: temp004"
+
+# ###########################################################################
+# pt-mysql-summary not Percona Server 5.5-ready
+# https://bugs.launchpad.net/percona-toolkit/+bug/1015590
+# ###########################################################################
+
+section_percona_server_features "$samples/percona-server-5.5-variables" > "$PT_TMPDIR/got"
+
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-features.txt" \
+   "Bug 1015590: pt-mysql-summary not Percona Server 5.5-ready"
 
 # ###########################################################################
 # Done
