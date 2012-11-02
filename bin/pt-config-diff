@@ -2135,7 +2135,7 @@ sub parse_option_file {
 
    my ($config, $dupes) = _parse_varvals(
       map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ }
-      grep { $_ !~ m/^\s*#/ }  # no # comment lines
+      grep { $_ !~ m/^\s*[#;]/ }  # no # comment lines
       split("\n", $mysqld_section)
    );
 
