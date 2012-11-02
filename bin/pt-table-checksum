@@ -8591,7 +8591,7 @@ sub main {
                   . $master_binlog . " but replica " . $slave_cxn->name()
                   . " has binlog_format $slave_binlog.  This could cause "
                   . "pt-table-checksum to break replication.  "
-                  . "If understand the risks, specify "
+                  . "If you understand the risks, specify "
                   .  "--no-check-binlog-format to disable this check.\n";
             }
          }
