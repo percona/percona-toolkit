@@ -274,7 +274,7 @@ sub _get_hash_func {
    }
    my ($dbh) = @args{@required_args};
    my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1);
 
    if ( my $func = $o->get('function') ) {
       unshift @funcs, $func;
@@ -290,11 +290,12 @@ sub _get_hash_func {
       if ( $EVAL_ERROR && $EVAL_ERROR =~ m/failed: (.*?) at \S+ line/ ) {
          $error .= qq{$func cannot be used because "$1"\n};
          PTDEBUG && _d($func, 'cannot be used because', $1);
+         next;
       }
       PTDEBUG && _d('Chosen hash func:', $result);
       return $func;
    }
-   die $error || 'No hash functions (CRC32, MD5, etc.) are available';
+   die($error || 'No hash functions (CRC32, MD5, etc.) are available');
 }
 
 # Returns how wide/long, in characters, a CRC function is.

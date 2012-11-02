@@ -461,6 +461,22 @@ like(
    'Dies if all columns are ignored by --columns'
 );
 
+# #############################################################################
+# pt-table-checksum doesn't test all hash functions
+# https://bugs.launchpad.net/percona-toolkit/+bug/1059732
+# #############################################################################
+
+@ARGV = qw(--function FALSEFUNC);
+$o->get_opts();
+
+unlike(
+   $c->_get_hash_func(
+      dbh => $dbh,
+   ),
+   qr/FALSEFUNC/,
+   "_get_hash_func doesn't return failed functions",
+);
+
 # ############################################################################
 # Done.
 # ############################################################################
