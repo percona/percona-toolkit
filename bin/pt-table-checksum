@@ -3580,80 +3580,6 @@ sub check_table {
    return 1;
 }
 
-
-sub check_table_against_slave {
-   my ($self, %args) = @_;
-
-   my @required_args = qw(tbl_name slave_tbl slave_name master_tbl);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($tbl_name, $slave_tbl, $slave_name, $master_tbl) = @args{@required_args};
-
-   my $columns_in_slave  = { map { $_ => 1 } @{$slave_tbl->{cols}}  };
-   my $columns_in_master = { map { $_ => 1 } @{$master_tbl->{cols}} };
-
-   my @extra_columns_in_slave;
-   for my $column (keys %$columns_in_slave) {
-      if ( $columns_in_master->{$column} ) {
-         $columns_in_master->{$column}++
-      }
-      else {
-         push @extra_columns_in_slave, $column;
-      }
-   }
-
-   my @not_in_slave = grep { $columns_in_master->{$_} != 2 }
-                        keys %$columns_in_master;
-
-   die "Table $tbl_name in $slave_name differs from master: "
-     . "Columns @not_in_slave are missing\n  "
-     if @not_in_slave;
-
-   print STDERR "Table $tbl_name in $slave_name has more columns than "
-      . "its master: @extra_columns_in_slave\n"
-      if @extra_columns_in_slave;
-
-   return 1;
-}
-
-sub check_table_against_slaves {
-   my ($self, %args) = @_;
-
-   my @required_args = qw(tbl_struct db table slaves);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-
-   my ($tbl_struct, $db, $tbl, $slaves) = @args{@required_args};
-
-   my $errors;
-   for my $slave_cxn (@$slaves) {
-      my $slave_has_table = $self->check_table(
-            dbh => $slave_cxn->dbh(),
-            db  => $db,
-            tbl => $tbl,
-      );
-      die "Table $db.$tbl doesn't exist in slave " . $slave_cxn->name()
-         unless $slave_has_table;
-
-      my $ddl       = $self->get_create_table( $slave_cxn->dbh, $db, $tbl );
-      my $slave_tbl = $self->parse( $ddl );
-      eval {
-         $self->check_table_against_slave(
-            tbl_name   => "$db.$tbl",
-            master_tbl => $tbl_struct,
-            slave_tbl  => $slave_tbl,
-            slave_name => $slave_cxn->name(),
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         $errors .= $EVAL_ERROR;
-      }
-   }
-   die $errors if $errors;
-}
-
 sub get_engine {
    my ( $self, $ddl, $opts ) = @_;
    my ( $engine ) = $ddl =~ m/\).*?(?:ENGINE|TYPE)=(\w+)/;
@@ -8131,7 +8057,7 @@ sub main {
       Quoter       => $q,
    );
 
-   my $slaves;         # all slaves (that we can find)
+   my $slaves = [];    # all slaves (that we can find)
    my $slave_lag_cxns; # slaves whose lag we'll check
    
    my $replica_lag;    # ReplicaLagWaiter object
@@ -8450,6 +8376,29 @@ sub main {
 
             # Just need to call us once to kick-start the resume process.
             $last_chunk = undef;
+         }
+
+         if ( $o->get('check-slave-tables') ) {
+            eval {
+               check_slave_tables(
+                  slaves        => $slaves,
+                  db            => $tbl->{db},
+                  tbl           => $tbl->{tbl},
+                  checksum_cols => $tbl->{checksum_cols},
+                  TableParser   => $tp,
+               );
+            };
+            if ( $EVAL_ERROR ) {
+               my $msg
+                  = "Skipping table $tbl->{db}.$tbl->{tbl} because it has "
+                  . "problems on these replicas:\n"
+                  . $EVAL_ERROR
+                  . "This can break replication.  If you understand the risks, "
+                  . "specify --no-check-slave-tables to disable this check.\n";
+               warn ts($msg);
+               $tbl->{checksum_results}->{errors}++;
+               $oktonibble = 0;
+           }
          }
 
          if ( $o->get('explain') ) {
@@ -8879,15 +8828,6 @@ sub main {
                         : $o->get('chunk-size');
          $tbl->{chunk_size} = $chunk_size;
 
-         if ( $o->get('check-replicate-table-columns') && $slaves && @$slaves ) {
-            $tp->check_table_against_slaves(
-               tbl_struct => $tbl->{tbl_struct},
-               db         => $tbl->{db},
-               table      => $tbl->{tbl},
-               slaves     => $slaves,
-            );
-         }
-
          # Make a nibble iterator for this table.  This should only fail
          # if the table has no indexes and is too large to checksum in
          # one chunk.
@@ -8945,6 +8885,18 @@ sub main {
                   name    => "Checksumming $tbl->{db}.$tbl->{tbl}",
                );
             }
+
+            # Make a list of the columns being checksummed.  As the option's
+            # docs note, this really only makes sense when checksumming one
+            # table, unless the tables have a common set of columns.
+            # TODO: this now happens in 3 places, search for 'columns'.
+            my $tbl_struct = $tbl->{tbl_struct};
+            my $ignore_col = $o->get('ignore-columns') || {};
+            my $all_cols   = $o->get('columns')        || $tbl_struct->{cols};
+            my @cols       = map  { lc $_ }
+                             grep { !$ignore_col->{$_} }
+                             @$all_cols;
+            $tbl->{checksum_cols} = \@cols;
 
             # Finally, checksum the table.
             # The "1 while" loop is necessary because we're executing REPLACE
@@ -9269,18 +9221,24 @@ sub print_checksum_diffs {
 
 sub check_repl_table {
    my ( %args ) = @_;
-   my @required_args = qw(dbh repl_table slaves OptionParser TableParser Quoter);
+   my @required_args = qw(dbh repl_table slaves
+                          OptionParser TableParser Quoter);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $repl_table, $slaves, $o, $tp, $q) = @args{@required_args};
+
    PTDEBUG && _d('Checking --replicate table', $repl_table);
+
+   # ########################################################################
+   # Create the --replicate database.
+   # ########################################################################
 
    # If the repl db doesn't exit, auto-create it, maybe.
    my ($db, $tbl) = $q->split_unquote($repl_table);
-   my $sql = "SHOW DATABASES LIKE '$db'";
-   PTDEBUG && _d($sql);
-   my @db_exists = $dbh->selectrow_array($sql);
+   my $show_db_sql = "SHOW DATABASES LIKE '$db'";
+   PTDEBUG && _d($show_db_sql);
+   my @db_exists = $dbh->selectrow_array($show_db_sql);
    if ( !@db_exists && !$o->get('create-replicate-table') ) {
       die "--replicate database $db does not exist and "
          . "--no-create-replicate-table was specified.  You need "
@@ -9288,27 +9246,45 @@ sub check_repl_table {
    }
 
    if ( $o->get('create-replicate-table') ) {
-      $sql = "CREATE DATABASE IF NOT EXISTS "
-            . $q->quote($db)
-            . " /* pt-table-checksum */";
-      PTDEBUG && _d($sql);
+      # Even if the db already exists, do this in case it does not exist
+      # on a slave.
+      my $create_db_sql
+         = "CREATE DATABASE IF NOT EXISTS "
+         . $q->quote($db)
+         . " /* pt-table-checksum */";
+      PTDEBUG && _d($create_db_sql);
       eval {
-         $dbh->do($sql);
+         $dbh->do($create_db_sql);
       };
       if ( $EVAL_ERROR ) {
+         # CREATE DATABASE IF NOT EXISTS failed but the db could already
+         # exist and the error could be due, for example, to the user not
+         # having privs to create it, but they still have privs to use it.
+
          if ( @db_exists ) {
-            my $e = $EVAL_ERROR;
-            for my $slave_cxn (@$slaves) {
-               my $slave_dbh = $slave_cxn->dbh();
-               my $check_sql = "SHOW DATABASES LIKE '$db'";
-               PTDEBUG && _d($check_sql);
-               my @db_exists_in_slave = $slave_dbh->selectrow_array($check_sql);
-               die "Error executing $sql: $e\n"
-                 . "The $db database exists on the master, but doesn't in slave "
-                 . $slave_cxn->name() . "; This can cause replication to fail.  "
-                 . "If you understand the risks, you can specify "
-                 . "--no-create-replicate-table to avoid this error."
-                 unless @db_exists_in_slave;
+            # Repl db already exists on the master, so check if it's also
+            # on all slaves.  If not, and given that creating it failed,
+            # we'll die because we can't be sure if it's ok on all slaves.
+            # The user can verify and disable this check if it's ok.
+            my $e = $EVAL_ERROR;  # CREATE DATABASE error
+            my @slaves_missing_db;
+            foreach my $slave ( @$slaves ) {
+               PTDEBUG && _d($show_db_sql, 'on', $slave->name());
+               my @db_exists_in_slave
+                  = $slave->dbh->selectrow_array($show_db_sql);
+               if ( !@db_exists_in_slave ) {
+                  push @slaves_missing_db, $slave;
+               }
+            }
+            if ( @slaves_missing_db ) {
+               warn $e;  # CREATE DATABASE error
+               die "The --replicate database $db exists on the master but "
+                 . "$create_db_sql on the master failed (see the error above) "
+                 . "and the database does not exist on these replicas:\n"
+                 . join("\n", map { "  " . $_->name() } @slaves_missing_db)
+                 . "\nThis can break replication.  If you understand "
+                 . "the risks, specify --no-create-replicate-table to disable "
+                 . "this check.\n";
             }
          }
          else {
@@ -9322,49 +9298,63 @@ sub check_repl_table {
    # USE the correct db (probably the repl db, but maybe --replicate-database).
    use_repl_db(%args);
 
+   # ########################################################################
+   # Create the --replicate table.
+   # ########################################################################
+
    # Check if the repl table exists; if not, create it, maybe.
    my $tbl_exists = $tp->check_table(
       dbh => $dbh,
       db  => $db,
       tbl => $tbl,
    );
+   PTDEBUG && _d('--replicate table exists:', $tbl_exists ? 'yes' : 'no');
 
-   # Always create the table, unless --no-create-replicate-table
-   # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
    if ( !$tbl_exists && !$o->get('create-replicate-table') ) {
       die "--replicate table $repl_table does not exist and "
         . "--no-create-replicate-table was specified.  "
         . "You need to create the table.\n";
    }
-   PTDEBUG && $tbl_exists && _d('--replicate table', $repl_table, 'already exists');
+
    # We used to check the table privs here, but:
    # https://bugs.launchpad.net/percona-toolkit/+bug/916168
 
+   # Always create the table, unless --no-create-replicate-table
+   # was passed in; see https://bugs.launchpad.net/percona-toolkit/+bug/950294
    if ( $o->get('create-replicate-table') ) {
       eval {
          create_repl_table(%args);
       };
       if ( $EVAL_ERROR ) {
+         # CREATE TABLE IF NOT EXISTS failed but the table could already
+         # exist and the error could be due, for example, to the user not
+         # having privs to create it, but they still have privs to use it.
+
          if ( $tbl_exists ) {
-            my $e   = $EVAL_ERROR;
-            my $ddl = $tp->get_create_table( $dbh, $db, $tbl );
-            my $tbl_struct = $tp->parse( $ddl );
+            # Repl table already exists on the master, so check if it's also
+            # on all slaves.  If not, and given that creating it failed,
+            # we'll die because we can't be sure if it's ok on all slaves.
+            # The user can verify and disable this check if it's ok.
+            my $e          = $EVAL_ERROR;  # CREATE TABLE error
+            my $ddl        = $tp->get_create_table($dbh, $db, $tbl);
+            my $tbl_struct = $tp->parse($ddl);
             eval {
-               $tp->check_table_against_slaves(
-                  tbl_struct => $tbl_struct,
-                  db         => $db,
-                  table      => $tbl,
-                  slaves     => $slaves,
-               ) if $slaves;
+               check_slave_tables(
+                  slaves        => $slaves,
+                  db            => $db,
+                  tbl           => $tbl,
+                  checksum_cols => $tbl_struct->{cols},
+                  TableParser   => $tp,
+               );
             };
             if ( $EVAL_ERROR ) {
-               die "--create-replicate-table $tbl failed: $e\nThe table "
-                 . "already exists on the master, but has problems "
-                 . "on these replicas:\n"
+               warn $e;  # CREATE TABLE error
+               die "The --replicate table $repl_table exists on the master but "
+                 . "but it has problems on these replicas:\n"
                  . $EVAL_ERROR
-                 . "\nSpecifying --no-create-replicate table disables this "
-                 . "check, but it could also break replication. See "
-                 . "<http://kb link> for more information.";
+                 . "\nThis can break replication.  If you understand "
+                 . "the risks, specify --no-create-replicate-table to disable "
+                 . "this check.\n";
             }
          }
          else {
@@ -9413,6 +9403,60 @@ sub check_repl_table {
    }
 
    return;  # success, repl table is ready to go
+}
+
+# Check that db.tbl exists on all slaves and has the checksum cols,
+# else when we check for diffs we'll break replication by selecting
+# a nonexistent column.
+sub check_slave_tables {
+   my (%args) = @_;
+   my @required_args = qw(slaves db tbl checksum_cols TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($slaves, $db, $tbl, $checksum_cols, $tp) = @args{@required_args};
+
+   my @problems;
+   SLAVE:
+   foreach my $slave ( @$slaves ) {
+      my $slave_has_table = $tp->check_table(
+            dbh => $slave->dbh,
+            db  => $db,
+            tbl => $tbl,
+      );
+      if ( !$slave_has_table ) {
+         push @problems, "Table $db.$tbl does not exist on replica "
+            . $slave->name;
+         next SLAVE;
+      }
+
+      my $slave_tbl_struct = eval {
+         $tp->parse(
+            $tp->get_create_table($slave->dbh, $db, $tbl)
+         );
+      };
+      if ( $EVAL_ERROR ) {
+         push @problems, "Error parsing table $db.$tbl on replica "
+            . $slave->name . ": $EVAL_ERROR";
+         next SLAVE;
+      }
+
+      my @slave_missing_cols;
+      foreach my $col ( @$checksum_cols ) {
+         if ( !$slave_tbl_struct->{is_col}->{$col} ) {
+            push @slave_missing_cols, $col;
+         }
+      }
+      if ( @slave_missing_cols ) {
+         push @problems, "Table $db.$tbl on replica " . $slave->name
+            . " is missing these columns: "
+            . join(", ", @slave_missing_cols);
+      }
+   }
+
+   die join("\n", @problems) . "\n" if @problems;
+
+   return;
 }
 
 # Sub: use_repl_db
@@ -10090,14 +10134,6 @@ consumes time. Making chunks too small will cause the overhead to become
 relatively larger. It is therefore recommended that you not make chunks too
 small, because the tool may take a very long time to complete if you do.
 
-=item --[no]check-replicate-table-columns
-
-default: yes; group: Safety
-
-Checks that tables in slaves don't differ from the table in master before
-checksumming.  Tables with missing columns will be skipped with an error;
-Tables with extra columns will generate a warning.
-
 =item --[no]check-replication-filters
 
 default: yes; group: Safety
@@ -10137,6 +10173,16 @@ lagged (with L<pt-slave-delay> for example), in which case you can specify
 a normal replica to monitor.
 
 See also L<"REPLICA CHECKS">.
+
+=item --[no]check-slave-tables
+
+default: yes; group: Safety
+
+Checks that tables on slaves exist and have all the checksum L<"--columns">.
+Tables missing on slaves or not having all the checksum L<"--columns"> can
+cause the tool to break replication when it tries to check for differences.
+Only disable this check if you are aware of the risks and are sure that all
+tables on all slaves exist and are identical to the master.
 
 =item --chunk-index
 
@@ -10239,7 +10285,9 @@ of leaving it at the default.
 
 short form: -c; type: array; group: Filter
 
-Checksum only this comma-separated list of columns.
+Checksum only this comma-separated list of columns.  This option applies
+to all tables, so it really only makes sense when checksumming one table
+unless the tables have a common set of columns.
 
 =item --config
 

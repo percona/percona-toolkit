@@ -911,77 +911,8 @@ is_deeply(
 );
 
 # #############################################################################
-# pt-table-checksum doesn't check that tables exist on all replicas
-# https://bugs.launchpad.net/percona-toolkit/+bug/1009510
-# #############################################################################
-
-my $master_dbh = $sb->get_dbh_for('master');
-my $slave_dbh  = $sb->get_dbh_for('slave1');
-SKIP: {
-   skip "Cannot connect to sandbox master", 2 unless $master_dbh;
-   skip "Cannot connect to sandbox slave1", 2 unless $slave_dbh;
-
-   $master_dbh->do("DROP DATABASE IF EXISTS test");
-   $master_dbh->do("CREATE DATABASE test");
-
-   $sb->wait_for_slaves();
-
-   $slave_dbh->do("CREATE TABLE test.bug_1009510 ( i int, b int )");
-   $master_dbh->do("CREATE TABLE IF NOT EXISTS test.bug_1009510 ( i int )");
-
-   my $master_tbl = get_tbl_struct( $tp, $master_dbh, "test", "bug_1009510" );
-   $master_tbl->{db} = "test";
-   $master_tbl->{tbl} = "bug_1009510";
-   
-   my $slave_tbl  = get_tbl_struct( $tp, $slave_dbh,  "test", "bug_1009510" );
-   
-   my ($output) = full_output(sub {
-      $tp->check_table_against_slave(
-         tbl_name   => "bug_1009510.test",
-         master_tbl => $master_tbl,
-         slave_tbl  => $slave_tbl,
-         slave_name => 'slave1',
-      );
-   });
-
-   like(
-      $output,
-      qr/has more columns than its master: b/,
-      "check_table_against_slave warns about extra columns"
-   );
-
-   $slave_dbh->do("DROP TABLE test.bug_1009510");
-   $slave_dbh->do("CREATE TABLE test.bug_1009510 ( b int )");
-
-   $slave_tbl  = get_tbl_struct( $tp, $slave_dbh,  "test", "bug_1009510" );
-
-   local $EVAL_ERROR;
-   eval {
-      $tp->check_table_against_slave(
-         tbl_name   => "bug_1009510.test",
-         master_tbl => $master_tbl,
-         slave_tbl  => $slave_tbl,
-         slave_name => 'slave1',
-      );
-   };
-
-   like(
-      $EVAL_ERROR,
-      qr/differs from master: Columns i/,
-      "check_table_against_slave dies if the slave table has missing columns"
-   );
-}
-
-sub get_tbl_struct {
-   my ($tp, $dbh, $db, $tbl) = @_;
-   my $ddl = $tp->get_create_table( $dbh, $db, $tbl );
-   return $tp->parse( $ddl );
-}
-
-# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh) if $dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-
 done_testing;
