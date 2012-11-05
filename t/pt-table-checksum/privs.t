@@ -132,16 +132,17 @@ like(
    "Read-only user (bug 987694): checksummed rows"
 );
 
-($output) = full_output(
-   sub { $exit_status = pt_table_checksum::main(@args,
+($output, $exit_status) = full_output(
+   sub { pt_table_checksum::main(@args,
       "$master_dsn,u=ro_checksum_user,p=msandbox",
       qw(--recursion-method none)
    ) }
 );
 
-like($output,
-   qr/\QThe database exists on the master, but replication will break/,
-   "Error if db exists on the master,  can't CREATE DATABASE, and --no-create-replicate-table was not specified",
+is(
+   $exit_status,
+   0,
+   "No error if db exists on the master, can't CREATE DATABASE, --no-create-replicate-table was not specified, but the database does exist in all slaves"
 );
 
 diag(qx{/tmp/12345/use -u root -e 'DROP TABLE `percona`.`checksums`'});
