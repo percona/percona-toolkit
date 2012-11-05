@@ -2729,13 +2729,14 @@ sub get_create_table {
    my $q = $self->{Quoter};
 
    my $new_sql_mode
-      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+      = q{/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, }
+      . q{@@SQL_MODE := '', }
+      . q{@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := 1 */};
 
-   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   my $old_sql_mode
+      = q{/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */};
 
    PTDEBUG && _d($new_sql_mode);
    eval { $dbh->do($new_sql_mode); };
@@ -8232,10 +8233,9 @@ sub main {
       # the user specified --chunk-size=N on the cmd line, in which
       # case the max child table size is their specified chunk size
       # times the fudge factor.
-      my $max_rows
-         = $o->get('dry-run') ? $o->get('chunk-size') * $limit
-         : $chunk_time        ? $avg_rate * $chunk_time * $limit
-         :                      $o->get('chunk-size') * $limit;
+      my $max_rows = $o->get('dry-run') ? $o->get('chunk-size') * $limit
+            : $chunk_time && $avg_rate ? $avg_rate * $chunk_time * $limit
+            : $o->get('chunk-size') * $limit;
       PTDEBUG && _d('Max allowed child table size:', $max_rows);
 
       $alter_fk_method = determine_alter_fk_method(

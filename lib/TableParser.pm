@@ -60,16 +60,21 @@ sub get_create_table {
    my $q = $self->{Quoter};
 
    # To ensure a consistent output, we save the current (old) SQL mode,
-   # then set it to the new SQL mode that what we need.  When done, even
-   # if an error occurs, we restore the old SQL mode.
+   # then set it to the new SQL mode that what we need, which is the
+   # default sql_mode=''.  When done, even if an error occurs, we restore
+   # the old SQL mode.  The main thing is that we do not want ANSI_QUOTES
+   # because there's code all throughout the tools that expect backtick `
+   # quoted idents, not double-quote " quoted idents.  For example:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1058285
    my $new_sql_mode
-      = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+      = q{/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, }
+      . q{@@SQL_MODE := '', }
+      . q{@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := 1 */};
 
-   my $old_sql_mode = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-                     . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   my $old_sql_mode
+      = q{/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, }
+      . q{@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */};
 
    # Set new SQL mode.
    PTDEBUG && _d($new_sql_mode);
