@@ -13228,7 +13228,7 @@ sub validate_options {
    chomp(@values);
                 
    return if grep { $value eq $_ } @values;
-   $o->save_error("--version-check invalid value $value. Accepted values are "
+   $o->save_error("--version-check invalid value $value.  Accepted values are "
                 . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
 }
 
@@ -16994,7 +16994,7 @@ MAGIC_version_check
 
 https, http, auto, off
 
-C<auto> first tries using C<https>, and resolts to C<http> if that fails.
+C<auto> first tries using C<https>, and resorts to C<http> if that fails.
 Keep in mind that C<https> might not be available if
 C<IO::Socket::SSL> is not installed on your system, although
 C<--version-check http> should work everywhere.

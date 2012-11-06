@@ -513,16 +513,17 @@ SKIP: {
 # Check that the --v-c OPT validation works everywhere
 # #############################################################################
 
-for my $exec ( grep { slurp_file($_) =~ /package Pingback;/ }
-               grep { !/~/ }
-               glob("$trunk/bin/*")
-             )
-{
-   my $output = `$exec --version-check ftp`;
+use File::Basename qw(basename);
+
+my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ }
+              `grep --files-with-matches Pingback $trunk/bin/*`;
+
+foreach my $tool ( @vc_tools ) {
+   my $output = `$tool --version-check ftp`;
    like(
       $output,
-      qr/\Q* --version-check invalid value ftp. Accepted values are https, http, auto and off/,
-      "Valid values for v-c are checked in $exec"
+      qr/\Q* --version-check invalid value ftp.  Accepted values are https, http, auto and off/,
+      "Valid values for v-c are checked in $tool"
    );
 }
 
