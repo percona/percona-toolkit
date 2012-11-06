@@ -7836,11 +7836,13 @@ sub main {
    my $col_posn    = $orig_tbl->{tbl_struct}->{col_posn};
    my $orig_cols   = $orig_tbl->{tbl_struct}->{is_col};
    my $new_cols    = $new_tbl->{tbl_struct}->{is_col};
-   my @common_cols = sort { $col_posn->{$a} <=> $col_posn->{$b} }
-                     grep { $new_cols->{$_} }
+   @renamed_cols{keys %$new_cols} = keys %$new_cols;
+   my @sorted_cols = sort { $col_posn->{$a} <=> $col_posn->{$b} }
                      keys %$orig_cols;
-   @renamed_cols{@common_cols} = @common_cols;
-   PTDEBUG && _d('Common columns', @common_cols);
+   my @old_cols    = grep { $renamed_cols{$_} } @sorted_cols;
+   my @new_cols    = map  { $renamed_cols{$_} ? $renamed_cols{$_} : () }
+                     @sorted_cols;
+   PTDEBUG && _d('New columns', @new_cols);
 
    # ########################################################################
    # Step 3: Create the triggers to capture changes on the original table and
@@ -7871,7 +7873,7 @@ sub main {
       create_triggers(
          orig_tbl     => $orig_tbl,
          new_tbl      => $new_tbl,
-         columns      => \%renamed_cols,
+         columns      => { old_columns => \@old_cols, new_columns => \@new_cols },
          Cxn          => $cxn,
          Quoter       => $q,
          OptionParser => $o,
@@ -8144,9 +8146,9 @@ sub main {
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
    my $dml    = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
-              . "(" . join(', ', map { $q->quote($_) } values %renamed_cols) . ") "
+              . "(" . join(', ', map { $q->quote($_) } @new_cols) . ") "
               . "SELECT";
-   my $select = join(', ', map { $q->quote($_) } keys %renamed_cols);
+   my $select = join(', ', map { $q->quote($_) } @old_cols);
 
    # The chunk size is auto-adjusted, so use --chunk-size as
    # the initial value, but then save and update the adjusted
@@ -8942,6 +8944,13 @@ sub create_triggers {
       $prefix = $truncated_prefix;
    }
 
+   # new_columns and old_columns are probably the same, unless the
+   # user is doing a CHANGE COLUMN col col_different_name
+   my %renamed_cols;
+   my @new_cols     = @{$cols->{new_columns}};
+   my @old_cols     = @{$cols->{old_columns}};
+   @renamed_cols{@new_cols} = @old_cols;
+   
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.  We use null-safe equals, because unique
    # unique indexes can be nullable.
@@ -8950,7 +8959,7 @@ sub create_triggers {
    my $del_index_cols = join(" AND ",
                            map {
                               my $col = $q->quote($_);
-                              "$new_tbl->{name}.$col <=> OLD.$cols->{$_}"
+                              "$new_tbl->{name}.$col <=> OLD.$renamed_cols{$_}"
                            } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
@@ -8958,11 +8967,8 @@ sub create_triggers {
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
 
-   # values %$cols has the new names, keys has the old ones. These
-   # are probably the same, unless the user is doing a
-   # CHANGE COLUMN col col_different_name
-   my $qcols    = join(', ', map { $q->quote($_) }        values %$cols);
-   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } keys   %$cols);
+   my $qcols    = join(', ', map { $q->quote($_) }        @new_cols);
+   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @old_cols);
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
