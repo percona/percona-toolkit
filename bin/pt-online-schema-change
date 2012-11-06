@@ -7828,8 +7828,6 @@ sub main {
    # If the user drops a col, that's easy: just don't copy it.  If they
    # add a column, it must have a default value.  Other alterations
    # may or may not affect the copy process--we'll know when we try!
-   # Note: we don't want to examine the --alter statement to see if the
-   # cols have changed because that's messy and prone to parsing errors.
    # Col posn (position) is just for looks because user's like
    # to see columns listed in their original order, not Perl's
    # random hash key sorting.
