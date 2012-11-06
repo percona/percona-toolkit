@@ -8583,30 +8583,29 @@ sub main {
             line_width => 74,
          );
          $report->set_columns(
-            { name => 'Error Code',                },
-            { name => 'Count',  right_justify => 1 },
-            { name => 'Type',   right_justify => 1 },
+            { name => 'Event',                    },
+            { name => 'Count', right_justify => 1 },
          );
 
+         $report->add_line(
+            "INSERTS",
+            $statistics{INSERTS},
+         );
+         
          foreach my $code (keys %{$statistics{ignored_code}}) {
             next unless $statistics{ignored_code}->{$code};
             $report->add_line(
-               $code,
+               "Error $code",
                $statistics{ignored_code}->{$code},
-               "Ignorable",
             )
          }
          
          my $warnings_seen;
          foreach my $code (keys %{$statistics{warned_code}}) {
             $report->add_line(
-               $code,
-               scalar @{$statistics{warned_code}->{$code}},
-               "Warning",
+               "Error $code",
+               $statistics{warned_code}->{$code},
             );
-            $warnings_seen .= join "\n",
-                              map { "# $_" }
-                              @{$statistics{warned_code}->{$code}};
          }
          
          print $report->get_report();
@@ -9475,6 +9474,8 @@ sub exec_nibble {
          );
 
          my $t_end = time;
+         $statistics{INSERTS}++;
+         
          # ###################################################################
          # End timing the query.
          # ###################################################################
@@ -9508,8 +9509,7 @@ sub exec_nibble {
                      . "a total count will be shown if --statistics was "
                      . "specified.\n";
                }
-               push @{ $statistics{warned_code}->{$code} ||= [] },
-                  $sth->{nibble}->{Statement};
+               $statistics{warned_code}->{$code}++;
             }
             else {
                # This die will propagate to fail which will return 0

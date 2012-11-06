@@ -657,10 +657,11 @@ like(
 
 like(
    $output,
-   qr/\#\Q Error Code Count Type\E\s*
-\#\Q ========== ===== =========\E\s*
-\#\Q 1592           1 Ignorable\E\s*
-\#\Q 1265           1   Warning\E\s*/x,
+   qr/\#\Q Event      Count\E\s*
+\#\Q ========== =====\E\s*
+\#\Q INSERTS        1\E\s*
+\#\Q Error 1592     1\E\s*
+\#\Q Error 1265     1\E\s*/x,
    "--statistics works as expected with 1 ignore & 1 warning"
 );
 
