@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use Sandbox;
 use OptionParser;
@@ -17,8 +18,7 @@ use DSNParser;
 use Quoter;
 use PerconaTest;
 use Cxn;
-
-use Data::Dumper;
+use VersionParser;
 
 my $q   = new Quoter();
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -261,15 +261,14 @@ ok(
    "is_cluster_node works correctly for non-nodes"
 );
 
-use VersionParser;
 my $db_flavor = VersionParser->new($master_dbh)->flavor();
 SKIP: {
-   skip "PXC-only test", 1
+   skip "PXC-only test", 17
       unless $db_flavor =~ /XtraDB Cluster/;
-   
+
    diag("Starting a 1-node PXC");
    my ($node)     = $sb->start_cluster(cluster_size => 1);
-   
+
    my $cxn1 = make_cxn( dsn_string => $sb->dsn_for($node) );
    $cxn1->connect();
    ok(
@@ -281,7 +280,7 @@ SKIP: {
       !$cxn->is_master_of($cxn1),
       "->is_master_of works correctly for a server unrelated to a cluster"
    );
-   
+
    diag("Setting node as a slave of master1");
    $sb->set_as_slave($node, "master1");
    ok(
@@ -360,10 +359,11 @@ SKIP: {
    diag($sb->stop_sandbox($node2, $node3));
    diag("Starting a 3-node cluster");
    my $node4;
-   ($node2, $node3, $node4) = $sb->start_cluster(
-                                                   cluster_size => 3,
-                                                   cluster_name => "pt_cxn_test",
-                                                );
+   ($node2, $node3, $node4)
+      = $sb->start_cluster(
+         cluster_size => 3,
+         cluster_name => "pt_cxn_test",
+      );
    $cxn2    = make_cxn( dsn_string => $sb->dsn_for($node2) );
    $cxn2->connect();
    $cxn3    = make_cxn( dsn_string => $sb->dsn_for($node3) );

@@ -77,7 +77,7 @@ sub use {
    return if !defined $cmd || !$cmd;
    my $use = $self->_use_for($server) . " $cmd";
    PTDEBUG && _d('"Executing', $use, 'on', $server);
-   my $out = `$use 2>&1`;
+   my $out = `$use`;
    if ( $? >> 8 ) {
       die "Failed to execute $cmd on $server: $out";
    }
@@ -141,7 +141,7 @@ sub load_file {
 
    my $use = $self->_use_for($server) . " $d < $file";
    PTDEBUG && _d('Loading', $file, 'on', $server, ':', $use);
-   my $out = `$use 2>&1`;
+   my $out = `$use`;
    if ( $? >> 8 ) {
       die "Failed to execute $file on $server: $out";
    }
@@ -432,7 +432,7 @@ sub start_sandbox {
    my ($self, $mode, $server, $master_server) = @_;
    my $port        = $port_for{$server};
    my $master_port = $master_server ? $port_for{$master_server} : '';
-   my $out = `$trunk/sandbox/start-sandbox $mode $port $master_port 2>&1`;
+   my $out = `$trunk/sandbox/start-sandbox $mode $port $master_port`;
    die $out if $CHILD_ERROR;
    return $out;
 }
@@ -440,7 +440,7 @@ sub start_sandbox {
 sub stop_sandbox {
    my ($self, @sandboxes) = @_;
    my @ports = @port_for{@sandboxes};
-   my $out = `$trunk/sandbox/stop-sandbox @ports 2>&1`;
+   my $out = `$trunk/sandbox/stop-sandbox @ports`;
    die $out if $CHILD_ERROR;
    return $out;
 }
