@@ -3534,20 +3534,23 @@ sub main {
    {
       my $text = $dbh->selectrow_hashref("SHOW /*!40100 ENGINE*/ INNODB STATUS")->{Status};
       my ($ts, $fk_error) = get_fk_error($text);
+      PTDEBUG && _d('ts:', $ts, 'fk error:', $fk_error);
 
-      # Save and/or print the foreign key error.
-      if ( $ins_sth ) {
-         my $fk_ts = parse_timestamp($ts);
-         PTDEBUG && _d('Saving fk error', $ts, $fk_error);
-         eval {
-            $ins_sth->execute($fk_ts, $fk_error);
-         };
-         if ( $EVAL_ERROR ) {
-            warn $EVAL_ERROR;
-            PTDEBUG && _d($EVAL_ERROR);
+      if ( $ts && $fk_error ) {
+         # Save and/or print the foreign key error.
+         if ( $ins_sth ) {
+            my $fk_ts = parse_timestamp($ts);
+            PTDEBUG && _d('Saving fk error', $ts, $fk_error);
+            eval {
+               $ins_sth->execute($fk_ts, $fk_error);
+            };
+            if ( $EVAL_ERROR ) {
+               warn $EVAL_ERROR;
+               PTDEBUG && _d($EVAL_ERROR);
+            }
          }
+         print "$ts $fk_error\n\n" if $o->get('print') || !$o->got('dest');
       }
-      print "$ts $fk_error\n\n" if $o->get('print') || !$o->got('dest');
 
       # If there's an --interval argument, run forever or till specified.
       # Otherwise just run once.
@@ -3727,7 +3730,7 @@ The following table is suggested:
  CREATE TABLE foreign_key_errors (
    ts datetime NOT NULL,
    error text NOT NULL,
-   PRIMARY KEY (ts),
+   PRIMARY KEY (ts)
  )
 
 The only information saved is the timestamp and the foreign key error text.

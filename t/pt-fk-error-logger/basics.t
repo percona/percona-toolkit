@@ -136,7 +136,7 @@ $output = output(
 is(
    $output,
    "",
-   "No foreign key errors, no errors and no output (bug 1075773)"
+   "No foreign key errors, no errors, no output (bug 1075773)"
 );
 
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
