@@ -9,6 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
+use PerconaTest ();
 use Test::More;
 
 sub dies_ok (&;$) {
@@ -181,5 +182,20 @@ for my $i (4..7) {
 for my $type (@types[1..$#types]) {
     my $method = "my$type";
     dies_ok { $foo->$method(undef) } "$type attr set to undef dies" }
+
+
+use Config;
+use File::Spec;
+use IPC::Cmd ();
+my $thisperl = $^X;
+if ($^O ne 'VMS')
+   {$thisperl .= $Config{_exe} unless $thisperl =~ m/$Config{_exe}$/i;}
+
+my $pm_test = "$PerconaTest::trunk/t/lib/Mo/isa_subtest.pm";
+   
+ok(
+   scalar(IPC::Cmd::run(command => [$thisperl, $pm_test])),
+   "Mo types work with Scalar::Util::PP",
+);
 
 done_testing;
