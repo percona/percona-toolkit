@@ -23,11 +23,7 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 8;
-}
 
-$sb->wipe_clean($dbh);
 $sb->create_dbs($dbh, [qw(test)]);
 
 my $output;
@@ -121,8 +117,33 @@ $dbh->do('DROP TABLE test.child');
 $dbh->do('DROP TABLE test.parent');
 
 # #############################################################################
+# pt-fk-error-logger crashes if there's no foreign key error
+# https://bugs.launchpad.net/percona-toolkit/+bug/1075773
+# #############################################################################
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+diag(`/tmp/12348/use -e "create database test"`);
+$sb->load_file('master1', 't/pt-fk-error-logger/samples/fke_tbl.sql', 'test');
+
+$output = output(
+   sub {
+      pt_fk_error_logger::main('h=127.1,P=12348,u=msandbox,p=msandbox',
+      '--dest', 'h=127.1,P=12348,D=test,t=foreign_key_errors')
+   },
+   stderr => 1,
+);
+
+is(
+   $output,
+   "",
+   "No foreign key errors, no errors, no output (bug 1075773)"
+);
+
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
