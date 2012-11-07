@@ -213,7 +213,7 @@ ok(
 
 like(
    $output,
-   qr/--no-check-alter to disable this error/,
+   qr/Specify --no-check-alter to disable this check/,
    "--check-alter works"
 );
 
