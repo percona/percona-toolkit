@@ -476,6 +476,20 @@ my @cases = (
       query  => q{SELECT cola, MAX(colb) FROM table WHERE cola = 123 GROUP BY cola},
       advice => [qw()],
    },
+   {
+      name   => 'Bug 933465: false positive on RES.001',
+      query  => q{select name, population, count(*) from world.Country group by name, population},
+      advice => [qw(CLA.001)],
+   },
+   {
+      name   => 'Bug 933465: false positive on RES.001',
+      query  => q{SELECT ID_organization,ToNalog,ID_nachtype, COUNT(*) as Cnt }
+              . q{FROM buh_provodka_zp }
+              . q{GROUP BY ID_organization,ToNalog,ID_nachtype }
+              . q{HAVING Cnt>1 }
+              . q{ORDER BY Cnt DESC},
+      advice => [qw(CLA.001)],
+   },
 );
 
 # Run the test cases.
