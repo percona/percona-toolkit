@@ -46,15 +46,6 @@ use constant {
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
 };
 
-use Data::Dumper ();
-sub Dumper {
-   local $Data::Dumper::Indent    = 1;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
-
-   Data::Dumper::Dumper(@_);
-}
-
 # Sub: new
 #
 # Required Arguments:
@@ -203,99 +194,6 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
-}
-
-sub is_cluster_node {
-   my ($self) = @_;
-   return $self->{is_cluster_node} if defined $self->{is_cluster_node};
-   
-   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
-   PTDEBUG && _d($sql);
-   my $row = $self->{dbh}->selectrow_arrayref($sql);
-   PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[1]
-                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
-                            : 0;
-  
-   return $self->{is_cluster_node};
-}
-
-sub same_cluster {
-   my ($self, $cxn) = @_;
-   return unless $self->is_cluster_node() && $cxn->is_cluster_node();
-   return if $self->is_master_of($cxn) || $cxn->is_master_of($self);
-
-   my $sql = q{SHOW VARIABLES LIKE 'wsrep_cluster_name'};
-   PTDEBUG && _d($sql);
-   my (undef, $row)     = $self->dbh->selectrow_array($sql);
-   my (undef, $cxn_row) = $cxn->dbh->selectrow_array($sql);
-
-   return unless $row eq $cxn_row;
-
-   # Now it becomes tricky. Ostensibly clusters shouldn't have the
-   # same name, but tell that to the world.
-   $sql = q{SHOW VARIABLES LIKE 'wsrep_cluster_address'};
-   PTDEBUG && _d($sql);
-   my (undef, $addr)     = $self->dbh->selectrow_array($sql);
-   my (undef, $cxn_addr) = $cxn->dbh->selectrow_array($sql);
-
-   # If they both have gcomm://, then they are both the first
-   # node of a cluster, so they can't be in the same one.
-   return if $addr eq 'gcomm://' && $cxn_addr eq 'gcomm://';
-
-   if ( $addr eq 'gcomm://' ) {
-      $addr      = $self->_find_full_gcomm_addr($self->dbh);
-   }
-   elsif ( $cxn_addr eq 'gcomm://' ) {
-      $cxn_addr  = $self->_find_full_gcomm_addr($cxn->dbh);
-   }
-
-   # Meanwhile, if they have the same address, then
-   # they are definitely part of the same cluster
-   return 1 if $addr eq $cxn_addr;
-
-   # However, this still leaves us with the issue that
-   # the cluster addresses could look like this:
-   # node1 -> node2, node2 -> node1,
-   # or
-   # node1 -> node2 addr,
-   # node2 -> node3 addr,
-   # node3 -> node1 addr,
-   # TODO No clue what to do here
-   return 1;
-}
-
-sub is_master_of {
-   my ($self, $cxn) = @_;
-
-   my $cxn_dbh = $cxn->dbh;
-   local $cxn_dbh->{FetchHashKeyName} = 'NAME_lc';
-   my $sql = q{SHOW SLAVE STATUS};
-   PTDEBUG && _d($sql);
-   my $slave_status = $cxn_dbh->selectrow_hashref($sql);
-   return unless ref($slave_status) eq 'HASH';
-
-   my $port = $self->dsn->{P};
-   return unless $slave_status->{master_port} eq $port;
-   return 1 if $self->dsn->{h} eq $slave_status->{master_host};
-   
-   # They might be the same but in different format
-   my $host        = scalar gethostbyname($self->dsn->{h});
-   my $master_host = scalar gethostbyname($slave_status->{master_host});
-   return 1 if $master_host eq $host;
-   return;
-}
-
-sub _find_full_gcomm_addr {
-   my ($self, $dbh) = @_;
-
-   my $sql = q{SHOW VARIABLES LIKE 'wsrep_provider_options'};
-   PTDEBUG && _d($sql);
-   my (undef, $provider_opts) = $dbh->selectrow_array($sql);
-   my ($prov_addr)  = $provider_opts =~ m{\Qgmcast.listen_addr\E\s*=\s*tcp://([^:]+:[0-9]+)\s*;};
-   my $full_gcomm = "gcomm://$prov_addr";
-   PTDEBUG && _d("gcomm address: ", $full_gcomm);
-   return $full_gcomm;
 }
 
 sub DESTROY {
