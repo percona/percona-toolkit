@@ -207,7 +207,7 @@ SKIP: {
 
    $output = output(
       sub { pt_archiver::main(
-         '--source', "D=bri,t=t,F=$cnf,b=1",
+         '--source', "D=bri,L=1,t=t,F=$cnf,b=1",
          '--dest',   "D=bri,t=t_arch",
          qw(--where 1=1 --replace --commit-each --bulk-insert --bulk-delete),
          qw(--limit 10)) },

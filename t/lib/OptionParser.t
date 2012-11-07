@@ -1745,6 +1745,7 @@ is_deeply(
       p => 'foo',
       t => undef,
       u => 'bob',
+      L => undef,
    },
    'DSN opt gets missing vals from --host, --port, etc. (issue 248)',
 );
@@ -1774,6 +1775,7 @@ is_deeply(
       p => undef,
       t => undef,
       u => 'bob',
+      L => undef,
    },
    'Vals from "defaults to" DSN take precedence over defaults (issue 248)'
 );

@@ -138,12 +138,6 @@ our $dsn_opts = [
       dsn  => 'user',
       copy => 1,
    },
-   {
-      key  => 'L',
-      desc => 'Pass mysql_local_infile to DBD::mysql',
-      dsn  => 'mysql_local_infile',
-      copy => 1,
-   },
 ];
 
 # Runs code, captures and returns its output.

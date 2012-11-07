@@ -218,7 +218,7 @@ is_deeply (
             { S => 'bar', h => 'host' } ))
    ],
    [
-      'DBI:mysql:foo;host=me;mysql_socket=bar;mysql_read_default_group=client;mysql_local_infile=1',
+      'DBI:mysql:foo;host=me;mysql_socket=bar;mysql_read_default_group=client',
       'a',
       'b',
    ],
@@ -234,7 +234,7 @@ is_deeply (
             { S => 'bar', h => 'host' } ))
    ],
    [
-      'DBI:mysql:foo;host=me;mysql_socket=bar;charset=foo;mysql_read_default_group=client;mysql_local_infile=1',
+      'DBI:mysql:foo;host=me;mysql_socket=bar;charset=foo;mysql_read_default_group=client',
       'a',
       'b',
    ],
@@ -577,6 +577,7 @@ $dp->prop('set-vars', undef);
 
 SKIP: {
    skip "LOAD DATA LOCAL INFILE already works here", 1 if $can_load_data;
+   local $dsn->{L} = 1;
    my $dbh = $dp->get_dbh( $dp->get_cxn_params( $dsn ) );
 
    use File::Temp qw(tempfile);
@@ -596,7 +597,7 @@ SKIP: {
    is(
       $EVAL_ERROR,
       '',
-      "Even though LOCAL INFILE is off by default, the dbhs returned by DSNParser can use it"
+      "Even though LOCAL INFILE is off by default, the dbhs returned by DSNParser can use it if L => 1"
    );
    
    unlink $filename;
