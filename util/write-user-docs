@@ -70,18 +70,9 @@ write_rst() {
       warn "$file does not exist"
       return
    fi
-   local tool=$(basename $file)
 
-   cat $file | pod2rst > $RST_DIR/$tool.orig.rst
-   if [ $? -eq 0 ]; then
-      $BRANCH/util/fix-pod2rst-output $RST_DIR/$tool.orig.rst $tool \
-         > $RST_DIR/$tool.rst
-      echo "Wrote $RST_DIR/$tool.rst"
-   else
-      warn "Error writing $RST_DIR/tool.rst"
-   fi
-
-   rm $RST_DIR/$tool.orig.rst
+   $BRANCH/util/pod2rst-fixed $file > $RST_DIR/$tool.rst
+   echo "Wrote $RST_DIR/$tool.rst"
 }
 
 # Parse the head1 sections from percona-toolkit.pod and write them as
