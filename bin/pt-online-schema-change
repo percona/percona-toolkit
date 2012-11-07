@@ -1114,14 +1114,15 @@ use strict;
 use warnings qw( FATAL all );
 
 use Carp ();
-use Scalar::Util ();
+use Scalar::Util qw(looks_like_number blessed);
+
 
 our %TYPES = (
-   Bool   => sub { !$_[0] || (defined $_[0] && &Scalar::Util::looks_like_number && $_[0] == 1) },
-   Num    => sub { defined $_[0] && &Scalar::Util::looks_like_number },
-   Int    => sub { defined $_[0] && &Scalar::Util::looks_like_number && $_[0] == int $_[0] },
+   Bool   => sub { !$_[0] || (defined $_[0] && looks_like_number($_[0]) && $_[0] == 1) },
+   Num    => sub { defined $_[0] && looks_like_number($_[0]) },
+   Int    => sub { defined $_[0] && looks_like_number($_[0]) && $_[0] == int($_[0]) },
    Str    => sub { defined $_[0] },
-   Object => sub { defined $_[0] && &Scalar::Util::blessed },
+   Object => sub { defined $_[0] && blessed($_[0]) },
    FileHandle => sub { local $@; require IO::Handle; fileno($_[0]) && $_[0]->opened },
 
    map {
@@ -1295,7 +1296,7 @@ sub Mo::import {
                   $method = sub {
                      if ( $#_ ) {
                         Carp::confess(qq<Attribute ($attribute) doesn't consume a '$role' role">)
-                           unless blessed($_[1]) && $_[1]->does($role)
+                           unless Scalar::Util::blessed($_[1]) && eval { $_[1]->does($role) }
                      }
                      goto &$original_method
                   };
