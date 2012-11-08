@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More;
 
 use SchemaIterator;
 use FileIterator;
@@ -77,20 +77,22 @@ sub test_so {
 
    my $res = "";
    my @objs;
-   while ( my $obj = $si->next() ) {
-      if ( $args{return_objs} ) {
-         push @objs, $obj;
-      }
-      else {
-         if ( $result_file || $args{ddl} ) {
-            $res .= "$obj->{db}.$obj->{tbl}\n";
-            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
+   eval {
+      while ( my $obj = $si->next() ) {
+         if ( $args{return_objs} ) {
+            push @objs, $obj;
          }
          else {
-            $res .= "$obj->{db}.$obj->{tbl} ";
+            if ( $result_file || $args{ddl} ) {
+               $res .= "$obj->{db}.$obj->{tbl}\n";
+               $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
+            }
+            else {
+               $res .= "$obj->{db}.$obj->{tbl} ";
+            }
          }
       }
-   }
+   };
    
    return \@objs if $args{return_objs};
 
@@ -113,6 +115,9 @@ sub test_so {
          $args{unlike},
          $args{test_name},
       );
+   }
+   elsif ( $args{lives_ok} ) {
+      is($EVAL_ERROR, '', $args{test_name});
    }
    else {
       is(
@@ -406,8 +411,23 @@ test_so(
    test_name => "Resume from ignored table"
 );
 
+# ############################################################################
+# pt-table-checksum v2 fails when --resume + --ignore-database is used
+# https://bugs.launchpad.net/percona-toolkit/+bug/911385
+# ############################################################################
+
+# Actually, the important bit here si that it doesn't die, not the results.
+
+test_so(
+   filters   => ['--ignore-databases', 'sakila,mysql'],
+   result    => "",  # hack; uses lives_ok instead
+   lives_ok  => 1,
+   test_name => "Bug 911385: pt-table-checksum v2 fails when --resume + --ignore-database is used"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

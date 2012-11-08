@@ -5281,7 +5281,7 @@ sub _get_hash_func {
    }
    my ($dbh) = @args{@required_args};
    my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1);
 
    if ( my $func = $o->get('function') ) {
       unshift @funcs, $func;
@@ -5302,7 +5302,7 @@ sub _get_hash_func {
       PTDEBUG && _d('Chosen hash func:', $result);
       return $func;
    }
-   die $error || 'No hash functions (CRC32, MD5, etc.) are available';
+   die($error || 'No hash functions (CRC32, MD5, etc.) are available');
 }
 
 sub _get_crc_width {
@@ -6782,9 +6782,10 @@ sub _iterate_dbh {
    }
 
    if ( !$self->{db} ) {
-      do {
+      while ( @{$self->{dbs}} ) {
          $self->{db} = shift @{$self->{dbs}};
-      } until $self->_resume_from_database($self->{db});
+         last if $self->_resume_from_database($self->{db});
+      }
       PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
