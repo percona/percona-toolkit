@@ -3345,7 +3345,6 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Scalar::Util qw(blessed);
-
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
