@@ -93,12 +93,18 @@ sub quote_val {
 #   <join_quote>
 sub split_unquote {
    my ( $self, $db_tbl, $default_db ) = @_;
-   $db_tbl =~ s/`//g;
    my ( $db, $tbl ) = split(/[.]/, $db_tbl);
    if ( !$tbl ) {
       $tbl = $db;
       $db  = $default_db;
    }
+   for ($db, $tbl) {
+      next unless $_;
+      s/\A`//;
+      s/`\z//;
+      s/``/`/;
+   }
+   
    return ($db, $tbl);
 }
 
