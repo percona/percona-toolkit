@@ -2352,12 +2352,18 @@ sub quote_val {
 
 sub split_unquote {
    my ( $self, $db_tbl, $default_db ) = @_;
-   $db_tbl =~ s/`//g;
    my ( $db, $tbl ) = split(/[.]/, $db_tbl);
    if ( !$tbl ) {
       $tbl = $db;
       $db  = $default_db;
    }
+   for ($db, $tbl) {
+      next unless $_;
+      s/\A`//;
+      s/`\z//;
+      s/``/`/;
+   }
+   
    return ($db, $tbl);
 }
 
@@ -7803,6 +7809,8 @@ sub main {
    # Step 2: Alter the new, empty table.  This should be very quick,
    # or die if the user specified a bad alter statement.
    # #####################################################################
+   my %renamed_cols;
+
    if ( my $alter = $o->get('alter') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
@@ -7814,7 +7822,28 @@ sub main {
       if ( $EVAL_ERROR ) {
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
       }
-      print "Altered $new_tbl->{name} OK.\n"
+      print "Altered $new_tbl->{name} OK.\n";
+
+      # Check for renamed columns.
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1068562
+      %renamed_cols = find_renamed_cols($alter, $tp);
+      PTDEBUG && _d("Renamed columns (old => new): ", Dumper(\%renamed_cols));
+      if ( %renamed_cols && $o->get('check-alter') ) {
+         # sort is just for making output consistent for testing
+         my $msg = "--alter appears to rename these columns: "
+                 . join(", ", map { "$_ to $renamed_cols{$_}" }
+                              sort keys %renamed_cols);
+         if ( $o->get('dry-run') ) {
+            print $msg . "\n"
+         }
+         else {
+            die $msg
+               . ".  The tool should handle this correctly, but you should "
+               . "test it first because if it fails the renamed columns' "
+               . "data will be lost!  Specify --no-check-alter to disable "
+               . "this check and perform the --alter.\n";
+         }
+      }
    }
 
    # Get the new table struct.  This shouldn't die because
@@ -7831,18 +7860,33 @@ sub main {
    # If the user drops a col, that's easy: just don't copy it.  If they
    # add a column, it must have a default value.  Other alterations
    # may or may not affect the copy process--we'll know when we try!
-   # Note: we don't want to examine the --alter statement to see if the
-   # cols have changed because that's messy and prone to parsing errors.
    # Col posn (position) is just for looks because user's like
    # to see columns listed in their original order, not Perl's
    # random hash key sorting.
    my $col_posn    = $orig_tbl->{tbl_struct}->{col_posn};
    my $orig_cols   = $orig_tbl->{tbl_struct}->{is_col};
    my $new_cols    = $new_tbl->{tbl_struct}->{is_col};
-   my @common_cols = sort { $col_posn->{$a} <=> $col_posn->{$b} }
-                     grep { $new_cols->{$_} }
+   my @common_cols = map  { +{ old => $_, new => $renamed_cols{$_} || $_ } }
+                     sort { $col_posn->{$a} <=> $col_posn->{$b} }
+                     grep { $new_cols->{$_} || $renamed_cols{$_} }
                      keys %$orig_cols;
-   PTDEBUG && _d('Common columns', @common_cols);
+   PTDEBUG && _d('Common columns', Dumper(\@common_cols));
+
+   # Find a pk or unique index to use for the delete trigger.  can_nibble()
+   # above returns an index, but NibbleIterator will use non-unique indexes,
+   # so we have to do this again here.
+   my $indexes = $new_tbl->{tbl_struct}->{keys}; # brevity
+   foreach my $index ( $tp->sort_indexes($new_tbl->{tbl_struct}) ) {
+      if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+         PTDEBUG && _d('Delete trigger index:', Dumper($index));
+         $new_tbl->{del_index} = $index;
+         last;
+      }
+   }
+   if ( !$new_tbl->{del_index} ) {
+      die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
+        . "or a unique index which is required for the DELETE trigger.\n";
+   }
 
    # Find a pk or unique index to use for the delete trigger.  can_nibble()
    # above returns an index, but NibbleIterator will use non-unique indexes,
@@ -8061,8 +8105,6 @@ sub main {
          my (%args) = @_;
          my $tbl         = $args{tbl};
          my $nibble_iter = $args{NibbleIterator};
-         my $sth         = $nibble_iter->statements();
-         my $boundary    = $nibble_iter->boundaries();
 
          return if $o->get('dry-run');
 
@@ -8163,10 +8205,10 @@ sub main {
 
    # NibbleIterator combines these two statements and adds
    # "FROM $orig_table->{name} WHERE <nibble stuff>".
-   my $dml    = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
-              . "(" . join(', ', map { $q->quote($_) } @common_cols) . ") "
-              . "SELECT";
-   my $select = join(', ', map { $q->quote($_) } @common_cols);
+   my $dml = "INSERT LOW_PRIORITY IGNORE INTO $new_tbl->{name} "
+           . "(" . join(', ', map { $q->quote($_->{new}) } @common_cols) . ") "
+           . "SELECT";
+   my $select = join(', ', map { $q->quote($_->{old}) } @common_cols);
 
    # The chunk size is auto-adjusted, so use --chunk-size as
    # the initial value, but then save and update the adjusted
@@ -8377,6 +8419,53 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub find_renamed_cols {
+   my ($alter, $tp) = @_;
+
+   my $unquoted_ident = qr/
+      (?!\p{Digit}+[.\s])            # Not all digits
+      [0-9a-zA-Z_\x{80}-\x{FFFF}\$]+ # As per the spec
+   /x;
+
+   my $quoted_ident = do {
+      my $quoted_ident_character = qr/
+         [\x{01}-\x{5F}\x{61}-\x{FFFF}] # Any character but the null byte and `
+      /x;
+      qr{
+         # The following alternation is there because something like (?<=.)
+         # would match if this regex was used like /.$re/,
+         # or even more tellingly, would match on "``" =~ /`$re`/
+            $quoted_ident_character+               # One or more characters
+               (?: `` $quoted_ident_character*  )* # possibly followed by `` and
+                                                   # more characters, zero or more times
+         |  $quoted_ident_character*               # OR, zero or more characters
+               (?: `` $quoted_ident_character*  )+ # Followed by `` and maybe more
+                                                   # characters, one or more times.
+      }x
+   };
+
+   my $ansi_quotes_ident = qr/
+            [^"]+ (?: "" [^"]* )*
+         |  [^"]* (?: "" [^"]* )+
+   /x;
+
+   my $table_ident  = qr/$unquoted_ident|`$quoted_ident`|"$ansi_quotes_ident"/;
+   my $alter_change_col_re = qr/\bCHANGE \s+ (?:COLUMN \s+)?
+                                    ($table_ident) \s+ ($table_ident)/ix;
+
+   my %renames;
+   while ( $alter =~ /$alter_change_col_re/g ) {
+      my ($orig, $new) = map { $tp->ansi_to_legacy($_) } $1, $2;
+      next unless $orig && $new;
+      my (undef, $orig_tbl) = Quoter->split_unquote($orig);
+      my (undef, $new_tbl)  = Quoter->split_unquote($new);
+      # Silly but plausible: CHANGE COLUMN same_name same_name ...
+      next if lc($orig_tbl) eq lc($new_tbl);
+      $renames{$orig_tbl} = $new_tbl;
+   }
+   return %renames;
+}
 
 sub nibble_is_safe {
    my (%args) = @_;
@@ -8900,24 +8989,27 @@ sub create_triggers {
 
    # To be safe, the delete trigger must specify all the columns of the
    # primary key/unique index.  We use null-safe equals, because unique
-   # unique indexes can be nullable.
+   # unique indexes can be nullable.  Cols are from the new table and
+   # they may have been renamed
+   my %old_col_for    = map { $_->{new} => $_->{old} } @$cols;
    my $tbl_struct     = $new_tbl->{tbl_struct};
    my $del_index      = $new_tbl->{del_index};
-   my $del_index_cols = join(" AND ",
-                           map {
-                              my $col = $q->quote($_);
-                              "$new_tbl->{name}.$col <=> OLD.$col"
-                           } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
+   my $del_index_cols = join(" AND ", map {
+      my $new_col  = $_;
+      my $old_col  = $old_col_for{$new_col} || $new_col;
+      my $new_qcol = $q->quote($new_col);
+      my $old_qcol = $q->quote($old_col);
+      "$new_tbl->{name}.$new_qcol <=> OLD.$old_qcol"
+   } @{$tbl_struct->{keys}->{$del_index}->{cols}} );
+
    my $delete_trigger
       = "CREATE TRIGGER `${prefix}_del` AFTER DELETE ON $orig_tbl->{name} "
       . "FOR EACH ROW "
       . "DELETE IGNORE FROM $new_tbl->{name} "
       . "WHERE $del_index_cols";
 
-   # The insert and update triggers should only use values for columns
-   # that exist in both tables.
-   my $qcols    = join(', ', map { $q->quote($_) }        @$cols);
-   my $new_vals = join(', ', map { "NEW.".$q->quote($_) } @$cols);
+   my $qcols    = join(', ', map { $q->quote($_->{new}) }        @$cols);
+   my $new_vals = join(', ', map { "NEW.".$q->quote($_->{old}) } @$cols);
    my $insert_trigger
       = "CREATE TRIGGER `${prefix}_ins` AFTER INSERT ON $orig_tbl->{name} "
       . "FOR EACH ROW "
@@ -9471,6 +9563,28 @@ without the utf8 layer, and runs SET NAMES after connecting to MySQL.
 type: time; default: 1
 
 Sleep time between checks for L<"--max-lag">.
+
+
+=item --[no]check-alter
+
+default: yes
+
+Parses the L<"--alter"> specified and tries to warn of possible unintended
+behavior. Currently, it checks for:
+
+=over
+
+=item Column renames
+
+In previous versions of the tool, renaming a column with
+C<CHANGE COLUMN name new_name> would lead to that column's data being lost.
+The tool now parses the alter statement and tries to catch these cases, so
+the renamed columns should have the same data as the originals. However, the
+code that does this is not a full-blown SQL parser, so we recommend that users
+run the tool with L<"--dry-run"> and check if it's detecting the renames
+correctly.
+
+=back
 
 =item --[no]check-plan
 
