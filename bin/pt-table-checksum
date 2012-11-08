@@ -21,6 +21,7 @@ BEGIN {
       OptionParser
       Mo
       Cxn
+      Percona::XtraDB::Cluster
       Quoter
       VersionParser
       TableParser
@@ -3211,6 +3212,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Scalar::Util qw(blessed);
+
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
@@ -3317,21 +3319,6 @@ sub name {
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
 }
 
-sub is_cluster_node {
-   my ($self) = @_;
-   return $self->{is_cluster_node} if defined $self->{is_cluster_node};
-   
-   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
-   PTDEBUG && _d($sql);
-   my $row = $self->{dbh}->selectrow_arrayref($sql);
-   PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[1]
-                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
-                            : 0;
-  
-   return $self->{is_cluster_node};
-}
-
 sub DESTROY {
    my ($self) = @_;
    if ( $self->{dbh}
@@ -3355,6 +3342,104 @@ sub _d {
 }
 # ###########################################################################
 # End Cxn package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::XtraDB::Cluster package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/XtraDB/Cluster.pm
+#   t/lib/Percona/XtraDB/Cluster.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+
+package Percona::XtraDB::Cluster;
+use Mo;
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub is_cluster_node {
+   my ($self, $cxn) = @_;
+   return $self->{is_cluster_node}->{$cxn} if defined $self->{is_cluster_node}->{$cxn};
+
+   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
+   PTDEBUG && _d($sql);
+   my $row = $cxn->dbh->selectrow_arrayref($sql);
+   PTDEBUG && _d(defined $row ? @$row : 'undef');
+   $self->{is_cluster_node}->{$cxn} = $row && $row->[1]
+                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
+                            : 0;
+
+   return $self->{is_cluster_node}->{$cxn};
+}
+
+sub same_cluster {
+   my ($self, $cxn1, $cxn2) = @_;
+   return unless $self->is_cluster_node($cxn1) && $self->is_cluster_node($cxn2);
+   return if $self->is_master_of($cxn1, $cxn2) || $self->is_master_of($cxn2, $cxn1);
+
+   my $sql = q{SHOW VARIABLES LIKE 'wsrep_cluster_name'};
+   PTDEBUG && _d($sql);
+   my (undef, $row)      = $cxn1->dbh->selectrow_array($sql);
+   my (undef, $cxn2_row) = $cxn2->dbh->selectrow_array($sql);
+
+   return unless $row eq $cxn2_row;
+
+   $sql = q{SHOW VARIABLES LIKE 'wsrep_cluster_address'};
+   PTDEBUG && _d($sql);
+   my (undef, $addr)      = $cxn1->dbh->selectrow_array($sql);
+   my (undef, $cxn2_addr) = $cxn2->dbh->selectrow_array($sql);
+
+   return if $addr eq 'gcomm://' && $cxn2_addr eq 'gcomm://';
+
+   if ( $addr eq 'gcomm://' ) {
+      $addr      = $self->_find_full_gcomm_addr($cxn1->dbh);
+   }
+   elsif ( $cxn2_addr eq 'gcomm://' ) {
+      $cxn2_addr  = $self->_find_full_gcomm_addr($cxn2->dbh);
+   }
+
+   return 1 if lc($addr) eq lc($cxn2_addr);
+
+   return 1;
+}
+
+sub is_master_of {
+   my ($self, $cxn1, $cxn2) = @_;
+
+   my $cxn2_dbh = $cxn2->dbh;
+   my $sql      = q{SHOW SLAVE STATUS};
+   PTDEBUG && _d($sql);
+   local $cxn2_dbh->{FetchHashKeyName} = 'NAME_lc';
+   my $slave_status = $cxn2_dbh->selectrow_hashref($sql);
+   return unless ref($slave_status) eq 'HASH';
+
+   my $port = $cxn1->dsn->{P};
+   return unless $slave_status->{master_port} eq $port;
+   return 1 if $cxn1->dsn->{h} eq $slave_status->{master_host};
+
+   my $host        = scalar gethostbyname($cxn1->dsn->{h});
+   my $master_host = scalar gethostbyname($slave_status->{master_host});
+   return 1 if $master_host eq $host;
+   return;
+}
+
+sub _find_full_gcomm_addr {
+   my ($self, $dbh) = @_;
+
+   my $sql = q{SHOW VARIABLES LIKE 'wsrep_provider_options'};
+   PTDEBUG && _d($sql);
+   my (undef, $provider_opts) = $dbh->selectrow_array($sql);
+   my ($prov_addr)  = $provider_opts =~ m{\Qgmcast.listen_addr\E\s*=\s*tcp://([^:]+:[0-9]+)\s*;}i;
+   my $full_gcomm = "gcomm://$prov_addr";
+   PTDEBUG && _d("gcomm address: ", $full_gcomm);
+   return $full_gcomm;
+}
+
+1;
+}
+# ###########################################################################
+# End Percona::XtraDB::Cluster package
 # ###########################################################################
 
 # ###########################################################################
@@ -5281,7 +5366,7 @@ sub _get_hash_func {
    }
    my ($dbh) = @args{@required_args};
    my $o     = $self->{OptionParser};
-   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MD5 SHA1);
+   my @funcs = qw(CRC32 FNV1A_64 FNV_64 MURMUR_HASH MD5 SHA1);
 
    if ( my $func = $o->get('function') ) {
       unshift @funcs, $func;
@@ -5302,7 +5387,7 @@ sub _get_hash_func {
       PTDEBUG && _d('Chosen hash func:', $result);
       return $func;
    }
-   die $error || 'No hash functions (CRC32, MD5, etc.) are available';
+   die($error || 'No hash functions (CRC32, MD5, etc.) are available');
 }
 
 sub _get_crc_width {
@@ -8535,6 +8620,9 @@ sub main {
       $have_time = sub { return 1; };
    }
 
+   # PXC helper class
+   my $cluster = Percona::XtraDB::Cluster->new();
+   
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
@@ -8604,12 +8692,42 @@ sub main {
          die $err if $err;
       }
 
-      if ( $master_cxn->is_cluster_node() && !@$slaves ) {
-         die $master_cxn->name() . " is a cluster node but no other nodes "
-            . "or regular replicas were found.  Use --recursion-method=dsn "
-            . "to specify the other nodes in the cluster.\n";
+      if ( $cluster->is_cluster_node($master_cxn) ) {
+         if ( !@$slaves ) {
+            die $master_cxn->name() . " is a cluster node but no other nodes "
+               . "or regular replicas were found.  Use --recursion-method=dsn "
+               . "to specify the other nodes in the cluster.\n";
+         }
+         else {
+            my $err = '';
+            for my $slave (@$slaves) {
+               if (   $cluster->is_cluster_node($slave)
+                  && !$cluster->same_cluster($slave, $master_cxn) ) {
+                  $err .= $slave->name() . " is a cluster node, but doesn't "
+                       .  "belong to the same cluster as " . $master_cxn->name()
+                       .  ". This is not currently supported; You can try "
+                       .  "using --recursion-method=dsn to specify all nodes "
+                       .  "in the slave cluster.\n"
+               }
+            }
+            warn $err if $err;
+         }
       }
-
+      elsif ( @$slaves ) {
+         my $err = '';
+         for my $slave (@$slaves) {
+            if ( $cluster->is_cluster_node($slave) ) {
+               $err .= $slave->name() . " is a cluster node, but "
+                    .  $master_cxn->name() . " is not. This is not currently "
+                    .  "supported; You can try to specify "
+                    .  "all nodes in the cluster with "
+                    .  "--recursion-method=dsn if you want them checksummed.\n"
+            }
+         }
+         warn $err if $err;
+      }
+      
+      
       if ( $o->get('check-slave-lag') ) {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
@@ -8629,7 +8747,8 @@ sub main {
       # to appear should be sufficient.
       @$slave_lag_cxns = grep {
          my $slave_cxn = $_;
-         if ( $slave_cxn->is_cluster_node() ) {
+         if (  $cluster->is_cluster_node($slave_cxn)
+            && $cluster->same_cluster($master_cxn, $slave_cxn) ) {
             warn "Not checking replica lag on " . $slave_cxn->name()
                . " because it is a cluster node.\n";
             0;
@@ -8844,7 +8963,7 @@ sub main {
                     . "(db, tbl, chunk, chunk_index,"
                     . " lower_boundary, upper_boundary, this_cnt, this_crc) "
                     . "SELECT"
-                    . ($master_cxn->is_cluster_node() ? ' /*!99997*/' : '')
+                    . ($cluster->is_cluster_node($master_cxn) ? ' /*!99997*/' : '')
                     . " ?, ?, ?, ?, ?, ?,";
    my $past_cols    = " COUNT(*), '0'";
 

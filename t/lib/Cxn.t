@@ -9,7 +9,8 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 19;
+use Test::More;
+use Data::Dumper;
 
 use Sandbox;
 use OptionParser;
@@ -17,8 +18,7 @@ use DSNParser;
 use Quoter;
 use PerconaTest;
 use Cxn;
-
-use Data::Dumper;
+use VersionParser;
 
 my $q   = new Quoter();
 my $dp  = new DSNParser(opts=>$dsn_opts);
@@ -248,12 +248,10 @@ is_deeply(
    "Default cxn inherits default connection options"
 );
 
-@ARGV = ();
-$o->get_opts();
-
 # #############################################################################
 # Done.
 # #############################################################################
 $master_dbh->disconnect() if $master_dbh;
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
