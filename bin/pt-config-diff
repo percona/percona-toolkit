@@ -1466,6 +1466,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Scalar::Util qw(blessed);
+
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
@@ -1570,21 +1571,6 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
-}
-
-sub is_cluster_node {
-   my ($self) = @_;
-   return $self->{is_cluster_node} if defined $self->{is_cluster_node};
-   
-   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
-   PTDEBUG && _d($sql);
-   my $row = $self->{dbh}->selectrow_arrayref($sql);
-   PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node} = $row && $row->[1]
-                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
-                            : 0;
-  
-   return $self->{is_cluster_node};
 }
 
 sub DESTROY {
