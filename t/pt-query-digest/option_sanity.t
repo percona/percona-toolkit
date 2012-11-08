@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 6;
+use Test::More;
 
 use PerconaTest;
 
@@ -57,8 +57,24 @@ $output = `$trunk/bin/pt-query-digest @options --embedded-attributes '-- .*,[:al
 like $output,
    qr/\Q--embedded-attributes POSIX syntax [: :] belongs inside character/,
    "Bug 885382: --embedded-attributes rejects warning patterns early";;
-   
+
+# #############################################################################
+# pt-query-digest help output mangled
+# https://bugs.launchpad.net/percona-toolkit/+bug/831525
+# #############################################################################
+
+$output = `$trunk/bin/pt-query-digest --help`;
+
+like(
+   $output,
+   qr/\Q--report-format=A\E\s*
+      \QPrint these sections of the query analysis\E\s*
+      \Qreport (default rusage,date,hostname,files,\E\s*
+      \Qheader,profile,query_report,prepared)\E/x,
+   "Bug 831525: pt-query-digest help output mangled"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
