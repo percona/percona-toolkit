@@ -76,7 +76,7 @@ sub use {
    return if !defined $cmd || !$cmd;
    my $use = $self->_use_for($server) . " $cmd";
    PTDEBUG && _d('"Executing', $use, 'on', $server);
-   my $out = `$use`;
+   my $out = `$use 2>&1`;
    if ( $? >> 8 ) {
       die "Failed to execute $cmd on $server: $out";
    }
@@ -143,7 +143,7 @@ sub load_file {
 
    my $use = $self->_use_for($server) . " $d < $file";
    PTDEBUG && _d('Loading', $file, 'on', $server, ':', $use);
-   my $out = `$use`;
+   my $out = `$use 2>&1`;
    if ( $? >> 8 ) {
       die "Failed to execute $file on $server: $out";
    }

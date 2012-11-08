@@ -36,7 +36,6 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Scalar::Util qw(blessed);
-
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    # Hostnames make testing less accurate.  Tests need to see
