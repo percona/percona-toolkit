@@ -327,9 +327,10 @@ sub _iterate_dbh {
    }
 
    if ( !$self->{db} ) {
-      do {
+      while ( @{$self->{dbs}} ) {
          $self->{db} = shift @{$self->{dbs}};
-      } until $self->_resume_from_database($self->{db});
+         last if $self->_resume_from_database($self->{db});
+      }
       PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
