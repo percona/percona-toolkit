@@ -734,8 +734,9 @@ sub full_output {
          or die "Cannot open file $file: $OS_ERROR";
    *STDOUT->autoflush(1);
 
-   open *STDERR, '>', $file
-      or die "Cannot open file $file: $OS_ERROR";
+   my (undef, $file2) = tempfile();
+   open *STDERR, '>', $file2
+      or die "Cannot open file $file2: $OS_ERROR";
    *STDERR->autoflush(1);
 
    my $status;
@@ -760,7 +761,7 @@ sub full_output {
       exit $code->();
    }
    close $_ or die "Cannot close $_: $OS_ERROR" for qw(STDOUT STDERR);
-   my $output = do { local $/; open my $fh, "<", $file or die $!; <$fh> };
+   my $output = slurp_file($file) . slurp_file($file2);
 
    return ($output, $status);
 }
