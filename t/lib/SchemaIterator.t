@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More;
 
 use SchemaIterator;
 use FileIterator;
@@ -407,7 +407,111 @@ test_so(
 );
 
 # #############################################################################
+# Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
+# https://bugs.launchpad.net/percona-toolkit/+bug/1047335
+# #############################################################################
+
+my $master3_port   = 2900;
+my $master_basedir = "/tmp/$master3_port";
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
+my $dbh3 = $sb->get_dbh_for("master3");
+
+SKIP: {
+   skip "No /dev/urandom, can't corrupt the database", 1
+      unless -e q{/dev/urandom};
+
+   $sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
+
+   # Create the SI object before crashing the table
+   my $tmp_si = new SchemaIterator(
+            dbh          => $dbh3,
+            OptionParser => $o,
+            Quoter       => $q,
+            TableParser  => $tp,
+            # This is needed because the way we corrupt tables
+            # accidentally removes the database from SHOW DATABASES
+            db           => 'bug_1047335',
+         );
+
+   my $db_dir = "$master_basedir/data/bug_1047335";
+   my $myi    = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
+   my $frm    = glob("$db_dir/crashed_table.[Ff][Rr][Mm]");
+
+   die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+
+   # Truncate the .myi file to corrupt it
+   truncate($myi, 4096);
+
+   use File::Slurp qw( prepend_file append_file write_file );
+
+   # Corrupt the .frm file
+   open my $urand_fh, q{<}, "/dev/urandom"
+      or die "Cannot open /dev/urandom";
+   prepend_file($frm, scalar(<$urand_fh>));
+   append_file($frm, scalar(<$urand_fh>));
+   close $urand_fh;
+
+   $dbh3->do("FLUSH TABLES");
+   eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
+
+   my $w = '';
+   {
+      local $SIG{__WARN__} = sub { $w .= shift };
+      1 while $tmp_si->next();
+   }
+
+   like(
+      $w,
+      qr/bug_1047335.crashed_table because SHOW CREATE TABLE failed:/,
+      "->next() gives a warning if ->get_create_table dies from a strange error",
+   );
+
+}
+
+$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+$dbh3->do(q{CREATE DATABASE bug_1047335_2});
+
+my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+
+diag(`cp $broken_frm $db_dir_2 2>&1`);
+
+$dbh3->do("FLUSH TABLES");
+
+my $tmp_si2 = new SchemaIterator(
+         dbh          => $dbh3,
+         OptionParser => $o,
+         Quoter       => $q,
+         TableParser  => $tp,
+         # This is needed because the way we corrupt tables
+         # accidentally removes the database from SHOW DATABASES
+         db           => 'bug_1047335_2',
+      );
+
+my $w = '';
+{
+   local $SIG{__WARN__} = sub { $w .= shift };
+   1 while $tmp_si2->next();
+}
+
+like(
+   $w,
+   qr/\QSkipping bug_1047335_2.broken_tbl because SHOW CREATE TABLE failed:/,
+   "...same as above, but using t/lib/samples/broken_tbl.frm",
+);
+
+# This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+eval {
+   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335");
+   $dbh3->do("DROP DATABASE IF EXISTS bug_1047335_2");
+};
+
+diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
+
+# #############################################################################
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+
+done_testing;
