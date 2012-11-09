@@ -900,51 +900,67 @@ is_deeply(
 # We need to create a new server here, otherwise the whole test suite might die
 # if the crashed table can't be dropped.
 
-use File::Spec;
-
 my $master3_port = 2900;
+my $master_basedir = "/tmp/$master3_port";
 diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 diag(`$trunk/sandbox/start-sandbox master $master3_port >/dev/null`);
 my $dbh3 = $sb->get_dbh_for("master3");
 
-$sb->load_file('master3', File::Spec->catfile(qw(t lib samples bug_1047335_crashed_table.sql)));
-my $sth = $dbh3->prepare("INSERT INTO bug_1047335.crashed_table (trx_id, etc) VALUES(?, ?)");
-$sth->execute($_, $_ x 100) for 1..1000;
-$sth->finish();
+$sb->load_file('master3', "t/lib/samples/bug_1047335_crashed_table.sql");
 
+SKIP: {
+   skip "No /dev/urandom, can't corrupt the database", 1
+      unless -e q{/dev/urandom};
 
-my $master_basedir = File::Spec->catdir(File::Spec->tmpdir(), $master3_port);
-my $db_dir         = File::Spec->catdir($master_basedir, "data", "bug_1047335");
-my $myi            = glob(File::Spec->catfile($db_dir, "crashed_table.[Mm][Yy][Iy]"));
-my $frm            = glob(File::Spec->catfile($db_dir, "crashed_table.[Ff][Rr][Mm]"));
+   my $db_dir         = "$master_basedir/data/bug_1047335";
+   my $myi            = glob("$db_dir/crashed_table.[Mm][Yy][Iy]");
+   my $frm            = glob("$db_dir/crashed_table.[Ff][Rr][Mm]");
 
-die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
+   die "Cannot find .myi file for crashed_table" unless $myi && -f $myi;
 
-# Truncate the .myi file to corrupt it
-truncate($myi, 4096);
+   # Truncate the .myi file to corrupt it
+   truncate($myi, 4096);
 
-# Corrupt the .frm file
-open my $urand_fh, q{<}, "/dev/urandom"
-   or die "Cannot open /dev/urandom: $OS_ERROR";
+   # Corrupt the .frm file
+   open my $urand_fh, q{<}, "/dev/urandom"
+      or die "Cannot open /dev/urandom: $OS_ERROR";
 
-open my $tmp_fh, q{>}, $frm
-   or die "Cannot open $frm: $OS_ERROR";
-print { $tmp_fh } scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>);
-close $tmp_fh;
-   
-close $urand_fh;
+   open my $tmp_fh, q{>}, $frm
+      or die "Cannot open $frm: $OS_ERROR";
+   print { $tmp_fh } scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>);
+   close $tmp_fh;
+
+   close $urand_fh;
+
+   $dbh3->do("FLUSH TABLES");
+   eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
+
+   eval { $tp->get_create_table($dbh3, 'bug_1047335', 'crashed_table') };
+   ok(
+      $EVAL_ERROR,
+      "get_create_table dies if SHOW CREATE TABLE failed",
+   );
+
+   # This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
+   eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
+
+}
+
+$dbh3->do(q{DROP DATABASE IF EXISTS bug_1047335_2});
+$dbh3->do(q{CREATE DATABASE bug_1047335_2});
+
+my $broken_frm = "$trunk/t/lib/samples/broken_tbl.frm";
+my $db_dir_2   = "$master_basedir/data/bug_1047335_2";
+
+diag(`cp $broken_frm $db_dir_2 2>&1`);
 
 $dbh3->do("FLUSH TABLES");
-eval { $dbh3->do("SELECT etc FROM bug_1047335.crashed_table WHERE etc LIKE '10001' ORDER BY id ASC LIMIT 1") };
 
-eval { $tp->get_create_table($dbh3, 'bug_1047335', 'crashed_table') };
+eval { $tp->get_create_table($dbh3, 'bug_1047335_2', 'broken_tbl') };
 ok(
    $EVAL_ERROR,
-   "get_create_table dies if SHOW CREATE TABLE failed",
+   "get_create_table dies if SHOW CREATE TABLE failed (using broken_tbl.frm)",
 );
-
-# This might fail. Doesn't matter -- stop_sandbox will just rm -rf the folder
-eval { $dbh3->do("DROP DATABASE IF EXISTS bug_1047335") };
 
 diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 
