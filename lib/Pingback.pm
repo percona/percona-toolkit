@@ -55,17 +55,25 @@ eval {
 };
 
 sub version_check {
-   my $args        = pop @_;
-   my (@instances) = @_;
+   my %args      = @_;
+   my @instances = $args{instances} ? @{ $args{instances} } : ();
    # If this blows up, oh well, don't bother the user about it.
    # This feature is a "best effort" only; we don't want it to
    # get in the way of the tool's real work.
 
    if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-      print STDERR '--version-check is disabled by the PERCONA_VERSION_CHECK ',
+      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
                    "environment variable.\n\n";
       return;
    }
+
+   # we got here if the protocol wasn't "off", and the values
+   # were validated earlier, so just handle auto
+   # This line is mostly here for the test suite:
+   $args{protocol} ||= 'https';
+   my @protocols = $args{protocol} eq 'auto'
+                 ? qw(https http)
+                 : $args{protocol};
    
    my $instances_to_check = [];
    my $time               = int(time());
@@ -82,22 +90,29 @@ sub version_check {
       ($time_to_check, $instances_to_check)
          = time_to_check($check_time_file, \@instances, $time);
       if ( !$time_to_check ) {
-         print STDERR 'It is not time to --version-check again; ',
+         warn 'It is not time to --version-check again; ',
                       "only 1 check per day.\n\n";
          return;
       }
 
-      my $protocol = $args->{protocol} || 'https';
-      my $advice = pingback(
-         url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
-         instances => $instances_to_check,
-         protocol  => $args->{protocol},
-      );
+      my $advice;
+      my $e;
+      for my $protocol ( @protocols ) {
+         $advice = eval { pingback(
+            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
+            instances => $instances_to_check,
+            protocol  => $protocol,
+         ) };
+         # No advice, and no error, so no reason to keep trying.
+         last if !$advice && !$EVAL_ERROR;
+         $e ||= $EVAL_ERROR;
+      }
       if ( $advice ) {
          print "# Percona suggests these upgrades:\n";
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
       else {
+         die $e if $e;
          print "# No suggestions at this time.\n\n";
          ($ENV{PTVCDEBUG} || PTDEBUG )
             && _d('--version-check worked, but there were no suggestions');
@@ -124,7 +139,7 @@ sub pingback {
    # Optional args
    my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 2 );
+   $ua ||= HTTPMicro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    # GET https://upgrade.percona.com, the server will return
@@ -391,6 +406,22 @@ sub encode_client_response {
 
    my $client_response = join("\n", @lines) . "\n";
    return $client_response;
+}
+
+sub validate_options {
+   my ($o) = @_;
+
+   # No need to validate anything if we didn't get an explicit v-c
+   return if !$o->got('version-check');
+
+   my $value  = $o->get('version-check');
+   my @values = split /, /,
+                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
+   chomp(@values);
+                
+   return if grep { $value eq $_ } @values;
+   $o->save_error("--version-check invalid value $value.  Accepted values are "
+                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
 }
 
 sub _d {

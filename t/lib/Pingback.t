@@ -510,6 +510,24 @@ SKIP: {
 }
 
 # #############################################################################
+# Check that the --v-c OPT validation works everywhere
+# #############################################################################
+
+use File::Basename qw(basename);
+
+my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ }
+              `grep --files-with-matches Pingback $trunk/bin/*`;
+
+foreach my $tool ( @vc_tools ) {
+   my $output = `$tool --version-check ftp`;
+   like(
+      $output,
+      qr/\Q* --version-check invalid value ftp.  Accepted values are https, http, auto and off/,
+      "Valid values for v-c are checked in $tool"
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh) if $master_dbh;
