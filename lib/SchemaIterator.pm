@@ -352,7 +352,21 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $ddl        = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $ddl        = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
+      if ( my $e = $EVAL_ERROR ) {
+         my $table_name = "$self->{db}.$tbl";
+         # SHOW CREATE TABLE failed. This is a bit puzzling;
+         # maybe the table got dropped, or crashed. Not much we can
+         # do about it; If the table is missing, just PTDEBUG it, but
+         # otherwise, warn with the error.
+         if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
+            PTDEBUG && _d("Skipping $table_name because it no longer exists");
+         }
+         else {
+            warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+         }
+         next;
+      }
       my $tbl_struct = $tp->parse($ddl);
       if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
          return {

@@ -1583,13 +1583,11 @@ sub get_create_table {
    PTDEBUG && _d($show_sql);
    my $href;
    eval { $href = $dbh->selectrow_hashref($show_sql); };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-
+   if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
       $dbh->do($old_sql_mode);
 
-      return;
+      die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
