@@ -654,7 +654,9 @@ ok(
          '--execute', '--statistics',
          '--alter', "modify column val ENUM('M','E','H') NOT NULL")
       },
-      "$sample/stats-execute.txt",
+      ($sandbox_version ge '5.5'
+         ? "$sample/stats-execute-5.5.txt"
+         : "$sample/stats-execute.txt"),
    ),
    "--statistics --execute"
 );
