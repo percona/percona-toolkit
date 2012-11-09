@@ -9232,14 +9232,15 @@ sub main {
             # Update the rate of rows per second for the entire server.
             # This is used for the initial chunk size of the next table.
             $total_rows += $cnt;
-            $total_time += $tbl->{nibble_time};
-            $total_rate  = int($total_rows / $total_time);
+            $total_time += ($tbl->{nibble_time} || 0);
+            $total_rate  = $total_time ? int($total_rows / $total_time) : 0;
             PTDEBUG && _d('Total avg rate:', $total_rate);
 
             # Adjust chunk size.  This affects the next chunk.
             if ( $o->get('chunk-time') ) {
-               $tbl->{chunk_size}
-                  = $tbl->{rate}->update($cnt, $tbl->{nibble_time});
+               $tbl->{chunk_size} = $tbl->{nibble_time}
+                                  ? $tbl->{rate}->update($cnt, $tbl->{nibble_time})
+                                  : $o->get('chunk-time');
 
                if ( $tbl->{chunk_size} < 1 ) {
                   # This shouldn't happen.  WeightedAvgRate::update() may return
@@ -9255,7 +9256,7 @@ sub main {
                         . "or increase --chunk-time.  The last chunk, number "
                         . "$chunk of table $tbl->{db}.$tbl->{tbl}, "
                         . "selected $cnt rows and took "
-                        . sprintf('%.3f', $tbl->{nibble_time})
+                        . sprintf('%.3f', $tbl->{nibble_time} || 0)
                         . " seconds to execute.\n");
                   }
                }
