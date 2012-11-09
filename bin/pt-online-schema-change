@@ -7559,15 +7559,17 @@ my @drop_trigger_sqls;
 
 $OUTPUT_AUTOFLUSH = 1;
 
-our %statistics;
-
 sub main {
-   # Reset global vars else tests will fail.
    local @ARGV        = @_;
+
+   # Reset global vars else tests will fail.
+   $exit_status       = 0;
    $oktorun           = 1;
    @drop_trigger_sqls = ();
 
-   $exit_status = 0;
+   my %stats = (
+      INSERT => 0,
+   );
 
    # ########################################################################
    # Get configuration information.
@@ -8436,6 +8438,7 @@ sub main {
             Retry        => $retry,
             Quoter       => $q,
             OptionParser => $o,
+            stats        => \%stats,
          );
          PTDEBUG && _d('Nibble time:', $tbl->{nibble_time});
 
@@ -8577,47 +8580,6 @@ sub main {
    }
    $orig_tbl->{copied} = 1;  # flag for cleanup tasks
 
-   if ( $o->get('statistics') ) {
-      if ( keys %statistics ) {
-         my $report = new ReportFormatter(
-            line_width => 74,
-         );
-         $report->set_columns(
-            { name => 'Event',                    },
-            { name => 'Count', right_justify => 1 },
-         );
-
-         $report->add_line(
-            "INSERTS",
-            $statistics{INSERTS},
-         );
-         
-         foreach my $code (keys %{$statistics{ignored_code}}) {
-            next unless $statistics{ignored_code}->{$code};
-            $report->add_line(
-               "Error $code",
-               $statistics{ignored_code}->{$code},
-            )
-         }
-         
-         my $warnings_seen;
-         foreach my $code (keys %{$statistics{warned_code}}) {
-            $report->add_line(
-               "Error $code",
-               $statistics{warned_code}->{$code},
-            );
-         }
-         
-         print $report->get_report();
-         if ( $warnings_seen ) {
-            print "#\n# The warnings seen were: \n$warnings_seen\n"
-         }
-      }
-      else {
-         print "# No statistics for errors or warnings.\n";
-      }
-   }
-
    # XXX Auto-choose the alter fk method BEFORE swapping/renaming tables 
    # else everything will break because if drop_swap is chosen, then we
    # most NOT rename tables or drop the old table.
@@ -8697,6 +8659,7 @@ sub main {
                Quoter       => $q,
                Cxn          => $cxn,
                TableParser  => $tp,
+               stats        => \%stats,
             );
          }
          elsif ( $alter_fk_method eq 'drop_swap' ) {
@@ -8766,6 +8729,25 @@ sub main {
    # ########################################################################
    $orig_tbl->{success} = 1;  # flag for cleanup tasks
    $cleanup = undef;          # exec cleanup tasks
+
+   if ( $o->get('statistics') ) {
+      my $report = new ReportFormatter(
+         line_width => 74,
+      );
+      $report->set_columns(
+         { name => 'Event',                    },
+         { name => 'Count', right_justify => 1 },
+      );
+
+      foreach my $event ( sort keys %stats ) {
+         $report->add_line(
+            $event,
+            $stats{$event},
+         );
+      }
+
+      print $report->get_report();
+   }
 
    return $exit_status;
 }
@@ -9154,12 +9136,12 @@ sub determine_alter_fk_method {
 
 sub rebuild_constraints {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl old_tbl child_tables
+   my @required_args = qw(orig_tbl old_tbl child_tables stats
                           Cxn Quoter OptionParser TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $old_tbl, $child_tables, $cxn, $q, $o, $tp)
+   my ($orig_tbl, $old_tbl, $child_tables, $stats, $cxn, $q, $o, $tp)
       = @args{@required_args};
 
    # MySQL has a "feature" where if the parent tbl is in the same db,
@@ -9236,6 +9218,7 @@ sub rebuild_constraints {
       if ( $o->get('execute') ) {
          PTDEBUG && _d($sql);
          $cxn->dbh()->do($sql);
+         $stats->{rebuilt_constraint}++;
       }
    }
 
@@ -9420,11 +9403,11 @@ sub drop_triggers {
 
 sub exec_nibble {
    my (%args) = @_;
-   my @required_args = qw(Cxn tbl NibbleIterator Retry Quoter OptionParser);
+   my @required_args = qw(Cxn tbl stats NibbleIterator Retry Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($cxn, $tbl, $nibble_iter, $retry, $q, $o)= @args{@required_args};
+   my ($cxn, $tbl, $stats, $nibble_iter, $retry, $q, $o)= @args{@required_args};
 
    my $dbh         = $cxn->dbh();
    my $sth         = $nibble_iter->statements();
@@ -9474,8 +9457,8 @@ sub exec_nibble {
          );
 
          my $t_end = time;
-         $statistics{INSERTS}++;
-         
+         $stats->{INSERT}++;
+
          # ###################################################################
          # End timing the query.
          # ###################################################################
@@ -9491,7 +9474,7 @@ sub exec_nibble {
             my $code    = ($warning->{code} || 0);
             my $message = $warning->{message};
             if ( $ignore_code{$code} ) {
-               $statistics{ignored_code}->{$code}++;
+               $stats->{"mysql_warning_$code"}++;
                PTDEBUG && _d('Ignoring warning:', $code, $message);
                next;
             }
@@ -9499,17 +9482,23 @@ sub exec_nibble {
                     && (!$warn_code{$code}->{pattern}
                         || $message =~ m/$warn_code{$code}->{pattern}/) )
             {
-               if ( !$statistics{warned_code}->{$code} ) {  # warn once per table
-                  warn "Copying rows caused a MySQL error $code: "
+               if ( !$stats->{"mysql_warning_$code"}++ ) {  # warn once
+                  my $err
+                     = "Copying rows caused a MySQL error $code: "
                      . ($warn_code{$code}->{message}
                         ? $warn_code{$code}->{message}
                         : $message)
-                     . "\nThis MySQL error is being ignored and further "
-                     . "occurrences of it will not be reported, although "
-                     . "a total count will be shown if --statistics was "
-                     . "specified.\n";
+                     . "\nThis MySQL error is being ignored ";
+                  if ( $o->get('statistics') ) {
+                     $err .= "but further occurrences will be reported "
+                           . "by --statistics when the tool finishes.\n";
+                  }
+                  else {
+                     $err .= "and further occurrences will not be reported.  "
+                           . "Specify --statistics to see a count of all "
+                           . "suppressed warnings and errors.\n";
+                  }
                }
-               $statistics{warned_code}->{$code}++;
             }
             else {
                # This die will propagate to fail which will return 0
@@ -9529,6 +9518,7 @@ sub exec_nibble {
       fail => sub {
          my (%args) = @_;
          my $error = $args{error};
+         PTDEBUG && _d('Retry fail:', $error);
 
          # The query failed/caused an error.  If the error is one of these,
          # then we can possibly retry.
@@ -9538,16 +9528,29 @@ sub exec_nibble {
          ) {
             # These errors/warnings can be retried, so don't print
             # a warning yet; do that in final_fail.
+            my $event
+               = $error =~ m/Lock wait timeout/         ? 'lock_wait_timeout'
+               : $error =~ m/Deadlock found/            ? 'deadlock'
+               : $error =~ m/execution was interrupted/ ? 'query_killed'
+               :                                          'unknown1';
+            $stats->{$event}++;
             return 1;  # try again
          }
          elsif (   $error =~ m/MySQL server has gone away/
                 || $error =~ m/Lost connection to MySQL server/
          ) {
-            # The 2nd pattern means that MySQL itself died or was stopped.
-            # The 3rd pattern means that our cxn was killed (KILL <id>).
+            # The 1st pattern means that MySQL itself died or was stopped.
+            # The 2nd pattern means that our cxn was killed (KILL <id>).
+            my $event
+               = $error =~ m/server has gone away/ ? 'lost_connection'
+               : $error =~ m/Lost connection/      ? 'connection_killed'
+               :                                     'unknown2';
+            $stats->{$event}++;
             $dbh = $cxn->connect();  # connect or die trying
             return 1;  # reconnected, try again
          }
+
+         $stats->{retry_fail}++;
 
          # At this point, either the error/warning cannot be retried,
          # or we failed to reconnect.  Don't retry; call final_fail.
@@ -9741,8 +9744,16 @@ unless you specify L<"--alter-foreign-keys-method">.
 =head1 OUTPUT
 
 The tool prints information about its activities to STDOUT so that you can see
-what it is doing. During the data copy phase, it prints progress reports to
-STDERR.  You can get additional information with the L<"--print"> option.
+what it is doing.  During the data copy phase, it prints L<"--progress">
+reports to STDERR.  You can get additional information by specifying
+L<"--print">.
+
+If L<"--statistics"> is specified, a report of various internal event counts
+is printed at the end, like:
+
+   # Event  Count
+   # ====== =====
+   # INSERT     1
 
 =head1 OPTIONS
 
@@ -10280,8 +10291,8 @@ Socket file to use for connection.
 
 =item --statistics
 
-Prints some statistics about the run. Currently, only prints how many times
-any error code that warned or was ignored during the run propped up.
+Print statistics about internal counters.  This is useful to see how
+many warnings were suppressed compared to the number of INSERT.
 
 =item --[no]swap-tables
 
