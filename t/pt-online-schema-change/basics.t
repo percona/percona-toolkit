@@ -637,35 +637,27 @@ test_alter_table(
 
 $sb->load_file('master', "$sample/bug_1045317.sql");
 
-($output, $exit) = full_output(
-   sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
-      '--dry-run', '--statistics', # We'll never get any statistics with --dry-run
-      '--alter', "modify column val ENUM('M','E','H') NOT NULL") }
+ok(
+   no_diff(
+      sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
+         '--dry-run', '--statistics',
+         '--alter', "modify column val ENUM('M','E','H') NOT NULL")
+      },
+      "$sample/stats-dry-run.txt",
+   ),
+   "--statistics --dry-run"
 );
 
-like(
-   $output,
-   qr/\#\Q No statistics for errors or warnings./,
-   "--statistics works as expected with --dry-run"
-) or diag($output);
-
-($output, $exit) = full_output(
-   sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
-      '--execute', '--statistics',
-      '--alter', "modify column val ENUM('E','H') NOT NULL") }
+ok(
+   no_diff(
+      sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
+         '--execute', '--statistics',
+         '--alter', "modify column val ENUM('M','E','H') NOT NULL")
+      },
+      "$sample/stats-execute.txt",
+   ),
+   "--statistics --execute"
 );
-
-like(
-   $output,
-   qr/\#\Q Event      Count\E\s*
-\#\Q ========== =====\E\s*
-\#\Q INSERTS        1\E\s*
-\#\Q Error 1592     1\E\s*
-\#\Q Error 1265     1\E\s*/x,
-   "--statistics works as expected with 1 ignore & 1 warning"
-);
-
-$master_dbh->do(q{DROP DATABASE bug_1045317});
 
 # #############################################################################
 # Done.
@@ -674,4 +666,3 @@ $master_dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;
