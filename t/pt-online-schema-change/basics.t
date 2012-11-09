@@ -32,9 +32,6 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 119;
-}
 
 my $q      = new Quoter();
 my $tp     = new TableParser(Quoter => $q);
@@ -635,9 +632,37 @@ test_alter_table(
 );
 
 # #############################################################################
+# --statistics
+# #############################################################################
+
+$sb->load_file('master', "$sample/bug_1045317.sql");
+
+ok(
+   no_diff(
+      sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
+         '--dry-run', '--statistics',
+         '--alter', "modify column val ENUM('M','E','H') NOT NULL")
+      },
+      "$sample/stats-dry-run.txt",
+   ),
+   "--statistics --dry-run"
+);
+
+ok(
+   no_diff(
+      sub { pt_online_schema_change::main(@args, "$dsn,D=bug_1045317,t=bits",
+         '--execute', '--statistics',
+         '--alter', "modify column val ENUM('M','E','H') NOT NULL")
+      },
+      "$sample/stats-execute.txt",
+   ),
+   "--statistics --execute"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $master_dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
