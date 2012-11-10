@@ -416,13 +416,37 @@ test_so(
 # https://bugs.launchpad.net/percona-toolkit/+bug/911385
 # ############################################################################
 
-# Actually, the important bit here si that it doesn't die, not the results.
-
 test_so(
    filters   => ['--ignore-databases', 'sakila,mysql'],
-   result    => "",  # hack; uses lives_ok instead
+   result    => "",
    lives_ok  => 1,
-   test_name => "Bug 911385: pt-table-checksum v2 fails when --resume + --ignore-database is used"
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ptc works with --resume + --ignore-database"
+);
+
+$dbh->do("CREATE DATABASE zakila");
+$dbh->do("CREATE TABLE zakila.bug_911385 (i int)");
+test_so(
+   filters   => ['--ignore-databases', 'sakila,mysql'],
+   result    => "zakila.bug_911385 ",
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ...and continues to the next db"
+);
+$dbh->do("DROP DATABASE zakila");
+
+test_so(
+   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   result    => "",
+   lives_ok  => 1,
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ptc works with --resume + --ignore-tables-regex"
+);
+
+test_so(
+   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   result    => "sakila.rental sakila.staff sakila.store ",
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ...and continues to the next table"
 );
 
 # #############################################################################
