@@ -32,9 +32,6 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 9;
-}
 
 my $output;
 my $master_dsn = "h=127.1,P=12345,u=msandbox,p=msandbox";
@@ -205,6 +202,63 @@ is(
 check_ids(qw(pt_osc t id), get_ids());
 
 # #############################################################################
+# Check that triggers work when renaming a column
+# #############################################################################
+
+$master_dbh->do("USE pt_osc");
+$master_dbh->do("TRUNCATE TABLE t");
+$master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
+$master_dbh->do("ANALYZE TABLE t");
+$sb->wait_for_slaves();
+
+my $orig_rows = $master_dbh->selectall_arrayref(qq{SELECT id,d FROM pt_osc.t});
+
+# Start inserting, updating, and deleting rows at random.
+start_query_table(qw(pt_osc t id));
+
+# While that's ^ happening, alter the table.
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
+      "$master_dsn,D=pt_osc,t=t",
+      qw(--lock-wait-timeout 5),
+      qw(--print --execute --chunk-size 100 --no-check-alter),
+      '--alter', 'CHANGE COLUMN d q date',
+   ) },
+   stderr => 1,
+);
+
+# Stop changing the table's data.
+stop_query_table();
+
+like($output, qr/Successfully altered `pt_osc`.`t`/, 'Altered OK');
+
+is(
+   $exit,
+   0,
+   "Exit status 0"
+);
+
+my $ids  = get_ids();
+my %deleted_ids = map { $_ => 1 } split /,/, $ids->{deleted};
+my %updated_ids = map { $_ => 1 } split /,/, $ids->{updated};
+
+$rows = $master_dbh->selectall_arrayref(
+      qq{SELECT id,q FROM pt_osc.t WHERE id}
+      . ($ids->{updated}  ? qq{ AND id NOT IN ($ids->{updated})}  : '')
+      . ($ids->{inserted} ? qq{ AND id NOT IN ($ids->{inserted})} : '')
+);
+
+my @filtered_orig_rows = grep {
+                           !$deleted_ids{$_->[0]} && !$updated_ids{$_->[0]}
+                         } @$orig_rows;
+
+is_deeply(
+   $rows,
+   \@filtered_orig_rows,
+   "Triggers work if renaming a column"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 unlink $query_table_stop or warn $OS_ERROR;
@@ -212,4 +266,5 @@ unlink $query_table_output or warn $OS_ERROR;
 unlink $query_table_pid or warn $OS_ERROR;
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
