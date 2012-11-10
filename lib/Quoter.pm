@@ -102,7 +102,7 @@ sub split_unquote {
       next unless $_;
       s/\A`//;
       s/`\z//;
-      s/``/`/;
+      s/``/`/g;
    }
    
    return ($db, $tbl);
