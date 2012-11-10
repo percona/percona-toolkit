@@ -89,6 +89,21 @@ is_deeply(
    'splits with a db',
 );
 
+is_deeply(
+   [$q->split_unquote("`db`.`tb``l```")],
+   [qw(db tb`l`)],
+   'splits with a quoted db.tbl ad embedded quotes',
+);
+
+TODO: {
+   local $::TODO = "Embedded periods not yet supported";
+   is_deeply(
+      [$q->split_unquote("`d.b`.`tbl`")],
+      [qw(d.b tbl)],
+      'splits with embedded periods: `d.b`.`tbl`',
+   );
+}
+
 is( $q->literal_like('foo'), "'foo'", 'LIKE foo');
 is( $q->literal_like('foo_bar'), "'foo\\_bar'", 'LIKE foo_bar');
 is( $q->literal_like('foo%bar'), "'foo\\%bar'", 'LIKE foo%bar');
