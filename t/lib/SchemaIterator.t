@@ -443,13 +443,12 @@ SKIP: {
    # Truncate the .myi file to corrupt it
    truncate($myi, 4096);
 
-   use File::Slurp qw( prepend_file append_file write_file );
+   use File::Slurp qw( write_file );
 
    # Corrupt the .frm file
    open my $urand_fh, q{<}, "/dev/urandom"
       or die "Cannot open /dev/urandom";
-   prepend_file($frm, scalar(<$urand_fh>));
-   append_file($frm, scalar(<$urand_fh>));
+   write_file($frm, scalar(<$urand_fh>), slurp_file($frm), scalar(<$urand_fh>));
    close $urand_fh;
 
    $dbh3->do("FLUSH TABLES");
