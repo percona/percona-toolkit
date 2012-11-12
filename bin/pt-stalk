@@ -648,18 +648,18 @@ remove_pid_file() {
 
 set -u
 
-CMD_GDB="$(_which gdb)"
-CMD_IOSTAT="$(_which iostat)"
-CMD_MPSTAT="$(_which mpstat)"
-CMD_MYSQL="$(_which mysql)"
-CMD_MYSQLADMIN="$(_which mysqladmin)"
-CMD_OPCONTROL="$(_which opcontrol)"
-CMD_OPREPORT="$(_which opreport)"
-CMD_PMAP="$(_which pmap)"
-CMD_STRACE="$(_which strace)"
-CMD_SYSCTL="$(_which sysctl)"
-CMD_TCPDUMP="$(_which tcpdump)"
-CMD_VMSTAT="$(_which vmstat)"
+CMD_GDB="${CMD_GDB:-"$(_which gdb)"}"
+CMD_IOSTAT="${CMD_IOSTAT:-"$(_which iostat)"}"
+CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
+CMD_MYSQL="${CMD_MYSQL:-"$(_which mysql)"}"
+CMD_MYSQLADMIN="${CMD_MYSQLADMIN:-"$(_which mysqladmin)"}"
+CMD_OPCONTROL="${CMD_OPCONTROL:-"$(_which opcontrol)"}"
+CMD_OPREPORT="${CMD_OPREPORT:-"$(_which opreport)"}"
+CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
+CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
+CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
+CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
+CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
