@@ -10,10 +10,14 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
+use IPC::Cmd qw(run can_run);
+
 use PerconaTest;
 use Percona::Toolkit;
 
 my $version  = $Percona::Toolkit::VERSION;
+
+my $perl = $^X;
 
 use File::Basename qw(basename);
 my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ } glob("$trunk/bin/*");
@@ -28,9 +32,36 @@ foreach my $tool ( @vc_tools ) {
       $version,
       "$base --version and Percona::Toolkit::VERSION agree"
    );
-}
 
-use IPC::Cmd qw(can_run);
+   # Now let's check that lib/Percona/Toolkit.pm and each tool's
+   # $Percona::Toolkit::VERSION agree, sow e can avoid the 2.1.4 pt-table-sync
+   # debacle
+   open my $tmp_fh, q{<}, $tool or die "$!";
+   my $is_perl = scalar(<$tmp_fh>) =~ /perl/;
+   close $tmp_fh;
+
+   next unless $is_perl;
+
+   my ($success, undef, $full_buf) =
+      run(
+         command => [ $perl, '-le', "require q{$tool}; print \$Percona::Toolkit::VERSION"]
+      );
+
+   if ( !$success ) {
+      fail("Failed to get \$Percona::Toolkit::VERSION from $base: $full_buf")
+   }
+   else {
+      chomp(@$full_buf);
+      my $out = join "", @$full_buf;
+      if ($out) {
+         is(
+            "@$full_buf",
+            $version,
+            "$base and lib/Percona/Toolkit.pm agree"
+         );
+      }
+   }
+}
 
 my $bzr = can_run('bzr');
 SKIP: {
