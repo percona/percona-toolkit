@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.6 released 2012-11-13
+
   * pt-online-schema-change: Columns can now be renamed without data loss
   * pt-online-schema-change: New --default-engine option
   * pt-stalk: Plugin hooks available through the --plugin option to extend the tool's functionality
