@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 7;
+use Test::More;
 
 use GeneralLogParser;
 use PerconaTest;
@@ -219,7 +219,58 @@ test_log_parser(
    ]
 );
 
+# Customer issue from Ernie.
+test_log_parser(
+   parser  => $p,
+   file    => $sample.'genlog004.txt',
+   oktorun => sub { $oktorun = $_[0]; },
+   result  => [
+      {
+         Query_time => 0,
+         Thread_id => '12345',
+         arg => q/administrator command: Access denied for user 'nobody'@'localhost' (using password: NO)
+/,
+         bytes => 88,
+         cmd => 'Admin',
+         pos_in_log => 0,
+         ts => undef
+      },
+      {
+         Query_time => 0,
+         Thread_id => '12345',
+         arg => 'administrator command: Connect',
+         bytes => 30,
+         cmd => 'Admin',
+         host => 'localhost',
+         pos_in_log => 81,
+         ts => undef,
+         user => 'nobody'
+      },
+      {
+         Query_time => 0,
+         Thread_id => '31519',
+         arg => 'BEGIN',
+         bytes => 5,
+         cmd => 'Query',
+         pos_in_log => 122,
+         ts => undef
+      },
+      {
+         Query_time => 0,
+         Thread_id => '98765',
+         arg => 'administrator command: Connect',
+         bytes => 30,
+         cmd => 'Admin',
+         db => 'sar',
+         host => '1.2.3.4',
+         pos_in_log => 184,
+         ts => undef,
+         user => 'payments_r'
+      },
+   ],
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
