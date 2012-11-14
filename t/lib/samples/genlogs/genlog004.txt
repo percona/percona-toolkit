@@ -1,0 +1,4 @@
+		12345 Connect	Access denied for user 'nobody'@'localhost' (using password: NO)
+		12345 Connect	nobody@localhost as  on 
+		31519 Query	BEGIN
+		98765 Connect	payments_r@1.2.3.4 on sar

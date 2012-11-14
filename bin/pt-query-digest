@@ -9682,7 +9682,8 @@ sub parse_event {
                $cmd = $arg;
             }
             else {
-               my ($user, undef, $db) = $arg =~ /(\S+)/g;
+               my ($user) = $arg =~ m/(\S+)/;
+               my ($db)   = $arg =~ m/on (\S+)/;
                my $host;
                ($user, $host) = split(/@/, $user);
                PTDEBUG && _d('Connect', $user, '@', $host, 'on', $db);
