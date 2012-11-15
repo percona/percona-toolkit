@@ -37,7 +37,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.5';
+our $VERSION = '2.1.6';
 
 1;
 }
@@ -2426,12 +2426,18 @@ sub quote_val {
 
 sub split_unquote {
    my ( $self, $db_tbl, $default_db ) = @_;
-   $db_tbl =~ s/`//g;
    my ( $db, $tbl ) = split(/[.]/, $db_tbl);
    if ( !$tbl ) {
       $tbl = $db;
       $db  = $default_db;
    }
+   for ($db, $tbl) {
+      next unless $_;
+      s/\A`//;
+      s/`\z//;
+      s/``/`/g;
+   }
+   
    return ($db, $tbl);
 }
 
@@ -2524,15 +2530,19 @@ $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
 
+local $EVAL_ERROR;
+eval {
+   require Quoter;
+};
+
 sub new {
    my ( $class, %args ) = @_;
-   my @required_args = qw(Quoter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
    my $self = { %args };
+   $self->{Quoter} ||= Quoter->new();
    return bless $self, $class;
 }
+
+sub Quoter { shift->{Quoter} }
 
 sub get_create_table {
    my ( $self, $dbh, $db, $tbl ) = @_;
@@ -5918,6 +5928,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.1.5
+pt-heartbeat 2.1.6
 
 =cut

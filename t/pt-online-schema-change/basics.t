@@ -662,6 +662,31 @@ ok(
 );
 
 # #############################################################################
+# --default-engine
+# #############################################################################
+
+SKIP: {
+   skip "--default-engine tests require < MySQL 5.5", 1
+      if $sandbox_version ge '5.5';
+
+   # The alter doesn't actually change the engine (test_type),
+   # but the --default-engine does because the table uses InnoDB
+   # but MyISAM is the default engine before MySQL 5.5.
+   test_alter_table(
+      name       => "--default-engine",
+      table      => "pt_osc.t",
+      file       => "default-engine.sql",
+      test_type  => "new_engine",
+      new_engine => "MyISAM",
+      cmds       => [
+         '--default-engine',
+         '--execute',
+         '--alter', 'ADD INDEX (d)',
+      ],
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $master_dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");

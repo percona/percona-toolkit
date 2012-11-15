@@ -1,6 +1,83 @@
 Release Notes
 *************
 
+v2.1.6 released 2012-11-13
+==========================
+
+Percona Toolkit 2.1.6 has been released.  This release includes 33 bug fixes and three new features: pt-online-schema-change now handles renaming columns without losing data, removing one of the tool's limitations.  pt-online-schema-change also got two new options: --default-engine and --statistics.  Finally, pt-stalk now has a plugin hook interface, available through the --plugin option.  The bug fixes are widely assorted.  The following highlights some of the more interesting and "hot" bugs:
+
+* Bug 978133: pt-query-digest review table privilege checks don't work
+
+The same checks were removed from pt-table-checksum on 2.1.3 and pt-table-sync on 2.1.4, so this just follows suit.
+
+* Bug 938068: pt-table-checksum doesn't warn if binlog_format=row or mixed on slaves
+
+A particularly important fix, as it may stop pt-table-checksum from breaking replication in these setups.
+
+* Bug 1043438: pt-table-checksum doesn't honor --run-time while checking replication lag
+
+If you run multiple instances of pt-table-checksum on a badly lagged server, actually respecting --run-time stops the instances from divebombing the server when the replica catches up.
+
+* Bug 1062324: pt-online-schema-change DELETE trigger fails when altering primary key
+
+Fixed by choosing a key on the new table for the DELETE trigger.
+
+* Bug 1062563: pt-table-checksum 2.1.4 doesn't detect diffs on Percona XtraDB Cluster nodes
+
+A follow up to the same fix in the previous release, this adds to warnings for cases in which pt-table-checksum may work incorrectly and require some user intervention: One for the case of master -> cluster, and one for cluster1 -> cluster2.
+
+* Bug 821715: LOAD DATA LOCAL INFILE broken in some platforms
+
+This bug has hounded the toolkit for quite some time. In some platforms, trying to use LOAD DATA LOCAL INFILE would fail as if the user didn't have enough privileges to perform the operation.  This was a misdiagnoses from MySQL; The actual problem was that the libmysqlclient.so provided by some vendors was compiled in a way that disallowed users from using the statement without some extra work.  This fix adds an 'L' option to the DSNs the toolkit uses, tells the the tools to explicitly enables LOAD DATA LOCAL INFILE.  This affected two pt-archiver and pt-upgrade, so if you are on an effected OS and need to use those, you can simply tag an L=1 to your DSN and everything should start working.
+
+* Bug 866075: pt-show-grant doesn't support column-level grants
+
+This was actually the 'hottest' bug in the tracker.
+
+This is another solid bug fix release, and all 2.1 users are encouraged to upgrade.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* pt-online-schema-change: Columns can now be renamed without data loss
+* pt-online-schema-change: New --default-engine option
+* pt-stalk: Plugin hooks available through the --plugin option to extend the tool's functionality
+* Fixed bug 1069951: --version-check default should be explicitly "off"
+* Fixed bug 821715: LOAD DATA LOCAL INFILE broken in some platforms
+* Fixed bug 995896: Useless use of cat in Daemon.pm
+* Fixed bug 1039074: Tools exit 0 on error parsing options, should exit non-zero
+* Fixed bug 938068: pt-table-checksum doesn't warn if binlog_format=row or mixed on slaves
+* Fixed bug 1009510: pt-table-checksum breaks replication if a slave table is missing or different
+* Fixed bug 1043438: pt-table-checksum doesn't honor --run-time while checking replication lag
+* Fixed bug 1073532: pt-table-checksum error: Use of uninitialized value in int at line 2778
+* Fixed bug 1016131: pt-table-checksum can crash with --columns if none match
+* Fixed bug 1039569: pt-table-checksum dies if creating the --replicate table fails
+* Fixed bug 1059732: pt-table-checksum doesn't test all hash functions
+* Fixed bug 1062563: pt-table-checksum 2.1.4 doesn't detect diffs on Percona XtraDB Cluster nodes
+* Fixed bug 1043528: pt-deadlock-logger can't parse db/tbl/index on partitioned tables
+* Fixed bug 1062324: pt-online-schema-change DELETE trigger fails when altering primary key
+* Fixed bug 1058285: pt-online-schema-change fails if sql_mode explicitly or implicitly uses ANSI_QUOTES
+* Fixed bug 1073996: pt-online-schema-change fails with "I need a max_rows argument"
+* Fixed bug 1039541: pt-online-schema-change --quiet doesn't disable --progress
+* Fixed bug 1045317: pt-online-schema-change doesn't report how many warnings it suppressed
+* Fixed bug 1060774: pt-upgrade fails if select column > 64 chars
+* Fixed bug 1070916: pt-mysql-summary may report the wrong cnf file
+* Fixed bug 903229: pt-mysql-summary incorrectly categorizes databases
+* Fixed bug 866075: pt-show-grant doesn't support column-level grants
+* Fixed bug 978133: pt-query-digest review table privilege checks don't work
+* Fixed bug 956981: pt-query-digest docs for event attributes link to defunct Maatkit wiki
+* Fixed bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
+* Fixed bug 1047701: pt-stalk deletes non-empty files
+* Fixed bug 1070434: pt-stalk --no-stalk and --iterations 1 don't wait for the collect
+* Fixed bug 1052722: pt-fifo-split is processing n-1 rows initially
+* Fixed bug 1013407: pt-find documentation error with mtime and InnoDB
+* Fixed bug 1059757: pt-trend output has no header
+* Fixed bug 1063933: pt-visual-explain docs link to missing pdf
+* Fixed bug 1075773: pt-fk-error-logger crashes if there's no foreign key error
+* Fixed bug 1075775: pt-fk-error-logger --dest table example doesn't work
+
 v2.1.5 released 2012-10-08
 ==========================
 
