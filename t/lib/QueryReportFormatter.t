@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 45;
+use Test::More;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -186,6 +186,38 @@ ok(
    ),
    'Event report'
 );
+
+{
+   # pt-query-digest prints negative byte offset
+   # https://bugs.launchpad.net/percona-toolkit/+bug/887638
+
+   # printf "%d" can't really handle large values in some systems.
+   # Given a large enough log file, it will start printing
+   # negative values. The workaround is to use %.f instead. I haven't
+   # researched what the recommended solution for this is, but
+   # it's such an uncommon case and that it's not worth the time.
+   # This bug should really only affect 32-bit machines, and even then
+   # only those were the underlaying compiler's printf("%d") coerces the
+   # argument into a signed int.
+   my $item = 'select id from users where name=?';
+   local $ea->results->{samples}->{$item}->{pos_in_log} = 1e+33;
+
+   $result = $qrf->event_report(
+      ea => $ea,
+      # "users" is here to try to cause a failure
+      select => [ qw(Query_time Lock_time Rows_sent Rows_examined ts db user users) ],
+      item    => $item,
+      rank    => 1,
+      orderby => 'Query_time',
+      reason  => 'top',
+   );
+
+   unlike(
+      $result,
+      qr/at byte -/,
+      "Bug 887638: pt-query-digest prints negative byte offset"
+   );
+}
 
 $result = $qrf->chart_distro(
    ea     => $ea,
@@ -1570,4 +1602,5 @@ like(
    '_d() works'
 );
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

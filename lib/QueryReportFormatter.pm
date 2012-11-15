@@ -524,7 +524,7 @@ sub event_report {
    # First line like:
    # Query 1: 9 QPS, 0x concurrency, ID 0x7F7D57ACDD8A346E at byte 5 ________
    my $line = sprintf(
-      '# %s %d: %s QPS, %sx concurrency, ID 0x%s at byte %d ',
+      '# %s %d: %s QPS, %sx concurrency, ID 0x%s at byte %.f ',
       ($ea->{groupby} eq 'fingerprint' ? 'Query' : 'Item'),
       $args{rank} || 0,
       shorten($qps  || 0, d=>1_000),
