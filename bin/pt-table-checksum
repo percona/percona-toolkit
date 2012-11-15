@@ -53,7 +53,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.5';
+our $VERSION = '2.1.6';
 
 1;
 }
@@ -3235,7 +3235,6 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Scalar::Util qw(blessed);
-
 use constant {
    PTDEBUG => $ENV{PTDEBUG} || 0,
    PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
@@ -3508,12 +3507,18 @@ sub quote_val {
 
 sub split_unquote {
    my ( $self, $db_tbl, $default_db ) = @_;
-   $db_tbl =~ s/`//g;
    my ( $db, $tbl ) = split(/[.]/, $db_tbl);
    if ( !$tbl ) {
       $tbl = $db;
       $db  = $default_db;
    }
+   for ($db, $tbl) {
+      next unless $_;
+      s/\A`//;
+      s/`\z//;
+      s/``/`/g;
+   }
+   
    return ($db, $tbl);
 }
 
@@ -11764,6 +11769,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-checksum 2.1.5
+pt-table-checksum 2.1.6
 
 =cut

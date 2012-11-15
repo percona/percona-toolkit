@@ -50,7 +50,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.5';
+our $VERSION = '2.1.6';
 
 1;
 }
@@ -8959,6 +8959,9 @@ sub create_new_table{
       my $sql    = $ddl;
       $sql       =~ s/\ACREATE TABLE .*?\($/CREATE TABLE $quoted (/m;
       $sql       =~ s/^  CONSTRAINT `/  CONSTRAINT `_/gm;
+      if ( $o->get('default-engine') ) {
+         $sql =~ s/\s+ENGINE=\S+//;
+      }
       PTDEBUG && _d($sql);
       eval {
          $cxn->dbh()->do($sql);
@@ -10160,6 +10163,17 @@ single value of Threads_running that is wrong for every server, but a default of
 50 seems likely to be unacceptably high for most servers, indicating that the
 operation should be canceled immediately.
 
+=item --default-engine
+
+Remove C<ENGINE> from the new table.
+
+By default the new table is created with the same table options as
+the original table, so if the original table uses InnoDB, then the new
+table will use InnoDB.  In certain cases involving replication, this may
+cause unintended changes on replicas which use a different engine for
+the same table.  Specifying this option causes the new table to be
+created with the system's default engine.
+
 =item --defaults-file
 
 short form: -F; type: string
@@ -10603,6 +10617,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-online-schema-change 2.1.5
+pt-online-schema-change 2.1.6
 
 =cut
