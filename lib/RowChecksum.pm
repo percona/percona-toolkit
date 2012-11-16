@@ -280,7 +280,7 @@ sub _get_hash_func {
       unshift @funcs, $func;
    }
 
-   my ($result, $error);
+   my $error;
    foreach my $func ( @funcs ) {
       eval {
          my $sql = "SELECT $func('test-string')";
@@ -292,7 +292,7 @@ sub _get_hash_func {
          PTDEBUG && _d($func, 'cannot be used because', $1);
          next;
       }
-      PTDEBUG && _d('Chosen hash func:', $result);
+      PTDEBUG && _d('Chosen hash func:', $func);
       return $func;
    }
    die($error || 'No hash functions (CRC32, MD5, etc.) are available');
