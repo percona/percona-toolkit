@@ -667,8 +667,8 @@ sub determine_table_for_column {
 sub _looks_like_column {
    my $col = shift;
    # NULL, numbers, variables and functions are definitely not columns
-   return if $col eq '*' || $col eq 'NULL';
-   return if $col =~ /\A(?:\b[0-9]+\b|[^(]+\(|\@{1,2}.+)/;
+   return if $col eq '*' || uc($col) eq 'NULL';
+   return if $col =~ /\A(?:\b[0-9]+\b|\@{1,2}.+)/;
    return $col;
 }
 
