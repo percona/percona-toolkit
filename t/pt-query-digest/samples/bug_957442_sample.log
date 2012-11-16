@@ -1,0 +1,58 @@
+# Time: 120315 18:01:58.479076
+# User@Host: EpiFou2[EpiFou2] @ 10.42.1.136 []
+# Client: 10.42.1.136:52714
+# Thread_id: 1989712101
+# Query_time: 0.001084  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+# administrator command: Connect;
+# Time: 120315 18:01:58.480646
+# User@Host: EpiFou2[EpiFou2] @ 10.60.24.110 []
+# Client: 10.60.24.110:59474
+# Thread_id: 1989712100
+# Query_time: 0.002040  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+SELECT id, meta, faidelog_id
+                        FROM   posts_ref
+                        /*page_3*/ 
+                        ORDER BY id DESC LIMIT 11;
+# Time: 120315 18:01:58.481714
+# User@Host: EpiFou2[EpiFou2] @ 10.60.24.110 []
+# Client: 10.60.24.110:59474
+# Thread_id: 1989712100
+# Query_time: 0.000000  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+# administrator command: Quit;
+# Time: 120315 18:01:58.482088
+# User@Host: EpiFou2[EpiFou2] @ 10.42.1.136 []
+# Client: 10.42.1.136:52714
+# Thread_id: 1989712101
+# Query_time: 0.002632  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+SELECT SQL_CALC_FOUND_ROWS id, faidelog_id
+                        FROM   posts_ref
+                        WHERE  NOT (meta & 0x00000008) AND faidelog_id = 16067957 /*page_8*/ 
+                        ORDER BY meta DESC, id DESC LIMIT 105, 15;
+# Time: 120315 18:01:58.482571
+# User@Host: EpiFou2[EpiFou2] @ 10.42.1.136 []
+# Client: 10.42.1.136:52714
+# Thread_id: 1989712101
+# Query_time: 0.000000  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+# administrator command: Quit;
+# Time: 120315 18:01:58.497459
+# User@Host: EpiFou2[EpiFou2] @ 10.60.24.96 []
+# Client: 10.60.24.96:35130
+# Thread_id: 1989712113
+# Query_time: 0.000483  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+# administrator command: Connect;
+# Time: 120315 18:01:58.501509
+# User@Host: EpiFou2[EpiFou2] @ 10.60.24.96 []
+# Client: 10.60.24.96:35130
+# Thread_id: 1989712113
+# Query_time: 0.003460  Lock_time: 0.000000  Rows_sent: 0  Rows_examined: 0
+use faidr3;
+SELECT id, meta, faidelog_id
+                        FROM   posts_ref
+                        /*page_2*/ 
+                        ORDER BY id DESC LIMIT 11;
