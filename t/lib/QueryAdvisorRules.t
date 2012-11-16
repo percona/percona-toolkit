@@ -468,7 +468,7 @@ my @cases = (
    },
    {
       name   => 'Bug 937234: wrong RES.001',
-      query  => q{select NULL, 1, COUNT(*), @@time_zone, foo as field2 from t1 group by field2},
+      query  => q{select NULL, null, 1, COUNT(*), @@time_zone, foo as field2 from t1 group by field2},
       advice => [qw(CLA.001)],
    },
    {
