@@ -188,9 +188,9 @@ fi
 # ###########################################################################
 if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
    mysqld="bin/mysqld"
-elif [ -x "sbin/mysqld" ]; then
+elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
    mysqld="sbin/mysqld"
-elif [ -x "libexec/mysqld" ]; then
+elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
    mysqld="libexec/mysqld"
 else
    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
