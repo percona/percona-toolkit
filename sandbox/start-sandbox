@@ -66,6 +66,7 @@ make_sandbox() {
       sed -e "s/PORT/$port/g" -i.bak $file
       # Use ! instead of / because the replacment has / (it's a directory)
       sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
+      sed -e "s!MYSQLD!$mysqld!g" -i.bak $file
    done
    rm /tmp/$port/*.bak >/dev/null 2>&1
 
@@ -186,15 +187,15 @@ fi
 # Get server version.
 # ###########################################################################
 if [ -x "$PERCONA_TOOLKIT_SANDBOX/bin/mysqld" ]; then
-   mysqld="$PERCONA_TOOLKIT_SANDBOX/bin/mysqld"
-elif [ -x "$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld" ]; then
-   mysqld="$PERCONA_TOOLKIT_SANDBOX/sbin/mysqld"
-elif [ -x "$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld" ]; then
-   mysqld="$PERCONA_TOOLKIT_SANDBOX/libexec/mysqld"
+   mysqld="bin/mysqld"
+elif [ -x "sbin/mysqld" ]; then
+   mysqld="sbin/mysqld"
+elif [ -x "libexec/mysqld" ]; then
+   mysqld="libexec/mysqld"
 else
    die "Cannot find executable mysqld in $PERCONA_TOOLKIT_SANDBOX/bin, $PERCONA_TOOLKIT_SANDBOX/sbin or $PERCONA_TOOLKIT_SANDBOX/libexec."
 fi
-version=`$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
+version=`$PERCONA_TOOLKIT_SANDBOX/$mysqld -V 2>/dev/null | awk '{print $3}' | cut -d. -f 1,2`;
 if [ ! -d "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version" ]; then
    die "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version does not exist."
 fi

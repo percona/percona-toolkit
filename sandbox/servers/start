@@ -49,7 +49,7 @@ echo -n "Starting MySQL test server on port PORT... "
 # Start MySQL.
 cwd=$PWD
 cd $BASEDIR
-$BASEDIR/bin/mysqld --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>&1 &
+$BASEDIR/MYSQLD --defaults-file=/tmp/PORT/my.sandbox.cnf > /dev/null 2>&1 &
 cd $PWD
 
 # Wait for MySQL to actually be up, i.e. to respond to queries.
