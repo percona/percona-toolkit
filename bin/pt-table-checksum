@@ -8712,6 +8712,7 @@ sub main {
 
          my $err = '';
          for my $slave_cxn (@$slaves) {
+            next if $cluster->is_cluster_node($slave_cxn);
             my $slave_binlog = 'STATEMENT';
             if ( VersionParser->new($slave_cxn->dbh) >= '5.1.5' ) {
                ($slave_binlog) = $slave_cxn->dbh->selectrow_array(
