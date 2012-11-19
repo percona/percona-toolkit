@@ -22,6 +22,7 @@ BEGIN {
       TableSyncStream
       TableParser
       RowDiff
+      MySQLDump
       ChangeHandler
       TableChunker
       TableChecksum
@@ -51,7 +52,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.6';
+our $VERSION = '2.1.7';
 
 1;
 }
