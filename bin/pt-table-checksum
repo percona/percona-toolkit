@@ -10876,7 +10876,7 @@ The database and table that was checksummed.
 
 If L<"--replicate-check-only"> is specified, only checksum differences on
 detected replicas are printed.  The output is different: one paragraph per
-replica, one checksum difference per line, and values are separted by spaces:
+replica, one checksum difference per line, and values are separated by spaces:
 
   Differences on h=127.0.0.1,P=12346
   TABLE CHUNK CNT_DIFF CRC_DIFF CHUNK_INDEX LOWER_BOUNDARY UPPER_BOUNDARY
@@ -10943,12 +10943,6 @@ group: Connection
 
 Prompt for a password when connecting to MySQL.
 
-=item --check-interval
-
-type: time; default: 1; group: Throttle
-
-Sleep time between checks for L<"--max-lag">.
-
 =item --[no]check-binlog-format
 
 default: yes
@@ -10956,6 +10950,12 @@ default: yes
 Check that the C<binlog_format> is the same on all servers.
 
 See "Replicas using row-based replication" under L<"LIMITATIONS">.
+
+=item --check-interval
+
+type: time; default: 1; group: Throttle
+
+Sleep time between checks for L<"--max-lag">.
 
 =item --[no]check-plan
 
@@ -11456,7 +11456,7 @@ line, for example: C<"h=replica_host,u=repl_user,p=repl_pass">.
 
 The C<none> method prevents the tool from connecting to any replicas.
 This effectively disables all the L<"REPLICA CHECKS"> because there will
-not be any replicas to check.  Thefore, this method is not recommended.
+not be any replicas to check.  Therefore, this method is not recommended.
 
 =item --replicate
 
@@ -11665,7 +11665,7 @@ disabled by specifying C<--no-check-replication-filters>.
 
 =item 2. L<"--replicate"> table
 
-pt-table-cheksum checks that the L<"--replicate"> table exists on all
+pt-table-checksum checks that the L<"--replicate"> table exists on all
 replicas, else checksumming can break replication when updates to the table
 on the master replicate to a replica that doesn't have the table.  This
 check cannot be disabled, and the tool wait forever until the table
