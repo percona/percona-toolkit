@@ -53,6 +53,20 @@ my %port_for = (
    master4 => 2901,
    master5 => 2902,
    master6 => 2903,
+   node1   => 12345, # pxc...
+   node2   => 12346,
+   node3   => 12347,
+   node4   => 2900,
+   node5   => 2901,
+   node6   => 2902,
+   cmaster => 12349, # master -> cluster
+   cslave1 => 12348, # cluster -> slave
+);
+
+my %server_type = (
+   master => 1,
+   slave  => 1,
+   node   => 1,
 );
 
 my $test_dbs = qr/^(?:mysql|information_schema|sakila|performance_schema|percona_test)$/;
@@ -315,9 +329,9 @@ sub ok {
 
 # Dings a heartbeat on the master, and waits until the slave catches up fully.
 sub wait_for_slaves {
-   my $self = shift;
+   my ($self, $slave) = @_;
    my $master_dbh = $self->get_dbh_for('master');
-   my $slave2_dbh = $self->get_dbh_for('slave2');
+   my $slave2_dbh = $self->get_dbh_for($slave || 'slave2');
    my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND())");
    $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
    PerconaTest::wait_until(
@@ -327,14 +341,6 @@ sub wait_for_slaves {
          return $ping eq $pong;
       }, undef, 300
    );
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 # Verifies that master, slave1, and slave2 have a faithful copy of the mysql and
@@ -438,67 +444,97 @@ sub set_as_slave {
 }
 
 sub start_sandbox {
-   my ($self, $mode, $server, $master_server) = @_;
-   my $port        = $port_for{$server};
-   my $master_port = $master_server ? $port_for{$master_server} : '';
-   my $out = `$trunk/sandbox/start-sandbox $mode $port $master_port`;
-   die $out if $CHILD_ERROR;
-   return $out;
+   my ($self, %args) = @_;
+   my @required_args = qw(type server);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($type, $server) = @args{@required_args};
+   my $env = $args{env} || '';
+
+   die "Invalid server type: $type" unless $server_type{$type};
+   _check_server($server);
+   my $port = $port_for{$server};
+
+   if ( $type eq 'master') {
+      my $out = `$env $trunk/sandbox/start-sandbox $type $port >/dev/null`;
+      die $out if $CHILD_ERROR;
+   }
+   elsif ( $type eq 'slave' ) {
+      die "I need a slave arg" unless $args{master};
+      _check_server($args{master});
+      my $master_port = $port_for{$args{master}};
+
+      my $out = `$env $trunk/sandbox/start-sandbox $type $port $master_port >/dev/null`;
+      die $out if $CHILD_ERROR;
+   }
+   elsif ( $type eq 'node' ) {
+      my $first_node = $args{first_node} ? $port_for{$args{first_node}} : '';
+      my $out = `$env $trunk/sandbox/start-sandbox cluster $port $first_node >/dev/null`;
+      die $out if $CHILD_ERROR;
+   }
+
+   my $dbh = $self->get_dbh_for($server, $args{cxn_opts});
+   my $dsn = $self->dsn_for($server);
+
+   return $dbh, $dsn;
 }
 
 sub stop_sandbox {
    my ($self, @sandboxes) = @_;
    my @ports = @port_for{@sandboxes};
-   my $out = `$trunk/sandbox/stop-sandbox @ports`;
+   my $out = `$trunk/sandbox/stop-sandbox @ports >/dev/null`;
    die $out if $CHILD_ERROR;
    return $out;
 }
 
 sub start_cluster {
    my ($self, %args) = @_;
-   my $cluster_size  = $args{cluster_size} || 3;
+   my @required_args = qw(nodes);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($nodes) = @args{@required_args};
 
-   my $out = '';
-
-   my ($node1, @nodes) = map {
-      my $node_name = "node$_";
-      $node_name    = "_$node_name" while exists $port_for{$node_name};
-      $port_for{$node_name} = $self->_get_unused_port();
-      $node_name
-   } 1..$cluster_size;
-
-   local $ENV{CLUSTER_NAME} = $args{cluster_name} if $args{cluster_name};
-   $self->start_sandbox("cluster", $node1);
-   for my $node ( @nodes ) {
-      $self->start_sandbox("cluster", $node, $node1);
+   foreach my $node ( @$nodes ) {
+      _check_server($node);
    }
 
-   return ($node1, @nodes);
-}
+   Test::More::diag("Starting cluster with @$nodes");
+   my %connect;
 
-# Lifted from Nginx::Test on CPAN
-sub _get_unused_port {
-    my $port = 50000 + int (rand() * 5000);
+   my $first_node = shift @$nodes;
+   my ($dbh, $dsn) = $self->start_sandbox(
+      type   => "node",
+      server => $first_node,
+      env    => $args{env},
+   );
+   $connect{$first_node} = { dbh => $dbh, dsn => $dsn };
 
-    while ($port++ < 64000) {
-        my $sock = IO::Socket::INET->new (
-            Listen    => 5,
-            LocalAddr => '127.0.0.1',
-            LocalPort => $port,
-            Proto     => 'tcp',
-            ReuseAddr => 1
-        ) or next;
+   foreach my $node ( @$nodes ) {
+      my ($dbh, $dsn) = $self->start_sandbox(
+         server     => $node,
+         type       => "node",
+         first_node => $first_node,
+         env        => $args{env},
+      );
+      $connect{$node} = { dbh => $dbh, dsn => $dsn };
+   }
 
-        $sock->close;
-        return $port;
-    }
-
-    die "Cannot find an open port";
+   return \%connect;
 }
 
 sub port_for {
    my ($self, $server) = @_;
    return $port_for{$server};
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;

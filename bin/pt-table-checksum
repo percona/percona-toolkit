@@ -3375,87 +3375,66 @@ sub _d {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-
 package Percona::XtraDB::Cluster;
-use Mo;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Mo;
+use Data::Dumper;
+
+sub get_cluster_name {
+   my ($self, $cxn) = @_;
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_cluster\_name'";
+   PTDEBUG && _d($cxn->name, $sql);
+   my (undef, $cluster_name) = $cxn->dbh->selectrow_array($sql);
+   return $cluster_name;
+}
 
 sub is_cluster_node {
    my ($self, $cxn) = @_;
-   return $self->{is_cluster_node}->{$cxn} if defined $self->{is_cluster_node}->{$cxn};
 
-   my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
-   PTDEBUG && _d($sql);
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
+   PTDEBUG && _d($cxn->name, $sql);
    my $row = $cxn->dbh->selectrow_arrayref($sql);
-   PTDEBUG && _d(defined $row ? @$row : 'undef');
-   $self->{is_cluster_node}->{$cxn} = $row && $row->[1]
-                            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
-                            : 0;
+   PTDEBUG && _d(Dumper($row));
+   return unless $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1');
 
-   return $self->{is_cluster_node}->{$cxn};
+   my $cluster_name = $self->get_cluster_name($cxn);
+   return $cluster_name;
+}
+
+sub same_node {
+   my ($self, $cxn1, $cxn2) = @_;
+
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_sst\_receive\_address'";
+   PTDEBUG && _d($cxn1->name, $sql);
+   my (undef, $val1) = $cxn1->dbh->selectrow_array($sql);
+   PTDEBUG && _d($cxn2->name, $sql);
+   my (undef, $val2) = $cxn2->dbh->selectrow_array($sql);
+
+   return ($val1 || '') eq ($val2 || '');
 }
 
 sub same_cluster {
    my ($self, $cxn1, $cxn2) = @_;
-   return unless $self->is_cluster_node($cxn1) && $self->is_cluster_node($cxn2);
-   return if $self->is_master_of($cxn1, $cxn2) || $self->is_master_of($cxn2, $cxn1);
 
-   my $sql = q{SHOW VARIABLES LIKE 'wsrep_cluster_name'};
-   PTDEBUG && _d($sql);
-   my (undef, $row)      = $cxn1->dbh->selectrow_array($sql);
-   my (undef, $cxn2_row) = $cxn2->dbh->selectrow_array($sql);
+   return 0 if !$self->is_cluster_node($cxn1) || !$self->is_cluster_node($cxn2);
 
-   return unless $row eq $cxn2_row;
+   my $cluster1 = $self->get_cluster_name($cxn1);
+   my $cluster2 = $self->get_cluster_name($cxn2);
 
-   $sql = q{SHOW VARIABLES LIKE 'wsrep_cluster_address'};
-   PTDEBUG && _d($sql);
-   my (undef, $addr)      = $cxn1->dbh->selectrow_array($sql);
-   my (undef, $cxn2_addr) = $cxn2->dbh->selectrow_array($sql);
-
-   return if $addr eq 'gcomm://' && $cxn2_addr eq 'gcomm://';
-
-   if ( $addr eq 'gcomm://' ) {
-      $addr      = $self->_find_full_gcomm_addr($cxn1->dbh);
-   }
-   elsif ( $cxn2_addr eq 'gcomm://' ) {
-      $cxn2_addr  = $self->_find_full_gcomm_addr($cxn2->dbh);
-   }
-
-   return 1 if lc($addr) eq lc($cxn2_addr);
-
-   return 1;
+   return ($cluster1 || '') eq ($cluster2 || '');
 }
 
-sub is_master_of {
-   my ($self, $cxn1, $cxn2) = @_;
-
-   my $cxn2_dbh = $cxn2->dbh;
-   my $sql      = q{SHOW SLAVE STATUS};
-   PTDEBUG && _d($sql);
-   local $cxn2_dbh->{FetchHashKeyName} = 'NAME_lc';
-   my $slave_status = $cxn2_dbh->selectrow_hashref($sql);
-   return unless ref($slave_status) eq 'HASH';
-
-   my $port = $cxn1->dsn->{P};
-   return unless $slave_status->{master_port} eq $port;
-   return 1 if $cxn1->dsn->{h} eq $slave_status->{master_host};
-
-   my $host        = scalar gethostbyname($cxn1->dsn->{h});
-   my $master_host = scalar gethostbyname($slave_status->{master_host});
-   return 1 if $master_host eq $host;
-   return;
-}
-
-sub _find_full_gcomm_addr {
-   my ($self, $dbh) = @_;
-
-   my $sql = q{SHOW VARIABLES LIKE 'wsrep_provider_options'};
-   PTDEBUG && _d($sql);
-   my (undef, $provider_opts) = $dbh->selectrow_array($sql);
-   my ($prov_addr)  = $provider_opts =~ m{\Qgmcast.listen_addr\E\s*=\s*tcp://([^:]+:[0-9]+)\s*;}i;
-   my $full_gcomm = "gcomm://$prov_addr";
-   PTDEBUG && _d("gcomm address: ", $full_gcomm);
-   return $full_gcomm;
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -8658,9 +8637,13 @@ sub main {
       $have_time = sub { return 1; };
    }
 
-   # PXC helper class
+   # ########################################################################
+   # Set up PXC stuff.
+   # ########################################################################
    my $cluster = Percona::XtraDB::Cluster->new();
-   
+   my %cluster_name_for;
+   $cluster_name_for{$master_cxn} = $cluster->is_cluster_node($master_cxn);
+
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
@@ -8678,7 +8661,7 @@ sub main {
 
    my $slaves = [];    # all slaves (that we can find)
    my $slave_lag_cxns; # slaves whose lag we'll check
-   
+
    my $replica_lag;    # ReplicaLagWaiter object
    my $replica_lag_pr; # Progress for ReplicaLagWaiter
    my $sys_load;       # MySQLStatusWaiter object
@@ -8697,9 +8680,29 @@ sub main {
          dbh      => $master_dbh,
          dsn      => $master_dsn,
          make_cxn => sub {
-            return $make_cxn->(@_, prev_dsn => $master_cxn->dsn());
+            my $cxn = $make_cxn->(@_, prev_dsn => $master_cxn->dsn());
+            $cluster_name_for{$cxn} = $cluster->is_cluster_node($cxn);
+            return $cxn;
          },
       );
+
+      # If the "master" is a cluster node, then a DSN table should have been
+      # used, and it may have all nodes' DSNs so the user can run the tool
+      # on any node, in which case it has the "master" node, the DSN given
+      # on the command line.  So detect and remove this dupe.
+      if ( $cluster_name_for{$master_cxn} ) {
+         @$slaves = grep {
+            my $slave_cxn = $_;
+            if ( $cluster->same_node($master_cxn, $slave_cxn) ) {
+               PTDEBUG && _d('Removing ', $slave_cxn->name, 'from slaves',
+                  'because it is the master');
+               0;
+            }
+            else {
+               $slave_cxn;
+            }
+         } @$slaves;
+      }
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
 
       # https://bugs.launchpad.net/percona-toolkit/+bug/938068
@@ -8711,8 +8714,10 @@ sub main {
          }
 
          my $err = '';
-         for my $slave_cxn (@$slaves) {
-            next if $cluster->is_cluster_node($slave_cxn);
+         for my $slave_cxn ( @$slaves ) {
+            # https://bugs.launchpad.net/percona-toolkit/+bug/1080385
+            next if $cluster_name_for{$slave_cxn};
+
             my $slave_binlog = 'STATEMENT';
             if ( VersionParser->new($slave_cxn->dbh) >= '5.1.5' ) {
                ($slave_binlog) = $slave_cxn->dbh->selectrow_array(
@@ -8731,42 +8736,91 @@ sub main {
          die $err if $err;
       }
 
-      if ( $cluster->is_cluster_node($master_cxn) ) {
+      if ( $cluster_name_for{$master_cxn} ) {
          if ( !@$slaves ) {
             die $master_cxn->name() . " is a cluster node but no other nodes "
                . "or regular replicas were found.  Use --recursion-method=dsn "
                . "to specify the other nodes in the cluster.\n";
          }
-         else {
-            my $err = '';
-            for my $slave (@$slaves) {
-               if (   $cluster->is_cluster_node($slave)
-                  && !$cluster->same_cluster($slave, $master_cxn) ) {
-                  $err .= $slave->name() . " is a cluster node, but doesn't "
-                       .  "belong to the same cluster as " . $master_cxn->name()
-                       .  ". This is not currently supported; You can try "
-                       .  "using --recursion-method=dsn to specify all nodes "
-                       .  "in the slave cluster.\n"
-               }
+
+         # Make sure the master and all node are in the same cluster.
+         my @other_cluster;
+         foreach my $slave ( @$slaves ) {
+            next unless $cluster_name_for{$slave};
+            if ( $cluster_name_for{$master_cxn} ne $cluster_name_for{$slave}) {
+               push @other_cluster, $slave;
             }
-            warn $err if $err;
+         }
+         if ( @other_cluster ) {
+            die $master_cxn->name . " is in cluster "
+               . $cluster_name_for{$master_cxn} . " but these nodes are "
+               . "in other clusters:\n"
+               . join("\n",
+                  map {'  ' . $_->name . " is in cluster $cluster_name_for{$_}"}
+                  @other_cluster) . "\n"
+               . "All nodes must be in the same cluster.  "
+               . "For more information, please read the Percona XtraDB "
+               . "Cluster section of the tool's documentation.\n";
          }
       }
       elsif ( @$slaves ) {
-         my $err = '';
-         for my $slave (@$slaves) {
-            if ( $cluster->is_cluster_node($slave) ) {
-               $err .= $slave->name() . " is a cluster node, but "
-                    .  $master_cxn->name() . " is not. This is not currently "
-                    .  "supported; You can try to specify "
-                    .  "all nodes in the cluster with "
-                    .  "--recursion-method=dsn if you want them checksummed.\n"
+         # master is not a cluster node, but what about the slaves?
+         my $direct_slave;  # master -> direct_slave
+         my @slaves;        # traditional slaves
+         my @nodes;         # cluster nodes
+         foreach my $slave ( @$slaves ) {
+            if ( !$cluster_name_for{$slave} ) {
+               push @slaves, $slave;
+               next;
+            }
+
+            my $is_master_of = eval {
+               $ms->is_master_of($master_cxn->dbh, $slave->dbh);
+            };
+            if ( $EVAL_ERROR && $EVAL_ERROR =~ m/is not a slave/ ) {
+               push @nodes, $slave;
+            }
+            elsif ( $is_master_of ) {
+               $direct_slave = $slave;
+            }
+            else {
+               # Another error could have happened but we don't really
+               # care.  We know for sure the slave is a node, so just
+               # presume that and carry on.
+               push @nodes, $slave;
             }
          }
-         warn $err if $err;
+
+         my $err = '';
+         if ( @nodes ) {
+            if ( $direct_slave ) {
+               warn "Diffs will only be detected if the cluster is "
+                  . "consistent with " . $direct_slave->name . " because "
+                  . $master_cxn->name . " is a traditional replication master "
+                  . " but these replicas are cluster nodes:\n"
+                  . join("\n", map { '  ' . $_->name } @nodes) . "\n"
+                  . "For more information, please read the Percona XtraDB "
+                  . "Cluster section of the tool's documentation.\n";
+            }
+            else {
+               warn "Diffs may not be detected on these cluster nodes "
+                  . "because the direct replica of " . $master_cxn->name
+                  . " was not found or specified:\n"
+                  . join("\n", map { '  ' . $_->name } @nodes) . "\n"
+                  . "For more information, please read the Percona XtraDB "
+                  . "Cluster section of the tool's documentation.\n";
+            }
+
+            if ( @slaves ) {
+               warn "Diffs will only be detected on these replicas if "
+                  . "they replicate from " . $master_cxn->name . ":\n"
+                  . join("\n", map { '  ' . $_->name } @slaves) . "\n"
+                  . "For more information, please read the Percona XtraDB "
+                  . "Cluster section of the tool's documentation.\n";
+            }
+         }
       }
-      
-      
+
       if ( $o->get('check-slave-lag') ) {
          PTDEBUG && _d('Will use --check-slave-lag to check for slave lag');
          my $cxn = $make_cxn->(
@@ -8786,8 +8840,7 @@ sub main {
       # to appear should be sufficient.
       @$slave_lag_cxns = grep {
          my $slave_cxn = $_;
-         if (  $cluster->is_cluster_node($slave_cxn)
-            && $cluster->same_cluster($master_cxn, $slave_cxn) ) {
+         if ( $cluster_name_for{$slave_cxn} ) {
             warn "Not checking replica lag on " . $slave_cxn->name()
                . " because it is a cluster node.\n";
             0;
@@ -10689,6 +10742,35 @@ can try something like the following:
    SET boundaries = COALESCE(CONCAT('id BETWEEN ', lower_boundary,
       ' AND ', upper_boundary), '1=1');
 
+=head1 Percona XtraDB Cluster
+
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.27-23.6 and newer,
+but only the following PXC setups are supported, all of which require that
+you use the C<dsn> method for L<"--recursion-method"> to specify cluster nodes.
+Also, the lag check (see L<"REPLICA CHECKS">) is not performed for cluster
+nodes.
+
+=over
+
+=item Single cluster
+
+The simplest PXC setup is a single cluster: all servers are cluster nodes,
+and there are no regular replicas.  If all nodes are specified in the
+DSN table (see L<"--recursion-method">), then you can run the tool on any
+node and any diffs on any other nodes will be detected.
+
+=item Single cluster with a replica
+
+Any cluster node can also be a regular master and replicate to a regular
+replica.  The tool can only detect diffs on a replica if you run it on
+the "master node" 
+
+Mixed replication setups are not currently supported.  For example, the tool
+does not work completely if the master host is replicating to a cluster,
+or if the cluster is replicating to another cluster.  In short, the only
+supported setup is a single cluster with nodes optionally having traditional
+replication slaves.
+
 =head1 OUTPUT
 
 The tool prints tabular results, one line per table:
@@ -11669,23 +11751,9 @@ past any replicas using row-based replication that are masters for
 further replicas.
 
 The tool automatically checks the C<binlog_format> on all servers.
-See L<"--[no]check-binlog-format"> 
+See L<"--[no]check-binlog-format"> .
 
 (L<Bug 899415|https://bugs.launchpad.net/percona-toolkit/+bug/899415>)
-
-=item Percona XtraDB Cluster
-
-pt-table-checksum works with Percona XtraDB Cluster 5.5.27-23.6 and newer.
-The C<dsn> method for L<"--recursion-method"> must be used to specify cluster
-nodes and regular replicas because nodes are not regular replicas so they
-cannot be detected automatically.  The lag check (see L<"REPLICA CHECKS">)
-is not performed for cluster nodes.
-
-Mixed replication setups are not currently supported.  For example, the tool
-does not work completely if the master host is replicating to a cluster,
-or if the cluster is replicating to another cluster.  In short, the only
-supported setup is a single cluster with nodes optionally having traditional
-replication slaves.
 
 =back
 
