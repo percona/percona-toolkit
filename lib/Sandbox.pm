@@ -457,7 +457,7 @@ sub start_sandbox {
    my $port = $port_for{$server};
 
    if ( $type eq 'master') {
-      my $out = `$env $trunk/sandbox/start-sandbox $type $port >/dev/null`;
+      my $out = `$env $trunk/sandbox/start-sandbox $type $port`;
       die $out if $CHILD_ERROR;
    }
    elsif ( $type eq 'slave' ) {
@@ -465,12 +465,12 @@ sub start_sandbox {
       _check_server($args{master});
       my $master_port = $port_for{$args{master}};
 
-      my $out = `$env $trunk/sandbox/start-sandbox $type $port $master_port >/dev/null`;
+      my $out = `$env $trunk/sandbox/start-sandbox $type $port $master_port`;
       die $out if $CHILD_ERROR;
    }
    elsif ( $type eq 'node' ) {
       my $first_node = $args{first_node} ? $port_for{$args{first_node}} : '';
-      my $out = `$env $trunk/sandbox/start-sandbox cluster $port $first_node >/dev/null`;
+      my $out = `$env $trunk/sandbox/start-sandbox cluster $port $first_node`;
       die $out if $CHILD_ERROR;
    }
 
@@ -483,7 +483,7 @@ sub start_sandbox {
 sub stop_sandbox {
    my ($self, @sandboxes) = @_;
    my @ports = @port_for{@sandboxes};
-   my $out = `$trunk/sandbox/stop-sandbox @ports >/dev/null`;
+   my $out = `$trunk/sandbox/stop-sandbox @ports`;
    die $out if $CHILD_ERROR;
    return $out;
 }
