@@ -10744,9 +10744,14 @@ can try something like the following:
 
 =head1 Percona XtraDB Cluster
 
-pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.27-23.6 and newer,
-but only the following PXC setups are supported, all of which require that
-you use the C<dsn> method for L<"--recursion-method"> to specify cluster nodes.
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.27-23.6 and newer.
+The number of possible Percona XtraDB Cluster setups is large given that
+it can be used with regular replication as well.  Therefore, only the setups
+listed below are supported and known to work.  Other setups, like cluster
+to cluster, are not support and probably don't work.
+
+Except where noted, all of the following supported setups require that you
+use the C<dsn> method for L<"--recursion-method"> to specify cluster nodes.
 Also, the lag check (see L<"REPLICA CHECKS">) is not performed for cluster
 nodes.
 
@@ -10759,17 +10764,56 @@ and there are no regular replicas.  If all nodes are specified in the
 DSN table (see L<"--recursion-method">), then you can run the tool on any
 node and any diffs on any other nodes will be detected.
 
-=item Single cluster with a replica
+All nodes must be in the same cluster (have the same C<wsrep_cluster_name>
+value), else the tool exits with an error.  Although it's possible to have
+different clusters with the same name, this should not be done and is not
+supported.  This applies to all supported setups.
 
-Any cluster node can also be a regular master and replicate to a regular
-replica.  The tool can only detect diffs on a replica if you run it on
-the "master node" 
+=item Single cluster with replicas
 
-Mixed replication setups are not currently supported.  For example, the tool
-does not work completely if the master host is replicating to a cluster,
-or if the cluster is replicating to another cluster.  In short, the only
-supported setup is a single cluster with nodes optionally having traditional
-replication slaves.
+Cluster nodes can also be regular masters and replicate to regular replicas.
+However, the tool can only detect diffs on a replica if ran on the replica's
+"master node".  For example, if the cluster setup is,
+
+   node1 <-> node2 <-> node3
+               |         |
+               |         +-> replica3
+               +-> replica2
+
+you can detect diffs on replica3 by running the tool on node3, but to detect
+diffs on replica2 you must run the tool again on node2.  If you run the tool
+on node1, it will not detect diffs on either replica.
+
+Currently, the tool does not detect this setup or warn about replicas that
+cannot be checked (e.g. replica2 when running on node3).
+
+Replicas in this setup are still subject to L<"--[no]check-binlog-format">.
+
+=item Master to single cluster
+
+It is possible for a regular master to replicate to a cluster, as if the
+cluster were one logical slave, like:
+
+   master -> node1 <-> node2 <-> node3
+
+The tool supports this setup but only if ran on the master and if all nodes
+in the cluster are consistent with the "direct replica" (node1 in this example)
+of the master.  For example, if all nodes have value "foo" for row 1 but
+the master has value "bar" for the same row, this diff will be detected.
+Or if only node1 has this diff, it will also be detected.  But if only node2
+or node3 has this diff, it will not be detected.  Therefore, this setup is
+used to check that the master and the cluster as a whole are consistent.
+
+In this setup, the tool can automatically detect the "direct replica" (node1)
+when ran on the master, so you do not have to use the C<dsn> method for
+L<"--recursion-method"> because node1 will represent the entire cluster,
+which is why all other nodes must be consistent with it.
+
+The tool warns when it detects this setup to remind you that it only works
+when used as described above.  These warnings do not affect the exit status
+of the tool; they're only reminders to help avoid false-positive results.
+
+=back
 
 =head1 OUTPUT
 
