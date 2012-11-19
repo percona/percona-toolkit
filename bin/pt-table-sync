@@ -22,6 +22,7 @@ BEGIN {
       TableSyncStream
       TableParser
       RowDiff
+      MySQLDump
       ChangeHandler
       TableChunker
       TableChecksum
@@ -51,7 +52,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.6';
+our $VERSION = '2.1.7';
 
 1;
 }
@@ -12606,6 +12607,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-table-sync 2.1.6
+pt-table-sync 2.1.7
 
 =cut

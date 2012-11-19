@@ -1,6 +1,24 @@
 Release Notes
 *************
 
+v2.1.7 released 2012-11-19
+==========================
+
+Percona Toolkit 2.1.7 has been released which is a hotfix for two bugs when using pt-table-checksum with Percona XtraDB Cluster:
+
+* Bug 1080384: pt-table-checksum 2.1.6 crashes using PTDEBUG
+* Bug 1080385: pt-table-checksum 2.1.6 --check-binlog-format doesn't ignore PXC nodes
+
+If you're using pt-table-checksum with a Percona XtraDB Cluster, you should upgrade.  Otherwise, users can wait until the next full release.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Fixed bug 1080384: pt-table-checksum 2.1.6 crashes using PTDEBUG
+* Fixed bug 1080385: pt-table-checksum 2.1.6 --check-binlog-format doesn't ignore PXC nodes
+
 v2.1.6 released 2012-11-13
 ==========================
 
