@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.7 released 2012-11-19
+
   * Fixed bug 1080384: pt-table-checksum 2.1.6 crashes using PTDEBUG
   * Fixed bug 1080385: pt-table-checksum 2.1.6 --check-binlog-format doesn't ignore PXC nodes
 

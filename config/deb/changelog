@@ -1,3 +1,10 @@
+percona-toolkit (2.1.7) unstable; urgency=low
+
+  * Fixed bug 1080384: pt-table-checksum 2.1.6 crashes using PTDEBUG
+  * Fixed bug 1080385: pt-table-checksum 2.1.6 --check-binlog-format doesn't ignore PXC nodes
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Mon, 19 Nov 2012 18:43:13 +0000
+
 percona-toolkit (2.1.6) unstable; urgency=low
 
   * pt-online-schema-change: Columns can now be renamed without data loss
