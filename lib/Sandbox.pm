@@ -59,6 +59,7 @@ my %port_for = (
    node4   => 2900,
    node5   => 2901,
    node6   => 2902,
+   node7   => 2903,
    cmaster => 12349, # master -> cluster
    cslave1 => 12348, # cluster -> slave
 );

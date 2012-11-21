@@ -63,68 +63,55 @@ local @ARGV = ();
 $o->get_opts();
 
 diag("Starting master1");
-$sb->start_sandbox("master", "master1");
+$sb->start_sandbox(type => "master", server => "master1");
 
 my $master1_cxn = make_cxn( dsn_string => $sb->dsn_for("master1") );
 $master1_cxn->connect();
 
 diag("Starting a 1-node PXC");
-my ($node)     = $sb->start_cluster(cluster_size => 1);
+my $c     = $sb->start_cluster(
+   nodes => [qw(node4)],
+   env   => q/CLUSTER_NAME="pt_size_1"/
+);
 
-my $cxn1 = make_cxn( dsn_string => $sb->dsn_for($node) );
+my $cxn1 = make_cxn( dsn_string => $c->{node4}->{dsn} );
 $cxn1->connect();
 ok(
    $cluster->is_cluster_node($cxn1),
    "is_cluster_node works correctly for cluster nodes"
 );
 
-ok(
-   !$cluster->is_master_of($master1_cxn, $cxn1),
-   "->is_master_of works correctly for a server unrelated to a cluster"
-);
-
 diag("Setting node as a slave of master1");
-$sb->set_as_slave($node, "master1");
-ok(
-   $cluster->is_master_of($master1_cxn, $cxn1),
-   "->is_master_of works correctly for master -> cluster"
-);
-ok(
-   !$cluster->is_master_of($cxn1, $master1_cxn),
-   "...and the inverse returns the expected result"
-);
+$sb->set_as_slave("node4", "master1");
 ok(
    !$cluster->same_cluster($master1_cxn, $cxn1),
    "->same_cluster works for master -> cluster"
 );
 diag("Restarting the cluster");
-diag($sb->stop_sandbox($node));
-($node) = $sb->start_cluster(cluster_size => 1);
-$cxn1 = make_cxn( dsn_string => $sb->dsn_for($node) );
+diag($sb->stop_sandbox(qw(node4)));
+$c     = $sb->start_cluster(
+   nodes => [qw(node4)],
+   env   => q/CLUSTER_NAME="pt_size_1"/
+);
+$cxn1 = make_cxn( dsn_string => $c->{node4}->{dsn} );
 $cxn1->connect();
 
 diag("Setting master1 as a slave of the node");
-$sb->set_as_slave("master1", $node);
-ok(
-   $cluster->is_master_of($cxn1, $master1_cxn),
-   "->is_master_of works correctly for cluster -> master"
-);
-ok(
-   !$cluster->is_master_of($master1_cxn, $cxn1),
-   "...and the inverse returns the expected result"
-);
-
+$sb->set_as_slave("master1", "node4");
 ok(
    !$cluster->same_cluster($cxn1, $master1_cxn),
    "->same_cluster works for cluster -> master"
 );
 
 diag("Starting a 2-node cluster");
-my ($node2, $node3) = $sb->start_cluster(cluster_size => 2);
+my $c2 = $sb->start_cluster(
+   nodes => [qw(node5 node6)],
+   env   => q/CLUSTER_NAME="pt_size_2"/
+);
 
-my $cxn2 = make_cxn( dsn_string => $sb->dsn_for($node2) );
+my $cxn2 = make_cxn( dsn_string => $c2->{node5}->{dsn} );
 $cxn2->connect();
-my $cxn3 = make_cxn( dsn_string => $sb->dsn_for($node3) );
+my $cxn3 = make_cxn( dsn_string => $c2->{node6}->{dsn} );
 $cxn3->connect();
 ok(
    $cluster->is_cluster_node($cxn2),
@@ -141,36 +128,25 @@ ok(
    "...but does find that they are in the same cluster, even if one is node1"
 );
 
-TODO: {
-   local $::TODO = "Should detected that (cluster1.node1) (cluster2.node2) come from different clusters, but doesn't";
-   ok(
-      !$cluster->same_cluster($cxn1, $cxn3),
-      "...same_cluster works correctly when they have the same cluster names"
-   );
-}
-
 diag("Making the second cluster a slave of the first");
-$sb->set_as_slave($node2, $node);
-ok($cluster->is_master_of($cxn1, $cxn2), "is_master_of(cluster1, cluster2) works");
+$sb->set_as_slave("node5", "node4");
 
 ok(
    !$cluster->same_cluster($cxn1, $cxn2),
    "...same_cluster works correctly when they are cluster1.node1.master -> cluster2.node1.slave"
 );
 
-diag($sb->stop_sandbox($node2, $node3));
+diag($sb->stop_sandbox(qw(node5 node6)));
 diag("Starting a 3-node cluster");
-my $node4;
-($node2, $node3, $node4)
-   = $sb->start_cluster(
-      cluster_size => 3,
-      cluster_name => "pt_cxn_test",
-   );
-$cxn2    = make_cxn( dsn_string => $sb->dsn_for($node2) );
+my $c3 = $sb->start_cluster(
+   nodes => [qw(node5 node6 node7)],
+   env   => q/CLUSTER_NAME="pt_size_3"/
+);
+$cxn2    = make_cxn( dsn_string => $c3->{node5}->{dsn} );
 $cxn2->connect();
-$cxn3    = make_cxn( dsn_string => $sb->dsn_for($node3) );
+$cxn3    = make_cxn( dsn_string => $c3->{node6}->{dsn} );
 $cxn3->connect();
-my $cxn4 = make_cxn( dsn_string => $sb->dsn_for($node4) );
+my $cxn4 = make_cxn( dsn_string => $c3->{node7}->{dsn} );
 $cxn4->connect();
 
 ok(
@@ -188,7 +164,7 @@ ok(
    "sanity check: but still finds that nodes in the same cluster belong together"
 );
 
-diag($sb->stop_sandbox($node, $node2, $node3, $node4));
+diag($sb->stop_sandbox(qw(node4 node5 node6 node7)));
 
 diag($sb->stop_sandbox("master1"));
 
