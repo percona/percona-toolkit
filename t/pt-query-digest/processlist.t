@@ -13,9 +13,6 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
-shift @INC;
-shift @INC;
-shift @INC;
 require "$trunk/bin/pt-query-digest";
 
 use Data::Dumper;

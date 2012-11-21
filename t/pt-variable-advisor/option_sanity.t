@@ -12,8 +12,6 @@ use English qw(-no_match_vars);
 use Test::More tests => 2;
 
 use PerconaTest;
-shift @INC;  # These shifts are required for tools that use base and derived
-shift @INC;  # classes.  See mk-query-digest/t/101_slowlog_analyses.t
 require "$trunk/bin/pt-variable-advisor";
 
 my $cmd = "$trunk/bin/pt-variable-advisor";

@@ -13,10 +13,6 @@ use Test::More;
 
 use Sandbox;
 use PerconaTest;
-# See 101_slowlog_analyses.t for why we shift.
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
-shift @INC;  # Sandbox
 
 require "$trunk/bin/pt-query-digest";
 

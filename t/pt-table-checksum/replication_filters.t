@@ -24,8 +24,6 @@ $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
 use Sandbox;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 use Data::Dumper;

@@ -12,8 +12,6 @@ use English qw(-no_match_vars);
 use Test::More tests => 2;
 
 use PerconaTest;
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-query-digest";
 
 my @args   = qw(--report-format=query_report);
