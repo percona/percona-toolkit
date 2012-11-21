@@ -34,8 +34,12 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 
 my $cluster = Percona::XtraDB::Cluster->new();
+my $db_flavor = VersionParser->new($master_dbh)->flavor();
 
-if ( !$master_dbh ) {
+if ( $db_flavor =~ /XtraDB Cluster/ ) {
+   plan skip_all => "Non-PXC tests";
+}
+elsif ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
 
@@ -58,7 +62,7 @@ local @ARGV = ();
 $o->get_opts();
 
 diag("Starting master1");
-$sb->start_sandbox("master", "master1");
+$sb->start_sandbox(type => "master", server => "master1");
 
 my ($master_cxn, $slave1_cxn, $master1_cxn)
    = map {
@@ -73,9 +77,6 @@ for my $cxn ( $master_cxn, $slave1_cxn, $master1_cxn ) {
       "is_cluster_node works correctly for non-nodes " . $cxn->name
    );
 }
-
-ok($cluster->is_master_of($master_cxn, $slave1_cxn), "is_master_of(master, slave1) is true");
-ok(!$cluster->is_master_of($slave1_cxn, $master_cxn), "is_master_of(slave1, master) is false");
 
 diag($sb->stop_sandbox("master1"));
 
