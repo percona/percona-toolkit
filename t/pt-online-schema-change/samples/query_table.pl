@@ -22,7 +22,7 @@ my $dbh = DBI->connect(
    {RaiseError => 1, AutoCommit => 0, ShowErrorStatement => 1, PrintError => 0},
 );
 
-$sleep ||= 0.001;
+$sleep ||= 0.01;
 
 my $cnt   = 0;
 my (@del, %del);
@@ -32,8 +32,14 @@ my (@ins, %ins);
 use constant TYPE_DELETE => 1;
 use constant TYPE_UPDATE => 2;
 
-my $start_xa = "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */";
-$dbh->do($start_xa);
+sub new_transaction {
+   @del = ();
+   @ins = ();
+   @upd = ();
+   $cnt = 0;
+
+   $dbh->do("START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
+}
 
 sub commit {
    eval {
@@ -41,18 +47,16 @@ sub commit {
    };
    if ( $EVAL_ERROR ) {
       Test::More::diag($EVAL_ERROR);
-      $dbh->do("ROLLBACK");
    }
    else {
       map { $del{$_}++ } @del;
       map { $ins{$_}++ } @ins;
       map { $upd{$_}++ } @upd;
    }
-   @del = ();
-   @ins = ();
-   @upd = ();
-   $cnt = 0;
+   new_transaction();
 }
+
+new_transaction();  # first transaction
 
 for my $i ( 1..5_000 ) {
    last if -f $stop_file;
@@ -87,15 +91,16 @@ for my $i ( 1..5_000 ) {
    };
    if ( $EVAL_ERROR ) {
       Test::More::diag($EVAL_ERROR);
-      sleep $sleep;
+      new_transaction();
    }
 
    # COMMIT every N statements.  With PXC this can fail.
    if ( $cnt++ > 5 ) {
       commit();
-      sleep($sleep);
-      $dbh->do($start_xa);
+      new_transaction();
    }
+
+   sleep($sleep);
 }
 
 commit();
