@@ -187,20 +187,21 @@ SKIP: {
    $sb->load_file('master', "t/pt-archiver/samples/bulk_regular_insert.sql");
    $sb->wait_for_slaves();
 
-   my $original_rows = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   my $original_rows  = $slave1_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   my $original_no_id = $slave1_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
    is_deeply(
-      $original_rows,
+      $original_no_id,
       [
-         [1, 'aa', '11:11:11'],
-         [2, 'bb', '11:11:12'],
-         [3, 'cc', '11:11:13'],
-         [4, 'dd', '11:11:14'],
-         [5, 'ee', '11:11:15'],
-         [6, 'ff', '11:11:16'],
-         [7, 'gg', '11:11:17'],
-         [8, 'hh', '11:11:18'],
-         [9, 'ii', '11:11:19'],
-         [10,'jj', '11:11:10'],
+         ['aa', '11:11:11'],
+         ['bb', '11:11:12'],
+         ['cc', '11:11:13'],
+         ['dd', '11:11:14'],
+         ['ee', '11:11:15'],
+         ['ff', '11:11:16'],
+         ['gg', '11:11:17'],
+         ['hh', '11:11:18'],
+         ['ii', '11:11:19'],
+         ['jj', '11:11:10'],
       ],
       "Bug 903387: slave has rows"
    );
@@ -213,11 +214,11 @@ SKIP: {
          qw(--limit 10)) },
    );
 
-   $rows = $master_dbh->selectall_arrayref("SELECT * FROM bri.t ORDER BY id");
+   $rows = $master_dbh->selectall_arrayref("SELECT c,t FROM bri.t ORDER BY id");
    is_deeply(
       $rows,
       [
-         [10,'jj', '11:11:10'],
+         ['jj', '11:11:10'],
       ],
       "Bug 903387: rows deleted on master"
    ) or diag(Dumper($rows));
