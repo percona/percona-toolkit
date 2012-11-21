@@ -13,17 +13,6 @@ use Test::More tests => 44;
 
 use PerconaTest;
 
-# Normally we want $trunk/common in @INC so we can "use MaakitTest" and
-# other modules path-independently.  However, mk-query-digest uses
-# HTMLProtocolParser which is a subclass of ProtocolParser, so the former
-# must "use base 'ProtocolParser'" which causes Perl to load ProtocolParser
-# from @INC.  This causes errors about ProtocolParser::new() being redefined:
-# once in mk-query-digest's copy of the module and again from the actual
-# module in $trunk/common.  We remove $trunk/common from @INC so Perl won't
-# find/load it again.\n
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
-
 require "$trunk/bin/pt-query-digest";
 
 # #############################################################################

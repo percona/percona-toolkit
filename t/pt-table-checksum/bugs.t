@@ -21,9 +21,6 @@ use Data::Dumper;
 use PerconaTest;
 use Sandbox;
 
-# Fix @INC because pt-table-checksum uses subclass OobNibbleIterator.
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-table-checksum";
 
 my $dp = new DSNParser(opts=>$dsn_opts);
