@@ -42,11 +42,11 @@ my $file = "/tmp/mk-archiver-file.txt";
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
 
 $dbh->do('set names "utf8"');
-my $original_rows = $dbh->selectall_arrayref('select * from issue_1225.t where i in (1, 2)');
+my $original_rows = $dbh->selectall_arrayref('select c from issue_1225.t where i in (1, 2)');
 is_deeply(
    $original_rows,
-   [  [ 1, 'が'],  # Your terminal must be UTF8 to see this Japanese character.
-      [ 2, 'が'],
+   [  [ 'が'],  # Your terminal must be UTF8 to see this Japanese character.
+      [ 'が'],
    ],
    "Inserted UTF8 data"
 );
@@ -62,7 +62,8 @@ $output = output(
    stderr => 1,
 );
 
-my $got = `cat $file`;
+my $got   = slurp_file($file);
+$got =~ s/^\d+//gsm;
 ok(
    no_diff(
       $got,
