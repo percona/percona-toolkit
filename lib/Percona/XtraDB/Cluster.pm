@@ -63,6 +63,98 @@ sub same_node {
    return ($val1 || '') eq ($val2 || '');
 }
 
+# TODO: Check that the PXC version supports wsrep_incoming_addresses
+sub find_cluster_nodes {
+   my ($self, %args) = @_;
+
+   my $dbh = $args{dbh};
+   my $dsn = $args{dsn};
+   my $dp  = $args{DSNParser};
+   my $make_cxn = $args{make_cxn};
+
+
+   my $sql = q{SHOW STATUS LIKE 'wsrep_incoming_addresses'};
+   PTDEBUG && _d($sql);
+   my (undef, $addresses) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d("Cluster nodes found: ", $addresses);
+   return unless $addresses;
+
+   my @addresses = grep !/\Aunspecified\z/i,
+                   split /,\s*/, $addresses;
+
+   my @nodes;
+   foreach my $address ( @addresses ) {
+      my ($host, $port) = split /:/, $address;
+      my $spec = "h=$host"
+               . ($port ? ",P=$port" : "");
+      my $node_dsn = $dp->parse($spec, $dsn);
+      my $node_dbh = eval {
+         $dp->get_dbh(
+            $dp->get_cxn_params($node_dsn), { AutoCommit => 1 });
+         PTDEBUG && _d('Connected to', $dp->as_string($node_dsn));
+      };
+      if ( $EVAL_ERROR ) {
+         print STDERR "Cannot connect to ", $dp->as_string($node_dsn),
+                      ", discovered through $sql: $EVAL_ERROR\n";
+         next;
+      }
+      $node_dbh->disconnect();
+
+      push @nodes, $make_cxn->(dsn => $node_dsn);
+   }
+
+   return @nodes;
+}
+
+# There's two reasons why there might be dupes:
+# If the "master" is a cluster node, then a DSN table might have been
+# used, and it may have all nodes' DSNs so the user can run the tool
+# on any node, in which case it has the "master" node, the DSN given
+# on the command line.
+# On the other hand, maybe find_cluster_nodes worked, in which case
+# we definitely have a dupe for the master cxn, but we may also have a
+# dupe for every other node if this was unsed in conjunction with a
+# DSN table.
+# So try to detect and remove those.
+
+sub remove_duplicate_cxns {
+   my ($self, @cxns) = @_;
+   my %addresses;
+
+   my @unique_cxns;
+   CXN:
+   foreach my $cxn ( @cxns ) {
+      # If not a cluster node, assume that it's unique
+      if ( !$self->cluster_node($cxn) ) {
+         push @unique_cxns, $cxn;
+         next CXN;
+      }
+
+      # Otherwise, check that it only shows up once.
+      my $dbh = $cxn->dbh();
+      my $sql = q{SHOW VARIABLES LIKE 'wsrep_sst_receive_address'};
+      PTDEBUG && _d($dbh, $sql);
+      my (undef, $receive_addr) = $dbh->selectrow_array();
+
+      if ( !$receive_addr ) {
+         PTDEBUG && _d(q{Query returned nothing, assuming that it's },
+                       q{not a duplicate});
+         push @unique_cxns, $cxn;
+      }
+      elsif ( $addresses{$receive_addr}++ ) {
+         PTDEBUG && _d('Removing ', $cxn->name, 'from slaves',
+            'because we already have a node from this address');
+      }
+      else {
+         push @unique_cxns, $cxn;
+      }
+
+   }
+   warn "<@cxns>";
+   warn "<@unique_cxns>";
+   return @unique_cxns;
+}
+
 sub same_cluster {
    my ($self, $cxn1, $cxn2) = @_;
 
