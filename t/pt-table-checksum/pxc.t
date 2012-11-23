@@ -272,6 +272,7 @@ is(
    "Slave is changed"
 );
 
+for my 
 $output = output(
    sub { pt_table_checksum::main(@args,
       '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
@@ -445,92 +446,101 @@ like(
    "Warns that direct replica of the master isn't found or specified",
 );
 
+# Originally, these tested a dsn table with all nodes.
 # Use the other DSN table with all three nodes.  Now the tool should
 # give a more specific warning than that ^.
-$output = output(
-   sub { pt_table_checksum::main($master_dsn,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
-      qw(-d test))
-   },
-   stderr => 1,
-);
+for my $args (
+      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
+      ["autodetecting everything"]
+   )
+{
+   my $test = shift @$args;
+   $output = output(
+      sub { pt_table_checksum::main($master_dsn,
+         @$args,
+         qw(-d test))
+      },
+      stderr => 1,
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   1,
-   "...check all nodes: 1 diff"
-) or diag($output);
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      1,
+      "...check all nodes: 1 diff ($test)"
+   ) or diag($output);
 
-# 11-17T13:02:54      0      1       26       1       0   0.021 test.t
-like(
-   $output,
-   qr/^\S+\s+  # ts
-      0\s+     # errors
-      1\s+     # diffs
-      26\s+    # rows
-      \d+\s+   # chunks
-      0\s+     # skipped
-      \S+\s+   # time
-      test.t$  # table
-   /xm,
-   "...check all nodes: it's in test.t"
-);
+   # 11-17T13:02:54      0      1       26       1       0   0.021 test.t
+   like(
+      $output,
+      qr/^\S+\s+  # ts
+         0\s+     # errors
+         1\s+     # diffs
+         26\s+    # rows
+         \d+\s+   # chunks
+         0\s+     # skipped
+         \S+\s+   # time
+         test.t$  # table
+      /xm,
+      "...check all nodes: it's in test.t ($test)"
+   );
 
-like(
-   $output,
-   qr/Diffs will only be detected if the cluster is consistent with h=127.1,P=12345 because h=127.1,P=12349/,
-   "Warns that diffs only detected if cluster consistent with direct replica",
-);
+   like(
+      $output,
+      qr/Diffs will only be detected if the cluster is consistent with h=127.1,P=12345 because h=127.1,P=12349/,
+      "Warns that diffs only detected if cluster consistent with direct replica ($test)",
+   );
 
-# Restore node1 so the cluster is consistent, but then make node2 differ.
-# ptc should NOT detect this diff because the checksum query will replicate
-# to node1, node1 isn't different, so it broadcasts the result in ROW format
-# that all is ok, which node2 gets and thus false reports.  This is why
-# those ^ warnings exist.
-$node1->do("set sql_log_bin=0");
-$node1->do("update test.t set c='z' where c='zebra'");
-$node1->do("set sql_log_bin=1");
+   # Restore node1 so the cluster is consistent, but then make node2 differ.
+   # ptc should NOT detect this diff because the checksum query will replicate
+   # to node1, node1 isn't different, so it broadcasts the result in ROW format
+   # that all is ok, which node2 gets and thus false reports.  This is why
+   # those ^ warnings exist.
+   $node1->do("set sql_log_bin=0");
+   $node1->do("update test.t set c='z' where c='zebra'");
+   $node1->do("set sql_log_bin=1");
 
-$node2->do("set sql_log_bin=0");
-$node2->do("update test.t set c='zebra' where c='z'");
-$node2->do("set sql_log_bin=1");
+   $node2->do("set sql_log_bin=0");
+   $node2->do("update test.t set c='zebra' where c='z'");
+   $node2->do("set sql_log_bin=1");
 
-($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
-is(
-   $row,
-   "zebra",
-   "Node2 is changed again"
-);
+   ($row) = $node2->selectrow_array("select c from test.t order by c desc limit 1");
+   is(
+      $row,
+      "zebra",
+      "Node2 is changed again ($test)"
+   );
 
-($row) = $node1->selectrow_array("select c from test.t order by c desc limit 1");
-is(
-   $row,
-   "z",
-   "Node1 not changed again"
-);
+   ($row) = $node1->selectrow_array("select c from test.t order by c desc limit 1");
+   is(
+      $row,
+      "z",
+      "Node1 not changed again ($test)"
+   );
 
-($row) = $node3->selectrow_array("select c from test.t order by c desc limit 1");
-is(
-   $row,
-   "z",
-   "Node3 not changed again"
-);
+   ($row) = $node3->selectrow_array("select c from test.t order by c desc limit 1");
+   is(
+      $row,
+      "z",
+      "Node3 not changed again ($test)"
+   );
 
-# the other DSN table with all three nodes, but it won't matter because
-# node1 is going to broadcast the false-positive that there are no diffs.
-$output = output(
-   sub { pt_table_checksum::main($master_dsn,
-      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
-      qw(-d test))
-   },
-   stderr => 1,
-);
+   # the other DSN table with all three nodes, but it won't matter because
+   # node1 is going to broadcast the false-positive that there are no diffs.
+   $output = output(
+      sub { pt_table_checksum::main($master_dsn,
+         @$args,
+         qw(-d test))
+      },
+      stderr => 1,
+   );
 
-is(
-   PerconaTest::count_checksum_results($output, 'diffs'),
-   0,
-   "Limitation: diff not on direct replica not detected"
-) or diag($output);
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      0,
+      "Limitation: diff not on direct replica not detected ($test)"
+   ) or diag($output);
+
+}
 
 # ###########################################################################
 # Be sure to stop the slave on node1, else further test will die with:

@@ -64,6 +64,8 @@ sub same_node {
 }
 
 # TODO: Check that the PXC version supports wsrep_incoming_addresses
+# Not really necessary, actually. But in case it's needed,
+# wsrep_provider_version =~ /[0-9]+\.[0-9]+\(r([0-9]+)\)/ && $1 >= 137
 sub find_cluster_nodes {
    my ($self, %args) = @_;
 
@@ -72,7 +74,10 @@ sub find_cluster_nodes {
    my $dp  = $args{DSNParser};
    my $make_cxn = $args{make_cxn};
 
-
+   # Ostensibly the caller should've done this already, but
+   # useful for safety.
+   $dp->fill_in_dsn($dbh, $dsn);
+   
    my $sql = q{SHOW STATUS LIKE 'wsrep_incoming_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
@@ -88,16 +93,24 @@ sub find_cluster_nodes {
       my $spec = "h=$host"
                . ($port ? ",P=$port" : "");
       my $node_dsn = $dp->parse($spec, $dsn);
-      my $node_dbh = eval {
-         $dp->get_dbh(
-            $dp->get_cxn_params($node_dsn), { AutoCommit => 1 });
-         PTDEBUG && _d('Connected to', $dp->as_string($node_dsn));
-      };
+      my $node_dbh = eval { $dp->get_dbh(
+            $dp->get_cxn_params($node_dsn), { AutoCommit => 1 }) };
       if ( $EVAL_ERROR ) {
          print STDERR "Cannot connect to ", $dp->as_string($node_dsn),
                       ", discovered through $sql: $EVAL_ERROR\n";
+         # This is a bit strange, so an explanation is called for.
+         # If there wasn't a port, that means that this bug
+         # https://bugs.launchpad.net/percona-toolkit/+bug/1082406
+         # isn't fixed on this version of PXC. We tried using the
+         # master's port, but that didn't work. So try again, using
+         # the default port.
+         if ( !$port && $dsn->{P} != 3306 ) {
+            $address .= ":3306";
+            redo;
+         }
          next;
       }
+      PTDEBUG && _d('Connected to', $dp->as_string($node_dsn));
       $node_dbh->disconnect();
 
       push @nodes, $make_cxn->(dsn => $node_dsn);
@@ -125,7 +138,7 @@ sub remove_duplicate_cxns {
    CXN:
    foreach my $cxn ( @cxns ) {
       # If not a cluster node, assume that it's unique
-      if ( !$self->cluster_node($cxn) ) {
+      if ( !$self->is_cluster_node($cxn) ) {
          push @unique_cxns, $cxn;
          next CXN;
       }
@@ -134,7 +147,7 @@ sub remove_duplicate_cxns {
       my $dbh = $cxn->dbh();
       my $sql = q{SHOW VARIABLES LIKE 'wsrep_sst_receive_address'};
       PTDEBUG && _d($dbh, $sql);
-      my (undef, $receive_addr) = $dbh->selectrow_array();
+      my (undef, $receive_addr) = $dbh->selectrow_array($sql);
 
       if ( !$receive_addr ) {
          PTDEBUG && _d(q{Query returned nothing, assuming that it's },
@@ -150,8 +163,6 @@ sub remove_duplicate_cxns {
       }
 
    }
-   warn "<@cxns>";
-   warn "<@unique_cxns>";
    return @unique_cxns;
 }
 
