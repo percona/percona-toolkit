@@ -3425,8 +3425,7 @@ sub find_cluster_nodes {
    my $dsn = $args{dsn};
    my $dp  = $args{DSNParser};
    my $make_cxn = $args{make_cxn};
-
-
+   
    my $sql = q{SHOW STATUS LIKE 'wsrep_incoming_addresses'};
    PTDEBUG && _d($sql);
    my (undef, $addresses) = $dbh->selectrow_array($sql);
@@ -3442,16 +3441,18 @@ sub find_cluster_nodes {
       my $spec = "h=$host"
                . ($port ? ",P=$port" : "");
       my $node_dsn = $dp->parse($spec, $dsn);
-      my $node_dbh = eval {
-         $dp->get_dbh(
-            $dp->get_cxn_params($node_dsn), { AutoCommit => 1 });
-         PTDEBUG && _d('Connected to', $dp->as_string($node_dsn));
-      };
+      my $node_dbh = eval { $dp->get_dbh(
+            $dp->get_cxn_params($node_dsn), { AutoCommit => 1 }) };
       if ( $EVAL_ERROR ) {
          print STDERR "Cannot connect to ", $dp->as_string($node_dsn),
                       ", discovered through $sql: $EVAL_ERROR\n";
+         if ( !$port && $dsn->{P} != 3306 ) {
+            $address .= ":3306";
+            redo;
+         }
          next;
       }
+      PTDEBUG && _d('Connected to', $dp->as_string($node_dsn));
       $node_dbh->disconnect();
 
       push @nodes, $make_cxn->(dsn => $node_dsn);
@@ -3468,7 +3469,7 @@ sub remove_duplicate_cxns {
    my @unique_cxns;
    CXN:
    foreach my $cxn ( @cxns ) {
-      if ( !$self->cluster_node($cxn) ) {
+      if ( !$self->is_cluster_node($cxn) ) {
          push @unique_cxns, $cxn;
          next CXN;
       }
@@ -3476,7 +3477,7 @@ sub remove_duplicate_cxns {
       my $dbh = $cxn->dbh();
       my $sql = q{SHOW VARIABLES LIKE 'wsrep_sst_receive_address'};
       PTDEBUG && _d($dbh, $sql);
-      my (undef, $receive_addr) = $dbh->selectrow_array();
+      my (undef, $receive_addr) = $dbh->selectrow_array($sql);
 
       if ( !$receive_addr ) {
          PTDEBUG && _d(q{Query returned nothing, assuming that it's },
@@ -3492,8 +3493,6 @@ sub remove_duplicate_cxns {
       }
 
    }
-   warn "<@cxns>";
-   warn "<@unique_cxns>";
    return @unique_cxns;
 }
 
@@ -8767,14 +8766,57 @@ sub main {
          make_cxn => $make_cxn_cluster,
       );
 
-      if ( $cluster_name_for{$master_cxn} ) {
-         push @$slaves, $cluster->find_cluster_nodes(
-            dbh       => $master_dbh,
-            dsn       => $master_dsn,
-            make_cxn  => $make_cxn_cluster,
-            DSNParser => $dp,
-         );
+      if ( $o->get('recursion-method') !~ /^dsn/i ) {
+         my %seen;
+         my @new_slaves;
+         for my $slave ( @$slaves ) {
+            next unless $cluster->is_cluster_node($slave);
+            my @nodes = $cluster->find_cluster_nodes(
+               dbh       => $slave->dbh(),
+               dsn       => $slave->dsn(),
+               make_cxn  => $make_cxn_cluster,
+               DSNParser => $dp,
+            );
+            @nodes = grep { !$seen{$dp->as_string($_->dsn)}++ }
+                     grep { !$cluster->same_node($slave, $_)  } @nodes;
+            push @new_slaves, @nodes;
 
+            foreach my $node (@nodes) {
+               my $node_slaves = $ms->get_slaves(
+                  dbh      => $node->dbh(),
+                  dsn      => $node->dsn(),
+                  make_cxn => $make_cxn_cluster,
+               );
+               push @new_slaves, @$node_slaves;
+            }
+            ($master_cxn, @new_slaves) =
+               $cluster->remove_duplicate_cxns($master_cxn, @new_slaves);
+         }
+         push @$slaves, @new_slaves;
+      }
+      
+      if ( $cluster_name_for{$master_cxn} ) {
+         if ( $o->get('recursion-method') !~ /^dsn/i ) {
+            my @nodes = $cluster->find_cluster_nodes(
+               dbh       => $master_dbh,
+               dsn       => $master_dsn,
+               make_cxn  => $make_cxn_cluster,
+               DSNParser => $dp,
+            );
+
+            @nodes = grep { !$cluster->same_node($master_cxn, $_) } @nodes;
+            push @$slaves, @nodes;
+
+            foreach my $node (@nodes) {
+               my $node_slaves = $ms->get_slaves(
+                  dbh      => $node->dbh(),
+                  dsn      => $node->dsn(),
+                  make_cxn => $make_cxn_cluster,
+               );
+               push @$slaves, @$node_slaves;
+            }
+         }
+         
          my @pruned_slaves;
          ($master_cxn, @pruned_slaves) =
             $cluster->remove_duplicate_cxns($master_cxn, @$slaves);
