@@ -76,7 +76,8 @@ sub find_cluster_nodes {
 
    # Ostensibly the caller should've done this already, but
    # useful for safety.
-   $dp->fill_in_dsn($dbh, $dsn);
+   # TODO this fails with a strange error.
+   #$dp->fill_in_dsn($dbh, $dsn);
    
    my $sql = q{SHOW STATUS LIKE 'wsrep_incoming_addresses'};
    PTDEBUG && _d($sql);
@@ -131,39 +132,29 @@ sub find_cluster_nodes {
 # So try to detect and remove those.
 
 sub remove_duplicate_cxns {
-   my ($self, @cxns) = @_;
-   my %addresses;
+   my ($self, %args) = @_;
+   my @cxns     = @{$args{cxns}};
+   my $seen_ids = $args{seen_ids};
+   PTDEBUG && _d("Removing duplicates from ", join " ", map { $_->name } @cxns);
+   my @trimmed_cxns;
 
-   my @unique_cxns;
-   CXN:
-   foreach my $cxn ( @cxns ) {
-      # If not a cluster node, assume that it's unique
-      if ( !$self->is_cluster_node($cxn) ) {
-         push @unique_cxns, $cxn;
-         next CXN;
-      }
+   for my $cxn ( @cxns ) {
+      my $dbh  = $cxn->dbh();
+      my $sql  = q{SELECT @@SERVER_ID};
+      PTDEBUG && _d($sql);
+      my ($id) = $dbh->selectrow_array($sql);
+      PTDEBUG && _d('Server ID for ', $cxn->name, ': ', $id);
 
-      # Otherwise, check that it only shows up once.
-      my $dbh = $cxn->dbh();
-      my $sql = q{SHOW VARIABLES LIKE 'wsrep_sst_receive_address'};
-      PTDEBUG && _d($dbh, $sql);
-      my (undef, $receive_addr) = $dbh->selectrow_array($sql);
-
-      if ( !$receive_addr ) {
-         PTDEBUG && _d(q{Query returned nothing, assuming that it's },
-                       q{not a duplicate});
-         push @unique_cxns, $cxn;
-      }
-      elsif ( $addresses{$receive_addr}++ ) {
-         PTDEBUG && _d('Removing ', $cxn->name, 'from slaves',
-            'because we already have a node from this address');
+      if ( ! $seen_ids->{$id}++ ) {
+         push @trimmed_cxns, $cxn
       }
       else {
-         push @unique_cxns, $cxn;
+         PTDEBUG && _d("Removing ", $cxn->name,
+                       ", ID $id, because we've already seen it");
       }
-
    }
-   return @unique_cxns;
+
+   return @trimmed_cxns;
 }
 
 sub same_cluster {
@@ -176,6 +167,56 @@ sub same_cluster {
    my $cluster2 = $self->get_cluster_name($cxn2);
 
    return ($cluster1 || '') eq ($cluster2 || '');
+}
+
+sub autodetect_nodes {
+   my ($self, %args) = @_;
+   my $ms       = $args{MasterSlave};
+   my $dp       = $args{DSNParser};
+   my $make_cxn = $args{make_cxn};
+   my $nodes    = $args{nodes};
+   my $seen_ids = $args{seen_ids};
+
+   return unless @$nodes;
+
+   my @new_nodes;
+   for my $node ( @$nodes ) {
+      my @nodes = $self->find_cluster_nodes(
+         dbh       => $node->dbh(),
+         dsn       => $node->dsn(),
+         make_cxn  => $make_cxn,
+         DSNParser => $dp,
+      );
+      push @new_nodes, @nodes;
+   }
+
+   @new_nodes = $self->remove_duplicate_cxns(
+      cxns     => \@new_nodes,
+      seen_ids => $seen_ids
+   );
+
+   my @new_slaves;
+   foreach my $node (@new_nodes) {
+      my $node_slaves = $ms->get_slaves(
+         dbh      => $node->dbh(),
+         dsn      => $node->dsn(),
+         make_cxn => $make_cxn,
+      );
+      push @new_slaves, @$node_slaves;
+   }
+
+   @new_slaves = $self->remove_duplicate_cxns(
+      cxns     => \@new_slaves,
+      seen_ids => $seen_ids
+   );
+
+   my @new_slave_nodes = grep { $self->is_cluster_node($_) } @new_slaves;
+
+   return @new_nodes, @new_slaves,
+          $self->autodetect_nodes(
+            %args,
+            nodes => \@new_slave_nodes,
+          );
 }
 
 sub _d {
