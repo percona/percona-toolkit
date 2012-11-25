@@ -614,39 +614,31 @@ $sb->load_file('node4', "$sample/a-z.sql");
 # Add node4 in the cluster2 to the DSN table.
 $node1->do(qq/INSERT INTO dsns.dsns VALUES (5, null, '$c->{node4}->{dsn}')/);
 
-for my $args (
-      ["using recusion-method", '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns"],
-      ["autodetecting everything"]
-   )
-{
-   my $test = shift @$args;
+$output = output(
+   sub { pt_table_checksum::main(@args,
+      '--recursion-method', "dsn=$node1_dsn,D=dsns,t=dsns",
+      qw(-d test))
+   },
+   stderr => 1,
+);
 
-   $output = output(
-      sub { pt_table_checksum::main(@args,
-         @$args,
-         qw(-d test))
-      },
-      stderr => 1,
-   );
+like(
+   $output,
+   qr/h=127(?:\Q.0.0\E)?.1,P=12345 is in cluster pt_sandbox_cluster/,
+   "Detects that node1 is in pt_sandbox_cluster"
+);
 
-   like(
-      $output,
-      qr/h=127(?:\Q.0.0\E)?.1,P=12345 is in cluster pt_sandbox_cluster/,
-      "Detects that node1 is in pt_sandbox_cluster ($test)"
-   );
+like(
+   $output,
+   qr/h=127(?:\Q.0.0\E)?.1,P=2900 is in cluster cluster2/,
+   "Detects that node4 is in cluster2"
+);
 
-   like(
-      $output,
-      qr/h=127(?:\Q.0.0\E)?.1,P=2900 is in cluster cluster2/,
-      "Detects that node4 is in cluster2 ($test)"
-   );
-
-   unlike(
-      $output,
-      qr/test/,
-      "Different clusters, no results ($test)"
-   );
-}
+unlike(
+   $output,
+   qr/test/,
+   "Different clusters, no results"
+);
    
 $sb->stop_sandbox(qw(node4 node5 node6));
 
