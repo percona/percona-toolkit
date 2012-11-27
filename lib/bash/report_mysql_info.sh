@@ -1091,6 +1091,19 @@ section_mysql_files () {
    done
 }
 
+section_percona_xtradb_cluster () {
+   local mysql_var="$1"
+   local mysql_status="$2"
+
+   name_val "Cluster"         "$(get_var "wsrep_cluster_name" "$mysql_var")"
+   name_val "Node"            "$(get_var "wsrep_node_name" "$mysql_var")"
+   name_val "Node status"     "$(get_var "wsrep_cluster_status" "$mysql_status")"
+   name_val "Cluster address" "$(get_var "wsrep_cluster_address" "$mysql_var")"
+   name_val "SST method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
+   name_val "Cluster size"    "$(get_var "wsrep_cluster_size" "$mysql_status")"
+   name_val "Cluster nodes"   "$(get_var "wsrep_incoming_addresses" "$mysql_status")"
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -1179,6 +1192,20 @@ report_mysql_summary () {
    # ########################################################################
    section "Key Percona Server features"
    section_percona_server_features "$dir/mysql-variables"
+
+   # ########################################################################
+   # Percona XtraDB Cluster data
+   # ########################################################################
+   section "Percona XtraDB Cluster"
+   local has_wsrep="$(get_var "wsrep_on" "$dir/mysql-variables")"
+   if [ -n "${has_wsrep:-""}" ]; then
+      local wsrep_on="$(feat_on "$dir/mysql-variables" "wsrep_on")"
+      if [ "${wsrep_on:-""}" = "Enabled" ]; then
+         section_percona_xtradb_cluster "$dir/mysql-variables" "$dir/mysql-status"
+      else
+         name_val "wsrep_on" "OFF"
+      fi
+   fi
 
    # ########################################################################
    # Plugins

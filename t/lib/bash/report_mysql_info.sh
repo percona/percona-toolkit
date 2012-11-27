@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 34
+plan 36
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -738,6 +738,19 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp004.txt" \
    "report_mysql_summary, dir: temp004"
+
+report_mysql_summary "$samples/temp006" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_temp006.txt" \
+   "report_mysql_summary, dir: temp006 (PXC, cluster node)"
+
+report_mysql_summary "$samples/temp007" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_temp007.txt" \
+   "report_mysql_summary, dir: temp007 (PXC, traditional master)"
+
 
 # ###########################################################################
 # Done

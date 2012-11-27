@@ -56,7 +56,7 @@ like(
 );
 
 # --read-samples
-for my $i (2..5) {
+for my $i (2..7) {
    ok(
       no_diff(
          sub {
