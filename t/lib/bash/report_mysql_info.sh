@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 33
+plan 34
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -306,6 +306,16 @@ mysql   818  0.0 17.4 45292 20584  v0  I     3:01PM   0:02.28 /usr/local/libexec
 EOF
 parse_mysqld_instances "$PT_TMPDIR/in" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
 no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_mysqld_instances"
+
+cat <<EOF > "$PT_TMPDIR/expected"
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+  12345 /tmp/12345/data            ?    ?   /tmp/12345/mysql_sandbox12345.sock
+  12346 /tmp/12346/data            ?    ?   /tmp/12346/mysql_sandbox12346.sock
+  12347 /tmp/12347/data            ?    ?   /tmp/12347/mysql_sandbox12347.sock
+EOF
+parse_mysqld_instances "$samples/ps-mysqld-006.txt" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ps-mysqld-006.txt (uses --defaults-file)"
 
 # ###########################################################################
 # get_mysql_*

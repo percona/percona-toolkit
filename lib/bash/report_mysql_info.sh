@@ -104,9 +104,10 @@ parse_mysqld_instances () {
    local file="$1"
    local variables_file="$2"
 
-   local socket=${socket:-""}
-   local port=${port:-""}
-   local datadir="${datadir:-""}"
+   local socket=""
+   local port=""
+   local datadir=""
+   local defaults_file=""
 
    [ -e "$file" ] || return
 
@@ -127,7 +128,17 @@ parse_mysqld_instances () {
          if echo "${word}" | grep -- "--datadir=" > /dev/null; then
             datadir="$(echo "${word}" | cut -d= -f2)"
          fi
+         if echo "${word}" | grep -- "--defaults-file=" > /dev/null; then
+            defaults_file="$(echo "${word}" | cut -d= -f2)"
+         fi
       done
+      
+      if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
+         socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
+         port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
+         datadir="${datadir:-"$(grep "^datadir\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
+      fi
+
       local nice="$(get_var "internal::nice_of_$pid" "$variables_file")"
       local oom="$(get_var "internal::oom_of_$pid" "$variables_file")"
       # Only used during testing
@@ -136,6 +147,12 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
+      
+      # Need to unset all of them in case the next process uses --defaults-file
+      defaults_file=""
+      socket=""
+      port=""
+      datadir=""
    done
 }
 
