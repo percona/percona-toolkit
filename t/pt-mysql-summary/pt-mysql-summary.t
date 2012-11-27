@@ -14,7 +14,7 @@ use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
-use Test::More tests => 7;
+use Test::More;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
@@ -61,7 +61,8 @@ for my $i (2..5) {
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Skipping schema analysis/'`
+            my $out = `$trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Skipping schema analysis/'`;
+            print $out;
          },
          "t/pt-mysql-summary/samples/expected_output_temp00$i.txt",
       ),
@@ -69,4 +70,16 @@ for my $i (2..5) {
    );
 }
 
+# Test that --help works under sh
+
+my $sh   = `sh   $trunk/bin/$tool --help`;
+my $bash = `bash $trunk/bin/$tool --help`;
+
+is(
+   $sh,
+   $bash,
+   "--help works under sh and bash"
+);
+
+done_testing;
 exit;
