@@ -101,9 +101,9 @@ sub test_alter_table {
    my $tbl_struct = $tp->parse($ddl);
 
    my $cols = '*';
-   if ( $test_type eq 'drop_col' && !grep { $_ eq '--dry-run' } @$cmds ) {
+   if ( $test_type =~ m/(?:add|drop)_col/  && !grep { $_ eq '--dry-run' } @$cmds ) {
       # Don't select the column being dropped.
-      my $col = $args{drop_col};
+      my $col = $args{drop_col} || $args{new_col};
       die "I need a drop_col argument" unless $col;
       $cols = join(', ', grep { $_ ne $col } @{$tbl_struct->{cols}});
    }
@@ -148,6 +148,7 @@ sub test_alter_table {
    );
 
    my $new_ddl = $tp->get_create_table($master_dbh, $db, $tbl);
+   my $new_tbl_struct = $tp->parse($new_ddl);
    my $fail    = 0;
 
    is(
@@ -165,7 +166,7 @@ sub test_alter_table {
    ) or $fail = 1;
 
    # Rows in the original and new table should be identical.
-   my $new_rows = $master_dbh->selectall_arrayref("SELECT * FROM $table ORDER BY `$pk_col`");
+   my $new_rows = $master_dbh->selectall_arrayref("SELECT $cols FROM $table ORDER BY `$pk_col`");
    is_deeply(
       $new_rows,
       $orig_rows,
@@ -174,7 +175,7 @@ sub test_alter_table {
 
    if ( grep { $_ eq '--no-drop-new-table' } @$cmds ) {
       $new_rows = $master_dbh->selectall_arrayref(
-         "SELECT * FROM `$db`.`$new_tbl` ORDER BY `$pk_col`");
+         "SELECT $cols FROM `$db`.`$new_tbl` ORDER BY `$pk_col`");
       is_deeply(
          $new_rows,
          $orig_rows,
@@ -217,6 +218,18 @@ sub test_alter_table {
       }
    }
    elsif ( $test_type eq 'add_col' ) {
+      if ( $args{no_change} ) {
+         ok(
+            !$new_tbl_struct->{is_col}->{$args{new_col}},
+            "$name $args{new_col} not added"
+         );
+      }
+      else {
+         ok(
+            $new_tbl_struct->{is_col}->{$args{new_col}},
+            "$name $args{new_col} added"
+         );
+      }
    }
    elsif ( $test_type eq 'new_engine' ) {
       my $new_engine = lc($args{new_engine});
@@ -644,22 +657,28 @@ test_table(
 test_alter_table(
    name       => "--no-swap-tables",
    table      => "pt_osc.t",
-   file       => "basic_no_fks.sql",
+   file       => "basic_no_fks_innodb.sql",
    max_id     => 20,
-   test_type  => "new_engine",  # Engine doesn't actually change
-   new_engine => "MyISAM",      # because the tables aren't swapped
-   cmds       => [qw(--execute --alter ENGINE=InnoDB --no-swap-tables)],
+   test_type  => "add_col",
+   new_col    => "foo",
+   no_change  => 1,
+   cmds       => [
+      qw(--execute --no-swap-tables), '--alter', 'ADD COLUMN foo INT'
+   ],
 );
 
 test_alter_table(
    name       => "--no-swap-tables --no-drop-new-table",
    table      => "pt_osc.t",
-   file       => "basic_no_fks.sql",
+   file       => "basic_no_fks_innodb.sql",
    max_id     => 20,
-   test_type  => "new_engine",  # Engine doesn't actually change
-   new_engine => "MyISAM",      # because the tables aren't swapped
-   cmds       => [qw(--execute --alter ENGINE=InnoDB --no-swap-tables),
-                  qw(--no-drop-new-table)],
+   test_type  => "add_col",
+   new_col    => "foo",
+   no_change  => 1,
+   cmds       => [
+      qw(--execute --no-swap-tables), '--alter', 'ADD COLUMN foo INT',
+      qw(--no-drop-new-table),
+   ],
 );
 
 # #############################################################################

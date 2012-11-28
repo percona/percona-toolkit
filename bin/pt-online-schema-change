@@ -8177,20 +8177,23 @@ sub main {
    # ########################################################################
    # Check the --alter statement.  This is done again after the 
    # ########################################################################
-   my $renamed_cols = find_renamed_cols(
-      alter       => $o->get('alter'),
-      TableParser => $tp,
-   );
-
-   if ( $o->get('check-alter') ) {
-      check_alter(
-         tbl          => $orig_tbl,
-         alter        => $o->get('alter'),
-         dry_run      => $o->get('dry-run'),
-         renamed_cols => $renamed_cols,
-         Cxn          => $cxn,
-         TableParser  => $tp,
+   my $renamed_cols = {};
+   if ( my $alter = $o->get('alter') ) {
+      $renamed_cols = find_renamed_cols(
+         alter       => $o->get('alter'),
+         TableParser => $tp,
       );
+
+      if ( $o->get('check-alter') ) {
+         check_alter(
+            tbl          => $orig_tbl,
+            alter        => $alter,
+            dry_run      => $o->get('dry-run'),
+            renamed_cols => $renamed_cols,
+            Cxn          => $cxn,
+            TableParser  => $tp,
+         );
+      }
    }
 
    if ( %$renamed_cols && !$o->get('dry-run') ) {
