@@ -8175,7 +8175,7 @@ sub main {
    };
 
    # ########################################################################
-   # Check the --alter statement.  This is done again after the 
+   # Check the --alter statement.
    # ########################################################################
    my $renamed_cols = {};
    if ( my $alter = $o->get('alter') ) {
