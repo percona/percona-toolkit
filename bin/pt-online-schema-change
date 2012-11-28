@@ -37,6 +37,7 @@ BEGIN {
       VersionCheck
       HTTPMicro
       Pingback
+      Percona::XtraDB::Cluster
    ));
 }
 
@@ -7535,10 +7536,13 @@ sub _d {
 
 # ###########################################################################
 # Percona::XtraDB::Cluster package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/XtraDB/Cluster.pm
+#   t/lib/Percona/XtraDB/Cluster.t
+# See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-# Package: Percona::XtraDB::Cluster
-# Helper methods for dealing with Percona XtraDB Cluster nodes.
 package Percona::XtraDB::Cluster;
 
 use strict;
@@ -7585,7 +7589,6 @@ sub same_node {
 sub same_cluster {
    my ($self, $cxn1, $cxn2) = @_;
 
-   # They can't be the same cluster if one of them isn't in a cluster.
    return 0 if !$self->is_cluster_node($cxn1) || !$self->is_cluster_node($cxn2);
 
    my $cluster1 = $self->get_cluster_name($cxn1);
