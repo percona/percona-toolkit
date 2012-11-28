@@ -155,7 +155,7 @@ sub check_ids {
 # #############################################################################
 # Attempt to alter a table while another process is changing it.
 # #############################################################################
-sleep 2;
+
 my $db_flavor = VersionParser->new($master_dbh)->flavor();
 if ( $db_flavor =~ m/XtraDB Cluster/ ) {
    $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");

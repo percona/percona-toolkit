@@ -51,11 +51,10 @@ $sb->load_file('master', "$sample/data-loss-bug-1068562.sql");
       qw(--execute)) },
 );
 
-is(
+ok(
    $exit_status,
-   255,
    "Die if --execute without --no-check-alter"
-);
+) or diag($output);
 
 like(
    $output,
@@ -95,7 +94,7 @@ is(
    $exit_status,
    0,
    "sakila.city: Exit status 0",
-);
+) or diag($output);
 
 my $mod = $master_dbh->selectall_arrayref(q{SELECT some_cities FROM sakila.city});
 
@@ -177,7 +176,7 @@ is(
 
 like(
    $output,
-   qr/first_name to first_name_mod, last_name to last_name_mod/ms,
+   qr/first_name to first_name_mod.+?last_name to last_name_mod/ms,
    "--dry-run warns about renaming columns"
 );
 
