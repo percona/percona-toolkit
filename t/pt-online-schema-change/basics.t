@@ -15,6 +15,7 @@ use Time::HiRes qw(sleep);
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-online-schema-change";
+require VersionParser;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -46,7 +47,7 @@ my $rows;
 # Tool shouldn't run without --execute (bug 933232).
 # #############################################################################
 
-$sb->load_file('master', "$sample/basic_no_fks.sql");
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
 ($output, $exit) = full_output(
    sub { pt_online_schema_change::main(@args, "$dsn,D=pt_osc,t=t",
@@ -57,7 +58,7 @@ like(
    $output,
    qr/neither --dry-run nor --execute was specified/,
    "Doesn't run without --execute (bug 933232)"
-) or warn $output;
+) or diag($output);
 
 my $ddl = $master_dbh->selectrow_arrayref("show create table pt_osc.t");
 like(
@@ -305,36 +306,71 @@ sub test_alter_table {
 # The most basic: alter a small table with no fks that's not active.
 # #############################################################################
 
-test_alter_table(
-   name       => "Basic no fks --dry-run",
-   table      => "pt_osc.t",
-   file       => "basic_no_fks.sql",
-   max_id     => 20,
-   test_type  => "new_engine",
-   new_engine => "MyISAM",
-   cmds       => [qw(--dry-run --alter ENGINE=InnoDB)],
-);
+my $db_flavor = VersionParser->new($master_dbh)->flavor();
+if ( $db_flavor =~ m/XtraDB Cluster/ ) {
+   test_alter_table(
+      name       => "Basic no fks --dry-run",
+      table      => "pt_osc.t",
+      file       => "basic_no_fks_innodb.sql",
+      max_id     => 20,
+      test_type  => "drop_col",
+      drop_col   => "d",
+      cmds       => [qw(--dry-run --alter), 'DROP COLUMN d'],
+   );
 
-test_alter_table(
-   name       => "Basic no fks --execute",
-   table      => "pt_osc.t",
-   # The previous test should not have modified the table.
-   # file       => "basic_no_fks.sql",
-   # max_id     => 20,
-   test_type  => "new_engine",
-   new_engine => "InnoDB",
-   cmds       => [qw(--execute --alter ENGINE=InnoDB)],
-);
+   test_alter_table(
+      name       => "Basic no fks --execute",
+      table      => "pt_osc.t",
+      # The previous test should not have modified the table.
+      # file       => "basic_no_fks_innodb.sql",
+      # max_id     => 20,
+      test_type  => "drop_col",
+      drop_col   => "d",
+      cmds       => [qw(--execute --alter), 'DROP COLUMN d'],
+   );
 
-test_alter_table(
-   name       => "--execute but no --alter",
-   table      => "pt_osc.t",
-   file       => "basic_no_fks.sql",
-    max_id     => 20,
-   test_type  => "new_engine",
-   new_engine => "MyISAM",
-   cmds       => [qw(--execute)],
-);
+   test_alter_table(
+      name       => "--execute but no --alter",
+      table      => "pt_osc.t",
+      file       => "basic_no_fks_innodb.sql",
+       max_id     => 20,
+      test_type  => "new_engine",    # When there's no change, we just check
+      new_engine => "InnoDB",        # the engine as a NOP.  Any other
+      cmds       => [qw(--execute)], # unintended changes are still detected.
+   );
+}
+else {
+   test_alter_table(
+      name       => "Basic no fks --dry-run",
+      table      => "pt_osc.t",
+      file       => "basic_no_fks.sql",
+      max_id     => 20,
+      test_type  => "new_engine",
+      new_engine => "MyISAM",
+      cmds       => [qw(--dry-run --alter ENGINE=InnoDB)],
+   );
+
+   test_alter_table(
+      name       => "Basic no fks --execute",
+      table      => "pt_osc.t",
+      # The previous test should not have modified the table.
+      # file       => "basic_no_fks.sql",
+      # max_id     => 20,
+      test_type  => "new_engine",
+      new_engine => "InnoDB",
+      cmds       => [qw(--execute --alter ENGINE=InnoDB)],
+   );
+
+   test_alter_table(
+      name       => "--execute but no --alter",
+      table      => "pt_osc.t",
+      file       => "basic_no_fks.sql",
+       max_id     => 20,
+      test_type  => "new_engine",
+      new_engine => "MyISAM",
+      cmds       => [qw(--execute)],
+   );
+}
 
 # ############################################################################
 # Alter a table with foreign keys.
@@ -520,7 +556,7 @@ SKIP: {
    );
 
    # Restore the original fks.
-   diag('Restoring original Sakila foreign keys...');
+   diag('Restoring sakila...');
    diag(`$trunk/sandbox/load-sakila-db 12345`);
 }
 
@@ -528,23 +564,18 @@ SKIP: {
 # --alther-foreign-keys-method=none.  This intentionally breaks fks because
 # they're not updated so they'll point to the old table that is dropped.
 # #############################################################################
-diag('Loading file and waiting for replication...');
-$sb->load_file('master', "$sample/basic_with_fks.sql");
 
 # Specify --alter-foreign-keys-method for a table with no child tables.
 test_alter_table(
    name         => "Update fk method none",
+   file         => "basic_with_fks.sql",
    table        => "pt_osc.country",
    pk_col       => "country_id",
-   file         => "basic_with_fks.sql",
+   max_id       => 20,
    test_type    => "new_engine",
    new_engine   => "innodb",
    cmds         => [
-   qw(
-      --execute
-      --alter-foreign-keys-method none
-   ),
-      '--alter', 'ENGINE=INNODB',
+      qw(--execute --alter-foreign-keys-method none --alter ENGINE=INNODB)
    ],
 );
 
@@ -654,7 +685,7 @@ ok(
          '--execute', '--statistics',
          '--alter', "modify column val ENUM('M','E','H') NOT NULL")
       },
-      ($sandbox_version ge '5.5'
+      ($sandbox_version ge '5.5' && $db_flavor !~ m/XtraDB Cluster/
          ? "$sample/stats-execute-5.5.txt"
          : "$sample/stats-execute.txt"),
    ),
@@ -689,7 +720,6 @@ SKIP: {
 # #############################################################################
 # Done.
 # #############################################################################
-$master_dbh->do("UPDATE mysql.proc SET created='2012-06-05 00:00:00', modified='2012-06-05 00:00:00'");
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
