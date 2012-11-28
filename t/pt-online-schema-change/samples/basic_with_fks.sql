@@ -40,17 +40,17 @@ INSERT INTO pt_osc.country VALUES
   (5, 'Spain',  null);
 
 INSERT INTO pt_osc.city VALUES
-  (null, 'Montréal', 1, null),
-  (null, 'New York', 2, null),
-  (null, 'Durango',  3, null),
-  (null, 'Paris',    4, null),
-  (null, 'Madrid',   5, null);
+  (1, 'Montréal', 1, null),
+  (2, 'New York', 2, null),
+  (3, 'Durango',  3, null),
+  (4, 'Paris',    4, null),
+  (5, 'Madrid',   5, null);
 
 INSERT INTO pt_osc.address VALUES
-  (null, 'addy 1', 1, '10000', null),
-  (null, 'addy 2', 2, '20000', null),
-  (null, 'addy 3', 3, '30000', null),
-  (null, 'addy 4', 4, '40000', null),
-  (null, 'addy 5', 5, '50000', null);
+  (1, 'addy 1', 1, '10000', null),
+  (2, 'addy 2', 2, '20000', null),
+  (3, 'addy 3', 3, '30000', null),
+  (4, 'addy 4', 4, '40000', null),
+  (5, 'addy 5', 5, '50000', null);
 
 SET foreign_key_checks=1;

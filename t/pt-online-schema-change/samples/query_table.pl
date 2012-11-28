@@ -108,7 +108,12 @@ for my $i ( 1..5_000 ) {
       commit();
       reset_counters();
       sleep $sleep;
-      $dbh->do("START TRANSACTION");
+      # TODO: somehow this can fail if called very near when
+      #       the old table is dropped.
+      eval { $dbh->do("START TRANSACTION"); };
+      if ( $EVAL_ERROR ) {
+         #Test::More::diag($EVAL_ERROR);
+      }
    }
    else {
       sleep 0.001;
