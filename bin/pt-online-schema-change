@@ -9129,6 +9129,11 @@ sub find_child_tables {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $cxn, $q) = @args{@required_args};
+
+   if ( lc($tbl->{tbl_struct}->{engine} || '') eq 'myisam' ) {
+      PTDEBUG && _d(q{MyISAM table, not looking for child tables});
+      return;
+   }
    
    PTDEBUG && _d('Finding child tables');
    
