@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 36
+plan 41
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -750,6 +750,36 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp007.txt" \
    "report_mysql_summary, dir: temp007 (PXC, traditional master)"
+
+# ###########################################################################
+# parse_wsrep_provider_options
+# ###########################################################################
+
+vars_file="$samples/temp006/mysql-variables"
+is \
+   "$(parse_wsrep_provider_options "base_host" "$vars_file")" \
+   "192.168.122.1" \
+   "parse_wsrep_provider_options works for the first option"
+
+is \
+   "$(parse_wsrep_provider_options "replicator.commit_order" "$vars_file")" \
+   "3" \
+   "parse_wsrep_provider_options works for the last option"
+
+is \
+   "$(parse_wsrep_provider_options "pc.ignore_sb" "$vars_file")" \
+   "false" \
+   "parse_wsrep_provider_options works for pc.ignore_sb"
+
+is \
+   "$(parse_wsrep_provider_options "pc.ignore_quorum" "$vars_file")" \
+   "false" \
+   "parse_wsrep_provider_options works for pc.ignore_quorum"
+
+is \
+   "$(parse_wsrep_provider_options "gcache.name" "$vars_file")" \
+   "/tmp/12345/data//galera.cache" \
+   "parse_wsrep_provider_options works for gcache.name"
 
 
 # ###########################################################################

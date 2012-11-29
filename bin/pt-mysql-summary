@@ -2003,11 +2003,32 @@ section_percona_xtradb_cluster () {
 
    name_val "Cluster"         "$(get_var "wsrep_cluster_name" "$mysql_var")"
    name_val "Node"            "$(get_var "wsrep_node_name" "$mysql_var")"
-   name_val "Node status"     "$(get_var "wsrep_cluster_status" "$mysql_status")"
-   name_val "Cluster address" "$(get_var "wsrep_cluster_address" "$mysql_var")"
-   name_val "SST method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
-   name_val "Cluster size"    "$(get_var "wsrep_cluster_size" "$mysql_status")"
-   name_val "Cluster nodes"   "$(get_var "wsrep_incoming_addresses" "$mysql_status")"
+   name_val "Node Status"     "$(get_var "wsrep_cluster_status" "$mysql_status")"
+   name_val "Cluster Address" "$(get_var "wsrep_cluster_address" "$mysql_var")"
+   name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
+   name_val "Cluster Size"    "$(get_var "wsrep_cluster_size" "$mysql_status")"
+   name_val "Cluster Nodes"   "$(get_var "wsrep_incoming_addresses" "$mysql_status")"
+   name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
+
+   name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
+   name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
+   
+   name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
+   name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
+   name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
+}
+
+parse_wsrep_provider_options () {
+   local looking_for="$1"
+   local mysql_var_file="$2"
+
+   grep wsrep_provider_options "$mysql_var_file" \
+   | perl -Mstrict -le '
+      my $provider_opts = scalar(<STDIN>);
+      my $looking_for   = $ARGV[0];
+      my %opts          = $provider_opts =~ /(\S+)\s*=\s*(\S*)(?:;|$)/g;
+      print $opts{$looking_for};
+   ' "$looking_for"
 }
 
 report_mysql_summary () {

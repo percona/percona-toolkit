@@ -203,11 +203,17 @@ wsrep_cluster_size                          100
 # Percona XtraDB Cluster #####################################
                   Cluster | pt_sandbox_cluster
                      Node | 12345
-              Node status | Primary
-          Cluster address | gcomm://
-               SST method | rsync
-             Cluster size | 3
-            Cluster nodes | 192.168.0.100,192.168.0.100,192.168.0.100
+              Node Status | Primary
+          Cluster Address | gcomm://
+               SST Method | rsync
+             Cluster Size | 3
+            Cluster Nodes | 192.168.0.100,192.168.0.100,192.168.0.100
+            Slave Threads | 2
+       Ignore Split Brain | false
+            Ignore Quorum | false
+              gcache Size | 128M
+         gcache Directory | /tmp/12345/data/
+              gcache Name | /tmp/12345/data//galera.cache
 # Plugins ####################################################
        InnoDB compression | ACTIVE
 # Query cache ################################################
