@@ -329,9 +329,9 @@ sub ok {
 
 # Dings a heartbeat on the master, and waits until the slave catches up fully.
 sub wait_for_slaves {
-   my ($self, $slave) = @_;
-   my $master_dbh = $self->get_dbh_for('master');
-   my $slave2_dbh = $self->get_dbh_for($slave || 'slave2');
+   my ($self, %args) = @_;
+   my $master_dbh = $self->get_dbh_for($args{master} || 'master');
+   my $slave2_dbh = $self->get_dbh_for($args{slave}  || 'slave2');
    my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND())");
    $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
    PerconaTest::wait_until(
@@ -527,6 +527,12 @@ sub start_cluster {
 sub port_for {
    my ($self, $server) = @_;
    return $port_for{$server};
+}
+
+sub config_file_for {
+   my ($self, $server) = @_;
+   my $port = $self->port_for($server);
+   return "/tmp/$port/my.sandbox.cnf"
 }
 
 sub _d {

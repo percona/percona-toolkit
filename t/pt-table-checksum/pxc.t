@@ -202,7 +202,7 @@ $node2->do("set sql_log_bin=1");
 # Wait for the slave to apply the binlogs from node1 (its master).
 # Then change it so it's not consistent.
 PerconaTest::wait_for_table($slave_dbh, 'test.t');
-$sb->wait_for_slaves('cslave1');
+$sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
 $slave_dbh->do("update test.t set c='zebra' where c='z'");
 
 # Another quick test first: the tool should complain about the slave's
@@ -262,7 +262,7 @@ $sb->stop_sandbox('cslave1');
 # Wait for the slave to apply the binlogs from node2 (its master).
 # Then change it so it's not consistent.
 PerconaTest::wait_for_table($slave_dbh, 'test.t');
-$sb->wait_for_slaves('cslave1');
+$sb->wait_for_slaves(master => 'node1', slave => 'cslave1');
 $slave_dbh->do("update test.t set c='zebra' where c='z'");
 
 ($row) = $slave_dbh->selectrow_array("select c from test.t order by c desc limit 1");
