@@ -228,8 +228,7 @@ format_status_variables () {
       utime2 = ${utime2};
       udays  = utime1 / 86400;
       udiff  = utime2 - utime1;
-      format=\"%-35s %11s %11s %11s\\n\";
-      printf(format, \"Variable\", \"Per day\", \"Per second\", udiff \" secs\");
+      printf(\"%-35s %11s %11s %11s\\n\", \"Variable\", \"Per day\", \"Per second\", udiff \" secs\");
    }
    \$2 ~ /^[0-9]*\$/ {
       if ( \$2 > 0 && \$2 < 18446744073709551615 ) {
@@ -252,9 +251,18 @@ format_status_variables () {
          persec = int(persec);
          nowsec = int(nowsec);
          if ( perday + persec + nowsec > 0 ) {
-            if ( perday == 0 ) { perday = \"\"; }
-            if ( persec == 0 ) { persec = \"\"; }
-            if ( nowsec == 0 ) { nowsec = \"\"; }
+            # We do the format in this roundabout way because we want two clashing
+            # behaviors: If something is zero, just print the space padding,
+            # however, if it's any other number, we want that. Problem: %s alone
+            # might use scientific notation, and we can't use %11.f for both cases
+            # as it would turn the empty string into a zero. So use both.
+            perday_format=\"%11.f\";
+            persec_format=\"%11.f\";
+            nowsec_format=\"%11.f\";
+            if ( perday == 0 ) { perday = \"\"; perday_format=\"%11s\"; }
+            if ( persec == 0 ) { persec = \"\"; persec_format=\"%11s\"; }
+            if ( nowsec == 0 ) { nowsec = \"\"; nowsec_format=\"%11s\"; }
+            format=\"%-35s \" perday_format \" \" persec_format \" \" nowsec_format \"\\n\";
             printf(format, \$1, perday, persec, nowsec);
          }
       }
