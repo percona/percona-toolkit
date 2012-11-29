@@ -7840,6 +7840,19 @@ sub main {
             . ".  Please upgrade the node, or run the tool on a newer node, "
             . "or contact Percona for support.\n";
       }
+
+      # If wsrep_OSU_method=RSU the "DDL will be only processed locally at
+      # the node."  So _table_new (the altered version of table) will not
+      # replicate to other nodes but our INSERT..SELECT operations on it
+      # will, thereby crashing all other nodes.
+      my (undef, $wsrep_osu_method) = $cxn->dbh->selectrow_array(
+         "SHOW VARIABLES LIKE 'wsrep\_OSU\_method'");
+      if ( lc($wsrep_osu_method || '') ne 'toi' ) {
+         die "wsrep_OSU_method=TOI is required because "
+            . $cxn->name . " is a cluster node.  wsrep_OSU_method is "
+            . "currently set to " . ($wsrep_osu_method || '') . ".  "
+            . "Set it to TOI, or contact Percona for support.\n";
+      }
    }
 
    # ########################################################################
@@ -9996,14 +10009,11 @@ The tool cannot alter MyISAM tables on L<"Percona XtraDB Cluster"> nodes.
 =head1 Percona XtraDB Cluster
 
 pt-online-schema-change works with Percona XtraDB Cluster (PXC) 5.5.28-23.7
-and newer, but there is one limitation: only InnoDB tables can be altered.
+and newer, but there are two limitations: only InnoDB tables can be altered,
+and C<wsrep_OSU_method> must be set to C<TOI> (total order isolation).
 The tool exits with an error if the host is a cluster node and the table
-is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>).  There is no
-way to disable this check.
-
-pt-online-schema-change is not the same as and does not require that
-C<wsrep_OSU_method> be set to C<RSU> (rolling schema upgrade).  The tool
-can be used in either mode, C<RSU> or C<TOI> (total order isolation).
+is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
+C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 
 =head1 OUTPUT
 

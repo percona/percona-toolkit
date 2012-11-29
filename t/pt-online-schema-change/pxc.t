@@ -31,12 +31,7 @@ my $node1 = $sb->get_dbh_for('node1');
 my $node2 = $sb->get_dbh_for('node2');
 my $node3 = $sb->get_dbh_for('node3');
 
-my $db_flavor = VersionParser->new($node1)->flavor();
-
-if ( $db_flavor !~ /XtraDB Cluster/ ) {
-   plan skip_all => "PXC tests";
-}
-elsif ( !$node1 ) {
+if ( !$node1 ) {
    plan skip_all => 'Cannot connect to cluster node1';
 }
 elsif ( !$node2 ) {
@@ -46,10 +41,14 @@ elsif ( !$node3 ) {
    plan skip_all => 'Cannot connect to cluster node3';
 }
 
+my $db_flavor = VersionParser->new($node1)->flavor();
+if ( $db_flavor !~ /XtraDB Cluster/ ) {
+   plan skip_all => "PXC tests";
+}
+
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
 my $node1_dsn = $sb->dsn_for('node1');
-my @args      = ($node1_dsn, qw(--lock-wait-timeout 3));
 my $output;
 my $exit;
 my $sample  = "t/pt-online-schema-change/samples/";
@@ -103,6 +102,38 @@ like(
    qr/is a cluster node and the table is being converted to MyISAM/,
    "Convert table to MyISAM: error message"
 );
+
+# #############################################################################
+# Require wsrep_OSU_method=TOI
+# #############################################################################
+
+$node1->do("SET GLOBAL wsrep_OSU_method='RSU'");
+
+($output, $exit) = full_output(
+   sub { pt_online_schema_change::main(
+      "$node1_dsn,D=pt_osc,t=t",
+      qw(--lock-wait-timeout 5),
+      qw(--print --execute --alter ENGINE=MyISAM)) },
+   stderr => 1,
+);
+
+ok(
+   $exit,
+   "wsrep_OSU_method=RSU: non-zero exit"
+) or diag($output);
+print $output;
+like(
+   $output,
+   qr/wsrep_OSU_method=TOI is required.+?currently set to RSU/,
+   "wsrep_OSU_method=RSU: error message"
+);
+
+$node1->do("SET GLOBAL wsrep_OSU_method='TOI'");
+is_deeply(
+   $node1->selectrow_arrayref("SHOW VARIABLES LIKE 'wsrep_OSU_method'"),
+   [qw(wsrep_OSU_method TOI)],
+   "Restored wsrep_OSU_method=TOI"
+) or BAIL_OUT("Failed to restore wsrep_OSU_method=TOI");
 
 # #############################################################################
 # Done.

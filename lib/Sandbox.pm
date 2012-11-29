@@ -134,11 +134,12 @@ sub get_dbh_for {
    my $dbh;
    # This is primarily for the benefit of CompareResults, but it's
    # also quite convenient when using an affected OS
+   # TODO: this fails if the server isn't started yet.
    $cxn_ops->{L} = 1 if !exists $cxn_ops->{L}
                      && !$self->can_load_data('master');
    eval { $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), $cxn_ops) };
    if ( $EVAL_ERROR ) {
-      die 'Failed to get dbh for' . $server . ': ' . $EVAL_ERROR;
+      die 'Failed to get dbh for ' . $server . ': ' . $EVAL_ERROR;
    }
    $dbh->{InactiveDestroy}  = 1; # Prevent destroying on fork.
    $dbh->{FetchHashKeyName} = 'NAME_lc' unless $cxn_ops && $cxn_ops->{no_lc};
