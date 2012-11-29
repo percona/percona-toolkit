@@ -10744,7 +10744,7 @@ can try something like the following:
 
 =head1 Percona XtraDB Cluster
 
-pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.27-23.6 and newer.
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer.
 The number of possible Percona XtraDB Cluster setups is large given that
 it can be used with regular replication as well.  Therefore, only the setups
 listed below are supported and known to work.  Other setups, like cluster
