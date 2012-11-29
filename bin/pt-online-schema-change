@@ -7826,6 +7826,22 @@ sub main {
 
    my $cxn = $make_cxn->(dsn => $dsn);
 
+   my $cluster = Percona::XtraDB::Cluster->new;
+   if ( $cluster->is_cluster_node($cxn) ) {
+      # Because of https://bugs.launchpad.net/codership-mysql/+bug/1040108
+      # ptc and pt-osc check Threads_running by default for --max-load.
+      # Strictly speaking, they can run on 5.5.27 as long as that bug doesn't
+      # manifest itself.  If it does, however, then the tools will wait forever.
+      my $pxc_version = VersionParser->new($cxn->dbh);
+      if ( $pxc_version < '5.5.28' ) {
+         die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
+            . "this tool on a cluster, but node " . $cxn->name
+            . " is running version " . $pxc_version->version
+            . ".  Please upgrade the node, or run the tool on a newer node, "
+            . "or contact Percona for support.\n";
+      }
+   }
+
    # ########################################################################
    # Check if MySQL is new enough to have the triggers we need.
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
