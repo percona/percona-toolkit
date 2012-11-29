@@ -72,7 +72,11 @@ write_rst() {
    fi
 
    $BRANCH/util/pod2rst-fixed $file > $RST_DIR/$tool.rst
-   echo "Wrote $RST_DIR/$tool.rst"
+   if [ $? -eq 0 ]; then
+      echo "Wrote $RST_DIR/$tool.rst"
+   else
+      die "Error writing $RST_DIR/tool.rst"
+   fi
 }
 
 # Parse the head1 sections from percona-toolkit.pod and write them as
