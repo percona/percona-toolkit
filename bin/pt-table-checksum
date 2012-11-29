@@ -10498,6 +10498,12 @@ sub wait_for_last_checksum {
             next;
          }
       }
+      # If we have no chunks, which can happen if the slaves
+      # were skipped due to errors, then @chunks will be empty
+      # and nothing of the following applies. In fact, it
+      # leads to an uninit warning because of $chunks[0]; See
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1052475
+      next unless @chunks;
       @chunks = sort { $a <=> $b } @chunks;
       if ( $chunks[0] < $max_chunk ) {
          if ( $check_pr ) {
