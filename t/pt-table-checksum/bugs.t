@@ -173,6 +173,23 @@ is(
 );
 
 # #############################################################################
+# pt-table-checksum does't ignore tables for --replicate-check-only
+# https://bugs.launchpad.net/percona-toolkit/+bug/1074179
+# #############################################################################
+
+$output = output(
+   sub { pt_table_checksum::main(@args, qw(--replicate-check-only --ignore-tables-regex=t)) },
+   stderr => 1,
+);
+
+chomp($output);
+
+is(
+   $output,
+   '',
+   "Bug 1074179: ignore-tables-regex works with --replicate-check-only"
+);
+# #############################################################################
 # pt-table-checksum can crash with --columns if none match
 # https://bugs.launchpad.net/percona-toolkit/+bug/1016131
 # #############################################################################

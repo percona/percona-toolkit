@@ -8864,6 +8864,7 @@ sub main {
             );
             PTDEBUG && _d(scalar @$diffs, 'checksum diffs on',
                $slave->name());
+            $diffs = filter_tables_replicate_check_only($diffs, $o);
             if ( @$diffs ) {
                $exit_status |= 1;
                if ( $o->get('quiet') < 2 ) { 
@@ -9995,6 +9996,30 @@ sub print_checksum_diffs {
 
    return;
 }
+}
+
+sub filter_tables_replicate_check_only {
+   my ($diffs, $o) = @_;
+   my @filtered_diffs;
+
+   # TODO: SchemaIterator has the methods to filter the dbs & tables,
+   # but we don't actually need a real iterator beyond that
+   my $filter = new SchemaIterator(
+      file_itr     => "Fake",
+      OptionParser => $o,
+      Quoter       => "Quoter",
+      TableParser  => "TableParser",
+   );
+
+   for my $diff (@$diffs) {
+      my ($db, $table) = Quoter->split_unquote($diff->{table});
+      next unless $filter->database_is_allowed($db)
+               && $filter->table_is_allowed($db, $table);
+      push @filtered_diffs, $diff;
+
+   }
+
+   return \@filtered_diffs;
 }
 
 sub check_repl_table {
