@@ -288,7 +288,9 @@ sub parse_my_print_defaults {
 
    # Parse the "--var=val" lines.
    my ($config, $dupes) = _parse_varvals(
-      map { $_ =~ m/^--([^=]+)(?:=(.*))?$/ } split("\n", $output)
+      map  { $_ =~ m/^--([^=]+)(?:=(.*))?$/ ? ($1, $2) : () }
+      grep { $_ !~ m/^\s*$/ }  # no empty lines
+      split("\n", $output)
    );
 
    return $config, $dupes;
@@ -309,7 +311,8 @@ sub parse_option_file {
 
    # Parse the "var=val" lines.
    my ($config, $dupes) = _parse_varvals(
-      map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ }
+      map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ ? ($1, $2) : () }
+      grep { $_ !~ m/^\s*$/ }  # no empty lines
       grep { $_ !~ m/^\s*#/ }  # no # comment lines
       split("\n", $mysqld_section)
    );
@@ -336,6 +339,11 @@ sub _parse_varvals {
    my $val;  # value for current variable
    ITEM:
    foreach my $item ( @varvals ) {
+      # We were passed an undef for the value, or we're dealing with an empty
+      # line
+      if ( !defined($item) ) {
+         $item = '';
+      }
       if ( $item ) {
          # Strip leading and trailing whitespace.
          $item =~ s/^\s+//;

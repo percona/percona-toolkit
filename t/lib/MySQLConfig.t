@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 30;
+use Test::More;
 
 use MySQLConfig;
 use DSNParser;
@@ -828,6 +828,30 @@ SKIP: {
 }
 
 # #############################################################################
+# Use of uninitialized value in substitution (s///) at pt-config-diff line 1996
+# https://bugs.launchpad.net/percona-toolkit/+bug/917770
+# #############################################################################
+
+$config = eval {
+   new MySQLConfig(
+      file                => "$trunk/t/pt-config-diff/samples/bug_917770.cnf",
+      TextResultSetParser => $trp,
+   );
+};
+
+is(
+   $EVAL_ERROR,
+   '',
+   "Bug 917770: Lives ok on lines with just spaces"
+);
+
+is(
+   $config->format(),
+   'option_file',
+   "Detect option_file type"
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 {
@@ -841,4 +865,5 @@ like(
    '_d() works'
 );
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
