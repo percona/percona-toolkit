@@ -409,19 +409,24 @@ sub clear_genlogs {
    return;
 }
 
+sub is_cluster_mode {
+   my ($self) = @_;
+   return 0 unless $self->is_cluster_node('node1');
+   return 0 unless $self->is_cluster_node('node2');
+   return 0 unless $self->is_cluster_node('node3');
+   return 1;
+}
 
 sub is_cluster_node {
    my ($self, $server) = @_;
-   
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
    PTDEBUG && _d($sql);
    my $row = $self->use($server, qq{-ss -e "$sql"});
    PTDEBUG && _d($row);
    $row = [split " ", $row];
-  
-   return $row && $row->[1]
-            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
-            : 0;
+
+   return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1');
 }
 
 sub can_load_data {

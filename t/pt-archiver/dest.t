@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
@@ -21,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
-}
-else {
-   plan tests => 14;
 }
 
 my $output;
@@ -64,8 +62,7 @@ is_deeply(
       {  a => '3', b => '2',   c => '3', d => undef },
       {  a => '4', b => '2',   c => '3', d => undef },
    ],
-   'Found rows in new table OK when archiving only some columns to another table');
-
+   'Found rows in new table OK when archiving only some columns to another table') or diag(Dumper($rows));
 
 # Archive to another table with autocommit
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
@@ -102,4 +99,4 @@ is($output + 0, 10, 'Rows got archived');
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
