@@ -12,8 +12,6 @@ use English qw(-no_match_vars);
 use Test::More;
 
 use PerconaTest;
-# See http://code.google.com/p/maatkit/wiki/Testing
-shift @INC;  # PerconaTest's unshift
 require "$trunk/bin/pt-index-usage";
 
 use Sandbox;

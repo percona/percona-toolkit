@@ -14,6 +14,7 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-online-schema-change";
+require VersionParser;
 
 use Time::HiRes qw(sleep);
 use Data::Dumper;
@@ -72,23 +73,27 @@ sub get_ids {
    my @lines = <$fh>;
    close $fh;
 
-   my %ids;
+   my %ids = (
+      updated  => '',
+      deleted  => '',
+      inserted => '',
+   );
    foreach my $line ( @lines ) {
       my ($stmt, $ids) = split(':', $line);
       chomp $ids;
-      $ids{$stmt} = $ids;
+      $ids{$stmt} = $ids || '';
    }
 
    return \%ids;
 }
 
 sub check_ids {
-   my ( $db, $tbl, $pkcol, $ids ) = @_;
+   my ( $db, $tbl, $pkcol, $ids, $test ) = @_;
    my $rows;
 
    my $n_updated  = $ids->{updated} ? ($ids->{updated}  =~ tr/,//) : 0;
    my $n_deleted  = $ids->{deleted} ? ($ids->{deleted}  =~ tr/,//) : 0;
-   my $n_inserted = ($ids->{inserted} =~ tr/,//);
+   my $n_inserted = $ids->{inserted} ?($ids->{inserted} =~ tr/,//) : 0;
 
    # "1,1"=~tr/,// returns 1 but is 2 values
    $n_updated++ if $n_updated;
@@ -100,16 +105,16 @@ sub check_ids {
    is(
       $rows->[0],
       500 + $n_inserted - $n_deleted,
-      "New table row count: 500 original + $n_inserted inserted - $n_deleted deleted"
-   ) or print Dumper($rows);
+      "$test: new table rows: 500 original + $n_inserted inserted - $n_deleted deleted"
+   ) or diag(Dumper($rows));
 
    $rows = $master_dbh->selectall_arrayref(
       "SELECT $pkcol FROM $db.$tbl WHERE $pkcol > 500 AND $pkcol NOT IN ($ids->{inserted})");
    is_deeply(
       $rows,
       [],
-      "No extra rows inserted in new table"
-   ) or print Dumper($rows);
+      "$test: no extra rows inserted in new table"
+   ) or diag(Dumper($rows));
 
    if ( $n_deleted ) {
       $rows = $master_dbh->selectall_arrayref(
@@ -117,13 +122,13 @@ sub check_ids {
       is_deeply(
          $rows,
          [],
-         "No deleted rows present in new table"
-      ) or print Dumper($rows);
+         "$test: no deleted rows present in new table"
+      ) or diag(Dumper($rows));
    }
    else {
       ok(
          1,
-         "No rows deleted"
+         "$test: no rows deleted"
       );
    };
 
@@ -134,13 +139,13 @@ sub check_ids {
       is_deeply(
          $rows,
          [],
-         "Updated rows correct in new table"
-      ) or print Dumper($rows);
+         "$test: updated rows correct in new table"
+      ) or diag(Dumper($rows));
    }
    else {
       ok(
          1,
-         "No rows updated"
+         "$test: no rows updated"
       );
    }
 
@@ -151,17 +156,18 @@ sub check_ids {
 # Attempt to alter a table while another process is changing it.
 # #############################################################################
 
-# Load 500 rows.
-diag('Loading sample dataset...');
-$sb->load_file('master', "$sample/basic_no_fks.sql");
+my $db_flavor = VersionParser->new($master_dbh)->flavor();
+if ( $db_flavor =~ m/XtraDB Cluster/ ) {
+   $sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+}
+else {
+   $sb->load_file('master', "$sample/basic_no_fks.sql");
+}
 $master_dbh->do("USE pt_osc");
 $master_dbh->do("TRUNCATE TABLE t");
 $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
 $master_dbh->do("ANALYZE TABLE t");
 $sb->wait_for_slaves();
-
-$rows = $master_dbh->selectrow_hashref('show master status');
-diag('Binlog position before altering table: ', $rows->{file}, '/', $rows->{position});
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
@@ -178,28 +184,30 @@ start_query_table(qw(pt_osc t id));
 # Stop changing the table's data.
 stop_query_table();
 
-like($output, qr/Successfully altered `pt_osc`.`t`/, 'Altered OK');
+like(
+   $output,
+   qr/Successfully altered `pt_osc`.`t`/,
+   'Change engine: altered OK'
+);
 
 $rows = $master_dbh->selectall_hashref('SHOW TABLE STATUS FROM pt_osc', 'name');
 is(
    $rows->{t}->{engine},
    'InnoDB',
-   "New table ENGINE=InnoDB"
+   "Change engine: new table ENGINE=InnoDB"
 ) or warn Dumper($rows);
 
 is(
    scalar keys %$rows,
    1,
-   "Dropped old table"
+   "Change engine: dropped old table"
 );
 
 is(
    $exit,
    0,
-   "Exit status 0"
+   "Change engine: exit status 0"
 );
-
-check_ids(qw(pt_osc t id), get_ids());
 
 # #############################################################################
 # Check that triggers work when renaming a column
@@ -210,8 +218,6 @@ $master_dbh->do("TRUNCATE TABLE t");
 $master_dbh->do("LOAD DATA INFILE '$trunk/t/pt-online-schema-change/samples/basic_no_fks.data' INTO TABLE t");
 $master_dbh->do("ANALYZE TABLE t");
 $sb->wait_for_slaves();
-
-my $orig_rows = $master_dbh->selectall_arrayref(qq{SELECT id,d FROM pt_osc.t});
 
 # Start inserting, updating, and deleting rows at random.
 start_query_table(qw(pt_osc t id));
@@ -230,33 +236,19 @@ start_query_table(qw(pt_osc t id));
 # Stop changing the table's data.
 stop_query_table();
 
-like($output, qr/Successfully altered `pt_osc`.`t`/, 'Altered OK');
+like(
+   $output,
+   qr/Successfully altered `pt_osc`.`t`/,
+   'Rename column: altered OK'
+);
 
 is(
    $exit,
    0,
-   "Exit status 0"
+   "Rename columnn: exit status 0"
 );
 
-my $ids  = get_ids();
-my %deleted_ids = map { $_ => 1 } split /,/, $ids->{deleted};
-my %updated_ids = map { $_ => 1 } split /,/, $ids->{updated};
-
-$rows = $master_dbh->selectall_arrayref(
-      qq{SELECT id,q FROM pt_osc.t WHERE id}
-      . ($ids->{updated}  ? qq{ AND id NOT IN ($ids->{updated})}  : '')
-      . ($ids->{inserted} ? qq{ AND id NOT IN ($ids->{inserted})} : '')
-);
-
-my @filtered_orig_rows = grep {
-                           !$deleted_ids{$_->[0]} && !$updated_ids{$_->[0]}
-                         } @$orig_rows;
-
-is_deeply(
-   $rows,
-   \@filtered_orig_rows,
-   "Triggers work if renaming a column"
-);
+check_ids(qw(pt_osc t id), get_ids(), "Rename column");
 
 # #############################################################################
 # Done.

@@ -6,7 +6,7 @@ CREATE TABLE t (
   c  char(32),
   d  date,
   unique index (c(32))
-) ENGINE=MyISAM;
+) ENGINE=InnoDB;
 INSERT INTO pt_osc.t VALUES
    (1, 'a', now()),
    (2, 'b', now()),

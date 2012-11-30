@@ -97,6 +97,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
@@ -106,6 +107,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
@@ -210,6 +212,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
@@ -222,6 +225,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 

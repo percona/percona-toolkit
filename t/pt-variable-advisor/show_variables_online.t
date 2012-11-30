@@ -13,9 +13,6 @@ use Test::More;
 
 use PerconaTest;
 use Sandbox;
-shift @INC;  # These shifts are required for tools that use base and derived
-shift @INC;  # classes.  See mk-query-digest/t/101_slowlog_analyses.t
-shift @INC;
 require "$trunk/bin/pt-variable-advisor";
 
 my $dp  = new DSNParser(opts=>$dsn_opts);
