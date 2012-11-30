@@ -24,9 +24,9 @@ for my $test_url ( "http://www.percona.com/robots.txt", "https://v.percona.com" 
    my $tiny     = HTTP::Tiny->new(max_redirect => 0)->request('GET', $test_url);
    my $micro    = HTTPMicro->new->request('GET', $test_url);
 
-   is_deeply(
+   like(
       $micro->{content},
-      $tiny->{content},
+      qr/^\Q$tiny->{content}/,
       "HTTPMicro == HTTP::Tiny for $test_url"
    );
 }

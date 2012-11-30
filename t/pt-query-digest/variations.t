@@ -13,8 +13,6 @@ use Test::More tests => 1;
 
 use PerconaTest;
 
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
 
 require "$trunk/bin/pt-query-digest";
 

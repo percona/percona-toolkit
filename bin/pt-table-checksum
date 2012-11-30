@@ -5611,6 +5611,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
@@ -5620,6 +5621,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
@@ -5703,6 +5705,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
@@ -5715,6 +5718,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
@@ -8644,6 +8648,21 @@ sub main {
    my %cluster_name_for;
    $cluster_name_for{$master_cxn} = $cluster->is_cluster_node($master_cxn);
 
+   if ( $cluster_name_for{$master_cxn} ) {
+      # Because of https://bugs.launchpad.net/codership-mysql/+bug/1040108
+      # ptc and pt-osc check Threads_running by default for --max-load.
+      # Strictly speaking, they can run on 5.5.27 as long as that bug doesn't
+      # manifest itself.  If it does, however, then the tools will wait forever.
+      my $pxc_version = VersionParser->new($master_dbh);
+      if ( $pxc_version < '5.5.28' ) {
+         die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
+            . "this tool on a cluster, but node " . $master_cxn->name
+            . " is running version " . $pxc_version->version
+            . ".  Please upgrade the node, or run the tool on a newer node, "
+            . "or contact Percona for support.\n";
+      }
+   }
+
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
@@ -8864,6 +8883,7 @@ sub main {
             );
             PTDEBUG && _d(scalar @$diffs, 'checksum diffs on',
                $slave->name());
+            $diffs = filter_tables_replicate_check_only($diffs, $o);
             if ( @$diffs ) {
                $exit_status |= 1;
                if ( $o->get('quiet') < 2 ) { 
@@ -9997,6 +10017,30 @@ sub print_checksum_diffs {
 }
 }
 
+sub filter_tables_replicate_check_only {
+   my ($diffs, $o) = @_;
+   my @filtered_diffs;
+
+   # TODO: SchemaIterator has the methods to filter the dbs & tables,
+   # but we don't actually need a real iterator beyond that
+   my $filter = new SchemaIterator(
+      file_itr     => "Fake",
+      OptionParser => $o,
+      Quoter       => "Quoter",
+      TableParser  => "TableParser",
+   );
+
+   for my $diff (@$diffs) {
+      my ($db, $table) = Quoter->split_unquote($diff->{table});
+      next unless $filter->database_is_allowed($db)
+               && $filter->table_is_allowed($db, $table);
+      push @filtered_diffs, $diff;
+
+   }
+
+   return \@filtered_diffs;
+}
+
 sub check_repl_table {
    my ( %args ) = @_;
    my @required_args = qw(dbh repl_table slaves
@@ -10498,6 +10542,12 @@ sub wait_for_last_checksum {
             next;
          }
       }
+      # If we have no chunks, which can happen if the slaves
+      # were skipped due to errors, then @chunks will be empty
+      # and nothing of the following applies. In fact, it
+      # leads to an uninit warning because of $chunks[0]; See
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1052475
+      next unless @chunks;
       @chunks = sort { $a <=> $b } @chunks;
       if ( $chunks[0] < $max_chunk ) {
          if ( $check_pr ) {
@@ -10744,7 +10794,7 @@ can try something like the following:
 
 =head1 Percona XtraDB Cluster
 
-pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.27-23.6 and newer.
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer.
 The number of possible Percona XtraDB Cluster setups is large given that
 it can be used with regular replication as well.  Therefore, only the setups
 listed below are supported and known to work.  Other setups, like cluster

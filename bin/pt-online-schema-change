@@ -37,6 +37,7 @@ BEGIN {
       VersionCheck
       HTTPMicro
       Pingback
+      Percona::XtraDB::Cluster
    ));
 }
 
@@ -5021,6 +5022,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
@@ -5030,6 +5032,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
@@ -5113,6 +5116,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
@@ -5125,6 +5129,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
@@ -7530,6 +7535,83 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Percona::XtraDB::Cluster package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/XtraDB/Cluster.pm
+#   t/lib/Percona/XtraDB/Cluster.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::XtraDB::Cluster;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Mo;
+use Data::Dumper;
+
+sub get_cluster_name {
+   my ($self, $cxn) = @_;
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_cluster\_name'";
+   PTDEBUG && _d($cxn->name, $sql);
+   my (undef, $cluster_name) = $cxn->dbh->selectrow_array($sql);
+   return $cluster_name;
+}
+
+sub is_cluster_node {
+   my ($self, $cxn) = @_;
+
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
+   PTDEBUG && _d($cxn->name, $sql);
+   my $row = $cxn->dbh->selectrow_arrayref($sql);
+   PTDEBUG && _d(Dumper($row));
+   return unless $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1');
+
+   my $cluster_name = $self->get_cluster_name($cxn);
+   return $cluster_name;
+}
+
+sub same_node {
+   my ($self, $cxn1, $cxn2) = @_;
+
+   my $sql = "SHOW VARIABLES LIKE 'wsrep\_sst\_receive\_address'";
+   PTDEBUG && _d($cxn1->name, $sql);
+   my (undef, $val1) = $cxn1->dbh->selectrow_array($sql);
+   PTDEBUG && _d($cxn2->name, $sql);
+   my (undef, $val2) = $cxn2->dbh->selectrow_array($sql);
+
+   return ($val1 || '') eq ($val2 || '');
+}
+
+sub same_cluster {
+   my ($self, $cxn1, $cxn2) = @_;
+
+   return 0 if !$self->is_cluster_node($cxn1) || !$self->is_cluster_node($cxn2);
+
+   my $cluster1 = $self->get_cluster_name($cxn1);
+   my $cluster2 = $self->get_cluster_name($cxn2);
+
+   return ($cluster1 || '') eq ($cluster2 || '');
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Percona::XtraDB::Cluster package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -7744,6 +7826,35 @@ sub main {
 
    my $cxn = $make_cxn->(dsn => $dsn);
 
+   my $cluster = Percona::XtraDB::Cluster->new;
+   if ( $cluster->is_cluster_node($cxn) ) {
+      # Because of https://bugs.launchpad.net/codership-mysql/+bug/1040108
+      # ptc and pt-osc check Threads_running by default for --max-load.
+      # Strictly speaking, they can run on 5.5.27 as long as that bug doesn't
+      # manifest itself.  If it does, however, then the tools will wait forever.
+      my $pxc_version = VersionParser->new($cxn->dbh);
+      if ( $pxc_version < '5.5.28' ) {
+         die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
+            . "this tool on a cluster, but node " . $cxn->name
+            . " is running version " . $pxc_version->version
+            . ".  Please upgrade the node, or run the tool on a newer node, "
+            . "or contact Percona for support.\n";
+      }
+
+      # If wsrep_OSU_method=RSU the "DDL will be only processed locally at
+      # the node."  So _table_new (the altered version of table) will not
+      # replicate to other nodes but our INSERT..SELECT operations on it
+      # will, thereby crashing all other nodes.
+      my (undef, $wsrep_osu_method) = $cxn->dbh->selectrow_array(
+         "SHOW VARIABLES LIKE 'wsrep\_OSU\_method'");
+      if ( lc($wsrep_osu_method || '') ne 'toi' ) {
+         die "wsrep_OSU_method=TOI is required because "
+            . $cxn->name . " is a cluster node.  wsrep_OSU_method is "
+            . "currently set to " . ($wsrep_osu_method || '') . ".  "
+            . "Set it to TOI, or contact Percona for support.\n";
+      }
+   }
+
    # ########################################################################
    # Check if MySQL is new enough to have the triggers we need.
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
@@ -7934,7 +8045,7 @@ sub main {
    # ########################################################################
    # Setup and check the original table.
    # ########################################################################
-   my $tp = new TableParser(Quoter => $q);
+   my $tp = TableParser->new(Quoter => $q);
 
    # Common table data struct (that modules like NibbleIterator expect).
    my $orig_tbl = {
@@ -8093,6 +8204,35 @@ sub main {
    };
 
    # ########################################################################
+   # Check the --alter statement.
+   # ########################################################################
+   my $renamed_cols = {};
+   if ( my $alter = $o->get('alter') ) {
+      $renamed_cols = find_renamed_cols(
+         alter       => $o->get('alter'),
+         TableParser => $tp,
+      );
+
+      if ( $o->get('check-alter') ) {
+         check_alter(
+            tbl          => $orig_tbl,
+            alter        => $alter,
+            dry_run      => $o->get('dry-run'),
+            renamed_cols => $renamed_cols,
+            Cxn          => $cxn,
+            TableParser  => $tp,
+         );
+      }
+   }
+
+   if ( %$renamed_cols && !$o->get('dry-run') ) {
+      print "Renaming columns:\n"
+         . join("\n", map { "  $_ to $renamed_cols->{$_}" }
+            sort keys %$renamed_cols)
+         . "\n";
+   }
+
+   # ########################################################################
    # Check and create PID file if user specified --pid.
    # ########################################################################
    my $daemon;
@@ -8179,8 +8319,6 @@ sub main {
    # Step 2: Alter the new, empty table.  This should be very quick,
    # or die if the user specified a bad alter statement.
    # #####################################################################
-   my %renamed_cols;
-
    if ( my $alter = $o->get('alter') ) {
       print "Altering new table...\n";
       my $sql = "ALTER TABLE $new_tbl->{name} $alter";
@@ -8193,27 +8331,6 @@ sub main {
          die "Error altering new table $new_tbl->{name}: $EVAL_ERROR\n"
       }
       print "Altered $new_tbl->{name} OK.\n";
-
-      # Check for renamed columns.
-      # https://bugs.launchpad.net/percona-toolkit/+bug/1068562
-      %renamed_cols = find_renamed_cols($alter, $tp);
-      PTDEBUG && _d("Renamed columns (old => new): ", Dumper(\%renamed_cols));
-      if ( %renamed_cols && $o->get('check-alter') ) {
-         # sort is just for making output consistent for testing
-         my $msg = "--alter appears to rename these columns: "
-                 . join(", ", map { "$_ to $renamed_cols{$_}" }
-                              sort keys %renamed_cols);
-         if ( $o->get('dry-run') ) {
-            print $msg . "\n"
-         }
-         else {
-            die $msg
-               . ".  The tool should handle this correctly, but you should "
-               . "test it first because if it fails the renamed columns' "
-               . "data will be lost!  Specify --no-check-alter to disable "
-               . "this check and perform the --alter.\n";
-         }
-      }
    }
 
    # Get the new table struct.  This shouldn't die because
@@ -8236,9 +8353,9 @@ sub main {
    my $col_posn    = $orig_tbl->{tbl_struct}->{col_posn};
    my $orig_cols   = $orig_tbl->{tbl_struct}->{is_col};
    my $new_cols    = $new_tbl->{tbl_struct}->{is_col};
-   my @common_cols = map  { +{ old => $_, new => $renamed_cols{$_} || $_ } }
+   my @common_cols = map  { +{ old => $_, new => $renamed_cols->{$_} || $_ } }
                      sort { $col_posn->{$a} <=> $col_posn->{$b} }
-                     grep { $new_cols->{$_} || $renamed_cols{$_} }
+                     grep { $new_cols->{$_} || $renamed_cols->{$_} }
                      keys %$orig_cols;
    PTDEBUG && _d('Common columns', Dumper(\@common_cols));
 
@@ -8581,6 +8698,7 @@ sub main {
       dml                => $dml,
       select             => $select,
       callbacks          => $callbacks,
+      lock_in_share_mode => 1,
       OptionParser       => $o,
       Quoter             => $q,
       TableParser        => $tp,
@@ -8794,8 +8912,75 @@ sub main {
 # Subroutines.
 # ############################################################################
 
+sub check_alter {
+   my (%args) = @_;
+   my @required_args = qw(alter tbl dry_run Cxn TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless exists $args{$arg};
+   }
+   my ($alter, $tbl, $dry_run, $cxn, $tp) = @args{@required_args};
+
+   my $ok = 1;
+
+   # ########################################################################
+   # Check for renamed columns.
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1068562
+   # ########################################################################
+   my $renamed_cols = $args{renamed_cols};
+   if ( %$renamed_cols ) {
+      # sort is just for making output consistent for testing
+      my $msg = "--alter appears to rename these columns:\n"
+              . join("\n", map { "  $_ to $renamed_cols->{$_}" }
+                           sort keys %$renamed_cols)
+              . "\n";
+      if ( $dry_run ) {
+         print $msg;
+      }
+      else {
+         $ok = 0;
+         warn $msg
+            . "The tool should handle this correctly, but you should "
+            . "test it first because if it fails the renamed columns' "
+            . "data will be lost!  Specify --no-check-alter to disable "
+            . "this check and perform the --alter.\n";
+      }
+   }
+
+   # ########################################################################
+   # If it's a cluster node, check for MyISAM which does not work.
+   # ########################################################################
+   my $cluster = Percona::XtraDB::Cluster->new;
+   if ( $cluster->is_cluster_node($cxn) ) {
+      if ( ($tbl->{tbl_struct}->{engine} || '') =~ m/MyISAM/i ) {
+         $ok = 0;
+         warn $cxn->name . " is a cluster node and the table is MyISAM, "
+            . "but MyISAM tables "
+            . "do not work with clusters and this tool.  To alter the "
+            . "table, you must manually convert it to InnoDB first.\n";
+      }
+      elsif ( $alter =~ m/ENGINE=MyISAM/i ) {
+         $ok = 0;
+         warn $cxn->name . " is a cluster node and the table is being "
+            . "converted to MyISAM (ENGINE=MyISAM), but MyISAM tables "
+            . "do not work with clusters and this tool.  To alter the "
+            . "table, you must manually convert it to InnoDB first.\n";
+      }
+   }
+
+   if ( !$ok ) {
+      die "--check-alter failed.\n";
+   }
+
+   return;
+}
+
 sub find_renamed_cols {
-   my ($alter, $tp) = @_;
+   my (%args) = @_;
+   my @required_args = qw(alter TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my ($alter, $tp) = @args{@required_args};
 
    my $unquoted_ident = qr/
       (?!\p{Digit}+[.\s])            # Not all digits
@@ -8810,12 +8995,12 @@ sub find_renamed_cols {
          # The following alternation is there because something like (?<=.)
          # would match if this regex was used like /.$re/,
          # or even more tellingly, would match on "``" =~ /`$re`/
-            $quoted_ident_character+               # One or more characters
-               (?: `` $quoted_ident_character*  )* # possibly followed by `` and
-                                                   # more characters, zero or more times
-         |  $quoted_ident_character*               # OR, zero or more characters
-               (?: `` $quoted_ident_character*  )+ # Followed by `` and maybe more
-                                                   # characters, one or more times.
+         $quoted_ident_character+        # One or more characters
+         (?:``$quoted_ident_character*)* # possibly followed by `` and
+                                         # more characters, zero or more times
+         |$quoted_ident_character*         # OR, zero or more characters
+          (?:``$quoted_ident_character* )+ # Followed by `` and maybe more
+                                           # characters, one or more times.
       }x
    };
 
@@ -8838,7 +9023,8 @@ sub find_renamed_cols {
       next if lc($orig_tbl) eq lc($new_tbl);
       $renames{$orig_tbl} = $new_tbl;
    }
-   return %renames;
+   PTDEBUG && _d("Renamed columns (old => new): ", Dumper(\%renames));
+   return \%renames;
 }
 
 sub nibble_is_safe {
@@ -9129,6 +9315,11 @@ sub find_child_tables {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($tbl, $cxn, $q) = @args{@required_args};
+
+   if ( lc($tbl->{tbl_struct}->{engine} || '') eq 'myisam' ) {
+      PTDEBUG && _d(q{MyISAM table, not looking for child tables});
+      return;
+   }
    
    PTDEBUG && _d('Finding child tables');
    
@@ -9814,7 +10005,20 @@ transactions. See L<"--lock-wait-timeout"> for details.
 The tool refuses to alter the table if foreign key constraints reference it,
 unless you specify L<"--alter-foreign-keys-method">.
 
+=item *
+
+The tool cannot alter MyISAM tables on L<"Percona XtraDB Cluster"> nodes.
+
 =back
+
+=head1 Percona XtraDB Cluster
+
+pt-online-schema-change works with Percona XtraDB Cluster (PXC) 5.5.28-23.7
+and newer, but there are two limitations: only InnoDB tables can be altered,
+and C<wsrep_OSU_method> must be set to C<TOI> (total order isolation).
+The tool exits with an error if the host is a cluster node and the table
+is MyISAM or is being converted to MyISAM (C<ENGINE=MyISAM>), or if
+C<wsrep_OSU_method> is not C<TOI>.  There is no way to disable these checks.
 
 =head1 OUTPUT
 

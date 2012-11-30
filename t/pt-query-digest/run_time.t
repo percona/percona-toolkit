@@ -14,9 +14,6 @@ use Test::More;
 use PerconaTest;
 use Sandbox;
 use Time::HiRes qw(sleep);
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
-shift @INC;  # Sandbox's unshift
 require "$trunk/bin/pt-query-digest";
 
 my $dp = new DSNParser(opts=>$dsn_opts);

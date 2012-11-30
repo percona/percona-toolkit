@@ -13,10 +13,6 @@ use Test::More tests => 6;
 
 use PerconaTest;
 
-# See 101_slowlog_analyses.t or http://code.google.com/p/maatkit/wiki/Testing
-shift @INC;  # our unshift (above)
-shift @INC;  # PerconaTest's unshift
-
 require "$trunk/bin/pt-query-digest";
 
 my @args   = qw(--type tcpdump --report-format=query_report --limit 10);
