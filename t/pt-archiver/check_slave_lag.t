@@ -26,6 +26,9 @@ if ( !$dbh ) {
 elsif ( !$dbh2 ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
+elsif ( $sb->is_cluster_mode ) {
+   plan skip_all => 'Not for PXC',
+}
 else {
    plan tests => 7;
 }

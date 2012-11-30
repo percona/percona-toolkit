@@ -20,10 +20,7 @@ $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} = 1;
 
 use PerconaTest;
 use Sandbox;
-
 require "$trunk/bin/pt-table-checksum";
-# Do this after requiring ptc, since it uses Mo
-require VersionParser;
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
@@ -31,12 +28,7 @@ my $node1 = $sb->get_dbh_for('node1');
 my $node2 = $sb->get_dbh_for('node2');
 my $node3 = $sb->get_dbh_for('node3');
 
-my $db_flavor = VersionParser->new($node1)->flavor();
-
-if ( $db_flavor !~ /XtraDB Cluster/ ) {
-   plan skip_all => "PXC tests";
-}
-elsif ( !$node1 ) {
+if ( !$node1 ) {
    plan skip_all => 'Cannot connect to cluster node1';
 }
 elsif ( !$node2 ) {
@@ -44,6 +36,9 @@ elsif ( !$node2 ) {
 }
 elsif ( !$node3 ) {
    plan skip_all => 'Cannot connect to cluster node3';
+}
+elsif ( !$sb->is_cluster_mode ) {
+   plan skip_all => "PXC tests";
 }
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic

@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
@@ -25,9 +26,6 @@ if ( !$dbh ) {
 elsif ( $DBD::mysql::VERSION lt '4' ) {
    plan skip_all => "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
 	. "See https://bugs.launchpad.net/percona-toolkit/+bug/932327";
-}
-else {
-   plan tests => 3;
 }
 
 my $output;
@@ -49,7 +47,7 @@ is_deeply(
       [ 'が'],
    ],
    "Inserted UTF8 data"
-);
+) or diag(Dumper($original_rows));
 
 diag(`rm -rf $file >/dev/null`);
 
@@ -80,4 +78,4 @@ diag(`rm -rf $file >/dev/null`);
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
