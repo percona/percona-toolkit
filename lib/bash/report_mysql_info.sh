@@ -878,8 +878,17 @@ section_percona_server_features () {
             "$(feat_on_renamed "$file" "enable_query_response_time_stats,query_response_time_stats")"
 
    # Renamed to innodb_adaptive_flushing_method in 5.5
-   name_val "Smooth Flushing"       \
-            "$(feat_on_renamed "$file" "innodb_adaptive_checkpoint,innodb_adaptive_flushing_method")"
+   # This one is a bit more convulted than the rest because not only did it
+   # change names, but also default values: none in 5.1, native in 5.5
+   local smooth_flushing="$(feat_on_renamed "$file" "innodb_adaptive_checkpoint,innodb_adaptive_flushing_method")"
+   if  [ "${smooth_flushing:-""}" != "Not Supported" ]; then
+      if [ -n "$(get_var innodb_adaptive_checkpoint "$file")" ]; then
+         smooth_flushing="$(feat_on "$file" "innodb_adaptive_checkpoint" ne none)"
+      else
+         smooth_flushing="$(feat_on "$file" "innodb_adaptive_flushing_method" ne native)"
+      fi
+   fi
+   name_val "Smooth Flushing" "$smooth_flushing"
    
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"

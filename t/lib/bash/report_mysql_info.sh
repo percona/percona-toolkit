@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 34
+plan 35
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -740,6 +740,12 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_ps-features.txt" \
    "Bug 1015590: pt-mysql-summary not Percona Server 5.5-ready"
+
+section_percona_server_features "$samples/percona-server-5.1-variables" > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-5.1-features.txt" \
+   "Bug 1015590: section_percona_server_features works on 5.1 with innodb_adaptive_checkpoint=none"
 
 # ###########################################################################
 # Done
