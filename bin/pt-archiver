@@ -6332,6 +6332,41 @@ in long table scans if you're trying to nibble from the end of the table by an
 index other than the one it prefers.  See L<"--source"> and read the
 documentation on the C<i> part if this applies to you.
 
+=head1 Percona XtraDB Cluster
+
+pt-archiver works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer,
+but there are three limitations you should consider before archiving on
+a cluster:
+
+=over
+
+=item Error on commit
+
+pt-archiver does not check for error when it commits transactions.
+Commits on PXC can fail, but the tool does not yet check for or retry the
+transaction when this happens.  If it happens, the tool will die.
+
+=item MyISAM tables
+
+Archiving MyISAM tables works, but MyISAM support in PXC is still
+experimental at the time of this release.  There are several known bugs with
+PXC, MyISAM tables, and C<AUTO_INCREMENT> columns.  Therefore, you must ensure
+that archiving will not directly or indirectly result in the use of default
+C<AUTO_INCREMENT> values for a MyISAM table.  For example, this happens with
+L<"--dest"> if L<"--columns"> is used and the C<AUTO_INCREMENT> column is not
+included.  The tool does not check for this!
+
+=item Non-cluster options
+
+Certain options may or may not work.  For example, if a cluster node
+is not also a slave, then L<"--check-slave-lag"> does not work.  And since PXC
+tables are usually InnoDB, but InnoDB doesn't support C<INSERT DELAYED>, then
+L<"--delayed-insert"> does not work.  Other options may also not work, but
+the tool does not check them, therefore you should test archiving on a test
+cluster before archiving on your real cluster.
+
+=back
+
 =head1 OUTPUT
 
 If you specify L<"--progress">, the output is a header row, plus status output

@@ -11,6 +11,6 @@ create table a (
    c char(16)
 ) charset=utf8;
 insert into t values
-   (null, "が"),
-   (null, "が"),
-   (null, "が");
+   (1, "が"),
+   (2, "が"),
+   (3, "が");

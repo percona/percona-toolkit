@@ -10,6 +10,7 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use PerconaTest;
 use Sandbox;
@@ -26,9 +27,6 @@ elsif ( $DBD::mysql::VERSION lt '4' ) {
    plan skip_all => "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
 	. "See https://bugs.launchpad.net/percona-toolkit/+bug/932327";
 }
-else {
-   plan tests => 3;
-}
 
 my $output;
 my $rows;
@@ -42,14 +40,14 @@ my $file = "/tmp/mk-archiver-file.txt";
 $sb->load_file('master', 't/pt-archiver/samples/issue_1225.sql');
 
 $dbh->do('set names "utf8"');
-my $original_rows = $dbh->selectall_arrayref('select * from issue_1225.t where i in (1, 2)');
+my $original_rows = $dbh->selectall_arrayref('select c from issue_1225.t where i in (1, 2)');
 is_deeply(
    $original_rows,
-   [  [ 1, 'が'],  # Your terminal must be UTF8 to see this Japanese character.
-      [ 2, 'が'],
+   [  [ 'が'],  # Your terminal must be UTF8 to see this Japanese character.
+      [ 'が'],
    ],
    "Inserted UTF8 data"
-);
+) or diag(Dumper($original_rows));
 
 diag(`rm -rf $file >/dev/null`);
 
@@ -62,7 +60,8 @@ $output = output(
    stderr => 1,
 );
 
-my $got = `cat $file`;
+my $got   = slurp_file($file);
+$got =~ s/^\d+//gsm;
 ok(
    no_diff(
       $got,
@@ -79,4 +78,4 @@ diag(`rm -rf $file >/dev/null`);
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
