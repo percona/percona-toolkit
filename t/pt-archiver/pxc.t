@@ -313,6 +313,94 @@ check_rows(
 );
 
 # #############################################################################
+# Repeat some of the above tests with MyISAM.
+# #############################################################################
+
+$sb->load_file('node1', 't/pt-archiver/samples/table14.sql');
+$expected_rows = $node1_dbh->selectall_arrayref(
+   "SELECT * FROM test.table_1 ORDER BY a");
+$node1_dbh->do("INSERT INTO test.table_2 SELECT * FROM test.table_1");
+
+# Since there's no auto-inc column, all rows should be purged on all nodes.
+$output = output(
+   sub {
+      pt_archiver::main(@args, '--source', "D=test,t=table_1,F=$node1_cnf",
+         qw(--purge))
+   },
+   stderr => 1,
+);
+
+check_rows(
+   name   => "MyISAM: Purged all rows",
+   sql    => "SELECT * FROM test.table_1 ORDER BY a",
+   expect => [],
+);
+
+
+# table_2 has an auto-inc, so all rows less the max auto-inc row
+# should be purged on all nodes.  This is due to --[no]safe-auto-increment.
+$output = output(
+   sub {
+      pt_archiver::main(@args, '--source', "D=test,t=table_2,F=$node1_cnf",
+         qw(--purge))
+   },
+   stderr => 1,
+);
+
+check_rows(
+   name   => "MyISAM: Purged rows less max auto-inc",
+   sql    => "SELECT * FROM test.table_2 ORDER BY a",
+   expect => [[qw(4 2 3), "\n"]],
+);
+
+# Archive rows to another MyISAM table.
+
+# Same node
+$sb->load_file('node1', 't/pt-archiver/samples/table14.sql');
+$output = output(
+   sub {
+      pt_archiver::main(@args, '--source', "D=test,t=table_1,F=$node1_cnf",
+         qw(--dest t=table_2))
+   },
+   stderr => 1,
+);
+
+check_rows(
+   name   => "MyISAM: Rows purged from table_1 (same node)",
+   sql    => "SELECT * FROM test.table_1 ORDER BY a",
+   expect => [],
+);
+
+check_rows(
+   name   => "MyISAM: Rows archived to table_2 (same node)",
+   sql    => "SELECT * FROM test.table_2 ORDER BY a",
+   expect => $expected_rows,
+);
+
+# To another node
+$sb->load_file('node1', 't/pt-archiver/samples/table14.sql');
+
+$output = output(
+   sub {
+      pt_archiver::main(@args, '--source', "D=test,t=table_1,F=$node1_cnf",
+         '--dest', "F=$node2_cnf,D=test,t=table_2")
+   },
+   stderr => 1,
+);
+
+check_rows(
+   name   => "MyISAM: Rows purged from table_1 (cross-node)",
+   sql    => "SELECT * FROM test.table_1 ORDER BY a",
+   expect => [],
+);
+
+check_rows(
+   name   => "MyISAM: Rows archived to table_2 (cross-node)",
+   sql    => "SELECT * FROM test.table_2 ORDER BY a",
+   expect => $expected_rows,
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($node1_dbh);
