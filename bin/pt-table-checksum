@@ -11060,7 +11060,7 @@ pathname.
 
 default: yes
 
-Delete previous checksums for each table B<before checksumming the table>.  This
+Delete previous checksums for each table before checksumming the table.  This
 option does not truncate the entire table, it only deletes rows (checksums) for
 each table just before checksumming the table.  Therefore, if checksumming stops
 prematurely and there was preexisting data, there will still be rows for tables
@@ -11069,8 +11069,8 @@ that were not checksummed before the tool was stopped.
 If you're resuming from a previous checksum run, then the checksum records for
 the table from which the tool resumes won't be emptied.
 
-If you truly need to empty the replicate table, you should do a
-C<TRUNCATE TABLE> prior to running the tool.
+To empty the entire replicate table, you must manually execute C<TRUNCATE TABLE>
+before running the tool.
 
 =item --engines
 
