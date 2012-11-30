@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 35
+plan 36
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -746,6 +746,13 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_ps-5.1-features.txt" \
    "Bug 1015590: section_percona_server_features works on 5.1 with innodb_adaptive_checkpoint=none"
+
+section_percona_server_features "$samples/percona-server-5.1-variables-martin" > "$PT_TMPDIR/got"
+cp "$PT_TMPDIR/got" /tmp/dasgot
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-5.1-martin.txt" \
+   "section_percona_server_features works on 5.1"
 
 # ###########################################################################
 # Done
