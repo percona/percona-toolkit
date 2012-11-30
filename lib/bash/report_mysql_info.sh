@@ -68,6 +68,23 @@ feat_on() {
    fi
 }
 
+feat_on_renamed () {
+   local file="$1"
+   local varnames="$2"
+   local opt1="${3:-""}"
+   local opt2="${4:-""}"
+
+   for var in $(echo "$varnames" | sed -e 's/,/ /g'); do
+      local feat_on="$( feat_on $file $var $opt1 $opt2 )"
+      if [ "${feat_on:-"Not Supported"}" != "Not Supported" ]; then
+         echo $feat_on
+         return
+      fi
+   done
+
+   echo "Not Supported"
+}
+
 get_table_cache () {
    local file="$1"
 
@@ -830,42 +847,26 @@ section_percona_server_features () {
    [ -e "$file" ] || return
 
    # Renamed to userstat in 5.5.10-20.1
-   local userstat="$(feat_on "$file" userstat_running)"
-   if [ "${userstat:-""}" = "Not Supported" ]; then
-      userstat="$(feat_on "$file" userstat)"
-   fi
-   name_val "Table & Index Stats" "$userstat"
-   
+   name_val "Table & Index Stats"   \
+            "$(feat_on_renamed "$file" "userstat_running,userstat")"
    name_val "Multiple I/O Threads"  \
             "$(feat_on "$file" innodb_read_io_threads gt 1)"
 
    # Renamed to innodb_corrupt_table_action in 5.5.10-20.1
-   local corrupt_res="$(feat_on "$file" innodb_pass_corrupt_table)"
-   if [ "${corrupt_res:-""}" = "Not Supported" ]; then
-      corrupt_res="$(feat_on "$file" innodb_corrupt_table_action)"
-   fi
-   name_val "Corruption Resilient" "$corrupt_res"
+   name_val "Corruption Resilient"  \
+            "$(feat_on_renamed "$file" "innodb_pass_corrupt_table,innodb_corrupt_table_action")"
 
    # Renamed to innodb_recovery_update_relay_log in 5.5.10-20.1
-   local durable_repl="$(feat_on "$file" innodb_overwrite_relay_log_info)"
-   if [ "${durable_repl:-""}" = "Not Supported" ]; then
-      durable_repl="$(feat_on "$file" innodb_recovery_update_relay_log)"
-   fi   
-   name_val "Durable Replication" "$durable_repl"
+   name_val "Durable Replication"   \
+            "$(feat_on_renamed "$file" "innodb_overwrite_relay_log_info,innodb_recovery_update_relay_log")"
 
    # Renamed to innodb_import_table_from_xtrabackup in 5.5.10-20.1
-   local import_innodb="$(feat_on "$file" innodb_expand_import)"
-   if [ "${import_innodb:-""}" = "Not Supported" ]; then
-      import_innodb="$(feat_on "$file" innodb_import_table_from_xtrabackup)"
-   fi   
-   name_val "Import InnoDB Tables" "$import_innodb"
+   name_val "Import InnoDB Tables"  \
+            "$(feat_on_renamed "$file" "innodb_expand_import,innodb_import_table_from_xtrabackup")"
 
    # Renamed to innodb_buffer_pool_restore_at_startup in 5.5.10-20.1
-   local fast_restarts="$(feat_on "$file" innodb_auto_lru_dump)"
-   if [ "${fast_restarts:-""}" = "Not Supported" ]; then
-      fast_restarts="$(feat_on "$file" innodb_buffer_pool_restore_at_startup)"
-   fi
-   name_val "Fast Server Restarts" "$fast_restarts"
+   name_val "Fast Server Restarts"  \
+            "$(feat_on_renamed "$file" "innodb_auto_lru_dump,innodb_buffer_pool_restore_at_startup")"
    
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
@@ -873,18 +874,12 @@ section_percona_server_features () {
             "$(feat_on "$file" log_slow_slave_statements)"
 
    # Renamed to query_response_time_stats in 5.5
-   local resp_time_hist="$(feat_on "$file" enable_query_response_time_stats)"
-   if [ "${resp_time_hist:-""}" = "Not Supported" ]; then
-      resp_time_hist="$(feat_on "$file" query_response_time_stats)"
-   fi
-   name_val "Response Time Hist." "$resp_time_hist"
+   name_val "Response Time Hist."   \
+            "$(feat_on_renamed "$file" "enable_query_response_time_stats,query_response_time_stats")"
 
    # Renamed to innodb_adaptive_flushing_method in 5.5
-   local smooth_flushing="$(feat_on "$file" innodb_adaptive_checkpoint)"
-   if [ "${smooth_flushing:-""}" = "Not Supported" ]; then
-      smooth_flushing="$(feat_on "$file" innodb_adaptive_flushing_method)"
-   fi
-   name_val "Smooth Flushing" "$smooth_flushing"
+   name_val "Smooth Flushing"       \
+            "$(feat_on_renamed "$file" "innodb_adaptive_checkpoint,innodb_adaptive_flushing_method")"
    
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
