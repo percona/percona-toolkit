@@ -5611,6 +5611,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{bite}*/";
       PTDEBUG && _d('One nibble statement:', $nibble_sql);
 
@@ -5620,6 +5621,7 @@ sub new {
                           : join(', ', map { $q->quote($_) } @cols))
          . " FROM $tbl->{name}"
          . ($where ? " WHERE $where" : '')
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{bite}*/";
       PTDEBUG && _d('Explain one nibble statement:', $explain_nibble_sql);
 
@@ -5703,6 +5705,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*$comments{nibble}*/";
       PTDEBUG && _d('Nibble statement:', $nibble_sql);
 
@@ -5715,6 +5718,7 @@ sub new {
          . " AND "   . $asc->{boundaries}->{'<='}  # upper boundary
          . ($where ? " AND ($where)" : '')
          . ($args{order_by} ? " ORDER BY $order_by" : "")
+         . ($args{lock_in_share_mode} ? " LOCK IN SHARE MODE" : "")
          . " /*explain $comments{nibble}*/";
       PTDEBUG && _d('Explain nibble statement:', $explain_nibble_sql);
 
@@ -8644,6 +8648,21 @@ sub main {
    my %cluster_name_for;
    $cluster_name_for{$master_cxn} = $cluster->is_cluster_node($master_cxn);
 
+   if ( $cluster_name_for{$master_cxn} ) {
+      # Because of https://bugs.launchpad.net/codership-mysql/+bug/1040108
+      # ptc and pt-osc check Threads_running by default for --max-load.
+      # Strictly speaking, they can run on 5.5.27 as long as that bug doesn't
+      # manifest itself.  If it does, however, then the tools will wait forever.
+      my $pxc_version = VersionParser->new($master_dbh);
+      if ( $pxc_version < '5.5.28' ) {
+         die "Percona XtraDB Cluster 5.5.28 or newer is required to run "
+            . "this tool on a cluster, but node " . $master_cxn->name
+            . " is running version " . $pxc_version->version
+            . ".  Please upgrade the node, or run the tool on a newer node, "
+            . "or contact Percona for support.\n";
+      }
+   }
+
    # ########################################################################
    # If this is not a dry run (--explain was not specified), then we're
    # going to checksum the tables, so do the necessary preparations and
@@ -10775,7 +10794,7 @@ can try something like the following:
 
 =head1 Percona XtraDB Cluster
 
-pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.27-23.6 and newer.
+pt-table-checksum works with Percona XtraDB Cluster (PXC) 5.5.28-23.7 and newer.
 The number of possible Percona XtraDB Cluster setups is large given that
 it can be used with regular replication as well.  Therefore, only the setups
 listed below are supported and known to work.  Other setups, like cluster
