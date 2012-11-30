@@ -28,9 +28,6 @@ my $slave_dbh  = $sb->get_dbh_for('slave1');
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 6;
-}
 
 my $q      = new Quoter();
 my $tp     = new TableParser(Quoter => $q);
@@ -66,7 +63,7 @@ like( $output,
    "Original table must exist"
 );
 
-$sb->load_file('master', "$sample/basic_no_fks.sql");
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 $master_dbh->do("USE pt_osc");
 $slave_dbh->do("USE pt_osc");
 
@@ -100,7 +97,7 @@ like( $output,
 # Checks for the new table.
 # #############################################################################
 
-$sb->load_file('master', "$sample/basic_no_fks.sql");
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 $master_dbh->do("USE pt_osc");
 $slave_dbh->do("USE pt_osc");
 
@@ -126,4 +123,4 @@ like(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

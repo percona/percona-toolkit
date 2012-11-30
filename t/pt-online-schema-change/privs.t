@@ -38,9 +38,6 @@ elsif ( !$slave2_dbh ) {
 elsif ( !@{$master_dbh->selectall_arrayref("show databases like 'sakila'")} ) {
    plan skip_all => 'sakila database is not loaded';
 }
-else {
-   plan tests => 3;
-}
 
 # The sandbox servers run with lock_wait_timeout=3 and it's not dynamic
 # so we need to specify --lock-wait-timeout=3 else the tool will die.
@@ -58,7 +55,7 @@ my $sample  = "t/pt-online-schema-change/samples/";
 diag(`/tmp/12345/use -u root < $trunk/$sample/osc-user.sql`);
 PerconaTest::wait_for_table($slave1_dbh, "mysql.tables_priv", "user='osc_user'");
 
-$sb->load_file('master', "$sample/basic_no_fks.sql");
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
 
 ($output, $exit_status) = full_output(
    sub { $exit_status = pt_online_schema_change::main(@args,
@@ -97,4 +94,4 @@ wait_until(
 # #############################################################################
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

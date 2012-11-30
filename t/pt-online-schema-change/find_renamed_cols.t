@@ -25,8 +25,11 @@ sub test_func {
    die "No renamed_cols arg" unless $renamed_cols;
    (my $show_alter = $alter) =~ s/\n/\\n/g;
    
-   my %got_renamed_cols = eval {
-      pt_online_schema_change::find_renamed_cols($alter, $tp);
+   my $got_renamed_cols = eval {
+      pt_online_schema_change::find_renamed_cols(
+         alter       => $alter,
+         TableParser => $tp,
+      );
    };
    if ( $EVAL_ERROR ) {
       is_deeply(
@@ -37,10 +40,10 @@ sub test_func {
    }
    else {
       is_deeply(
-         \%got_renamed_cols,
+         $got_renamed_cols,
          $renamed_cols,
          $show_alter,
-      ) or diag(Dumper(\%got_renamed_cols));
+      ) or diag(Dumper($got_renamed_cols));
    }
 }
 
@@ -209,15 +212,13 @@ test_func(
    },
 );
 
-TODO: {
-   local $::TODO = "We don't parse the entire alter statement, what looks like a CHANGE COLUMNS";
-   # Not really an alter, pathological
-   test_func(
-      "MODIFY `CHANGE a z VARCHAR(255) NOT NULL` FLOAT",
-      {
-      },
-   );
-}
+# TODO
+## Not really an alter, pathological
+#test_func(
+#   "MODIFY `CHANGE a z VARCHAR(255) NOT NULL` FLOAT",
+#   {
+#   },
+#);
 
 # #############################################################################
 # Done.
