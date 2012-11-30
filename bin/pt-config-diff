@@ -2168,7 +2168,9 @@ sub parse_my_print_defaults {
    my ($output) = @args{@required_args};
 
    my ($config, $dupes) = _parse_varvals(
-      map { $_ =~ m/^--([^=]+)(?:=(.*))?$/ } split("\n", $output)
+      map  { $_ =~ m/^--([^=]+)(?:=(.*))?$/ ? ($1, $2) : () }
+      grep { $_ !~ m/^\s*$/ }  # no empty lines
+      split("\n", $output)
    );
 
    return $config, $dupes;
@@ -2186,7 +2188,8 @@ sub parse_option_file {
    die "Failed to parse the [mysqld] section" unless $mysqld_section;
 
    my ($config, $dupes) = _parse_varvals(
-      map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ }
+      map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ ? ($1, $2) : () }
+      grep { $_ !~ m/^\s*$/ }  # no empty lines
       grep { $_ !~ m/^\s*#/ }  # no # comment lines
       split("\n", $mysqld_section)
    );
@@ -2206,6 +2209,9 @@ sub _parse_varvals {
    my $val;  # value for current variable
    ITEM:
    foreach my $item ( @varvals ) {
+      if ( !defined($item) ) {
+         $item = '';
+      }
       if ( $item ) {
          $item =~ s/^\s+//;
          $item =~ s/\s+$//;
