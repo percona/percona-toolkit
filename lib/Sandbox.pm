@@ -331,9 +331,9 @@ sub ok {
 
 # Dings a heartbeat on the master, and waits until the slave catches up fully.
 sub wait_for_slaves {
-   my ($self, $slave) = @_;
-   my $master_dbh = $self->get_dbh_for('master');
-   my $slave2_dbh = $self->get_dbh_for($slave || 'slave2');
+   my ($self, %args) = @_;
+   my $master_dbh = $self->get_dbh_for($args{master} || 'master');
+   my $slave2_dbh = $self->get_dbh_for($args{slave}  || 'slave2');
    my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND())");
    $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
    PerconaTest::wait_until(
@@ -409,19 +409,24 @@ sub clear_genlogs {
    return;
 }
 
+sub is_cluster_mode {
+   my ($self) = @_;
+   return 0 unless $self->is_cluster_node('node1');
+   return 0 unless $self->is_cluster_node('node2');
+   return 0 unless $self->is_cluster_node('node3');
+   return 1;
+}
 
 sub is_cluster_node {
    my ($self, $server) = @_;
-   
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep_on'";
    PTDEBUG && _d($sql);
    my $row = $self->use($server, qq{-ss -e "$sql"});
    PTDEBUG && _d($row);
    $row = [split " ", $row];
-  
-   return $row && $row->[1]
-            ? ($row->[1] eq 'ON' || $row->[1] eq '1')
-            : 0;
+
+   return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1');
 }
 
 sub can_load_data {
@@ -529,6 +534,12 @@ sub start_cluster {
 sub port_for {
    my ($self, $server) = @_;
    return $port_for{$server};
+}
+
+sub config_file_for {
+   my ($self, $server) = @_;
+   my $port = $self->port_for($server);
+   return "/tmp/$port/my.sandbox.cnf"
 }
 
 sub _d {

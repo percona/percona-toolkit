@@ -59,6 +59,10 @@ like($output, qr/copy\s+$chks/, 'copy checksum');
 # Issue 1260: mk-archiver --bulk-insert data loss
 # ############################################################################
 $sb->load_file('master', 't/pt-archiver/samples/bulk_regular_insert.sql');
+my $orig_rows   = $dbh->selectall_arrayref('select id from bri.t order by id');
+my $lt_8 = [ grep { $_->[0] < 8 } @$orig_rows ];
+my $ge_8 = [ grep { $_->[0] >= 8 } @$orig_rows ];
+
 $output = output(
    sub { pt_archiver::main(
        '--where', "id < 8", qw(--limit 100000 --txn-size 1000),
@@ -69,14 +73,14 @@ $output = output(
 $rows = $dbh->selectall_arrayref('select id from bri.t order by id');
 is_deeply(
    $rows,
-   [[8],[9],[10]],
+   $ge_8,
    "--bulk-insert left 3 rows (issue 1260)"
 );
 
 $rows = $dbh->selectall_arrayref('select id from bri.t_arch order by id');
 is_deeply(
    $rows,
-   [[1],[2],[3],[4],[5],[6],[7]],
+   $lt_8,
    "--bulk-insert archived 7 rows (issue 1260)"
 );
 
