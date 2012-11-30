@@ -54,14 +54,33 @@ ok(scalar @$rows == 0, 'Purged all rows ok');
 # This test has been changed. I manually examined the tables before
 # and after the archive operation and I am convinced that the original
 # expected output was incorrect.
-$rows = $dbh->selectall_arrayref("select * from test.table_2", { Slice => {}});
-is_deeply(
-   $rows,
-   [  {  a => '1', b => '2',   c => '3', d => undef },
+my ($sql, $expect_rows);
+if ( $sb->is_cluster_node('master') ) {
+   # PXC nodes have auto-inc offsets, so rather than see what they are
+   # and account for them, we just don't select the auto-inc col, a.
+   # This test is really about b, c, and d anyway.
+   $sql = "SELECT b, c, d FROM test.table_2 ORDER BY a";
+   $expect_rows = [
+      {  b => '2',   c => '3', d => undef },
+      {  b => undef, c => '3', d => undef },
+      {  b => '2',   c => '3', d => undef },
+      {  b => '2',   c => '3', d => undef },
+   ];
+}
+else {
+   # The original, non-PXC values.
+   $sql = "SELECT * FROM test.table_2 ORDER BY a";
+   $expect_rows = [
+      {  a => '1', b => '2',   c => '3', d => undef },
       {  a => '2', b => undef, c => '3', d => undef },
       {  a => '3', b => '2',   c => '3', d => undef },
       {  a => '4', b => '2',   c => '3', d => undef },
-   ],
+   ];
+}
+$rows = $dbh->selectall_arrayref($sql, { Slice => {}});
+is_deeply(
+   $rows,
+   $expect_rows,
    'Found rows in new table OK when archiving only some columns to another table') or diag(Dumper($rows));
 
 # Archive to another table with autocommit
