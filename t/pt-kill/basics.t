@@ -35,7 +35,7 @@ my $cmd = "$trunk/bin/pt-kill -F $cnf -h 127.1";
 
 # Shell out to a sleep(10) query and try to capture the query.
 # Backticks don't work here.
-system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(5)' >/dev/null &");
+system("/tmp/12345/use -e 'select sleep(5)' >/dev/null &");
 
 $output = `$cmd --busy-time 1s --print --run-time 10`;
 
@@ -59,7 +59,7 @@ ok(
 # --iterations  was 0, and another bug when --run-time was not respected.
 # Do it all over again, this time with --iterations 0.
 # Re issue 1181, --iterations no longer exists, but we'll still keep this test.
-system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(10)' >/dev/null&");
+system("/tmp/12345/use -e 'select sleep(10)' >/dev/null&");
 $output = `$cmd --busy-time 1s --print --run-time 11s`;
 @times = $output =~ m/\(Query (\d+) sec\)/g;
 ok(
