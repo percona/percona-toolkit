@@ -85,7 +85,7 @@ make_sandbox() {
    if [ -n "$SKIP_INNODB" ]; then
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
       echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
-      if [[ "$version" > "5.5" ]]; then
+      if [ "$version" ">" "5.5" ]; then
          echo "default-tmp-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
       fi
    fi
