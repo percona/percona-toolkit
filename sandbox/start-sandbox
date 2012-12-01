@@ -34,7 +34,7 @@ make_sandbox() {
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
-   for script in `ls $PERCONA_TOOLKIT_BRANCH/sandbox/servers/*`; do
+   for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
       if [ -f $script ]; then
         cp $script /tmp/$port
       fi
@@ -85,6 +85,9 @@ make_sandbox() {
    if [ -n "$SKIP_INNODB" ]; then
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
       echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
+      if [[ "$version" > "5.5" ]]; then
+         echo "default-tmp-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
+      fi
    fi
    if [ -n "$MODE_ANSI" ]; then
       echo "sql_mode=ansi" >> /tmp/$port/my.sandbox.cnf
