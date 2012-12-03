@@ -10,7 +10,7 @@ ERRORS DIFFS ROWS SKIPPED TABLE
 0 0 0 0 mysql.host
 0 0 0 0 mysql.ndb_binlog_index
 0 0 0 0 mysql.plugin
-0 0 6 0 mysql.proc
+0 0 0 0 mysql.proc
 0 0 0 0 mysql.procs_priv
 0 0 2 0 mysql.proxies_priv
 0 0 0 0 mysql.servers
