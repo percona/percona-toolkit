@@ -68,9 +68,7 @@ sub reset_repl_db {
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
-        $sandbox_version gt "5.1 " ? "$sample/default-results-5.5.txt"
-      : $sandbox_version gt "5.0 " ? "$sample/default-results-5.1.txt"
-      :                              "$sample/default-results-5.0.txt",
+      "$sample/default-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
    ),
    "Default checksum"
@@ -93,29 +91,28 @@ cmp_ok(
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
-        $sandbox_version gt "5.1" ? "$sample/static-chunk-size-results-5.5.txt"
-      : $sandbox_version gt "5.0" ? "$sample/static-chunk-size-results-5.1.txt"
-      :                             "$sample/static-chunk-size-results-5.0.txt",
+      "$sample/static-chunk-size-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),
    "Static chunk size (--chunk-time 0)"
 );
 
+my $n_checksums = $sandbox_version eq "5.6" ? 94
+                : $sandbox_version eq "5.5" ? 90
+                : $sandbox_version eq "5.1" ? 89
+                :                             85;
+
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   (  $sandbox_version gt "5.1" ? 90
-    : $sandbox_version gt "5.0" ? 89
-    :                             85),
+   $n_checksums,
    'Expected checksums on master'
 );
 
 $row = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   (  $sandbox_version gt "5.1" ? 90
-    : $sandbox_version gt "5.0" ? 89
-    :                             85),
+   $n_checksums,
    'Expected checksums on slave'
 );
 
