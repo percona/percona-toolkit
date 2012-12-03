@@ -7,7 +7,7 @@ ERRORS DIFFS ROWS CHUNKS SKIPPED TABLE
 0 0 809 1 0 mysql.help_relation
 0 0 422 1 0 mysql.help_topic
 0 0 0 1 0 mysql.host
-0 0 6 1 0 mysql.proc
+0 0 0 1 0 mysql.proc
 0 0 0 1 0 mysql.procs_priv
 0 0 0 1 0 mysql.tables_priv
 0 0 0 1 0 mysql.time_zone

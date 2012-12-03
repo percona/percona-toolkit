@@ -246,6 +246,11 @@ set_mysql_version() {
    fi
 }
 
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
 # ###########################################################################
 # Sanity check the cmd line options.
 # ###########################################################################
@@ -326,13 +331,18 @@ case $opt in
             /tmp/12345/use -e "create table percona_test.sentinel(id int primary key, ping varchar(64) not null default '')"
             /tmp/12345/use -e "insert into percona_test.sentinel(id, ping) values(1, '$ping')";
             echo -n "Waiting for replication to finish..."
-            while true; do
+            for i in $(_seq 60); do
                pong=$(/tmp/12347/use -ss -e 'select ping from percona_test.sentinel where id=1' 2>/dev/null)
                [ "$ping" = "$pong" ] && break
                echo -n '.'
                sleep 1
             done
-            echo ' OK'
+            if [ "$ping" = "$pong" ]; then
+               echo " OK"
+            else
+               echo " FAILED"
+               exit_status=$((exit_status | 1))
+            fi
          fi
       fi
       if [ $exit_status -eq 0 ]; then
