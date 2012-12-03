@@ -858,7 +858,7 @@ sub print_usage {
             $desc .= ".  Optional suffix s=seconds, m=minutes, h=hours, "
                    . "d=days; if no suffix, $s is used.";
          }
-         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol})(?:\s+|$)/g);
+         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol}(?!\W))(?:\s+|(?<=\W)|$)/g);
          $desc =~ s/ +$//mg;
          if ( $short ) {
             $usage .= sprintf("  --%-${maxs}s -%s  %s\n", $long, $short, $desc);
@@ -1588,7 +1588,7 @@ sub split_unquote {
       next unless $_;
       s/\A`//;
       s/`\z//;
-      s/``/`/;
+      s/``/`/g;
    }
    
    return ($db, $tbl);
@@ -1927,18 +1927,6 @@ sub get_dbh {
          die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
-      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-            . ($sql_mode ? ",$sql_mode" : '')
-            . '\'*/';
-      PTDEBUG && _d($dbh, $sql);
-      eval { $dbh->do($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
-           . ($sql_mode ? " and $sql_mode" : '')
-           . ": $EVAL_ERROR";
-      }
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
@@ -1963,6 +1951,18 @@ sub get_dbh {
          if ( $EVAL_ERROR ) {
             die "Error setting $var: $EVAL_ERROR";
          }
+      }
+
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
    }
 
@@ -2416,13 +2416,11 @@ sub get_create_table {
    PTDEBUG && _d($show_sql);
    my $href;
    eval { $href = $dbh->selectrow_hashref($show_sql); };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-
+   if ( my $e = $EVAL_ERROR ) {
       PTDEBUG && _d($old_sql_mode);
       $dbh->do($old_sql_mode);
 
-      return;
+      die $e;
    }
 
    PTDEBUG && _d($old_sql_mode);
@@ -7657,7 +7655,17 @@ sub _iterate_dbh {
    }
 
    while ( my $tbl = shift @{$self->{tbls}} ) {
-      my $ddl        = $tp->get_create_table($dbh, $self->{db}, $tbl);
+      my $ddl        = eval { $tp->get_create_table($dbh, $self->{db}, $tbl) };
+      if ( my $e = $EVAL_ERROR ) {
+         my $table_name = "$self->{db}.$tbl";
+         if ( $e =~ /\QTable '$table_name' doesn't exist/ ) {
+            PTDEBUG && _d("Skipping $table_name because it no longer exists");
+         }
+         else {
+            warn "Skipping $table_name because SHOW CREATE TABLE failed: $e";
+         }
+         next;
+      }
       my $tbl_struct = $tp->parse($ddl);
       if ( $self->engine_is_allowed($tbl_struct->{engine}) ) {
          return {

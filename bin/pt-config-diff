@@ -844,7 +844,7 @@ sub print_usage {
             $desc .= ".  Optional suffix s=seconds, m=minutes, h=hours, "
                    . "d=days; if no suffix, $s is used.";
          }
-         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol})(?:\s+|$)/g);
+         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol}(?!\W))(?:\s+|(?<=\W)|$)/g);
          $desc =~ s/ +$//mg;
          if ( $short ) {
             $usage .= sprintf("  --%-${maxs}s -%s  %s\n", $long, $short, $desc);
@@ -1336,18 +1336,6 @@ sub get_dbh {
          die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
-      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-            . ($sql_mode ? ",$sql_mode" : '')
-            . '\'*/';
-      PTDEBUG && _d($dbh, $sql);
-      eval { $dbh->do($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
-           . ($sql_mode ? " and $sql_mode" : '')
-           . ": $EVAL_ERROR";
-      }
-
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
          PTDEBUG && _d($dbh, ':', $sql);
@@ -1372,6 +1360,18 @@ sub get_dbh {
          if ( $EVAL_ERROR ) {
             die "Error setting $var: $EVAL_ERROR";
          }
+      }
+
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
    }
 
