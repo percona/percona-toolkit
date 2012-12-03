@@ -115,6 +115,10 @@ make_sandbox() {
             debug_sandbox $port
             exit 1
          fi
+
+         for sql in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/"*.sql; do
+            [ -f "$sql" ] && /tmp/$port/use < $sql
+         done
       fi
    else
       echo "Sandbox $type $port failed to start." >&2
