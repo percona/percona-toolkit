@@ -2145,15 +2145,16 @@ sub parse_mysqld {
       PTDEBUG && _d("mysqld help output doesn't list option files");
    }
 
-   if ( $output !~ m/^-+ -+$/mg ) {
+   if ( $output !~ m/^-+ -+$(.+?)(?:\n\n.+)?\z/sm ) {
       PTDEBUG && _d("mysqld help output doesn't list vars and vals");
       return;
    }
 
-   my $varvals = substr($output, (pos $output) + 1, length $output);
+   my $varvals = $1;
 
    my ($config, undef) = _parse_varvals(
-      $varvals =~ m/\G^(\S+)(.*)\n/mg
+      qr/^(\S+)(.*)$/,
+      $varvals,
    );
 
    return $config, \@opt_files;
@@ -2168,9 +2169,8 @@ sub parse_my_print_defaults {
    my ($output) = @args{@required_args};
 
    my ($config, $dupes) = _parse_varvals(
-      map  { $_ =~ m/^--([^=]+)(?:=(.*))?$/ ? ($1, $2) : () }
-      grep { $_ !~ m/^\s*$/ }  # no empty lines
-      split("\n", $output)
+      qr/^--([^=]+)(?:=(.*))?$/,
+      $output,
    );
 
    return $config, $dupes;
@@ -2188,86 +2188,92 @@ sub parse_option_file {
    die "Failed to parse the [mysqld] section" unless $mysqld_section;
 
    my ($config, $dupes) = _parse_varvals(
-      map  { $_ =~ m/^([^=]+)(?:=(.*))?$/ ? ($1, $2) : () }
-      grep { $_ !~ m/^\s*$/ }  # no empty lines
-      grep { $_ !~ m/^\s*#/ }  # no # comment lines
-      split("\n", $mysqld_section)
+      qr/^([^=]+)(?:=(.*))?$/,
+      $mysqld_section,
    );
 
    return $config, $dupes;
 }
 
-sub _parse_varvals {
-   my ( @varvals ) = @_;
+sub _preprocess_varvals {
+   my ($re, $to_parse) = @_;
 
-   my %config;
+   my %vars;
+   LINE:
+   foreach my $line ( split /\n/, $to_parse ) {
+      next LINE if $line =~ m/^\s*$/;  # no empty lines
+      next LINE if $line =~ m/^\s*#/;  # no # comment lines
 
-   my $duplicate_var = 0;
-   my %duplicates;
-
-   my $var;  # current variable (e.g. datadir)
-   my $val;  # value for current variable
-   ITEM:
-   foreach my $item ( @varvals ) {
-      if ( !defined($item) ) {
-         $item = '';
+      if ( $line !~ $re ) {
+         PTDEBUG && _d("Line <", $line, "> didn't match $re");
+         next LINE;
       }
-      if ( $item ) {
+
+      my ($var, $val) = ($1, $2);
+      
+      $var =~ tr/-/_/;
+
+      if ( !defined $val ) {
+         $val = '';
+      }
+      
+      for my $item ($var, $val) {
          $item =~ s/^\s+//;
          $item =~ s/\s+$//;
       }
 
-      if ( !$var ) {
-         $var = $item;
+      push @{$vars{$var} ||= []}, $val
+   }
 
-         $var =~ s/-/_/g;
+   return \%vars;
+}
 
-         if ( exists $config{$var} && !$can_be_duplicate{$var} ) {
-            PTDEBUG && _d("Duplicate var:", $var);
-            $duplicate_var = 1;  # flag on, save all the var's values
+sub _parse_varvals {
+   my ( $vars ) = _preprocess_varvals(@_);
+
+   my %config;
+
+   my %duplicates;
+
+   while ( my ($var, $vals) = each %$vars ) {
+      my $val = _process_val( pop @$vals );
+      if ( @$vals && !$can_be_duplicate{$var} ) {
+         PTDEBUG && _d("Duplicate var:", $var);
+         foreach my $current_val ( map { _process_val($_) } @$vals ) {
+            push @{$duplicates{$var} ||= []}, $current_val;
          }
       }
-      else {
-         my $val = $item;
-         PTDEBUG && _d("Var:", $var, "val:", $val);
 
-         if ( !defined $val ) {
-            $val = '';
-         }
-         else {
-            $val =~ s/
-                        \A        # Start of value
-                        (['"])    # Opening quote
-                        (.*)      # Value
-                        \1        # Closing quote
-                        [\n\r]*\z # End of value
-                    /$2/x;
-            if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
-               my %factor_for = (
-                  k => 1_024,
-                  m => 1_048_576,
-                  g => 1_073_741_824,
-                  t => 1_099_511_627_776,
-               );
-               $val = $num * $factor_for{lc $factor};
-            }
-            elsif ( $val =~ m/No default/ ) {
-               $val = '';
-            }
-         }
+      PTDEBUG && _d("Var:", $var, "val:", $val);
 
-         if ( $duplicate_var ) {
-            push @{$duplicates{$var}}, $config{$var};
-            $duplicate_var = 0;  # flag off for next var
-         }
-
-         $config{$var} = $val;
-
-         $var = undef;  # next item should be a var
-      }
+      $config{$var} = $val;
    }
 
    return \%config, \%duplicates;
+}
+
+sub _process_val {
+   my ($val) = @_;
+   $val =~ s/
+               \A        # Start of value
+               (['"])    # Opening quote
+               (.*)      # Value
+               \1        # Closing quote
+               [\n\r]*\z # End of value
+            /$2/x;
+   if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
+      my %factor_for = (
+         k => 1_024,
+         m => 1_048_576,
+         g => 1_073_741_824,
+         t => 1_099_511_627_776,
+      );
+      $val = $num * $factor_for{lc $factor};
+   }
+   elsif ( $val =~ m/No default/ ) {
+      $val = '';
+   }
+   return $val;
 }
 
 sub _mimic_show_variables {
