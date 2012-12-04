@@ -6782,7 +6782,7 @@ sub log_to_table {
    my ($log, $query, $pl, $processlist_columns)
             = @args{qw( log query proclist columns )};
 
-   my $ts      = Transformers::ts(localtime);
+   my $ts      = Transformers::ts(time());
    my $reasons = join "\n", map {
          defined($_) ? $_ : "Unkown reason"
       } @{ $pl->{_reasons_for_matching}->{$query} };

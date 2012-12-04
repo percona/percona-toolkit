@@ -28,9 +28,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 21;
-}
 
 my $output;
 my $cnf='/tmp/12345/my.sandbox.cnf';
@@ -189,6 +186,21 @@ $dbh->do($sql);
    }
 
    my $result = shift @$results;
+
+   # This returns a string ala 2012-12-04T17:47:52
+   my $current_ts = Transformers::ts(time());
+   # Use whatever format MySQL is using
+   ($current_ts)  = $dbh->selectrow_array(qq{SELECT TIMESTAMP('$current_ts')});
+
+   # Chop off the minutes & seconds. If the rest of the date is right,
+   # this is unlikely to be broken.
+   substr($current_ts, -5, 5, "");
+   like(
+      $result->{timestamp},
+      qr/\A\Q$current_ts\E.{5}\Z/,
+      "Bug 1086259: pt-kill in non-daemon mode logs timestamps incorrectly"
+   );
+   
    my $against = {
       user    => 'msandbox',
       host    => 'localhost',
@@ -320,4 +332,5 @@ PerconaTest::wait_until(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
