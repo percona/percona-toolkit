@@ -1103,12 +1103,12 @@ section_percona_xtradb_cluster () {
    local mysql_var="$1"
    local mysql_status="$2"
 
-   name_val "Cluster"         "$(get_var "wsrep_cluster_name" "$mysql_var")"
+   name_val "Cluster Name"    "$(get_var "wsrep_cluster_name" "$mysql_var")"
    name_val "Cluster Address" "$(get_var "wsrep_cluster_address" "$mysql_var")"
    name_val "Cluster Size"    "$(get_var "wsrep_cluster_size" "$mysql_status")"
    name_val "Cluster Nodes"   "$(get_var "wsrep_incoming_addresses" "$mysql_status")"
 
-   name_val "Node"            "$(get_var "wsrep_node_name" "$mysql_var")"
+   name_val "Node Name"       "$(get_var "wsrep_node_name" "$mysql_var")"
    name_val "Node Status"     "$(get_var "wsrep_cluster_status" "$mysql_status")"
 
    name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
