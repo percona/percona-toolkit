@@ -10110,9 +10110,9 @@ sub check_repl_table {
             }
          }
          else {
+            warn $EVAL_ERROR;
             die "--replicate database $db does not exist and it cannot be "
-               . "created automatically.  You need to create the database. "
-               . $EVAL_ERROR;
+               . "created automatically.  You need to create the database.\n";
          }
       }
    }
@@ -10180,9 +10180,9 @@ sub check_repl_table {
             }
          }
          else {
+            warn $EVAL_ERROR;
             die "--replicate table $tbl does not exist and it cannot be "
-               . "created automatically.  You need to create the table. "
-               . $EVAL_ERROR;
+               . "created automatically.  You need to create the table.\n"
          }
       }
    }

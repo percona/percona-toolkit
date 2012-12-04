@@ -126,6 +126,10 @@ make_sandbox() {
       exit 1
    fi
 
+   /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
+   /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
+   /tmp/$port/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')";
+
    # If the sandbox is a slave, start the slave.
    if [ "$type" = "slave" ]; then
       /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
