@@ -335,11 +335,11 @@ sub wait_for_slaves {
    my $master_dbh = $self->get_dbh_for($args{master} || 'master');
    my $slave2_dbh = $self->get_dbh_for($args{slave}  || 'slave2');
    my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND())");
-   $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
+   $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1 /* wait_for_slaves */");
    PerconaTest::wait_until(
       sub {
          my ($pong) = $slave2_dbh->selectrow_array(
-            "SELECT ping FROM percona_test.sentinel WHERE id=1");
+            "SELECT ping FROM percona_test.sentinel WHERE id=1 /* wait_for_slaves */");
          return $ping eq $pong;
       }, undef, 300
    );
