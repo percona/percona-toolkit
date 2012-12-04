@@ -14,10 +14,15 @@ use PerconaTest;
 
 my ($tool) = $PROGRAM_NAME =~ m/([\w-]+)\.t$/;
 
-use Test::More tests => 7;
+use Test::More;
 use File::Temp qw( tempdir );
 
 local $ENV{PTDEBUG} = "";
+
+# mysqldump from earlier versions doesn't seem to work with 5.6,
+# so use the actual mysqldump from each MySQL bin which should
+# always be compatible with itself.
+my $env = qq\CMD_MYSQLDUMP="$ENV{PERCONA_TOOLKIT_SANDBOX}/bin/mysqldump"\;
 
 #
 # --save-samples
@@ -25,7 +30,7 @@ local $ENV{PTDEBUG} = "";
 
 my $dir = tempdir( "percona-testXXXXXXXX", CLEANUP => 1 );
 
-`$trunk/bin/$tool --sleep 1 --save-samples $dir -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
+`$env $trunk/bin/$tool --sleep 1 --save-samples $dir -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
 
 ok(
    -e $dir,
@@ -41,13 +46,13 @@ ok(
    "And leaves all files in there"
 ) or diag($n_files, `ls -l $dir`);
 
-undef($dir);
+undef($dir);  # rm the dir because CLEANUP => 1
 
 #
 # --databases
 #
 
-my $out = `$trunk/bin/$tool --sleep 1 --databases mysql 2>/dev/null -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
+my $out = `$env $trunk/bin/$tool --sleep 1 --databases mysql 2>/dev/null -- --defaults-file=/tmp/12345/my.sandbox.cnf`;
 
 like(
    $out,
@@ -61,7 +66,7 @@ for my $i (2..5) {
       no_diff(
          sub {
             local $ENV{_NO_FALSE_NEGATIVES} = 1;
-            print `$trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Skipping schema analysis/'`
+            print `$env $trunk/bin/$tool --read-samples $trunk/t/pt-mysql-summary/samples/temp00$i  -- --defaults-file=/tmp/12345/my.sandbox.cnf | tail -n+3 | perl -wlnpe 's/Skipping schema analysis.*/Skipping schema analysis/'`
          },
          "t/pt-mysql-summary/samples/expected_output_temp00$i.txt",
       ),
@@ -69,4 +74,4 @@ for my $i (2..5) {
    );
 }
 
-exit;
+done_testing;

@@ -2236,8 +2236,10 @@ report_mysql_summary () {
 
 TOOL="pt-mysql-summary"
 
-CMD_MYSQL="$(_which mysql)"
-CMD_MYSQLDUMP="$( _which mysqldump )"
+# These vars are declared earlier in the collect_mysql_info package,
+# but if they're still undefined here, try to find them in PATH.
+[ "$CMD_MYSQL" ]     || CMD_MYSQL="$(_which mysql)"
+[ "$CMD_MYSQLDUMP" ] || CMD_MYSQLDUMP="$( _which mysqldump )"
 
 check_mysql () {
    # Check that mysql and mysqldump are in PATH.  If not, we're
