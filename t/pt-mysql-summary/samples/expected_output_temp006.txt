@@ -202,12 +202,12 @@ wsrep_cluster_size                          100
            Fast Hash UDFs | Unknown
 # Percona XtraDB Cluster #####################################
                   Cluster | pt_sandbox_cluster
-                     Node | 12345
-              Node Status | Primary
           Cluster Address | gcomm://
-               SST Method | rsync
              Cluster Size | 3
             Cluster Nodes | 192.168.0.100,192.168.0.100,192.168.0.100
+                     Node | 12345
+              Node Status | Primary
+               SST Method | rsync
             Slave Threads | 2
        Ignore Split Brain | false
             Ignore Quorum | false
