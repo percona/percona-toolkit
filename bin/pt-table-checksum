@@ -11246,6 +11246,9 @@ that were not checksummed before the tool was stopped.
 If you're resuming from a previous checksum run, then the checksum records for
 the table from which the tool resumes won't be emptied.
 
+To empty the entire replicate table, you must manually execute C<TRUNCATE TABLE>
+before running the tool.
+
 =item --engines
 
 short form: -e; type: hash; group: Filter
