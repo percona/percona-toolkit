@@ -31,9 +31,6 @@ my $dbh = $sb->get_dbh_for('master', {no_lc=>1});
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to sandbox master";
 }
-else {
-   plan tests => 17;
-}
 
 $dbh->do('use sakila');
 
@@ -60,7 +57,7 @@ is_deeply(
         key_len       => 2,
         ref           => 'const',
         rows          => 1,
-        Extra         => '',
+        Extra         => $sandbox_version eq '5.6' ? undef : '',
       },
    ],
    'Got a simple EXPLAIN result',
@@ -81,7 +78,7 @@ is_deeply(
         key_len       => 2,
         ref           => 'const',
         rows          => 1,
-        Extra         => '',
+        Extra         => $sandbox_version eq '5.6' ? undef : '',
       },
    ],
    'Got EXPLAIN result for a DELETE',
@@ -575,4 +572,4 @@ is(
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
