@@ -23,9 +23,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 6;
-}
 
 my $sample = "t/pt-query-digest/samples/";
 
@@ -90,7 +87,6 @@ ok(
    'Analysis for slow007 with --explain, failed',
 );
 
-
 # #############################################################################
 # Issue 1196: mk-query-digest --explain is broken
 # #############################################################################
@@ -102,9 +98,9 @@ ok(
          '--report-format', 'profile,query_report',
          "$trunk/t/pt-query-digest/samples/issue_1196.log",)
       },
-      ($sandbox_version ge '5.1'
-         ? "t/pt-query-digest/samples/issue_1196-output.txt"
-         : "t/pt-query-digest/samples/issue_1196-output-5.0.txt"),
+      (  $sandbox_version eq '5.6' ? "$sample/issue_1196-output-5.6.txt"
+       : $sandbox_version ge '5.1' ? "$sample/issue_1196-output.txt"
+       :                             "$sample/issue_1196-output-5.0.txt"),
    ),
    "--explain sparkline uses event db and doesn't crash ea (issue 1196"
 );
@@ -114,4 +110,4 @@ ok(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
