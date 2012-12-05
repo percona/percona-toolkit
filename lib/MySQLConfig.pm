@@ -340,8 +340,8 @@ sub _preprocess_varvals {
    my %vars;
    LINE:
    foreach my $line ( split /\n/, $to_parse ) {
-      next LINE if $line =~ m/^\s*$/;  # no empty lines
-      next LINE if $line =~ m/^\s*#/;  # no # comment lines
+      next LINE if $line =~ m/^\s*$/;   # no empty lines
+      next LINE if $line =~ /^\s*[#;]/; # no # or ; comment lines
 
       if ( $line !~ $re ) {
          PTDEBUG && _d("Line <", $line, "> didn't match $re");
@@ -353,6 +353,9 @@ sub _preprocess_varvals {
       # Variable names are usually specified like "log-bin"
       # but in SHOW VARIABLES they're all like "log_bin".
       $var =~ tr/-/_/;
+
+      # Remove trailing comments
+      $var =~ s/\s*#.*$//;
 
       if ( !defined $val ) {
          $val = '';
@@ -405,15 +408,26 @@ sub _parse_varvals {
    return \%config, \%duplicates;
 }
 
+my $quote_re = qr/
+   \A             # Start of value
+   (['"])         # Opening quote
+   (.*)           # Value
+   \1             # Closing quote
+   \s*(?:\#.*)?   # End of line comment
+   [\n\r]*\z      # End of value
+/x;
 sub _process_val {
    my ($val) = @_;
-   $val =~ s/
-               \A        # Start of value
-               (['"])    # Opening quote
-               (.*)      # Value
-               \1        # Closing quote
-               [\n\r]*\z # End of value
-            /$2/x;
+
+   if ( $val =~ $quote_re ) {
+      # If it matches the quote re, then $2 holds the value
+      $val = $2;
+   }
+   else {
+      # Otherwise, remove possible trailing comments
+      $val =~ s/\s*#.*//;
+   }
+
    if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
       # value is a size like 1k, 16M, etc.
       my %factor_for = (
