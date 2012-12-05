@@ -98,6 +98,10 @@ make_sandbox() {
    if [ -n "$LOCAL_INFILE" ]; then
       echo "local-infile=$LOCAL_INFILE" >> /tmp/$port/my.sandbox.cnf
    fi
+   if [ -n "$QUERY_CACHE_SIZE" ]; then
+      echo "query_cache_type=1" >> /tmp/$port/my.sandbox.cnf
+      echo "query_cache_size=$QUERY_CACHE_SIZE" >> /tmp/$port/my.sandbox.cnf
+   fi
 
    # If the sandbox is a slave, set it read_only.
    if [ "$type" = "slave" ]; then
