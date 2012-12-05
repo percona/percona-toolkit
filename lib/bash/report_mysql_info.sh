@@ -104,9 +104,10 @@ parse_mysqld_instances () {
    local file="$1"
    local variables_file="$2"
 
-   local socket=${socket:-""}
-   local port=${port:-""}
-   local datadir="${datadir:-""}"
+   local socket=""
+   local port=""
+   local datadir=""
+   local defaults_file=""
 
    [ -e "$file" ] || return
 
@@ -127,7 +128,17 @@ parse_mysqld_instances () {
          if echo "${word}" | grep -- "--datadir=" > /dev/null; then
             datadir="$(echo "${word}" | cut -d= -f2)"
          fi
+         if echo "${word}" | grep -- "--defaults-file=" > /dev/null; then
+            defaults_file="$(echo "${word}" | cut -d= -f2)"
+         fi
       done
+      
+      if [ -n "${defaults_file:-""}" -a -r "${defaults_file:-""}" ]; then
+         socket="${socket:-"$(grep "^socket\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
+         port="${port:-"$(grep "^port\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
+         datadir="${datadir:-"$(grep "^datadir\>" "$defaults_file" | tail -n1 | cut -d= -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')"}"
+      fi
+
       local nice="$(get_var "internal::nice_of_$pid" "$variables_file")"
       local oom="$(get_var "internal::oom_of_$pid" "$variables_file")"
       # Only used during testing
@@ -136,6 +147,12 @@ parse_mysqld_instances () {
          oom="?"
       fi
       printf "  %5s %-26s %-4s %-3s %s\n" "${port}" "${datadir}" "${nice:-"?"}" "${oom:-"?"}" "${socket}"
+      
+      # Need to unset all of them in case the next process uses --defaults-file
+      defaults_file=""
+      socket=""
+      port=""
+      datadir=""
    done
 }
 
@@ -211,8 +228,7 @@ format_status_variables () {
       utime2 = ${utime2};
       udays  = utime1 / 86400;
       udiff  = utime2 - utime1;
-      format=\"%-35s %11s %11s %11s\\n\";
-      printf(format, \"Variable\", \"Per day\", \"Per second\", udiff \" secs\");
+      printf(\"%-35s %11s %11s %11s\\n\", \"Variable\", \"Per day\", \"Per second\", udiff \" secs\");
    }
    \$2 ~ /^[0-9]*\$/ {
       if ( \$2 > 0 && \$2 < 18446744073709551615 ) {
@@ -235,9 +251,18 @@ format_status_variables () {
          persec = int(persec);
          nowsec = int(nowsec);
          if ( perday + persec + nowsec > 0 ) {
-            if ( perday == 0 ) { perday = \"\"; }
-            if ( persec == 0 ) { persec = \"\"; }
-            if ( nowsec == 0 ) { nowsec = \"\"; }
+            # We do the format in this roundabout way because we want two clashing
+            # behaviors: If something is zero, just print the space padding,
+            # however, if it's any other number, we want that. Problem: %s alone
+            # might use scientific notation, and we can't use %11.f for both cases
+            # as it would turn the empty string into a zero. So use both.
+            perday_format=\"%11.f\";
+            persec_format=\"%11.f\";
+            nowsec_format=\"%11.f\";
+            if ( perday == 0 ) { perday = \"\"; perday_format=\"%11s\"; }
+            if ( persec == 0 ) { persec = \"\"; persec_format=\"%11s\"; }
+            if ( nowsec == 0 ) { nowsec = \"\"; nowsec_format=\"%11s\"; }
+            format=\"%-35s \" perday_format \" \" persec_format \" \" nowsec_format \"\\n\";
             printf(format, \$1, perday, persec, nowsec);
          }
       }
@@ -1074,6 +1099,42 @@ section_mysql_files () {
    done
 }
 
+section_percona_xtradb_cluster () {
+   local mysql_var="$1"
+   local mysql_status="$2"
+
+   name_val "Cluster Name"    "$(get_var "wsrep_cluster_name" "$mysql_var")"
+   name_val "Cluster Address" "$(get_var "wsrep_cluster_address" "$mysql_var")"
+   name_val "Cluster Size"    "$(get_var "wsrep_cluster_size" "$mysql_status")"
+   name_val "Cluster Nodes"   "$(get_var "wsrep_incoming_addresses" "$mysql_status")"
+
+   name_val "Node Name"       "$(get_var "wsrep_node_name" "$mysql_var")"
+   name_val "Node Status"     "$(get_var "wsrep_cluster_status" "$mysql_status")"
+
+   name_val "SST Method"      "$(get_var "wsrep_sst_method" "$mysql_var")"
+   name_val "Slave Threads"   "$(get_var "wsrep_slave_threads" "$mysql_var")"
+   
+   name_val "Ignore Split Brain" "$( parse_wsrep_provider_options "pc.ignore_sb" "$mysql_var" )"
+   name_val "Ignore Quorum" "$( parse_wsrep_provider_options "pc.ignore_quorum" "$mysql_var" )"
+   
+   name_val "gcache Size"      "$( parse_wsrep_provider_options "gcache.size" "$mysql_var" )"
+   name_val "gcache Directory" "$( parse_wsrep_provider_options "gcache.dir" "$mysql_var" )"
+   name_val "gcache Name"      "$( parse_wsrep_provider_options "gcache.name" "$mysql_var" )"
+}
+
+parse_wsrep_provider_options () {
+   local looking_for="$1"
+   local mysql_var_file="$2"
+
+   grep wsrep_provider_options "$mysql_var_file" \
+   | perl -Mstrict -le '
+      my $provider_opts = scalar(<STDIN>);
+      my $looking_for   = $ARGV[0];
+      my %opts          = $provider_opts =~ /(\S+)\s*=\s*(\S*)(?:;|$)/g;
+      print $opts{$looking_for};
+   ' "$looking_for"
+}
+
 report_mysql_summary () {
    local dir="$1"
 
@@ -1162,6 +1223,20 @@ report_mysql_summary () {
    # ########################################################################
    section "Key Percona Server features"
    section_percona_server_features "$dir/mysql-variables"
+
+   # ########################################################################
+   # Percona XtraDB Cluster data
+   # ########################################################################
+   section "Percona XtraDB Cluster"
+   local has_wsrep="$(get_var "wsrep_on" "$dir/mysql-variables")"
+   if [ -n "${has_wsrep:-""}" ]; then
+      local wsrep_on="$(feat_on "$dir/mysql-variables" "wsrep_on")"
+      if [ "${wsrep_on:-""}" = "Enabled" ]; then
+         section_percona_xtradb_cluster "$dir/mysql-variables" "$dir/mysql-status"
+      else
+         name_val "wsrep_on" "OFF"
+      fi
+   fi
 
    # ########################################################################
    # Plugins
