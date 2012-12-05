@@ -77,20 +77,22 @@ sub test_so {
 
    my $res = "";
    my @objs;
-   while ( my $obj = $si->next() ) {
-      if ( $args{return_objs} ) {
-         push @objs, $obj;
-      }
-      else {
-         if ( $result_file || $args{ddl} ) {
-            $res .= "$obj->{db}.$obj->{tbl}\n";
-            $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
+   eval {
+      while ( my $obj = $si->next() ) {
+         if ( $args{return_objs} ) {
+            push @objs, $obj;
          }
          else {
-            $res .= "$obj->{db}.$obj->{tbl} ";
+            if ( $result_file || $args{ddl} ) {
+               $res .= "$obj->{db}.$obj->{tbl}\n";
+               $res .= "$obj->{ddl}\n\n" if $args{ddl} || $tp;
+            }
+            else {
+               $res .= "$obj->{db}.$obj->{tbl} ";
+            }
          }
       }
-   }
+   };
    
    return \@objs if $args{return_objs};
 
@@ -113,6 +115,9 @@ sub test_so {
          $args{unlike},
          $args{test_name},
       );
+   }
+   elsif ( $args{lives_ok} ) {
+      is($EVAL_ERROR, '', $args{test_name});
    }
    else {
       is(
@@ -406,6 +411,44 @@ test_so(
    test_name => "Resume from ignored table"
 );
 
+# ############################################################################
+# pt-table-checksum v2 fails when --resume + --ignore-database is used
+# https://bugs.launchpad.net/percona-toolkit/+bug/911385
+# ############################################################################
+
+test_so(
+   filters   => ['--ignore-databases', 'sakila,mysql'],
+   result    => "",
+   lives_ok  => 1,
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ptc works with --resume + --ignore-database"
+);
+
+$dbh->do("CREATE DATABASE zakila");
+$dbh->do("CREATE TABLE zakila.bug_911385 (i int)");
+test_so(
+   filters   => ['--ignore-databases', 'sakila,mysql'],
+   result    => "zakila.bug_911385 ",
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ...and continues to the next db"
+);
+$dbh->do("DROP DATABASE zakila");
+
+test_so(
+   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   result    => "",
+   lives_ok  => 1,
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ptc works with --resume + --ignore-tables-regex"
+);
+
+test_so(
+   filters   => [qw(--ignore-tables-regex payment --ignore-databases mysql)],
+   result    => "sakila.rental sakila.staff sakila.store ",
+   resume    => 'sakila.payment',
+   test_name => "Bug 911385: ...and continues to the next table"
+);
+
 # #############################################################################
 # Bug 1047335: pt-duplicate-key-checker fails when it encounters a crashed table
 # https://bugs.launchpad.net/percona-toolkit/+bug/1047335
@@ -514,3 +557,4 @@ diag(`$trunk/sandbox/stop-sandbox $master3_port >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 
 done_testing;
+exit;
