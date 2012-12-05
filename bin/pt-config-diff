@@ -844,7 +844,7 @@ sub print_usage {
             $desc .= ".  Optional suffix s=seconds, m=minutes, h=hours, "
                    . "d=days; if no suffix, $s is used.";
          }
-         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol})(?:\s+|$)/g);
+         $desc = join("\n$rpad", grep { $_ } $desc =~ m/(.{0,$rcol}(?!\W))(?:\s+|(?<=\W)|$)/g);
          $desc =~ s/ +$//mg;
          if ( $short ) {
             $usage .= sprintf("  --%-${maxs}s -%s  %s\n", $long, $short, $desc);
@@ -2201,8 +2201,8 @@ sub _preprocess_varvals {
    my %vars;
    LINE:
    foreach my $line ( split /\n/, $to_parse ) {
-      next LINE if $line =~ m/^\s*$/;  # no empty lines
-      next LINE if $line =~ m/^\s*#/;  # no # comment lines
+      next LINE if $line =~ m/^\s*$/;   # no empty lines
+      next LINE if $line =~ /^\s*[#;]/; # no # or ; comment lines
 
       if ( $line !~ $re ) {
          PTDEBUG && _d("Line <", $line, "> didn't match $re");
@@ -2212,6 +2212,8 @@ sub _preprocess_varvals {
       my ($var, $val) = ($1, $2);
       
       $var =~ tr/-/_/;
+
+      $var =~ s/\s*#.*$//;
 
       if ( !defined $val ) {
          $val = '';
@@ -2252,15 +2254,24 @@ sub _parse_varvals {
    return \%config, \%duplicates;
 }
 
+my $quote_re = qr/
+   \A             # Start of value
+   (['"])         # Opening quote
+   (.*)           # Value
+   \1             # Closing quote
+   \s*(?:\#.*)?   # End of line comment
+   [\n\r]*\z      # End of value
+/x;
 sub _process_val {
    my ($val) = @_;
-   $val =~ s/
-               \A        # Start of value
-               (['"])    # Opening quote
-               (.*)      # Value
-               \1        # Closing quote
-               [\n\r]*\z # End of value
-            /$2/x;
+
+   if ( $val =~ $quote_re ) {
+      $val = $2;
+   }
+   else {
+      $val =~ s/\s*#.*//;
+   }
+
    if ( my ($num, $factor) = $val =~ m/(\d+)([KMGT])b?$/i ) {
       my %factor_for = (
          k => 1_024,
