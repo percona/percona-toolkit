@@ -26,6 +26,8 @@ else {
    plan tests => 23;
 }
 
+$sb->load_file('master', 't/lib/samples/stored-objs.sql');
+
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-find -F $cnf ";
@@ -112,14 +114,14 @@ SKIP: {
    );
 
    # Test --procedure.
-   $output = `$cmd sakila  --procedure min_monthly_purchases  --print`;
+   $output = `$cmd pt_find --procedure param1 --print`;
    is(
       $output,
-      "`sakila`.`PROCEDURE rewards_report`\n",
+      "`pt_find`.`PROCEDURE simpleproc`\n",
       '--procedure that matches'
    );
 
-   $output = `$cmd sakila  --procedure blah  --print`;
+   $output = `$cmd pt_find --procedure blah  --print`;
    is(
       $output,
       '',
@@ -127,14 +129,14 @@ SKIP: {
    );
 
    # Test --function.
-   $output = `$cmd sakila  --function v_out --print`;
+   $output = `$cmd pt_find --function Hello --print`;
    is(
       $output,
-      "`sakila`.`FUNCTION inventory_in_stock`\n",
+      "`pt_find`.`FUNCTION hello`\n",
       '--function that matches'
    );
 
-   $output = `$cmd sakila  --function blah  --print`;
+   $output = `$cmd pt_find --function blah  --print`;
    is(
       $output,
       '',
@@ -142,14 +144,14 @@ SKIP: {
    );
 
    # Test --trigger without --trigger-table.
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --print`;
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --print`;
    is(
       $output,
-      "`sakila`.`UPDATE TRIGGER upd_film on film`\n",
+      "`pt_find`.`INSERT TRIGGER ins_trg on t1`\n",
       '--trigger that matches without --trigger-table'
    );
 
-   $output = `$cmd sakila  --trigger blah  --print`;
+   $output = `$cmd pt_find --trigger blah  --print`;
    is(
       $output,
       '',
@@ -157,28 +159,28 @@ SKIP: {
    );
 
    # Test --trigger with --trigger-table.
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --trigger-table film --print`;
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --trigger-table t1 --print`;
    is(
       $output,
-      "`sakila`.`UPDATE TRIGGER upd_film on film`\n",
+      "`pt_find`.`INSERT TRIGGER ins_trg on t1`\n",
       '--trigger that matches with matching --trigger-table'
    );
 
-   $output = `$cmd sakila  --trigger blah --trigger-table film  --print`;
+   $output = `$cmd pt_find --trigger blah --trigger-table t1 --print`;
    is(
       $output,
       '',
       "--trigger that doesn't match with matching --trigger-table"
    );
 
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --trigger-table foo --print`;
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --trigger-table foo --print`;
    is(
       $output,
       '',
       '--trigger that matches with non-matching --trigger-table'
    );
 
-   $output = `$cmd sakila  --trigger blah --trigger-table foo --print`;
+   $output = `$cmd pt_find --trigger blah --trigger-table foo --print`;
    is(
       $output,
       '',
