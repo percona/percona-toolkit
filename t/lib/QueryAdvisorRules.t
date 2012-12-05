@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 87;
+use Test::More;
 
 use PerconaTest;
 use PodParser;
@@ -466,6 +466,30 @@ my @cases = (
       query  => "select col1, col2 from tbl where i=1 order by col1, col2 desc",
       advice => [qw(CLA.007)],
    },
+   {
+      name   => 'Bug 937234: wrong RES.001',
+      query  => q{select NULL, null, 1, COUNT(*), @@time_zone, foo as field2 from t1 group by field2},
+      advice => [qw(CLA.001)],
+   },
+   {
+      name   => 'Bug 996069: wrong RES.001',
+      query  => q{SELECT cola, MAX(colb) FROM table WHERE cola = 123 GROUP BY cola},
+      advice => [qw()],
+   },
+   {
+      name   => 'Bug 933465: false positive on RES.001',
+      query  => q{select name, population, count(*) from world.Country group by name, population},
+      advice => [qw(CLA.001)],
+   },
+   {
+      name   => 'Bug 933465: false positive on RES.001',
+      query  => q{SELECT ID_organization,ToNalog,ID_nachtype, COUNT(*) as Cnt }
+              . q{FROM buh_provodka_zp }
+              . q{GROUP BY ID_organization,ToNalog,ID_nachtype }
+              . q{HAVING Cnt>1 }
+              . q{ORDER BY Cnt DESC},
+      advice => [qw(CLA.001)],
+   },
 );
 
 # Run the test cases.
@@ -524,4 +548,6 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
+
+done_testing;
 exit;

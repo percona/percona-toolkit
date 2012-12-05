@@ -3816,9 +3816,14 @@ sub get_rules {
                            grep { $_->{column} }
                            @$groupby;
          return unless scalar %groupby_col;
-         my $cols = $event->{query_struct}->{columns};
+         my $cols = [
+                      grep { _looks_like_column($_->{col}) }
+                      grep { ! exists $_->{func} }
+                      @{$event->{query_struct}->{columns}}
+                    ];
          foreach my $col ( @$cols ) {
-            return 0 unless $groupby_col{ $col->{col} };
+            return 0 unless $groupby_col{ $col->{col} }
+                         || ($col->{alias} && $groupby_col{ $col->{alias} });
          }
          return;
       },
@@ -4050,6 +4055,13 @@ sub determine_table_for_column {
 
    PTDEBUG && _d("Cannot determine table for column", $col);
    return;
+}
+
+sub _looks_like_column {
+   my $col = shift;
+   return if $col eq '*' || uc($col) eq 'NULL';
+   return if $col =~ /\A(?:\b[0-9]+\b|\@{1,2}.+)/;
+   return $col;
 }
 
 sub _d {
