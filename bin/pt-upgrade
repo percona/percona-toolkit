@@ -11980,11 +11980,21 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
-   if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
+   if ( $o->get('version-check') ne 'off'
+        && (!$o->has('quiet') || !$o->get('quiet')) ) {
       Pingback::version_check(
          instances => [ map({ +{ dbh => $_->{dbh}, dsn => $_->{dsn} } } @$hosts) ],
          protocol  => $o->get('version-check'),
       );
+   }
+
+   # ########################################################################
+   # Disable the query cache.
+   # ########################################################################
+   if ( $o->get('disable-query-cache') ) {
+      foreach my $host ( @$hosts ) {
+         disable_query_cache($host);
+      }
    }
 
    # ########################################################################
@@ -12385,6 +12395,31 @@ sub get_cxn {
    return $dbh;
 }
 
+sub disable_query_cache {
+   my ($host) = @_;
+   die "I need a host argument" unless $host;
+   my ($dbh, $host_name) = @{$host}{qw(dbh name)};
+
+   my $sql = 'SELECT @@query_cache_type';
+   PTDEBUG && _d($host_name, $sql);
+   my ($query_cache_type) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($host_name, $query_cache_type);
+   return if ($query_cache_type || '') =~ m/OFF|0/;
+
+   $sql = q/SET SESSION query_cache_type = OFF/;
+   eval {
+      PTDEBUG && _d($host_name, $sql);
+      $dbh->do($sql);
+   };
+   if ( $EVAL_ERROR ) {
+      warn $EVAL_ERROR;
+      die "Failed to $sql on $host_name.  Disable the query cache "
+         . "manually, or specify --no-disable-query-cache.\n";
+   }
+
+   return;
+}
+
 # Catches signals so we can exit gracefully.
 sub sig_int {
    my ( $signal ) = @_;
@@ -12693,6 +12728,12 @@ C<SELECT col FROM tbl WHERE id=1>.
 Fork to the background and detach from the shell.  POSIX
 operating systems only.
 
+=item --[no]disable-query-cache
+
+default: yes
+
+C<SET SESSION query_cache_type = OFF> to disable the query cache.
+
 =item --explain-hosts
 
 Print connection information and exit.
@@ -12861,7 +12902,7 @@ interrupt with CTRL-C).
 
 =item --set-vars
 
-type: string; default: wait_timeout=10000,query_cache_type=0
+type: string; default: wait_timeout=10000
 
 Set these MySQL variables.  Immediately after connecting to MySQL, this
 string will be appended to SET and executed.
