@@ -648,18 +648,18 @@ remove_pid_file() {
 
 set -u
 
-CMD_GDB="$(_which gdb)"
-CMD_IOSTAT="$(_which iostat)"
-CMD_MPSTAT="$(_which mpstat)"
-CMD_MYSQL="$(_which mysql)"
-CMD_MYSQLADMIN="$(_which mysqladmin)"
-CMD_OPCONTROL="$(_which opcontrol)"
-CMD_OPREPORT="$(_which opreport)"
-CMD_PMAP="$(_which pmap)"
-CMD_STRACE="$(_which strace)"
-CMD_SYSCTL="$(_which sysctl)"
-CMD_TCPDUMP="$(_which tcpdump)"
-CMD_VMSTAT="$(_which vmstat)"
+CMD_GDB="${CMD_GDB:-"$(_which gdb)"}"
+CMD_IOSTAT="${CMD_IOSTAT:-"$(_which iostat)"}"
+CMD_MPSTAT="${CMD_MPSTAT:-"$(_which mpstat)"}"
+CMD_MYSQL="${CMD_MYSQL:-"$(_which mysql)"}"
+CMD_MYSQLADMIN="${CMD_MYSQLADMIN:-"$(_which mysqladmin)"}"
+CMD_OPCONTROL="${CMD_OPCONTROL:-"$(_which opcontrol)"}"
+CMD_OPREPORT="${CMD_OPREPORT:-"$(_which opreport)"}"
+CMD_PMAP="${CMD_PMAP:-"$(_which pmap)"}"
+CMD_STRACE="${CMD_STRACE:-"$(_which strace)"}"
+CMD_SYSCTL="${CMD_SYSCTL:-"$(_which sysctl)"}"
+CMD_TCPDUMP="${CMD_TCPDUMP:-"$(_which tcpdump)"}"
+CMD_VMSTAT="${CMD_VMSTAT:-"$(_which vmstat)"}"
 
 [ -z "$CMD_SYSCTL" -a -x "/sbin/sysctl" ] && CMD_SYSCTL="/sbin/sysctl"
 
@@ -1843,7 +1843,49 @@ Print tool's version and exit.
 
 =head1 ENVIRONMENT
 
-This tool does not use any environment variables for configuration.
+This tool does not require any environment variables for configuration,
+although it can be influenced to work differently by through several
+variables.  Keep in mind that these are expert settings, and should not
+be used in most cases.
+
+Specifically, the variables that can be set are:
+
+=over
+
+=item CMD_GDB
+
+=item CMD_IOSTAT
+
+=item CMD_MPSTAT
+
+=item CMD_MYSQL
+
+=item CMD_MYSQLADMIN
+
+=item CMD_OPCONTROL
+
+=item CMD_OPREPORT
+
+=item CMD_PMAP
+
+=item CMD_STRACE
+
+=item CMD_SYSCTL
+
+=item CMD_TCPDUMP
+
+=item CMD_VMSTAT
+
+=back
+
+For example, during collection iostat is called with a -dx argument, but
+because you have an NFS partition, you also need the -n flag there.  Instead
+of editing the source, you can call pt-stalk as
+
+    CMD_IOSTAT="iostat -n" pt-stalk ...
+
+which will do exactly what you need.  Combined with the plugin hooks, this
+gives you a fine-grained control of what the tool does.
 
 =head1 SYSTEM REQUIREMENTS
 
