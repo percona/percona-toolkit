@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+#set -x
+
 # Usage: write-user-docs [TOOLS]
 #
 # This script writes/updates the user documentation.  User docs come from
@@ -64,24 +66,37 @@ RST_DIR=$DOCS_DIR/user
 # Subroutines
 # ############################################################################
 
+fix_html () {
+   local name="$1"
+   perl -MFile::Basename=basename -MFile::Slurp=read_file,write_file -le '
+      my $f    = shift;
+      my $tool = basename($f);
+      $tool    =~ s/\.html//;
+      my $out = read_file($f);
+      $out =~ s{
+\Q<dt id="\E(cmdoption-$tool--)\Q">\E\s*
+\Q<tt class="descname">--</tt><tt class="descclassname">\E([^<]+)
+\Q</tt><a class="headerlink" href="\E[^"]+"
+}{<dt id="$1$2">
+<tt class="descname">--$2</tt><tt class="descclassname"></tt><a class="headerlink" href="#$1$2"}xg;
+      write_file($f, $out);
+   ' $RST_DIR/html/$name.html
+}
+
 write_rst() {
    local file="$1"
+   local tool="$(basename $1)"
    if [ ! -f $file ]; then
       warn "$file does not exist"
       return
    fi
-   local tool=$(basename $file)
 
-   cat $file | pod2rst > $RST_DIR/$tool.orig.rst
+   $BRANCH/util/pod2rst-fixed $file > $RST_DIR/$tool.rst
    if [ $? -eq 0 ]; then
-      $BRANCH/util/fix-pod2rst-output $RST_DIR/$tool.orig.rst $tool \
-         > $RST_DIR/$tool.rst
       echo "Wrote $RST_DIR/$tool.rst"
    else
-      warn "Error writing $RST_DIR/tool.rst"
+      die "Error writing $RST_DIR/$tool.rst"
    fi
-
-   rm $RST_DIR/$tool.orig.rst
 }
 
 # Parse the head1 sections from percona-toolkit.pod and write them as
@@ -149,5 +164,18 @@ if [ $BUILD -eq 1 ]; then
    make html
    exit_status=$(( exit_status | $? ))
 fi
+
+if [ $# -gt 0 ]; then
+   for tool; do
+      name="$(basename $tool)"
+      fix_html $name
+   done
+else
+   for tool in `ls $BRANCH/bin/*`; do
+      name="$(basename $tool)"
+      fix_html $name
+   done
+fi
+
 
 exit $exit_status
