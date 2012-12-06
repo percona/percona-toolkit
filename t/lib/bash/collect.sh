@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 21
+plan 22
 
 TMPFILE="$TEST_PT_TMPDIR/parse-opts-output"
 PT_TMPDIR="$TEST_PT_TMPDIR"
@@ -141,10 +141,32 @@ parse_options "$BIN_DIR/pt-stalk" --run-time 2 -- --defaults-file=/tmp/12345/my.
 
 rm $PT_TMPDIR/collect/*
 
+fake_opcontrol="$PT_TMPDIR/collect/fake_opcontrol"
+fake_out="$PT_TMPDIR/collect/pt-faked-opcontrol-out"
+cat <<FAKE_EXEC > "$fake_opcontrol"
+#!/bin/sh
+
+echo "Faked opcontrol: \$@" > "$fake_out"
+
+exit 1
+
+FAKE_EXEC
+
+chmod +x "$fake_opcontrol"
+
+CMD_OPCONTROL="$fake_opcontrol"
+OPT_COLLECT_OPROFILE=1
 collect "$PT_TMPDIR/collect" "2011_12_05" > $p-output 2>&1
+CMD_OPCONTROL=""
+OPT_COLLECT_OPROFILE=""
 
 iters=$(cat $p-df | grep -c '^TS ')
 is "$iters" "2" "2 iteration/2s run time"
+
+is \
+   "$(cat "$fake_out")" \
+   "Faked opcontrol: --init" \
+   "Bug 986847: Can manually set which commands pt-stalk uses"
 
 if [ -f "$p-vmstat" ]; then
    n=$(awk '/[ ]*[0-9]/ { n += 1 } END { print n }' "$p-vmstat")
