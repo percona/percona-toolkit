@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 41
+plan 44
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -781,6 +781,31 @@ is \
    "/tmp/12345/data//galera.cache" \
    "parse_wsrep_provider_options works for gcache.name"
 
+
+# ###########################################################################
+# pt-mysql-summary not Percona Server 5.5-ready
+# https://bugs.launchpad.net/percona-toolkit/+bug/1015590
+# ###########################################################################
+
+section_percona_server_features "$samples/percona-server-5.5-variables" > "$PT_TMPDIR/got"
+
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-features.txt" \
+   "Bug 1015590: pt-mysql-summary not Percona Server 5.5-ready"
+
+section_percona_server_features "$samples/percona-server-5.1-variables" > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-5.1-features.txt" \
+   "Bug 1015590: section_percona_server_features works on 5.1 with innodb_adaptive_checkpoint=none"
+
+section_percona_server_features "$samples/percona-server-5.1-variables-martin" > "$PT_TMPDIR/got"
+cp "$PT_TMPDIR/got" /tmp/dasgot
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-5.1-martin.txt" \
+   "section_percona_server_features works on 5.1"
 
 # ###########################################################################
 # Done

@@ -154,16 +154,16 @@ wsrep_local_index                   4000000000000    45000000
                      Size | 400
                     Usage | 15%
 # Key Percona Server features ################################
-      Table & Index Stats | Not Supported
+      Table & Index Stats | Disabled
      Multiple I/O Threads | Enabled
-     Corruption Resilient | Not Supported
-      Durable Replication | Not Supported
-     Import InnoDB Tables | Not Supported
-     Fast Server Restarts | Not Supported
-         Enhanced Logging | Not Supported
+     Corruption Resilient | Enabled
+      Durable Replication | Disabled
+     Import InnoDB Tables | Disabled
+     Fast Server Restarts | Disabled
+         Enhanced Logging | Disabled
      Replica Perf Logging | Disabled
-      Response Time Hist. | Not Supported
-          Smooth Flushing | Not Supported
+      Response Time Hist. | Disabled
+          Smooth Flushing | Enabled
       HandlerSocket NoSQL | Not Supported
            Fast Hash UDFs | Unknown
 # Percona XtraDB Cluster #####################################
