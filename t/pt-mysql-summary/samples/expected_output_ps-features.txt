@@ -1,0 +1,12 @@
+      Table & Index Stats | Disabled
+     Multiple I/O Threads | Enabled
+     Corruption Resilient | Enabled
+      Durable Replication | Disabled
+     Import InnoDB Tables | Disabled
+     Fast Server Restarts | Disabled
+         Enhanced Logging | Disabled
+     Replica Perf Logging | Disabled
+      Response Time Hist. | Disabled
+          Smooth Flushing | Enabled
+      HandlerSocket NoSQL | Not Supported
+           Fast Hash UDFs | Unknown

@@ -40,19 +40,19 @@ feat_on() {
    local varname="$2"
    [ -e "$file" ] || return
 
-   if [ "$( get_var "$varname" "${file}" )" ]; then
+   if [ "$( grep "$varname" "${file}" )" ]; then
       local var="$(awk "\$1 ~ /^$2$/ { print \$2 }" $file)"
       if [ "${var}" = "ON" ]; then
          echo "Enabled"
       elif [ "${var}" = "OFF" -o "${var}" = "0" -o -z "${var}" ]; then
          echo "Disabled"
-      elif [ "$3" = "ne" ]; then
+      elif [ "${3:-""}" = "ne" ]; then
          if [ "${var}" != "$4" ]; then
             echo "Enabled"
          else
             echo "Disabled"
          fi
-      elif [ "$3" = "gt" ]; then
+      elif [ "${3:-""}" = "gt" ]; then
          if [ "${var}" -gt "$4" ]; then
             echo "Enabled"
          else
@@ -66,6 +66,21 @@ feat_on() {
    else
       echo "Not Supported"
    fi
+}
+
+feat_on_renamed () {
+   local file="$1"
+   shift;
+
+   for varname in "$@"; do
+      local feat_on="$( feat_on "$file" $varname )"
+      if [ "${feat_on:-"Not Supported"}" != "Not Supported" ]; then
+         echo $feat_on
+         return
+      fi
+   done
+
+   echo "Not Supported"
 }
 
 get_table_cache () {
@@ -854,26 +869,50 @@ section_percona_server_features () {
 
    [ -e "$file" ] || return
 
+   # Renamed to userstat in 5.5.10-20.1
    name_val "Table & Index Stats"   \
-            "$(feat_on "$file" userstat_running)"
+            "$(feat_on_renamed "$file" userstat_running userstat)"
    name_val "Multiple I/O Threads"  \
             "$(feat_on "$file" innodb_read_io_threads gt 1)"
+
+   # Renamed to innodb_corrupt_table_action in 5.5.10-20.1
    name_val "Corruption Resilient"  \
-            "$(feat_on "$file" innodb_pass_corrupt_table)"
+            "$(feat_on_renamed "$file" innodb_pass_corrupt_table innodb_corrupt_table_action)"
+
+   # Renamed to innodb_recovery_update_relay_log in 5.5.10-20.1
    name_val "Durable Replication"   \
-            "$(feat_on "$file" innodb_overwrite_relay_log_info)"
+            "$(feat_on_renamed "$file" innodb_overwrite_relay_log_info innodb_recovery_update_relay_log)"
+
+   # Renamed to innodb_import_table_from_xtrabackup in 5.5.10-20.1
    name_val "Import InnoDB Tables"  \
-            "$(feat_on "$file" innodb_expand_import)"
+            "$(feat_on_renamed "$file" innodb_expand_import innodb_import_table_from_xtrabackup)"
+
+   # Renamed to innodb_buffer_pool_restore_at_startup in 5.5.10-20.1
    name_val "Fast Server Restarts"  \
-            "$(feat_on "$file" innodb_auto_lru_dump)"
+            "$(feat_on_renamed "$file" innodb_auto_lru_dump innodb_buffer_pool_restore_at_startup)"
+   
    name_val "Enhanced Logging"      \
             "$(feat_on "$file" log_slow_verbosity ne microtime)"
    name_val "Replica Perf Logging"  \
             "$(feat_on "$file" log_slow_slave_statements)"
+
+   # Renamed to query_response_time_stats in 5.5
    name_val "Response Time Hist."   \
-            "$(feat_on "$file" enable_query_response_time_stats)"
-   name_val "Smooth Flushing"       \
-            "$(feat_on "$file" innodb_adaptive_checkpoint ne none)"
+            "$(feat_on_renamed "$file" enable_query_response_time_stats query_response_time_stats)"
+
+   # Renamed to innodb_adaptive_flushing_method in 5.5
+   # This one is a bit more convulted than the rest because not only did it
+   # change names, but also default values: none in 5.1, native in 5.5
+   local smooth_flushing="$(feat_on_renamed "$file" innodb_adaptive_checkpoint innodb_adaptive_flushing_method)"
+   if  [ "${smooth_flushing:-""}" != "Not Supported" ]; then
+      if [ -n "$(get_var innodb_adaptive_checkpoint "$file")" ]; then
+         smooth_flushing="$(feat_on "$file" "innodb_adaptive_checkpoint" ne none)"
+      else
+         smooth_flushing="$(feat_on "$file" "innodb_adaptive_flushing_method" ne native)"
+      fi
+   fi
+   name_val "Smooth Flushing" "$smooth_flushing"
+   
    name_val "HandlerSocket NoSQL"   \
             "$(feat_on "$file" handlersocket_port)"
    name_val "Fast Hash UDFs"   \
