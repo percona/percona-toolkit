@@ -79,17 +79,11 @@ while (my $para = <$in>) {
       $para =~ s/^[ ]+$//mg;
       $para =~ s/^\n\n/\n/mg;
       $para =~ s/code-block:: bash(\s+)CREATE/code-block:: sql$1CREATE/sg;
-      $para =~ s/\Q.. option:: \E\K(.+)/test($1)/eg;
       if ( ($section || '') eq 'OUTPUT' ) {
          $para =~ s/^([A-Z_]+)\n\n/$1\n/;
       }
       $fixed_output .= $para;
    }
-}
-
-sub test {
-   my ($t) = @_;
-   return $t =~ s/([\[\]])/\\$1/rg;
 }
 
 close $in;
