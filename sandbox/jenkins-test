@@ -21,20 +21,11 @@ util/check-dev-env
 #########################
 # Check the system env. #
 #########################
-if [ "$(id -u)" = "0" ]; then
-   sudo su -- jenkins
-fi
-
-env
-
-if [ -z "$HOME" ]; then
-   if [ -d "/home/jenkins" ]; then
-      HOME="/home/jenkins"
-      echo "\$HOME not defined, using $HOME"
-   else
-      echo "\$HOME not defined and /home/jenkins does not exist"
-      exit 1
-   fi
+whoami
+id
+if [ "$(id -u)" != "0" ]; then
+   echo "Cannot run as root" >&2
+   exit 1
 fi
 
 #####################################
