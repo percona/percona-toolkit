@@ -21,7 +21,12 @@ util/check-dev-env
 #########################
 # Check the system env. #
 #########################
+if [ "$(id -u)" = "0" ]; then
+   sudo su -- jenkins
+fi
+
 env
+
 if [ -z "$HOME" ]; then
    if [ -d "/home/jenkins" ]; then
       HOME="/home/jenkins"
