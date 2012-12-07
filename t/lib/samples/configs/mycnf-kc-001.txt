@@ -1,0 +1,9 @@
+[mysqld]
+user=mysql # comment
+password="password # still part of it!"# comment
+something='something ; or # another'      # comment
+;semicolon="start of line comment with ;"
+#pound="start of line comment with #"
+   ;spacecolon
+   #spacepound
+log_bin # bool with comment

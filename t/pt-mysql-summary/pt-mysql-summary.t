@@ -61,7 +61,7 @@ like(
 );
 
 # --read-samples
-for my $i (2..5) {
+for my $i (2..7) {
    ok(
       no_diff(
          sub {
@@ -73,5 +73,16 @@ for my $i (2..5) {
       "--read-samples works for t/pt-mysql-summary/temp00$i",
    );
 }
+
+# Test that --help works under sh
+
+my $sh   = `sh   $trunk/bin/$tool --help`;
+my $bash = `bash $trunk/bin/$tool --help`;
+
+is(
+   $sh,
+   $bash,
+   "--help works under sh and bash"
+);
 
 done_testing;

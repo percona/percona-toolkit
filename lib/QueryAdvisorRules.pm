@@ -341,11 +341,17 @@ sub get_rules {
                            grep { $_->{column} }
                            @$groupby;
          return unless scalar %groupby_col;
-         my $cols = $event->{query_struct}->{columns};
+         # Skip non-columns -- NULL, digits, functions, variables
+         my $cols = [
+                      grep { _looks_like_column($_->{col}) }
+                      grep { ! exists $_->{func} }
+                      @{$event->{query_struct}->{columns}}
+                    ];
          # All SELECT cols must be in GROUP BY cols clause.
          # E.g. select a, b, c from tbl group by a; -- non-deterministic
          foreach my $col ( @$cols ) {
-            return 0 unless $groupby_col{ $col->{col} };
+            return 0 unless $groupby_col{ $col->{col} }
+                         || ($col->{alias} && $groupby_col{ $col->{alias} });
          }
          return;
       },
@@ -656,6 +662,14 @@ sub determine_table_for_column {
 
    PTDEBUG && _d("Cannot determine table for column", $col);
    return;
+}
+
+sub _looks_like_column {
+   my $col = shift;
+   # NULL, numbers, variables and functions are definitely not columns
+   return if $col eq '*' || uc($col) eq 'NULL';
+   return if $col =~ /\A(?:\b[0-9]+\b|\@{1,2}.+)/;
+   return $col;
 }
 
 sub _d {

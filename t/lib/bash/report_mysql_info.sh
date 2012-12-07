@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-plan 33
+plan 44
 
 . "$LIB_DIR/alt_cmds.sh"
 . "$LIB_DIR/log_warn_die.sh"
@@ -306,6 +306,16 @@ mysql   818  0.0 17.4 45292 20584  v0  I     3:01PM   0:02.28 /usr/local/libexec
 EOF
 parse_mysqld_instances "$PT_TMPDIR/in" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
 no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "parse_mysqld_instances"
+
+cat <<EOF > "$PT_TMPDIR/expected"
+  Port  Data Directory             Nice OOM Socket
+  ===== ========================== ==== === ======
+  12345 /tmp/12345/data            ?    ?   /tmp/12345/mysql_sandbox12345.sock
+  12346 /tmp/12346/data            ?    ?   /tmp/12346/mysql_sandbox12346.sock
+  12347 /tmp/12347/data            ?    ?   /tmp/12347/mysql_sandbox12347.sock
+EOF
+parse_mysqld_instances "$samples/ps-mysqld-006.txt" "$PT_TMPDIR/empty" > "$PT_TMPDIR/got"
+no_diff "$PT_TMPDIR/got" "$PT_TMPDIR/expected" "ps-mysqld-006.txt (uses --defaults-file)"
 
 # ###########################################################################
 # get_mysql_*
@@ -728,6 +738,74 @@ no_diff \
    "$PT_TMPDIR/got" \
    "$samples/expected_output_temp004.txt" \
    "report_mysql_summary, dir: temp004"
+
+report_mysql_summary "$samples/temp006" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_temp006.txt" \
+   "report_mysql_summary, dir: temp006 (PXC, cluster node)"
+
+report_mysql_summary "$samples/temp007" 2>/dev/null | tail -n+3 > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_temp007.txt" \
+   "report_mysql_summary, dir: temp007 (PXC, traditional master)"
+
+# ###########################################################################
+# parse_wsrep_provider_options
+# ###########################################################################
+
+vars_file="$samples/temp006/mysql-variables"
+is \
+   "$(parse_wsrep_provider_options "base_host" "$vars_file")" \
+   "192.168.122.1" \
+   "parse_wsrep_provider_options works for the first option"
+
+is \
+   "$(parse_wsrep_provider_options "replicator.commit_order" "$vars_file")" \
+   "3" \
+   "parse_wsrep_provider_options works for the last option"
+
+is \
+   "$(parse_wsrep_provider_options "pc.ignore_sb" "$vars_file")" \
+   "false" \
+   "parse_wsrep_provider_options works for pc.ignore_sb"
+
+is \
+   "$(parse_wsrep_provider_options "pc.ignore_quorum" "$vars_file")" \
+   "false" \
+   "parse_wsrep_provider_options works for pc.ignore_quorum"
+
+is \
+   "$(parse_wsrep_provider_options "gcache.name" "$vars_file")" \
+   "/tmp/12345/data//galera.cache" \
+   "parse_wsrep_provider_options works for gcache.name"
+
+
+# ###########################################################################
+# pt-mysql-summary not Percona Server 5.5-ready
+# https://bugs.launchpad.net/percona-toolkit/+bug/1015590
+# ###########################################################################
+
+section_percona_server_features "$samples/percona-server-5.5-variables" > "$PT_TMPDIR/got"
+
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-features.txt" \
+   "Bug 1015590: pt-mysql-summary not Percona Server 5.5-ready"
+
+section_percona_server_features "$samples/percona-server-5.1-variables" > "$PT_TMPDIR/got"
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-5.1-features.txt" \
+   "Bug 1015590: section_percona_server_features works on 5.1 with innodb_adaptive_checkpoint=none"
+
+section_percona_server_features "$samples/percona-server-5.1-variables-martin" > "$PT_TMPDIR/got"
+cp "$PT_TMPDIR/got" /tmp/dasgot
+no_diff \
+   "$PT_TMPDIR/got" \
+   "$samples/expected_output_ps-5.1-martin.txt" \
+   "section_percona_server_features works on 5.1"
 
 # ###########################################################################
 # Done

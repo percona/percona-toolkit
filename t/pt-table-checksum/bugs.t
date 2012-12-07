@@ -207,6 +207,40 @@ like(
 );
 
 # #############################################################################
+# Illegal division by zero at pt-table-checksum line 7950
+# https://bugs.launchpad.net/percona-toolkit/+bug/1075638
+# and the ptc part of
+# divison by zero errors on default Gentoo mysql
+# https://bugs.launchpad.net/percona-toolkit/+bug/1050737
+# #############################################################################
+
+{
+   no warnings qw(redefine once);
+   my $orig = \&Time::HiRes::time;
+   my $time = Time::HiRes::time();
+   local *pt_table_checksum::time = local *Time::HiRes::time = sub { $time };
+
+   ($output) = output(
+      sub { pt_table_checksum::main(@args,
+               qw(--replicate=pt.checksums -t test.t --chunk-size 10))
+      },
+      stderr => 1
+   );
+
+   unlike(
+      $output,
+      qr/Illegal division by zero/,
+      "Bugs 1075638 and 1050737: No division by zero error when nibble_time is zero"
+   );
+
+   is(
+      PerconaTest::count_checksum_results($output, 'diffs'),
+      3,
+      "Bug 1075638 and 1050737: ...And we get the correct number of diffs"
+   );
+}
+
+# #############################################################################
 # pt-table-checksum doesn't warn if binlog_format=row or mixed on slaves
 # https://bugs.launchpad.net/percona-toolkit/+bug/938068
 # #############################################################################
