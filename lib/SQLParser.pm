@@ -371,7 +371,7 @@ sub parse_insert {
 
    # Parse INTO clause.  Literal "INTO" is optional.
    if ( my @into = ($query =~ m/
-            (?=VALUE|SE(?:T|LECT))  # Avoid a backtracking explosion
+            (?=.*?(?:VALUE|SE(?:T|LECT)))  # Avoid a backtracking explosion
             (?:INTO\s+)?            # INTO, optional
             (.+?)\s+                # table ref
             (\([^\)]+\)\s+)?        # column list, optional
