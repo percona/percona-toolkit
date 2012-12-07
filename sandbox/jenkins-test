@@ -23,7 +23,7 @@ util/check-dev-env
 #########################
 whoami
 id
-if [ "$(id -u)" != "0" ]; then
+if [ "$(id -u)" = "0" ]; then
    echo "Cannot run as root" >&2
    exit 1
 fi
