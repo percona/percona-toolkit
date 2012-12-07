@@ -203,11 +203,16 @@ sub next {
 
    if ( !$self->{initialized} ) {
       $self->{initialized} = 1;
-      if ( $self->{resume}->{tbl}
-           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
-         PTDEBUG && _d('Will resume after',
-            join('.', @{$self->{resume}}{qw(db tbl)}));
-         $self->{resume}->{after} = 1;
+      if ( $self->{resume}->{tbl} ) {
+         if ( !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+            PTDEBUG && _d('Will resume after',
+               join('.', @{$self->{resume}}{qw(db tbl)}));
+            $self->{resume}->{after}->{tbl} = 1;
+         }
+         if ( !$self->database_is_allowed($self->{resume}->{db}) ) {
+            PTDEBUG && _d('Will resume after', $self->{resume}->{db});
+            $self->{resume}->{after}->{db}  = 1;
+         }
       }
    }
 
@@ -320,16 +325,17 @@ sub _iterate_dbh {
       # This happens once, the first time we're called.
       my $sql = 'SHOW DATABASES';
       PTDEBUG && _d($sql);
-      my @dbs = grep { $self->database_is_allowed($_) }
-                @{$dbh->selectcol_arrayref($sql)};
+      my @dbs = grep {
+                  $self->_resume_from_database($_)
+                  &&
+                  $self->database_is_allowed($_)
+                } @{$dbh->selectcol_arrayref($sql)};
       PTDEBUG && _d('Found', scalar @dbs, 'databases');
       $self->{dbs} = \@dbs;
    }
 
    if ( !$self->{db} ) {
-      do {
-         $self->{db} = shift @{$self->{dbs}};
-      } until $self->_resume_from_database($self->{db});
+      $self->{db} = shift @{$self->{dbs}};
       PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
@@ -530,11 +536,19 @@ sub _resume_from_database {
 
    # "Resume" from any db if we're not, in fact, resuming.
    return 1 unless $self->{resume}->{db};
-
    if ( $db eq $self->{resume}->{db} ) {
-      PTDEBUG && _d('At resume db', $db);
-      delete $self->{resume}->{db};
-      return 1;
+      if ( !$self->{resume}->{after}->{db} ) {
+         PTDEBUG && _d('Resuming from db', $db);
+         delete $self->{resume}->{db};
+         return 1;
+      }
+      else {
+         PTDEBUG && _d('Resuming after db', $db);
+         # If we're not resuming from the resume db, then
+         # we aren't resuming from the resume table either.
+         delete $self->{resume}->{db};
+         delete $self->{resume}->{tbl};
+      }
    }
 
    return 0;
@@ -547,7 +561,7 @@ sub _resume_from_table {
    return 1 unless $self->{resume}->{tbl};
 
    if ( $tbl eq $self->{resume}->{tbl} ) {
-      if ( !$self->{resume}->{after} ) {
+      if ( !$self->{resume}->{after}->{tbl} ) {
          PTDEBUG && _d('Resuming from table', $tbl);
          delete $self->{resume}->{tbl};
          return 1;
