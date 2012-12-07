@@ -111,80 +111,6 @@ SKIP: {
       "--view that doesn't match"
    );
 
-   # Test --procedure.
-   $output = `$cmd sakila  --procedure min_monthly_purchases  --print`;
-   is(
-      $output,
-      "`sakila`.`PROCEDURE rewards_report`\n",
-      '--procedure that matches'
-   );
-
-   $output = `$cmd sakila  --procedure blah  --print`;
-   is(
-      $output,
-      '',
-      "--procedure that doesn't match"
-   );
-
-   # Test --function.
-   $output = `$cmd sakila  --function v_out --print`;
-   is(
-      $output,
-      "`sakila`.`FUNCTION inventory_in_stock`\n",
-      '--function that matches'
-   );
-
-   $output = `$cmd sakila  --function blah  --print`;
-   is(
-      $output,
-      '',
-      "--function that doesn't match"
-   );
-
-   # Test --trigger without --trigger-table.
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --print`;
-   is(
-      $output,
-      "`sakila`.`UPDATE TRIGGER upd_film on film`\n",
-      '--trigger that matches without --trigger-table'
-   );
-
-   $output = `$cmd sakila  --trigger blah  --print`;
-   is(
-      $output,
-      '',
-      "--trigger that doesn't match without --trigger-table"
-   );
-
-   # Test --trigger with --trigger-table.
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --trigger-table film --print`;
-   is(
-      $output,
-      "`sakila`.`UPDATE TRIGGER upd_film on film`\n",
-      '--trigger that matches with matching --trigger-table'
-   );
-
-   $output = `$cmd sakila  --trigger blah --trigger-table film  --print`;
-   is(
-      $output,
-      '',
-      "--trigger that doesn't match with matching --trigger-table"
-   );
-
-   $output = `$cmd sakila  --trigger 'UPDATE film_text' --trigger-table foo --print`;
-   is(
-      $output,
-      '',
-      '--trigger that matches with non-matching --trigger-table'
-   );
-
-   $output = `$cmd sakila  --trigger blah --trigger-table foo --print`;
-   is(
-      $output,
-      '',
-      "--trigger that doesn't match with non-matching --trigger-table"
-   );
-
    # Test NULL sizes.
    $output = `$cmd sakila  --datasize NULL`,
    is(
@@ -200,6 +126,84 @@ SKIP: {
       '--datasize NULL',
    );
 };
+
+$sb->load_file('master', "t/pt-find/samples/pseudo-sakila.sql");
+
+# Test --procedure.
+$output = `$cmd sakila_test  --procedure min_monthly_purchases  --print`;
+is(
+   $output,
+   "`sakila_test`.`PROCEDURE rewards_report`\n",
+   '--procedure that matches'
+);
+
+$output = `$cmd sakila_test  --procedure blah  --print`;
+is(
+   $output,
+   '',
+   "--procedure that doesn't match"
+);
+
+# Test --function.
+$output = `$cmd sakila_test  --function v_out --print`;
+is(
+   $output,
+   "`sakila_test`.`FUNCTION inventory_in_stock`\n",
+   '--function that matches'
+);
+
+$output = `$cmd sakila_test  --function blah  --print`;
+is(
+   $output,
+   '',
+   "--function that doesn't match"
+);
+
+# Test --trigger without --trigger-table.
+$output = `$cmd sakila_test  --trigger 'UPDATE film_text' --print`;
+is(
+   $output,
+   "`sakila_test`.`UPDATE TRIGGER upd_film on film`\n",
+   '--trigger that matches without --trigger-table'
+);
+
+$output = `$cmd sakila_test  --trigger blah  --print`;
+is(
+   $output,
+   '',
+   "--trigger that doesn't match without --trigger-table"
+);
+
+# Test --trigger with --trigger-table.
+$output = `$cmd sakila_test  --trigger 'UPDATE film_text' --trigger-table film --print`;
+is(
+   $output,
+   "`sakila_test`.`UPDATE TRIGGER upd_film on film`\n",
+   '--trigger that matches with matching --trigger-table'
+);
+
+$output = `$cmd sakila_test  --trigger blah --trigger-table film  --print`;
+is(
+   $output,
+   '',
+   "--trigger that doesn't match with matching --trigger-table"
+);
+
+$output = `$cmd sakila_test  --trigger 'UPDATE film_text' --trigger-table foo --print`;
+is(
+   $output,
+   '',
+   '--trigger that matches with non-matching --trigger-table'
+);
+
+$output = `$cmd sakila_test  --trigger blah --trigger-table foo --print`;
+is(
+   $output,
+   '',
+   "--trigger that doesn't match with non-matching --trigger-table"
+);
+
+$dbh->do("DROP DATABASE sakila_test");
 
 # #########################################################################
 # Issue 391: Add --pid option to all scripts
