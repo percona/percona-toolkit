@@ -11,8 +11,6 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use File::Spec;
-
 use PerconaTest;
 require "$trunk/bin/pt-query-advisor";
 
@@ -47,18 +45,20 @@ like(
 my $exit_status;
 $output = output(
    sub { $exit_status = pt_query_advisor::main(@args,
-      File::Spec->catfile($sample, "bug_823431.log"))
-   });
+      "$sample/bug_823431.log")
+   },
+   stderr => 1
+);
 
 ok(
    !$exit_status,
-   "Bug 823431: pqa doesn't hang on a big query"
+   "Bug 823431: ptqa doesn't hang on a big query"
 );
 
-like(
+is(
    $output,
-   qr/COL.002/,
-   "Bug 823431: pqa doesn't hang on a big query and finds the correct rule"
+   '',
+   "Bug 823431: ptqa doesn't hang on a big query and doesn't find an incorrect rule"
 );
 
 # #############################################################################
