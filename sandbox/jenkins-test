@@ -16,8 +16,21 @@ set -x
 ##################################
 # Check for needed Perl modules. #
 ##################################
-env
 util/check-dev-env
+
+#########################
+# Check the system env. #
+#########################
+env
+if [ -z "$HOME" ]; then
+   if [ -d "/home/jenkins" ]; then
+      HOME="/home/jenkins"
+      echo "\$HOME not defined, using $HOME"
+   else
+      echo "\$HOME not defined and /home/jenkins does not exist"
+      exit 1
+   fi
+fi
 
 #####################################
 # Install barebones MySQL binaries. #
