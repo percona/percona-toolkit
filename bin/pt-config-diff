@@ -2470,6 +2470,9 @@ sub new {
       value_is_optional => \%value_is_optional,
       any_value_is_true => \%any_value_is_true,
       base_path         => \%base_path,
+      ignore_case       => exists $args{ignore_case}
+                                ? $args{ignore_case}
+                                : 1,
    };
 
    return bless $self, $class;
@@ -2496,6 +2499,7 @@ sub diff {
    my $config0     = $configs->[0];
    my $last_config = @$configs - 1;
    my $vars        = $self->_get_shared_vars(%args);
+   my $ignore_case = $self->{ignore_case};
 
    my $diffs;
    VARIABLE:
@@ -2520,7 +2524,9 @@ sub diff {
                next CONFIG if $val0 == $valN;
             }
             else {
-               next CONFIG if $val0 eq $valN;
+               next CONFIG if $ignore_case
+                              ? lc($val0) eq lc($valN)
+                              : $val0 eq $valN;
 
                if ( $config0->format() ne $configN->format() ) {
                   if ( $any_value_is_true->{$var} ) {
@@ -4332,6 +4338,7 @@ sub main {
    my $trp         = new TextResultSetParser();
    my $config_cmp  = new MySQLConfigComparer(
       ignore_variables => $o->get('ignore-variables'),
+      ignore_case      => $o->get('ignore-case'),
    );
    my %common_modules = (
       DSNParser           => $dp,
@@ -4573,6 +4580,12 @@ L<"SYNOPSIS"> and usage information for details.
 =item --ask-pass
 
 Prompt for a password when connecting to MySQL.
+
+=item --[no]ignore-case
+
+default: yes
+
+Compare the variables case-insensitively.
 
 =item --charset
 
