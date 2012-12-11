@@ -1189,6 +1189,11 @@ stalk() {
                # There will not be enough disk space, so do not collect.
                warn "Collect canceled because there will not be enough disk space after collecting another $margin MB"
             fi
+
+            # Purge old collect files.
+            if [ -d "$OPT_DEST" ]; then
+               purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+            fi
          fi
 
          # ##################################################################
@@ -1204,12 +1209,12 @@ stalk() {
          # Trigger/check/value is ok, sleep until next check.
          sleep_ok "$OPT_INTERVAL"
       fi
-
-      # Purge old collect file between checks.
-      if [ -d "$OPT_DEST" ]; then
-         purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
-      fi
    done
+
+   # One final purge of old collect files, but only if in collect mode.
+   if [ "$OPT_COLLECT" -a -d "$OPT_DEST" ]; then
+      purge_samples "$OPT_DEST" "$OPT_RETENTION_TIME"
+   fi
 
    # Before exiting, the last collector may still be running.
    # Wait for it to finish in case the tool is part of a script,
