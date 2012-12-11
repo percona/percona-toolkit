@@ -20,6 +20,7 @@ BEGIN {
       Daemon
       Quoter
       TableParser
+      Retry
       Transformers
       VersionCheck
       HTTPMicro
@@ -2921,6 +2922,84 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Retry package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Retry;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub retry {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(try fail final_fail);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
+   my $tries = $args{tries} || 3;
+
+   my $last_error;
+   my $tryno = 0;
+   TRY:
+   while ( ++$tryno <= $tries ) {
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
+      my $result;
+      eval {
+         $result = $try->(tryno=>$tryno);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
+
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
+         }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
+         return $result;
+      }
+   }
+
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Retry package
+# ###########################################################################
+
+# ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4920,10 +4999,31 @@ sub main {
             }
          }
 
-         $sth->execute(ts(time), @vals);
-         PTDEBUG && _d($sth->{Statement});
-         $sth->finish();
-
+         my $retry = Retry->new();
+         $retry->retry(
+            tries => 3,
+            wait  => sub { sleep 0.25; return; },
+            try   => sub {
+               $sth->execute(ts(time), @vals);
+               PTDEBUG && _d($sth->{Statement});
+               $sth->finish();
+            },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               if ( $error =~ m/Deadlock found/ ) {
+                  return 1;  # try again
+               }
+               else {
+                  return 0;
+               }
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            }
+         );
+         
          return;
       };
    }
