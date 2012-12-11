@@ -571,6 +571,24 @@ like(
 $dp->prop('set-vars', undef);
 
 # #############################################################################
+# Bug 1078887: Don't clobber the sql_mode set by the script with set-vars
+# https://bugs.launchpad.net/percona-toolkit/+bug/1078887
+# #############################################################################
+
+$dp->prop('set-vars', "sql_mode=ANSI_QUOTES");
+my $sql_mode_dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {});
+
+my (undef, $sql_mode) = $sql_mode_dbh->selectrow_array(q{SHOW VARIABLES LIKE 'sql\_mode'});
+
+like(
+   $sql_mode,
+   qr/NO_AUTO_VALUE_ON_ZERO/,
+   "Bug 1078887: --set-vars doesn't clover the sql_mode set by DSNParser"
+);
+
+$sql_mode_dbh->disconnect();
+
+# #############################################################################
 # LOAD DATA LOCAL INFILE broken in some platforms
 # https://bugs.launchpad.net/percona-toolkit/+bug/821715
 # #############################################################################
@@ -610,3 +628,4 @@ SKIP: {
 # Done.
 # #############################################################################
 done_testing;
+   

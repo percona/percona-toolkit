@@ -343,18 +343,6 @@ sub get_dbh {
          die "Error getting the current SQL_MODE: $EVAL_ERROR";
       }
 
-      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
-            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
-            . ($sql_mode ? ",$sql_mode" : '')
-            . '\'*/';
-      PTDEBUG && _d($dbh, $sql);
-      eval { $dbh->do($sql) };
-      if ( $EVAL_ERROR ) {
-         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
-           . ($sql_mode ? " and $sql_mode" : '')
-           . ": $EVAL_ERROR";
-      }
-
       # Set character set and binmode on STDOUT.
       if ( my ($charset) = $cxn_string =~ m/charset=([\w]+)/ ) {
          $sql = qq{/*!40101 SET NAMES "$charset"*/};
@@ -380,6 +368,20 @@ sub get_dbh {
          if ( $EVAL_ERROR ) {
             die "Error setting $var: $EVAL_ERROR";
          }
+      }
+
+      # Do this after set-vars so a user-set sql_mode doesn't clobber it; See
+      # https://bugs.launchpad.net/percona-toolkit/+bug/1078887
+      $sql = 'SET @@SQL_QUOTE_SHOW_CREATE = 1'
+            . '/*!40101, @@SQL_MODE=\'NO_AUTO_VALUE_ON_ZERO'
+            . ($sql_mode ? ",$sql_mode" : '')
+            . '\'*/';
+      PTDEBUG && _d($dbh, $sql);
+      eval { $dbh->do($sql) };
+      if ( $EVAL_ERROR ) {
+         die "Error setting SQL_QUOTE_SHOW_CREATE, SQL_MODE"
+           . ($sql_mode ? " and $sql_mode" : '')
+           . ": $EVAL_ERROR";
       }
    }
 
