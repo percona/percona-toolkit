@@ -7860,9 +7860,14 @@ sub main {
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
    # triggers cannot contain direct references to tables by name."
    # ########################################################################   
-   if ( VersionParser->new($cxn->dbh()) < '5.0.10' ) {
+   my $server_version = VersionParser->new($cxn->dbh());
+   if ( $server_version < '5.0.10' ) {
       die "This tool requires MySQL 5.0.10 or newer.\n";
    }
+
+   # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
+   # http://bugs.mysql.com/bug.php?id=45694
+   my $lock_in_share_mode = $server_version < '5.1' ? 0 : 1;
 
    # ########################################################################
    # Setup lag and load monitors.
@@ -8698,7 +8703,7 @@ sub main {
       dml                => $dml,
       select             => $select,
       callbacks          => $callbacks,
-      lock_in_share_mode => 1,
+      lock_in_share_mode => $lock_in_share_mode,
       OptionParser       => $o,
       Quoter             => $q,
       TableParser        => $tp,
