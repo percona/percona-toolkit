@@ -9,8 +9,8 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 48;
 
+use Test::More;
 use SlowLogParser;
 use PerconaTest;
 
@@ -1297,6 +1297,59 @@ test_log_parser(
 );
 
 # #############################################################################
+# pt-query-digest fails to parse timestamp with no query
+# https://bugs.launchpad.net/percona-toolkit/+bug/1082599
+# #############################################################################
+test_log_parser(
+   parser => $p,
+   file   => "$sample/slow056.txt",
+   result => [
+      {  Lock_time     => '0.000000',
+         Query_time    => '0.000102',
+         Rows_read     => '0',
+         Rows_affected => '0',
+         Rows_examined => '0',
+         Rows_sent     => '0',
+         arg           => '/* No query */',
+         bytes         => '0',
+         cmd           => 'Query',
+         pos_in_log    => '0',
+         ts            => '121123 19:56:06',
+         Thread_id     => '558038',
+         Last_errno    => 0,
+         Killed        => 0,
+         db            => 'test_db',
+         host          => '',
+         Schema        => 'test_db',
+         ip            => '127.0.0.1',
+         timestamp     => '1111111111',
+         user          => 'root',
+      },
+      {
+         ts             => '121123 19:56:06',
+         Killed         => '0',
+         Last_errno     => '0',
+         Lock_time      => '0.000197',
+         Query_time     => '0.002515',
+         Rows_affected  => '1',
+         Rows_examined  => '1',
+         Rows_read      => '0',
+         Rows_sent      => '0',
+         Schema         => 'test_db',
+         Thread_id      => '558032',
+         arg            => 'update t set b = b + 30 where user_id=1',
+         bytes          => 39,
+         cmd            => 'Query',
+         host           => '',
+         ip             => '127.0.0.1',
+         pos_in_log     => 596,
+         timestamp      => '2222222222',
+         user           => 'root',
+      },
+   ],
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
 my $output = '';
@@ -1310,4 +1363,4 @@ like(
    qr/Complete test coverage/,
    '_d() works'
 );
-exit;
+done_testing;

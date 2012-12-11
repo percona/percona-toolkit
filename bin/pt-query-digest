@@ -4875,14 +4875,25 @@ sub parse_event {
 
             if ( !$found_arg && $pos == $len ) {
                PTDEBUG && _d("Did not find arg, looking for special cases");
-               local $INPUT_RECORD_SEPARATOR = ";\n";
+               local $INPUT_RECORD_SEPARATOR = ";\n";  # get next line
                if ( defined(my $l = $next_event->()) ) {
-                  chomp $l;
-                  $l =~ s/^\s+//;
-                  PTDEBUG && _d("Found admin statement", $l);
-                  push @properties, 'cmd', 'Admin', 'arg', $l;
-                  push @properties, 'bytes', length($properties[-1]);
-                  $found_arg++;
+                  if ( $l =~ /^\s*[A-Z][a-z_]+: / ) {
+                     PTDEBUG && _d("Found NULL query before", $l);
+                     local $INPUT_RECORD_SEPARATOR = ";\n#";
+                     my $rest_of_event = $next_event->();
+                     push @{$self->{pending}}, $l . $rest_of_event;
+                     push @properties, 'cmd', 'Query', 'arg', '/* No query */';
+                     push @properties, 'bytes', 0;
+                     $found_arg++;
+                  }
+                  else {
+                     chomp $l;
+                     $l =~ s/^\s+//;
+                     PTDEBUG && _d("Found admin statement", $l);
+                     push @properties, 'cmd', 'Admin', 'arg', $l;
+                     push @properties, 'bytes', length($properties[-1]);
+                     $found_arg++;
+                  }
                }
                else {
                   PTDEBUG && _d("I can't figure out what to do with this line");
