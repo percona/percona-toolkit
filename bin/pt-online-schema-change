@@ -7860,9 +7860,14 @@ sub main {
    # Although triggers were introduced in 5.0.2, "Prior to MySQL 5.0.10,
    # triggers cannot contain direct references to tables by name."
    # ########################################################################   
-   if ( VersionParser->new($cxn->dbh()) < '5.0.10' ) {
+   my $server_version = VersionParser->new($cxn->dbh());
+   if ( $server_version < '5.0.10' ) {
       die "This tool requires MySQL 5.0.10 or newer.\n";
    }
+
+   # Use LOCK IN SHARE mode unless MySQL 5.0 because there's a bug like
+   # http://bugs.mysql.com/bug.php?id=45694
+   my $lock_in_share_mode = $server_version < '5.1' ? 0 : 1;
 
    # ########################################################################
    # Setup lag and load monitors.
@@ -8698,7 +8703,7 @@ sub main {
       dml                => $dml,
       select             => $select,
       callbacks          => $callbacks,
-      lock_in_share_mode => 1,
+      lock_in_share_mode => $lock_in_share_mode,
       OptionParser       => $o,
       Quoter             => $q,
       TableParser        => $tp,
@@ -10081,6 +10086,29 @@ names when creating the new table.  For example, to drop this contraint:
   CONSTRAINT `fk_foo` FOREIGN KEY (`foo_id`) REFERENCES `bar` (`foo_id`)
 
 You must specify C<--alter "DROP FOREIGN KEY _fk_foo">.
+
+=item *
+
+The tool does not use C<LOCK IN SHARE MODE> with MySQL 5.0 because it can
+cause a slave error which breaks replication:
+
+   Query caused different errors on master and slave. Error on master:
+   'Deadlock found when trying to get lock; try restarting transaction' (1213),
+   Error on slave: 'no error' (0). Default database: 'pt_osc'.
+   Query: 'INSERT INTO pt_osc.t (id, c) VALUES ('730', 'new row')'
+
+The error happens when converting a MyISAM table to InnoDB because MyISAM
+is non-transactional but InnoDB is transactional.  MySQL 5.1 and newer
+handle this case correctly, but testing reproduces the error 5% of the time
+with MySQL 5.0.
+
+This is a MySQL bug, similar to L<http://bugs.mysql.com/bug.php?id=45694>,
+but there is no fix or workaround in MySQL 5.0.  Without C<LOCK IN SHARE MODE>,
+tests pass 100% of the time, so the risk of data loss or breaking replication
+should be negligible.
+
+B<Be sure to verify the new table if using MySQL 5.0 and converting
+from MyISAM to InnoDB!>
 
 =back
 
