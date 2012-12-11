@@ -10087,6 +10087,29 @@ names when creating the new table.  For example, to drop this contraint:
 
 You must specify C<--alter "DROP FOREIGN KEY _fk_foo">.
 
+=item *
+
+The tool does not use C<LOCK IN SHARE MODE> with MySQL 5.0 because it can
+cause a slave error which breaks replication:
+
+   Query caused different errors on master and slave. Error on master:
+   'Deadlock found when trying to get lock; try restarting transaction' (1213),
+   Error on slave: 'no error' (0). Default database: 'pt_osc'.
+   Query: 'INSERT INTO pt_osc.t (id, c) VALUES ('730', 'new row')'
+
+The error happens when converting a MyISAM table to InnoDB because MyISAM
+is non-transactional but InnoDB is transactional.  MySQL 5.1 and newer
+handle this case correctly, but testing reproduces the error 5% of the time
+with MySQL 5.0.
+
+This is a MySQL bug, similar to L<http://bugs.mysql.com/bug.php?id=45694>,
+but there is no fix or workaround in MySQL 5.0.  Without C<LOCK IN SHARE MODE>,
+tests pass 100% of the time, so the risk of data loss or breaking replication
+should be negligible.
+
+B<Be sure to verify the new table if using MySQL 5.0 and converting
+from MyISAM to InnoDB!>
+
 =back
 
 =item --alter-foreign-keys-method
