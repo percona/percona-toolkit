@@ -236,6 +236,35 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
 }
 
 # #############################################################################
+# Something like http://bugs.mysql.com/bug.php?id=45694 means we should not
+# use LOCK IN SHARE MODE with MySQL 5.0.
+# #############################################################################
+$sb->load_file('master', "$sample/basic_no_fks_innodb.sql");
+
+($output, $exit_status) = full_output(
+    sub { pt_online_schema_change::main(@args,
+            "$master_dsn,D=pt_osc,t=t",
+            "--alter", "add column (foo int)",
+            qw(--execute --print))
+   },
+);
+
+if ( $sandbox_version eq '5.0' ) {
+   unlike(
+      $output,
+      qr/LOCK IN SHARE MODE/,
+      "No LOCK IN SHARE MODE for MySQL $sandbox_version"
+   );
+}
+else {
+   like(
+      $output,
+      qr/LOCK IN SHARE MODE/,
+      "LOCK IN SHARE MODE for MySQL $sandbox_version",
+   );
+}
+
+# #############################################################################
 # Done.
 # #############################################################################
 $sb->wipe_clean($master_dbh);
