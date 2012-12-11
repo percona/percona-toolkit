@@ -299,6 +299,12 @@ case $opt in
          exit_status=$((exit_status | $?))
 
          if [ "${2:-""}" = "cluster" ]; then
+            # Bit of magic here. 'start-sandbox cluster new_node old_node'
+            # changes old_node's my.sandbox.cnf's wsrep_cluster_address to
+            # point to new_node. This is especially useful because otherwise,
+            # calling stop/start like below on 12345 would create a new cluster.
+            /tmp/12345/stop  >/dev/null
+            /tmp/12345/start >/dev/null
             echo -n "Checking that the cluster size is correct... "
             size=$(/tmp/12345/use -ss -e "SHOW STATUS LIKE 'wsrep_cluster_size'" | awk '{print $2}')
             if [ ${size:-0} -ne 3 ]; then
