@@ -9,10 +9,9 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 44;
+use Test::More;
 
 use PerconaTest;
-
 require "$trunk/bin/pt-query-digest";
 
 # #############################################################################
@@ -435,6 +434,17 @@ ok(
 );
 
 # #############################################################################
+# Bug 1082599: pt-query-digest fails to parse timestamp with no query
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'slow056.txt') },
+      "t/pt-query-digest/samples/slow056.txt",
+   ),
+   'Analysis for slow056 (no query bug 1082599)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
