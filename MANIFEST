@@ -18,7 +18,6 @@ bin/pt-heartbeat
 bin/pt-index-usage
 bin/pt-ioprofile
 bin/pt-kill
-bin/pt-log-player
 bin/pt-mext
 bin/pt-mysql-summary
 bin/pt-online-schema-change
@@ -35,8 +34,6 @@ bin/pt-summary
 bin/pt-table-checksum
 bin/pt-table-sync
 bin/pt-table-usage
-bin/pt-tcp-model
-bin/pt-trend
 bin/pt-upgrade
 bin/pt-variable-advisor
 bin/pt-visual-explain
