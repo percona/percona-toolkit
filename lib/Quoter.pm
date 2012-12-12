@@ -161,16 +161,16 @@ sub serialize_list {
    # the same.  undef/NULL is a valid boundary value, however...
    return $args[0] if @args == 1 && !defined $args[0];
 
-   # ... if there's an undef/NULL value and more than one value,
-   # then we have no easy way to serialize the values into a list.
-   # We can't convert undef to "NULL" because "NULL" is a valid
-   # value itself, and we can't make it "" because a blank string
-   # is also a valid value.  In practice, a boundary value with
-   # two NULL values should be rare.
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   return join ',', map {
+         my $c = $_;
+         if ( defined($c) ) {
+            $c =~ s/([^A-Za-z0-9])/\\$1/g;
+            $c
+         }
+         else {
+            '\\N'
+         }
+      } @args;
 }
 
 sub deserialize_list {
@@ -193,29 +193,18 @@ sub deserialize_list {
    # the entire string represents the single element, so grab that.
    push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
 
-   # Undo the quotemeta().
+   # Undo the escaping.
    my @unescaped_parts = map {
       my $part = $_;
-      # Here be weirdness. Unfortunately quotemeta() is broken, and exposes
-      # the internal representation of scalars. Namely, the latin-1 range,
-      # \128-\377 (\p{Latin1} in newer Perls) is all escaped in downgraded
-      # strings, but left alone in UTF-8 strings. Thus, this.
-
-      # TODO: quotemeta() might change in 5.16 to mean
-      # qr/(?=\p{ASCII})\W|\p{Pattern_Syntax}/
-      # And also fix this whole weird behavior under
-      # use feature 'unicode_strings' --  If/once that's
-      # implemented, this will have to change.
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                                             # characters in the ASCII range
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-                                             # same as above, but also
-                                             # unescape the latin-1 range.
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
+      if ($part eq '\\N') {
+         undef
+      }
+      else {
+         $part =~ s/\\([^A-Za-z0-9])/$1/g;
+         $part;
+      }
    } @escaped_parts;
-
+   
    return @unescaped_parts;
 }
 
