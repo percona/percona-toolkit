@@ -129,10 +129,16 @@ sub serialize_list {
 
    return $args[0] if @args == 1 && !defined $args[0];
 
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   return join ',', map {
+         my $c = $_;
+         if ( defined($c) ) {
+            $c =~ s/([^A-Za-z0-9])/\\$1/g;
+            $c
+         }
+         else {
+            '\\N'
+         }
+      } @args;
 }
 
 sub deserialize_list {
@@ -154,14 +160,15 @@ sub deserialize_list {
 
    my @unescaped_parts = map {
       my $part = $_;
-
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
+      if ($part eq '\\N') {
+         undef
+      }
+      else {
+         $part =~ s/\\([^A-Za-z0-9])/$1/g;
+         $part;
+      }
    } @escaped_parts;
-
+   
    return @unescaped_parts;
 }
 

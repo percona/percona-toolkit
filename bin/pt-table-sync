@@ -1620,10 +1620,16 @@ sub serialize_list {
 
    return $args[0] if @args == 1 && !defined $args[0];
 
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   return join ',', map {
+         my $c = $_;
+         if ( defined($c) ) {
+            $c =~ s/([^A-Za-z0-9])/\\$1/g;
+            $c
+         }
+         else {
+            '\\N'
+         }
+      } @args;
 }
 
 sub deserialize_list {
@@ -1645,14 +1651,15 @@ sub deserialize_list {
 
    my @unescaped_parts = map {
       my $part = $_;
-
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
+      if ($part eq '\\N') {
+         undef
+      }
+      else {
+         $part =~ s/\\([^A-Za-z0-9])/$1/g;
+         $part;
+      }
    } @escaped_parts;
-
+   
    return @unescaped_parts;
 }
 
@@ -7521,11 +7528,16 @@ sub next {
 
    if ( !$self->{initialized} ) {
       $self->{initialized} = 1;
-      if ( $self->{resume}->{tbl}
-           && !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
-         PTDEBUG && _d('Will resume after',
-            join('.', @{$self->{resume}}{qw(db tbl)}));
-         $self->{resume}->{after} = 1;
+      if ( $self->{resume}->{tbl} ) {
+         if ( !$self->table_is_allowed(@{$self->{resume}}{qw(db tbl)}) ) {
+            PTDEBUG && _d('Will resume after',
+               join('.', @{$self->{resume}}{qw(db tbl)}));
+            $self->{resume}->{after}->{tbl} = 1;
+         }
+         if ( !$self->database_is_allowed($self->{resume}->{db}) ) {
+            PTDEBUG && _d('Will resume after', $self->{resume}->{db});
+            $self->{resume}->{after}->{db}  = 1;
+         }
       }
    }
 
@@ -7623,16 +7635,17 @@ sub _iterate_dbh {
    if ( !defined $self->{dbs} ) {
       my $sql = 'SHOW DATABASES';
       PTDEBUG && _d($sql);
-      my @dbs = grep { $self->database_is_allowed($_) }
-                @{$dbh->selectcol_arrayref($sql)};
+      my @dbs = grep {
+                  $self->_resume_from_database($_)
+                  &&
+                  $self->database_is_allowed($_)
+                } @{$dbh->selectcol_arrayref($sql)};
       PTDEBUG && _d('Found', scalar @dbs, 'databases');
       $self->{dbs} = \@dbs;
    }
 
    if ( !$self->{db} ) {
-      do {
-         $self->{db} = shift @{$self->{dbs}};
-      } until $self->_resume_from_database($self->{db});
+      $self->{db} = shift @{$self->{dbs}};
       PTDEBUG && _d('Next database:', $self->{db});
       return unless $self->{db};
    }
@@ -7805,11 +7818,17 @@ sub _resume_from_database {
    my ($self, $db) = @_;
 
    return 1 unless $self->{resume}->{db};
-
    if ( $db eq $self->{resume}->{db} ) {
-      PTDEBUG && _d('At resume db', $db);
-      delete $self->{resume}->{db};
-      return 1;
+      if ( !$self->{resume}->{after}->{db} ) {
+         PTDEBUG && _d('Resuming from db', $db);
+         delete $self->{resume}->{db};
+         return 1;
+      }
+      else {
+         PTDEBUG && _d('Resuming after db', $db);
+         delete $self->{resume}->{db};
+         delete $self->{resume}->{tbl};
+      }
    }
 
    return 0;
@@ -7821,7 +7840,7 @@ sub _resume_from_table {
    return 1 unless $self->{resume}->{tbl};
 
    if ( $tbl eq $self->{resume}->{tbl} ) {
-      if ( !$self->{resume}->{after} ) {
+      if ( !$self->{resume}->{after}->{tbl} ) {
          PTDEBUG && _d('Resuming from table', $tbl);
          delete $self->{resume}->{tbl};
          return 1;
