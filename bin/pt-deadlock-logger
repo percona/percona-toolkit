@@ -3757,8 +3757,8 @@ my $d = qr/(\d+)/;                    # Digit
 my $t  = qr/((?:\d+ \d+)|(?:[A-Fa-f0-9]+))/;                # Transaction ID
 my $i = qr/((?:\d{1,3}\.){3}\d+)/;    # IP address
 my $n = qr/([^`\s]+)/;                # MySQL object name
-my $u = qr/((?!\b[0-9]+\b)\S+)/;      # Username. This is somewhat wrong, but
-                                      # usernames with spcaes are rare enough.
+my $u = qr/(\S+)/;                    # Username. This is somewhat wrong, but
+                                      # usernames with spaces are rare enough.
 my $s = qr/(\d{6} .\d:\d\d:\d\d)/;    # InnoDB timestamp
 
 # A thread's proc_info can be at least 98 different things I've found in the
@@ -4387,6 +4387,10 @@ figure out the rest with a moment's thought.  If you see one wait-for and one
 held lock, you're looking at the same lock, so of course you'd prefer to see
 both wait-for locks and get more information.  If the two waited-for locks are
 not on the same table, more than two transactions were involved in the deadlock.
+
+Finally, keep in mind that, because usernames with spaces are not quoted by
+InnoDB, the tool will generally misreport the second word of these usernames
+as the hostname.
 
 =head1 OPTIONS
 
