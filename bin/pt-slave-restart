@@ -4693,9 +4693,6 @@ sub watch_server {
                     . $o->get('skip-count'));
    my $start      = $dbh->prepare($start_sql);
    my $stop       = $dbh->prepare('STOP SLAVE');
-   my $chmt       = $dbh->prepare(
-                    'CHANGE MASTER TO MASTER_LOG_FILE=?, MASTER_LOG_POS=?');
-
 
    # ########################################################################
    # Lookup tables of things to do when a problem is detected.
@@ -4717,8 +4714,14 @@ sub watch_server {
          PTDEBUG && _d('Found relay log corruption');
          # Can't do CHANGE MASTER TO with a running slave.
          $stop->execute();
-         $chmt->execute(
-            @{$stat}{qw(relay_master_log_file exec_master_log_pos)});
+
+         # Cannot use ? placeholders for CHANGE MASTER values:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/932614
+         my $sql = "CHANGE MASTER TO "
+                 . "MASTER_LOG_FILE='$stat->{relay_master_log_file}', "
+                 . "MASTER_LOG_POS=$stat->{exec_master_log_pos}";
+         PTDEBUG && _d($sql);
+         $dbh->do($sql);
       },
       skip => sub {
          my ( $stat, $dbh ) = @_;
@@ -4940,7 +4943,7 @@ pt-slave-restart - Watch and restart MySQL replication after errors.
 
 =head1 SYNOPSIS
 
-Usage: pt-slave-restart [OPTION...] [DSN]
+Usage: pt-slave-restart [OPTIONS] [DSN]
 
 pt-slave-restart watches one or more MySQL replication slaves for
 errors, and tries to restart replication if it stops.
@@ -4957,9 +4960,6 @@ it is having problems with replication.  Don't be too hasty to use it unless you
 need to.  If you use this tool carelessly, you might miss the chance to really
 solve the slave server's problems.
 
-At the time of this release there is a bug that causes an invalid
-C<CHANGE MASTER TO> statement to be executed.
-
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
@@ -4974,12 +4974,9 @@ statements that cause errors.  It polls slaves intelligently with an
 exponentially varying sleep time.  You can specify errors to skip and run the
 slaves until a certain binlog position.
 
-Note: it has come to my attention that Yahoo! had or has an internal tool
-called fix_repl, described to me by a past Yahoo! employee and mentioned in
-the first edition of High Performance MySQL.  Apparently this tool does the
-same thing.  Make no mistake, though: this is not a way to "fix replication."
-In fact I would not even encourage its use on a regular basis; I use it only
-when I have an error I know I just need to skip past.
+Although this tool can help a slave advance past errors, you should not
+rely on it to "fix" replication.  If slave errors occur frequently or
+unexpectedly, you should identify and fix the root cause.
 
 =head1 OUTPUT
 
