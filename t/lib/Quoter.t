@@ -150,6 +150,12 @@ is(
    "Deserialize undef string",
 );
 
+is(
+   $q->serialize_list(undef, undef),
+   '\\N,\\N',
+   "Serialize two undefs",
+);
+
 my @serialize_tests = (
    [ 'a', 'b', ],
    [ 'a,', 'b', ],
@@ -169,6 +175,8 @@ my @serialize_tests = (
    [ '', '', '', ],
    [ '' ],
    [ undef ],
+   [ undef, undef, '', undef ],
+   [ '\\N', '\\\\N', undef ],
 );
 
 use DSNParser;
@@ -200,13 +208,12 @@ SKIP: {
       # Bit of a hack, but we want to test both of Perl's internal encodings
       # for correctness.
       local $dbh->{'mysql_enable_utf8'} = 1 if utf8::is_utf8($ser);
-
       $sth->execute($test_index, $ser);
       $selsth->execute($test_index);
 
       my $flat_string =  "["
 	                  . join( "][",
-					           map { defined($_) ? $_ : '' } @{$serialize_tests[$test_index]}
+					           map { defined($_) ? $_ : '<undef>' } @{$serialize_tests[$test_index]}
 							)
 					  . "]";
       $flat_string =~ s/\n/\\n/g;
