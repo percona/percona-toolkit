@@ -4693,9 +4693,6 @@ sub watch_server {
                     . $o->get('skip-count'));
    my $start      = $dbh->prepare($start_sql);
    my $stop       = $dbh->prepare('STOP SLAVE');
-   my $chmt       = $dbh->prepare(
-                    'CHANGE MASTER TO MASTER_LOG_FILE=?, MASTER_LOG_POS=?');
-
 
    # ########################################################################
    # Lookup tables of things to do when a problem is detected.
@@ -4717,8 +4714,14 @@ sub watch_server {
          PTDEBUG && _d('Found relay log corruption');
          # Can't do CHANGE MASTER TO with a running slave.
          $stop->execute();
-         $chmt->execute(
-            @{$stat}{qw(relay_master_log_file exec_master_log_pos)});
+
+         # Cannot use ? placeholders for CHANGE MASTER values:
+         # https://bugs.launchpad.net/percona-toolkit/+bug/932614
+         my $sql = "CHANGE MASTER TO "
+                 . "MASTER_LOG_FILE='$stat->{relay_master_log_file}', "
+                 . "MASTER_LOG_POS=$stat->{exec_master_log_pos}";
+         PTDEBUG && _d($sql);
+         $dbh->do($sql);
       },
       skip => sub {
          my ( $stat, $dbh ) = @_;

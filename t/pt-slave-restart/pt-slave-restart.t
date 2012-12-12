@@ -26,23 +26,22 @@ if ( !$master_dbh ) {
 elsif ( !$slave_dbh ) {
    plan skip_all => 'Cannot connect to sandbox slave';
 }
-else {
-   plan tests => 15;
-}
 
-$sb->create_dbs($master_dbh, ['test']);
+$master_dbh->do('DROP DATABASE IF EXISTS test');
+$master_dbh->do('CREATE DATABASE test');
 $master_dbh->do('CREATE TABLE test.t (a INT)');
-my $i = 0;
-PerconaTest::wait_for_table($slave_dbh, 'test.t');
+$sb->wait_for_slaves;
 
 # Bust replication
 $slave_dbh->do('DROP TABLE test.t');
 $master_dbh->do('INSERT INTO test.t SELECT 1');
 wait_until(
    sub {
-      ! $slave_dbh->selectrow_hashref('show slave status')->{slave_sql_running};
+      my $row = $slave_dbh->selectrow_hashref('show slave status');
+      return $row->{last_sql_errno};
    }
 );
+
 my $r = $slave_dbh->selectrow_hashref('show slave status');
 like($r->{last_error}, qr/Table 'test.t' doesn't exist'/, 'It is busted');
 
@@ -140,4 +139,4 @@ diag(`rm -f /tmp/pt-slave-re*`);
 $sb->wipe_clean($master_dbh);
 $sb->wipe_clean($slave_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
