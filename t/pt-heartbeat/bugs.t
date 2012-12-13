@@ -73,6 +73,8 @@ sub stop_all_instances {
 
    waitpid($_, 0) for @pids;
    PerconaTest::wait_until(sub{ !-e $_ }) for @pidfiles;
+
+   unlink '/tmp/pt-heartbeat-sentinel';
 }
 
 # ############################################################################
@@ -92,6 +94,9 @@ my $slave1_dsn = $sb->dsn_for('slave1');
                         qw(--check --master-server-id), $master_port)
 });
 
+# If the servers use UTC then the lag should be 0.00, or at least
+# no greater than 9.99 for slow test boxes.  When this fails, the
+# lag is like 25200.00 becaues the servers are hours off.
 like(
    $output,
    qr/\A\d.\d{2}$/,
