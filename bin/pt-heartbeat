@@ -4734,7 +4734,7 @@ sub main {
       $dbh->do($sql);
 
       $sql = ($o->get('replace') ? "REPLACE" : "INSERT")
-           . qq/ INTO $db_tbl (ts, server_id) VALUES (NOW(), $server_id)/;
+           . qq/ INTO $db_tbl (ts, server_id) VALUES (UTC_TIMESTAMP(), $server_id)/;
       PTDEBUG && _d($sql);
       # This may fail if the table already existed and already had this row.
       # We eval to ignore this possibility.
@@ -4831,7 +4831,7 @@ sub main {
          PTDEBUG && _d('No heartbeat row in table');
          if ( $o->get('insert-heartbeat-row') ) {
             my $sql = "INSERT INTO $db_tbl ($pk_col, ts) "
-                    . "VALUES ('$pk_val', NOW())";
+                    . "VALUES ('$pk_val', UTC_TIMESTAMP())";
             PTDEBUG && _d($sql);
             $dbh->do($sql);
          }
@@ -4920,7 +4920,8 @@ sub main {
             }
          }
 
-         $sth->execute(ts(time), @vals);
+         my ($now) = $dbh->selectrow_array(q{SELECT UTC_TIMESTAMP()});
+         $sth->execute($now, @vals);
          PTDEBUG && _d($sth->{Statement});
          $sth->finish();
 
@@ -4930,8 +4931,12 @@ sub main {
    else { # --monitor or --check
       my $dbi_driver = lc $o->get('dbi-driver');
 
+      # UNIX_TIMESTAMP(UTC_TIMESTAMP()) instead of UNIX_TIMESTAMP() alone,
+      # so we make sure that we aren't being fooled by a timezone.
+      # UNIX_TIMESTAMP(ts) replaces unix_timestamp($ts) -- MySQL is the
+      # authority here, so let it calculate everything.
       $heartbeat_sql
-         = "SELECT ts"
+         = "SELECT UNIX_TIMESTAMP(UTC_TIMESTAMP()), UNIX_TIMESTAMP(ts)"
          . ($dbi_driver eq 'mysql' ? '/*!50038, @@hostname AS host*/' : '')
          . ($id ? "" : ", server_id")
          . " FROM $db_tbl "
@@ -4945,13 +4950,12 @@ sub main {
          my ($sth) = @_;
          $sth->execute();
          PTDEBUG && _d($sth->{Statement});
-         my ($ts, $hostname, $server_id) = $sth->fetchrow_array();
-         my $now = time;
+         my ($now, $ts, $hostname, $server_id) = $sth->fetchrow_array();
          PTDEBUG && _d("Heartbeat from server", $server_id, "\n",
-            " now:", ts($now), "\n",
+            " now:", $now, "\n",
             "  ts:", $ts, "\n",
             "skew:", $skew);
-         my $delay = $now - unix_timestamp($ts) - $skew;
+         my $delay = $now - $ts - $skew;
          PTDEBUG && _d('Delay', sprintf('%.6f', $delay), 'on', $hostname);
 
          # Because we adjust for skew, if the ts are less than skew seconds
@@ -5446,7 +5450,7 @@ be created with the following MAGIC_create_heartbeat table definition:
 The heartbeat table requires at least one row.  If you manually create the
 heartbeat table, then you must insert a row by doing:
 
-  INSERT INTO heartbeat (ts, server_id) VALUES (NOW(), N);
+  INSERT INTO heartbeat (ts, server_id) VALUES (UTC_TIMESTAMP(), N);
 
 where C<N> is the server's ID; do not use @@server_id because it will replicate
 and slaves will insert their own server ID instead of the master's server ID.
@@ -5464,7 +5468,7 @@ Legacy tables do not support L<"--update"> instances on each slave
 of a multi-slave hierarchy like "master -> slave1 -> slave2".
 To manually insert the one required row into a legacy table:
 
-  INSERT INTO heartbeat (id, ts) VALUES (1, NOW());
+  INSERT INTO heartbeat (id, ts) VALUES (1, UTC_TIMESTAMP());
 
 The tool automatically detects if the heartbeat table is legacy.
 
