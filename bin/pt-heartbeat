@@ -5487,6 +5487,18 @@ information from C<SHOW MASTER STATUS> and C<SHOW SLAVE STATUS>.  These
 columns are optional.  If any are present, their corresponding information
 will be saved.
 
+=head1 Percona XtraDB Cluster
+
+Although pt-heartbeat should work with all supported versions of Percona XtraDB
+Cluster (PXC), we recommend using 5.5.28-23.7 and newer.
+
+If you are setting up heartbeat instances between cluster nodes, keep in mind
+that, since the speed of the cluster is determined by its slowest member,
+pt-heartbeat will not report how fast the cluster itself is, but only how
+fast events are replicating from one node to another.  
+Finally, since node autodiscovery is not yet implemented, any L<"--monitor">
+or L<"--check"> instance must specify a L<"--master-server-id"> option.
+
 =head1 OPTIONS
 
 Specify at least one of L<"--stop">, L<"--update">, L<"--monitor">, or L<"--check">.
