@@ -52,6 +52,10 @@ make_sandbox() {
       if [ -n "${master_port}" ]; then
          local master_listen_port=$(($master_port + 10))
          cluster_address="gcomm://$ip:$master_listen_port"
+
+         local this_listen_port=$(($port + 10))
+         local this_cluster_address="gcomm://$ip:$this_listen_port"
+         sed -e "s!gcomm://\$!$this_cluster_address!g" -i.bak "/tmp/$master_port/my.sandbox.cnf"
       fi
 
       sed -e "s/ADDR/$ip/g" -i.bak "/tmp/$port/my.sandbox.cnf"
@@ -118,7 +122,7 @@ make_sandbox() {
       debug_sandbox $port
       exit 1
    fi
-
+   
    # If the sandbox is a slave, start the slave.
    if [ "$type" = "slave" ]; then
       /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
