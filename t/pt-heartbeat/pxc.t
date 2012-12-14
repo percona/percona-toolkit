@@ -56,6 +56,10 @@ my $sample = "t/pt-heartbeat/samples/";
 
 my $sentinel = '/tmp/pt-heartbeat-sentinel';
 
+# Remove any leftover instances
+diag(`$trunk/bin/pt-heartbeat --stop >/dev/null`);
+sleep 1;
+
 diag(`rm -rf $sentinel >/dev/null 2>&1`);
 $sb->create_dbs($node1, ['test']);
 
