@@ -45,6 +45,7 @@ $dbh->do("insert into test.foo values (null, 'john, smith')");
 
 $output = output(
    sub { pt_table_checksum::main(@args, qw(-d test)) },
+   stderr => 1,
 );
 
 unlike(
