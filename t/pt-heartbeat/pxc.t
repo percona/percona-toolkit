@@ -54,9 +54,12 @@ my $exit;
 my $base_pidfile = (tempfile("/tmp/pt-heartbeat-test.XXXXXXXX", OPEN => 0, UNLINK => 0))[1];
 my $sample = "t/pt-heartbeat/samples/";
 
-diag(`rm -rf /tmp/pt-heartbeat-sentinel >/dev/null 2>&1`);
+my $sentinel = '/tmp/pt-heartbeat-sentinel';
+
+diag(`rm -rf $sentinel >/dev/null 2>&1`);
 $sb->create_dbs($node1, ['test']);
 
+my @exec_pids;
 my @pidfiles;
 
 sub start_update_instance {
@@ -64,13 +67,32 @@ sub start_update_instance {
    my $pidfile = "$base_pidfile.$port.pid";
    push @pidfiles, $pidfile;
 
-   system("$trunk/bin/pt-heartbeat -h 127.0.0.1 -u msandbox -p msandbox -P $port --database test --table heartbeat --create-table --update --interval 0.5 --daemonize --pid $pidfile >/dev/null");
-
+   my $pid = fork();
+   die "Cannot fork: $OS_ERROR" unless defined $pid;
+   if ( $pid == 0 ) {
+      my $cmd = "$trunk/bin/pt-heartbeat";
+      exec { $cmd } $cmd, qw(-h 127.0.0.1 -u msandbox -p msandbox -P), $port,
+                          qw(--database test --table heartbeat --create-table),
+                          qw(--update --interval 0.5 --pid), $pidfile;
+      exit 1;
+   }
+   push @exec_pids, $pid;
+   
    PerconaTest::wait_for_files($pidfile);
    ok(
       -f $pidfile,
       "--update on $port started"
    );
+}
+
+sub stop_all_instances {
+   my @pids = @exec_pids, map { chomp; $_ } map { slurp_file($_) } @pidfiles;
+   diag(`$trunk/bin/pt-heartbeat --stop >/dev/null`);
+
+   waitpid($_, 0) for @pids;
+   PerconaTest::wait_until(sub{ !-e $_ }) for @pidfiles;
+
+   unlink $sentinel;
 }
 
 foreach my $port ( map { $sb->port_for($_) } qw(node1 node2 node3) ) {
@@ -145,7 +167,6 @@ $output = output(sub {
 );
 
 $output =~ s/\d\.\d{2}/0.00/g;
-
 is(
    $output,
    "0.00s [  0.00s,  0.00s,  0.00s ]\n",
@@ -190,7 +211,7 @@ $output = output(sub {
 
 like(
    $output,
-   qr/^(?:0\.(?:\d[1-9]|[1-9]\d)|\d*[1-9]\d*\.\d{2})s\s+\[/,
+   qr/^(?:0\.(?:\d[1-9]|[1-9]\d)|\d*[1-9]\d*\.\d{2})s\s+\[/m,
    "pt-heartbeat can detect replication lag between nodes"
 );
 
@@ -337,15 +358,8 @@ foreach my $test (
 # ############################################################################
 # Stop the --update instances.
 # ############################################################################
-diag(`$trunk/bin/pt-heartbeat --stop >/dev/null`);
-sleep 1;
 
-foreach my $pidfile (@pidfiles) {
-   ok(
-      !-f $pidfile,
-      "--update on $pidfile stopped"
-   );
-}
+stop_all_instances();
 
 # ############################################################################
 # Disconnect & stop the two servers we started
