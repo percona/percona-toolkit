@@ -53,7 +53,7 @@ if [ "$MYSQL_BASE_DIR" -a "$REFETCH_MYSQL" ]; then
    MYSQL_BASE_DIR=""
 fi
 
-if [ "$MYSQL_BASE_DIR" ]; then
+if [ -z "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
       wget -q -O mysql.tar.gz http://hackmysql.com/barebones/mysql/$MYSQL/$ARCH
