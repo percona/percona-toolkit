@@ -46,7 +46,14 @@ find_mysql_base_dir() {
 }
 
 MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
-if [ -z "$MYSQL_BASE_DIR" ]; then
+
+REFETCH_MYSQL="${REFETCH_MYSQL:-""}"
+if [ "$MYSQL_BASE_DIR" -a "$REFETCH_MYSQL" ]; then
+   rm -rf "$MYSQL_BASE_DIR"
+   MYSQL_BASE_DIR=""
+fi
+
+if [ "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
       wget -q -O mysql.tar.gz http://hackmysql.com/barebones/mysql/$MYSQL/$ARCH
