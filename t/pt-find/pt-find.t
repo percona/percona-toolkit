@@ -26,6 +26,8 @@ else {
    plan tests => 23;
 }
 
+$sb->load_file('master', 't/lib/samples/stored-objs.sql');
+
 my $output;
 my $cnf = '/tmp/12345/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-find -F $cnf ";
@@ -109,6 +111,80 @@ SKIP: {
       $output,
       '',
       "--view that doesn't match"
+   );
+
+   # Test --procedure.
+   $output = `$cmd pt_find --procedure param1 --print`;
+   is(
+      $output,
+      "`pt_find`.`PROCEDURE simpleproc`\n",
+      '--procedure that matches'
+   );
+
+   $output = `$cmd pt_find --procedure blah  --print`;
+   is(
+      $output,
+      '',
+      "--procedure that doesn't match"
+   );
+
+   # Test --function.
+   $output = `$cmd pt_find --function Hello --print`;
+   is(
+      $output,
+      "`pt_find`.`FUNCTION hello`\n",
+      '--function that matches'
+   );
+
+   $output = `$cmd pt_find --function blah  --print`;
+   is(
+      $output,
+      '',
+      "--function that doesn't match"
+   );
+
+   # Test --trigger without --trigger-table.
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --print`;
+   is(
+      $output,
+      "`pt_find`.`INSERT TRIGGER ins_trg on t1`\n",
+      '--trigger that matches without --trigger-table'
+   );
+
+   $output = `$cmd pt_find --trigger blah  --print`;
+   is(
+      $output,
+      '',
+      "--trigger that doesn't match without --trigger-table"
+   );
+
+   # Test --trigger with --trigger-table.
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --trigger-table t1 --print`;
+   is(
+      $output,
+      "`pt_find`.`INSERT TRIGGER ins_trg on t1`\n",
+      '--trigger that matches with matching --trigger-table'
+   );
+
+   $output = `$cmd pt_find --trigger blah --trigger-table t1 --print`;
+   is(
+      $output,
+      '',
+      "--trigger that doesn't match with matching --trigger-table"
+   );
+
+   $output = `$cmd pt_find --trigger 'INSERT INTO t2' --trigger-table foo --print`;
+   is(
+      $output,
+      '',
+      '--trigger that matches with non-matching --trigger-table'
+   );
+
+   $output = `$cmd pt_find --trigger blah --trigger-table foo --print`;
+   is(
+      $output,
+      '',
+      "--trigger that doesn't match with non-matching --trigger-table"
    );
 
    # Test NULL sizes.
