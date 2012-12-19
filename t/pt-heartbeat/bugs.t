@@ -84,6 +84,8 @@ sub stop_all_instances {
 
 start_update_instance( $master_port );
 
+PerconaTest::wait_for_table($slave1_dbh, 'test.heartbeat', 'server_id=12345');
+
 my $slave1_dsn = $sb->dsn_for('slave1');
 # Using full_output here to work around a Perl bug: Only the first explicit
 # tzset works.
