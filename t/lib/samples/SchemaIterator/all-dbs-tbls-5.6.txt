@@ -111,6 +111,21 @@ CREATE TABLE `help_topic` (
   UNIQUE KEY `name` (`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='help topics'
 
+mysql.ndb_binlog_index
+CREATE TABLE `ndb_binlog_index` (
+  `Position` bigint(20) unsigned NOT NULL,
+  `File` varchar(255) NOT NULL,
+  `epoch` bigint(20) unsigned NOT NULL,
+  `inserts` int(10) unsigned NOT NULL,
+  `updates` int(10) unsigned NOT NULL,
+  `deletes` int(10) unsigned NOT NULL,
+  `schemaops` int(10) unsigned NOT NULL,
+  `orig_server_id` int(10) unsigned NOT NULL,
+  `orig_epoch` bigint(20) unsigned NOT NULL,
+  `gci` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`epoch`,`orig_server_id`,`orig_epoch`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1
+
 mysql.plugin
 CREATE TABLE `plugin` (
   `name` varchar(64) NOT NULL DEFAULT '',

@@ -136,6 +136,18 @@ CREATE TABLE `host` (
   PRIMARY KEY (`Host`,`Db`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='Host privileges;  Merged with database privileges';
 
+mysql.ndb_binlog_index
+CREATE TABLE `ndb_binlog_index` (
+  `Position` bigint(20) unsigned NOT NULL,
+  `File` varchar(255) NOT NULL,
+  `epoch` bigint(20) unsigned NOT NULL,
+  `inserts` bigint(20) unsigned NOT NULL,
+  `updates` bigint(20) unsigned NOT NULL,
+  `deletes` bigint(20) unsigned NOT NULL,
+  `schemaops` bigint(20) unsigned NOT NULL,
+  PRIMARY KEY (`epoch`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
 mysql.plugin
 CREATE TABLE `plugin` (
   `name` char(64) COLLATE utf8_bin NOT NULL DEFAULT '',
