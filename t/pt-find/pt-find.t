@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 23;
-}
 
 $sb->load_file('master', 't/lib/samples/stored-objs.sql');
 
@@ -299,4 +296,5 @@ like(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;
