@@ -6991,7 +6991,6 @@ sub table_is_allowed {
       |slow_log
       |innodb_index_stats
       |innodb_table_stats
-      |ndb_binlog_index
       |slave_master_info
       |slave_relay_log_info
       |slave_worker_info
