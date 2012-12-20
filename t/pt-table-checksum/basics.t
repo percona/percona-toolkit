@@ -97,7 +97,7 @@ ok(
    "Static chunk size (--chunk-time 0)"
 );
 
-my $n_checksums = $sandbox_version eq "5.6" ? 88
+my $n_checksums = $sandbox_version eq "5.6" ? 89
                 : $sandbox_version eq "5.5" ? 90
                 : $sandbox_version eq "5.1" ? 89
                 :                             85;
