@@ -3100,6 +3100,11 @@ purposes.  It is not designed to be used on production servers.
 At the time of this release there is a bug which causes pt-log-player to
 exceed max open files during L<"--split">.
 
+As of version 2.1.8, this tool no longer works with auto values on zero
+because it sets a SQL mode with C<NO_AUTO_VALUE_ON_ZERO>.  Therefore,
+playing INSERT or UPDATE statements that use zero instead of C<NULL>
+will not work.
+
 The authoritative source for updated information is always the online issue
 tracking system.  Issues that affect this tool will be marked as such.  You can
 see a list of such issues at the following URL:
