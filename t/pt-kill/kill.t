@@ -35,7 +35,7 @@ my $cnf='/tmp/12345/my.sandbox.cnf';
 # TODO:  These tests need something to match, so we background
 # a SLEEP(4) query and match that, but this isn't ideal because
 # it's time-based.  Better is to use a specific db and --match-db.
-my $sys_cmd = "/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(4)' >/dev/null 2>&1 &";
+my $sys_cmd = "/tmp/12345/use -e 'select sleep(4)' >/dev/null 2>&1 &";
 
 # #############################################################################
 # Test that --kill kills the connection.
@@ -83,7 +83,7 @@ ok(
 # Here's how this works.  This cmd is going to try 2 queries on the same
 # connection: sleep5 and sleep3.  --kill-query will kill sleep5 causing
 # sleep3 to start using the same connection id (pid).
-system("/tmp/12345/use -h127.1 -P12345 -umsandbox -pmsandbox -e 'select sleep(5); select sleep(3)' >/dev/null&");
+system("/tmp/12345/use -e 'select sleep(5); select sleep(3)' >/dev/null&");
 sleep 0.5;
 $rows = $dbh->selectall_hashref('show processlist', 'id');
 $pid = 0;  # reuse, reset

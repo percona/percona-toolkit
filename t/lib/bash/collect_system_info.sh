@@ -267,7 +267,7 @@ test_propietary_raid_controller "$PT_TMPDIR/raid_controller"
 ) 2>/dev/null &
 forked_pid="$!"
 
-if [ -e /proc/$forked_pid/oom_adj ] \
+if [ -w /proc/$forked_pid/oom_adj ] \
       && echo "-17" > /proc/$forked_pid/oom_adj 2>/dev/null; then
 
    notable_processes_info > "$PT_TMPDIR/notable_procs"
@@ -277,7 +277,7 @@ if [ -e /proc/$forked_pid/oom_adj ] \
       "notable_proccesses_info finds the process we manually changed earlier"
 
 else
-   skip 1 1 "Either this OS doesn't have an oom, or this user doesn't have enough privileges to change the oom of other processes"
+   skip 1 1 "oom_adj doesn't exist or isn't writeable"
 fi
 
 disown $forked_pid

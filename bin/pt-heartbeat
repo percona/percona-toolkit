@@ -20,6 +20,7 @@ BEGIN {
       Daemon
       Quoter
       TableParser
+      Retry
       Transformers
       VersionCheck
       HTTPMicro
@@ -2921,6 +2922,84 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Retry package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Retry.pm
+#   t/lib/Retry.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Retry;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub retry {
+   my ( $self, %args ) = @_;
+   my @required_args = qw(try fail final_fail);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($try, $fail, $final_fail) = @args{@required_args};
+   my $wait  = $args{wait}  || sub { sleep 1; };
+   my $tries = $args{tries} || 3;
+
+   my $last_error;
+   my $tryno = 0;
+   TRY:
+   while ( ++$tryno <= $tries ) {
+      PTDEBUG && _d("Try", $tryno, "of", $tries);
+      my $result;
+      eval {
+         $result = $try->(tryno=>$tryno);
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d("Try code failed:", $EVAL_ERROR);
+         $last_error = $EVAL_ERROR;
+
+         if ( $tryno < $tries ) {   # more retries
+            my $retry = $fail->(tryno=>$tryno, error=>$last_error);
+            last TRY unless $retry;
+            PTDEBUG && _d("Calling wait code");
+            $wait->(tryno=>$tryno);
+         }
+      }
+      else {
+         PTDEBUG && _d("Try code succeeded");
+         return $result;
+      }
+   }
+
+   PTDEBUG && _d('Try code did not succeed');
+   return $final_fail->(error=>$last_error);
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Retry package
+# ###########################################################################
+
+# ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4734,7 +4813,7 @@ sub main {
       $dbh->do($sql);
 
       $sql = ($o->get('replace') ? "REPLACE" : "INSERT")
-           . qq/ INTO $db_tbl (ts, server_id) VALUES (NOW(), $server_id)/;
+           . qq/ INTO $db_tbl (ts, server_id) VALUES (UTC_TIMESTAMP(), $server_id)/;
       PTDEBUG && _d($sql);
       # This may fail if the table already existed and already had this row.
       # We eval to ignore this possibility.
@@ -4831,7 +4910,7 @@ sub main {
          PTDEBUG && _d('No heartbeat row in table');
          if ( $o->get('insert-heartbeat-row') ) {
             my $sql = "INSERT INTO $db_tbl ($pk_col, ts) "
-                    . "VALUES ('$pk_val', NOW())";
+                    . "VALUES ('$pk_val', UTC_TIMESTAMP())";
             PTDEBUG && _d($sql);
             $dbh->do($sql);
          }
@@ -4920,18 +4999,44 @@ sub main {
             }
          }
 
-         $sth->execute(ts(time), @vals);
-         PTDEBUG && _d($sth->{Statement});
-         $sth->finish();
-
+         my $retry = Retry->new();
+         $retry->retry(
+            tries => 3,
+            wait  => sub { sleep 0.25; return; },
+            try   => sub {
+               my ($now) = $dbh->selectrow_array(q{SELECT UTC_TIMESTAMP()});
+               $sth->execute($now, @vals);
+               PTDEBUG && _d($sth->{Statement});
+               $sth->finish();
+            },
+            fail => sub {
+               my (%args) = @_;
+               my $error = $args{error};
+               if ( $error =~ m/Deadlock found/ ) {
+                  return 1;  # try again
+               }
+               else {
+                  return 0;
+               }
+            },
+            final_fail => sub {
+               my (%args) = @_;
+               die $args{error};
+            }
+         );
+         
          return;
       };
    }
    else { # --monitor or --check
       my $dbi_driver = lc $o->get('dbi-driver');
 
+      # UNIX_TIMESTAMP(UTC_TIMESTAMP()) instead of UNIX_TIMESTAMP() alone,
+      # so we make sure that we aren't being fooled by a timezone.
+      # UNIX_TIMESTAMP(ts) replaces unix_timestamp($ts) -- MySQL is the
+      # authority here, so let it calculate everything.
       $heartbeat_sql
-         = "SELECT ts"
+         = "SELECT UNIX_TIMESTAMP(UTC_TIMESTAMP()), UNIX_TIMESTAMP(ts)"
          . ($dbi_driver eq 'mysql' ? '/*!50038, @@hostname AS host*/' : '')
          . ($id ? "" : ", server_id")
          . " FROM $db_tbl "
@@ -4945,13 +5050,12 @@ sub main {
          my ($sth) = @_;
          $sth->execute();
          PTDEBUG && _d($sth->{Statement});
-         my ($ts, $hostname, $server_id) = $sth->fetchrow_array();
-         my $now = time;
+         my ($now, $ts, $hostname, $server_id) = $sth->fetchrow_array();
          PTDEBUG && _d("Heartbeat from server", $server_id, "\n",
-            " now:", ts($now), "\n",
+            " now:", $now, "\n",
             "  ts:", $ts, "\n",
             "skew:", $skew);
-         my $delay = $now - unix_timestamp($ts) - $skew;
+         my $delay = $now - $ts - $skew;
          PTDEBUG && _d('Delay', sprintf('%.6f', $delay), 'on', $hostname);
 
          # Because we adjust for skew, if the ts are less than skew seconds
@@ -5387,6 +5491,19 @@ information from C<SHOW MASTER STATUS> and C<SHOW SLAVE STATUS>.  These
 columns are optional.  If any are present, their corresponding information
 will be saved.
 
+=head1 Percona XtraDB Cluster
+
+Although pt-heartbeat should work with all supported versions of Percona XtraDB
+Cluster (PXC), we recommend using 5.5.28-23.7 and newer.
+
+If you are setting up heartbeat instances between cluster nodes, keep in mind
+that, since the speed of the cluster is determined by its slowest node,
+pt-heartbeat will not report how fast the cluster itself is, but only how
+fast events are replicating from one node to another.  
+
+You must specify L<"--master-server-id"> for L<"--monitor"> and L<"--check">
+instances.
+
 =head1 OPTIONS
 
 Specify at least one of L<"--stop">, L<"--update">, L<"--monitor">, or L<"--check">.
@@ -5446,7 +5563,7 @@ be created with the following MAGIC_create_heartbeat table definition:
 The heartbeat table requires at least one row.  If you manually create the
 heartbeat table, then you must insert a row by doing:
 
-  INSERT INTO heartbeat (ts, server_id) VALUES (NOW(), N);
+  INSERT INTO heartbeat (ts, server_id) VALUES (UTC_TIMESTAMP(), N);
 
 where C<N> is the server's ID; do not use @@server_id because it will replicate
 and slaves will insert their own server ID instead of the master's server ID.
@@ -5464,7 +5581,7 @@ Legacy tables do not support L<"--update"> instances on each slave
 of a multi-slave hierarchy like "master -> slave1 -> slave2".
 To manually insert the one required row into a legacy table:
 
-  INSERT INTO heartbeat (id, ts) VALUES (1, NOW());
+  INSERT INTO heartbeat (id, ts) VALUES (1, UTC_TIMESTAMP());
 
 The tool automatically detects if the heartbeat table is legacy.
 
