@@ -66,7 +66,7 @@ make_sandbox() {
       sed -e "s!LIBGALERA!$libgalera!g" -i.bak "/tmp/$port/my.sandbox.cnf"
    fi
 
-   for file in `grep -l PORT /tmp/$port/*`; do
+   for file in `grep -l PORT /tmp/$port/* 2>/dev/null`; do
       sed -e "s/PORT/$port/g" -i.bak $file
       # Use ! instead of / because the replacment has / (it's a directory)
       sed -e "s!PERCONA_TOOLKIT_SANDBOX!$PERCONA_TOOLKIT_SANDBOX!g" -i.bak $file
