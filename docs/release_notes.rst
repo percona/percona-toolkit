@@ -1,6 +1,87 @@
 Release Notes
 *************
 
+v2.1.8 released 2012-12-21
+==========================
+
+Percona Toolkit 2.1.8 has been released.  This release includes 28 bug fixes, beta support for MySQL 5.6, and extensive support for Percona XtraDB Cluster (PXC); Users intending on running the tools on Percona XtraDB Cluster or MySQL 5.6 should strongly consider upgrading. The following tools have been verified to work on PXC versions 5.5.28 and newer:
+
+* pt-table-chcecksum
+
+* pt-online-schema-change
+
+* pt-archive
+
+* pt-mysql-summary
+
+* pt-heartbeat
+
+* pt-variable-advisor
+
+* pt-config-diff
+
+* pt-deadlock-logger
+
+Although there are some limitations: See the Percona XtraDB Cluster section in each tool's documentation for further details. All other tools, with the exception of pt-slave-find, pt-slave-delay and pt-slave-restart, should also work correctly, but in some cases they have not been modified to take advantage of PXC features, so they may behave differently in future releases.
+
+The bug fixes are widely assorted.  The following highlights some of the more interesting and "hot" bugs:
+
+* Fixed bug 1082599: pt-query-digest fails to parse timestamp with no query
+
+Logs which include timestamps with no query -- which can occasionally happen, for example, if using the slow_query_log_timestamp_always in Percona Server -- were misparsed, resulting in an erroneous report.
+
+* Fixed bug 1078838: pt-query-digest doesn't parse general log with "Connect user as user"
+
+The "as" was misparsed and the following word would end up reported as the database; pt-query-digest now handles this correctly.
+
+* Fixed bug 1015590: pt-mysql-summary not Percona Server 5.5-ready
+
+Some renamed variables had caused the Percona Server section to work unreliably.
+
+* Fixed bug 917770: Use of uninitialized value in substitution (s///) at pt-config-diff line 1996
+
+This was the hottest bug affecting a tool in the tracker.
+
+* Fixed bug 886059: pt-heartbeat handles timezones inconsistently
+
+Another 'hot' bug: Previously pt-heartbeat occasionally respected MySQL timezones, but sometimes it ignored them and used the system time instead. This generally wouldn't be troublesome, but resulted in erroneous reports for servers with slaves running in different timezones.
+
+2.1.8 continues the trend of solid bug fix releases, and all 2.1 users are encouraged to upgrade.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Fixed bug 1086259: pt-kill --log-dsn timestamp is wrong
+* Fixed bug 1082104: pt-deadlock-logger problem when the user have a dash in the name
+* Fixed bug 1079341: pt-online-schema-change checks for foreign keys on myisam tables.
+* Fixed bug 1078887: Don't clobber the sql_mode set by the script with set-vars
+* Fixed bug 1078838: pt-query-digest doesn't parse general log with "Connect user as user"
+* Fixed bug 1075638: Illegal division by zero at pt-table-checksum line 7950
+* Fixed bug 1074179: pt-table-checksum does't ignore tables for --replicate-check-only
+* Fixed bug 1052475: pt-table-checksum uninitialized value in numeric lt (<) at line 8611.
+* Fixed bug 911385: pt-table-checksum v2 fails when --resume + --ignore-database is used
+* Fixed bug 1046440: pt-stalk purge_samples slows down checks
+* Fixed bug 1041391: Debug statement for Chosen hash func prints undef
+* Fixed bug 1007938: MySQLConfig doesn't support end-of-line comments
+* Fixed bug 1022622: pt-config-diff is case-sensitive
+* Fixed bug 917770: Use of uninitialized value in substitution (s///) at pt-config-diff line 1996
+* Fixed bug 1015590: pt-mysql-summary not Percona Server 5.5-ready
+* Fixed bug 996069: Incorrect RES.001
+* Fixed bug 986847: pt-stalk does not report NFS iostat
+* Fixed bug 887638: pt-query-digest prints negative byte offset
+* Fixed bug 831525: pt-query-digest help output mangled
+* Fixed bug 957442: pt-query-digest with custom --group-by throws error
+* Fixed bug 1082599: pt-query-digest fails to parse timestamp with no query
+* Fixed bug 823431: pt-query-advisor hangs on big queries
+* Fixed bug 937234: pt-query-advisor issues wrong RES.001
+* Fixed bug 933465: pt-query-advisor false positive on RES.001
+* Fixed bug 932614: pt-slave-restart CHANGE MASTER query causes error
+* Fixed bug 927955: bad pod2rst transformation
+* Fixed bug 898665: Online docs formatting --[no]vars incorrectly
+* Fixed bug 886059: pt-heartbeat handles timezones inconsistently
+
 v2.1.7 released 2012-11-19
 ==========================
 

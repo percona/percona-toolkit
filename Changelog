@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.8 released 2012-12-21
+
   * Fixed bug 1086259: pt-kill --log-dsn timestamp is wrong
   * Fixed bug 1082104: pt-deadlock-logger problem when the user have a dash in the name
   * Fixed bug 1079341: pt-online-schema-change checks for foreign keys on myisam tables.
