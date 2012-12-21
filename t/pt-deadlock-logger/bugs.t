@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 1;
+use Test::More;
 
 use PerconaTest;
 use Sandbox;
@@ -68,6 +68,59 @@ is_deeply(
 );
 
 # #############################################################################
+# https://bugs.launchpad.net/percona-toolkit/+bug/1082104
+# pt-deadlock-logger problem when the user have a dash in the name
+# #############################################################################
+
+$innodb_status_sample = load_file("t/pt-deadlock-logger/samples/bug_1082104.txt");
+
+is_deeply(
+   pt_deadlock_logger::parse_deadlocks($innodb_status_sample),
+   {
+      '1' => {
+          db => 'test',
+          hostname => 'localhost',
+          id => 1,
+          idx => 'PRIMARY',
+          ip => '',
+          lock_mode => 'X',
+          lock_type => 'RECORD',
+          query => 'update a set movie_id=96 where id =2',
+          server => '',
+          tbl => 'a',
+          thread => '19',
+          ts => '2011-12-12T22:52:42',
+          txn_id => 0,
+          txn_time => '161',
+          user => 'ro-ot',
+          victim => 0,
+          wait_hold => 'w'
+      },
+      '2' => {
+          db => 'test',
+          hostname => 'localhost',
+          id => 2,
+          idx => 'PRIMARY',
+          ip => '',
+          lock_mode => 'X',
+          lock_type => 'RECORD',
+          query => 'update a set movie_id=98 where id =4',
+          server => '',
+          tbl => 'a',
+          thread => '18',
+          ts => '2011-12-12T22:52:42',
+          txn_id => 0,
+          txn_time => '1026',
+          user => 'ro-ot',
+          victim => 1,
+          wait_hold => 'w'
+      }
+   },
+   "Bug 1082104: pt-deadlock-logger shows host as user when the username has a dash in the name",
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
+done_testing;
 exit;

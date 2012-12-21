@@ -1141,9 +1141,9 @@ SKIP: {
    );
 
    my $explain = load_file(
-      $sandbox_version ge '5.1'
-         ? "t/lib/samples/QueryReportFormatter/report025.txt"
-         : "t/lib/samples/QueryReportFormatter/report026.txt");
+        $sandbox_version eq '5.6' ? "t/lib/samples/QueryReportFormatter/report031.txt"
+      : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report025.txt"
+      :                             "t/lib/samples/QueryReportFormatter/report026.txt");
 
    is(
       $qrf->explain_report("select * from qrf.t where i=2", 'qrf'),
@@ -1180,11 +1180,13 @@ SKIP: {
    # so if it doesn't USE db then the EXPLAIN will fail.  Here we reset
    # the db to something else because we already called explain_report()
    # above which did USE qrf.
+   #
+   # 5.6 really is that different: ia vs. TF>aI.  It's smarter.
    $dbh->do("USE mysql");
    my $explain_sparkline = $qrf->explain_sparkline($arg, 'qrf');
    is(
       $explain_sparkline,
-      "TF>aI",
+      $sandbox_version eq '5.6' ? "ia" : "TF>aI",
       "explain_sparkling() uses db"
    );
 
@@ -1206,9 +1208,9 @@ SKIP: {
                groupby => 'fingerprint',
             );
          },
-         ($sandbox_version ge '5.1' ?
-              "t/lib/samples/QueryReportFormatter/report027.txt"
-            : "t/lib/samples/QueryReportFormatter/report029.txt"),
+         (  $sandbox_version eq '5.6' ?  "t/lib/samples/QueryReportFormatter/report032.txt"
+          : $sandbox_version ge '5.1' ? "t/lib/samples/QueryReportFormatter/report027.txt"
+          :                             "t/lib/samples/QueryReportFormatter/report029.txt"),
       ),
       "EXPLAIN sparkline (issue 1141)"
    );

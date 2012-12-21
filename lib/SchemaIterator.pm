@@ -444,9 +444,15 @@ sub table_is_allowed {
    my $filter = $self->{filters};
 
    # Always auto-skip these pseudo tables.
-   if ( $db eq 'mysql' && ($tbl eq 'general_log' || $tbl eq 'slow_log') ) {
-      return 0;
-   }
+   return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
+       general_log
+      |slow_log
+      |innodb_index_stats
+      |innodb_table_stats
+      |slave_master_info
+      |slave_relay_log_info
+      |slave_worker_info
+   )$/x;
 
    if ( $filter->{'ignore-tables'}->{$tbl}
         && ($filter->{'ignore-tables'}->{$tbl} eq '*'
