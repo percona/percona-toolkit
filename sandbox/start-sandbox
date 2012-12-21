@@ -34,7 +34,7 @@ make_sandbox() {
    cp $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/my.sandbox.cnf /tmp/$port
    tar xzf $PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/data.tar.gz -C /tmp/$port
 
-   for script in `ls $PERCONA_TOOLKIT_BRANCH/sandbox/servers/*`; do
+   for script in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/"*; do
       if [ -f $script ]; then
         cp $script /tmp/$port
       fi
@@ -89,6 +89,9 @@ make_sandbox() {
    if [ -n "$SKIP_INNODB" ]; then
       echo "skip-innodb" >> /tmp/$port/my.sandbox.cnf
       echo "default-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
+      if [ "$version" ">" "5.5" ]; then
+         echo "default-tmp-storage-engine=myisam" >> /tmp/$port/my.sandbox.cnf
+      fi
    fi
    if [ -n "$MODE_ANSI" ]; then
       echo "sql_mode=ansi" >> /tmp/$port/my.sandbox.cnf
@@ -98,6 +101,10 @@ make_sandbox() {
    fi
    if [ -n "$LOCAL_INFILE" ]; then
       echo "local-infile=$LOCAL_INFILE" >> /tmp/$port/my.sandbox.cnf
+   fi
+   if [ -n "$QUERY_CACHE_SIZE" ]; then
+      echo "query_cache_type=1" >> /tmp/$port/my.sandbox.cnf
+      echo "query_cache_size=$QUERY_CACHE_SIZE" >> /tmp/$port/my.sandbox.cnf
    fi
 
    # If the sandbox is a slave, set it read_only.
@@ -116,13 +123,21 @@ make_sandbox() {
             debug_sandbox $port
             exit 1
          fi
+
+         for sql in "$PERCONA_TOOLKIT_BRANCH/sandbox/servers/$version/"*.sql; do
+            [ -f "$sql" ] && /tmp/$port/use < $sql
+         done
       fi
    else
       echo "Sandbox $type $port failed to start." >&2
       debug_sandbox $port
       exit 1
    fi
-   
+
+   /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
+   /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
+   /tmp/$port/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')";
+
    # If the sandbox is a slave, start the slave.
    if [ "$type" = "slave" ]; then
       /tmp/$port/use -e "change master to master_host='127.0.0.1', master_user='msandbox', master_password='msandbox', master_port=$master_port"
