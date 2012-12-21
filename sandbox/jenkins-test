@@ -46,6 +46,13 @@ find_mysql_base_dir() {
 }
 
 MYSQL_BASE_DIR="$(find_mysql_base_dir $MYSQL)"
+
+REFETCH_MYSQL="${REFETCH_MYSQL:-""}"
+if [ "$MYSQL_BASE_DIR" -a "$REFETCH_MYSQL" ]; then
+   rm -rf "$MYSQL_BASE_DIR"
+   MYSQL_BASE_DIR=""
+fi
+
 if [ -z "$MYSQL_BASE_DIR" ]; then
    (
       cd $MYSQL_BIN_DIR
@@ -66,8 +73,9 @@ fi
 ##########################
 export PERCONA_TOOLKIT_BRANCH="$PWD"
 export PERCONA_TOOLKIT_SANDBOX="$MYSQL_BASE_DIR"
-export PATH="$PATH:/usr/sbin:$MYSQL_BASE_DIR/bin"
+export PATH="$PATH:/usr/sbin:/usr/local/bin:$MYSQL_BASE_DIR/bin"
 export LANG="en_US.UTF-8"
+export USER="${USER:-"jenkins"}"
 
 # ######################################### #
 # Remove conf files that's shouldn't exist. #

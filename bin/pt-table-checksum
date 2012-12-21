@@ -6986,9 +6986,15 @@ sub table_is_allowed {
 
    my $filter = $self->{filters};
 
-   if ( $db eq 'mysql' && ($tbl eq 'general_log' || $tbl eq 'slow_log') ) {
-      return 0;
-   }
+   return 0 if $db eq 'mysql' && $tbl =~ m/^(?:
+       general_log
+      |slow_log
+      |innodb_index_stats
+      |innodb_table_stats
+      |slave_master_info
+      |slave_relay_log_info
+      |slave_worker_info
+   )$/x;
 
    if ( $filter->{'ignore-tables'}->{$tbl}
         && ($filter->{'ignore-tables'}->{$tbl} eq '*'
@@ -10123,9 +10129,9 @@ sub check_repl_table {
             }
          }
          else {
+            warn $EVAL_ERROR;
             die "--replicate database $db does not exist and it cannot be "
-               . "created automatically.  You need to create the database. "
-               . $EVAL_ERROR;
+               . "created automatically.  You need to create the database.\n";
          }
       }
    }
@@ -10193,9 +10199,9 @@ sub check_repl_table {
             }
          }
          else {
+            warn $EVAL_ERROR;
             die "--replicate table $tbl does not exist and it cannot be "
-               . "created automatically.  You need to create the table. "
-               . $EVAL_ERROR;
+               . "created automatically.  You need to create the table.\n"
          }
       }
    }
