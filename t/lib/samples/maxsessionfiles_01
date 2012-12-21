@@ -1,6 +1,0 @@
--- MULTIPLE SESSIONS
-USE `foo`
-
-SELECT col FROM foo_tbl
--- END SESSION
-
