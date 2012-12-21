@@ -1,4 +1,0 @@
--- START SESSION 1
-
-insert into issue_799.t values (0)
-
