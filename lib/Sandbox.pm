@@ -126,12 +126,13 @@ sub create_dbs {
 }
    
 sub get_dbh_for {
-   my ( $self, $server, $cxn_ops ) = @_;
+   my ( $self, $server, $cxn_ops, $user ) = @_;
    _check_server($server);
    $cxn_ops ||= { AutoCommit => 1 };
+   $user    ||= 'msandbox';
    PTDEBUG && _d('dbh for', $server, 'on port', $port_for{$server});
    my $dp = $self->{DSNParser};
-   my $dsn = $dp->parse('h=127.0.0.1,u=msandbox,p=msandbox,P=' . $port_for{$server});
+   my $dsn = $dp->parse("h=127.0.0.1,u=$user,p=msandbox,P=" . $port_for{$server});
    my $dbh;
    # This is primarily for the benefit of CompareResults, but it's
    # also quite convenient when using an affected OS
@@ -335,11 +336,11 @@ sub wait_for_slaves {
    my $master_dbh = $self->get_dbh_for($args{master} || 'master');
    my $slave2_dbh = $self->get_dbh_for($args{slave}  || 'slave2');
    my ($ping) = $master_dbh->selectrow_array("SELECT MD5(RAND())");
-   $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1");
+   $master_dbh->do("UPDATE percona_test.sentinel SET ping='$ping' WHERE id=1 /* wait_for_slaves */");
    PerconaTest::wait_until(
       sub {
          my ($pong) = $slave2_dbh->selectrow_array(
-            "SELECT ping FROM percona_test.sentinel WHERE id=1");
+            "SELECT ping FROM percona_test.sentinel WHERE id=1 /* wait_for_slaves */");
          return $ping eq $pong;
       }, undef, 300
    );
@@ -540,6 +541,23 @@ sub config_file_for {
    my ($self, $server) = @_;
    my $port = $self->port_for($server);
    return "/tmp/$port/my.sandbox.cnf"
+}
+
+sub do_as_root {
+   my ($self, $server, @queries) = @_;
+   my $dbh = $self->get_dbh_for($server, undef, 'root');
+   my $ok = 1;
+   eval {
+      foreach my $query ( @queries ) {
+         $dbh->do($query);
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      $ok = 0;
+      warn $EVAL_ERROR;
+   }
+   $dbh->disconnect;
+   return $ok;
 }
 
 sub _d {

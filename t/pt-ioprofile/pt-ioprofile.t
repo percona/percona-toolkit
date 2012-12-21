@@ -19,23 +19,21 @@ use Sandbox;
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $dbh = $sb->get_dbh_for('master');
+my $have_strace = `which strace 2>/dev/null`;
 
 if ( !$dbh ) {
    plan skip_all => "Cannot connect to master sandbox";
 }
-else {
-   plan tests => 5;
+elsif ( !$have_strace ) {
+   plan skip_all => 'strace is not installed or not in PATH';
 }
 
-my $output = "";
-
-$output = `$trunk/bin/pt-ioprofile --help 2>&1`;
+my $output = `$trunk/bin/pt-ioprofile --help 2>&1`;
 like(
    $output,
    qr/--version/,
    "--help"
 );
-
 
 my $t0 = time;
 $output = `$trunk/bin/pt-ioprofile --run-time 3 2>&1`;
@@ -47,17 +45,16 @@ like(
    "Runs without a file (bug 925778)"
 );
 
-TODO: {
-   local $::TODO = "Timing-related test, may occasionally fail";
-   # If the system is really slow, it may take a second to process the files
-   # and then clean up all the temp stuff. We'll give it a few seconds benefit of the doubt.
-   cmp_ok(
-      int($t1 - $t0),
-      '<=',
-      6,
-      "Runs for --run-time, more or less"
-   );
-}
+# If the system is really slow, it may take a second to process the files
+# and then clean up all the temp stuff. We'll give it a few seconds benefit
+# of the doubt.
+cmp_ok(
+   int($t1 - $t0),
+   '<=',
+   6,
+   "Runs for --run-time, more or less"
+);
+ 
 # #############################################################################
 # Short options.
 # #############################################################################
@@ -72,4 +69,4 @@ like(
 # Done.
 # #############################################################################
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;

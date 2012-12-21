@@ -1942,6 +1942,9 @@ sub parse_timestamp {
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
    }
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
+   }
    return $val;
 }
 
@@ -3609,7 +3612,8 @@ sub get_fk_error {
    # Quick check if text even has a foreign key error.
    return unless $text =~ m/LATEST FOREIGN KEY ERROR/;
 
-   my $idb_ts = qr/(\d{6} .\d:\d\d:\d\d)/;    # InnoDB timestamp
+   # InnoDB timestamp
+   my $idb_ts = qr/((?:\d{6}|\d{4}-\d\d-\d\d) .\d:\d\d:\d\d)/;
 
    my ($ts, $fke) = $text =~ m/LATEST FOREIGN KEY ERROR.+?$idb_ts\s*(.+?)---/ms;
    chomp $fke if $fke;

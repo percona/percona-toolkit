@@ -713,8 +713,8 @@ cmp_ok(
 # ############################################################################
 $ni = make_nibble_iter(
    db         => 'mysql',
-   tbl        => 'host',
-   argv       => [qw(--tables mysql.host --chunk-size-limit 0)],
+   tbl        => 'columns_priv',
+   argv       => [qw(--tables mysql.columns_priv --chunk-size-limit 0)],
 );
 
 @rows = ();

@@ -188,7 +188,7 @@ $output = output(
 
 like(
    $output,
-   qr/^REPLACE INTO `sakila`.`actor`\(`actor_id`, `first_name`, `last_name`, `last_update`\) VALUES \('30', 'SANDRA', 'PECK', '2006-02-15 04:34:33'\)/,
+   qr/^REPLACE INTO `sakila`.`actor`\(`actor_id`, `first_name`, `last_name`, `last_update`\) VALUES \('30', 'SANDRA', 'PECK', '2006-02-15 11:34:33'\)/,
    "--replicate with char index col (bug 911996)"
 );
 
