@@ -34,7 +34,7 @@ sub check_type_constaints {
    || Carp::confess(
         qq<Attribute ($attribute) does not pass the type constraint because: >
       . qq<Validation failed for '$check_name' with value >
-      . (defined $val ? Lmo::Dumper($val) : 'undef') )
+      . (defined $val ? Percona::Toolkit::Dumper($val) : 'undef') )
 }
 
 # Nested (or parametized) constraints look like this: ArrayRef[CONSTRAINT] or

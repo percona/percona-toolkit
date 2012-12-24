@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2012 Percona Inc.
+# This program is copyright 2012-2013 Percona Inc.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -19,10 +19,12 @@
 # ###########################################################################
 # Package: Lmo
 # Lmo provides a miniature object system in the style of Moose and Moo.
+# Forked from 0.30 of Mo.
+
 BEGIN {
 $INC{"Lmo.pm"} = __FILE__;
 package Lmo;
-our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
+our $VERSION = '0.01'; 
 
 {
    # Gets the glob from a given string.
@@ -310,16 +312,6 @@ sub unimport {
    my $stash  = _stash_for( $caller );
 
    delete $stash->{$_} for @{$export_for{$caller}};
-}
-
-sub Dumper {
-   require Data::Dumper;
-   local $Data::Dumper::Indent    = 0;
-   local $Data::Dumper::Sortkeys  = 0;
-   local $Data::Dumper::Quotekeys = 0;
-   local $Data::Dumper::Terse     = 1;
-
-   Data::Dumper::Dumper(@_)
 }
 
 BEGIN {
