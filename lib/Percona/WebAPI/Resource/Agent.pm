@@ -15,12 +15,11 @@ has 'hostname' => (
    is       => 'ro',
    isa      => 'Str',
    required => 1,
-   default  => sub { return `hostname 2>/dev/null` },
 );
 
 has 'versions' => (
    is       => 'ro',
-   isa      => 'Maybe[Percona::WebAPI::Resource::Versions]',
+   isa      => 'Maybe[HashRef]',
    required => 0,
    default  => undef,
 );
