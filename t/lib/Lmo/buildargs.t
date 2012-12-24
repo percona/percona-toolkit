@@ -15,13 +15,13 @@ $main::count = 0;
 
 {
    package Nothing;
-   use Mo;
+   use Lmo;
    has nothing_special => ( is => 'rw' );
 }
 ok(Nothing->can("BUILDARGS"), "Every class automatically gets buildargs");
 
 package Foo;
-use Mo;
+use Lmo;
 has 'foo' => (is => 'rw');
 sub BUILDARGS {
     my $class = shift;
@@ -30,12 +30,12 @@ sub BUILDARGS {
 }
 
 package Bar;
-use Mo;
+use Lmo;
 extends 'Foo';
 has 'bar' => (is => 'rw');
 
 package Baz;
-use Mo;
+use Lmo;
 extends 'Bar';
 has 'baz' => (is => 'rw');
 sub BUILDARGS {
@@ -45,7 +45,7 @@ sub BUILDARGS {
 }
 
 package Gorch;
-use Mo;
+use Lmo;
 extends 'Baz';
 has 'gorch' => (is => 'rw');
 
@@ -53,7 +53,7 @@ package main;
 
 $main::count = 0;
 my $g = Foo->new;
-is $main::count, 1, "A class with no explicit parent inherits SUPER::BUILDARGS from Mo::Object";
+is $main::count, 1, "A class with no explicit parent inherits SUPER::BUILDARGS from Lmo::Object";
 
 $main::count = 0;
 $g = Gorch->new;

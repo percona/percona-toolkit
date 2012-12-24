@@ -11,17 +11,16 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-package Foo::coerce;
-use Mo;
+use lib "$ENV{PERCONA_TOOLKIT_BRANCH}/t/lib/Lmo";
+use Bar;
 
-has 'stuff' => (coerce => sub { uc $_[0] });
+my $b = Bar->new;
 
-package main;
+ok $b->isa('Foo'), 'Bar is a subclass of Foo';
 
-my $f = Foo::coerce->new(stuff => 'fubar');
-is $f->stuff, 'FUBAR', 'values passed to constructor are successfully coerced';
-$f->stuff('barbaz');
-is $f->stuff, 'BARBAZ', 'values passed to setters are successfully coerced';
+is "@Bar::ISA", "Foo", 'Extends with multiple classes not supported';
 
+ok 'Foo'->can('stuff'), 'Foo is loaded';
+ok not('Bar'->can('buff')), 'Boo is not loaded';
 
 done_testing;
