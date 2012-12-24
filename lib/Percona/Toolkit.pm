@@ -19,7 +19,45 @@
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.7';
+our $VERSION = '3.0.0';
+
+use Carp qw(carp cluck);
+use Data::Dumper qw();
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use Exporter 'import';
+our @EXPORT = qw(
+   have_required_args
+   Dumper
+   _d
+);
+
+sub have_required_args {
+   my ($args, @required_args) = @_;
+   my $have_required_args = 1;
+   foreach my $arg ( @required_args ) {
+      if ( !defined $args->{$arg} ) {
+         $have_required_args = 0;
+         carp "Argument $arg is not defined";
+      }
+   }
+   cluck unless $have_required_args;  # print backtrace
+   return $have_required_args;
+}
+
+sub Dumper {
+   Data::Dumper::Dumper(@_);
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
 
 1;
 }
