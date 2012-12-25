@@ -24,6 +24,7 @@ BEGIN {
       Percona::WebAPI::Resource::Service
       Percona::WebAPI::Resource::Run
       Percona::WebAPI::Representation
+      Percona::WebAPI::Util
       VersionCheck
       DSNParser
       OptionParser
@@ -1234,6 +1235,39 @@ sub as_config {
 # ###########################################################################
 
 # ###########################################################################
+# Percona::WebAPI::Util package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Util.pm
+#   t/lib/Percona/WebAPI/Util.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Util;
+
+use Digest::MD5 qw(md5_hex);
+
+use Percona::WebAPI::Representation; 
+
+require Exporter;
+our @ISA         = qw(Exporter);
+our %EXPORT_TAGS = ();
+our @EXPORT_OK   = (qw(resource_diff));
+our @EXPORT      = ();
+
+sub resource_diff {
+   my ($x, $y) = @_;
+   return md5_hex(Percona::WebAPI::Representation::as_json($x))
+      cmp md5_hex(Percona::WebAPI::Representation::as_json($y));
+}
+
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Util package
+# ###########################################################################
+
+# ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -1262,7 +1296,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 local $EVAL_ERROR;
 eval {
    require Percona::Toolkit;
-   require Percona::HTTP::Micro;
+   require HTTP::Micro;
 };
 
 my $dir              = File::Spec->tmpdir();
@@ -1374,7 +1408,7 @@ sub pingback {
 
    my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 5 );
+   $ua ||= HTTP::Micro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
@@ -4265,12 +4299,20 @@ package pt_agent;
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-
-use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use POSIX qw(signal_h);
 use Time::HiRes qw(sleep time);
+
+use Percona::Toolkit;
+use Percona::WebAPI::Client;
+use Percona::WebAPI::Exception::Request;
+use Percona::WebAPI::Resource::Agent;
+use Percona::WebAPI::Resource::Config;
+use Percona::WebAPI::Resource::Service;
+use Percona::WebAPI::Resource::Run;
+use Percona::WebAPI::Representation;
+use Percona::WebAPI::Util qw(resource_diff);
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
@@ -4297,7 +4339,7 @@ sub main {
    }
 
    Pingback::validate_options($o);
-   
+ 
    $o->usage_or_errors();
 
    # ########################################################################
@@ -4305,15 +4347,40 @@ sub main {
    # ########################################################################
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
-      die "Error starting pt-agent: missing API key.  pt-agent requires "
-         . "a Percona Web Services API key to run.  Specify your API key "
-         . "in a --config file or with --api-key.  Please contact Percona "
-         . "if you need help.  pt-agent is not running.\n";
+      _err("No API key was found or specified.  pt-agent requires a "
+         . "Percona Web Services API key to run.  Put your API key "
+         . "in a --config file or specify it with --api-key.");
+   }
+
+   # ########################################################################
+   # Check the config file.
+   # ########################################################################
+   my $home_dir    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+   my $config_file = "$home_dir/.pt-agent.conf";
+   if ( -f $config_file ) {
+      die "$config_file is not writable.\n" unless -w $config_file;
+   }
+   else {
+      eval {
+         open my $fh, '>', $config_file
+            or die "Error opening $config_file: $OS_ERROR";
+         print { $fh } "api-key=$api_key\n"
+            or die "Error writing to $config_file: $OS_ERROR";
+         close $fh
+            or die "Error closing $config_file: $OS_ERROR";
+      };
+      if ( $EVAL_ERROR ) {
+         chomp $EVAL_ERROR;
+         _err("$EVAL_ERROR.  pt-agent requires write access to "
+            . "$config_file to run.");
+      }
    }
 
    # ########################################################################
    # Run pt-agent.
    # ########################################################################
+   my $daemon;
+
    if ( my $service = $o->get('run-service') ) {
       run_service(
          service   => $service,
@@ -4333,7 +4400,6 @@ sub main {
       # process.  Only internal errors should cause it to stop.  Else,
       # external errors, like Percona web API not responding, should be
       # retried forever.
-      my $daemon;
       if ( $o->get('daemonize') ) {
          $daemon = new Daemon(o=>$o);
          $daemon->daemonize();
@@ -4344,15 +4410,54 @@ sub main {
          $daemon->make_PID_file();
       }
 
-      # Start or create the agent.
-      init_agent(
-         api_key        => $api_key,
-         agent_id       => $o->get('agent-id'),
-         check_interval => $o->get('check-interval'),
+      # During initial connection and agent init, wait less time
+      # than --check-interval between errors.
+      # TODO: make user-configurable?  --reconnect-interval?
+      my $init_interval = 120;
+      my $init_wait     = sub {
+         return unless $oktorun;
+         _info("Sleeping $init_interval seconds");
+         sleep $init_interval;
+      };
+
+      # Get a connected Percona Web API client.
+      my $client = get_api_client(
+         api_key  => $api_key,
+         tries    => undef,
+         interval => $init_wait,
       );
+
+      # Start or create the agent.
+      my $agent = init_agent(
+         client   => $client,
+         interval => $init_wait,
+         agent_id => $o->get('agent-id'),  # optional
+      );
+
+      # Wait time between checking for new config and services.
+      # Use the tool's built-in default until a config is gotten,
+      # then config->{check-interval} will be pass in.
+      my $check_interval = $o->get('check-interval');
+      my $check_wait     = sub {
+         my ($t) = @_;
+         return unless $oktorun;
+         $t ||= $check_interval;
+         _info("Sleeping $t seconds");
+         sleep $t;
+      };
+
+      # Run the agent's main loop which doesn't return until the service
+      # is stopped, killed, or has an internal bug.
+      run_agent(
+         agent       => $agent,
+         client      => $client,
+         interval    => $check_wait,
+         config_file => $config_file,
+      );
+      _info('Agent ' . $agent->id . ' has stopped');
    }
 
-   _log("pt-agent exit $exit_status, oktorun $oktorun");
+   _info("pt-agent exit $exit_status, oktorun $oktorun");
 
    return $exit_status;
 }
@@ -4368,24 +4473,31 @@ sub main {
 # Create and connect a Percona Web API client.
 sub get_api_client {
    my (%args) = @_;
+
    have_required_args(\%args,qw(
       api_key
+      interval
    )) or die;
-   my $api_key = $args{api_key};
+   my $api_key  = $args{api_key};
+   my $interval = $args{interval};
 
    # Optional args
    my $tries = $args{tries};
-   my $wait  = $args{wait} || 30;
 
    my $client;
    while ( $oktorun && !$client && (!defined $tries || $tries--) ) {
+      _info("Connecting to Percona Web Services");
       eval {
          $client = Percona::WebAPI::Client->new(
-            api_key => $api_key,
+            api_key  => $api_key,
          );
       };
       if ( $EVAL_ERROR ) {
-         sleep $wait;
+         _warn($EVAL_ERROR);
+         $interval->();
+      }
+      else {
+         _info("Connected");
       }
    }
 
@@ -4396,29 +4508,24 @@ sub get_api_client {
 # Agent (main daemon) process subs #
 # ################################ #
 
-# Initialize the agent: if it's new, create it, wait for a config, then run;
-# else, get lastest config, then run.
+# Initialize the agent, i.e. create and return an Agent resource.
+# If there's an agent_id, then its updated (PUT), else a new agent
+# is created  (POST).  Doesn't return until successful.
 sub init_agent {
    my (%args) = @_;
 
    have_required_args(\%args, qw(
-      api_key
-      check_interval
+      client
+      interval
    )) or die;
-   my $api_key        = $args{api_key};
-   my $check_interval = $args{check_interval};
+   my $client   = $args{client};
+   my $interval = $args{interval};
 
    # Optional args
    my $agent_id = $args{agent_id};
-   my $client   = $args{client};
    my $versions = $args{versions};
 
-   # Get a connected Percona Web API client.
-   $client ||= get_api_client(
-      api_key => $api_key,
-      tries   => undef,
-      wait    => $check_interval,
-   );
+   _info('Initializing agent');
 
    # Do a version-check every time the agent starts.  If versions
    # have changed, this can affect how services are implemented.
@@ -4426,40 +4533,6 @@ sub init_agent {
 
    # Make an Agent resource.  If there's an agent_id, the existing Agent
    # is updated (PUT); else, a new agent is created (POST).
-   my $agent = make_agent(
-      id             => $agent_id,
-      client         => $client,
-      versions       => $versions,
-      check_interval => $check_interval,
-   );
-
-   # Run the agent's main loop which doesn't return until the service
-   # is stopped, killed, or has an internal bug.
-   run_agent(
-      agent          => $agent,
-      client         => $client,
-      check_interval => $check_interval,
-   );
-
-   return;
-}
-
-# Create a new agent and wait for a config.
-sub make_agent {
-   my (%args) = @_;
-
-   have_required_args(\%args,qw(
-      client
-      versions
-      check_interval
-   )) or die;
-   my $client         = $args{client};
-   my $versions       = $args{versions};
-   my $check_interval = $args{check_interval};
-
-   # Optional args
-   my $agent_id = $args{agent_id};
-
    my $action;
    if ( $agent_id ) {
       $action = 'put';
@@ -4476,7 +4549,7 @@ sub make_agent {
    );
 
    while ( $oktorun ) {
-      _log($action eq 'put' ? "Updating agent $agent_id"
+      _info($action eq 'put' ? "Updating agent $agent_id"
                             : "Creating new agent $agent_id");
       eval {
          $client->$action(
@@ -4484,128 +4557,107 @@ sub make_agent {
             content => $agent,
          );
       };
-      my $e = $EVAL_ERROR;
-      last if !$e;  # success
-
-      # Try again
-      _log("Error: $e");
-      _log("Sleeping $check_interval seconds, then trying again");
-      sleep $check_interval if $oktorun;
+      if ( $EVAL_ERROR ) {
+         _warn($EVAL_ERROR);
+         $interval->();
+      }
+      else {
+         _info("Initialized")
+      }
    }
 
    return $agent;
 }
 
-# Run an existing, configured agent.
+# Run the agent, i.e. exec the main loop to check/update the config
+# and services.  Doesn't return until service stopped or killed.
 sub run_agent {
    my (%args) = @_;
 
    have_required_args(\%args,qw(
       agent
       client
-      check_interval
+      interval
+      config_file
    )) or die;
-   my $agent          = $args{agent_id};
-   my $client         = $args{client};
-   my $check_interval = $args{check_interval};
+   my $agent       = $args{agent_id};
+   my $client      = $args{client};
+   my $interval    = $args{interval};
+   my $config_file = $args{config_file};
 
-   _log("Running agent " . $agent->id);
+   _info('Running agent ' . $agent->id);
 
    my $config;
    my $services;
-
    while ( $oktorun ) {
-      my $new_config = get_config();
-      if ( resource_diff($config, $new_config) ) {
-         _log('Got new config');
-         eval {
-            write_config();
-         };
-         if ( $EVAL_ERROR ) {
-         }
-         else {
+      eval {
+         _info('Getting config');
+         my $new_config = $client->get(
+            url => $client->links->{config},
+         );
+         if ( resource_diff($config, $new_config) ) {
+            _info('Got new config');
+            write_config(
+               config => $config,
+               file   => $config_file,
+            );
             $config = $new_config;
          }
+      };
+      if ( $EVAL_ERROR ) {
+         _warn($EVAL_ERROR);
       }
 
-      my $new_services = get_services();
-      if ( resource_diff($services, $new_services) ) {
-         _log('Got new services');
-         write_services();
-         schedule_services();
+      if ( $config ) {
+         eval {
+            _info('Getting services');
+            my $new_services = $client->get(
+               url => $client->links->{services},
+            );
+            if ( resource_diff($services, $new_services) ) {
+               _info('Got new services');
+               write_services();
+               schedule_services();
+            }
+         };
+         if ( $EVAL_ERROR ) {
+            _warn($EVAL_ERROR);
+         }
+      }
+      else {
+         _info('Agent ' . $agent->id . ' is not configured');
       }
 
-      _log("Sleeping $check_interval seconds, then checking again");
-      sleep $check_interval if $oktorun;
+      # If no config yet, the tool's built-in default for
+      # --check-interval is used instead.
+      $interval->($config->{'check-interval'});
    }
 
    return;
 }
 
-
-# Get the agent's config from Percona.  There won't be a config until
-# the agent has been configured by the customer via the web app.
-sub get_config {
+# Write a Config resource to a Percona Toolkit config file,
+# usually $HOME/pt-agent.conf.
+sub write_config {
    my (%args) = @_;
+
    have_required_args(\%args,qw(
-      client
-      check_interval
+      config
+      file
    )) or die;
-   my $client         = $args{client};
-   my $check_interval = $args{client};
+   my $config = $args{config};
+   my $file   = $args{file};
 
-   my $config; 
-   while ( $oktorun ) {
-      _log('Getting config');
-      eval {
-         $config = $client->get(
-            url => $client->links->{config},
-         );
-      };
-      my $e = $EVAL_ERROR;
-      last if !$e && $config;  # success
+   _info("Writing new config to $file");
 
-      # Try again
-      if ( $e ) {
-         _log("Error: $e");
-      }
-      elsif ( !$config ) {
-         _log('No config for this agent yet.');
-      }
-      _log("Sleeping $check_interval seconds, then trying again");
-      sleep $check_interval if $oktorun;
-   }
+   open my $fh, '>', $file
+      or die "Error opening $file: $OS_ERROR";
+   print { $fh } Percona::WebAPI::Representation::as_config($config)
+      or die "Error writing to $file: $OS_ERROR";
+   close $fh
+      or die "Error closing $file: $OS_ERROR";
 
-   return $config;
-}
-
-sub get_services {
-   my (%args) = @_;
-   have_required_args(\%args,qw(
-      client
-      check_interval
-   )) or die;
-   my $client         = $args{client};
-   my $check_interval = $args{client};
-
-   my $services;
-   while ( $oktorun ) {
-      _log('Getting services');
-      eval {
-         $services = $client->get(
-            url => $client->links->{services},
-         );
-      };
-      my $e = $EVAL_ERROR;
-      last if !$e;  # success
-
-      # Try again
-      _log("Error: $e");
-      _log("Sleeping $check_interval seconds, then trying again");
-      sleep $check_interval if $oktorun;
-   }
-
-   return $services;
+   return;
 }
 
 # #################### #
@@ -4630,11 +4682,27 @@ sub send_data {
 # ################## #
 
 sub _log {
-   my ($msg) = @_;
+   my ($level, $msg) = @_;
    my ($s, $m, $h, $d, $M) = localtime;
    my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
-   print "$ts $msg\n";
+   print "$ts $level $msg\n";
    return;
+}
+
+sub _info {
+   return _log('INFO', @_);
+}
+
+sub _warn {
+   $exit_status |= 1;
+   return _log('WARNING', @_);
+}
+
+sub _err {
+   my $msg = shift;
+   _log('ERROR', $msg . '  Please contact Percona if you need help.');
+   $exit_status |= 1;
+   exit $exit_status;
 }
 
 sub get_uuid {
