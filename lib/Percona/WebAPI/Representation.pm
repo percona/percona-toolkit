@@ -15,18 +15,18 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Percona::WebAPI::Representation::HashRef package
+# Percona::WebAPI::Representation package
 # ###########################################################################
 {
-package Percona::WebAPI::Representation::HashRef;
+package Percona::WebAPI::Representation;
 
-use Lmo::Role;
+use JSON;
 
 sub as_hashref {
-   my ($self) = @_;
+   my $resource = shift;
 
    # Copy the object into a new hashref.
-   my $as_hashref = { %$self };
+   my $as_hashref = { %$resource };
 
    # Delete the links because they're just for client-side use
    # and the caller should be sending this object, not getting it.
@@ -35,8 +35,22 @@ sub as_hashref {
    return $as_hashref;
 }
 
+sub as_json {
+   return encode_json(as_hashref(@_));
+}
+
+
+sub as_config {
+   my $as_hashref = as_hashref(@_);
+   my $config     = join("\n",
+      map { defined $as_hashref->{$_} ?  "$_=$as_hashref->{$_}" : "$_" }
+      sort keys %$as_hashref
+   ) . "\n";
+   return $config;
+}
+
 1;
 }
 # ###########################################################################
-# End Percona::WebAPI::Representation::HashRef package
+# End Percona::WebAPI::Representation package
 # ###########################################################################
