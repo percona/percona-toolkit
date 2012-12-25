@@ -14,6 +14,15 @@ use warnings FATAL => 'all';
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
+      Lmo::Meta
+      Lmo::Object
+      Lmo
+      Percona::WebAPI::Client
+      Percona::WebAPI::Exception::Request
+      Percona::WebAPI::Resource::Agent
+      Percona::WebAPI::Resource::Config
+      Percona::WebAPI::Resource::Service
+      Percona::WebAPI::Resource::Run
       VersionCheck
       DSNParser
       OptionParser
@@ -35,7 +44,13 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
+
 our $VERSION = '3.0.0';
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Carp qw(carp cluck);
 use Data::Dumper qw();
@@ -82,6 +97,1099 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# Lmo::Meta package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Meta.pm
+#   t/lib/Lmo/Meta.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo::Meta;
+
+use strict;
+use warnings FATAL => 'all';
+
+my %metadata_for;
+
+sub new {
+   shift;
+   return Lmo::Meta::Class->new(@_);
+}
+
+sub metadata_for {
+   my $self    = shift;
+   my ($class) = @_;
+
+   return $metadata_for{$class} ||= {};
+}
+
+{
+   package Lmo::Meta::Class;
+
+   sub new {
+      my $class = shift;
+      return bless { @_ }, $class
+   }
+
+   sub class { shift->{class} }
+
+   sub attributes {
+      my $self = shift;
+      return keys %{Lmo::Meta->metadata_for($self->class)}
+   }
+
+   sub attributes_for_new {
+      my $self = shift;
+      my @attributes;
+
+      my $class_metadata = Lmo::Meta->metadata_for($self->class);
+      while ( my ($attr, $meta) = each %$class_metadata ) {
+         if ( exists $meta->{init_arg} ) {
+            push @attributes, $meta->{init_arg}
+                  if defined $meta->{init_arg};
+         }
+         else {
+            push @attributes, $attr;
+         }
+      }
+      return @attributes;
+   }
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Meta package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo::Object package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Object.pm
+#   t/lib/Lmo/Object.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo::Object;
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(blessed);
+
+eval {
+   require Lmo::Meta;
+};
+
+{
+   no strict 'refs';
+   sub _glob_for {
+      return \*{shift()}
+   }
+}
+
+sub new {
+   my $class = shift;
+   my $args  = $class->BUILDARGS(@_);
+
+   my $class_metadata = Lmo::Meta->metadata_for($class);
+
+   my @args_to_delete;
+   while ( my ($attr, $meta) = each %$class_metadata ) {
+      next unless exists $meta->{init_arg};
+      my $init_arg = $meta->{init_arg};
+
+      if ( defined $init_arg ) {
+         $args->{$attr} = delete $args->{$init_arg};
+      }
+      else {
+         push @args_to_delete, $attr;
+      }
+   }
+
+   delete $args->{$_} for @args_to_delete;
+
+   for my $attribute ( keys %$args ) {
+      if ( my $coerce = $class_metadata->{$attribute}{coerce} ) {
+         $args->{$attribute} = $coerce->($args->{$attribute});
+      }
+      if ( my $isa_check = $class_metadata->{$attribute}{isa} ) {
+         my ($check_name, $check_sub) = @$isa_check;
+         $check_sub->($args->{$attribute});
+      }
+   }
+
+   while ( my ($attribute, $meta) = each %$class_metadata ) {
+      next unless $meta->{required};
+      Carp::confess("Attribute ($attribute) is required for $class")
+         if ! exists $args->{$attribute}
+   }
+
+   my $self = bless $args, $class;
+
+   my @build_subs;
+   my $linearized_isa = mro::get_linear_isa($class);
+
+   for my $isa_class ( @$linearized_isa ) {
+      unshift @build_subs, *{ _glob_for "${isa_class}::BUILD" }{CODE};
+   }
+   my @args = %$args;
+   for my $sub (grep { defined($_) && exists &$_ } @build_subs) {
+      $sub->( $self, @args);
+   }
+   return $self;
+}
+
+sub BUILDARGS {
+   shift; # No need for the classname
+   if ( @_ == 1 && ref($_[0]) ) {
+      Carp::confess("Single parameters to new() must be a HASH ref, not $_[0]")
+         unless ref($_[0]) eq ref({});
+      return {%{$_[0]}} # We want a new reference, always
+   }
+   else {
+      return { @_ };
+   }
+}
+
+sub meta {
+   my $class = shift;
+   $class = Scalar::Util::blessed($class) || $class;
+   return Lmo::Meta->new(class => $class);
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Object package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo::Types package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo/Types.pm
+#   t/lib/Lmo/Types.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(looks_like_number blessed);
+
+our %TYPES = (
+   Bool   => sub { !$_[0] || (defined $_[0] && looks_like_number($_[0]) && $_[0] == 1) },
+   Num    => sub { defined $_[0] && looks_like_number($_[0]) },
+   Int    => sub { defined $_[0] && looks_like_number($_[0]) && $_[0] == int($_[0]) },
+   Str    => sub { defined $_[0] },
+   Object => sub { defined $_[0] && blessed($_[0]) },
+   FileHandle => sub { local $@; require IO::Handle; fileno($_[0]) && $_[0]->opened },
+
+   map {
+      my $type = /R/ ? $_ : uc $_;
+      $_ . "Ref" => sub { ref $_[0] eq $type }
+   } qw(Array Code Hash Regexp Glob Scalar)
+);
+
+sub check_type_constaints {
+   my ($attribute, $type_check, $check_name, $val) = @_;
+   ( ref($type_check) eq 'CODE'
+      ? $type_check->($val)
+      : (ref $val eq $type_check
+         || ($val && $val eq $type_check)
+         || (exists $TYPES{$type_check} && $TYPES{$type_check}->($val)))
+   )
+   || Carp::confess(
+        qq<Attribute ($attribute) does not pass the type constraint because: >
+      . qq<Validation failed for '$check_name' with value >
+      . (defined $val ? Percona::Toolkit::Dumper($val) : 'undef') )
+}
+
+sub _nested_constraints {
+   my ($attribute, $aggregate_type, $type) = @_;
+
+   my $inner_types;
+   if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+      $inner_types = _nested_constraints($1, $2);
+   }
+   else {
+      $inner_types = $TYPES{$type};
+   }
+
+   if ( $aggregate_type eq 'ArrayRef' ) {
+      return sub {
+         my ($val) = @_;
+         return unless ref($val) eq ref([]);
+
+         if ($inner_types) {
+            for my $value ( @{$val} ) {
+               return unless $inner_types->($value)
+            }
+         }
+         else {
+            for my $value ( @{$val} ) {
+               return unless $value && ($value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type)));
+            }
+         }
+         return 1;
+      };
+   }
+   elsif ( $aggregate_type eq 'Maybe' ) {
+      return sub {
+         my ($value) = @_;
+         return 1 if ! defined($value);
+         if ($inner_types) {
+            return unless $inner_types->($value)
+         }
+         else {
+            return unless $value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type));
+         }
+         return 1;
+      }
+   }
+   else {
+      Carp::confess("Nested aggregate types are only implemented for ArrayRefs and Maybe");
+   }
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo::Types package
+# ###########################################################################
+
+# ###########################################################################
+# Lmo package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Lmo.pm
+#   t/lib/Lmo.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Lmo;
+
+our $VERSION = '0.01'; 
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(blessed);
+
+eval {
+   require Lmo::Meta;
+   require Lmo::Object;
+   require Lmo::Types;
+};
+
+{
+   no strict 'refs';
+   sub _glob_for {
+      return \*{shift()}
+   }
+
+   sub _stash_for {
+      return \%{ shift() . "::" };
+   }
+}
+
+my %export_for;
+sub import {
+    warnings->import(qw(FATAL all));
+    strict->import();
+    
+    my $caller     = scalar caller(); # Caller's package
+    my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
+    my %exports = (
+        extends => \&extends,
+        has     => \&has,
+    );
+
+    $export_for{$caller} = [ keys %exports ];
+
+    for my $keyword ( keys %exports ) {
+      *{ _glob_for "${caller}::$keyword" } = $exports{$keyword}
+    }
+
+    if ( !@{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] } ) {
+      @_ = "Lmo::Object";
+      goto *{ _glob_for "${caller}::extends" }{CODE};
+    }
+};
+
+sub extends {
+   my $caller = scalar caller();
+   for my $class ( @_ ) {
+      _load_module($class);
+   }
+   _set_package_isa($caller, @_);
+   _set_inherited_metadata($caller);
+}
+
+sub _load_module {
+   my ($class) = @_;
+   
+   (my $file = $class) =~ s{::|'}{/}g;
+   $file .= '.pm';
+   { local $@; eval { require "$file" } } # or warn $@;
+   return;
+}
+
+sub has {
+   my $names  = shift;
+   my $caller = scalar caller();
+
+   my $class_metadata = Lmo::Meta->metadata_for($caller);
+   
+   for my $attribute ( ref $names ? @$names : $names ) {
+      my %args   = @_;
+      my $method = ($args{is} || '') eq 'ro'
+         ? sub {
+            Carp::confess("Cannot assign a value to a read-only accessor at reader ${caller}::${attribute}")
+               if $#_;
+            return $_[0]{$attribute};
+         }
+         : sub {
+            return $#_
+                  ? $_[0]{$attribute} = $_[1]
+                  : $_[0]{$attribute};
+         };
+
+      $class_metadata->{$attribute} = ();
+
+      if ( my $type_check = $args{isa} ) {
+         my $check_name = $type_check;
+         
+         if ( my ($aggregate_type, $inner_type) = $type_check =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+            $type_check = Lmo::Types::_nested_constraints($attribute, $aggregate_type, $inner_type);
+         }
+         
+         my $check_sub = sub {
+            my ($new_val) = @_;
+            Lmo::Types::check_type_constaints($attribute, $type_check, $check_name, $new_val);
+         };
+         
+         $class_metadata->{$attribute}{isa} = [$check_name, $check_sub];
+         my $orig_method = $method;
+         $method = sub {
+            $check_sub->($_[1]) if $#_;
+            goto &$orig_method;
+         };
+      }
+
+      if ( my $builder = $args{builder} ) {
+         my $original_method = $method;
+         $method = sub {
+               $#_
+                  ? goto &$original_method
+                  : ! exists $_[0]{$attribute}
+                     ? $_[0]{$attribute} = $_[0]->$builder
+                     : goto &$original_method
+         };
+      }
+
+      if ( my $code = $args{default} ) {
+         Carp::confess("${caller}::${attribute}'s default is $code, but should be a coderef")
+               unless ref($code) eq 'CODE';
+         my $original_method = $method;
+         $method = sub {
+               $#_
+                  ? goto &$original_method
+                  : ! exists $_[0]{$attribute}
+                     ? $_[0]{$attribute} = $_[0]->$code
+                     : goto &$original_method
+         };
+      }
+
+      if ( my $role = $args{does} ) {
+         my $original_method = $method;
+         $method = sub {
+            if ( $#_ ) {
+               Carp::confess(qq<Attribute ($attribute) doesn't consume a '$role' role">)
+                  unless Scalar::Util::blessed($_[1]) && eval { $_[1]->does($role) }
+            }
+            goto &$original_method
+         };
+      }
+
+      if ( my $coercion = $args{coerce} ) {
+         $class_metadata->{$attribute}{coerce} = $coercion;
+         my $original_method = $method;
+         $method = sub {
+            if ( $#_ ) {
+               return $original_method->($_[0], $coercion->($_[1]))
+            }
+            goto &$original_method;
+         }
+      }
+
+      *{ _glob_for "${caller}::$attribute" } = $method;
+
+      if ( $args{required} ) {
+         $class_metadata->{$attribute}{required} = 1;
+      }
+
+      if ($args{clearer}) {
+         *{ _glob_for "${caller}::$args{clearer}" }
+            = sub { delete shift->{$attribute} }
+      }
+
+      if ($args{predicate}) {
+         *{ _glob_for "${caller}::$args{predicate}" }
+            = sub { exists shift->{$attribute} }
+      }
+
+      if ($args{handles}) {
+         _has_handles($caller, $attribute, \%args);
+      }
+
+      if (exists $args{init_arg}) {
+         $class_metadata->{$attribute}{init_arg} = $args{init_arg};
+      }
+   }
+}
+
+sub _has_handles {
+   my ($caller, $attribute, $args) = @_;
+   my $handles = $args->{handles};
+
+   my $ref = ref $handles;
+   my $kv;
+   if ( $ref eq ref [] ) {
+         $kv = { map { $_,$_ } @{$handles} };
+   }
+   elsif ( $ref eq ref {} ) {
+         $kv = $handles;
+   }
+   elsif ( $ref eq ref qr// ) {
+         Carp::confess("Cannot delegate methods based on a Regexp without a type constraint (isa)")
+            unless $args->{isa};
+         my $target_class = $args->{isa};
+         $kv = {
+            map   { $_, $_     }
+            grep  { $_ =~ $handles }
+            grep  { !exists $Lmo::Object::{$_} && $target_class->can($_) }
+            grep  { $_ ne 'has' && $_ ne 'extends' }
+            keys %{ _stash_for $target_class }
+         };
+   }
+   else {
+         Carp::confess("handles for $ref not yet implemented");
+   }
+
+   while ( my ($method, $target) = each %{$kv} ) {
+         my $name = _glob_for "${caller}::$method";
+         Carp::confess("You cannot overwrite a locally defined method ($method) with a delegation")
+            if defined &$name;
+
+         my ($target, @curried_args) = ref($target) ? @$target : $target;
+         *$name = sub {
+            my $self        = shift;
+            my $delegate_to = $self->$attribute();
+            my $error = "Cannot delegate $method to $target because the value of $attribute";
+            Carp::confess("$error is not defined") unless $delegate_to;
+            Carp::confess("$error is not an object (got '$delegate_to')")
+               unless Scalar::Util::blessed($delegate_to) || (!ref($delegate_to) && $delegate_to->can($target));
+            return $delegate_to->$target(@curried_args, @_);
+         }
+   }
+}
+
+sub _set_package_isa {
+   my ($package, @new_isa) = @_;
+   my $package_isa  = \*{ _glob_for "${package}::ISA" };
+   @{*$package_isa} = @new_isa;
+}
+
+sub _set_inherited_metadata {
+   my $class = shift;
+   my $class_metadata = Lmo::Meta->metadata_for($class);
+   my $linearized_isa = mro::get_linear_isa($class);
+   my %new_metadata;
+
+   for my $isa_class (reverse @$linearized_isa) {
+      my $isa_metadata = Lmo::Meta->metadata_for($isa_class);
+      %new_metadata = (
+         %new_metadata,
+         %$isa_metadata,
+      );
+   }
+   %$class_metadata = %new_metadata;
+}
+
+sub unimport {
+   my $caller = scalar caller();
+   my $stash  = _stash_for( $caller );
+
+   delete $stash->{$_} for @{$export_for{$caller}};
+}
+
+BEGIN {
+   if ($] >= 5.010) {
+      { local $@; require mro; }
+   }
+   else {
+      local $@;
+      eval {
+         require MRO::Compat;
+      } or do {
+         *mro::get_linear_isa = *mro::get_linear_isa_dfs = sub {
+            no strict 'refs';
+
+            my $classname = shift;
+
+            my @lin = ($classname);
+            my %stored;
+            foreach my $parent (@{"$classname\::ISA"}) {
+               my $plin = mro::get_linear_isa_dfs($parent);
+               foreach (@$plin) {
+                     next if exists $stored{$_};
+                     push(@lin, $_);
+                     $stored{$_} = 1;
+               }
+            }
+            return \@lin;
+         };
+      }
+   }
+}
+
+1;
+}
+# ###########################################################################
+# End Lmo package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::WebAPI::Client package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Client.pm
+#   t/lib/Percona/WebAPI/Client.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Client;
+
+our $VERSION = '0.01';
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use LWP;
+use JSON;
+use Scalar::Util qw(blessed); 
+use English qw(-no_match_vars);
+
+use Lmo;
+use Percona::Toolkit;
+use Percona::WebAPI::Exception::Request;
+
+has 'api_key' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'base_url' => (
+   is       => 'rw',
+   isa      => 'Str',
+   default  => 'https://api.tools.percona.com',
+   required => 1,
+);
+
+has 'links' => (
+   is      => 'rw',
+   isa     => 'HashRef',
+   lazy    => 1,
+   default => sub { return +{} },
+);
+
+has 'ua' => (
+   is       => 'rw',
+   isa      => 'LWP::UserAgent',
+   lazy     => 1,
+   required => 1,
+   builder  => '_build_ua',
+);
+
+has 'response' => (
+   is  => 'rw',
+   isa => 'Object',
+);
+
+sub _build_ua {
+   my $self = shift;
+   my $ua = LWP::UserAgent->new;
+   $ua->agent("Percona::WebAPI::Client/$Percona::WebAPI::Client::VERSION");
+   $ua->default_header('application/json');
+   $ua->default_header('X-Percona-API-Key', $self->api_key);
+   return $ua;
+}
+
+sub BUILD {
+   my ($self) = @_;
+
+   eval {
+      $self->_request(
+         method => 'GET',
+         url    => $self->base_url,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
+         die $e;
+      }
+      else {
+         die "Unknown error: $e";
+      }
+   }
+
+   my $entry_links = decode_json($self->response->content);
+   PTDEBUG && _d('Entry links', $entry_links);
+
+   $self->links($entry_links);
+
+   return;
+}
+
+sub get {
+   my ($self, %args) = @_;
+
+   my @required_args = (
+      'link',  # A resource link (e.g. $run->links->{results})
+   );
+   my ($link) = @args{@required_args};
+
+   my @resources;  # Resources from the requested link
+
+   eval {
+      $self->_request(
+         method => 'GET',
+         url    => $link,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
+         die $e;
+      }
+      else {
+         die "Unknown error: $e";
+      }
+   }
+
+   my $res;
+   eval {
+      $res = decode_json($self->response->content);
+   };
+   if ( $EVAL_ERROR ) {
+      warn sprintf "Error decoding resource: %s: %s",
+         $self->response->content,
+         $EVAL_ERROR;
+      return;
+   }
+
+   my $objs;
+   my $res_type = $self->response->headers->{'x-percona-webapi-content-type'};
+   if ( $res_type ) {
+      eval {
+         my $type = "Percona::WebAPI::Resource::$res_type";
+
+         if ( ref $res->{content} eq 'ARRAY' ) {
+            PTDEBUG && _d('Got a list of', $res_type, 'resources');
+            foreach my $attribs ( @{$res->{content}} ) {
+               my $obj = $type->new(%$attribs);
+               push @$objs, $obj;
+            }
+         }
+         else {
+            PTDEBUG && _d('Got a', $res_type, 'resource');
+            $objs = $type->new(%{$res->{content}});
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         warn "Error creating $res_type resource objects: $EVAL_ERROR";
+         return;
+      }
+   }
+
+   $self->update_links($res->{links});
+
+   return $objs;
+}
+
+sub post {
+   my $self = shift;
+   return $self->_set(
+      @_,
+      method => 'POST',
+   );
+}
+
+sub delete {
+   my ($self, %args) = @_;
+
+   my @required_args = (
+      'link',  # A resource link (e.g. $run->links->{results})
+   );
+   my ($link) = @args{@required_args};
+
+   eval {
+      $self->_request(
+         method  => 'DELETE',
+         url     => $link,
+         headers => { 'Content-Length' => 0 },
+      ); 
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
+         die $e;
+      }
+      else {
+         die "Unknown error: $e";
+      }
+   }
+
+   return;
+}
+
+sub _set {
+   my ($self, %args) = @_;
+   my @required_args = qw(method resources link);
+   my ($method, $res, $link) = @args{@required_args};
+
+   my $content;
+   if ( ref($res) eq 'ARRAY' ) {
+      $content = '[' . join(",\n", map { $_->as_json } @$res) . ']';
+   }
+   elsif ( -f $res ) {
+      PTDEBUG && _d('Reading content from file', $res);
+      $content = '[';
+      my $data = do {
+         local $INPUT_RECORD_SEPARATOR = undef;
+         open my $fh, '<', $res
+            or die "Error opening $res: $OS_ERROR";
+         <$fh>;
+      };
+      $data =~ s/,?\s*$/]/;
+      $content .= $data;
+   }
+   else {
+      $content = $res->as_json;
+   }
+
+   eval {
+      $self->_request(
+         method  => $method,
+         url     => $link,
+         content => $content,
+      );
+   };
+   if ( my $e = $EVAL_ERROR ) {
+      if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
+         die $e;
+      }
+      else {
+         die "Unknown error: $e";
+      }
+   }
+
+   my $links;
+   eval {
+      $links = decode_json($self->response->content);
+   };
+   if ( $EVAL_ERROR ) {
+      warn sprintf "Error decoding resource: %s: %s",
+         $self->response->content,
+         $EVAL_ERROR;
+      return;
+   }
+
+   $self->update_links($links);
+
+   return;
+}
+
+sub _request {
+   my ($self, %args) = @_;
+
+   my @required_args = (
+      'method',
+      'url',
+   );
+   my ($method, $url) = @args{@required_args};
+
+   my @optional_args = (
+      'content',
+      'headers',
+   );
+   my ($content, $headers) = @args{@optional_args};
+
+   my $req = HTTP::Request->new($method => $url);
+   $req->content($content) if $content;
+   if ( uc($method) eq 'DELETE' ) {
+      $self->ua->default_header('Content-Length' => 0);
+   }
+   PTDEBUG && _d('Request', $method, $url, $req);
+
+   my $res = $self->ua->request($req);
+   PTDEBUG && _d('Response', $res);
+
+   if ( uc($method) eq 'DELETE' ) {
+      $self->ua->default_header('Content-Length' => undef);
+   }
+
+   if ( !($res->code >= 200 && $res->code < 400) ) {
+      die Percona::WebAPI::Exception::Request->new(
+         method  => $method,
+         url     => $url,
+         content => $content,
+         status  => $res->code,
+         error   => $res->content,
+      );
+   }
+
+   $self->response($res);
+
+   return;
+}
+
+sub update_links {
+   my ($self, $new_links) = @_;
+    while (my ($svc, $links) = each %$new_links) {
+      while (my ($rel, $link) = each %$links) {
+         $self->links->{$svc}->{$rel} = $link;
+      }
+   }
+   PTDEBUG && _d('Updated links', $self->links);
+   return;
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Client package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::WebAPI::Exception::Request package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Exception/Request.pm
+#   t/lib/Percona/WebAPI/Exception/Request.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Exception::Request;
+
+use Lmo;
+use overload '""' => \&as_string;
+
+has 'method' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'url' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'content' => (
+   is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'status' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 1,
+);
+
+has 'error' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+sub as_string {
+   my $self = shift;
+   chomp(my $error = $self->error);
+   $error =~ s/\n/ /g;
+   return sprintf "Error: %s\nStatus: %d\nRequest: %s %s %s\n",
+      $error, $self->status, $self->method, $self->url, $self->content || '';
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Exception::Request package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::WebAPI::Resource::Agent package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Resource/Agent.pm
+#   t/lib/Percona/WebAPI/Resource/Agent.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Resource::Agent;
+
+use Lmo;
+
+has 'id' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'hostname' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'versions' => (
+   is       => 'ro',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => undef,
+);
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Resource::Agent package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::WebAPI::Resource::Config package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Resource/Config.pm
+#   t/lib/Percona/WebAPI/Resource/Config.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Resource::Config;
+
+use Lmo;
+
+has 'options' => (
+   is       => 'ro',
+   isa      => 'HashRef',
+   required => 1,
+);
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Resource::Config package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::WebAPI::Resource::Service package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Resource/Service.pm
+#   t/lib/Percona/WebAPI/Resource/Service.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Resource::Service;
+
+use Lmo;
+
+has 'name' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'schedule' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'run' => (
+   is       => 'ro',
+   isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
+   required => 1,
+);
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Resource::Service package
+# ###########################################################################
+
+# ###########################################################################
+# Percona::WebAPI::Resource::Run package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Resource/Run.pm
+#   t/lib/Percona/WebAPI/Resource/Run.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Resource::Run;
+
+use Lmo;
+
+has 'number' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 1,
+);
+
+has 'program' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'options' => (
+   is       => 'ro',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'output' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Resource::Run package
+# ###########################################################################
+
+# ###########################################################################
 # VersionCheck package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -96,17 +1204,40 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
+use File::Basename qw();
+use Data::Dumper   qw();
+use Data::Dumper   qw();
+use Digest::MD5    qw(md5_hex);
+use Sys::Hostname  qw(hostname);
+use Fcntl          qw(:DEFAULT);
+use File::Basename qw();
+use File::Spec;
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use File::Basename ();
-use Data::Dumper ();
+local $EVAL_ERROR;
+eval {
+   require Percona::Toolkit;
+   require Percona::HTTP::Micro;
+};
 
-sub Dumper {
-   local $Data::Dumper::Indent    = 1;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
+my $dir              = File::Spec->tmpdir();
+my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
+my $check_time_limit = 60 * 60 * 24;  # one day
 
-   Data::Dumper::Dumper(@_);
+sub validate_options {
+   my ($o) = @_;
+
+   return if !$o->got('version-check');
+
+   my $value  = $o->get('version-check');
+   my @values = split /, /,
+                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
+   chomp(@values);
+                
+   return if grep { $value eq $_ } @values;
+   $o->save_error("--version-check invalid value $value.  Accepted values are "
+                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
 }
 
 sub new {
@@ -122,6 +1253,297 @@ sub new {
          )$/x,
    };
    return bless $self, $class;
+}
+
+sub version_check {
+   my %args      = @_;
+   my @instances = $args{instances} ? @{ $args{instances} } : ();
+
+   if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
+                   "environment variable.\n\n";
+      return;
+   }
+
+   $args{protocol} ||= 'https';
+   my @protocols = $args{protocol} eq 'auto'
+                 ? qw(https http)
+                 : $args{protocol};
+   
+   my $instances_to_check = [];
+   my $time               = int(time());
+   eval {
+      foreach my $instance ( @instances ) {
+         my ($name, $id) = _generate_identifier($instance);
+         $instance->{name} = $name;
+         $instance->{id}   = $id;
+      }
+
+      my $time_to_check;
+      ($time_to_check, $instances_to_check)
+         = time_to_check($check_time_file, \@instances, $time);
+      if ( !$time_to_check ) {
+         warn 'It is not time to --version-check again; ',
+                      "only 1 check per day.\n\n";
+         return;
+      }
+
+      my $advice;
+      my $e;
+      for my $protocol ( @protocols ) {
+         $advice = eval { pingback(
+            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
+            instances => $instances_to_check,
+            protocol  => $protocol,
+         ) };
+         last if !$advice && !$EVAL_ERROR;
+         $e ||= $EVAL_ERROR;
+      }
+      if ( $advice ) {
+         print "# Percona suggests these upgrades:\n";
+         print join("\n", map { "#   * $_" } @$advice), "\n\n";
+      }
+      else {
+         die $e if $e;
+         print "# No suggestions at this time.\n\n";
+         ($ENV{PTVCDEBUG} || PTDEBUG )
+            && _d('--version-check worked, but there were no suggestions');
+      }
+   };
+   if ( $EVAL_ERROR ) {
+      warn "Error doing --version-check: $EVAL_ERROR";
+   }
+   else {
+      update_checks_file($check_time_file, $instances_to_check, $time);
+   }
+   
+   return;
+}
+
+sub pingback {
+   my (%args) = @_;
+   my @required_args = qw(url);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($url) = @args{@required_args};
+
+   my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
+
+   $ua ||= HTTPMicro->new( timeout => 5 );
+   $vc ||= VersionCheck->new();
+
+   my $response = $ua->request('GET', $url);
+   ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
+   die "No response from GET $url"
+      if !$response;
+   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
+       ($response->{content} || '')) if $response->{status} != 200;
+   die("GET on $url did not return any programs to check")
+      if !$response->{content};
+
+   my $items = $vc->parse_server_response(
+      response => $response->{content}
+   );
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
+      
+   my $versions = $vc->get_versions(
+      items     => $items,
+      instances => $instances,
+   );
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
+
+   my $client_content = encode_client_response(
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
+   );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('Client response:', Dumper($client_response));
+   }
+
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   return unless $response->{content};
+
+   $items = $vc->parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
+}
+
+sub time_to_check {
+   my ($file, $instances, $time) = @_;
+   die "I need a file argument" unless $file;
+   $time ||= int(time());  # current time
+
+   if ( @$instances ) {
+      my $instances_to_check = instances_to_check($file, $instances, $time);
+      return scalar @$instances_to_check, $instances_to_check;
+   }
+
+   return 1 if !-f $file;
+   
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      PTDEBUG && _d('Error getting modified time of', $file);
+      return 1;
+   }
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      return 1;
+   }
+
+   return 0;
+}
+
+sub instances_to_check {
+   my ($file, $instances, $time, %args) = @_;
+
+   my $file_contents = '';
+   if (open my $fh, '<', $file) {
+      chomp($file_contents = do { local $/ = undef; <$fh> });
+      close $fh;
+   }
+   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
+
+   my @instances_to_check;
+   foreach my $instance ( @$instances ) {
+      my $mtime = $cached_instances{ $instance->{id} };
+      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
+         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+            _d('Time to check MySQL instance', $instance->{name});
+         }
+         push @instances_to_check, $instance;
+         $cached_instances{ $instance->{id} } = $time;
+      }
+   }
+
+   if ( $args{update_file} ) {
+      open my $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
+      while ( my ($id, $time) = each %cached_instances ) {
+         print { $fh } "$id,$time\n";
+      }
+      close $fh or die "Cannot close $file: $OS_ERROR";
+   }
+
+   return \@instances_to_check;
+}
+
+sub update_checks_file {
+   my ($file, $instances, $time) = @_;
+
+   if ( !-f $file ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Creating time limit file', $file);
+      }
+      _touch($file);
+   }
+
+   if ( $instances && @$instances ) {
+      instances_to_check($file, $instances, $time, update_file => 1);
+      return;
+   }
+
+   my $mtime  = (stat $file)[9];
+   if ( !defined $mtime ) {
+      _touch($file);
+      return;
+   }
+   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
+   if ( ($time - $mtime) > $check_time_limit ) {
+      _touch($file);
+      return;
+   }
+
+   return;
+}
+
+sub _touch {
+   my ($file) = @_;
+   sysopen my $fh, $file, O_WRONLY|O_CREAT
+      or die "Cannot create $file : $!";
+   close $fh or die "Cannot close $file : $!";
+   utime(undef, undef, $file);
+}
+
+sub _generate_identifier {
+   my $instance = shift;
+   my $dbh      = $instance->{dbh};
+   my $dsn      = $instance->{dsn};
+
+   my $sql = q{SELECT CONCAT(@@hostname, @@port)};
+   PTDEBUG && _d($sql);
+   my ($name) = eval { $dbh->selectrow_array($sql) };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $sql = q{SELECT @@hostname};
+      PTDEBUG && _d($sql);
+      ($name) = eval { $dbh->selectrow_array($sql) };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
+      }
+      else {
+         $sql = q{SHOW VARIABLES LIKE 'port'};
+         PTDEBUG && _d($sql);
+         my (undef, $port) = eval { $dbh->selectrow_array($sql) };
+         PTDEBUG && _d('port:', $port);
+         $name .= $port || '';
+      }
+   }
+   my $id = md5_hex($name);
+
+   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+      _d('MySQL instance', $name, 'is', $id);
+   }
+
+   return $name, $id;
+}
+
+sub encode_client_response {
+   my (%args) = @_;
+   my @required_args = qw(items versions general_id);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items, $versions, $general_id) = @args{@required_args};
+
+   my @lines;
+   foreach my $item ( sort keys %$items ) {
+      next unless exists $versions->{$item};
+      if ( ref($versions->{$item}) eq 'HASH' ) {
+         my $mysql_versions = $versions->{$item};
+         for my $id ( sort keys %$mysql_versions ) {
+            push @lines, join(';', $id, $item, $mysql_versions->{$id});
+         }
+      }
+      else {
+         push @lines, join(';', $general_id, $item, $versions->{$item});
+      }
+   }
+
+   my $client_response = join("\n", @lines) . "\n";
+   return $client_response;
 }
 
 sub parse_server_response {
@@ -359,14 +1781,6 @@ sub get_bin_version {
 
    PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
    return $version;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -2060,7 +3474,7 @@ sub deserialize_list {
 {
 package VersionParser;
 
-use Mo;
+use Lmo;
 use Scalar::Util qw(blessed);
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -2073,8 +3487,6 @@ use overload (
 );
 
 use Carp ();
-
-our $VERSION = 0.01;
 
 has major => (
     is       => 'ro',
@@ -2236,7 +3648,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-no Mo;
+no Lmo;
 1;
 }
 # ###########################################################################
@@ -2894,7 +4306,7 @@ sub get_api_client {
          );
       };
       if ( $EVAL_ERROR ) {
-         sleep $check_interval;
+         sleep $wait;
       }
    }
 
@@ -2911,10 +4323,10 @@ sub init_agent {
    my (%args) = @_;
    have_required_args(\%args,qw(
       api_key
-      check_interval
-      spool_interval
+      OptionParser
    )) or die;
    my $api_key = $args{api_key};
+   my $o       = $args{OptionParser};
 
    # Check --pid and daemonize.  This process is long-running and resilient:
    # only internal errors should cause it to stop.  Else, external errors,
@@ -2933,12 +4345,13 @@ sub init_agent {
 
    # Get a connected Percona Web API client.
    my $client = get_api_client(
-      tries   => undef,           # forever
-      wait    => $check_interval, # between failures
+      tries   => undef,
+      wait    => $o->get('check-interval'),
       api_key => $api_key,
+   );
 
    # Run existing agent, or create a new one.
-   if ( $agent_id ) {
+   if ( $o->get('agent-id') ) {
       run_agent();
    }
    else {
@@ -2952,7 +4365,11 @@ sub run_agent {
    have_required_args(\%args,qw(
       agent_id
       client
+      check_interval
    )) or die;
+   my $agent_id       = $args{agent_id};
+   my $client         = $args{client};
+   my $check_interval = $args{check_interval};
 
    my $config; 
    while ( !$config ) {
@@ -2973,8 +4390,10 @@ sub create_agent {
    my (%args) = @_;
    have_required_args(\%args,qw(
       client
+      check_interval
    )) or die;
-   my $client = $args{client};
+   my $client         = $args{client};
+   my $check_interval = $args{check_interval};
 
    my $id       = get_uuid();
    my $versions = get_versions();

@@ -17,14 +17,25 @@
 # ###########################################################################
 # Lmo package
 # ###########################################################################
+{
 # Package: Lmo
-# Lmo provides a miniature object system in the style of Moose and Moo.
-# Forked from 0.30 of Mo.
-
-BEGIN {
-$INC{"Lmo.pm"} = __FILE__;
+# Lmo provides a little meta object system like Moose and Moo.
+# This code was derived from Mo 0.30.
 package Lmo;
+
 our $VERSION = '0.01'; 
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(blessed);
+
+eval {
+   require Lmo::Meta;
+   require Lmo::Object;
+   require Lmo::Types;
+};
 
 {
    # Gets the glob from a given string.
@@ -42,16 +53,6 @@ our $VERSION = '0.01';
       return \%{ shift() . "::" };
    }
 }
-
-use strict;
-use warnings qw( FATAL all );
-
-use Carp ();
-use Scalar::Util qw(looks_like_number blessed);
-
-use Lmo::Meta;
-use Lmo::Object;
-use Lmo::Types;
 
 my %export_for;
 sub import {
@@ -224,8 +225,6 @@ sub has {
    }
 }
 
-
-
 # handles handles
 sub _has_handles {
    my ($caller, $attribute, $args) = @_;
@@ -348,8 +347,8 @@ BEGIN {
    }
 }
 
-}
 1;
+}
 # ###########################################################################
 # End Lmo package
 # ###########################################################################
