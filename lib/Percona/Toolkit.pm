@@ -19,7 +19,13 @@
 # ###########################################################################
 {
 package Percona::Toolkit;
+
 our $VERSION = '3.0.0';
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Carp qw(carp cluck);
 use Data::Dumper qw();
