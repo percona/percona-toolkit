@@ -40,7 +40,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 local $EVAL_ERROR;
 eval {
    require Percona::Toolkit;
-   require Percona::HTTP::Micro;
+   require HTTP::Micro;
 };
 
 my $dir              = File::Spec->tmpdir();
@@ -163,7 +163,7 @@ sub pingback {
    # Optional args
    my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
 
-   $ua ||= HTTPMicro->new( timeout => 5 );
+   $ua ||= HTTP::Micro->new( timeout => 5 );
    $vc ||= VersionCheck->new();
 
    # GET https://upgrade.percona.com, the server will return
