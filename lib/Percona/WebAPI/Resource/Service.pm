@@ -34,11 +34,24 @@ has 'schedule' => (
    required => 1,
 );
 
-has 'run' => (
+has 'runs' => (
    is       => 'ro',
    isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
    required => 1,
 );
+
+sub BUILDARGS {
+   my ($class, %args) = @_;
+   if ( ref $args{runs} eq 'ARRAY' ) {
+      my @runs;
+      foreach my $run_hashref ( @{$args{runs}} ) {
+         my $run = Percona::WebAPI::Resource::Run->new(%$run_hashref);
+         push @runs, $run;
+      }
+      $args{runs} = \@runs;
+   }
+   return $class->SUPER::BUILDARGS(%args);
+}
 
 no Lmo;
 1;

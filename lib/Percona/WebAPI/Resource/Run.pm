@@ -46,6 +46,8 @@ has 'output' => (
    required => 1,
 );
 
+sub TO_JSON { return { %{ shift() } }; }
+
 no Lmo;
 1;
 }

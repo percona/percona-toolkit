@@ -135,9 +135,8 @@ sub get {
    # Transform the resource representations into an arrayref of hashrefs.
    # Each hashref contains (hopefully) all the attribs necessary to create
    # a corresponding resource object.
-   my $res;
-   eval {
-      $res = decode_json($self->response->content);
+   my $res = eval {
+      decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
       warn sprintf "Error decoding resource: %s: %s",
@@ -147,31 +146,34 @@ sub get {
    }
 
    my $objs;
-   my $res_type = $self->response->headers->{'x-percona-webapi-content-type'};
-   if ( $res_type ) {
+   if ( my $type = $self->response->headers->{'x-percona-resource-type'} ) {
       eval {
-         my $type = "Percona::WebAPI::Resource::$res_type";
+         my $type = "Percona::WebAPI::Resource::$type";
 
          # Create resource objects using the server-provided attribs.
-         if ( ref $res->{content} eq 'ARRAY' ) {
-            PTDEBUG && _d('Got a list of', $res_type, 'resources');
-            foreach my $attribs ( @{$res->{content}} ) {
+         if ( ref $res eq 'ARRAY' ) {
+            PTDEBUG && _d('Got a list of', $type, 'resources');
+            foreach my $attribs ( @$res ) {
                my $obj = $type->new(%$attribs);
                push @$objs, $obj;
             }
          }
          else {
-            PTDEBUG && _d('Got a', $res_type, 'resource');
-            $objs = $type->new(%{$res->{content}});
+            PTDEBUG && _d('Got a', $type, 'resource');
+            $objs = $type->new(%$res);
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Error creating $res_type resource objects: $EVAL_ERROR";
+         warn "Error creating $type resource objects: $EVAL_ERROR";
          return;
       }
    }
-
-   $self->update_links($res->{links});
+   elsif ( $res ) {
+      $self->update_links($res);
+   }
+   else {
+      warn "Did not get X-Percona-Resource-Type or content from $url\n";
+   }
 
    return $objs;
 }
@@ -277,7 +279,7 @@ sub _set {
       return;
    }
 
-   $self->update_links($response->{links});
+   $self->update_links($response);
 
    return;
 }
@@ -318,7 +320,7 @@ sub _request {
          url     => $url,
          content => $content,
          status  => $response->code,
-         error   => $response->content,
+         error   => "Failed to $method $url"
       );
    }
 

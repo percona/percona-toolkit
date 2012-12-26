@@ -44,12 +44,14 @@ sub request {
    if ( $type eq 'post' || $type eq 'put' ) {
       $self->{content}->{$type} = $req->content;
    }
-   my $r   = shift @{$self->{responses}->{$type}};
-   my $c   = $self->{encode}->($r->{content});
+   my $r = shift @{$self->{responses}->{$type}};
+   my $c = $self->{encode}->($r->{content});
+   my $h = HTTP::Headers->new;
+   $h->header(%{$r->{headers}}) if exists $r->{headers};
    my $res = HTTP::Response->new(
       $r->{code} || 200,
       '',
-      HTTP::Headers->new,
+      $h,
       $c,
    );
    return $res;

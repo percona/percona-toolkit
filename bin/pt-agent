@@ -842,9 +842,8 @@ sub get {
       }
    }
 
-   my $res;
-   eval {
-      $res = decode_json($self->response->content);
+   my $res = eval {
+      decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
       warn sprintf "Error decoding resource: %s: %s",
@@ -854,30 +853,33 @@ sub get {
    }
 
    my $objs;
-   my $res_type = $self->response->headers->{'x-percona-webapi-content-type'};
-   if ( $res_type ) {
+   if ( my $type = $self->response->headers->{'x-percona-resource-type'} ) {
       eval {
-         my $type = "Percona::WebAPI::Resource::$res_type";
+         my $type = "Percona::WebAPI::Resource::$type";
 
-         if ( ref $res->{content} eq 'ARRAY' ) {
-            PTDEBUG && _d('Got a list of', $res_type, 'resources');
-            foreach my $attribs ( @{$res->{content}} ) {
+         if ( ref $res eq 'ARRAY' ) {
+            PTDEBUG && _d('Got a list of', $type, 'resources');
+            foreach my $attribs ( @$res ) {
                my $obj = $type->new(%$attribs);
                push @$objs, $obj;
             }
          }
          else {
-            PTDEBUG && _d('Got a', $res_type, 'resource');
-            $objs = $type->new(%{$res->{content}});
+            PTDEBUG && _d('Got a', $type, 'resource');
+            $objs = $type->new(%$res);
          }
       };
       if ( $EVAL_ERROR ) {
-         warn "Error creating $res_type resource objects: $EVAL_ERROR";
+         warn "Error creating $type resource objects: $EVAL_ERROR";
          return;
       }
    }
-
-   $self->update_links($res->{links});
+   elsif ( $res ) {
+      $self->update_links($res);
+   }
+   else {
+      warn "Did not get X-Percona-Resource-Type or content from $url\n";
+   }
 
    return $objs;
 }
@@ -983,7 +985,7 @@ sub _set {
       return;
    }
 
-   $self->update_links($response->{links});
+   $self->update_links($response);
 
    return;
 }
@@ -1024,7 +1026,7 @@ sub _request {
          url     => $url,
          content => $content,
          status  => $response->code,
-         error   => $response->content,
+         error   => "Failed to $method $url"
       );
    }
 
@@ -1098,8 +1100,8 @@ sub as_string {
    my $self = shift;
    chomp(my $error = $self->error);
    $error =~ s/\n/ /g;
-   return sprintf "Error: %s\nStatus: %d\nRequest: %s %s %s\n",
-      $error, $self->status, $self->method, $self->url, $self->content || '';
+   return sprintf "%s\nRequest: %s %s %s\nStatus: %d\n",
+      $error, $self->method, $self->url, $self->content || '', $self->status;
 }
 
 no Lmo;
@@ -1199,11 +1201,24 @@ has 'schedule' => (
    required => 1,
 );
 
-has 'run' => (
+has 'runs' => (
    is       => 'ro',
    isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
    required => 1,
 );
+
+sub BUILDARGS {
+   my ($class, %args) = @_;
+   if ( ref $args{runs} eq 'ARRAY' ) {
+      my @runs;
+      foreach my $run_hashref ( @{$args{runs}} ) {
+         my $run = Percona::WebAPI::Resource::Run->new(%$run_hashref);
+         push @runs, $run;
+      }
+      $args{runs} = \@runs;
+   }
+   return $class->SUPER::BUILDARGS(%args);
+}
 
 no Lmo;
 1;
@@ -1249,6 +1264,8 @@ has 'output' => (
    required => 1,
 );
 
+sub TO_JSON { return { %{ shift() } }; }
+
 no Lmo;
 1;
 }
@@ -1277,6 +1294,8 @@ our @EXPORT_OK = (qw(resource_diff));
 
 sub resource_diff {
    my ($x, $y) = @_;
+   return 0 if !$x && !$y;
+   return 1 if ($x && !$y) || (!$x && $y);
    return md5_hex(Percona::WebAPI::Representation::as_json($x))
       cmp md5_hex(Percona::WebAPI::Representation::as_json($y));
 }
@@ -4332,9 +4351,10 @@ use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Resource::Service;
 use Percona::WebAPI::Resource::Run;
 use Percona::WebAPI::Representation;
-use Percona::WebAPI::Util qw(resource_diff);
+use Percona::WebAPI::Util;
 
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
+Percona::WebAPI::Util->import(qw(resource_diff));
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
@@ -4377,19 +4397,17 @@ sub main {
    # ########################################################################
    # Check the config file.
    # ########################################################################
-   my $home_dir    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
-   my $config_file = "$home_dir/.pt-agent.conf";
+   my $config_file = get_config_file();
    if ( -f $config_file ) {
-      die "$config_file is not writable.\n" unless -w $config_file;
+      die "$config_file is not writable.\n"
+         unless -w $config_file;
    }
    else {
       eval {
-         open my $fh, '>', $config_file
-            or die "Error opening $config_file: $OS_ERROR";
-         print { $fh } "api-key=$api_key\n"
-            or die "Error writing to $config_file: $OS_ERROR";
-         close $fh
-            or die "Error closing $config_file: $OS_ERROR";
+         init_config_file(
+            file    => $config_file,
+            api_key => $api_key,
+         );
       };
       if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
@@ -4572,7 +4590,7 @@ sub init_agent {
 
    while ( $oktorun ) {
       _info($action eq 'put' ? "Updating agent $agent_id"
-                            : "Creating new agent $agent_id");
+                             : "Creating new agent $agent_id");
       eval {
          $client->$action(
             url       => $client->links->{agents},
@@ -4597,13 +4615,13 @@ sub init_agent {
 sub run_agent {
    my (%args) = @_;
 
-   have_required_args(\%args,qw(
+   have_required_args(\%args, qw(
       agent
       client
       interval
       config_file
    )) or die;
-   my $agent       = $args{agent_id};
+   my $agent       = $args{agent};
    my $client      = $args{client};
    my $interval    = $args{interval};
    my $config_file = $args{config_file};
@@ -4621,7 +4639,7 @@ sub run_agent {
          if ( resource_diff($config, $new_config) ) {
             _info('Got new config');
             write_config(
-               config => $config,
+               config => $new_config,
                file   => $config_file,
             );
             $config = $new_config;
@@ -4664,7 +4682,7 @@ sub run_agent {
 sub write_config {
    my (%args) = @_;
 
-   have_required_args(\%args,qw(
+   have_required_args(\%args, qw(
       config
       file
    )) or die;
@@ -4680,6 +4698,14 @@ sub write_config {
    close $fh
       or die "Error closing $file: $OS_ERROR";
 
+   return;
+}
+
+sub write_services {
+   return;
+}
+
+sub schedule_services {
    return;
 }
 
@@ -4703,6 +4729,31 @@ sub send_data {
 # ################## #
 # Misc and util subs #
 # ################## #
+
+sub get_config_file {
+   my $home_dir    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+   my $config_file = "$home_dir/.pt-agent.conf";
+   PTDEBUG && _d('Config file:', $config_file);
+   return $config_file;
+}
+
+sub init_config_file {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      file
+      api_key
+   )) or die;
+   my $file    = $args{file};
+   my $api_key = $args{api_key};
+
+   open my $fh, '>', $file
+      or die "Error opening $file: $OS_ERROR";
+   print { $fh } "api-key=$api_key\n"
+      or die "Error writing to $file: $OS_ERROR";
+   close $fh
+      or die "Error closing $file: $OS_ERROR";
+   return;
+}
 
 sub _log {
    my ($level, $msg) = @_;
