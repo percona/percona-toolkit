@@ -57,8 +57,8 @@ sub as_string {
    my $self = shift;
    chomp(my $error = $self->error);
    $error =~ s/\n/ /g;
-   return sprintf "Error: %s\nStatus: %d\nRequest: %s %s %s\n",
-      $error, $self->status, $self->method, $self->url, $self->content || '';
+   return sprintf "%s\nRequest: %s %s %s\nStatus: %d\n",
+      $error, $self->method, $self->url, $self->content || '', $self->status;
 }
 
 no Lmo;

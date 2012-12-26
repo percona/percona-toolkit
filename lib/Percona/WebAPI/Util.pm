@@ -30,6 +30,8 @@ our @EXPORT_OK = (qw(resource_diff));
 
 sub resource_diff {
    my ($x, $y) = @_;
+   return 0 if !$x && !$y;
+   return 1 if ($x && !$y) || (!$x && $y);
    return md5_hex(Percona::WebAPI::Representation::as_json($x))
       cmp md5_hex(Percona::WebAPI::Representation::as_json($y));
 }
