@@ -17,7 +17,6 @@
 # ###########################################################################
 # Percona::Toolkit package
 # ###########################################################################
-{
 package Percona::Toolkit;
 
 our $VERSION = '3.0.0';
@@ -29,12 +28,10 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Carp qw(carp cluck);
 use Data::Dumper qw();
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
 
-use Exporter 'import';
-our @EXPORT = qw(
+require Exporter;
+our @ISA         = qw(Exporter);
+our @EXPORT_OK   = qw(
    have_required_args
    Dumper
    _d
@@ -54,6 +51,9 @@ sub have_required_args {
 }
 
 sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
    Data::Dumper::Dumper(@_);
 }
 
@@ -66,7 +66,6 @@ sub _d {
 }
 
 1;
-}
 # ###########################################################################
 # End Percona::Toolkit package
 # ###########################################################################
