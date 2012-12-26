@@ -34,7 +34,11 @@ use English qw(-no_match_vars);
 
 use Lmo;
 use Percona::Toolkit;
+use Percona::WebAPI::Representation;
 use Percona::WebAPI::Exception::Request;
+
+Percona::WebAPI::Representation->import(qw(as_json));
+Percona::Toolkit->import(qw(_d Dumper have_required_args));
 
 has 'api_key' => (
    is       => 'ro',
@@ -45,8 +49,8 @@ has 'api_key' => (
 has 'base_url' => (
    is       => 'rw',
    isa      => 'Str',
-   default  => 'https://api.tools.percona.com',
-   required => 1,
+   default  => sub { return 'https://api.tools.percona.com' },
+   required => 0,
 );
 
 has 'links' => (
@@ -58,7 +62,7 @@ has 'links' => (
 
 has 'ua' => (
    is       => 'rw',
-   isa      => 'LWP::UserAgent',
+   isa      => 'Object',
    lazy     => 1,
    required => 1,
    builder  => '_build_ua',
@@ -97,7 +101,7 @@ sub BUILD {
    }
 
    my $entry_links = decode_json($self->response->content);
-   PTDEBUG && _d('Entry links', $entry_links);
+   PTDEBUG && _d('Entry links', Dumper($entry_links));
 
    $self->links($entry_links);
 
@@ -106,22 +110,21 @@ sub BUILD {
 
 sub get {
    my ($self, %args) = @_;
-
-   # Arguments:
-   my @required_args = (
-      'link',  # A resource link (e.g. $run->links->{results})
-   );
-   my ($link) = @args{@required_args};
+   
+   have_required_args(\%args, qw(
+      url
+   )) or die;
+   my ($url) = $args{url};
 
    # Returns:
-   my @resources;  # Resources from the requested link
+   my @resources;
 
-   # Get resource representations from the link.  The server should always
+   # Get resource representations from the url.  The server should always
    # return a list of resource reps, even if there's only one resource.
    eval {
       $self->_request(
          method => 'GET',
-         url    => $link,
+         url    => $url,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -185,19 +188,26 @@ sub post {
    );
 }
 
+sub put {
+   my $self = shift;
+   return $self->_set(
+      @_,
+      method => 'PUT',
+   );
+}
+
 sub delete {
    my ($self, %args) = @_;
 
-   # Arguments:
-   my @required_args = (
-      'link',  # A resource link (e.g. $run->links->{results})
-   );
-   my ($link) = @args{@required_args};
+   have_required_args(\%args, qw(
+      url
+   )) or die;
+   my ($url) = $args{url};
 
    eval {
       $self->_request(
          method  => 'DELETE',
-         url     => $link,
+         url     => $url,
          headers => { 'Content-Length' => 0 },
       ); 
    };
@@ -215,12 +225,19 @@ sub delete {
 
 sub _set {
    my ($self, %args) = @_;
-   my @required_args = qw(method resources link);
-   my ($method, $res, $link) = @args{@required_args};
+
+   have_required_args(\%args, qw(
+      method
+      resources
+      url
+   )) or die;
+   my $method = $args{method};
+   my $res    = $args{resources};
+   my $url    = $args{url};
 
    my $content;
    if ( ref($res) eq 'ARRAY' ) {
-      $content = '[' . join(",\n", map { $_->as_json } @$res) . ']';
+      $content = '[' . join(",\n", map { as_json($_) } @$res) . ']';
    }
    elsif ( -f $res ) {
       PTDEBUG && _d('Reading content from file', $res);
@@ -235,13 +252,13 @@ sub _set {
       $content .= $data;
    }
    else {
-      $content = $res->as_json;
+      $content = as_json($res);
    }
 
    eval {
       $self->_request(
          method  => $method,
-         url     => $link,
+         url     => $url,
          content => $content,
       );
    };
@@ -273,11 +290,12 @@ sub _set {
 sub _request {
    my ($self, %args) = @_;
 
-   my @required_args = (
-      'method',
-      'url',
-   );
-   my ($method, $url) = @args{@required_args};
+   have_required_args(\%args, qw(
+      method
+      url
+   )) or die;
+   my $method = $args{method};
+   my $url    = $args{url};
 
    my @optional_args = (
       'content',
@@ -290,10 +308,10 @@ sub _request {
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => 0);
    }
-   PTDEBUG && _d('Request', $method, $url, $req);
+   PTDEBUG && _d('Request', $method, $url, Dumper($req));
 
    my $res = $self->ua->request($req);
-   PTDEBUG && _d('Response', $res);
+   PTDEBUG && _d('Response', Dumper($res));
 
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => undef);
@@ -321,7 +339,7 @@ sub update_links {
          $self->links->{$svc}->{$rel} = $link;
       }
    }
-   PTDEBUG && _d('Updated links', $self->links);
+   PTDEBUG && _d('Updated links', Dumper($self->links));
    return;
 }
 

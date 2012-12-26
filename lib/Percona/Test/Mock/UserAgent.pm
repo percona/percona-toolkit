@@ -15,49 +15,48 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Percona::WebAPI::Representation package
+# Percona::Test::Mock::UserAgent package
 # ###########################################################################
 {
-package Percona::WebAPI::Representation;
+package Percona::Test::Mock::UserAgent;
 
-use JSON;
-
-require Exporter;
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(
-   as_hashref
-   as_json
-   as_config
-);
-
-sub as_hashref {
-   my $resource = shift;
-
-   # Copy the object into a new hashref.
-   my $as_hashref = { %$resource };
-
-   # Delete the links because they're just for client-side use
-   # and the caller should be sending this object, not getting it.
-   delete $as_hashref->{links};
-
-   return $as_hashref;
+sub new {
+   my ($class, %args) = @_;
+   my $self = {
+      encode    => $args{encode} || sub { return $_[0] },
+      decode    => $args{decode} || sub { return $_[0] },
+      responses => {
+         get  => [],
+         post => [],
+         put  => [],
+      },
+      content => {
+         post => undef,
+         put  => undef,
+      },
+   };
+   return bless $self, $class;
 }
 
-sub as_json {
-   return encode_json(as_hashref(@_));
-}
-
-sub as_config {
-   my $as_hashref = as_hashref(@_);
-   my $config     = join("\n",
-      map { defined $as_hashref->{$_} ?  "$_=$as_hashref->{$_}" : "$_" }
-      sort keys %$as_hashref
-   ) . "\n";
-   return $config;
+sub request {
+   my ($self, $req) = @_;
+   my $type = lc($req->method);
+   if ( $type eq 'post' || $type eq 'put' ) {
+      $self->{content}->{$type} = $req->content;
+   }
+   my $r   = shift @{$self->{responses}->{$type}};
+   my $c   = $self->{encode}->($r->{content});
+   my $res = HTTP::Response->new(
+      $r->{code} || 200,
+      '',
+      HTTP::Headers->new,
+      $c,
+   );
+   return $res;
 }
 
 1;
 }
 # ###########################################################################
-# End Percona::WebAPI::Representation package
+# End Percona::Test::Mock::UserAgent package
 # ###########################################################################

@@ -25,10 +25,8 @@ use Digest::MD5 qw(md5_hex);
 use Percona::WebAPI::Representation; 
 
 require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT_OK   = (qw(resource_diff));
-our @EXPORT      = ();
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = (qw(resource_diff));
 
 sub resource_diff {
    my ($x, $y) = @_;

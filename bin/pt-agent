@@ -17,13 +17,13 @@ BEGIN {
       Lmo::Meta
       Lmo::Object
       Lmo
+      Percona::WebAPI::Representation
       Percona::WebAPI::Client
       Percona::WebAPI::Exception::Request
       Percona::WebAPI::Resource::Agent
       Percona::WebAPI::Resource::Config
       Percona::WebAPI::Resource::Service
       Percona::WebAPI::Resource::Run
-      Percona::WebAPI::Representation
       Percona::WebAPI::Util
       VersionCheck
       DSNParser
@@ -56,12 +56,10 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use Carp qw(carp cluck);
 use Data::Dumper qw();
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
 
-use Exporter 'import';
-our @EXPORT = qw(
+require Exporter;
+our @ISA         = qw(Exporter);
+our @EXPORT_OK   = qw(
    have_required_args
    Dumper
    _d
@@ -81,6 +79,9 @@ sub have_required_args {
 }
 
 sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
    Data::Dumper::Dumper(@_);
 }
 
@@ -672,6 +673,56 @@ BEGIN {
 # ###########################################################################
 
 # ###########################################################################
+# Percona::WebAPI::Representation package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Percona/WebAPI/Representation.pm
+#   t/lib/Percona/WebAPI/Representation.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Percona::WebAPI::Representation;
+
+use JSON;
+
+require Exporter;
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw(
+   as_hashref
+   as_json
+   as_config
+);
+
+sub as_hashref {
+   my $resource = shift;
+
+   my $as_hashref = { %$resource };
+
+   delete $as_hashref->{links};
+
+   return $as_hashref;
+}
+
+sub as_json {
+   return encode_json(as_hashref(@_));
+}
+
+sub as_config {
+   my $as_hashref = as_hashref(@_);
+   my $config     = join("\n",
+      map { defined $as_hashref->{$_} ?  "$_=$as_hashref->{$_}" : "$_" }
+      sort keys %$as_hashref
+   ) . "\n";
+   return $config;
+}
+
+1;
+}
+# ###########################################################################
+# End Percona::WebAPI::Representation package
+# ###########################################################################
+
+# ###########################################################################
 # Percona::WebAPI::Client package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -696,7 +747,11 @@ use English qw(-no_match_vars);
 
 use Lmo;
 use Percona::Toolkit;
+use Percona::WebAPI::Representation;
 use Percona::WebAPI::Exception::Request;
+
+Percona::WebAPI::Representation->import(qw(as_json));
+Percona::Toolkit->import(qw(_d Dumper have_required_args));
 
 has 'api_key' => (
    is       => 'ro',
@@ -707,8 +762,8 @@ has 'api_key' => (
 has 'base_url' => (
    is       => 'rw',
    isa      => 'Str',
-   default  => 'https://api.tools.percona.com',
-   required => 1,
+   default  => sub { return 'https://api.tools.percona.com' },
+   required => 0,
 );
 
 has 'links' => (
@@ -720,7 +775,7 @@ has 'links' => (
 
 has 'ua' => (
    is       => 'rw',
-   isa      => 'LWP::UserAgent',
+   isa      => 'Object',
    lazy     => 1,
    required => 1,
    builder  => '_build_ua',
@@ -759,7 +814,7 @@ sub BUILD {
    }
 
    my $entry_links = decode_json($self->response->content);
-   PTDEBUG && _d('Entry links', $entry_links);
+   PTDEBUG && _d('Entry links', Dumper($entry_links));
 
    $self->links($entry_links);
 
@@ -768,18 +823,18 @@ sub BUILD {
 
 sub get {
    my ($self, %args) = @_;
+   
+   have_required_args(\%args, qw(
+      url
+   )) or die;
+   my ($url) = $args{url};
 
-   my @required_args = (
-      'link',  # A resource link (e.g. $run->links->{results})
-   );
-   my ($link) = @args{@required_args};
-
-   my @resources;  # Resources from the requested link
+   my @resources;
 
    eval {
       $self->_request(
          method => 'GET',
-         url    => $link,
+         url    => $url,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -839,18 +894,26 @@ sub post {
    );
 }
 
+sub put {
+   my $self = shift;
+   return $self->_set(
+      @_,
+      method => 'PUT',
+   );
+}
+
 sub delete {
    my ($self, %args) = @_;
 
-   my @required_args = (
-      'link',  # A resource link (e.g. $run->links->{results})
-   );
-   my ($link) = @args{@required_args};
+   have_required_args(\%args, qw(
+      url
+   )) or die;
+   my ($url) = $args{url};
 
    eval {
       $self->_request(
          method  => 'DELETE',
-         url     => $link,
+         url     => $url,
          headers => { 'Content-Length' => 0 },
       ); 
    };
@@ -868,12 +931,19 @@ sub delete {
 
 sub _set {
    my ($self, %args) = @_;
-   my @required_args = qw(method resources link);
-   my ($method, $res, $link) = @args{@required_args};
+
+   have_required_args(\%args, qw(
+      method
+      resources
+      url
+   )) or die;
+   my $method = $args{method};
+   my $res    = $args{resources};
+   my $url    = $args{url};
 
    my $content;
    if ( ref($res) eq 'ARRAY' ) {
-      $content = '[' . join(",\n", map { $_->as_json } @$res) . ']';
+      $content = '[' . join(",\n", map { as_json($_) } @$res) . ']';
    }
    elsif ( -f $res ) {
       PTDEBUG && _d('Reading content from file', $res);
@@ -888,13 +958,13 @@ sub _set {
       $content .= $data;
    }
    else {
-      $content = $res->as_json;
+      $content = as_json($res);
    }
 
    eval {
       $self->_request(
          method  => $method,
-         url     => $link,
+         url     => $url,
          content => $content,
       );
    };
@@ -926,11 +996,12 @@ sub _set {
 sub _request {
    my ($self, %args) = @_;
 
-   my @required_args = (
-      'method',
-      'url',
-   );
-   my ($method, $url) = @args{@required_args};
+   have_required_args(\%args, qw(
+      method
+      url
+   )) or die;
+   my $method = $args{method};
+   my $url    = $args{url};
 
    my @optional_args = (
       'content',
@@ -943,10 +1014,10 @@ sub _request {
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => 0);
    }
-   PTDEBUG && _d('Request', $method, $url, $req);
+   PTDEBUG && _d('Request', $method, $url, Dumper($req));
 
    my $res = $self->ua->request($req);
-   PTDEBUG && _d('Response', $res);
+   PTDEBUG && _d('Response', Dumper($res));
 
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => undef);
@@ -974,7 +1045,7 @@ sub update_links {
          $self->links->{$svc}->{$rel} = $link;
       }
    }
-   PTDEBUG && _d('Updated links', $self->links);
+   PTDEBUG && _d('Updated links', Dumper($self->links));
    return;
 }
 
@@ -1192,49 +1263,6 @@ no Lmo;
 # ###########################################################################
 
 # ###########################################################################
-# Percona::WebAPI::Representation package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/Percona/WebAPI/Representation.pm
-#   t/lib/Percona/WebAPI/Representation.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package Percona::WebAPI::Representation;
-
-use JSON;
-
-sub as_hashref {
-   my $resource = shift;
-
-   my $as_hashref = { %$resource };
-
-   delete $as_hashref->{links};
-
-   return $as_hashref;
-}
-
-sub as_json {
-   return encode_json(as_hashref(@_));
-}
-
-
-sub as_config {
-   my $as_hashref = as_hashref(@_);
-   my $config     = join("\n",
-      map { defined $as_hashref->{$_} ?  "$_=$as_hashref->{$_}" : "$_" }
-      sort keys %$as_hashref
-   ) . "\n";
-   return $config;
-}
-
-1;
-}
-# ###########################################################################
-# End Percona::WebAPI::Representation package
-# ###########################################################################
-
-# ###########################################################################
 # Percona::WebAPI::Util package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -1250,10 +1278,8 @@ use Digest::MD5 qw(md5_hex);
 use Percona::WebAPI::Representation; 
 
 require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT_OK   = (qw(resource_diff));
-our @EXPORT      = ();
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = (qw(resource_diff));
 
 sub resource_diff {
    my ($x, $y) = @_;
@@ -4304,7 +4330,7 @@ use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 use POSIX qw(signal_h);
 use Time::HiRes qw(sleep time);
 
-use Percona::Toolkit;
+use Percona::Toolkit; 
 use Percona::WebAPI::Client;
 use Percona::WebAPI::Exception::Request;
 use Percona::WebAPI::Resource::Agent;
@@ -4313,6 +4339,8 @@ use Percona::WebAPI::Resource::Service;
 use Percona::WebAPI::Resource::Run;
 use Percona::WebAPI::Representation;
 use Percona::WebAPI::Util qw(resource_diff);
+
+Percona::Toolkit->import(qw(_d Dumper have_required_args));
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
@@ -4474,7 +4502,7 @@ sub main {
 sub get_api_client {
    my (%args) = @_;
 
-   have_required_args(\%args,qw(
+   have_required_args(\%args, qw(
       api_key
       interval
    )) or die;
@@ -4553,8 +4581,8 @@ sub init_agent {
                             : "Creating new agent $agent_id");
       eval {
          $client->$action(
-            url     => $client->links->{agent},
-            content => $agent,
+            url       => $client->links->{agents},
+            resources => $agent,
          );
       };
       if ( $EVAL_ERROR ) {
@@ -4562,7 +4590,8 @@ sub init_agent {
          $interval->();
       }
       else {
-         _info("Initialized")
+         _info("Initialized");
+         last;
       }
    }
 
@@ -4685,7 +4714,8 @@ sub _log {
    my ($level, $msg) = @_;
    my ($s, $m, $h, $d, $M) = localtime;
    my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
-   print "$ts $level $msg\n";
+   $msg .= "\n" if $msg !~ m/\n$/;
+   print "$ts $level $msg";
    return;
 }
 
@@ -4711,7 +4741,7 @@ sub get_uuid {
 
 sub get_versions {
    return {
-      'Perl'                    => "5.10.1",
+      'Perl'                    => "5.10.0",
       'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
    };
 }
