@@ -782,8 +782,10 @@ has 'ua' => (
 );
 
 has 'response' => (
-   is  => 'rw',
-   isa => 'Object',
+   is       => 'rw',
+   isa      => 'Object',
+   required => 0,
+   default  => undef,
 );
 
 sub _build_ua {
@@ -799,9 +801,8 @@ sub BUILD {
    my ($self) = @_;
 
    eval {
-      $self->_request(
-         method => 'GET',
-         url    => $self->base_url,
+      $self->get(
+         url => $self->base_url,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -812,11 +813,6 @@ sub BUILD {
          die "Unknown error: $e";
       }
    }
-
-   my $entry_links = decode_json($self->response->content);
-   PTDEBUG && _d('Entry links', Dumper($entry_links));
-
-   $self->links($entry_links);
 
    return;
 }
@@ -977,18 +973,17 @@ sub _set {
       }
    }
 
-   my $links;
-   eval {
-      $links = decode_json($self->response->content);
+   my $response = eval {
+      decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
-      warn sprintf "Error decoding resource: %s: %s",
+      warn sprintf "Error decoding response to $method $url: %s: %s",
          $self->response->content,
          $EVAL_ERROR;
       return;
    }
 
-   $self->update_links($links);
+   $self->update_links($response->{links});
 
    return;
 }
@@ -1016,34 +1011,33 @@ sub _request {
    }
    PTDEBUG && _d('Request', $method, $url, Dumper($req));
 
-   my $res = $self->ua->request($req);
-   PTDEBUG && _d('Response', Dumper($res));
+   my $response = $self->ua->request($req);
+   PTDEBUG && _d('Response', Dumper($response));
 
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => undef);
    }
 
-   if ( !($res->code >= 200 && $res->code < 400) ) {
+   if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(
          method  => $method,
          url     => $url,
          content => $content,
-         status  => $res->code,
-         error   => $res->content,
+         status  => $response->code,
+         error   => $response->content,
       );
    }
 
-   $self->response($res);
+   $self->response($response);
 
    return;
 }
 
 sub update_links {
-   my ($self, $new_links) = @_;
-    while (my ($svc, $links) = each %$new_links) {
-      while (my ($rel, $link) = each %$links) {
-         $self->links->{$svc}->{$rel} = $link;
-      }
+   my ($self, $links) = @_;
+   return unless $links && ref $links && scalar keys %$links;
+   while (my ($rel, $link) = each %$links) {
+      $self->links->{$rel} = $link;
    }
    PTDEBUG && _d('Updated links', Dumper($self->links));
    return;

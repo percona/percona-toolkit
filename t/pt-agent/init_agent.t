@@ -28,7 +28,9 @@ my $ua = Percona::Test::Mock::UserAgent->new(
 $ua->{responses}->{get} = [
    {
       content => {
-         agents  => '/agents',
+         links => {
+            agents  => '/agents',
+         },
       },
    },
 ];
