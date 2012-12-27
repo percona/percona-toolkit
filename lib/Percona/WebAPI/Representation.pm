@@ -44,14 +44,27 @@ sub as_hashref {
 }
 
 sub as_json {
-   return encode_json(as_hashref(@_));
+   my $resource = shift;
+
+   my $json = JSON->new;
+   $json->allow_blessed([]);
+   $json->convert_blessed([]);
+
+   return $json->encode(
+      ref $resource eq 'ARRAY' ? $resource : as_hashref($resource)
+   );
 }
 
 sub as_config {
-   my $as_hashref = as_hashref(@_);
+   my $resource = shift;
+   if ( !$resource->isa('Percona::WebAPI::Resource::Config') ) {
+      die "Only Config resources can be represented as config.\n";
+   }
+   my $as_hashref = as_hashref($resource);
+   my $options    = $as_hashref->{options};
    my $config     = join("\n",
-      map { defined $as_hashref->{$_} ?  "$_=$as_hashref->{$_}" : "$_" }
-      sort keys %$as_hashref
+      map { defined $options->{$_} ?  "$_=$options->{$_}" : "$_" }
+      sort keys %$options
    ) . "\n";
    return $config;
 }

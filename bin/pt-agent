@@ -704,14 +704,27 @@ sub as_hashref {
 }
 
 sub as_json {
-   return encode_json(as_hashref(@_));
+   my $resource = shift;
+
+   my $json = JSON->new;
+   $json->allow_blessed([]);
+   $json->convert_blessed([]);
+
+   return $json->encode(
+      ref $resource eq 'ARRAY' ? $resource : as_hashref($resource)
+   );
 }
 
 sub as_config {
-   my $as_hashref = as_hashref(@_);
+   my $resource = shift;
+   if ( !$resource->isa('Percona::WebAPI::Resource::Config') ) {
+      die "Only Config resources can be represented as config.\n";
+   }
+   my $as_hashref = as_hashref($resource);
+   my $options    = $as_hashref->{options};
    my $config     = join("\n",
-      map { defined $as_hashref->{$_} ?  "$_=$as_hashref->{$_}" : "$_" }
-      sort keys %$as_hashref
+      map { defined $options->{$_} ?  "$_=$options->{$_}" : "$_" }
+      sort keys %$options
    ) . "\n";
    return $config;
 }
@@ -1195,6 +1208,12 @@ has 'name' => (
    required => 1,
 );
 
+has 'alias' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'schedule' => (
    is       => 'ro',
    isa      => 'Str',
@@ -1297,7 +1316,7 @@ sub resource_diff {
    return 0 if !$x && !$y;
    return 1 if ($x && !$y) || (!$x && $y);
    return md5_hex(Percona::WebAPI::Representation::as_json($x))
-      cmp md5_hex(Percona::WebAPI::Representation::as_json($y));
+       ne md5_hex(Percona::WebAPI::Representation::as_json($y));
 }
 
 1;
@@ -4355,6 +4374,7 @@ use Percona::WebAPI::Util;
 
 Percona::Toolkit->import(qw(_d Dumper have_required_args));
 Percona::WebAPI::Util->import(qw(resource_diff));
+Transformers->import(qw(ts));
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
 
@@ -4380,7 +4400,7 @@ sub main {
    if ( !$o->get('help') ) {
    }
 
-   Pingback::validate_options($o);
+   #Pingback::validate_options($o);
  
    $o->usage_or_errors();
 
@@ -4396,6 +4416,7 @@ sub main {
 
    # ########################################################################
    # Check the config file.
+   # TODO: only the main proc needs write access
    # ########################################################################
    my $config_file = get_config_file();
    if ( -f $config_file ) {
@@ -4415,6 +4436,10 @@ sub main {
             . "$config_file to run.");
       }
    }
+
+   # ########################################################################
+   # Check the lib dir.
+   # ########################################################################
 
    # ########################################################################
    # Run pt-agent.
@@ -4493,6 +4518,7 @@ sub main {
          client      => $client,
          interval    => $check_wait,
          config_file => $config_file,
+         lib_dir     => $o->get('lib'),
       );
       _info('Agent ' . $agent->id . ' has stopped');
    }
@@ -4522,10 +4548,11 @@ sub get_api_client {
    my $interval = $args{interval};
 
    # Optional args
-   my $tries = $args{tries};
+   my $tries   = $args{tries};
+   my $oktorun = $args{oktorun} || sub { return $oktorun };
 
    my $client;
-   while ( $oktorun && !$client && (!defined $tries || $tries--) ) {
+   while ( $oktorun->() && !$client && (!defined $tries || $tries--) ) {
       _info("Connecting to Percona Web Services");
       eval {
          $client = Percona::WebAPI::Client->new(
@@ -4564,6 +4591,7 @@ sub init_agent {
    # Optional args
    my $agent_id = $args{agent_id};
    my $versions = $args{versions};
+   my $oktorun  = $args{oktorun} || sub { return $oktorun };
 
    _info('Initializing agent');
 
@@ -4588,7 +4616,7 @@ sub init_agent {
       hostname => `hostname`,
    );
 
-   while ( $oktorun ) {
+   while ( $oktorun->() ) {
       _info($action eq 'put' ? "Updating agent $agent_id"
                              : "Creating new agent $agent_id");
       eval {
@@ -4620,29 +4648,42 @@ sub run_agent {
       client
       interval
       config_file
+      lib_dir
    )) or die;
    my $agent       = $args{agent};
    my $client      = $args{client};
    my $interval    = $args{interval};
    my $config_file = $args{config_file};
+   my $lib_dir     = $args{lib_dir};
+
+   # Optional args
+   my $oktorun = $args{oktorun} || sub { return $oktorun };
 
    _info('Running agent ' . $agent->id);
 
    my $config;
    my $services;
-   while ( $oktorun ) {
+   while ( $oktorun->() ) {
       eval {
          _info('Getting config');
          my $new_config = $client->get(
             url => $client->links->{config},
          );
          if ( resource_diff($config, $new_config) ) {
-            _info('Got new config');
+            _info('New config');
             write_config(
                config => $new_config,
                file   => $config_file,
             );
+            if ( my $new_lib_dir = $new_config->options->{lib} ) {
+               # TODO: what if new lib dir doesn't have /services?
+               $lib_dir = $new_lib_dir;
+               _info("New --lib direcotry: $lib_dir");
+            }
             $config = $new_config;
+         }
+         else {
+            _info("Config has not changed");
          }
       };
       if ( $EVAL_ERROR ) {
@@ -4656,9 +4697,18 @@ sub run_agent {
                url => $client->links->{services},
             );
             if ( resource_diff($services, $new_services) ) {
-               _info('Got new services');
-               write_services();
-               schedule_services();
+               _info('New services');
+               write_services(
+                  services => $new_services,
+                  lib_dir  => $lib_dir,
+               );
+               schedule_services(
+                  services => $new_services,
+               );
+               $services = $new_services;
+            }
+            else {
+               _info("Services have not changed")
             }
          };
          if ( $EVAL_ERROR ) {
@@ -4671,7 +4721,7 @@ sub run_agent {
 
       # If no config yet, the tool's built-in default for
       # --check-interval is used instead.
-      $interval->($config->{'check-interval'});
+      $interval->($config ? $config->options->{'check-interval'} : ());
    }
 
    return;
@@ -4691,8 +4741,19 @@ sub write_config {
 
    _info("Writing new config to $file");
 
-   open my $fh, '>', $file
+   # Get the api-key line if any; we don't want to/can't clobber this.
+   open my $fh, "<", $file
       or die "Error opening $file: $OS_ERROR";
+   my $contents = do { local $/ = undef; <$fh> };
+   close $fh;
+   my ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
+
+   open $fh, '>', $file
+      or die "Error opening $file: $OS_ERROR";
+   if ( $api_key ) {
+      print { $fh } $api_key, "\n"
+         or die "Error writing to $file: $OS_ERROR";
+   }
    print { $fh } Percona::WebAPI::Representation::as_config($config)
       or die "Error writing to $file: $OS_ERROR";
    close $fh
@@ -4701,7 +4762,61 @@ sub write_config {
    return;
 }
 
+sub update_config {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      old
+      new
+   )) or die;
+   my $old = $args{old};
+   my $new = $args{new};
+
+   my @options = qw(
+   );
+
+} 
+
 sub write_services {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      services
+      lib_dir
+   )) or die;
+   my $services = $args{services};
+   my $lib_dir  = $args{lib_dir};
+
+   $lib_dir .= '/services';
+
+   _info("Writing services to $lib_dir");
+
+   my %have_service;
+   foreach my $service ( @$services ) {
+      my $file   = $lib_dir . '/' . $service->name;
+      my $action = -f $file ? 'Updated' : 'Created';
+      open my $fh, '>', $file
+         or die "Error opening $file: $OS_ERROR";
+      print { $fh } Percona::WebAPI::Representation::as_json($service)
+         or die "Error writing to $file: $OS_ERROR";
+      close $fh
+         or die "Error closing $file: $OS_ERROR";
+      _info("$action $file");
+      $have_service{$service->name} = $service;
+   }
+
+   opendir my $dh, $lib_dir
+      or die "Error opening $lib_dir: $OS_ERROR";
+   while ( my $file = readdir($dh) ) {
+      next if -d $file;
+      if ( !$have_service{$file} ) {
+         unlink $file
+            or die "Error removing $file: $OS_ERROR";
+         _info("Removed $file");
+      }
+   }
+   closedir $dh;
+
    return;
 }
 
@@ -4733,7 +4848,7 @@ sub send_data {
 sub get_config_file {
    my $home_dir    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
    my $config_file = "$home_dir/.pt-agent.conf";
-   PTDEBUG && _d('Config file:', $config_file);
+   _info("Config file: $config_file");
    return $config_file;
 }
 
@@ -4757,9 +4872,8 @@ sub init_config_file {
 
 sub _log {
    my ($level, $msg) = @_;
-   my ($s, $m, $h, $d, $M) = localtime;
-   my $ts = sprintf('%02d-%02dT%02d:%02d:%02d', $M+1, $d, $h, $m, $s);
    $msg .= "\n" if $msg !~ m/\n$/;
+   my $ts = ts(time);
    print "$ts $level $msg";
    return;
 }
@@ -4872,7 +4986,7 @@ The Percona Web Services API key.
 
 =item --ask-pass
 
-group:: Connection
+group: Connection
 
 Prompt for a password when connecting to MySQL.
 
@@ -4927,6 +5041,8 @@ Data dir.
 
 type: string; default: /var/log/pt-agent.log
 
+Log file.
+
 =item --password
 
 short form: -p; type: string; group: Connection
@@ -4951,14 +5067,6 @@ contains no PID, then the script dies.
 short form: -P; type: int; group: Connection
 
 Port number to use for connection.
-
-=item --quiet
-
-short form: -q; cumulative: yes; default: 0
-
-Print only the most important information (disables L<"--progress">).
-Specifying this option once causes the tool to print only errors, warnings, and
-tables that have checksum differences.
 
 =item --run-service
 

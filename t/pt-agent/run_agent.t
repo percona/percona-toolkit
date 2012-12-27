@@ -11,6 +11,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 use JSON;
+use File::Temp qw(tempdir);
 
 use Percona::Test;
 use Percona::Test::Mock::UserAgent;
@@ -72,6 +73,7 @@ my @wait;
 my $interval = sub {
    my $t = shift;
    push @wait, $t;
+   print "interval=" . (defined $t ? $t : 'undef') . "\n";
 };
 
 my $agent;
@@ -120,19 +122,20 @@ if ( !$have_agent ) {
 
 my $config = Percona::WebAPI::Resource::Config->new(
    options => {
-      'check-interval' => 60,
+      'check-interval' => "60",
    },
 );
 
 my $run0 = Percona::WebAPI::Resource::Run->new(
-   number  => 0,
+   number  => '0',
    program => 'pt-query-digest',
    options => '--output json',
    output  => 'spool',
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name     => 'Query Monitor',
+   name     => 'query-monitor',
+   alias    => 'Query Monitor',
    schedule => '...',
    runs     => [ $run0 ],
 );
@@ -162,27 +165,154 @@ is(
    "init_config_file()"
 );
 
-@wait = ();
-$interval = sub {
-   my $t = shift;
-   push @wait, $t;
-   pt_agent::_err('interval');
+my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
+mkdir "$tmpdir/services" or die "Error making $tmpdir/services: $OS_ERROR";
+
+my @ok_code = ();  # callbacks
+my @oktorun = (1, 0);
+my $oktorun = sub {
+   my $ok = shift @oktorun;
+   print "oktorun=" . (defined $ok ? $ok : 'undef') . "\n";
+   my $code = shift @ok_code;
+   $code->() if $code;
+   return $ok
 };
 
-#$output = output(
-#   sub {
+@wait = ();
+
+$output = output(
+   sub {
       pt_agent::run_agent(
          agent       => $agent,
          client      => $client,
          interval    => $interval,
          config_file => $config_file,
+         lib_dir     => $tmpdir,
+         oktorun     => $oktorun,  # optional, for testing
       );
-#   },
-#   stderr => 1,
-#);
-#print $output;
+   },
+   stderr => 1,
+);
+
+is(
+   `cat $config_file`,
+   "api-key=123\ncheck-interval=60\n",
+   "Write Config to config file"
+); 
+
+is(
+   scalar @wait,
+   1,
+   "Called interval once"
+);
+
+is(
+   $wait[0],
+   60,
+   "... used Config->options->check-interval"
+);
+
+ok(
+   -f "$tmpdir/services/query-monitor",
+   "Created services/query-monitor"
+);
+
+chomp(my $n_files = `ls -1 $tmpdir/services| wc -l | awk '{print \$1}'`);
+is(
+   $n_files,
+   1,
+   "... only created services/query-monitor"
+);
+
+ok(
+   no_diff(
+      "cat $tmpdir/services/query-monitor",
+      "t/pt-agent/samples/service001",
+   ),
+   "query-monitor service file"
+);
+
+# Run run_agent() again, like the agent had been stopped and restarted.
+
+$ua->{responses}->{get} = [
+   # First check, fail
+   {
+      code    => 500,
+   },
+   # interval
+   # 2nd check, init with latest Config and Services
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Config' },
+      content => as_hashref($config),
+   },
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Service' },
+      content => [ as_hashref($svc0) ],
+   },
+   # interval
+   # 3rd check, same Config and Services so nothing to do
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Config' },
+      content => as_hashref($config),
+   },
+   {
+      headers => { 'X-Percona-Resource-Type' => 'Service' },
+      content => [ as_hashref($svc0) ],
+   },
+   # interval, oktorun=0
+];
+
+# 0=while check, 1=after first check, 2=after 2nd check, etc.
+@oktorun = (1, 1, 1, 0);
+
+# Between the 2nd and 3rd checks, remove the config file (~/.pt-agent.conf)
+# and query-monitor service  file.  When the tool re-GETs these, they'll be
+# the same so it won't recreate them.  A bug here will cause these files to
+# exist again after running.
+$ok_code[2] = sub {
+   unlink "$config_file";
+   unlink "$tmpdir/services/query-monitor";
+   Percona::Test::wait_until(sub { ! -f "$config_file" });
+   Percona::Test::wait_until(sub { ! -f "$tmpdir/services/query-monitor" });
+};
+
+@wait = ();
+
+$output = output(
+   sub {
+      pt_agent::run_agent(
+         agent       => $agent,
+         client      => $client,
+         interval    => $interval,
+         config_file => $config_file,
+         lib_dir     => $tmpdir,
+         oktorun     => $oktorun,  # optional, for testing
+      );
+   },
+   stderr => 1,
+);
+
+is_deeply(
+   \@wait,
+   [ undef, 60, 60 ],
+   "Got Config after error"
+) or diag(Dumper(\@wait));
+
+ok(
+   ! -f "$config_file",
+   "No Config diff, no config file change"
+);
+
+ok(
+   ! -f "$tmpdir/services/query-monitor",
+   "No Service diff, no service file changes"
+);
 
 # #############################################################################
 # Done.
 # #############################################################################
+if ( -f $config_file ) {
+   unlink $config_file 
+      or warn "Error removing $config_file: $OS_ERROR";
+}
 done_testing;

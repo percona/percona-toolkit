@@ -33,7 +33,7 @@ sub resource_diff {
    return 0 if !$x && !$y;
    return 1 if ($x && !$y) || (!$x && $y);
    return md5_hex(Percona::WebAPI::Representation::as_json($x))
-      cmp md5_hex(Percona::WebAPI::Representation::as_json($y));
+       ne md5_hex(Percona::WebAPI::Representation::as_json($y));
 }
 
 1;

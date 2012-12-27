@@ -14,6 +14,7 @@ use Test::More;
 use PerconaTest;
 use Percona::Toolkit;
 use Percona::WebAPI::Resource::Agent;
+use Percona::WebAPI::Resource::Config;
 use Percona::WebAPI::Representation;
 
 my $agent = Percona::WebAPI::Resource::Agent->new(
@@ -28,6 +29,18 @@ is(
    Percona::WebAPI::Representation::as_json($agent),
    q/{"versions":{"Perl":"5.10.1"},"id":"123","hostname":"pt"}/,
    "as_json"
+);
+
+my $config = Percona::WebAPI::Resource::Config->new(
+   options => {
+      'check-interval' => 60,
+   },
+);
+
+is(
+   Percona::WebAPI::Representation::as_config($config),
+   "check-interval=60\n",
+   "as_config"
 );
 
 # #############################################################################
