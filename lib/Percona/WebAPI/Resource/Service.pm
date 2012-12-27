@@ -28,6 +28,12 @@ has 'name' => (
    required => 1,
 );
 
+has 'alias' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'schedule' => (
    is       => 'ro',
    isa      => 'Str',
