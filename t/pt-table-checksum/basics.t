@@ -361,10 +361,11 @@ $output = output(
    stderr => 1,
 );
 
+# Before 2.2 the exit status was 0, but bug 1087804 changed this to 1.
 is(
    $exit_status,
-   0,
-   "No host in DSN, zero exit status"
+   1,
+   "No host in DSN, non-zero exit status"
 );
 
 is(
@@ -488,6 +489,55 @@ is(
    PerconaTest::count_checksum_results($output, 'errors'),
    0,
    "Bug 821675 (dot): 0 errors"
+);
+
+# #############################################################################
+# Bug 1087804: pt-table-checksum doesn't warn if no slaves are found
+# #############################################################################
+$sb->load_file('master', "$sample/dsn-table.sql");
+$master_dbh->do('TRUNCATE TABLE dsns.dsns');
+$sb->wait_for_slaves;
+
+my $slave1_dsn = $sb->dsn_for('slave1');
+
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      qw(-t sakila.country),
+      "--recursion-method", "dsn=$slave1_dsn,t=dsns.dsns")
+   },
+   stderr => 1,
+);
+
+like(
+   $output,
+   qr/no slaves were found/,
+   "Warns if no slaves are found"
+);
+
+is(
+   $exit_status,
+   1,
+   '...exit status 1'
+);
+
+$output = output(
+   sub { $exit_status = pt_table_checksum::main(@args,
+      qw(-t sakila.country),
+      "--recursion-method", "none")
+   },
+   stderr => 1,
+);
+
+unlike(
+   $output,
+   qr/no slaves were found/,
+   "No warning if no slaves and --recursion-method=none"
+);
+
+is(
+   $exit_status,
+   0,
+   '...exit status 0'
 );
 
 # #############################################################################
