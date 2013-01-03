@@ -8741,6 +8741,15 @@ sub main {
          } @$slaves;
       }
       PTDEBUG && _d(scalar @$slaves, 'slaves found');
+      if ( !@$slaves && $o->get('recursion-method')->[0] ne 'none' ) {
+         $exit_status |= 1;
+         if ( $o->get('quiet') < 2 ) {
+            warn "Diffs cannot be detected because no slaves were found.  "
+               . "Please read the --recursion-method documentation for "
+               . "information.\n";
+         }
+      }
+
 
       # https://bugs.launchpad.net/percona-toolkit/+bug/938068
       if ( $o->get('check-binlog-format') ) {
@@ -11490,6 +11499,13 @@ type: array; default: processlist,hosts
 
 Preferred recursion method for discovering replicas.  pt-table-checksum
 performs several L<"REPLICA CHECKS"> before and while running.
+
+Although replicas are not required to run pt-table-checksum, the tool
+cannot detect diffs on slaves that it cannot discover.  Therefore,
+a warning is printed and the L<"EXIT STATUS"> is non-zero if no replicas 
+are found and the method is not C<none>.  If this happens, try a different
+recursion method, or use the C<dsn> method to specify the replicas to check.
+
 Possible methods are:
 
   METHOD       USES
