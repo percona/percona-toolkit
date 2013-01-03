@@ -17,7 +17,7 @@ no libraries are installed.
 
 Percona Toolkit is derived from Maatkit and Aspersa, two of the best-known
 toolkits for MySQL server administration.  It is developed and supported by
-Percona Inc.  For more information and other free, open-source software
+Percona.  For more information and other free, open-source software
 developed by Percona, visit L<http://www.percona.com/software/>.
 
 =head1 TOOLS
@@ -485,13 +485,33 @@ see L<"ENVIRONMENT">.
 
 =head1 AUTHORS
 
-Percona Toolkit is primarily developed by Baron Schwartz and Daniel Nichter,
-both of whom are employed by Percona Inc.  See each program's documentation
-for details.
+=over
+
+=item Baron Schwartz
+
+Baron created Maatkit, from which Percona Toolkit was forked.  Many of
+the tools and modules were originally written by Baron.
+
+=item Daniel Nichter
+
+Daniel began helping Baron with Maatkit and, later, Percona Toolkit in
+June, 2008.  He is the project's lead developer, employed by Percona.
+
+=item Brian Fraser
+
+Brian started with Percona in December, 2011.  He works on Percona Toolkit
+full-time, employed by Percona.
+
+=item Others
+
+Many people have contributed code over the years.  See each tool's
+"AUTHORS" section for details.
+
+=back
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-Percona Toolkit is copyright 2011-2012 Percona Inc. and others.
+Percona Toolkit is copyright 2011-2013 Percona Ireland Ltd and others.
 See each program's documentation for complete copyright notices.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
