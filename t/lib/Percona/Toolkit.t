@@ -15,6 +15,8 @@ use IPC::Cmd qw(run can_run);
 use PerconaTest;
 use Percona::Toolkit;
 
+use File::Temp qw(tempfile);
+
 my $version  = $Percona::Toolkit::VERSION;
 
 my $perl = $^X;
@@ -42,13 +44,15 @@ foreach my $tool ( @vc_tools ) {
 
    next unless $is_perl;
 
+   my ($fh, $filename) = tempfile( "pt-version-test-XXXXXXX", UNLINK => 1 );
+   print { $fh } "require q{$tool}; print \$Percona::Toolkit::VERSION, qq{\\n}";
+   close $fh;
+   
    my ($success, undef, $full_buf) =
-      run(
-         command => [ $perl, '-le', "require q{$tool}; print \$Percona::Toolkit::VERSION"]
-      );
+      run( command => [ $perl, $filename ] );
 
    if ( !$success ) {
-      fail("Failed to get \$Percona::Toolkit::VERSION from $base: $full_buf")
+      fail("Failed to get \$Percona::Toolkit::VERSION from $base: " . $full_buf ? join("", @$full_buf) : '')
    }
    else {
       chomp(@$full_buf);

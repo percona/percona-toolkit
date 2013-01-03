@@ -119,7 +119,7 @@ test_v(
 
 use File::Spec;
 {
-   local $ENV{PATH} = "$ENV{PATH}:" . File::Spec->catfile($ENV{PERCONA_TOOLKIT_BRANCH}, "bin");
+   local $ENV{PATH} = File::Spec->catfile($ENV{PERCONA_TOOLKIT_BRANCH}, "bin") . ":$ENV{PATH}";
    test_v(
       name     => "bin_version",
       response => "pt-archiver;bin_version\n",
