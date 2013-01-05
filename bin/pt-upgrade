@@ -12510,38 +12510,69 @@ and reports any negative or signficant changes.  The two servers are
 typically development servers, one running the current production
 version of MySQL and the other running the new version of MySQL.
 
+=head1 USE CASES
+
 The tool has two use cases.  The first, canonical case is running "host
 to host".  A log file and two DSN are given on the command line, one for
 each MySQL server.  See the first example in the L<"SYNOPSIS">.  Queries
 are executed and compared on each server as the tool runs.  Any queries
 with differences are saved and reported when the tool finishes.  Unless
 interrupted, nothing is saved except the final report. -- This use case
-requiers less hard disk space, but the queries must be executed on both
-servers if the tool is ran again.  If there are a lot of queries, or
-executing them all takes a long time, and one server doesn't change,
-you may want to use the second use case.
+requires less hard disk space, but the queries must be executed on both
+servers if the tool is ran again, even if one of the servers hasn't
+changed.  If there are a lot of queries or executing them all takes a
+long time, and one server doesn't change, you may want to use the second
+use case.
 
-The second use case is running "host to reference results".  Reference results
-are the complete results from a single MySQL server, saved to hard disk.
-In this case, you must first generate the reference results, then run
-the tool a second time with the reference results and the other MySQL
-server.  See the 2nd example in the L<"SYNOPSIS">.  Reference results
-are typically generated for the current version of MySQL which doesn't
-change. -- This use case can require I<a lot> of hard disk space because
-the results (i.e. data rows) from all unique queries must be saved, plus
-other data about the queries.  If you plan to do many comparisons against
-a fixed version of MySQL, this use case is more efficient.  Or if you don't
-have access to both servers at the same time, this use case allows you to
-"execute now, compare later".
+The second use case is running "host to reference results".  Reference
+results are the complete results from a single MySQL server, saved to
+hard disk.  In this case, you must first generate the reference results,
+then run the tool a second time to compare another MySQL server to the
+reference results.  See the second example in the L<"SYNOPSIS">.  Reference
+results are typically generated for the current version of MySQL which
+doesn't change. -- This use case can require I<a lot> of hard disk space
+because the results (i.e. data rows) from all unique queries must be saved,
+plus other data about the queries.  If you plan to do many comparisons
+against a fixed version of MySQL, this use case is more efficient.  Or if
+you don't have access to both servers at the same time, this use case
+allows you to "execute now, compare later".
 
-=head1 IMPORTANT THINGS TO CONSIDER
+=head1 IMPORTANT CONSIDERATIONS
+
+=head2 CONSISTENCY
+
+Consistent environments and consistent data are crucial for obtaining
+an accurate report.  pt-upgrade should never be ran on a production
+server or any active server because there is no easy way to ensure
+a synchronous read for each query.  If data is changing on either server
+while pt-upgrade is running, the report could contain more false-positives
+than legitimate changes.  B<pt-upgrade assumes that both MySQL servers
+are static, unchanging (except for any changes made by the tool if ran
+with C<--no-read-only>).>  A read-only workload shouldn't affect the tool,
+except maybe query times, so read-only slaves could be used.
+
+=head2 COMPARED TO
+
+The first DSN or reference results is compared to the second DSN.
+Phrases like "or smaller" and "or better" mean the first DSN or reference
+results compared to the second DSN.  Therefore, the first DSN or reference
+results must be the current version of MySQL to which the new (or old,
+if downgrading) version of MySQL is being compared.
+
+For the query time comparison, for example, if the first DNS or reference
+results value is C<0.01> and the second DSN is C<0.5>, that is a negative
+change that will be reported.  But the reverse is a positive change because
+the query is C<0.49> seconds faster on the second host, so it will not be
+reported.
 
 =head2 READ-ONLY
 
 By default, pt-upgrade only executes C<SELECT> and C<SET> statements.
 If you're using recreatable test or development servers and wish to
 compare write statements too (e.g. C<INSERT>, C<UPDATE>, C<DELETE>),
-then specify C<--no-read-only>.  See L<"--[no]read-only">.
+then specify C<--no-read-only>.  If using a binary log, you must
+specify C<--no-read-only> because binary logs don't contain C<SELECT>
+statements.  See L<"--[no]read-only">.
 
 =head2 TRANSACTIONS
 
@@ -12561,35 +12592,10 @@ on dedicated testing or development servers.  B<Do not run pt-upgrade
 on production servers!>  Consequently, the tool is CPU, memory, disk, and
 network intensive.  It executes queries as fast as possible.
 
-=head1 REPORT
+=head1 QUERY CHANGES
 
-The final report (L<"--save-report">) is a human-readable text file that
-details the queries that have negative or signficant changes.  To prevent
-the report from becoming too long, queries are grouped by fingerprint into
-classes.  A query fingerprint is the abstracted form of a query, created by
-removing literal values, normalizing whitespace, etc.  So these queries
-belong to the same class:
-
-   SELECT c FROM t WHERE id = 1
-   SELECT c FROM t WHERE id=5
-   select  c  from  t  where  id  =  9
-
-The fingerprint for those queries is:
-
-   select c from t where id=?
-
-Each query class can have up to L<"--max-query-class-size"> unique queries
-(1,000 by default), but only up to 3 queries are reported.  If all queries
-have the same change (for example, they all have a change in row count),
-then only one query is reported for the class.  But if there are multiple
-changes, then up to 3 queries with different changes are reported.  By
-virtue of being in the same class, one query's change is usually the same
-and representative of all queries in the class.
-
-=head1 COMPARISONS
-
-The following aspects of each query from both hosts are compared to determine
-any negative or signficant changes to report:
+Negative or signficant query changes are determined by comparing the
+following aspects of each query from both hosts:
 
 =over
 
@@ -12599,22 +12605,232 @@ The number of rows returned by the query should be the same.
 
 =item Row data
 
-The row data returned by the query should be the same.
+The row data returned by the query should be the same.  All changes are
+significant: whitespace, L<"--float-precision">, etc.
 
-=item Errors and warnings
+=item Warnings
 
 The query should either not produce any errors or warnings, or produce
 the same errors or warnings.
 
 =item Query time
 
-The query execution time should be roughly the same or better.
+A query rarely executes with a constant time, but its execution time
+should be within the same order of magnitude or smaller.
 
 =item Query plan
 
 The query execution plan (C<EXPLAIN>) should be roughly the same or better.
 
 =back
+
+=head1 REPORT
+
+The final report (L<"--save-report">) is a human-readable text file that
+details the queries with changes (see L<"QUERY CHANGES">).  To prevent
+the report from becoming too long, queries are not reported individually
+but grouped by fingerprint into classes.  A query fingerprint is the
+abstracted form of a query, created by removing literal values, normalizing
+whitespace, etc.  So these queries belong to the same class:
+
+   SELECT c FROM t WHERE id = 1
+   SELECT c FROM t WHERE id=5
+   select  c  from  t  where  id  =  9
+
+The fingerprint for those queries is:
+
+   select c from t where id=?
+
+Each query class can have up to L<"--max-class-size"> unique queries
+(1,000 by default).  Up to L<"--max-change-examples"> are reported for each
+type of change, per query class.  By virtue of being in the same class,
+one query's change is usually representative of all queries with the same
+change, so it's not necessary to report every example.  The total number
+of queries in a class with a particular change is indicated in the report.
+
+=head2 EXAMPLE
+
+A report begins with the following three sections:
+
+  #######################################################################
+  # Summary
+  #######################################################################
+
+  Report                  pt-upgrade-report.1357416568.txt
+  Date                    Sat Jan  5 13:15:05 MST 2013
+  Log                     /var/lib/mysql/slow.log
+  Run time                00:01:00
+  Completed               No, 70% complete
+  Exit status             1 (--run-time expired)
+
+  #######################################################################
+  # Hosts
+  #######################################################################
+
+  DSN                     (Reference results) 
+  Hostname                foo.domain.com
+  MySQL version           5.0.95
+  Reference results       Yes, ~/host1/refres
+
+  compared to:
+
+  DSN                     h=127.1,P=12346
+  Hostname                bar.domain.com
+  MySQL version           5.5.6
+
+  #######################################################################
+  # Counters
+  #######################################################################
+
+  queries_read            900
+  queries_filtered        5
+  unique_queries          300
+  queries_with_changes    10
+  queries_no_changes      290
+  query_classes           24
+  class_size_exceeded     1
+  lost_connection         1
+  lock_wait_timeout       1
+
+The "Summary" section is a summary of the report and run.  The "Hosts"
+section lists which hosts which were compared.  The "Counters" section lists
+values that give an idea of how effective the run was.
+
+A section for each query class with changes follows, like:
+
+  #######################################################################
+  # Query class 1 of 24
+  #######################################################################
+
+  Class ID           D7D2F2B7AB4602A4
+  Total queries      10
+  Unique queries     5
+  Discarded queries  0
+
+  select * from t where id in (?)
+
+  ##
+  ## Row count changes: 2
+  ##
+
+  --- 1.
+
+  3 vs. 2 (-1) rows
+
+  SELECT * FROM t WHERE id IN (1,2,3);
+
+  --- 2.
+
+  3 vs. 1 (-2) rows
+
+  SELECT * FROM t WHERE id IN (10,11,12);
+
+The first part of a query class report lists the query class ID and counts
+of queries in the class.  The query class ID can be used to L<"--filter">
+and compare only queries in the class on subsequent runs of the tool.  The
+"Total queries" count is the total number of queries that belong to the class
+before duplicates and L<"--max-class-size">.  The "Unique queries"
+count is the number of unique queries in the class; it cannot exceed
+L<"--max-class-size">.  The "Discarded queries" count is the number
+of unique queries discarded due to L<"--max-class-size">.
+
+The second part of a query class report lists the the fingerprint which
+defines the class.
+
+The rest of a query class report lists the L<"QUERY CHANGES"> that caused
+the class to be reported.  Each type of change begins with a double hash
+mark header that lists the type and total number of queries in the class
+with the change.  Then up to L<"--max-change-examples"> are listed, numbered
+"-- 1.", "--- 2.", etc.  Each example lists the change (differently
+depending on the type of change) for the first and second hosts (respective
+to the "Hosts" section), followed by a verbatim SQL statement from the C<LOG>
+that should demonstrate the change if executed on both hosts again.
+
+Here are examples of other changes (without a query class header or the
+first two parts of the query class report):
+
+  ##
+  ## Row data changes: 1
+  ##
+
+  --- 1.
+
+  col1, col2
+  < foo    bar
+  ---
+  > foox   bar
+
+  SELECT col1, col2 FROM t WHERE id=5;
+
+  ##
+  ## Warnings changes: 5
+  ##
+
+  --- 1.
+
+  No warnings
+
+  vs.
+
+    Level: Warning
+     Code: 1265
+  Message: Data truncated for column 'b' at row 1
+
+  INSERT INTO t (b) VALUES ('Hello, world!');
+
+  ##
+  ## Query time changes: 50
+  ##
+
+  --- 1.
+
+  0.01 vs. 0.5 (+0.49) seconds
+
+  SELECT * FROM a JOIN b ON (id) WHERE a.ts < 555555555;
+
+  --- 2.
+
+  0.04 vs. 0.8 (+0.76) seconds
+
+  SELECT * FROM a JOIN b ON (id) WHERE a.ts < 123456789;
+
+  --- 3.
+
+  0.04 vs. 0.5 (+0.46) seconds  
+
+  SELECT * FROM a JOIN b ON (id) WHERE a.ts < 123456789;
+
+  ##
+  ## Query plan changes: 1
+  ##
+
+  --- 1.
+
+             id: 1
+    select_type: SIMPLE
+          table: city
+           type: ref 
+  possible_keys: PRIMARY
+            key: PRIMARY
+        key_len: 2
+            ref: NULL
+           rows: 550
+          Extra: Using where; Using index
+
+  vs.
+
+             id: 1
+    select_type: SIMPLE
+          table: city
+           type: range
+  possible_keys: PRIMARY
+            key: PRIMARY
+        key_len: 2
+            ref: NULL
+           rows: 214
+          Extra: Using where; Using index
+
+  EXPLAIN SELECT city_id FROM sakila.city WHERE city_id > 10\G
 
 =head1 OUTPUT
 
@@ -12721,11 +12937,17 @@ type: string
 Print all output to this file when daemonized.  This option has no effect
 unless L<"--daemonize"> is used.
 
-=item --max-query-class-size
+=item --max-change-examples
+
+type: int; default: 3
+
+Max number of examples to list for each type of query change.
+
+=item --max-class-size
 
 type: int; default: 1000
 
-Maximum number of unique queries in each query class.  See L<"RERPOT">.
+Max number of unique queries in each query class.  See L<"REPORT">.
 
 =item --password
 
