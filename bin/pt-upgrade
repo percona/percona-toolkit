@@ -12456,33 +12456,25 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-upgrade - Execute queries on multiple servers and check for differences.
+pt-upgrade - Verify that queries produce identical results on different servers.
 
 =head1 SYNOPSIS
 
-Usage: pt-upgrade [OPTION...] DSN [DSN...] [FILE]
+Usage: pt-upgrade [OPTIONS] LOG DSN DSN
 
-pt-upgrade compares query execution on two hosts by executing queries in the
-given file (or STDIN if no file given) and examining the results, errors,
-warnings, etc.produced on each.
+pt-upgrade executes the queries in C<LOG> on each C<DSN>, compares
+the results, and reports any negative or significant chagnes.  C<LOG>
+can be a slow, general, or binary log.
 
-Execute and compare all queries in slow.log on host1 to host2:
+Compare host1 to host2 using queries from C<slow.log>:
 
-  pt-upgrade slow.log h=host1 h=host2
+   pt-upgrade slow.log h=host1 h=host2
 
-Use pt-query-digest to get, execute and compare queries from tcpdump:
+Save reference results for host1, then compare host2 to them:
 
-  tcpdump -i eth0 port 3306 -s 65535  -x -n -q -tttt > tcpdump.txt
-  pt-query-digest tcpdump.txt --type tcpdump --no-report --print > digest.txt
-  pt-upgrade digest.txt h=host1 h=host2
+   pt-upgrade slow.log h=host1 --results results1/
 
-Compare only query times on host1 to host2 and host3:
-
-  pt-upgrade slow.log h=host1 h=host2 h=host3 --compare query_times
-
-Compare a single query, no slowlog needed:
-
-  pt-upgrade h=host1 h=host2 --query 'SELECT * FROM db.tbl'
+   pt-upgrade slow.log results1/ h=host2
 
 =head1 RISKS
 
@@ -12507,76 +12499,135 @@ See also L<"BUGS"> for more information on filing bugs and getting help.
 
 =head1 DESCRIPTION
 
-pt-upgrade executes queries from slowlogs on one or more MySQL server to find
-differences in query time, warnings, results, and other aspects of the queries'
-execution.  This helps evaluate upgrades, migrations and configuration
-changes.  The comparisons specified by L<"--compare"> determine what
-differences can be found.  A report is printed which outlines all the
-differences found; see L<"OUTPUT"> below.
+pt-upgrade helps determine if it is safe to upgrade (or downgrade) to
+a new version of MySQL.  A safe and conservative upgrade plan has several
+steps, one of which is ensuring that queries will produce identical results
+on the new version of MySQL.
 
-The first DSN (host) specified on the command line is authoritative; it defines
-the results to which the other DSNs are compared.  You can "compare" only one
-host, in which case there will be no differences but the output can be saved
-to be diffed later against the output of another single host "comparison".
+pt-upgrade executes queries from a slow, general, or binary log on two
+servers, compares many aspects of each query's exeuction and results,
+and reports any negative or signficant changes.  The two servers are
+typically development servers, one running the current production
+version of MySQL and the other running the new version of MySQL.
 
-At present, pt-upgrade only reads slowlogs.  Use C<pt-query-digest --print> to
-transform other log formats to slowlog.
+The tool has two use cases.  The first, canonical case is running "host
+to host".  A log file and two DSN are given on the command line, one for
+each MySQL server.  See the first example in the L<"SYNOPSIS">.  Queries
+are executed and compared on each server as the tool runs.  Any queries
+with differences are saved and reported when the tool finishes.  Unless
+interrupted, nothing is saved except the final report. -- This use case
+requiers less hard disk space, but the queries must be executed on both
+servers if the tool is ran again.  If there are a lot of queries, or
+executing them all takes a long time, and one server doesn't change,
+you may want to use the second use case.
 
-DSNs and slowlog files can be specified in any order.  pt-upgrade will
-automatically determine if an argument is a DSN or a slowlog file.  If no
-slowlog files are given and L<"--query"> is not specified then pt-upgrade
-will read from C<STDIN>.
+The second use case is running "host to reference results".  Reference results
+are the complete results from a single MySQL server, saved to hard disk.
+In this case, you must first generate the reference results, then run
+the tool a second time with the reference results and the other MySQL
+server.  See the 2nd example in the L<"SYNOPSIS">.  Reference results
+are typically generated for the current version of MySQL which doesn't
+change. -- This use case can require I<a lot> of hard disk space because
+the results (i.e. data rows) from all unique queries must be saved, plus
+other data about the queries.  If you plan to do many comparisons against
+a fixed version of MySQL, this use case is more efficient.  Or if you don't
+have access to both servers at the same time, this use case allows you to
+"execute now, compare later".
+
+=head1 IMPORTANT THINGS TO CONSIDER
+
+=head2 READ-ONLY
+
+By default, pt-upgrade only executes C<SELECT> and C<SET> statements.
+If you're using recreatable test or development servers and wish to
+compare write statements too (e.g. C<INSERT>, C<UPDATE>, C<DELETE>),
+then specify C<--no-read-only>.  See L<"--[no]read-only">.
+
+=head2 TRANSACTIONS
+
+The tool does not create its own transactions, but any transactions in
+the C<LOG> are executed as-is.  Since logs are serial, transactions
+shouldn't normally be an issue.  If, however, you need to compare queries
+that are somehow transactionally related (in which case you probably
+also need to disable L<"--[no]read-only">), then pt-upgrade probably
+won't do what you need because it's not designed for this purpose.
+
+pt-upgrade runs with C<autocommit=1> by default.
+
+=head2 THROTTLING
+
+pt-upgrade has no throttling options because the tool should only be ran
+on dedicated testing or development servers.  B<Do not run pt-upgrade
+on production servers!>  Consequently, the tool is CPU, memory, disk, and
+network intensive.  It executes queries as fast as possible.
+
+=head1 REPORT
+
+The final report (L<"--save-report">) is a human-readable text file that
+details the queries that have negative or signficant changes.  To prevent
+the report from becoming too long, queries are grouped by fingerprint into
+classes.  A query fingerprint is the abstracted form of a query, created by
+removing literal values, normalizing whitespace, etc.  So these queries
+belong to the same class:
+
+   SELECT c FROM t WHERE id = 1
+   SELECT c FROM t WHERE id=5
+   select  c  from  t  where  id  =  9
+
+The fingerprint for those queries is:
+
+   select c from t where id=?
+
+Each query class can have up to L<"--max-query-class-size"> unique queries
+(1,000 by default), but only up to 3 queries are reported.  If all queries
+have the same change (for example, they all have a change in row count),
+then only one query is reported for the class.  But if there are multiple
+changes, then up to 3 queries with different changes are reported.  By
+virtue of being in the same class, one query's change is usually the same
+and representative of all queries in the class.
+
+=head1 COMPARISONS
+
+The following aspects of each query from both hosts are compared to determine
+any negative or signficant changes to report:
+
+=over
+
+=item Row count
+
+The number of rows returned by the query should be the same.
+
+=item Row data
+
+The row data returned by the query should be the same.
+
+=item Errors and warnings
+
+The query should either not produce any errors or warnings, or produce
+the same errors or warnings.
+
+=item Query time
+
+The query execution time should be roughly the same or better.
+
+=item Query plan
+
+The query execution plan (C<EXPLAIN>) should be roughly the same or better.
+
+=back
 
 =head1 OUTPUT
 
-Queries are group by fingerprints and any with differences are printed.
-The first part of a query report is a summary of differences.  In the example
-below, the query returns a different number of rows (C<row counts>) on
-each server.  The second part is the side-by-side comparison of values
-obtained from the query on each server.  Then a sample of the query is
-printed, preceded by its ID which can be used to locate more information
-in the sub-report at the end.  There are sub-reports for various types of
-differences.
+Status information is printed to C<STDOUT> as the tool runs.  L<"--progress">
+reports are enabled by default.  The final report is saved to
+L<"--save-report">.  Warnings and errors are printed to C<STDERR>.
 
-  # Query 1: ID 0x3C830E3839B916D7 at byte 0 _______________________________
-  # Found 1 differences in 1 samples:
-  #   column counts   0
-  #   column types    0
-  #   column values   0
-  #   row counts      1
-  #   warning counts  0
-  #   warning levels  0
-  #   warnings        0
-  #            127.1:12345 127.1:12348
-  # Errors               0           0
-  # Warnings             0           0
-  # Query_time                        
-  #   sum                0           0
-  #   min                0           0
-  #   max                0           0
-  #   avg                0           0
-  #   pct_95             0           0
-  #   stddev             0           0
-  #   median             0           0
-  # row_count                         
-  #   sum                4           3
-  #   min                4           3
-  #   max                4           3
-  #   avg                4           3
-  #   pct_95             4           3
-  #   stddev             0           0
-  #   median             4           3
-  use `test`;
-  select i from t where i is not null
+=head1 EXIT STATUS
 
-  /* 3C830E3839B916D7-1 */ select i from t where i is not null
-
-  # Row count differences
-  # Query ID           127.1:12345 127.1:12348
-  # ================== =========== ===========
-  # 3C830E3839B916D7-1           4           3
-
-The output will vary slightly depending on which options are specified.
+pt-upgrade exits 0 if it finishes executing all queries in the C<LOG>
+and there were no errors or warnings.  Else the tool exits 1 and the
+L<"OUTPUT"> will end with a specific exit reason (e.g. caught CTRL-C,
+not enough disk space, etc.).
 
 =head1 OPTIONS
 
@@ -12589,14 +12640,6 @@ L<"SYNOPSIS"> and usage information for details.
 
 Prompt for a password when connecting to MySQL.
 
-=item --base-dir
-
-type: string; default: /tmp
-
-Save outfiles for the C<rows> comparison method in this directory.
-
-See the C<rows> L<"--compare-results-method">.
-
 =item --charset
 
 short form: -A; type: string
@@ -12607,100 +12650,6 @@ runs SET NAMES UTF8 after connecting to MySQL.  Any other value sets
 binmode on STDOUT without the utf8 layer, and runs SET NAMES after
 connecting to MySQL.
 
-=item --[no]clear-warnings
-
-default: yes
-
-Clear warnings before each warnings comparison.
-
-If comparing warnings (L<"--compare"> includes C<warnings>), this option
-causes pt-upgrade to execute a successful C<SELECT> statement which clears
-any warnings left over from previous queries.  This requires a current
-database that pt-upgrade usually detects automatically, but in some cases
-it might be necessary to specify L<"--temp-database">.  If pt-upgrade can't
-auto-detect the current database, it will create a temporary table in the
-L<"--temp-database"> called C<mk_upgrade_clear_warnings>.
-
-=item --clear-warnings-table
-
-type: string
-
-Execute C<SELECT * FROM ... LIMIT 1> from this table to clear warnings.
-
-=item --compare
-
-type: Hash; default: query_times,results,warnings
-
-What to compare for each query executed on each host.
-
-Comparisons determine differences when the queries are executed on the hosts.
-More comparisons enable more differences to be detected.  The following
-comparisons are available:
-
-=over
-
-=item query_times
-
-Compare query execution times.  If this comparison is disabled, the queries
-are still executed so that other comparisons will work, but the query time
-attributes are removed from the events.
-
-=item results
-
-Compare result sets to find differences in rows, columns, etc.
-
-What differences can be found depends on the L<"--compare-results-method"> used.
-
-=item warnings
-
-Compare warnings from C<SHOW WARNINGS>.  Requires at least MySQL 4.1.
-
-=back
-
-=item --compare-results-method
-
-type: string; default: CHECKSUM; group: Comparisons
-
-Method to use for L<"--compare"> C<results>.  This option has no effect
-if C<--no-compare-results> is given.
-
-Available compare methods (case-insensitive):
-
-=over
-
-=item CHECKSUM
-
-Do C<CREATE TEMPORARY TABLE `mk_upgrade` AS query> then
-C<CHECKSUM TABLE `mk_upgrade`>.  This method is fast and simple but in
-rare cases might it be inaccurate because the MySQL manual says:
-
-  [The] fact that two tables produce the same checksum does I<not> mean that
-  the tables are identical.
-
-Requires at least MySQL 4.1.
-
-=item rows
-
-Compare rows one-by-one to find differences.  This method has advantages
-and disadvantages.  Its disadvantages are that it may be slower and it
-requires writing and reading outfiles from disk.  Its advantages are that
-it is universal (works for all versions of MySQL), it doesn't alter the query
-in any way, and it can find column value differences.
-
-The C<rows> method works as follows:
-
-  1. Rows from each host are compared one-by-one.
-  2. If no differences are found, comparison stops, else...
-  3. All remain rows (after the point where they begin to differ)
-     are written to outfiles.
-  4. The outfiles are loaded into temporary tables with
-     C<LOAD DATA LOCAL INFILE>.
-  5. The temporary tables are analyzed to determine the differences.
-
-The outfiles are written to the L<"--base-dir">.
-
-=back
-
 =item --config
 
 type: Array
@@ -12708,25 +12657,16 @@ type: Array
 Read this comma-separated list of config files; if specified, this must be the
 first option on the command line.
 
-=item --continue-on-error
+=item --[no]continue-on-error
 
-Continue working even if there is an error.
+default: yes
 
-=item --convert-to-select
-
-Convert non-SELECT statements to SELECTs and compare.
-
-By default non-SELECT statements are not allowed.  This option causes
-non-SELECT statements (like UPDATE, INSERT and DELETE) to be converted
-to SELECT statements, executed and compared.
-
-For example, C<DELETE col FROM tbl WHERE id=1> is converted to
-C<SELECT col FROM tbl WHERE id=1>.
+Continue running even if there is an error.
 
 =item --daemonize
 
-Fork to the background and detach from the shell.  POSIX
-operating systems only.
+Fork to the background and detach from the shell.
+This only works for POSIX operating systems.
 
 =item --[no]disable-query-cache
 
@@ -12734,67 +12674,26 @@ default: yes
 
 C<SET SESSION query_cache_type = OFF> to disable the query cache.
 
-=item --explain-hosts
+=item --disk-bytes-free
 
-Print connection information and exit.
+type: size; default: 100M
+
+Stop running if the disk has less than this much free space.
+
+=item --disk-pct-free
+
+type: int; default: 5
+
+Stop running if the disk has less than this percent free space.
 
 =item --filter
 
 type: string
 
-Discard events for which this Perl code doesn't return true.
+Allow events for which this Perl code returns true.
 
-This option is a string of Perl code or a file containing Perl code that gets
-compiled into a subroutine with one argument: $event.  This is a hashref.
-If the given value is a readable file, then pt-upgrade reads the entire
-file and uses its contents as the code.  The file should not contain
-a shebang (#!/usr/bin/perl) line.
-
-If the code returns true, the chain of callbacks continues; otherwise it ends.
-The code is the last statement in the subroutine other than C<return $event>. 
-The subroutine template is:
-
-  sub { $event = shift; filter && return $event; }
-
-Filters given on the command line are wrapped inside parentheses like like
-C<( filter )>.  For complex, multi-line filters, you must put the code inside
-a file so it will not be wrapped inside parentheses.  Either way, the filter
-must produce syntactically valid code given the template.  For example, an
-if-else branch given on the command line would not be valid:
-
-  --filter 'if () { } else { }'  # WRONG
-
-Since it's given on the command line, the if-else branch would be wrapped inside
-parentheses which is not syntactically valid.  So to accomplish something more
-complex like this would require putting the code in a file, for example
-filter.txt:
-
-  my $event_ok; if (...) { $event_ok=1; } else { $event_ok=0; } $event_ok
-
-Then specify C<--filter filter.txt> to read the code from filter.txt.
-
-If the filter code won't compile, pt-upgrade will die with an error.
-If the filter code does compile, an error may still occur at runtime if the
-code tries to do something wrong (like pattern match an undefined value).
-pt-upgrade does not provide any safeguards so code carefully!
-
-An example filter that discards everything but SELECT statements:
-
-  --filter '$event->{arg} =~ m/^select/i'
-
-This is compiled into a subroutine like the following:
-
-  sub { $event = shift; ( $event->{arg} =~ m/^select/i ) && return $event; }
-
-It is permissible for the code to have side effects (to alter $event).
-
-You can find an explanation of the structure of $event at
-L<http://code.google.com/p/maatkit/wiki/EventAttributes>.
-
-=item --fingerprints
-
-Add query fingerprints to the standard query analysis report.  This is mostly
-useful for debugging purposes.
+See "FILTERING" in the C<percona-toolkit> man page, or
+C<perldoc docs/percona-toolkit.pod> if installed from a tarball.
 
 =item --float-precision
 
@@ -12813,51 +12712,26 @@ Show help and exit.
 
 short form: -h; type: string
 
-Connect to host.
-
-=item --iterations
-
-type: int; default: 1
-
-How many times to iterate through the collect-and-report cycle.  If 0, iterate
-to infinity.  See also L<--run-time>.
-
-=item --limit
-
-type: string; default: 95%:20
-
-Limit output to the given percentage or count.
-
-If the argument is an integer, report only the top N worst queries.  If the
-argument is an integer followed by the C<%> sign, report that percentage of the
-worst queries.  If the percentage is followed by a colon and another integer,
-report the top percentage or the number specified by that integer, whichever
-comes first.
+MySQL hostname or IP.
 
 =item --log
 
 type: string
 
-Print all output to this file when daemonized.
+Print all output to this file when daemonized.  This option has no effect
+unless L<"--daemonize"> is used.
 
-=item --max-different-rows
+=item --max-query-class-size
 
-type: int; default: 10
+type: int; default: 1000
 
-Stop comparing rows for C<--compare-results-method rows> after this many
-differences are found.
-
-=item --order-by
-
-type: string; default: differences:sum
-
-Sort events by this attribute and aggregate function.
+Maximum number of unique queries in each query class.  See L<"RERPOT">.
 
 =item --password
 
 short form: -p; type: string
 
-Password to use when connecting.
+MySQL password for the L<"--user">.
 
 =item --pid
 
@@ -12873,32 +12747,73 @@ exists, the program exits.
 
 short form: -P; type: int
 
-Port number to use for connection.
+MySQL port number.
 
-=item --query
+=item --progress
 
-type: string
+type: array; default: time,60
 
-Execute and compare this single query; ignores files on command line.
+Print progress reports to C<STDOUT>.
 
-This option allows you to supply a single query on the command line.  Any
-slowlogs also specified on the command line are ignored.
+The value is a comma-separated list with two parts.  The first part can be
+percentage, time, or iterations; the second part specifies how often an update
+should be printed, in percentage, seconds, or number of iterations.
 
-=item --reports
+=item --[no]read-only
 
-type: Hash; default: queries,differences,errors,statistics
+default: yes
 
-Print these reports.  Valid reports are queries, differences, errors, and
-statistics.
+Execute only SELECT and SET statements.  If C<--no-read-only> is specified,
+I<all> queries are exeucted: C<DROP>, C<DELETE>, C<UPDATE>, etc.  Even when
+running in default read-only mode, you should use a MySQL user with only
+C<SELECT> privileges to insure against bugs in the tool.
 
-See L<"OUTPUT"> for more information on the various parts of the report.
+=item --resume
+
+Resume C<LOG> from the file offset in C<LOG.resume>.  pt-upgrade can stop
+prematurely and resume by reading and writing the current file offset to
+C<LOG.resume>, where C<LOG> is the original log file given on the command
+line.  The tool warns if this file cannot be written, and dies if
+L<"--resume"> is specified and this file cannot be read.
 
 =item --run-time
 
 type: time
 
-How long to run before exiting.  The default is to run forever (you can
-interrupt with CTRL-C).
+How long to run before exiting.  The default is to run until all queries
+in the C<LOG> have been executed.  You can interrupt with CTRL-C.
+
+=item --save-report
+
+type: string
+
+Save the report to this file.  If not specified, the report will be
+saved to C<pt-upgrade-report-TS.txt> in the current working directory,
+where C<TS> is the current GMT Unix timestamp.
+
+=item --save-results
+
+type: string
+
+Save reference results to this directory.  If not specified, the current
+working directory is used.  This option works only when one DSN is specified,
+to generate reference results.  When comparing a host to reference results,
+specify its results directory instead of its DSN.  See the second
+example in the L<"SYNOPSIS">.
+
+Although the directories and files created by the tool in the results
+directory are not meant to be human-readable, the basic structure is:
+
+   --results/
+      <class_id>/
+         <query_id>/
+            query
+            results
+            explain
+            meta
+
+Reference results can use I<a lot> of disk space.  Consequently, the tool
+will stop if L<"--disk-bytes-free"> or L<"--disk-pct-free"> are exceeded.
 
 =item --set-vars
 
@@ -12907,50 +12822,35 @@ type: string; default: wait_timeout=10000
 Set these MySQL variables.  Immediately after connecting to MySQL, this
 string will be appended to SET and executed.
 
-=item --shorten
-
-type: int; default: 1024
-
-Shorten long statements in reports.
-
-Shortens long statements, replacing the omitted portion with a C</*... omitted
-...*/> comment.  This applies only to the output in reports.  It prevents a
-large statement from causing difficulty in a report.  The argument is the
-preferred length of the shortened statement.  Not all statements can be
-shortened, but very large INSERT and similar statements often can; and so
-can IN() lists, although only the first such list in the statement will be
-shortened.
-
-If it shortens something beyond recognition, you can find the original statement
-in the log, at the offset shown in the report header (see L<"OUTPUT">).
-
 =item --socket
 
 short form: -S; type: string
 
 Socket file to use for connection.
 
-=item --temp-database
+=item --sys-schema
 
-type: string
+type: string; default: percona_schema
 
-Use this database for creating temporary tables.
+Use table C<pt_upgrade> in this schema.  pt-upgrade requires a known,
+good table for various technical reasons.  The given schema and the
+C<pt_upgrade> table are created (if they don't already exist), but
+neither is dropped.
 
-If given, this database is used for creating temporary tables for the
-results comparison (see L<"--compare">).  Otherwise, the current
-database (from the last event that specified its database) is used.
+If you run the tool with C<SELECT> only privileges (which is a good idea
+unless using C<--no-read-only>), then be sure to give the L<"--user"> write
+privileges to the schema and table; else, you must manually create the schema
+and C<pt_upgrade> table with this MAGIC_pt_upgrade_table definition:
 
-=item --temp-table
-
-type: string; default: mk_upgrade
-
-Use this table for checksumming results.
+   CREATE TABLE pt_upgrade (
+     id INT NOT NULL PRIMARY KEY,
+   ) ENGINE=InnoDB
 
 =item --user
 
 short form: -u; type: string
 
-User for login if not current user.
+MySQL user if not the current system user.
 
 =item --version
 
@@ -12980,10 +12880,6 @@ used versions of programs, and to suggest to customers possible upgrades
 and known bad versions of programs.
 
 For more information, visit L<http://www.percona.com/version-check>.
-
-=item --zero-query-times
-
-Zero the query times in the report.
 
 =back
 
