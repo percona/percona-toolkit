@@ -20,6 +20,15 @@ require "$trunk/bin/pt-agent";
 Percona::Toolkit->import(qw(Dumper));
 Percona::WebAPI::Representation->import(qw(as_hashref));
 
+# Running the agent is going to cause it to schedule the services,
+# i.e. write a real crontab.  The test box/user shouldn't have a
+# crontab, so we'll warn and clobber it if there is one.
+my $crontab = `crontab -l 2>/dev/null`;
+if ( $crontab ) {
+   warn "Removing crontab: $crontab\n";
+   `crontab -r`;
+}
+
 # #############################################################################
 # Create mock client and Agent
 # #############################################################################
@@ -136,7 +145,7 @@ my $run0 = Percona::WebAPI::Resource::Run->new(
 my $svc0 = Percona::WebAPI::Resource::Service->new(
    name     => 'query-monitor',
    alias    => 'Query Monitor',
-   schedule => '...',
+   schedule => '* * * * *',
    runs     => [ $run0 ],
 );
 
@@ -232,7 +241,16 @@ ok(
    "query-monitor service file"
 );
 
+$crontab = `crontab -l 2>/dev/null`;
+like(
+   $crontab,
+   qr/pt-agent --run-service query-monitor$/m,
+   "Scheduled service with crontab"
+);
+
+# #############################################################################
 # Run run_agent() again, like the agent had been stopped and restarted.
+# #############################################################################
 
 $ua->{responses}->{get} = [
    # First check, fail
@@ -308,9 +326,21 @@ ok(
    "No Service diff, no service file changes"
 );
 
+my $new_crontab = `crontab -l 2>/dev/null`;
+is(
+   $new_crontab,
+   $crontab,
+   "Crontab is the same"
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
+
+# This shouldn't cause an error, but if it does, let it show up
+# in the results as an error.
+`crontab -r`;
+
 if ( -f $config_file ) {
    unlink $config_file 
       or warn "Error removing $config_file: $OS_ERROR";
