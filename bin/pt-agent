@@ -4359,8 +4359,10 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use POSIX qw(signal_h);
+use POSIX       qw(signal_h);
 use Time::HiRes qw(sleep time);
+use JSON        qw(decode_json);
+use File::Temp  qw(tempfile);
 
 use Percona::Toolkit; 
 use Percona::WebAPI::Client;
@@ -4520,7 +4522,6 @@ sub main {
          config_file => $config_file,
          lib_dir     => $o->get('lib'),
       );
-      _info('Agent ' . $agent->id . ' has stopped');
    }
 
    _info("pt-agent exit $exit_status, oktorun $oktorun");
@@ -4663,23 +4664,34 @@ sub run_agent {
 
    my $config;
    my $services;
+   AGENT_LOOP:
    while ( $oktorun->() ) {
       eval {
          _info('Getting config');
+
+         # Get the agent's config from Percona.
          my $new_config = $client->get(
             url => $client->links->{config},
          );
+
+         # If the current and new configs are different,
+         # write the new one to disk, then apply it.
          if ( resource_diff($config, $new_config) ) {
             _info('New config');
             write_config(
                config => $new_config,
                file   => $config_file,
             );
+
+            # Whatever --lib dir the new config has, use it.
+            # Services are written to --lib/services
             if ( my $new_lib_dir = $new_config->options->{lib} ) {
                # TODO: what if new lib dir doesn't have /services?
                $lib_dir = $new_lib_dir;
                _info("New --lib direcotry: $lib_dir");
             }
+
+            # Apply new config, i.e. update the current, running config.
             $config = $new_config;
          }
          else {
@@ -4690,12 +4702,19 @@ sub run_agent {
          _warn($EVAL_ERROR);
       }
 
+      # Get services only if there's a current, running config.
+      # Without one, we won't know how to implement services.
       if ( $config ) {
          eval {
             _info('Getting services');
+
+            # Get services from Percona.
             my $new_services = $client->get(
                url => $client->links->{services},
             );
+
+            # If the current and new services are different,
+            # write the new ones to disk, then schedule them.
             if ( resource_diff($services, $new_services) ) {
                _info('New services');
                write_services(
@@ -4722,8 +4741,11 @@ sub run_agent {
       # If no config yet, the tool's built-in default for
       # --check-interval is used instead.
       $interval->($config ? $config->options->{'check-interval'} : ());
-   }
 
+   } # AGENT_LOOP
+
+   # This shouldn't happen until the service is stopped/killed.
+   _info('Agent ' . $agent->id . ' has stopped');
    return;
 }
 
@@ -4748,6 +4770,7 @@ sub write_config {
    close $fh;
    my ($api_key) = $contents =~ m/^(api-key=\S+)$/m;
 
+   # Re-write the api-key, if any, then write the config.
    open $fh, '>', $file
       or die "Error opening $file: $OS_ERROR";
    if ( $api_key ) {
@@ -4762,21 +4785,8 @@ sub write_config {
    return;
 }
 
-sub update_config {
-   my (%args) = @_;
-
-   have_required_args(\%args, qw(
-      old
-      new
-   )) or die;
-   my $old = $args{old};
-   my $new = $args{new};
-
-   my @options = qw(
-   );
-
-} 
-
+# Write each service to its own file in --lib/.  Remove services
+# that are not longer implemented (i.e. not in the services array).
 sub write_services {
    my (%args) = @_;
 
@@ -4791,6 +4801,7 @@ sub write_services {
 
    _info("Writing services to $lib_dir");
 
+   # Write every current service.
    my %have_service;
    foreach my $service ( @$services ) {
       my $file   = $lib_dir . '/' . $service->name;
@@ -4805,6 +4816,8 @@ sub write_services {
       $have_service{$service->name} = $service;
    }
 
+   # Remove old services: one's that still exisit but weren't
+   # writen ^, so they're no longer implemented.
    opendir my $dh, $lib_dir
       or die "Error opening $lib_dir: $OS_ERROR";
    while ( my $file = readdir($dh) ) {
@@ -4821,7 +4834,53 @@ sub write_services {
 }
 
 sub schedule_services {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      services
+   )) or die;
+   my $services = $args{services};
+
+   _info("Scheduling services");
+
+   my $new_crontab = make_new_crontab(%args);
+   _info("New crontab:\n", $new_crontab);
+
+   my ($fh, $file) = tempfile();
+   print { $fh } $new_crontab;
+   close $fh;
+
+   system("crontab $file");
+
+   unlink $file;
+
    return;
+}
+
+sub make_new_crontab {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      services
+   )) or die;
+   my $services = $args{services};
+   
+   # Optional args
+   my $crontab_list = $args{crontab_list} || `crontab -l`;
+
+   my @other_lines
+      = grep { $_ !~ m/pt-agent --run-service/ }
+        split("\n", $crontab_list);
+
+   my @pt_agent_lines;
+   foreach my $service ( @$services ) {
+      push @pt_agent_lines,
+         $service->schedule . " pt-agent --run-service " . $service->name;
+   }
+
+   my $new_crontab = join("\n", @other_lines, @pt_agent_lines, "\n");
+
+   return $new_crontab;
 }
 
 # #################### #

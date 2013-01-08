@@ -1,0 +1,2 @@
+* 8 * * 1,2,3,4,5 pt-agent --run-service query-monitor
+
