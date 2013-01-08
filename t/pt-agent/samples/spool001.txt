@@ -1,0 +1,6 @@
+
+# Profile
+# Rank Query ID           Response time Calls R/Call Apdx V/M   Item
+# ==== ================== ============= ===== ====== ==== ===== ==========
+#    1 0xC72BF45D68E35A6E  0.0188 95.4%     1 0.0188 1.00  0.00 SELECT tbl
+# MISC 0xMISC              0.0009  4.6%     2 0.0005   NS   0.0 <2 ITEMS>
