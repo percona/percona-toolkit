@@ -4421,6 +4421,7 @@ sub main {
    # TODO: only the main proc needs write access
    # ########################################################################
    my $config_file = get_config_file();
+   _info("Config file: $config_file");
    if ( -f $config_file ) {
       die "$config_file is not writable.\n"
          unless -w $config_file;
@@ -4723,6 +4724,7 @@ sub run_agent {
                );
                schedule_services(
                   services => $new_services,
+                  lib_dir  => $lib_dir,
                );
                $services = $new_services;
             }
@@ -4838,21 +4840,30 @@ sub schedule_services {
 
    have_required_args(\%args, qw(
       services
+      lib_dir
    )) or die;
    my $services = $args{services};
+   my $lib_dir  = $args{lib_dir};
 
    _info("Scheduling services");
 
    my $new_crontab = make_new_crontab(%args);
-   _info("New crontab:\n", $new_crontab);
+   _info("New crontab:\n" . $new_crontab || '');
 
-   my ($fh, $file) = tempfile();
-   print { $fh } $new_crontab;
-   close $fh;
+   my $crontab_file = "$lib_dir/crontab";
+   open my $fh, '>', $crontab_file
+      or die "Error opening $crontab_file: $OS_ERROR";
+   print { $fh } $new_crontab
+      or die "Error writing to $crontab_file: $OS_ERROR";
+   close $fh
+      or die "Error closing $crontab_file: $OS_ERROR";
 
-   system("crontab $file");
-
-   unlink $file;
+   my $err_file = "$lib_dir/crontab.err";
+   system("crontab $crontab_file > $err_file 2>&1");
+   if ( $CHILD_ERROR ) {
+      my $error = `cat $err_file`;
+      die "Error setting new crontab: $error\n";
+   }
 
    return;
 }
@@ -4866,7 +4877,8 @@ sub make_new_crontab {
    my $services = $args{services};
    
    # Optional args
-   my $crontab_list = $args{crontab_list} || `crontab -l`;
+   my $crontab_list = defined $args{crontab_list} ? $args{crontab_list}
+                    :                               `crontab -l 2>/dev/null`;
 
    my @other_lines
       = grep { $_ !~ m/pt-agent --run-service/ }
@@ -4878,7 +4890,7 @@ sub make_new_crontab {
          $service->schedule . " pt-agent --run-service " . $service->name;
    }
 
-   my $new_crontab = join("\n", @other_lines, @pt_agent_lines, "\n");
+   my $new_crontab = join("\n", @other_lines, @pt_agent_lines) . "\n";
 
    return $new_crontab;
 }
@@ -4907,7 +4919,6 @@ sub send_data {
 sub get_config_file {
    my $home_dir    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
    my $config_file = "$home_dir/.pt-agent.conf";
-   _info("Config file: $config_file");
    return $config_file;
 }
 
