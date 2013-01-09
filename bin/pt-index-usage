@@ -45,7 +45,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.7';
+our $VERSION = '2.1.8';
 
 1;
 }
@@ -2713,14 +2713,25 @@ sub parse_event {
 
             if ( !$found_arg && $pos == $len ) {
                PTDEBUG && _d("Did not find arg, looking for special cases");
-               local $INPUT_RECORD_SEPARATOR = ";\n";
+               local $INPUT_RECORD_SEPARATOR = ";\n";  # get next line
                if ( defined(my $l = $next_event->()) ) {
-                  chomp $l;
-                  $l =~ s/^\s+//;
-                  PTDEBUG && _d("Found admin statement", $l);
-                  push @properties, 'cmd', 'Admin', 'arg', $l;
-                  push @properties, 'bytes', length($properties[-1]);
-                  $found_arg++;
+                  if ( $l =~ /^\s*[A-Z][a-z_]+: / ) {
+                     PTDEBUG && _d("Found NULL query before", $l);
+                     local $INPUT_RECORD_SEPARATOR = ";\n#";
+                     my $rest_of_event = $next_event->();
+                     push @{$self->{pending}}, $l . $rest_of_event;
+                     push @properties, 'cmd', 'Query', 'arg', '/* No query */';
+                     push @properties, 'bytes', 0;
+                     $found_arg++;
+                  }
+                  else {
+                     chomp $l;
+                     $l =~ s/^\s+//;
+                     PTDEBUG && _d("Found admin statement", $l);
+                     push @properties, 'cmd', 'Admin', 'arg', $l;
+                     push @properties, 'bytes', length($properties[-1]);
+                     $found_arg++;
+                  }
                }
                else {
                   PTDEBUG && _d("I can't figure out what to do with this line");
@@ -3348,6 +3359,9 @@ sub parse_timestamp {
       return sprintf "%d-%02d-%02d %02d:%02d:"
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
    }
    return $val;
 }
@@ -7450,8 +7464,8 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2011-2013 Percona Ireland Ltd,
+2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -7469,6 +7483,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-index-usage 2.1.7
+pt-index-usage 2.1.8
 
 =cut
