@@ -64,7 +64,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.7';
+our $VERSION = '2.1.8';
 
 1;
 }
@@ -1768,6 +1768,9 @@ sub parse_timestamp {
       return sprintf "%d-%02d-%02d %02d:%02d:"
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
    }
    return $val;
 }
@@ -17405,8 +17408,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2008-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2008-2013 Percona Ireland Ltd.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -17424,6 +17426,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.1.7
+pt-query-digest 2.1.8
 
 =cut

@@ -1,3 +1,41 @@
+percona-toolkit (2.1.8) unstable; urgency=low
+
+  * Beta support for MySQL 5.6
+  * Beta support for Percona XtraDB Cluster
+  * pt-online-schema-change: If ran on Percona XtraDB Cluster, requires PXC 5.5.28 or newer
+  * pt-table-checksum: If ran on Percona XtraDB Cluster, requires PXC 5.5.28 or newer
+  * pt-upgrade: Added --[no]disable-query-cache
+  * Fixed bug  927955: Bad pod2rst transformation
+  * Fixed bug  898665: Bad online docs formatting for --[no]vars
+  * Fixed bug 1022622: pt-config-diff is case-sensitive
+  * Fixed bug 1007938: pt-config-diff doesn't handle end-of-line comments
+  * Fixed bug  917770: pt-config-diff Use of uninitialized value in substitution (s///) at line 1996
+  * Fixed bug 1082104: pt-deadlock-logger doesn't handle usernames with dashes
+  * Fixed bug  886059: pt-heartbeat handles timezones inconsistently
+  * Fixed bug 1086259: pt-kill --log-dsn timestamp is wrong
+  * Fixed bug 1015590: pt-mysql-summary doesn't handle renamed variables in Percona Server 5.5
+  * Fixed bug 1079341: pt-online-schema-change checks for foreign keys on MyISAM tables
+  * Fixed bug  823431: pt-query-advisor hangs on big queries
+  * Fixed bug  996069: pt-query-advisor RES.001 is incorrect
+  * Fixed bug  933465: pt-query-advisor false positive on RES.001
+  * Fixed bug  937234: pt-query-advisor issues wrong RES.001
+  * Fixed bug 1082599: pt-query-digest fails to parse timestamp with no query
+  * Fixed bug 1078838: pt-query-digest doesn't parse general log with "Connect user as user"
+  * Fixed bug  957442: pt-query-digest with custom --group-by throws error
+  * Fixed bug  887638: pt-query-digest prints negative byte offset
+  * Fixed bug  831525: pt-query-digest help output mangled
+  * Fixed bug  932614: pt-slave-restart CHANGE MASTER query causes error
+  * Fixed bug 1046440: pt-stalk purge_samples slows down checks
+  * Fixed bug  986847: pt-stalk does not report NFS iostat
+  * Fixed bug 1074179: pt-table-checksum doesn't ignore tables for --replicate-check-only
+  * Fixed bug  911385: pt-table-checksum v2 fails when --resume + --ignore-database is used
+  * Fixed bug 1041391: pt-table-checksum debug statement for "Chosen hash func" prints undef
+  * Fixed bug 1075638: pt-table-checksum Illegal division by zero at line 7950
+  * Fixed bug 1052475: pt-table-checksum uninitialized value in numeric lt (<) at line 8611
+  * Fixed bug 1078887: Tools let --set-vars clobber the required SQL mode
+
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Fri, 21 Dec 2012 17:31:09 +0000
+
 percona-toolkit (2.1.7) unstable; urgency=low
 
   * Fixed bug 1080384: pt-table-checksum 2.1.6 crashes using PTDEBUG
