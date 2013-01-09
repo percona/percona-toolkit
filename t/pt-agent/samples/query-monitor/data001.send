@@ -1,0 +1,9 @@
+{"id":"123","hostname":"prod1"}
+--Ym91bmRhcnk=
+[
+  {
+    query_id: 1,
+    arg: "select * from t where id = 1",
+    Query_time: 0.123456,
+  }
+]
