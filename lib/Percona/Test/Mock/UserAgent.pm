@@ -31,8 +31,8 @@ sub new {
          put  => [],
       },
       content => {
-         post => undef,
-         put  => undef,
+         post => [],
+         put  => [],
       },
    };
    return bless $self, $class;
@@ -42,7 +42,7 @@ sub request {
    my ($self, $req) = @_;
    my $type = lc($req->method);
    if ( $type eq 'post' || $type eq 'put' ) {
-      $self->{content}->{$type} = $req->content;
+      push @{$self->{content}->{$type}}, $req->content;
    }
    my $r = shift @{$self->{responses}->{$type}};
    my $c = $self->{encode}->($r->{content});

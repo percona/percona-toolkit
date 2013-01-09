@@ -233,12 +233,17 @@ sub _set {
    my $res    = $args{resources};
    my $url    = $args{url};
 
-   my $content;
+   my $content = '';
    if ( ref($res) eq 'ARRAY' ) {
+      PTDEBUG && _d('List of resources');
       $content = '[' . join(",\n", map { as_json($_) } @$res) . ']';
    }
-   elsif ( -f $res ) {
-      PTDEBUG && _d('Reading content from file', $res);
+   elsif ( ref($res) ) {
+      PTDEBUG && _d('Resource object');
+      $content = as_json($res);
+   }
+   elsif ( $res !~ m/\n/ && -f $res ) {
+      PTDEBUG && _d('List of resources in file', $res);
       $content = '[';
       my $data = do {
          local $INPUT_RECORD_SEPARATOR = undef;
@@ -250,7 +255,8 @@ sub _set {
       $content .= $data;
    }
    else {
-      $content = as_json($res);
+      PTDEBUG && _d('Resource text');
+      $content = $res;
    }
 
    eval {
