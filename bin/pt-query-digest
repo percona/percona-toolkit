@@ -14242,14 +14242,6 @@ sub print_reports {
          $tls->[$i]->reset_aggregated_data();
       }
 
-      if ( $o->get('table-access') ) {  # --table-access
-         print_table_access_report(
-            ea    => $eas->[$i],
-            worst => $worst,
-            %args,
-         );
-      }
-
       $eas->[$i]->reset_aggregated_data();  # Reset for next iteration.
 
       # Print header report only once.  So remove it from the
@@ -14433,54 +14425,6 @@ sub get_worst_queries {
 
    # The queries that will be reported.
    return $ea->top_events(%top_spec);
-}
-
-sub print_table_access_report {
-   my ( %args ) = @_;
-   my @required_args = qw(ea worst QueryParser QueryRewriter OptionParser Quoter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($ea, $worst, $qp, $qr, $o, $q) = @args{@required_args};
-
-   my %seen;
-   PTDEBUG && _d('Doing table access report');
-
-   foreach my $worst_info ( @$worst ) {
-      my $item         = $worst_info->[0];
-      my $stats        = $ea->results->{classes}->{$item};
-      my $sample       = $ea->results->{samples}->{$item};
-      my $samp_query   = $sample->{arg} || '';
-      my ($default_db) = $sample->{db}       ? $sample->{db}
-                       : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
-                       :                       undef;
-      eval {
-         QUERY:
-         foreach my $query ( $qp->split($samp_query) ) {
-            my $rw = $qp->query_type($query, $qr)->{rw};
-            next QUERY unless $rw;
-            my @tables = $qp->extract_tables(
-               query      => $query,
-               default_db => $default_db,
-               Quoter     => $args{Quoter},
-            );
-            next QUERY unless scalar @tables;
-            DB_TBL:
-            foreach my $tbl_info ( @tables ) {
-               my ($db, $tbl) = @$tbl_info;
-               $db            = $db ? "`$db`."  : '';
-               next DB_TBL if $seen{"$db$tbl"}++; # Unique-ify for issue 337.
-               print "$rw $db`$tbl`\n";
-            }
-         }
-      };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d($EVAL_ERROR);
-         warn "Cannot get table access for query $_";
-      }
-   }
-
-   return;
 }
 
 sub update_query_review_tables {
@@ -16018,26 +15962,6 @@ See also L<"--until">.
 short form: -S; type: string
 
 Socket file to use for connection.
-
-=item --table-access
-
-Print a table access report.
-
-The table access report shows which tables are accessed by all the queries
-and if the access is a read or write.  The report looks like:
-
-  write `baz`.`tbl`
-  read `baz`.`new_tbl`
-  write `baz`.`tbl3`
-  write `db6`.`tbl6`
-
-If you pipe the output to L<sort>, the read and write tables will be grouped
-together and sorted alphabetically:
-
-  read `baz`.`new_tbl`
-  write `baz`.`tbl`
-  write `baz`.`tbl3`
-  write `db6`.`tbl6`
 
 =item --tcpdump-errors
 

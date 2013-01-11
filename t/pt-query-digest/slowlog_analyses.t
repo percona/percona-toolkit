@@ -276,24 +276,6 @@ ok(
    'Distill UNLOCK and LOCK TABLES'
 );
 
-# Test --table-access.
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow020.txt', qw(--no-report --table-access)) },
-      "t/pt-query-digest/samples/slow020_table_access.txt",
-   ),
-   'Analysis for slow020 with --table-access'
-);
-
-# This one tests that the list of tables is unique.
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, $sample.'slow030.txt', qw(--no-report --table-access)) },
-      "t/pt-query-digest/samples/slow030_table_access.txt"
-   ),
-   'Analysis for slow030 with --table-access'
-);
-
 ok(
    no_diff(
       sub { pt_query_digest::main(@args, $sample.'slow034.txt', qw(--order-by Lock_time:sum),
