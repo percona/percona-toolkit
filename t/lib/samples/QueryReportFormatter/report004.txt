@@ -1,6 +1,6 @@
 
 # Profile
-# Rank Query ID           Response time Calls R/Call Apdx V/M   Item
-# ==== ================== ============= ===== ====== ==== ===== ==========
-#    1 0xAECF4CA2310AC9E2  1.0303 97.1%     1 1.0303   NS  0.00 UPDATE foo
-# MISC 0xMISC              0.0306  2.9%     2 0.0153   NS   0.0 <2 ITEMS>
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== ==========
+#    1 0xAECF4CA2310AC9E2  1.0303 97.1%     1 1.0303  0.00 UPDATE foo
+# MISC 0xMISC              0.0306  2.9%     2 0.0153   0.0 <2 ITEMS>

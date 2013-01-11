@@ -5444,15 +5444,6 @@ sub calculate_statistical_metrics {
                   $classes->{$class}->{$attrib}->{all},
                   $classes->{$class}->{$attrib}
                );
-
-            if ( $args{apdex_t} && $attrib eq 'Query_time' ) {
-               $class_metrics->{$class}->{$attrib}->{apdex_t} = $args{apdex_t};
-               $class_metrics->{$class}->{$attrib}->{apdex}
-                  = $self->calculate_apdex(
-                     t       => $args{apdex_t},
-                     samples => $classes->{$class}->{$attrib}->{all},
-                  );
-            }
          }
       }
    }
@@ -5577,9 +5568,6 @@ sub metrics {
       median => $metrics->{classes}->{$where}->{$attrib}->{median} || 0,
       pct_95 => $metrics->{classes}->{$where}->{$attrib}->{pct_95} || 0,
       stddev => $metrics->{classes}->{$where}->{$attrib}->{stddev} || 0,
-
-      apdex_t => $metrics->{classes}->{$where}->{$attrib}->{apdex_t},
-      apdex   => $metrics->{classes}->{$where}->{$attrib}->{apdex},
    };
 }
 
@@ -5893,51 +5881,6 @@ sub _deep_copy_attrib_vals {
       $copy = $vals;
    }
    return $copy;
-}
-
-sub calculate_apdex {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(t samples);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my ($t, $samples) = @args{@required_args};
-
-   if ( $t <= 0 ) {
-      die "Invalid target threshold (T): $t.  T must be greater than zero";
-   }
-
-   my $f = 4 * $t;
-   PTDEBUG && _d("Apdex T =", $t, "F =", $f);
-
-   my $satisfied  = 0;
-   my $tolerating = 0;
-   my $frustrated = 0;  # just for debug output
-   my $n_samples  = 0;
-   BUCKET:
-   for my $bucket ( keys %$samples ) {
-      my $n_responses   = $samples->{$bucket};
-      my $response_time = $buck_vals[$bucket];
-
-      if ( $response_time <= $t ) {
-         $satisfied += $n_responses;
-      }
-      elsif ( $response_time <= $f ) {
-         $tolerating += $n_responses;
-      }
-      else {
-         $frustrated += $n_responses;
-      }
-
-      $n_samples += $n_responses;
-   }
-
-   my $apdex = sprintf('%.2f', ($satisfied + ($tolerating / 2)) / $n_samples);
-   PTDEBUG && _d($n_samples, "samples,", $satisfied, "satisfied,",
-      $tolerating, "tolerating,", $frustrated, "frustrated, Apdex score:",
-      $apdex);
-
-   return $apdex;
 }
 
 sub _get_value {
@@ -6751,10 +6694,7 @@ sub event_report {
    {
       my $query_time = $ea->metrics(where => $item, attrib => 'Query_time');
       push @result,
-         sprintf("# Scores: Apdex = %s [%3.1f]%s, V/M = %.2f",
-            (defined $query_time->{apdex} ? "$query_time->{apdex}" : "NS"),
-            ($query_time->{apdex_t} || 0),
-            ($query_time->{cnt} < 100 ? "*" : ""),
+         sprintf("# Scores: V/M = %.2f",
             ($query_time->{stddev}**2 / ($query_time->{avg} || 1)),
          );
    }
@@ -7017,7 +6957,6 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-         apdex  => defined $query_time->{apdex} ? $query_time->{apdex} : "NS",
       ); 
 
       if ( $o->get('explain') && $samp_query ) {
@@ -7048,7 +6987,6 @@ sub profile {
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
-      { name => 'Apdx',          right_justify => 1, width => 4, },
       { name => 'V/M',           right_justify => 1, width => 5, },
       ( $o->get('explain') ? { name => 'EXPLAIN' } : () ),
       { name => 'Item',                                          },
@@ -7066,7 +7004,6 @@ sub profile {
          "$rt $rtp",
          $item->{cnt},
          $rc,
-         $item->{apdex},
          $vmr,
          ( $o->get('explain') ? $item->{explain_sparkline} || "" : () ),
          $item->{sample},
@@ -7094,7 +7031,6 @@ sub profile {
          "$rt $rtp",
          $misc->{cnt},
          $rc,
-         'NS',   # Apdex is not meaningful here
          '0.0',  # variance-to-mean ratio is not meaningful here
          ( $o->get('explain') ? "MISC" : () ),
          "<".scalar @$other." ITEMS>",
@@ -13223,9 +13159,6 @@ sub main {
          }
       }
 
-      if ( $o->get('apdex-threshold') <= 0 ) {
-         $o->save_error("Apdex threshold must be a positive decimal value");
-      }
       if ( my $patterns = $o->get('embedded-attributes') ) {
          $o->save_error("--embedded-attributes should be passed two "
            . "comma-separated patterns, got " . scalar(@$patterns) )
@@ -14389,9 +14322,7 @@ sub print_reports {
 
    for my $i ( 0..$#groupby ) {
       if ( $o->get('report') || $qv ) {
-         $eas->[$i]->calculate_statistical_metrics(
-            apdex_t => $o->get('apdex-threshold'),
-         );
+         $eas->[$i]->calculate_statistical_metrics();
       }
 
       my ($orderby_attrib, $orderby_func) = split(/:/, $orderby[$i]);
@@ -14997,7 +14928,6 @@ that follows.  It contains the following columns:
  Response time The total response time, and percentage of overall total
  Calls         The number of times this query was executed
  R/Call        The mean response time per execution
- Apdx          The Apdex score; see --apdex-threshold for details
  V/M           The Variance-to-mean ratio of response time
  EXPLAIN       If --explain was specified, a sparkline; see --explain
  Item          The distilled query
@@ -15296,19 +15226,6 @@ This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
 
 =over
-
-=item --apdex-threshold
-
-type: float; default: 1.0
-
-Set Apdex target threshold (T) for query response time.  The Application
-Performance Index (Apdex) Technical Specification V1.1 defines T as "a
-positive decimal value in seconds, having no more than two significant digits
-of granularity."  This value only applies to query response time (Query_time).
-
-Options can be abbreviated so specifying C<--apdex-t> also works.
-
-See L<http://www.apdex.org/>.
 
 =item --ask-pass
 
