@@ -41,7 +41,6 @@ BEGIN {
       RawLogParser
       ProtocolParser
       HTTPProtocolParser
-      ExecutionThrottler
       MasterSlave
       Progress
       FileIterator
@@ -10347,143 +10346,6 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# ExecutionThrottler package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/ExecutionThrottler.pm
-#   t/lib/ExecutionThrottler.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package ExecutionThrottler;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use List::Util qw(sum min max);
-use Time::HiRes qw(time);
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
-sub new {
-   my ( $class, %args ) = @_;
-   my @required_args = qw(rate_max get_rate check_int step);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my $self = {
-      step       => 0.05,  # default
-      %args, 
-      rate_ok    => undef,
-      last_check => undef,
-      stats      => {
-         rate_avg     => 0,
-         rate_samples => [],
-      },
-      int_rates  => [],
-      skip_prob  => 0.0,
-   };
-
-   return bless $self, $class;
-}
-
-sub throttle {
-   my ( $self, %args ) = @_;
-   my $time = $args{misc}->{time} || time;
-   if ( $self->_time_to_check($time) ) {
-      my $rate_avg = (sum(@{$self->{int_rates}})   || 0)
-                   / (scalar @{$self->{int_rates}} || 1);
-      my $running_avg = $self->_save_rate_avg($rate_avg);
-      PTDEBUG && _d('Average rate for last interval:', $rate_avg);
-
-      if ( $args{stats} ) {
-         $args{stats}->{throttle_checked_rate}++;
-         $args{stats}->{throttle_rate_avg} = sprintf '%.2f', $running_avg;
-      }
-
-      @{$self->{int_rates}} = ();
-
-      if ( $rate_avg > $self->{rate_max} ) {
-         $self->{skip_prob} += $self->{step};
-         $self->{skip_prob}  = 1.0 if $self->{skip_prob} > 1.0;
-         PTDEBUG && _d('Rate max exceeded');
-         $args{stats}->{throttle_rate_max_exceeded}++ if $args{stats};
-      }
-      else {
-         $self->{skip_prob} -= $self->{step};
-         $self->{skip_prob} = 0.0 if $self->{skip_prob} < 0.0;
-         $args{stats}->{throttle_rate_ok}++ if $args{stats};
-      }
-
-      PTDEBUG && _d('Skip probability:', $self->{skip_prob});
-      $self->{last_check} = $time;
-   }
-   else {
-      my $current_rate = $self->{get_rate}->();
-      push @{$self->{int_rates}}, $current_rate;
-      if ( $args{stats} ) {
-         $args{stats}->{throttle_rate_min} = min(
-            ($args{stats}->{throttle_rate_min} || ()), $current_rate);
-         $args{stats}->{throttle_rate_max} = max(
-            ($args{stats}->{throttle_rate_max} || ()), $current_rate);
-      }
-      PTDEBUG && _d('Current rate:', $current_rate);
-   } 
-
-   if ( $args{event} ) {
-      $args{event}->{Skip_exec} = $self->{skip_prob} <= rand() ? 'No' : 'Yes';
-   }
-
-   return $args{event};
-}
-
-sub _time_to_check {
-   my ( $self, $time ) = @_;
-   if ( !$self->{last_check} ) {
-      $self->{last_check} = $time;
-      return 0;
-   }
-   return $time - $self->{last_check} >= $self->{check_int} ? 1 : 0;
-}
-
-sub rate_avg {
-   my ( $self ) = @_;
-   return $self->{stats}->{rate_avg} || 0;
-}
-
-sub skip_probability {
-   my ( $self ) = @_;
-   return $self->{skip_prob};
-}
-
-sub _save_rate_avg {
-   my ( $self, $rate ) = @_;
-   my $samples  = $self->{stats}->{rate_samples};
-   push @$samples, $rate;
-   shift @$samples if @$samples > 1_000;
-   $self->{stats}->{rate_avg} = sum(@$samples) / (scalar @$samples);
-   return $self->{stats}->{rate_avg} || 0;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End ExecutionThrottler package
-# ###########################################################################
-
-# ###########################################################################
 # MasterSlave package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -13312,7 +13174,6 @@ use sigtrap 'handler', \&sig_int, 'normal-signals';
 
 # Global variables.  Only really essential variables should be here.
 my $oktorun = 1;
-my $ex_dbh;  # For --execute
 my $ep_dbh;  # For --explain
 my $ps_dbh;  # For Processlist
 my $aux_dbh; # For --aux-dsn (--since/--until "MySQL expression")
@@ -13349,25 +13210,10 @@ sub main {
          $o->save_error('The --review DSN requires a D (database) and t'
             . ' (table) part specifying the query review table');
       }
-      if ( $o->get('mirror')
-           && (!$o->get('execute') || !$o->get('processlist')) ) {
-         $o->save_error('--mirror requires --execute and --processlist');
-      }
       if ( $o->get('outliers')
          && grep { $_ !~ m/^\w+:[0-9.]+(?::[0-9.]+)?$/ } @{$o->get('outliers')}
       ) {
          $o->save_error('--outliers requires two or three colon-separated fields');
-      }
-      if ( $o->get('execute-throttle') ) {
-         my ($rate_max, $int, $step) = @{$o->get('execute-throttle')};
-         $o->save_error("--execute-throttle max time must be between 1 and 100")
-            unless $rate_max && $rate_max > 0 && $rate_max <= 100;
-         $o->save_error("No check interval value for --execute-throttle")
-            unless $int;
-         $o->save_error("--execute-throttle check interval must be an integer")
-            if $int =~ m/[^\d]/;
-         $o->save_error("--execute-throttle step must be between 1 and 100")
-            if $step && ($step < 1 || $step > 100);
       }
       if ( $o->get('progress') ) {
          eval { Progress->validate_spec($o->get('progress')) };
@@ -13598,7 +13444,7 @@ sub main {
 
    # Enable timings to instrument code for either of these two opts.
    # Else, don't instrument to avoid cost of measurement.
-   my $instrument = $o->get('pipeline-profile') || $o->get('execute-throttle');
+   my $instrument = $o->get('pipeline-profile');
    PTDEBUG && _d('Instrument:', $instrument);
 
    my $pipeline = new Pipeline(
@@ -13722,14 +13568,12 @@ sub main {
                $err = $EVAL_ERROR;
                if ( $err ) { # Try to reconnect when there's an error.
                   eval {
-                     ($cur_server, $ps_dbh) = find_role(
-                        OptionParser => $o,
-                        DSNParser    => $dp,
-                        dbh          => $ps_dbh,
-                        current      => $cur_server,
-                        read_only    => 0,
-                        comment      => 'for --processlist'
-                     );
+                     if ( !$ps_dbh || !$ps_dbh->ping ) {
+                        PTDEBUG && _d('Getting a dbh from', $cur_server);
+                        $ps_dbh = $dp->get_dbh(
+                           $dp->get_cxn_params($o->get($cur_server)), {AutoCommit => 1});
+                        $ps_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
+                     }
                      $cur_time = time();
                      $sth      = $ps_dbh->prepare('SHOW FULL PROCESSLIST');
                      $cxn      = $ps_dbh->{mysql_thread_id};
@@ -13742,18 +13586,6 @@ sub main {
                   }
                }
             } until ( $sth && !$err );
-            if ( $o->get('mirror')
-                 && time() - $cur_time > $o->get('mirror')) {
-               ($cur_server, $ps_dbh) = find_role(
-                  OptionParser => $o,
-                  DSNParser    => $dp,
-                  dbh          => $ps_dbh,
-                  current      => $cur_server,
-                  read_only    => 0,
-                  comment      => 'for --processlist'
-               );
-               $cur_time = time();
-            }
 
             return [ grep { $_->[0] != $cxn } @{ $sth->fetchall_arrayref(); } ];
          };
@@ -13946,7 +13778,7 @@ sub main {
          );
          $aux_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
       }
-      $aux_dbh ||= $qv_dbh || $qv_dbh2 || $ex_dbh || $ps_dbh || $ep_dbh;
+      $aux_dbh ||= $qv_dbh || $qv_dbh2 || $ps_dbh || $ep_dbh;
       PTDEBUG && _d('aux dbh:', $aux_dbh);
 
       my $time_callback = sub {
@@ -14392,139 +14224,6 @@ sub main {
       }
    } # sample
 
-   my $ex_dsn;
-   { # execute throttle and execute
-      my $et;
-      if ( my $et_args = $o->get('execute-throttle') ) {
-         # These were check earlier; no need to check them again.
-         my ($rate_max, $int, $step) = @{$o->get('execute-throttle')};
-         $step ||= 5;
-         $step  /= 100; # step specified as percent but $et expect 0.1=10%, etc.
-         PTDEBUG && _d('Execute throttle:', $rate_max, $int, $step);
-
-         my $get_rate = sub {
-            my $instrument = $pipeline->instrumentation;
-            return percentage_of(
-               $instrument->{execute}->{time}   || 0,
-               $instrument->{Pipeline}->{time}  || 0,
-            );
-         };
-
-         $et = new ExecutionThrottler(
-            rate_max  => $rate_max,
-            get_rate  => $get_rate,
-            check_int => $int,
-            step      => $step,
-         );
-         
-         $pipeline->add(
-            name    => 'execute throttle',
-            process => sub {
-               my ( $args ) = @_;
-               $args->{event} = $et->throttle(
-                  event => $args->{event},
-                  stats => \%stats,
-                  misc  => $args->{misc},
-               );
-               return $args;
-            },
-         );
-      } # execute throttle
-
-      if ( $ex_dsn = $o->get('execute') ) {
-         if ( $o->get('ask-pass') ) {
-            $ex_dsn->{p} = OptionParser::prompt_noecho("Enter password for "
-               . "--execute: ");
-            $o->set('execute', $ex_dsn);
-         }
-
-         my $cur_server = 'execute';
-         ($cur_server, $ex_dbh) = find_role(
-            OptionParser => $o,
-            DSNParser    => $dp,
-            dbh          => $ex_dbh,
-            current      => $cur_server,
-            read_only    => 1,
-            comment      => 'for --execute'
-         );
-         my $cur_time = time();
-         my $curdb;
-         my $default_db = $o->get('execute')->{D};
-         PTDEBUG && _d('Default db:', $default_db);
-         
-         $pipeline->add(
-            name    => 'execute',
-            process => sub {
-               my ( $args ) = @_;
-               my $event = $args->{event};
-               $event->{Exec_orig_time} = $event->{Query_time};
-               if ( ($event->{Skip_exec} || '') eq 'Yes' ) {
-                  PTDEBUG && _d('Not executing event because of ',
-                     '--execute-throttle');
-                  # Zero Query_time to 'Exec time' will show the real time
-                  # spent executing queries.
-                  $event->{Query_time} = 0;
-                  $stats{execute_skipped}++;
-                  return $args;
-               }
-               $stats{execute_executed}++;
-               my $db = $event->{db} || $default_db;
-               eval {
-                  if ( $db && (!$curdb || $db ne $curdb) ) {
-                     $ex_dbh->do("USE $db");
-                     $curdb = $db;
-                  } 
-                  my $start = time();
-                  $ex_dbh->do($event->{arg});
-                  my $end = time();
-                  $event->{Query_time} = $end - $start;
-                  $event->{Exec_diff_time}
-                     = $event->{Query_time} - $event->{Exec_orig_time};
-                  if ($o->get('mirror') && $end-$cur_time > $o->get('mirror')) {
-                     ($cur_server, $ex_dbh) = find_role(
-                        OptionParser => $o,
-                        DSNParser    => $dp,
-                        dbh          => $ex_dbh,
-                        current      => $cur_server,
-                        read_only    => 1,
-                        comment      => 'for --execute'
-                     );
-                     $cur_time = $end;
-                  }
-               };
-               if ( $EVAL_ERROR ) {
-                  PTDEBUG && _d($EVAL_ERROR);
-                  $stats{execute_error}++;
-                  # Don't try to re-execute the statement.  Just skip it.
-                  if ( $EVAL_ERROR =~ m/server has gone away/ ) {
-                     print STDERR $EVAL_ERROR;
-                     eval {
-                        ($cur_server, $ex_dbh) = find_role(
-                           OptionParser => $o,
-                           DSNParser    => $dp,
-                           dbh          => $ex_dbh,
-                           current      => $cur_server,
-                           read_only    => 1,
-                           comment      => 'for --execute'
-                        );
-                        $cur_time = time();
-                     };
-                     if ( $EVAL_ERROR ) {
-                        print STDERR $EVAL_ERROR;
-                        sleep 1;
-                     }
-                     return;
-                  }
-                  if ( $EVAL_ERROR =~ m/No database/ ) {
-                     $stats{execute_no_database}++;
-                  }
-               }
-               return $args;
-            },
-         );
-      } # execute
-   } # execute throttle and execute
-
    if ( $o->get('print') ) {
       my $w = new SlowLogWriter();
       $pipeline->add(
@@ -14633,7 +14332,6 @@ sub main {
          instances => [
             ($qv_dbh ? { dbh => $qv_dbh, dsn => $review_dsn } : ()),
             ($ps_dbh ? { dbh => $ps_dbh, dsn => $ps_dsn     } : ()),
-            ($ex_dbh ? { dbh => $ex_dbh, dsn => $ex_dsn     } : ())
          ],
          protocol => $o->get('version-check'),
       );
@@ -14664,7 +14362,7 @@ sub main {
       PTDEBUG && _d('Disconnected dbh', $_);
    }
    grep { $_ }
-   ($qv_dbh, $qv_dbh2, $ex_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
+   ($qv_dbh, $qv_dbh2, $ps_dbh, $ep_dbh, $aux_dbh);
 
    return 0;
 } # End main()
@@ -14817,45 +14515,6 @@ sub print_reports {
    }
 
    return;
-}
-
-# Pass in the currently open $dbh (if any), where $current points to ('execute'
-# or 'processlist') and whether you want to be connected to the read_only
-# server.  Get back which server you're looking at, and the $dbh.  Assumes that
-# one of the servers is ALWAYS read only and the other is ALWAYS not!  If
-# there's some transition period where this isn't true, maybe both will end up
-# pointing to the same place, but that should resolve shortly.
-# The magic switching functionality only works if --mirror is given!  Otherwise
-# it just returns the correct $dbh.  $comment is some descriptive text for
-# debuggin, like 'for --execute'.
-sub find_role { 
-   my ( %args ) = @_;
-   my $o         = $args{OptionParser};
-   my $dp        = $args{DSNParser};
-   my $dbh       = $args{dbh};
-   my $current   = $args{current};
-   my $read_only = $args{read_only};
-   my $comment   = $args{comment};
-
-   if ( !$dbh || !$dbh->ping ) {
-      PTDEBUG && _d('Getting a dbh from', $current, $comment);
-      $dbh = $dp->get_dbh(
-         $dp->get_cxn_params($o->get($current)), {AutoCommit => 1});
-      $dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
-   }
-   if ( $o->get('mirror') ) {
-      my ( $is_read_only ) = $dbh->selectrow_array('SELECT @@global.read_only');
-      PTDEBUG && _d("read_only on", $current, $comment, ':',
-                    $is_read_only, '(want', $read_only, ')');
-      if ( $is_read_only != $read_only ) {
-         $current = $current eq 'execute' ? 'processlist' : 'execute';
-         PTDEBUG && _d("read_only wrong", $comment, "getting a dbh from", $current);
-         $dbh = $dp->get_dbh(
-            $dp->get_cxn_params($o->get($current)), {AutoCommit => 1});
-         $dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
-      }
-   }
-   return ($current, $dbh);
 }
 
 # Catches signals so we can exit gracefully.
@@ -15201,12 +14860,6 @@ server running on host1.  See L<"--review"> for more on reviewing queries:
 
  pt-query-digest --review h=host1,D=test,t=query_review /path/to/slow.log
 
-Filter out everything but SELECT queries, replay the queries against another
-server, then use the timings from replaying them to analyze their performance:
-
- pt-query-digest /path/to/slow.log --execute h=another_server \
-   --filter '$event->{fingerprint} =~ m/^select/'
-
 Print the structure of events so you can construct a complex L<"--filter">:
 
  pt-query-digest /path/to/slow.log --no-report \
@@ -15235,8 +14888,7 @@ is safe to run even on production systems, but you might want to monitor it
 until you are satisfied that the input you give it does not cause undue load.
 
 Various options will cause pt-query-digest to insert data into tables, execute
-SQL queries, and so on.  These include the L<"--execute"> option and
-L<"--review">.
+SQL queries, and so on.  These include the L<"--review"> options.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
@@ -15797,50 +15449,6 @@ The second one splits it into attribute-value pairs and adds them to the event:
 B<NOTE>: All commas in the regex patterns must be escaped with \ otherwise
 the pattern will break.
 
-=item --execute
-
-type: DSN
-
-Execute queries on this DSN.
-
-Adds a callback into the chain, after filters but before the reports.  Events
-are executed on this DSN.  If they are successful, the time they take to execute
-overwrites the event's Query_time attribute and the original Query_time value
-(from the log) is saved as the Exec_orig_time attribute.  If unsuccessful,
-the callback returns false and terminates the chain.
-
-If the connection fails, pt-query-digest tries to reconnect once per second.
-
-See also L<"--mirror"> and L<"--execute-throttle">.
-
-=item --execute-throttle
-
-type: array
-
-Throttle values for L<"--execute">.
-
-By default L<"--execute"> runs without any limitations or concerns for the
-amount of time that it takes to execute the events.  The L<"--execute-throttle">
-allows you to limit the amount of time spent doing L<"--execute"> relative
-to the other processes that handle events.  This works by marking some events
-with a C<Skip_exec> attribute when L<"--execute"> begins to take too much time.
-L<"--execute"> will not execute an event if this attribute is true.  This
-indirectly decreases the time spent doing L<"--execute">.
-
-The L<"--execute-throttle"> option takes at least two comma-separated values:
-max allowed L<"--execute"> time as a percentage and a check interval time.  An
-optional third value is a percentage step for increasing and decreasing the
-probability that an event will be marked C<Skip_exec> true.  5 (percent) is
-the default step.
-
-For example: L<"--execute-throttle"> C<70,60,10>.  This will limit
-L<"--execute"> to 70% of total event processing time, checked every minute
-(60 seconds) and probability stepped up and down by 10%.  When L<"--execute">
-exceeds 70%, the probability that events will be marked C<Skip_exec> true
-increases by 10%. L<"--execute"> time is checked again after another minute.
-If it's still above 70%, then the probability will increase another 10%.
-Or, if it's dropped below 70%, then the probability will decrease by 10%.
-
 =item --expected-range
 
 type: array; default: 5,10
@@ -16089,10 +15697,6 @@ which do not have them.  For example, if one event has the db attribute equal
 to "foo", but the next event doesn't have the db attribute, then it inherits
 "foo" for its db attribute.
 
-Inheritance is usually desirable, but in some cases it might confuse things.
-If a query inherits a database that it doesn't actually use, then this could
-confuse L<"--execute">.
-
 =item --interval
 
 type: float; default: .1
@@ -16134,20 +15738,6 @@ See also L<"--outliers">.
 type: string
 
 Print all output to this file when daemonized.
-
-=item --mirror
-
-type: float
-
-How often to check whether connections should be moved, depending on
-C<read_only>.  Requires L<"--processlist"> and L<"--execute">.
-
-This option causes pt-query-digest to check every N seconds whether it is reading
-from a read-write server and executing against a read-only server, which is a
-sensible way to set up two servers if you're doing something like master-master
-replication.  The L<http://code.google.com/p/mysql-master-master/> master-master
-toolkit does this. The aim is to keep the passive server ready for failover,
-which is impossible without putting it under a realistic workload.
 
 =item --order-by
 
@@ -16256,8 +15846,7 @@ type: DSN
 
 Poll this DSN's processlist for queries, with L<"--interval"> sleep between.
 
-If the connection fails, pt-query-digest tries to reopen it once per second. See
-also L<"--mirror">.
+If the connection fails, pt-query-digest tries to reopen it once per second.
 
 =item --progress
 
@@ -16715,7 +16304,7 @@ several types:
 
 If you give a MySQL time expression, then you must also specify a DSN
 so that pt-query-digest can connect to MySQL to evaluate the expression.  If you
-specify L<"--execute">, L<"--explain">, L<"--processlist">, L<"--review">
+specify L<"--explain">, L<"--processlist">, L<"--review">
 or L<"--review-history">, then one of these DSNs will be used automatically.
 Otherwise, you must specify an L<"--aux-dsn"> or pt-query-digest will die
 saying that the value is invalid.
