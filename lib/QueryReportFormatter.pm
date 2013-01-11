@@ -364,20 +364,14 @@ sub query_report {
          next ITEM if $review_vals->{reviewed_by} && !$o->get('report-all');
       }
 
-      # ###############################################################
-      # Get tables for --for-explain.
-      # ###############################################################
       my ($default_db) = $sample->{db}       ? $sample->{db}
                        : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
                        :                       undef;
-      my @tables;
-      if ( $o->get('for-explain') ) {
-         @tables = $self->{QueryParser}->extract_tables(
+      my @tables = $self->{QueryParser}->extract_tables(
             query      => $samp_query,
             default_db => $default_db,
             Quoter     => $self->{Quoter},
          );
-      }
 
       # ###############################################################
       # Print the standard query analysis report.
@@ -419,12 +413,10 @@ sub query_report {
             if $o->get('shorten');
 
          # Print query fingerprint.
-         $report .= "# Fingerprint\n#    $item\n"
-            if $o->get('fingerprints');
+         PTDEBUG && _d("Fingerprint\n#    $item\n");
 
          # Print tables used by query.
-         $report .= $self->tables_report(@tables)
-            if $o->get('for-explain');
+         $report .= $self->tables_report(@tables);
 
          # Print sample (worst) query's CRC % 1_000.  We mod 1_000 because
          # that's actually the value stored in the ea, not the full checksum.
@@ -453,8 +445,7 @@ sub query_report {
          else {
             $report .= "$samp_query${mark}\n"; 
             my $converted = $qr->convert_to_select($samp_query);
-            if ( $o->get('for-explain')
-                 && $converted
+            if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
                # It converted OK to a SELECT
                $report .= "# Converted for EXPLAIN\n# EXPLAIN /*!50100 PARTITIONS*/\n$converted${mark}\n";

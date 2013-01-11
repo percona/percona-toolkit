@@ -6555,14 +6555,11 @@ sub query_report {
       my ($default_db) = $sample->{db}       ? $sample->{db}
                        : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
                        :                       undef;
-      my @tables;
-      if ( $o->get('for-explain') ) {
-         @tables = $self->{QueryParser}->extract_tables(
+      my @tables = $self->{QueryParser}->extract_tables(
             query      => $samp_query,
             default_db => $default_db,
             Quoter     => $self->{Quoter},
          );
-      }
 
       $report .= "\n" if $rank > 1;  # space between each event report
       $report .= $self->event_report(
@@ -6599,8 +6596,7 @@ sub query_report {
 
          PTDEBUG && _d("Fingerprint\n#    $item\n");
 
-         $report .= $self->tables_report(@tables)
-            if $o->get('for-explain');
+         $report .= $self->tables_report(@tables);
 
          if ( $samp_query && ($args{variations} && @{$args{variations}}) ) {
             my $crc = crc32($samp_query);
@@ -6624,8 +6620,7 @@ sub query_report {
          else {
             $report .= "$samp_query${mark}\n"; 
             my $converted = $qr->convert_to_select($samp_query);
-            if ( $o->get('for-explain')
-                 && $converted
+            if ( $converted
                  && $converted =~ m/^[\(\s]*select/i ) {
                $report .= "# Converted for EXPLAIN\n# EXPLAIN /*!50100 PARTITIONS*/\n$converted${mark}\n";
             }
@@ -15258,17 +15253,6 @@ check both.
 
 Since L<"--filter"> allows you to alter C<$event>, you can use it to do other
 things, like create new attributes.  See L<"ATTRIBUTES"> for an example.
-
-=item --[no]for-explain
-
-default: yes
-
-Print extra information to make analysis easy.
-
-This option adds code snippets to make it easy to run SHOW CREATE TABLE and SHOW
-TABLE STATUS for the query's tables.  It also rewrites non-SELECT queries into a
-SELECT that might be helpful for determining the non-SELECT statement's index
-usage.
 
 =item --group-by
 
