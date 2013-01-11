@@ -58,6 +58,24 @@ like $output,
    qr/\Q--embedded-attributes POSIX syntax [: :] belongs inside character/,
    "Bug 885382: --embedded-attributes rejects warning patterns early";;
 
+
+# We removed --statistics, but they should still print out if we use PTDEBUG.
+
+$output = qx{PTDEBUG=1 $trunk/bin/pt-query-digest --no-report ${sample}slow002.txt 2>&1};
+my $stats = slurp_file("t/pt-query-digest/samples/stats-slow002.txt");
+
+like(
+   $output,
+   qr/\Q$stats\E/m,
+   'PTDEBUG shows --statistics for slow002.txt',
+);
+
+like(
+   $output,
+   qr/Pipeline profile/m,
+   'PTDEBUG shows --pipeline-profile'
+);
+
 # #############################################################################
 # pt-query-digest help output mangled
 # https://bugs.launchpad.net/percona-toolkit/+bug/831525
