@@ -1,7 +1,6 @@
 
 # Query 1: 0 QPS, 0x concurrency, ID 0xFB0C089DD4451762 at byte 59213 ____
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.411349
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -26,7 +25,6 @@ get www.percona.com/images/menu_our-vision.gif
 
 # Query 2: 0 QPS, 0x concurrency, ID 0x7C3AA9143C98C14A at byte 206 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.074855
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -51,7 +49,6 @@ get www.percona.com/about-us.html
 
 # Query 3: 0 QPS, 0x concurrency, ID 0x7CC09CE55CB7750C at byte 16362 ____
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.157215
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -76,7 +73,6 @@ get www.percona.com/js/jquery.js
 
 # Query 4: 0 QPS, 0x concurrency, ID 0x44C0C94594575296 at byte 65644 ____
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.420851
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -101,7 +97,6 @@ get www.percona.com/images/bg-gray-corner-top.gif
 
 # Query 5: 0 QPS, 0x concurrency, ID 0x08207FBDE8A42C36 at byte 67956 ____
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.420996
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -126,7 +121,6 @@ get www.percona.com/images/handshake.jpg
 
 # Query 6: 0 QPS, 0x concurrency, ID 0x4F1E2B5E822F55B8 at byte 53100 ____
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.346763
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -151,7 +145,6 @@ get www.percona.com/images/menu_team.gif
 
 # Query 7: 0 QPS, 0x concurrency, ID 0x7FB624EE10D71E1F at byte 170117 ___
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:14.737890
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -176,7 +169,6 @@ get hit.clickaider.com/s/forms.js
 
 # Query 8: 0 QPS, 0x concurrency, ID 0x1279DE4968C95A8D at byte 147447 ___
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:14.536149
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -201,7 +193,6 @@ get hit.clickaider.com/clickaider.js
 
 # Query 9: 0 QPS, 0x concurrency, ID 0x590BE2A84B8F0D5B at byte 167245 ___
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:14.678713
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -226,7 +217,6 @@ get hit.clickaider.com/pv?lng=140&&lnks=&t=About%20Percona&c=73a41b95-2926&r=htt
 
 # Query 10: 0 QPS, 0x concurrency, ID 0xFC5C4A690D695F35 at byte 55942 ___
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2009-11-09 15:31:09.373800
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

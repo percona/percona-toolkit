@@ -2,7 +2,6 @@
 # Query 1: 0 QPS, 0x concurrency, ID 0x31DA25F95494CA95 at byte 174 ______
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: |     ^  |
 # Time range: all events occurred at 2008-11-27 08:51:20
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -30,7 +29,6 @@ SHOW STATUS\G
 # Query 2: 0 QPS, 0x concurrency, ID 0x3AEAAD0E15D725B5 at byte 600 ______
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: | ^      |
 # Time range: all events occurred at 2008-11-27 08:51:21
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -58,7 +56,6 @@ SET autocommit=0\G
 # Query 3: 0 QPS, 0x concurrency, ID 0x813031B8BBC3B329 at byte 782 ______
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: | ^      |
 # Time range: all events occurred at 2008-11-27 08:51:21
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -86,7 +83,6 @@ commit\G
 # Query 4: 0 QPS, 0x concurrency, ID 0xAA353644DE4C4CB4 at byte 385 ______
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: |^       |
 # Time range: all events occurred at 2008-11-27 08:51:21
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

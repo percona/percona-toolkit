@@ -20,7 +20,6 @@
 # Query 1: 0 QPS, 0x concurrency, ID 0x727841EC88423713 at byte 0 ________
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: |        |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -58,7 +57,6 @@ INSERT INTO db.v (m, b) VALUES ('', 'Exact')\G
 # Query 2: 0 QPS, 0x concurrency, ID 0x9E892D4B16D7BFC2 at byte 525 ______
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: |        |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

@@ -16,7 +16,6 @@
 
 # Query 1: 0 QPS, 0x concurrency, ID 0xCD948EAF18BC614E at byte 953 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |       ^|
 # Time range: all events occurred at 2007-12-07 12:02:08
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -53,7 +52,6 @@ replace into test4.tbl9(tbl5, day, todo, comment)
 
 # Query 2: 0 QPS, 0x concurrency, ID 0xC356FD9EFD7D799E at byte 605 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |       ^|
 # Time range: all events occurred at 2007-12-07 12:02:07
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -90,7 +88,6 @@ select  e.tblo = o.tblo,
 
 # Query 3: 0 QPS, 0x concurrency, ID 0xB5E55291C7DE1096 at byte 1469 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |       ^|
 # Time range: all events occurred at 2007-12-07 12:02:50
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -127,7 +124,6 @@ select  o.tbl2 = e.tbl2,
 
 # Query 4: 0 QPS, 0x concurrency, ID 0x85FFF5AA78E5FF6A at byte 146 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |       ^|
 # Time range: all events occurred at 2007-12-07 12:02:50
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -157,7 +153,6 @@ BEGIN\G
 
 # Query 5: 0 QPS, 0x concurrency, ID 0xED69B13F3D0161D0 at byte 2479 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |       ^|
 # Time range: all events occurred at 2007-12-07 12:02:53
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -192,7 +187,6 @@ select  last2metric1 = last1metric1, last2time = last1time,
 
 # Query 6: 0 QPS, 0x concurrency, ID 0x79BFEA84D0CED05F at byte 1889 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |       ^|
 # Time range: all events occurred at 2007-12-07 12:02:53
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

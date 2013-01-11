@@ -2,7 +2,6 @@
 # Query 1: 0 QPS, 0x concurrency, ID 0xA3C9C49321D65C30 at byte 0 ________
 # This item is included in the report because it matches --limit.
 # Scores: V/M = 0.00
-# Query_time sparkline: |  ^     |
 # Time range: all events occurred at 2009-04-12 09:50:16.805123
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
