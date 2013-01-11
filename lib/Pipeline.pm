@@ -42,7 +42,7 @@ sub new {
 
    my $self = {
       # default values for optional args
-      instrument        => 0,
+      instrument        => PTDEBUG,
       continue_on_error => 0,
 
       # specified arg values override defaults

@@ -6597,8 +6597,7 @@ sub query_report {
          $samp_query = $qr->shorten($samp_query, $o->get('shorten'))
             if $o->get('shorten');
 
-         $report .= "# Fingerprint\n#    $item\n"
-            if $o->get('fingerprints');
+         PTDEBUG && _d("Fingerprint\n#    $item\n");
 
          $report .= $self->tables_report(@tables)
             if $o->get('for-explain');
@@ -11435,7 +11434,7 @@ sub new {
    }
 
    my $self = {
-      instrument        => 0,
+      instrument        => PTDEBUG,
       continue_on_error => 0,
 
       %args,
@@ -13190,13 +13189,7 @@ sub main {
       stats => \%stats,
    };
 
-   # Enable timings to instrument code for either of these two opts.
-   # Else, don't instrument to avoid cost of measurement.
-   my $instrument = $o->get('pipeline-profile');
-   PTDEBUG && _d('Instrument:', $instrument);
-
    my $pipeline = new Pipeline(
-      instrument        => $instrument,
       continue_on_error => $o->get('continue-on-error'),
    );
 
@@ -13666,7 +13659,38 @@ sub main {
                   print "\n# No events processed.\n";
                }
 
-               if ( $o->get('statistics') ) {
+               if ( PTDEBUG ) {
+                  # Print statistics about internal counters.  This option is mostly for
+                  # development and debugging.  The statistics report is printed for each
+                  # iteration after all other reports, even if no events are processed or
+                  # C<--no-report> is specified.  The statistics report looks like:
+
+                     # No events processed.
+
+                     # Statistic                                        Count  %/Events
+                     # ================================================ ====== ========
+                     # events_read                                      142030   100.00
+                     # events_parsed                                     50430    35.51
+                     # events_aggregated                                     0     0.00
+                     # ignored_midstream_server_response                 18111    12.75
+                     # no_tcp_data                                       91600    64.49
+                     # pipeline_restarted_after_MemcachedProtocolParser 142030   100.00
+                     # pipeline_restarted_after_TcpdumpParser                1     0.00
+                     # unknown_client_command                                1     0.00
+                     # unknown_client_data                               32318    22.75
+
+                  # The first column is the internal counter name; the second column is counter's
+                  # count; and the third column is the count as a percentage of C<events_read>.
+
+                  # In this case, it shows why no events were processed/aggregated: 100% of events
+                  # were rejected by the C<MemcachedProtocolParser>.  Of those, 35.51% were data
+                  # packets, but of these 12.75% of ignored mid-stream server response, one was
+                  # an unknown client command, and 22.75% were unknown client data.  The other
+                  # 64.49% were TCP control packets (probably most ACKs).
+
+                  # Since pt-query-digest is complex, you will probably need someone familiar
+                  # with its code to decipher the statistics report.
+
                   if ( keys %stats ) {
                      my $report = new ReportFormatter(
                         line_width => 74,
@@ -14236,7 +14260,7 @@ sub print_reports {
 
    } # Each groupby
 
-   if ( $o->get('pipeline-profile') ) {
+   if ( PTDEBUG ) {
       my $report = new ReportFormatter(
          line_width => 74,
       );
@@ -14257,7 +14281,7 @@ sub print_reports {
       # Reset profile for next iteration.
       $pipeline->reset();
 
-      print "\n" . $report->get_report();
+      _d($report->get_report());
    }
 
    return;
@@ -14744,7 +14768,6 @@ that follows.  It contains the following columns:
  Calls         The number of times this query was executed
  R/Call        The mean response time per execution
  V/M           The Variance-to-mean ratio of response time
- EXPLAIN       If --explain was specified, a sparkline; see --explain
  Item          The distilled query
 
 A final line whose rank is shown as MISC contains aggregate statistics on the
@@ -14857,12 +14880,6 @@ above, and something like the following:
   tail -c +<offset> /path/to/file | head
 
 See also L<"--report-format">.
-
-=head2 SPARKLINES
-
-The output also contains sparklines.  Sparklines are "data-intense,
-design-simple, word-sized graphics" (L<http://en.wikipedia.org/wiki/Sparkline>).There is a sparkline for L<"--report-histogram"> and for L<"--explain">.
-See each of those options for details about interpreting their sparklines.
 
 =head1 QUERY REVIEWS
 
@@ -15205,40 +15222,9 @@ be EXPLAINed.  Those are typically "derived table" queries of the form
 
   select ... from ( select .... ) der;
 
-The EXPLAIN results are printed in three places: a sparkline in the event
-header, a full vertical format in the event report, and a sparkline in the
-profile.
-
-The full format appears at the end of each event report in vertical style
+The EXPLAIN results are printed as a full vertical format in the event report,
+which appears at the end of each event report in vertical style
 (C<\G>) just like MySQL prints it.
-
-The sparklines (see L<"SPARKLINES">) are compact representations of the
-access type for each table and whether or not "Using temporary" or "Using
-filesort" appear in EXPLAIN.  The sparklines look like:
-
-  nr>TF
-
-That sparkline means that there are two tables, the first uses a range (n)
-access, the second uses a ref access, and both "Using temporary" (T) and
-"Using filesort" (F) appear.  The greater-than character just separates table
-access codes from T and/or F.
-
-The abbreviated table access codes are:
-
-  a  ALL
-  c  const
-  e  eq_ref
-  f  fulltext
-  i  index
-  m  index_merge
-  n  range
-  o  ref_or_null
-  r  ref
-  s  system
-  u  unique_subquery
-
-A capitalized access code means that "Using index" appears in EXPLAIN for
-that table.
 
 =item --filter
 
@@ -15328,11 +15314,6 @@ check both.
 
 Since L<"--filter"> allows you to alter C<$event>, you can use it to do other
 things, like create new attributes.  See L<"ATTRIBUTES"> for an example.
-
-=item --fingerprints
-
-Add query fingerprints to the standard query analysis report.  This is mostly
-useful for debugging purposes.
 
 =item --[no]for-explain
 
@@ -15546,10 +15527,6 @@ daemonized instance exits.  The program checks for the existence of the
 PID file when starting; if it exists and the process with the matching PID
 exists, the program exits.
 
-=item --pipeline-profile
-
-Print a profile of the pipeline processes.
-
 =item --port
 
 short form: -P; type: int
@@ -15658,24 +15635,6 @@ like:
   # 100ms  ################################################################
   #    1s  ########
   #  10s+
-
-A sparkline (see L<"SPARKLINES">) of the full chart is also printed in the
-header for each query event.  The sparkline of that full chart is:
-
-  # Query_time sparkline: |    .^_ |
-
-The sparkline itself is the 8 characters between the pipes (C<|>), one character
-for each of the 8 buckets (1us, 10us, etc.)  Four character codes are used
-to represent the approximate relation between each bucket's value:
-
-  _ . - ^
-
-The caret C<^> represents peaks (buckets with the most values), and
-the underscore C<_> represents lows (buckets with the least or at least
-one value).  The period C<.> and the hyphen C<-> represent buckets with values
-between these two extremes.  If a bucket has no values, a space is printed.
-So in the example above, the period represents the 10ms bucket, the caret
-the 100ms bucket, and the underscore the 1s bucket.
 
 See L<"OUTPUT"> for more information.
 
@@ -16059,39 +16018,6 @@ See also L<"--until">.
 short form: -S; type: string
 
 Socket file to use for connection.
-
-=item --statistics
-
-Print statistics about internal counters.  This option is mostly for
-development and debugging.  The statistics report is printed for each
-iteration after all other reports, even if no events are processed or
-C<--no-report> is specified.  The statistics report looks like:
-
-   # No events processed.
-
-   # Statistic                                        Count  %/Events
-   # ================================================ ====== ========
-   # events_read                                      142030   100.00
-   # events_parsed                                     50430    35.51
-   # events_aggregated                                     0     0.00
-   # ignored_midstream_server_response                 18111    12.75
-   # no_tcp_data                                       91600    64.49
-   # pipeline_restarted_after_MemcachedProtocolParser 142030   100.00
-   # pipeline_restarted_after_TcpdumpParser                1     0.00
-   # unknown_client_command                                1     0.00
-   # unknown_client_data                               32318    22.75
-
-The first column is the internal counter name; the second column is counter's
-count; and the third column is the count as a percentage of C<events_read>.
-
-In this case, it shows why no events were processed/aggregated: 100% of events
-were rejected by the C<MemcachedProtocolParser>.  Of those, 35.51% were data
-packets, but of these 12.75% of ignored mid-stream server response, one was
-an unknown client command, and 22.75% were unknown client data.  The other
-64.49% were TCP control packets (probably most ACKs).
-
-Since pt-query-digest is complex, you will probably need someone familiar
-with its code to decipher the statistics report.
 
 =item --table-access
 
