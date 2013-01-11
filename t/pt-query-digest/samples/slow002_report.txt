@@ -1,7 +1,6 @@
 
 # Query 1: 0 QPS, 0x concurrency, ID 0x66825DDC008FFA89 at byte 338 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |     ^  |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -43,7 +42,6 @@ select  n.column1 = a.column1, n.word3 = a.word3 from db2.tuningdetail_21_265507
 
 # Query 2: 0 QPS, 0x concurrency, ID 0x0FFE94ABA6A2A9E8 at byte 1334 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |    ^   |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -86,7 +84,6 @@ select     vab3concept1id = '91848182522' from db4.vab3concept1upload where   va
 
 # Query 3: 0 QPS, 0x concurrency, ID 0xB211BA2B8D6D065C at byte 3374 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |  ^     |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -128,7 +125,6 @@ select     biz = '91848182522' from foo.bar \G
 
 # Query 4: 0 QPS, 0x concurrency, ID 0x6969975466519B81 at byte 2861 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |  ^     |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -171,7 +167,6 @@ select     boop='bop: 899' from bizzle.bat where   fillze='899'\G
 
 # Query 5: 0 QPS, 0x concurrency, ID 0xC22D235B07D1D774 at byte 1864 _____
 # Scores: V/M = 0.00
-# Query_time sparkline: |  ^     |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -210,7 +205,6 @@ VALUES ('211', '18')\G
 
 # Query 6: 0 QPS, 0x concurrency, ID 0x7546F89214254F2F at byte 815 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |  ^     |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -249,7 +243,6 @@ VALUES ('', 'Exact')\G
 
 # Query 7: 0 QPS, 0x concurrency, ID 0x85FFF5AA78E5FF6A at byte 0 ________
 # Scores: V/M = 0.00
-# Query_time sparkline: | ^      |
 # Time range: all events occurred at 2007-12-18 11:48:27
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

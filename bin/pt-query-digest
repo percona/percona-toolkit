@@ -1768,6 +1768,9 @@ sub parse_timestamp {
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
    }
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
+   }
    return $val;
 }
 
@@ -6699,28 +6702,6 @@ sub event_report {
          );
    }
 
-   if ( $o->get('explain') && $results->{samples}->{$item}->{arg} ) {
-      eval {
-         my $sparkline = $self->explain_sparkline(
-            $results->{samples}->{$item}->{arg}, $args{db});
-         push @result, "# EXPLAIN sparkline: $sparkline\n";
-      };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
-      }
-   }
-
-   if ( my $attrib = $o->get('report-histogram') ) {
-      my $sparkline = $self->distro_sparkline(
-         %args,
-         attrib => $attrib,
-         item   => $item,
-      );
-      if ( $sparkline ) {
-         push @result, "# $attrib sparkline: |$sparkline|";
-      }
-   }
-
    if ( my $ts = $store->{ts} ) {
       my $time_range = $self->format_time_range($ts) || "unknown";
       push @result, "# Time range: $time_range";
@@ -6857,73 +6838,6 @@ sub chart_distro {
    return join("\n", @results) . "\n";
 }
 
-
-sub distro_sparkline {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(ea item attrib) ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my $ea     = $args{ea};
-   my $item   = $args{item};
-   my $attrib = $args{attrib};
-
-   my $results = $ea->results();
-   my $store   = $results->{classes}->{$item}->{$attrib};
-   my $vals    = $store->{all};
-
-   my $all_zeros_sparkline = " " x 8;
-
-   return $all_zeros_sparkline unless defined $vals && scalar %$vals;
-
-   my @buck_tens      = $ea->buckets_of(10);
-   my @distro         = map { 0 } (0 .. 7);
-   my @buckets        = map { 0 } (0..999);
-   map { $buckets[$_] = $vals->{$_} } keys %$vals;
-   $vals = \@buckets;
-   map { $distro[$buck_tens[$_]] += $vals->[$_] } (1 .. @$vals - 1);
-
-   my $vals_per_mark;
-   my $max_val        = 0;
-   my $max_disp_width = 64;
-   foreach my $n_vals ( @distro ) {
-      $max_val = $n_vals if $n_vals > $max_val;
-   }
-   $vals_per_mark = $max_val / $max_disp_width;
-
-   my ($min, $max);
-   foreach my $i ( 0 .. $#distro ) {
-      my $n_vals  = $distro[$i];
-      my $n_marks = $n_vals / ($vals_per_mark || 1);
-      $n_marks    = 1 if $n_marks < 1 && $n_vals > 0;
-
-      $min = $n_marks if $n_marks && (!$min || $n_marks < $min);
-      $max = $n_marks if !$max || $n_marks > $max;
-   }
-   return $all_zeros_sparkline unless $min && $max;
-
-
-   $min = 0 if $min == $max;
-   my @range_min;
-   my $d = floor((($max+0.00001)-$min) / 4);
-   for my $x ( 1..4 ) {
-      push @range_min, $min + ($d * $x);
-   }
-
-   my $sparkline = ""; 
-   foreach my $i ( 0 .. $#distro ) {
-      my $n_vals  = $distro[$i];
-      my $n_marks = $n_vals / ($vals_per_mark || 1);
-      $n_marks    = 1 if $n_marks < 1 && $n_vals > 0;
-      $sparkline .= $n_marks <= 0             ? ' '
-                  : $n_marks <= $range_min[0] ? '_'
-                  : $n_marks <= $range_min[1] ? '.'
-                  : $n_marks <= $range_min[2] ? '-'
-                  :                             '^';
-   }
-
-   return $sparkline;
-}
-
 sub profile {
    my ( $self, %args ) = @_;
    foreach my $arg ( qw(ea worst groupby) ) {
@@ -6959,19 +6873,6 @@ sub profile {
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
       ); 
 
-      if ( $o->get('explain') && $samp_query ) {
-         my ($default_db) = $sample->{db}       ? $sample->{db}
-                          : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
-                          :                       undef;
-         eval {
-            $profile{explain_sparkline} = $self->explain_sparkline(
-               $samp_query, $default_db);
-         };
-         if ( $EVAL_ERROR ) {
-            PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
-         }
-      }
-
       push @profiles, \%profile;
    }
 
@@ -6988,7 +6889,6 @@ sub profile {
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
       { name => 'V/M',           right_justify => 1, width => 5, },
-      ( $o->get('explain') ? { name => 'EXPLAIN' } : () ),
       { name => 'Item',                                          },
    );
    $report->set_columns(@cols);
@@ -7005,7 +6905,6 @@ sub profile {
          $item->{cnt},
          $rc,
          $vmr,
-         ( $o->get('explain') ? $item->{explain_sparkline} || "" : () ),
          $item->{sample},
       );
       $report->add_line(@vals);
@@ -7032,7 +6931,6 @@ sub profile {
          $misc->{cnt},
          $rc,
          '0.0',  # variance-to-mean ratio is not meaningful here
-         ( $o->get('explain') ? "MISC" : () ),
          "<".scalar @$other." ITEMS>",
       );
    }
@@ -7415,34 +7313,6 @@ sub format_time_range {
    }
 
    return $min && $max ? "$min to $max" : '';
-}
-
-sub explain_sparkline {
-   my ( $self, $query, $db ) = @_;
-   return unless $query;
-
-   my $q   = $self->{Quoter};
-   my $dbh = $self->{dbh};
-   my $ex  = $self->{ExplainAnalyzer};
-   return unless $dbh && $ex;
-
-   if ( $db ) {
-      PTDEBUG && _d($dbh, "USE", $db);
-      $dbh->do("USE " . $q->quote($db));
-   }
-   my $res = $ex->normalize(
-      $ex->explain_query(
-         dbh   => $dbh,
-         query => $query,
-      )
-   );
-
-   my $sparkline;
-   if ( $res ) {
-      $sparkline = $ex->sparkline(explain => $res);
-   }
-
-   return $sparkline;
 }
 
 sub _d {
@@ -11391,61 +11261,6 @@ sub fingerprint {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($explain) = @args{@required_args};
-}
-
-sub sparkline {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(explain);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($explain) = @args{@required_args};
-   PTDEBUG && _d("Making sparkline for", Dumper($explain));
-
-   my $access_code = {
-      'ALL'             => 'a',
-      'const'           => 'c',
-      'eq_ref'          => 'e',
-      'fulltext'        => 'f',
-      'index'           => 'i',
-      'index_merge'     => 'm',
-      'range'           => 'n',
-      'ref_or_null'     => 'o',
-      'ref'             => 'r',
-      'system'          => 's',
-      'unique_subquery' => 'u',
-   };
-
-   my $sparkline = '';
-   my ($T, $F);  # Using temporary, Using filesort
-
-   foreach my $tbl ( @$explain ) {
-      my $code;
-      if ( defined $tbl->{type} ) {
-         $code = $access_code->{$tbl->{type}} || "?";
-         $code = uc $code if $tbl->{Extra}->{'Using index'};
-      }
-      else {
-         $code = '-'
-      };
-      $sparkline .= $code;
-
-      $T = 1 if $tbl->{Extra}->{'Using temporary'};
-      $F = 1 if $tbl->{Extra}->{'Using filesort'};
-   }
-
-   if ( $T || $F ) {
-      if (    $explain->[-1]->{Extra}->{'Using temporary'}
-           || $explain->[-1]->{Extra}->{'Using filesort'} ) {
-         $sparkline .= ">" . ($T ? "T" : "") . ($F ? "F" : "");
-      }
-      else {
-         $sparkline = ($T ? "T" : "") . ($F ? "F" : "") . ">$sparkline";
-      }
-   }
-
-   PTDEBUG && _d("sparkline:", $sparkline);
-   return $sparkline;
 }
 
 sub _d {

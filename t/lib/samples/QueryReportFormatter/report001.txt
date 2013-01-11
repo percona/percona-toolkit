@@ -8,7 +8,6 @@
 
 # Query 1: 0 QPS, 0x concurrency, ID 0x5796997451B1FA1D at byte 123 ______
 # Scores: V/M = 0.00
-# Query_time sparkline: |      ^ |
 # Time range: all events occurred at 2007-10-15 21:43:52
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

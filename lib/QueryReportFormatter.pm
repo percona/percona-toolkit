@@ -57,7 +57,6 @@ use constant MAX_STRING_LENGTH => 10;
 #   QueryReview     - <QueryReview> object used in <query_report()>
 #   dbh             - dbh used in <explain_report()>
 #   ExplainAnalyzer - <ExplainAnalyzer> object used in <explain_report()>.
-#                     This causes a sparkline to be printed (issue 1141).
 #
 # Returns:
 #   QueryReportFormatter object
@@ -95,9 +94,7 @@ sub new {
 #   Set a report formatter object for a report.  By default this package will
 #   instantiate ReportFormatter objects to format columnized reports (e.g.
 #   for profile and prepared reports).  Setting a caller-created formatter
-#   object (usually a <ReportFormatter> obj) is used for tested and also by
-#   <mk-query-digest> to extend the profile report line width to 82 for
-#   the --explain sparkline.
+#   object (usually a <ReportFormatter> obj) is used for tests.
 #
 # Parameters:
 #   %args - Arguments
@@ -552,32 +549,6 @@ sub event_report {
          );
    }
 
-   # Fourth line: EXPLAIN sparkline if --explain.
-   if ( $o->get('explain') && $results->{samples}->{$item}->{arg} ) {
-      eval {
-         my $sparkline = $self->explain_sparkline(
-            $results->{samples}->{$item}->{arg}, $args{db});
-         push @result, "# EXPLAIN sparkline: $sparkline\n";
-      };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
-      }
-   }
-
-   if ( my $attrib = $o->get('report-histogram') ) {
-      my $sparkline = $self->distro_sparkline(
-         %args,
-         attrib => $attrib,
-         item   => $item,
-      );
-      if ( $sparkline ) {
-         # I find the | | bookends help make the sparkchart graph more clear.
-         # Else with just   .^-   it's difficult to tell where the chart beings
-         # or ends.
-         push @result, "# $attrib sparkline: |$sparkline|";
-      }
-   }
-
    # Last line before column headers: time range
    if ( my $ts = $store->{ts} ) {
       my $time_range = $self->format_time_range($ts) || "unknown";
@@ -736,98 +707,6 @@ sub chart_distro {
    return join("\n", @results) . "\n";
 }
 
-
-# Sub: distro_sparkline
-#   Make a sparkline of the <chart_distro()> graph.  The following
-#   character codes are used: _.-^  If a bucket doesn't have a value, a
-#   space is used.  So _ buckets are the lowest lines on the full graph
-#   (<chart_distro()>), and ^ are the peaks on the full graph.  See
-#   QueryReportFormatter.t for several examples.
-#
-#   This sub isn't the most optimized.  The first half is the same code
-#   as <chart_distro()>.  Then the latter code, unique to this sub,
-#   essentially compresses the full chart further into 8 characters using
-#   the 4 char codes above.
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   ea     - <EventAggregator> object
-#   item   - Item in results to chart
-#   attrib - Attribute of item to chart
-#
-# Returns:
-#   Sparkchart string
-sub distro_sparkline {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(ea item attrib) ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my $ea     = $args{ea};
-   my $item   = $args{item};
-   my $attrib = $args{attrib};
-
-   my $results = $ea->results();
-   my $store   = $results->{classes}->{$item}->{$attrib};
-   my $vals    = $store->{all};
-
-   my $all_zeros_sparkline = " " x 8;
-
-   return $all_zeros_sparkline unless defined $vals && scalar %$vals;
-
-   my @buck_tens      = $ea->buckets_of(10);
-   my @distro         = map { 0 } (0 .. 7);
-   my @buckets        = map { 0 } (0..999);
-   map { $buckets[$_] = $vals->{$_} } keys %$vals;
-   $vals = \@buckets;
-   map { $distro[$buck_tens[$_]] += $vals->[$_] } (1 .. @$vals - 1);
-
-   my $vals_per_mark;
-   my $max_val        = 0;
-   my $max_disp_width = 64;
-   foreach my $n_vals ( @distro ) {
-      $max_val = $n_vals if $n_vals > $max_val;
-   }
-   $vals_per_mark = $max_val / $max_disp_width;
-
-   my ($min, $max);
-   foreach my $i ( 0 .. $#distro ) {
-      my $n_vals  = $distro[$i];
-      my $n_marks = $n_vals / ($vals_per_mark || 1);
-      $n_marks    = 1 if $n_marks < 1 && $n_vals > 0;
-
-      $min = $n_marks if $n_marks && (!$min || $n_marks < $min);
-      $max = $n_marks if !$max || $n_marks > $max;
-   }
-   return $all_zeros_sparkline unless $min && $max;
-
-   # That ^ code is mostly the same as chart_distro().  Now here's
-   # our own unique code.
-
-   # Divide the range by 4 because there are 4 char codes: _.-^
-   $min = 0 if $min == $max;
-   my @range_min;
-   my $d = floor((($max+0.00001)-$min) / 4);
-   for my $x ( 1..4 ) {
-      push @range_min, $min + ($d * $x);
-   }
-
-   my $sparkline = ""; 
-   foreach my $i ( 0 .. $#distro ) {
-      my $n_vals  = $distro[$i];
-      my $n_marks = $n_vals / ($vals_per_mark || 1);
-      $n_marks    = 1 if $n_marks < 1 && $n_vals > 0;
-      $sparkline .= $n_marks <= 0             ? ' '
-                  : $n_marks <= $range_min[0] ? '_'
-                  : $n_marks <= $range_min[1] ? '.'
-                  : $n_marks <= $range_min[2] ? '-'
-                  :                             '^';
-   }
-
-   return $sparkline;
-}
-
 # Profile subreport (issue 381).
 # Arguments:
 #   * ea            obj: EventAggregator
@@ -873,20 +752,6 @@ sub profile {
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
       ); 
 
-      # Get EXPLAIN sparkline if --explain.
-      if ( $o->get('explain') && $samp_query ) {
-         my ($default_db) = $sample->{db}       ? $sample->{db}
-                          : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
-                          :                       undef;
-         eval {
-            $profile{explain_sparkline} = $self->explain_sparkline(
-               $samp_query, $default_db);
-         };
-         if ( $EVAL_ERROR ) {
-            PTDEBUG && _d("Failed to get EXPLAIN sparkline:", $EVAL_ERROR);
-         }
-      }
-
       push @profiles, \%profile;
    }
 
@@ -903,7 +768,6 @@ sub profile {
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
       { name => 'V/M',           right_justify => 1, width => 5, },
-      ( $o->get('explain') ? { name => 'EXPLAIN' } : () ),
       { name => 'Item',                                          },
    );
    $report->set_columns(@cols);
@@ -920,7 +784,6 @@ sub profile {
          $item->{cnt},
          $rc,
          $vmr,
-         ( $o->get('explain') ? $item->{explain_sparkline} || "" : () ),
          $item->{sample},
       );
       $report->add_line(@vals);
@@ -949,7 +812,6 @@ sub profile {
          $misc->{cnt},
          $rc,
          '0.0',  # variance-to-mean ratio is not meaningful here
-         ( $o->get('explain') ? "MISC" : () ),
          "<".scalar @$other." ITEMS>",
       );
    }
@@ -1378,34 +1240,6 @@ sub format_time_range {
    }
 
    return $min && $max ? "$min to $max" : '';
-}
-
-sub explain_sparkline {
-   my ( $self, $query, $db ) = @_;
-   return unless $query;
-
-   my $q   = $self->{Quoter};
-   my $dbh = $self->{dbh};
-   my $ex  = $self->{ExplainAnalyzer};
-   return unless $dbh && $ex;
-
-   if ( $db ) {
-      PTDEBUG && _d($dbh, "USE", $db);
-      $dbh->do("USE " . $q->quote($db));
-   }
-   my $res = $ex->normalize(
-      $ex->explain_query(
-         dbh   => $dbh,
-         query => $query,
-      )
-   );
-
-   my $sparkline;
-   if ( $res ) {
-      $sparkline = $ex->sparkline(explain => $res);
-   }
-
-   return $sparkline;
 }
 
 sub _d {
