@@ -391,7 +391,6 @@ ok(
 
 # #############################################################################
 # Issue 1124: Make mk-query-digest profile include variance-to-mean ratio
-# Issue 1054: Add Apdex scores to mk-query-digest report
 # #############################################################################
 ok(
    no_diff(
@@ -399,14 +398,6 @@ ok(
       "t/pt-query-digest/samples/slow052.txt",
    ),
    'Analysis for slow052 (Apdex and V/M)',
-);
-
-ok(
-   no_diff(
-      sub { pt_query_digest::main(@args, qw(--apdex-t 0.1), '--report-format', 'query_report,profile',  $sample.'slow052.txt') },
-      "t/pt-query-digest/samples/slow052-apdex-t-0.1.txt",
-   ),
-   'Analysis for slow052 (Apdex T = 0.1)',
 );
 
 # #############################################################################

@@ -16,7 +16,7 @@
 
 # Query 1: 0 QPS, 0x concurrency, ID 0xF25D6D5AC7C18FF3 at byte 381 ______
 # This item is included in the report because it matches --limit.
-# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Scores: V/M = 0.00
 # Query_time sparkline: |        |
 # Time range: all events occurred at 2009-07-22 07:21:59
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -45,7 +45,7 @@ create database d\G
 
 # Query 2: 0 QPS, 0x concurrency, ID 0x03409022EB8A4AE7 at byte 795 ______
 # This item is included in the report because it matches --limit.
-# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Scores: V/M = 0.00
 # Query_time sparkline: |        |
 # Time range: all events occurred at 2009-07-22 07:22:16
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -72,7 +72,7 @@ create table foo (i int)\G
 
 # Query 3: 0 QPS, 0x concurrency, ID 0xF579EC4A9633EEA0 at byte 973 ______
 # This item is included in the report because it matches --limit.
-# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
+# Scores: V/M = 0.00
 # Query_time sparkline: |        |
 # Time range: all events occurred at 2009-07-22 07:22:24
 # Attribute    pct   total     min     max     avg     95%  stddev  median
@@ -95,8 +95,8 @@ create table foo (i int)\G
 insert foo values (1) /*... omitted ...*/\G
 
 # Profile
-# Rank Query ID           Response time Calls R/Call Apdx V/M   Item
-# ==== ================== ============= ===== ====== ==== ===== ==========
-#    1 0xF25D6D5AC7C18FF3  0.0000  0.0%     1 0.0000 1.00  0.00 CREATE DATABASE d
-#    2 0x03409022EB8A4AE7  0.0000  0.0%     1 0.0000 1.00  0.00 CREATE TABLE foo
-#    3 0xF579EC4A9633EEA0  0.0000  0.0%     1 0.0000 1.00  0.00 INSERT
+# Rank Query ID           Response time Calls R/Call V/M   Item
+# ==== ================== ============= ===== ====== ===== ===============
+#    1 0xF25D6D5AC7C18FF3  0.0000  0.0%     1 0.0000  0.00 CREATE DATABASE d
+#    2 0x03409022EB8A4AE7  0.0000  0.0%     1 0.0000  0.00 CREATE TABLE foo
+#    3 0xF579EC4A9633EEA0  0.0000  0.0%     1 0.0000  0.00 INSERT

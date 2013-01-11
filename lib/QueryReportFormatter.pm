@@ -542,15 +542,12 @@ sub event_report {
             . ($args{reason} eq 'top' ? '--limit.' : '--outliers.');
    }
 
-   # Third line: Apdex and variance-to-mean (V/M) ratio, like:
-   # Scores: Apdex = 0.93 [1.0], V/M = 1.5
+   # Third line: Variance-to-mean (V/M) ratio, like:
+   # Scores: V/M = 1.5
    {
       my $query_time = $ea->metrics(where => $item, attrib => 'Query_time');
       push @result,
-         sprintf("# Scores: Apdex = %s [%3.1f]%s, V/M = %.2f",
-            (defined $query_time->{apdex} ? "$query_time->{apdex}" : "NS"),
-            ($query_time->{apdex_t} || 0),
-            ($query_time->{cnt} < 100 ? "*" : ""),
+         sprintf("# Scores: V/M = %.2f",
             ($query_time->{stddev}**2 / ($query_time->{avg} || 1)),
          );
    }
@@ -874,7 +871,6 @@ sub profile {
                     $qr->distill($samp_query, %{$args{distill_args}}) : $item,
          id     => $groupby eq 'fingerprint' ? make_checksum($item)   : '',
          vmr    => ($query_time->{stddev}**2) / ($query_time->{avg} || 1),
-         apdex  => defined $query_time->{apdex} ? $query_time->{apdex} : "NS",
       ); 
 
       # Get EXPLAIN sparkline if --explain.
@@ -906,7 +902,6 @@ sub profile {
       { name => 'Response time', right_justify => 1,             },
       { name => 'Calls',         right_justify => 1,             },
       { name => 'R/Call',        right_justify => 1,             },
-      { name => 'Apdx',          right_justify => 1, width => 4, },
       { name => 'V/M',           right_justify => 1, width => 5, },
       ( $o->get('explain') ? { name => 'EXPLAIN' } : () ),
       { name => 'Item',                                          },
@@ -924,7 +919,6 @@ sub profile {
          "$rt $rtp",
          $item->{cnt},
          $rc,
-         $item->{apdex},
          $vmr,
          ( $o->get('explain') ? $item->{explain_sparkline} || "" : () ),
          $item->{sample},
@@ -954,7 +948,6 @@ sub profile {
          "$rt $rtp",
          $misc->{cnt},
          $rc,
-         'NS',   # Apdex is not meaningful here
          '0.0',  # variance-to-mean ratio is not meaningful here
          ( $o->get('explain') ? "MISC" : () ),
          "<".scalar @$other." ITEMS>",
