@@ -14,6 +14,7 @@ use warnings FATAL => 'all';
 BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
+      Mo
       DSNParser
       Quoter
       OptionParser
@@ -29,6 +30,7 @@ BEGIN {
       EventAggregator
       ReportFormatter
       QueryReportFormatter
+      JSONReportFormatter
       EventTimeline
       QueryParser
       TableParser
@@ -44,7 +46,6 @@ BEGIN {
       MasterSlave
       Progress
       FileIterator
-      ExplainAnalyzer
       Runtime
       Pipeline
       VersionCheck
@@ -69,6 +70,468 @@ our $VERSION = '2.1.7';
 }
 # ###########################################################################
 # End Percona::Toolkit package
+# ###########################################################################
+
+# ###########################################################################
+# Mo package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Mo.pm
+#   t/lib/Mo.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+BEGIN {
+$INC{"Mo.pm"} = __FILE__;
+package Mo;
+our $VERSION = '0.30_Percona'; # Forked from 0.30 of Mo.
+
+{
+   no strict 'refs';
+   sub _glob_for {
+      return \*{shift()}
+   }
+
+   sub _stash_for {
+      return \%{ shift() . "::" };
+   }
+}
+
+use strict;
+use warnings qw( FATAL all );
+
+use Carp ();
+use Scalar::Util qw(looks_like_number blessed);
+
+
+our %TYPES = (
+   Bool   => sub { !$_[0] || (defined $_[0] && looks_like_number($_[0]) && $_[0] == 1) },
+   Num    => sub { defined $_[0] && looks_like_number($_[0]) },
+   Int    => sub { defined $_[0] && looks_like_number($_[0]) && $_[0] == int($_[0]) },
+   Str    => sub { defined $_[0] },
+   Object => sub { defined $_[0] && blessed($_[0]) },
+   FileHandle => sub { local $@; require IO::Handle; fileno($_[0]) && $_[0]->opened },
+
+   map {
+      my $type = /R/ ? $_ : uc $_;
+      $_ . "Ref" => sub { ref $_[0] eq $type }
+   } qw(Array Code Hash Regexp Glob Scalar)
+);
+
+our %metadata_for;
+{
+   package Mo::Object;
+
+   sub new {
+      my $class = shift;
+      my $args  = $class->BUILDARGS(@_);
+
+      my @args_to_delete;
+      while ( my ($attr, $meta) = each %{$metadata_for{$class}} ) {
+         next unless exists $meta->{init_arg};
+         my $init_arg = $meta->{init_arg};
+
+         if ( defined $init_arg ) {
+            $args->{$attr} = delete $args->{$init_arg};
+         }
+         else {
+            push @args_to_delete, $attr;
+         }
+      }
+
+      delete $args->{$_} for @args_to_delete;
+
+      for my $attribute ( keys %$args ) {
+         if ( my $coerce = $metadata_for{$class}{$attribute}{coerce} ) {
+            $args->{$attribute} = $coerce->($args->{$attribute});
+         }
+         if ( my $I = $metadata_for{$class}{$attribute}{isa} ) {
+            ( (my $I_name), $I ) = @{$I};
+            Mo::_check_type_constaints($attribute, $I, $I_name, $args->{$attribute});
+         }
+      }
+
+      while ( my ($attribute, $meta) = each %{$metadata_for{$class}} ) {
+         next unless $meta->{required};
+         Carp::confess("Attribute ($attribute) is required for $class")
+            if ! exists $args->{$attribute}
+      }
+
+      @_ = %$args;
+      my $self = bless $args, $class;
+
+      my @build_subs;
+      my $linearized_isa = mro::get_linear_isa($class);
+
+      for my $isa_class ( @$linearized_isa ) {
+         unshift @build_subs, *{ Mo::_glob_for "${isa_class}::BUILD" }{CODE};
+      }
+      exists &$_ && $_->( $self, @_ ) for grep { defined } @build_subs;
+      return $self;
+   }
+
+   sub BUILDARGS {
+      shift;
+      my $ref;
+      if ( @_ == 1 && ref($_[0]) ) {
+         Carp::confess("Single parameters to new() must be a HASH ref")
+            unless ref($_[0]) eq ref({});
+         $ref = {%{$_[0]}} # We want a new reference, always
+      }
+      else {
+         $ref = { @_ };
+      }
+      return $ref;
+   }
+}
+
+my %export_for;
+sub Mo::import {
+    warnings->import(qw(FATAL all));
+    strict->import();
+    
+    my $caller     = scalar caller(); # Caller's package
+    my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
+    my (%exports, %options);
+
+    my (undef, @features) = @_;
+    my %ignore = ( map { $_ => 1 } qw( is isa init_arg builder buildargs clearer predicate build handles default required ) );
+    for my $feature (grep { !$ignore{$_} } @features) {
+      { local $@; require "Mo/$feature.pm"; }
+      {
+         no strict 'refs';
+         &{"Mo::${feature}::e"}(
+                  $caller_pkg,
+                  \%exports,
+                  \%options,
+                  \@_
+            );
+      }
+    }
+
+    return if $exports{M}; 
+
+    %exports = (
+        extends => sub {
+            for my $class ( map { "$_" } @_ ) {
+               $class =~ s{::|'}{/}g;
+               { local $@; eval { require "$class.pm" } } # or warn $@;
+            }
+            _set_package_isa($caller, @_);
+            _set_inherited_metadata($caller);
+        },
+        override => \&override,
+        has => sub {
+            my $names = shift;
+            for my $attribute ( ref $names ? @$names : $names ) {
+               my %args   = @_;
+               my $method = ($args{is} || '') eq 'ro'
+                  ? sub {
+                     Carp::confess("Cannot assign a value to a read-only accessor at reader ${caller_pkg}${attribute}")
+                        if $#_;
+                     return $_[0]{$attribute};
+                  }
+                  : sub {
+                     return $#_
+                           ? $_[0]{$attribute} = $_[1]
+                           : $_[0]{$attribute};
+                  };
+
+               $metadata_for{$caller}{$attribute} = ();
+
+               if ( my $I = $args{isa} ) {
+                  my $orig_I = $I;
+                  my $type;
+                  if ( $I =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+                     $I = _nested_constraints($attribute, $1, $2);
+                  }
+                  $metadata_for{$caller}{$attribute}{isa} = [$orig_I, $I];
+                  my $orig_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        Mo::_check_type_constaints($attribute, $I, $orig_I, $_[1]);
+                     }
+                     goto &$orig_method;
+                  };
+               }
+
+               if ( my $builder = $args{builder} ) {
+                  my $original_method = $method;
+                  $method = sub {
+                        $#_
+                           ? goto &$original_method
+                           : ! exists $_[0]{$attribute}
+                              ? $_[0]{$attribute} = $_[0]->$builder
+                              : goto &$original_method
+                  };
+               }
+
+               if ( my $code = $args{default} ) {
+                  Carp::confess("${caller}::${attribute}'s default is $code, but should be a coderef")
+                        unless ref($code) eq 'CODE';
+                  my $original_method = $method;
+                  $method = sub {
+                        $#_
+                           ? goto &$original_method
+                           : ! exists $_[0]{$attribute}
+                              ? $_[0]{$attribute} = $_[0]->$code
+                              : goto &$original_method
+                  };
+               }
+
+               if ( my $role = $args{does} ) {
+                  my $original_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        Carp::confess(qq<Attribute ($attribute) doesn't consume a '$role' role">)
+                           unless Scalar::Util::blessed($_[1]) && eval { $_[1]->does($role) }
+                     }
+                     goto &$original_method
+                  };
+               }
+
+               if ( my $coercion = $args{coerce} ) {
+                  $metadata_for{$caller}{$attribute}{coerce} = $coercion;
+                  my $original_method = $method;
+                  $method = sub {
+                     if ( $#_ ) {
+                        return $original_method->($_[0], $coercion->($_[1]))
+                     }
+                     goto &$original_method;
+                  }
+               }
+
+               $method = $options{$_}->($method, $attribute, @_)
+                  for sort keys %options;
+
+               *{ _glob_for "${caller}::$attribute" } = $method;
+
+               if ( $args{required} ) {
+                  $metadata_for{$caller}{$attribute}{required} = 1;
+               }
+
+               if ($args{clearer}) {
+                  *{ _glob_for "${caller}::$args{clearer}" }
+                     = sub { delete shift->{$attribute} }
+               }
+
+               if ($args{predicate}) {
+                  *{ _glob_for "${caller}::$args{predicate}" }
+                     = sub { exists shift->{$attribute} }
+               }
+
+               if ($args{handles}) {
+                  _has_handles($caller, $attribute, \%args);
+               }
+
+               if (exists $args{init_arg}) {
+                  $metadata_for{$caller}{$attribute}{init_arg} = $args{init_arg};
+               }
+            }
+        },
+        %exports,
+    );
+
+    $export_for{$caller} = [ keys %exports ];
+
+    for my $keyword ( keys %exports ) {
+      *{ _glob_for "${caller}::$keyword" } = $exports{$keyword}
+    }
+    *{ _glob_for "${caller}::extends" }{CODE}->( "Mo::Object" )
+      unless @{ *{ _glob_for "${caller}::ISA" }{ARRAY} || [] };
+};
+
+sub _check_type_constaints {
+   my ($attribute, $I, $I_name, $val) = @_;
+   ( ref($I) eq 'CODE'
+      ? $I->($val)
+      : (ref $val eq $I
+         || ($val && $val eq $I)
+         || (exists $TYPES{$I} && $TYPES{$I}->($val)))
+   )
+   || Carp::confess(
+         qq<Attribute ($attribute) does not pass the type constraint because: >
+      . qq<Validation failed for '$I_name' with value >
+      . (defined $val ? Mo::Dumper($val) : 'undef') )
+}
+
+sub _has_handles {
+   my ($caller, $attribute, $args) = @_;
+   my $handles = $args->{handles};
+
+   my $ref = ref $handles;
+   my $kv;
+   if ( $ref eq ref [] ) {
+         $kv = { map { $_,$_ } @{$handles} };
+   }
+   elsif ( $ref eq ref {} ) {
+         $kv = $handles;
+   }
+   elsif ( $ref eq ref qr// ) {
+         Carp::confess("Cannot delegate methods based on a Regexp without a type constraint (isa)")
+            unless $args->{isa};
+         my $target_class = $args->{isa};
+         $kv = {
+            map   { $_, $_     }
+            grep  { $_ =~ $handles }
+            grep  { !exists $Mo::Object::{$_} && $target_class->can($_) }
+            grep  { $_ ne 'has' && $_ ne 'extends' }
+            keys %{ _stash_for $target_class }
+         };
+   }
+   else {
+         Carp::confess("handles for $ref not yet implemented");
+   }
+
+   while ( my ($method, $target) = each %{$kv} ) {
+         my $name = _glob_for "${caller}::$method";
+         Carp::confess("You cannot overwrite a locally defined method ($method) with a delegation")
+            if defined &$name;
+
+         my ($target, @curried_args) = ref($target) ? @$target : $target;
+         *$name = sub {
+            my $self        = shift;
+            my $delegate_to = $self->$attribute();
+            my $error = "Cannot delegate $method to $target because the value of $attribute";
+            Carp::confess("$error is not defined") unless $delegate_to;
+            Carp::confess("$error is not an object (got '$delegate_to')")
+               unless Scalar::Util::blessed($delegate_to) || (!ref($delegate_to) && $delegate_to->can($target));
+            return $delegate_to->$target(@curried_args, @_);
+         }
+   }
+}
+
+sub _nested_constraints {
+   my ($attribute, $aggregate_type, $type) = @_;
+
+   my $inner_types;
+   if ( $type =~ /\A(ArrayRef|Maybe)\[(.*)\]\z/ ) {
+      $inner_types = _nested_constraints($1, $2);
+   }
+   else {
+      $inner_types = $TYPES{$type};
+   }
+
+   if ( $aggregate_type eq 'ArrayRef' ) {
+      return sub {
+         my ($val) = @_;
+         return unless ref($val) eq ref([]);
+
+         if ($inner_types) {
+            for my $value ( @{$val} ) {
+               return unless $inner_types->($value) 
+            }
+         }
+         else {
+            for my $value ( @{$val} ) {
+               return unless $value && ($value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type)));
+            }
+         }
+         return 1;
+      };
+   }
+   elsif ( $aggregate_type eq 'Maybe' ) {
+      return sub {
+         my ($value) = @_;
+         return 1 if ! defined($value);
+         if ($inner_types) {
+            return unless $inner_types->($value) 
+         }
+         else {
+            return unless $value eq $type
+                        || (Scalar::Util::blessed($value) && $value->isa($type));
+         }
+         return 1;
+      }
+   }
+   else {
+      Carp::confess("Nested aggregate types are only implemented for ArrayRefs and Maybe");
+   }
+}
+
+sub _set_package_isa {
+   my ($package, @new_isa) = @_;
+
+   *{ _glob_for "${package}::ISA" } = [@new_isa];
+}
+
+sub _set_inherited_metadata {
+   my $class = shift;
+   my $linearized_isa = mro::get_linear_isa($class);
+   my %new_metadata;
+
+   for my $isa_class (reverse @$linearized_isa) {
+      %new_metadata = (
+         %new_metadata,
+         %{ $metadata_for{$isa_class} || {} },
+      );
+   }
+   $metadata_for{$class} = \%new_metadata;
+}
+
+sub unimport {
+   my $caller = scalar caller();
+   my $stash  = _stash_for( $caller );
+
+   delete $stash->{$_} for @{$export_for{$caller}};
+}
+
+sub Dumper {
+   require Data::Dumper;
+   local $Data::Dumper::Indent    = 0;
+   local $Data::Dumper::Sortkeys  = 0;
+   local $Data::Dumper::Quotekeys = 0;
+   local $Data::Dumper::Terse     = 1;
+
+   Data::Dumper::Dumper(@_)
+}
+
+BEGIN {
+   if ($] >= 5.010) {
+      { local $@; require mro; }
+   }
+   else {
+      local $@;
+      eval {
+         require MRO::Compat;
+      } or do {
+         *mro::get_linear_isa = *mro::get_linear_isa_dfs = sub {
+            no strict 'refs';
+
+            my $classname = shift;
+
+            my @lin = ($classname);
+            my %stored;
+            foreach my $parent (@{"$classname\::ISA"}) {
+               my $plin = mro::get_linear_isa_dfs($parent);
+               foreach (@$plin) {
+                     next if exists $stored{$_};
+                     push(@lin, $_);
+                     $stored{$_} = 1;
+               }
+            }
+            return \@lin;
+         };
+      }
+   }
+}
+
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
+   }
+}
+
+}
+1;
+}
+# ###########################################################################
+# End Mo package
 # ###########################################################################
 
 # ###########################################################################
@@ -5939,8 +6402,7 @@ sub _d {
 {
 package ReportFormatter;
 
-use strict;
-use warnings FATAL => 'all';
+use Mo;
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -5950,40 +6412,102 @@ use POSIX qw(ceil);
 eval { require Term::ReadKey };
 my $have_term = $EVAL_ERROR ? 0 : 1;
 
-sub new {
-   my ( $class, %args ) = @_;
-   my @required_args = qw();
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $self = {
-      underline_header     => 1,
-      line_prefix          => '# ',
-      line_width           => 78,
-      column_spacing       => ' ',
-      extend_right         => 0,
-      truncate_line_mark   => '...',
-      column_errors        => 'warn',
-      truncate_header_side => 'left',
-      strip_whitespace     => 1,
-      %args,              # args above can be overriden, args below cannot
-      n_cols              => 0,
-   };
 
-   if ( ($self->{line_width} || '') eq 'auto' ) {
+has underline_header => (
+   is      => 'ro',
+   isa     => 'Bool',
+   default => sub { 1 },
+);
+has line_prefix => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { '# ' },
+);
+has line_width => (
+   is      => 'ro',
+   isa     => 'Int',
+   default => sub { 78 },
+);
+has column_spacing => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { ' ' },
+);
+has extend_right => (
+   is      => 'ro',
+   isa     => 'Bool',
+   default => sub { '' },
+);
+has truncate_line_mark => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { '...' },
+);
+has column_errors => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { 'warn' },
+);
+has truncate_header_side => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { 'left' },
+);
+has strip_whitespace => (
+   is      => 'ro',
+   isa     => 'Bool',
+   default => sub { 1 },
+);
+has title => (
+   is        => 'rw',
+   isa       => 'Str',
+   predicate => 'has_title',
+);
+
+
+has n_cols => (
+   is      => 'rw',
+   isa     => 'Int',
+   default => sub { 0 },
+   init_arg => undef,
+);
+
+has cols => (
+   is       => 'ro',
+   isa      => 'ArrayRef',
+   init_arg => undef,
+   default  => sub { [] },
+   clearer  => 'clear_cols',
+);
+
+has lines => (
+   is       => 'ro',
+   isa      => 'ArrayRef',
+   init_arg => undef,
+   default  => sub { [] },
+   clearer  => 'clear_lines',
+);
+
+has truncate_headers => (
+   is       => 'rw',
+   isa      => 'Bool',
+   default  => sub { undef },
+   init_arg => undef,
+   clearer  => 'clear_truncate_headers',
+);
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
+
+   if ( ($args->{line_width} || '') eq 'auto' ) {
       die "Cannot auto-detect line width because the Term::ReadKey module "
          . "is not installed" unless $have_term;
-      ($self->{line_width}) = GetTerminalSize();
+      ($args->{line_width}) = GetTerminalSize();
+      PTDEBUG && _d('Line width:', $args->{line_width});
    }
-   PTDEBUG && _d('Line width:', $self->{line_width});
 
-   return bless $self, $class;
-}
-
-sub set_title {
-   my ( $self, $title ) = @_;
-   $self->{title} = $title;
-   return;
+   return $args;
 }
 
 sub set_columns {
@@ -5999,7 +6523,7 @@ sub set_columns {
       die "Column does not have a name" unless defined $col_name;
 
       if ( $col->{width} ) {
-         $col->{width_pct} = ceil(($col->{width} * 100) / $self->{line_width});
+         $col->{width_pct} = ceil(($col->{width} * 100) / $self->line_width());
          PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
             $col->{width_pct}, '%');
       }
@@ -6026,10 +6550,10 @@ sub set_columns {
 
       $col->{right_most} = 1 if $i == $#cols;
 
-      push @{$self->{cols}}, $col;
+      push @{$self->cols}, $col;
    }
 
-   $self->{n_cols} = scalar @cols;
+   $self->n_cols( scalar @cols );
 
    if ( ($used_width || 0) > 100 ) {
       die "Total width_pct for all columns is >100%";
@@ -6039,15 +6563,15 @@ sub set_columns {
       my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
       PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
          'each auto width col:', $wid_per_col, '%');
-      map { $self->{cols}->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
+      map { $self->cols->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
    }
 
-   $min_hdr_wid += ($self->{n_cols} - 1) * length $self->{column_spacing};
+   $min_hdr_wid += ($self->n_cols() - 1) * length $self->column_spacing();
    PTDEBUG && _d('min header width:', $min_hdr_wid);
-   if ( $min_hdr_wid > $self->{line_width} ) {
+   if ( $min_hdr_wid > $self->line_width() ) {
       PTDEBUG && _d('Will truncate headers because min header width',
-         $min_hdr_wid, '> line width', $self->{line_width});
-      $self->{truncate_headers} = 1;
+         $min_hdr_wid, '> line width', $self->line_width());
+      $self->truncate_headers(1);
    }
 
    return;
@@ -6056,14 +6580,14 @@ sub set_columns {
 sub add_line {
    my ( $self, @vals ) = @_;
    my $n_vals = scalar @vals;
-   if ( $n_vals != $self->{n_cols} ) {
+   if ( $n_vals != $self->n_cols() ) {
       $self->_column_error("Number of values $n_vals does not match "
-         . "number of columns $self->{n_cols}");
+         . "number of columns " . $self->n_cols());
    }
    for my $i ( 0..($n_vals-1) ) {
-      my $col   = $self->{cols}->[$i];
+      my $col   = $self->cols->[$i];
       my $val   = defined $vals[$i] ? $vals[$i] : $col->{undef_value};
-      if ( $self->{strip_whitespace} ) {
+      if ( $self->strip_whitespace() ) {
          $val =~ s/^\s+//g;
          $val =~ s/\s+$//;
          $vals[$i] = $val;
@@ -6072,7 +6596,7 @@ sub add_line {
       $col->{min_val} = min($width, ($col->{min_val} || $width));
       $col->{max_val} = max($width, ($col->{max_val} || $width));
    }
-   push @{$self->{lines}}, \@vals;
+   push @{$self->lines}, \@vals;
    return;
 }
 
@@ -6080,26 +6604,28 @@ sub get_report {
    my ( $self, %args ) = @_;
 
    $self->_calculate_column_widths();
-   $self->_truncate_headers() if $self->{truncate_headers};
+   if ( $self->truncate_headers() ) {
+      $self->_truncate_headers();
+   }
    $self->_truncate_line_values(%args);
 
    my @col_fmts = $self->_make_column_formats();
-   my $fmt      = ($self->{line_prefix} || '')
-                . join($self->{column_spacing}, @col_fmts);
+   my $fmt      = $self->line_prefix()
+                . join($self->column_spacing(), @col_fmts);
    PTDEBUG && _d('Format:', $fmt);
 
    (my $hdr_fmt = $fmt) =~ s/%([^-])/%-$1/g;
 
    my @lines;
-   push @lines, sprintf "$self->{line_prefix}$self->{title}" if $self->{title};
+   push @lines, $self->line_prefix() . $self->title() if $self->has_title();
    push @lines, $self->_truncate_line(
-         sprintf($hdr_fmt, map { $_->{name} } @{$self->{cols}}),
+         sprintf($hdr_fmt, map { $_->{name} } @{$self->cols}),
          strip => 1,
          mark  => '',
    );
 
-   if ( $self->{underline_header} ) {
-      my @underlines = map { '=' x $_->{print_width} } @{$self->{cols}};
+   if ( $self->underline_header() ) {
+      my @underlines = map { '=' x $_->{print_width} } @{$self->cols};
       push @lines, $self->_truncate_line(
          sprintf($fmt, map { $_ || '' } @underlines),
          mark  => '',
@@ -6110,19 +6636,23 @@ sub get_report {
       my $vals = $_;
       my $i    = 0;
       my @vals = map {
-            my $val = defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value};
+            my $val = defined $_ ? $_ : $self->cols->[$i++]->{undef_value};
             $val = '' if !defined $val;
             $val =~ s/\n/ /g;
             $val;
       } @$vals;
       my $line = sprintf($fmt, @vals);
-      if ( $self->{extend_right} ) {
+      if ( $self->extend_right() ) {
          $line;
       }
       else {
          $self->_truncate_line($line);
       }
-   } @{$self->{lines}};
+   } @{$self->lines};
+
+   $self->clear_cols();
+   $self->clear_lines();
+   $self->clear_truncate_headers();
 
    return join("\n", @lines) . "\n";
 }
@@ -6130,7 +6660,7 @@ sub get_report {
 sub truncate_value {
    my ( $self, $col, $val, $width, $side ) = @_;
    return $val if length $val <= $width;
-   return $val if $col->{right_most} && $self->{extend_right};
+   return $val if $col->{right_most} && $self->extend_right();
    $side  ||= $col->{truncate_side};
    my $mark = $col->{truncate_mark};
    if ( $side eq 'right' ) {
@@ -6150,8 +6680,8 @@ sub _calculate_column_widths {
    my ( $self ) = @_;
 
    my $extra_space = 0;
-   foreach my $col ( @{$self->{cols}} ) {
-      my $print_width = int($self->{line_width} * ($col->{width_pct} / 100));
+   foreach my $col ( @{$self->cols} ) {
+      my $print_width = int($self->line_width() * ($col->{width_pct} / 100));
 
       PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
          'char width:', $print_width,
@@ -6175,7 +6705,7 @@ sub _calculate_column_widths {
 
    PTDEBUG && _d('Extra space:', $extra_space);
    while ( $extra_space-- ) {
-      foreach my $col ( @{$self->{cols}} ) {
+      foreach my $col ( @{$self->cols} ) {
          if (    $col->{auto_width}
               && (    $col->{print_width} < $col->{max_val}
                    || $col->{print_width} < $col->{header_width})
@@ -6190,8 +6720,8 @@ sub _calculate_column_widths {
 
 sub _truncate_headers {
    my ( $self, $col ) = @_;
-   my $side = $self->{truncate_header_side};
-   foreach my $col ( @{$self->{cols}} ) {
+   my $side = $self->truncate_header_side();
+   foreach my $col ( @{$self->cols} ) {
       my $col_name    = $col->{name};
       my $print_width = $col->{print_width};
       next if length $col_name <= $print_width;
@@ -6204,10 +6734,10 @@ sub _truncate_headers {
 
 sub _truncate_line_values {
    my ( $self, %args ) = @_;
-   my $n_vals = $self->{n_cols} - 1;
-   foreach my $vals ( @{$self->{lines}} ) {
+   my $n_vals = $self->n_cols() - 1;
+   foreach my $vals ( @{$self->lines} ) {
       for my $i ( 0..$n_vals ) {
-         my $col   = $self->{cols}->[$i];
+         my $col   = $self->cols->[$i];
          my $val   = defined $vals->[$i] ? $vals->[$i] : $col->{undef_value};
          my $width = length $val;
 
@@ -6233,9 +6763,9 @@ sub _truncate_line_values {
 sub _make_column_formats {
    my ( $self ) = @_;
    my @col_fmts;
-   my $n_cols = $self->{n_cols} - 1;
+   my $n_cols = $self->n_cols() - 1;
    for my $i ( 0..$n_cols ) {
-      my $col = $self->{cols}->[$i];
+      my $col = $self->cols->[$i];
 
       my $width = $col->{right_most} && !$col->{right_justify} ? ''
                 : $col->{print_width};
@@ -6248,12 +6778,12 @@ sub _make_column_formats {
 
 sub _truncate_line {
    my ( $self, $line, %args ) = @_;
-   my $mark = defined $args{mark} ? $args{mark} : $self->{truncate_line_mark};
+   my $mark = defined $args{mark} ? $args{mark} : $self->truncate_line_mark();
    if ( $line ) {
       $line =~ s/\s+$// if $args{strip};
       my $len  = length($line);
-      if ( $len > $self->{line_width} ) {
-         $line  = substr($line, 0, $self->{line_width} - length $mark);
+      if ( $len > $self->line_width() ) {
+         $line  = substr($line, 0, $self->line_width() - length $mark);
          $line .= $mark if $mark;
       }
    }
@@ -6263,7 +6793,7 @@ sub _truncate_line {
 sub _column_error {
    my ( $self, $err ) = @_;
    my $msg = "Column error: $err";
-   $self->{column_errors} eq 'die' ? die $msg : warn $msg;
+   $self->column_errors() eq 'die' ? die $msg : warn $msg;
    return;
 }
 
@@ -6292,8 +6822,7 @@ sub _d {
 {
 package QueryReportFormatter;
 
-use strict;
-use warnings FATAL => 'all';
+use Mo;
 use English qw(-no_match_vars);
 use POSIX qw(floor);
 
@@ -6306,25 +6835,68 @@ use constant PTDEBUG           => $ENV{PTDEBUG} || 0;
 use constant LINE_LENGTH       => 74;
 use constant MAX_STRING_LENGTH => 10;
 
-sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(OptionParser QueryRewriter Quoter) ) {
-      die "I need a $arg argument" unless $args{$arg};
+{ local $EVAL_ERROR; eval { require Quoter } };
+{ local $EVAL_ERROR; eval { require ReportFormatter } };
+
+has Quoter => (
+   is      => 'ro',
+   isa     => 'Quoter',
+   default => sub { Quoter->new() },
+);
+
+has label_width => (
+   is      => 'ro',
+   isa     => 'Int',
+);
+
+has global_headers => (
+   is      => 'ro',
+   isa     => 'ArrayRef',
+   default => sub { [qw(    total min max avg 95% stddev median)] },
+);
+
+has event_headers => (
+   is      => 'ro',
+   isa     => 'ArrayRef',
+   default => sub { [qw(pct total min max avg 95% stddev median)] },
+);
+
+has ReportFormatter => (
+   is      => 'ro',
+   isa     => 'ReportFormatter',
+   builder => '_build_report_formatter',
+);
+
+sub _build_report_formatter {
+   return ReportFormatter->new(
+      line_width       => LINE_LENGTH,
+      extend_right     => 1,
+   );
+}
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
+
+   foreach my $arg ( qw(OptionParser QueryRewriter) ) {
+      die "I need a $arg argument" unless $args->{$arg};
    }
 
-   my $label_width = $args{label_width} || 12;
+   my $label_width = $args->{label_width} ||= 12;
    PTDEBUG && _d('Label width:', $label_width);
 
-   my $cheat_width = $label_width + 1;
-
+   my $o = delete $args->{OptionParser};
    my $self = {
-      %args,
-      label_width    => $label_width,
+      %$args,
+      options        => {
+         show_all         => $o->get('show-all'),
+         shorten          => $o->get('shorten'),
+         report_all       => $o->get('report-all'),
+         report_histogram => $o->get('report-histogram'),
+      },
       num_format     => "# %-${label_width}s %3s %7s %7s %7s %7s %7s %7s %7s",
       bool_format    => "# %-${label_width}s %3d%% yes, %3d%% no",
       string_format  => "# %-${label_width}s %s",
-      global_headers => [qw(    total min max avg 95% stddev median)],
-      event_headers  => [qw(pct total min max avg 95% stddev median)],
       hidden_attrib  => {   # Don't sort/print these attribs in the reports.
          arg         => 1, # They're usually handled specially, or not
          fingerprint => 1, # printed at all.
@@ -6332,18 +6904,7 @@ sub new {
          ts          => 1,
       },
    };
-   return bless $self, $class;
-}
-
-sub set_report_formatter {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(report formatter);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless exists $args{$arg};
-   }
-   my ($report, $formatter) = @args{@required_args};
-   $self->{formatter_for}->{$report} = $formatter;
-   return;
+   return $self;
 }
 
 sub print_reports {
@@ -6449,7 +7010,7 @@ sub header {
       shorten(scalar keys %{$results->{classes}}, d=>1_000),
       shorten($qps  || 0, d=>1_000),
       shorten($conc || 0, d=>1_000));
-   $line .= ('_' x (LINE_LENGTH - length($line) + $self->{label_width} - 12));
+   $line .= ('_' x (LINE_LENGTH - length($line) + $self->label_width() - 12));
    push @result, $line;
 
    if ( my $ts = $results->{globals}->{ts} ) {
@@ -6510,8 +7071,8 @@ sub header {
    return join("\n", map { s/\s+$//; $_ } @result) . "\n";
 }
 
-sub query_report {
-   my ( $self, %args ) = @_;
+sub query_report_values {
+   my ($self, %args) = @_;
    foreach my $arg ( qw(ea worst orderby groupby) ) {
       die "I need a $arg argument" unless defined $arg;
    }
@@ -6519,9 +7080,61 @@ sub query_report {
    my $groupby = $args{groupby};
    my $worst   = $args{worst};
 
-   my $o   = $self->{OptionParser};
-   my $q   = $self->{Quoter};
+   my $q   = $self->Quoter;
    my $qv  = $self->{QueryReview};
+   my $qr  = $self->{QueryRewriter};
+
+   my @values;
+   ITEM:
+   foreach my $top_event ( @$worst ) {
+      my $item       = $top_event->[0];
+      my $reason     = $args{explain_why} ? $top_event->[1] : '';
+      my $rank       = $top_event->[2];
+      my $stats      = $ea->results->{classes}->{$item};
+      my $sample     = $ea->results->{samples}->{$item};
+      my $samp_query = $sample->{arg} || '';
+
+      my %item_vals = (
+         item       => $item,
+         samp_query => $samp_query,
+         rank       => ($rank || 0),
+         reason     => $reason,
+      );
+
+      my $review_vals;
+      if ( $qv ) {
+         $review_vals = $qv->get_review_info($item);
+         next ITEM if $review_vals->{reviewed_by} && !$self->{options}->{report_histogram};
+         for my $col ( $qv->review_cols() ) {
+            $item_vals{review_vals}{$col} = $review_vals->{$col};
+         }
+      }
+
+      $item_vals{default_db} = $sample->{db}       ? $sample->{db}
+                              : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
+                              :                       undef;
+      $item_vals{tables} = [$self->{QueryParser}->extract_tables(
+            query      => $samp_query,
+            default_db => $item_vals{default_db},
+            Quoter     => $self->Quoter,
+         )];
+
+      if ( $samp_query && ($args{variations} && @{$args{variations}}) ) {
+         $item_vals{crc} = crc32($samp_query);
+      }
+
+      push @values, \%item_vals;
+   }
+   return \@values;
+}
+
+sub query_report {
+   my ( $self, %args ) = @_;
+
+   my $ea      = $args{ea};
+   my $groupby = $args{groupby};
+   my $report_values = $self->query_report_values(%args);
+
    my $qr  = $self->{QueryRewriter};
 
    my $report = '';
@@ -6538,52 +7151,31 @@ sub query_report {
    );
 
    ITEM:
-   foreach my $top_event ( @$worst ) {
-      my $item       = $top_event->[0];
-      my $reason     = $args{explain_why} ? $top_event->[1] : '';
-      my $rank       = $top_event->[2];
-      my $stats      = $ea->results->{classes}->{$item};
-      my $sample     = $ea->results->{samples}->{$item};
-      my $samp_query = $sample->{arg} || '';
-
-      my $review_vals;
-      if ( $qv ) {
-         $review_vals = $qv->get_review_info($item);
-         next ITEM if $review_vals->{reviewed_by} && !$o->get('report-all');
-      }
-
-      my ($default_db) = $sample->{db}       ? $sample->{db}
-                       : $stats->{db}->{unq} ? keys %{$stats->{db}->{unq}}
-                       :                       undef;
-      my @tables = $self->{QueryParser}->extract_tables(
-            query      => $samp_query,
-            default_db => $default_db,
-            Quoter     => $self->{Quoter},
-         );
-
-      $report .= "\n" if $rank > 1;  # space between each event report
+   foreach my $vals ( @$report_values ) {
+      my $item = $vals->{item};
+      $report .= "\n" if $vals->{rank} > 1;  # space between each event report
       $report .= $self->event_report(
          %args,
          item    => $item,
-         sample  => $sample,
-         rank    => $rank,
-         reason  => $reason,
+         sample  => $ea->results->{samples}->{$item},
+         rank    => $vals->{rank},
+         reason  => $vals->{reason},
          attribs => $attribs,
-         db      => $default_db,
+         db      => $vals->{default_db},
       );
 
-      if ( $o->get('report-histogram') ) {
+      if ( $self->{options}->{report_histogram} ) {
          $report .= $self->chart_distro(
             %args,
-            attrib => $o->get('report-histogram'),
-            item   => $item,
+            attrib => $self->{options}->{report_histogram},
+            item   => $vals->{item},
          );
       }
 
-      if ( $qv && $review_vals ) {
+      if ( $vals->{review_vals} ) {
          $report .= "# Review information\n";
-         foreach my $col ( $qv->review_cols() ) {
-            my $val = $review_vals->{$col};
+         foreach my $col ( keys %{$vals->{review_vals}} ) {
+            my $val = $vals->{review_vals}->{$col};
             if ( !$val || $val ne '0000-00-00 00:00:00' ) { # issue 202
                $report .= sprintf "# %13s: %-s\n", $col, ($val ? $val : '');
             }
@@ -6591,16 +7183,15 @@ sub query_report {
       }
 
       if ( $groupby eq 'fingerprint' ) {
-         $samp_query = $qr->shorten($samp_query, $o->get('shorten'))
-            if $o->get('shorten');
+         my $samp_query = $qr->shorten($vals->{samp_query}, $self->{options}->{shorten})
+            if $self->{options}->{shorten};
 
-         PTDEBUG && _d("Fingerprint\n#    $item\n");
+         PTDEBUG && _d("Fingerprint\n#    $vals->{item}\n");
 
-         $report .= $self->tables_report(@tables);
+         $report .= $self->tables_report(@{$vals->{tables}});
 
-         if ( $samp_query && ($args{variations} && @{$args{variations}}) ) {
-            my $crc = crc32($samp_query);
-            $report.= "# CRC " . ($crc ? $crc % 1_000 : "") . "\n";
+         if ( $vals->{crc} ) {
+            $report.= "# CRC " . ($vals->{crc} % 1_000) . "\n";
          }
 
          my $log_type = $args{log_type} || '';
@@ -6614,7 +7205,7 @@ sub query_report {
             }
             else {
                $report .= "# EXPLAIN /*!50100 PARTITIONS*/\n$samp_query${mark}\n"; 
-               $report .= $self->explain_report($samp_query, $default_db);
+               $report .= $self->explain_report($samp_query, $vals->{default_db});
             }
          }
          else {
@@ -6628,7 +7219,7 @@ sub query_report {
       }
       else {
          if ( $groupby eq 'tables' ) {
-            my ( $db, $tbl ) = $q->split_unquote($item);
+            my ( $db, $tbl ) = $self->Quoter->split_unquote($item);
             $report .= $self->tables_report([$db, $tbl]);
          }
          $report .= "$item\n";
@@ -6638,20 +7229,19 @@ sub query_report {
    return $report;
 }
 
-sub event_report {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(ea item orderby) ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my $ea      = $args{ea};
-   my $item    = $args{item};
+sub event_report_values {
+   my ($self, %args) = @_;
+
+   my $ea   = $args{ea};
+   my $item = $args{item};
    my $orderby = $args{orderby};
    my $results = $ea->results();
-   my $o       = $self->{OptionParser};
-   my @result;
+
+   my %vals;
 
    my $store = $results->{classes}->{$item};
-   return "# No such event $item\n" unless $store;
+
+   return unless $store;
 
    my $global_cnt = $results->{globals}->{$orderby}->{cnt};
    my $class_cnt  = $store->{$orderby}->{cnt};
@@ -6670,42 +7260,25 @@ sub event_report {
       };
    }
 
-   my $line = sprintf(
-      '# %s %d: %s QPS, %sx concurrency, ID 0x%s at byte %.f ',
-      ($ea->{groupby} eq 'fingerprint' ? 'Query' : 'Item'),
-      $args{rank} || 0,
-      shorten($qps  || 0, d=>1_000),
-      shorten($conc || 0, d=>1_000),
-      make_checksum($item),
-      $results->{samples}->{$item}->{pos_in_log} || 0,
-   );
-   $line .= ('_' x (LINE_LENGTH - length($line) + $self->{label_width} - 12));
-   push @result, $line;
-
-   if ( $args{reason} ) {
-      push @result,
-         "# This item is included in the report because it matches "
-            . ($args{reason} eq 'top' ? '--limit.' : '--outliers.');
-   }
-
-   {
+   $vals{groupby}     = $ea->{groupby};
+   $vals{qps}         = $qps  || 0;
+   $vals{concurrency} = $conc || 0;
+   $vals{checksum}    = make_checksum($item);
+   $vals{pos_in_log}  = $results->{samples}->{$item}->{pos_in_log} || 0;
+   $vals{reason}      = $args{reason};
+   $vals{variance_to_mean} = do {
       my $query_time = $ea->metrics(where => $item, attrib => 'Query_time');
-      push @result,
-         sprintf("# Scores: V/M = %.2f",
-            ($query_time->{stddev}**2 / ($query_time->{avg} || 1)),
-         );
+      $query_time->{stddev}**2 / ($query_time->{avg} || 1)
+   };
+
+   $vals{counts} = {
+      class_cnt        => $class_cnt,
+      global_cnt       => $global_cnt,
+   };
+
+   if ( my $ts = $store->{ts}) {
+      $vals{time_range} = $self->format_time_range($ts) || "unknown";
    }
-
-   if ( my $ts = $store->{ts} ) {
-      my $time_range = $self->format_time_range($ts) || "unknown";
-      push @result, "# Time range: $time_range";
-   }
-
-   push @result, $self->make_event_header();
-
-   push @result,
-      sprintf $self->{num_format}, 'Count',
-         percentage_of($class_cnt, $global_cnt), $class_cnt, map { '' } (1..8);
 
    my $attribs = $args{attribs};
    if ( !$attribs ) {
@@ -6715,10 +7288,9 @@ sub event_report {
       );
    }
 
+   $vals{attributes} = { map { $_ => [] } qw(num innodb bool string) };
+
    foreach my $type ( qw(num innodb) ) {
-      if ( $type eq 'innodb' && @{$attribs->{$type}} ) {
-         push @result, "# InnoDB:";
-      };
 
       NUM_ATTRIB:
       foreach my $attrib ( @{$attribs->{$type}} ) {
@@ -6738,15 +7310,12 @@ sub event_report {
          $pct   = percentage_of(
             $vals->{sum}, $results->{globals}->{$attrib}->{sum});
 
-         push @result,
-            sprintf $self->{num_format},
-               $self->make_label($attrib), $pct, @values;
+         push @{$vals{attributes}{$type}},
+               [ $attrib, $pct, @values ];
       }
    }
 
    if ( @{$attribs->{bool}} ) {
-      push @result, "# Boolean:";
-      my $printed_bools = 0;
       BOOL_ATTRIB:
       foreach my $attrib ( @{$attribs->{bool}} ) {
          next BOOL_ATTRIB unless exists $store->{$attrib};
@@ -6754,32 +7323,114 @@ sub event_report {
          next unless scalar %$vals;
 
          if ( $vals->{sum} > 0 ) {
-            push @result,
-               sprintf $self->{bool_format},
-                  $self->make_label($attrib), $self->bool_percents($vals);
-            $printed_bools = 1;
+            push @{$vals{attributes}{bool}},
+                  [ $attrib, $self->bool_percents($vals) ];
          }
       }
-      pop @result unless $printed_bools;
    }
 
    if ( @{$attribs->{string}} ) {
-      push @result, "# String:";
-      my $printed_strings = 0;
       STRING_ATTRIB:
       foreach my $attrib ( @{$attribs->{string}} ) {
          next STRING_ATTRIB unless exists $store->{$attrib};
          my $vals = $store->{$attrib};
          next unless scalar %$vals;
 
+         push @{$vals{attributes}{string}},
+               [ $attrib, $vals ];
+      }
+   }
+
+
+   return \%vals;
+}
+
+
+sub event_report {
+   my ( $self, %args ) = @_;
+   foreach my $arg ( qw(ea item orderby) ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+
+   my $item = $args{item};
+   my $val  = $self->event_report_values(%args);
+   my @result;
+
+   return "# No such event $item\n" unless $val;
+
+   my $line = sprintf(
+      '# %s %d: %s QPS, %sx concurrency, ID 0x%s at byte %.f ',
+      ($val->{groupby} eq 'fingerprint' ? 'Query' : 'Item'),
+      $args{rank} || 0,
+      shorten($val->{qps}, d=>1_000),
+      shorten($val->{concurrency}, d=>1_000),
+      $val->{checksum},
+      $val->{pos_in_log},
+   );
+   $line .= ('_' x (LINE_LENGTH - length($line) + $self->label_width() - 12));
+   push @result, $line;
+
+   if ( $val->{reason} ) {
+      push @result,
+         "# This item is included in the report because it matches "
+            . ($val->{reason} eq 'top' ? '--limit.' : '--outliers.');
+   }
+
+   push @result,
+      sprintf("# Scores: V/M = %.2f", $val->{variance_to_mean} );
+
+   if ( $val->{time_range} ) {
+      push @result, "# Time range: $val->{time_range}";
+   }
+
+   push @result, $self->make_event_header();
+
+   push @result,
+      sprintf $self->{num_format}, 'Count',
+         percentage_of($val->{counts}{class_cnt}, $val->{counts}{global_cnt}),
+         $val->{counts}{class_cnt},
+         map { '' } (1..8);
+
+
+   my $attribs = $val->{attributes};
+
+   foreach my $type ( qw(num innodb) ) {
+      if ( $type eq 'innodb' && @{$attribs->{$type}} ) {
+         push @result, "# InnoDB:";
+      };
+
+      NUM_ATTRIB:
+      foreach my $attrib ( @{$attribs->{$type}} ) {
+         my ($attrib_name, @vals) = @$attrib;
+         push @result,
+            sprintf $self->{num_format},
+               $self->make_label($attrib_name), @vals;
+      }
+   }
+
+   if ( @{$attribs->{bool}} ) {
+      push @result, "# Boolean:";
+      BOOL_ATTRIB:
+      foreach my $attrib ( @{$attribs->{bool}} ) {
+         my ($attrib_name, @vals) = @$attrib;
+         push @result,
+            sprintf $self->{bool_format},
+               $self->make_label($attrib_name), @vals;
+      }
+   }
+
+   if ( @{$attribs->{string}} ) {
+      push @result, "# String:";
+      STRING_ATTRIB:
+      foreach my $attrib ( @{$attribs->{string}} ) {
+         my ($attrib_name, $vals) = @$attrib;
          push @result,
             sprintf $self->{string_format},
-               $self->make_label($attrib),
-               $self->format_string_list($attrib, $vals, $class_cnt);
-         $printed_strings = 1;
+               $self->make_label($attrib_name),
+               $self->format_string_list($attrib_name, $vals, $val->{counts}{class_cnt});
       }
-      pop @result unless $printed_strings;
    }
+
 
    return join("\n", map { s/\s+$//; $_ } @result) . "\n";
 }
@@ -6843,7 +7494,6 @@ sub profile {
    my $groupby = $args{groupby};
 
    my $qr  = $self->{QueryRewriter};
-   my $o   = $self->{OptionParser};
 
    my $results = $ea->results();
    my $total_r = $results->{globals}->{Query_time}->{sum} || 0;
@@ -6870,12 +7520,8 @@ sub profile {
       push @profiles, \%profile;
    }
 
-   my $report = $self->{formatter_for}->{profile} || new ReportFormatter(
-      line_width       => LINE_LENGTH,
-      long_last_column => 1,
-      extend_right     => 1,
-   );
-   $report->set_title('Profile');
+   my $report = $self->ReportFormatter();
+   $report->title('Profile');
    my @cols = (
       { name => 'Rank',          right_justify => 1,             },
       { name => 'Query ID',                                      },
@@ -7009,12 +7655,8 @@ sub prepared {
 
    return unless scalar @prepared;
 
-   my $report = $self->{formatter_for}->{prepared} || new ReportFormatter(
-      line_width       => LINE_LENGTH,
-      long_last_column => 1,
-      extend_right     => 1,     
-   );
-   $report->set_title('Prepared statements');
+   my $report = $self->ReportFormatter();
+   $report->title('Prepared statements');
    $report->set_columns(
       { name => 'Rank',          right_justify => 1, },
       { name => 'Query ID',                          },
@@ -7048,11 +7690,11 @@ sub make_global_header {
    my @lines;
 
    push @lines,
-      sprintf $self->{num_format}, "Attribute", '', @{$self->{global_headers}};
+      sprintf $self->{num_format}, "Attribute", '', @{$self->global_headers()};
 
    push @lines,
       sprintf $self->{num_format},
-         (map { "=" x $_ } $self->{label_width}),
+         (map { "=" x $_ } $self->label_width()),
          (map { " " x $_ } qw(3)),  # no pct column in global header
          (map { "=" x $_ } qw(7 7 7 7 7 7 7));
 
@@ -7066,11 +7708,11 @@ sub make_event_header {
 
    my @lines;
    push @lines,
-      sprintf $self->{num_format}, "Attribute", @{$self->{event_headers}};
+      sprintf $self->{num_format}, "Attribute", @{$self->event_headers()};
 
    push @lines,
       sprintf $self->{num_format},
-         map { "=" x $_ } ($self->{label_width}, qw(3 7 7 7 7 7 7 7));
+         map { "=" x $_ } ($self->label_width(), qw(3 7 7 7 7 7 7 7));
 
    $self->{event_header_lines} = \@lines;
    return @lines;
@@ -7085,7 +7727,7 @@ sub make_label {
    if ( $val =~ m/^InnoDB/ ) {
       $val =~ s/^InnoDB //;
       $val = $val eq 'trx id' ? "InnoDB trxID"
-           : substr($val, 0, $self->{label_width});
+           : substr($val, 0, $self->label_width());
    }
 
    $val = $val eq 'user'            ? 'Users'
@@ -7096,7 +7738,7 @@ sub make_label {
         : $val eq 'bytes'           ? 'Query size'
         : $val eq 'Tmp disk tables' ? 'Tmp disk tbl'
         : $val eq 'Tmp table sizes' ? 'Tmp tbl size'
-        : substr($val, 0, $self->{label_width});
+        : substr($val, 0, $self->label_width);
 
    return $val;
 }
@@ -7110,8 +7752,7 @@ sub bool_percents {
 
 sub format_string_list {
    my ( $self, $attrib, $vals, $class_cnt ) = @_;
-   my $o        = $self->{OptionParser};
-   my $show_all = $o->get('show-all');
+   my $show_all = $self->{options}->{show_all};
 
    if ( !exists $vals->{unq} ) {
       return ($vals->{cnt});
@@ -7241,7 +7882,7 @@ sub pref_sort {
 sub tables_report {
    my ( $self, @tables ) = @_;
    return '' unless @tables;
-   my $q      = $self->{Quoter};
+   my $q      = $self->Quoter();
    my $tables = "";
    foreach my $db_tbl ( @tables ) {
       my ( $db, $tbl ) = @$db_tbl;
@@ -7260,7 +7901,7 @@ sub explain_report {
    return '' unless $query;
 
    my $dbh = $self->{dbh};
-   my $q   = $self->{Quoter};
+   my $q   = $self->Quoter();
    my $qp  = $self->{QueryParser};
    return '' unless $dbh && $q && $qp;
 
@@ -7321,6 +7962,98 @@ sub _d {
 }
 # ###########################################################################
 # End QueryReportFormatter package
+# ###########################################################################
+
+# ###########################################################################
+# JSONReportFormatter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/JSONReportFormatter.pm
+#   t/lib/JSONReportFormatter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package JSONReportFormatter;
+use Mo;
+use JSON;
+
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+extends qw(QueryReportFormatter);
+
+override [qw(rusage date hostname files header profile prepared)] => sub {
+   return;
+};
+
+override event_report => sub {
+   my ($self, %args) = @_;
+   return $self->event_report_values(%args);
+};
+
+override query_report => sub {
+   my ($self, %args) = @_;
+   foreach my $arg ( qw(ea worst orderby groupby) ) {
+      die "I need a $arg argument" unless defined $arg;
+   }
+   my $ea      = $args{ea};
+   my $groupby = $args{groupby};
+   my $worst   = $args{worst};
+
+   my $q   = $self->Quoter;
+   my $qv  = $self->{QueryReview};
+   my $qr  = $self->{QueryRewriter};
+
+   my $query_report_vals = $self->query_report_values(%args);
+
+   my $attribs = $self->sort_attribs(
+      ($args{select} ? $args{select} : $ea->get_attributes()),
+         $ea,
+   );
+
+   ITEM:
+   foreach my $vals ( @$query_report_vals ) {
+      my $item       = $vals->{item};
+      my $samp_query = $vals->{samp_query};
+      $vals->{event_report} = $self->event_report(
+         %args,
+         item    => $item,
+         sample  => $ea->results->{samples}->{$item},
+         rank    => $vals->{rank},
+         reason  => $vals->{reason},
+         attribs => $attribs,
+         db      => $vals->{default_db},
+      );
+
+      if ( $groupby eq 'fingerprint' ) {
+         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
+            if ( $item !~ m/^(?:insert|replace)/ ) { # No EXPLAIN
+               $vals->{for_explain} = "EXPLAIN /*!50100 PARTITIONS*/\n$samp_query\\G\n";
+               $vals->{explain_report} = $self->explain_report($samp_query, $vals->{default_db});
+            }
+         }
+         else {
+            my $converted = $qr->convert_to_select($samp_query);
+            if ( $converted
+                 && $converted =~ m/^[\(\s]*select/i ) {
+               $vals->{for_explain} = "EXPLAIN /*!50100 PARTITIONS*/\n$converted\\G\n";
+            }
+         }
+      }
+      else {
+         if ( $groupby eq 'tables' ) {
+            my ( $db, $tbl ) = $q->split_unquote($item);
+            $vals->{tables_report} = $self->tables_report([$db, $tbl]);
+         }
+      }
+   }
+
+   return encode_json($query_report_vals) . "\n";
+};
+
+1;
+}
+# ###########################################################################
+# End JSONReportFormatter package
 # ###########################################################################
 
 # ###########################################################################
@@ -11107,171 +11840,6 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
-# ExplainAnalyzer package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/ExplainAnalyzer.pm
-#   t/lib/ExplainAnalyzer.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package ExplainAnalyzer;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use Data::Dumper;
-$Data::Dumper::Indent    = 1;
-$Data::Dumper::Sortkeys  = 1;
-$Data::Dumper::Quotekeys = 0;
-
-sub new {
-   my ( $class, %args ) = @_;
-   foreach my $arg ( qw(QueryRewriter QueryParser) ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my $self = {
-      %args,
-   };
-   return bless $self, $class;
-}
-
-sub explain_query {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(dbh query) ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($query, $dbh) = @args{qw(query dbh)};
-   $query = $self->{QueryRewriter}->convert_to_select($query);
-   if ( $query !~ m/^\s*select/i ) {
-      PTDEBUG && _d("Cannot EXPLAIN non-SELECT query:",
-         (length $query <= 100 ? $query : substr($query, 0, 100) . "..."));
-      return;
-   }
-   my $sql = "EXPLAIN $query";
-   PTDEBUG && _d($dbh, $sql);
-   my $explain = $dbh->selectall_arrayref($sql, { Slice => {} });
-   PTDEBUG && _d("Result of EXPLAIN:", Dumper($explain));
-   return $explain;
-}
-
-sub normalize {
-   my ( $self, $explain ) = @_;
-   my @result; # Don't modify the input.
-
-   foreach my $row ( @$explain ) {
-      $row = { %$row }; # Make a copy -- don't modify the input.
-
-      foreach my $col ( qw(key possible_keys key_len ref) ) {
-         $row->{$col} = [ split(/,/, $row->{$col} || '') ];
-      }
-
-      $row->{Extra} = {
-         map {
-            my $var = $_;
-
-            if ( my ($key, $vals) = $var =~ m/(Using union)\(([^)]+)\)/ ) {
-               $key => [ split(/,/, $vals) ];
-            }
-
-            else {
-               $var => 1;
-            }
-         }
-         split(/; /, $row->{Extra} || '') # Split on semicolons.
-      };
-
-      push @result, $row;
-   }
-
-   return \@result;
-}
-
-sub get_alternate_indexes {
-   my ( $self, $keys, $possible_keys ) = @_;
-   my %used = map { $_ => 1 } @$keys;
-   return [ grep { !$used{$_} } @$possible_keys ];
-}
-
-sub get_index_usage {
-   my ( $self, %args ) = @_;
-   foreach my $arg ( qw(query explain) ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($query, $explain) = @args{qw(query explain)};
-   my @result;
-
-   my $lookup = $self->{QueryParser}->get_aliases($query);
-
-   foreach my $row ( @$explain ) {
-
-      next if !defined $row->{table}
-         || $row->{table} =~ m/^<(derived|union)\d/;
-
-      my $table = $lookup->{TABLE}->{$row->{table}} || $row->{table};
-      my $db    = $lookup->{DATABASE}->{$table}     || $args{db};
-      push @result, {
-         db  => $db,
-         tbl => $table,
-         idx => $row->{key},
-         alt => $self->get_alternate_indexes(
-                  $row->{key}, $row->{possible_keys}),
-      };
-   }
-
-   PTDEBUG && _d("Index usage for",
-      (length $query <= 100 ? $query : substr($query, 0, 100) . "..."),
-      ":", Dumper(\@result));
-   return \@result;
-}
-
-sub get_usage_for {
-   my ( $self, $checksum, $db ) = @_;
-   die "I need a checksum and db" unless defined $checksum && defined $db;
-   my $usage;
-   if ( exists $self->{usage}->{$db} # Don't auto-vivify
-     && exists $self->{usage}->{$db}->{$checksum} )
-   {
-      $usage = $self->{usage}->{$db}->{$checksum};
-   }
-   PTDEBUG && _d("Usage for",
-      (length $checksum <= 100 ? $checksum : substr($checksum, 0, 100) . "..."),
-      "on", $db, ":", Dumper($usage));
-   return $usage;
-}
-
-sub save_usage_for {
-   my ( $self, $checksum, $db, $usage ) = @_;
-   die "I need a checksum and db" unless defined $checksum && defined $db;
-   $self->{usage}->{$db}->{$checksum} = $usage;
-}
-
-sub fingerprint {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(explain);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($explain) = @args{@required_args};
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End ExplainAnalyzer package
-# ###########################################################################
-
-# ###########################################################################
 # Runtime package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -12913,6 +13481,7 @@ Transformers->import(qw(shorten micro_t percentage_of ts make_checksum
    any_unix_timestamp parse_timestamp unix_timestamp crc32));
 
 use Percona::Toolkit;
+use JSONReportFormatter;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 use sigtrap 'handler', \&sig_int, 'normal-signals';
@@ -13025,7 +13594,6 @@ sub main {
    # ########################################################################
    # Set up for --explain
    # ########################################################################
-   my $exa;
    if ( my $ep_dsn = $o->get('explain') ) {
       $ep_dbh = get_cxn(
          for          => '--explain',
@@ -13035,11 +13603,6 @@ sub main {
          opts         => { AutoCommit => 1 },
       );
       $ep_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
-
-      $exa = new ExplainAnalyzer(
-         QueryRewriter => $qr,
-         QueryParser   => $qp,
-      );
    }
 
    # ########################################################################
@@ -13646,7 +14209,6 @@ sub main {
                      files           => \@read_files,
                      Pipeline        => $pipeline,
                      QueryReview     => $qv,
-                     ExplainAnalyzer => $exa,
                      %common_modules,
                   );
                }
@@ -14194,19 +14756,18 @@ sub print_reports {
             $print_header = 1;
          }
 
-         my $qrf = new QueryReportFormatter(
-            dbh             => $ep_dbh,
-            %args,
+         my $report_class = $o->get('output') =~ m/\Ajson\z/i
+                          ? 'JSONReportFormatter'
+                          : 'QueryReportFormatter';
+         my $qrf = $report_class->new(
+            dbh           => $ep_dbh,
+            QueryReview   => $args{QueryReview},
+            QueryRewriter => $args{QueryRewriter},
+            OptionParser  => $args{OptionParser},
+            QueryParser   => $args{QueryParser},
+            Quoter        => $args{Quoter},
          );
-         # http://code.google.com/p/maatkit/issues/detail?id=1141
-         $qrf->set_report_formatter(
-            report    => 'profile',
-            formatter => new ReportFormatter (
-               line_width       => $o->get('explain') ? 82 : 74,
-               long_last_column => 1,
-               extend_right     => 1,
-            ),
-         );
+
          $qrf->print_reports(
             reports      => \@reports,
             ea           => $eas->[$i],
@@ -14256,7 +14817,7 @@ sub print_reports {
          { name => 'Time',  right_justify => 1 },
          { name => 'Count', right_justify => 1 },
       );
-      $report->set_title('Pipeline profile');
+      $report->title('Pipeline profile');
       my $instrument = $pipeline->instrumentation;
       my $total_time = $instrument->{Pipeline};
       foreach my $process_name ( $pipeline->processes() ) {
@@ -15438,6 +15999,13 @@ seconds and which are seen at least 5 times, use the following argument:
   --outliers Query_time:60:5
 
 You can specify an --outliers option for each value in L<"--group-by">.
+
+
+=item --output
+
+type: string; default: query
+
+Type of report to use. Accepted values are C<"query"> and C<"json">.
 
 =item --password
 
