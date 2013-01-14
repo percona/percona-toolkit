@@ -5520,12 +5520,6 @@ type: string; default: /var/spool/pt-agent
 
 Spool directory.
 
-=item --spool-interval
-
-type: time; default: 10m
-
-How often to send spool data to Percona.
-
 =item --user
 
 short form: -u; type: string; group: Connection
