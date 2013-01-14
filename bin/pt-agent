@@ -4959,6 +4959,7 @@ sub make_new_crontab {
          . " pt-agent --run-service "
          . $service->name;
       if ( $service->spool_schedule ) {
+         # TODO: test
          push @pt_agent_lines,
             $service->spool_schedule
             . " pt-agent --send-data "
@@ -5011,6 +5012,7 @@ sub run_service {
       if ( $output eq 'spool' ) {
          $output_file = $spool_file; 
          push @output_files, $spool_file;
+         # TODO: mkdir the spool dif?
       }
       elsif ( $output eq 'tmp' ) {
          my ($fh, $file) = tempfile();
@@ -5177,6 +5179,7 @@ sub send_data {
                   file   => $file,
                   url    => $client->links->{$service_dir},
                );
+               # TODO: url should really be Service->links->self.
             }
          };
          if ( $EVAL_ERROR ) {
