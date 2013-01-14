@@ -56,8 +56,7 @@
 # calculated widths.
 package ReportFormatter;
 
-use strict;
-use warnings FATAL => 'all';
+use Mo;
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
@@ -67,7 +66,6 @@ use POSIX qw(ceil);
 eval { require Term::ReadKey };
 my $have_term = $EVAL_ERROR ? 0 : 1;
 
-# Arguments:
 #  * underline_header     bool: underline headers with =
 #  * line_prefix          scalar: prefix every line with this string
 #  * line_width           scalar: line width in characters or 'auto'
@@ -77,42 +75,106 @@ my $have_term = $EVAL_ERROR ? 0 : 1;
 #  * column_errors        scalar: die or warn on column errors (default warn)
 #  * truncate_header_side scalar: left or right (default left)
 #  * strip_whitespace     bool: strip leading and trailing whitespace
-sub new {
-   my ( $class, %args ) = @_;
-   my @required_args = qw();
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless $args{$arg};
-   }
-   my $self = {
-      underline_header     => 1,
-      line_prefix          => '# ',
-      line_width           => 78,
-      column_spacing       => ' ',
-      extend_right         => 0,
-      truncate_line_mark   => '...',
-      column_errors        => 'warn',
-      truncate_header_side => 'left',
-      strip_whitespace     => 1,
-      %args,              # args above can be overriden, args below cannot
-      n_cols              => 0,
-   };
+#  * title                scalar: title for the report
+
+has underline_header => (
+   is      => 'ro',
+   isa     => 'Bool',
+   default => sub { 1 },
+);
+has line_prefix => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { '# ' },
+);
+has line_width => (
+   is      => 'ro',
+   isa     => 'Int',
+   default => sub { 78 },
+);
+has column_spacing => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { ' ' },
+);
+has extend_right => (
+   is      => 'ro',
+   isa     => 'Bool',
+   default => sub { '' },
+);
+has truncate_line_mark => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { '...' },
+);
+has column_errors => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { 'warn' },
+);
+has truncate_header_side => (
+   is      => 'ro',
+   isa     => 'Str',
+   default => sub { 'left' },
+);
+has strip_whitespace => (
+   is      => 'ro',
+   isa     => 'Bool',
+   default => sub { 1 },
+);
+has title => (
+   is        => 'rw',
+   isa       => 'Str',
+   predicate => 'has_title',
+);
+
+# Internal
+
+has n_cols => (
+   is      => 'rw',
+   isa     => 'Int',
+   default => sub { 0 },
+   init_arg => undef,
+);
+
+has cols => (
+   is       => 'ro',
+   isa      => 'ArrayRef',
+   init_arg => undef,
+   default  => sub { [] },
+   clearer  => 'clear_cols',
+);
+
+has lines => (
+   is       => 'ro',
+   isa      => 'ArrayRef',
+   init_arg => undef,
+   default  => sub { [] },
+   clearer  => 'clear_lines',
+);
+
+has truncate_headers => (
+   is       => 'rw',
+   isa      => 'Bool',
+   default  => sub { undef },
+   init_arg => undef,
+   clearer  => 'clear_truncate_headers',
+);
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
 
    # This is not tested or currently used, but I like the idea and
-   # think one day it will be very handy in mk-config-diff.
-   if ( ($self->{line_width} || '') eq 'auto' ) {
+   # think one day it will be very handy in pt-config-diff.
+   if ( ($args->{line_width} || '') eq 'auto' ) {
       die "Cannot auto-detect line width because the Term::ReadKey module "
          . "is not installed" unless $have_term;
-      ($self->{line_width}) = GetTerminalSize();
+      ($args->{line_width}) = GetTerminalSize();
+      PTDEBUG && _d('Line width:', $args->{line_width});
    }
-   PTDEBUG && _d('Line width:', $self->{line_width});
 
-   return bless $self, $class;
-}
-
-sub set_title {
-   my ( $self, $title ) = @_;
-   $self->{title} = $title;
-   return;
+   return $args;
 }
 
 # @cols is an array of hashrefs.  Each hashref describes a column and can
@@ -139,7 +201,7 @@ sub set_columns {
       die "Column does not have a name" unless defined $col_name;
 
       if ( $col->{width} ) {
-         $col->{width_pct} = ceil(($col->{width} * 100) / $self->{line_width});
+         $col->{width_pct} = ceil(($col->{width} * 100) / $self->line_width());
          PTDEBUG && _d('col:', $col_name, 'width:', $col->{width}, 'chars =',
             $col->{width_pct}, '%');
       }
@@ -172,10 +234,10 @@ sub set_columns {
       # Used with extend_right.
       $col->{right_most} = 1 if $i == $#cols;
 
-      push @{$self->{cols}}, $col;
+      push @{$self->cols}, $col;
    }
 
-   $self->{n_cols} = scalar @cols;
+   $self->n_cols( scalar @cols );
 
    if ( ($used_width || 0) > 100 ) {
       die "Total width_pct for all columns is >100%";
@@ -186,16 +248,16 @@ sub set_columns {
       my $wid_per_col = int((100 - $used_width) / scalar @auto_width_cols);
       PTDEBUG && _d('Line width left:', (100-$used_width), '%;',
          'each auto width col:', $wid_per_col, '%');
-      map { $self->{cols}->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
+      map { $self->cols->[$_]->{width_pct} = $wid_per_col } @auto_width_cols;
    }
 
    # Add to the minimum possible header width the spacing between columns.
-   $min_hdr_wid += ($self->{n_cols} - 1) * length $self->{column_spacing};
+   $min_hdr_wid += ($self->n_cols() - 1) * length $self->column_spacing();
    PTDEBUG && _d('min header width:', $min_hdr_wid);
-   if ( $min_hdr_wid > $self->{line_width} ) {
+   if ( $min_hdr_wid > $self->line_width() ) {
       PTDEBUG && _d('Will truncate headers because min header width',
-         $min_hdr_wid, '> line width', $self->{line_width});
-      $self->{truncate_headers} = 1;
+         $min_hdr_wid, '> line width', $self->line_width());
+      $self->truncate_headers(1);
    }
 
    return;
@@ -207,14 +269,14 @@ sub set_columns {
 sub add_line {
    my ( $self, @vals ) = @_;
    my $n_vals = scalar @vals;
-   if ( $n_vals != $self->{n_cols} ) {
+   if ( $n_vals != $self->n_cols() ) {
       $self->_column_error("Number of values $n_vals does not match "
-         . "number of columns $self->{n_cols}");
+         . "number of columns " . $self->n_cols());
    }
    for my $i ( 0..($n_vals-1) ) {
-      my $col   = $self->{cols}->[$i];
+      my $col   = $self->cols->[$i];
       my $val   = defined $vals[$i] ? $vals[$i] : $col->{undef_value};
-      if ( $self->{strip_whitespace} ) {
+      if ( $self->strip_whitespace() ) {
          $val =~ s/^\s+//g;
          $val =~ s/\s+$//;
          $vals[$i] = $val;
@@ -223,7 +285,7 @@ sub add_line {
       $col->{min_val} = min($width, ($col->{min_val} || $width));
       $col->{max_val} = max($width, ($col->{max_val} || $width));
    }
-   push @{$self->{lines}}, \@vals;
+   push @{$self->lines}, \@vals;
    return;
 }
 
@@ -232,12 +294,14 @@ sub get_report {
    my ( $self, %args ) = @_;
 
    $self->_calculate_column_widths();
-   $self->_truncate_headers() if $self->{truncate_headers};
+   if ( $self->truncate_headers() ) {
+      $self->_truncate_headers();
+   }
    $self->_truncate_line_values(%args);
 
    my @col_fmts = $self->_make_column_formats();
-   my $fmt      = ($self->{line_prefix} || '')
-                . join($self->{column_spacing}, @col_fmts);
+   my $fmt      = $self->line_prefix()
+                . join($self->column_spacing(), @col_fmts);
    PTDEBUG && _d('Format:', $fmt);
 
    # Make the printf line format for the header and ensure that its labels
@@ -246,15 +310,15 @@ sub get_report {
 
    # Build the report line by line, starting with the title and header lines.
    my @lines;
-   push @lines, sprintf "$self->{line_prefix}$self->{title}" if $self->{title};
+   push @lines, $self->line_prefix() . $self->title() if $self->has_title();
    push @lines, $self->_truncate_line(
-         sprintf($hdr_fmt, map { $_->{name} } @{$self->{cols}}),
+         sprintf($hdr_fmt, map { $_->{name} } @{$self->cols}),
          strip => 1,
          mark  => '',
    );
 
-   if ( $self->{underline_header} ) {
-      my @underlines = map { '=' x $_->{print_width} } @{$self->{cols}};
+   if ( $self->underline_header() ) {
+      my @underlines = map { '=' x $_->{print_width} } @{$self->cols};
       push @lines, $self->_truncate_line(
          sprintf($fmt, map { $_ || '' } @underlines),
          mark  => '',
@@ -265,19 +329,24 @@ sub get_report {
       my $vals = $_;
       my $i    = 0;
       my @vals = map {
-            my $val = defined $_ ? $_ : $self->{cols}->[$i++]->{undef_value};
+            my $val = defined $_ ? $_ : $self->cols->[$i++]->{undef_value};
             $val = '' if !defined $val;
             $val =~ s/\n/ /g;
             $val;
       } @$vals;
       my $line = sprintf($fmt, @vals);
-      if ( $self->{extend_right} ) {
+      if ( $self->extend_right() ) {
          $line;
       }
       else {
          $self->_truncate_line($line);
       }
-   } @{$self->{lines}};
+   } @{$self->lines};
+
+   # Clean up any leftover state
+   $self->clear_cols();
+   $self->clear_lines();
+   $self->clear_truncate_headers();
 
    return join("\n", @lines) . "\n";
 }
@@ -285,7 +354,7 @@ sub get_report {
 sub truncate_value {
    my ( $self, $col, $val, $width, $side ) = @_;
    return $val if length $val <= $width;
-   return $val if $col->{right_most} && $self->{extend_right};
+   return $val if $col->{right_most} && $self->extend_right();
    $side  ||= $col->{truncate_side};
    my $mark = $col->{truncate_mark};
    if ( $side eq 'right' ) {
@@ -305,8 +374,8 @@ sub _calculate_column_widths {
    my ( $self ) = @_;
 
    my $extra_space = 0;
-   foreach my $col ( @{$self->{cols}} ) {
-      my $print_width = int($self->{line_width} * ($col->{width_pct} / 100));
+   foreach my $col ( @{$self->cols} ) {
+      my $print_width = int($self->line_width() * ($col->{width_pct} / 100));
 
       PTDEBUG && _d('col:', $col->{name}, 'width pct:', $col->{width_pct},
          'char width:', $print_width,
@@ -330,7 +399,7 @@ sub _calculate_column_widths {
 
    PTDEBUG && _d('Extra space:', $extra_space);
    while ( $extra_space-- ) {
-      foreach my $col ( @{$self->{cols}} ) {
+      foreach my $col ( @{$self->cols} ) {
          if (    $col->{auto_width}
               && (    $col->{print_width} < $col->{max_val}
                    || $col->{print_width} < $col->{header_width})
@@ -346,8 +415,8 @@ sub _calculate_column_widths {
 
 sub _truncate_headers {
    my ( $self, $col ) = @_;
-   my $side = $self->{truncate_header_side};
-   foreach my $col ( @{$self->{cols}} ) {
+   my $side = $self->truncate_header_side();
+   foreach my $col ( @{$self->cols} ) {
       my $col_name    = $col->{name};
       my $print_width = $col->{print_width};
       next if length $col_name <= $print_width;
@@ -360,10 +429,10 @@ sub _truncate_headers {
 
 sub _truncate_line_values {
    my ( $self, %args ) = @_;
-   my $n_vals = $self->{n_cols} - 1;
-   foreach my $vals ( @{$self->{lines}} ) {
+   my $n_vals = $self->n_cols() - 1;
+   foreach my $vals ( @{$self->lines} ) {
       for my $i ( 0..$n_vals ) {
-         my $col   = $self->{cols}->[$i];
+         my $col   = $self->cols->[$i];
          my $val   = defined $vals->[$i] ? $vals->[$i] : $col->{undef_value};
          my $width = length $val;
 
@@ -393,9 +462,9 @@ sub _truncate_line_values {
 sub _make_column_formats {
    my ( $self ) = @_;
    my @col_fmts;
-   my $n_cols = $self->{n_cols} - 1;
+   my $n_cols = $self->n_cols() - 1;
    for my $i ( 0..$n_cols ) {
-      my $col = $self->{cols}->[$i];
+      my $col = $self->cols->[$i];
 
       # Normally right-most col has no width so it can potentially
       # extend_right.  But if it's right-justified, it requires a width.
@@ -410,12 +479,12 @@ sub _make_column_formats {
 
 sub _truncate_line {
    my ( $self, $line, %args ) = @_;
-   my $mark = defined $args{mark} ? $args{mark} : $self->{truncate_line_mark};
+   my $mark = defined $args{mark} ? $args{mark} : $self->truncate_line_mark();
    if ( $line ) {
       $line =~ s/\s+$// if $args{strip};
       my $len  = length($line);
-      if ( $len > $self->{line_width} ) {
-         $line  = substr($line, 0, $self->{line_width} - length $mark);
+      if ( $len > $self->line_width() ) {
+         $line  = substr($line, 0, $self->line_width() - length $mark);
          $line .= $mark if $mark;
       }
    }
@@ -425,7 +494,7 @@ sub _truncate_line {
 sub _column_error {
    my ( $self, $err ) = @_;
    my $msg = "Column error: $err";
-   $self->{column_errors} eq 'die' ? die $msg : warn $msg;
+   $self->column_errors() eq 'die' ? die $msg : warn $msg;
    return;
 }
 
