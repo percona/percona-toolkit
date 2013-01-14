@@ -40,6 +40,13 @@ has 'options' => (
    required => 0,
 );
 
+has 'queries' => (
+   is       => 'ro',
+   isa      => 'Maybe[ArrayRef]',
+   required => 0,
+   default  => undef,
+);
+
 has 'output' => (
    is       => 'ro',
    isa      => 'Str',

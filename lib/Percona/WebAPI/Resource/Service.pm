@@ -28,22 +28,22 @@ has 'name' => (
    required => 1,
 );
 
-has 'alias' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
-);
-
-has 'schedule' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
-);
-
 has 'runs' => (
    is       => 'ro',
    isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
    required => 1,
+);
+
+has 'run_schedule' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'spool_schedule' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 0,
 );
 
 sub BUILDARGS {
