@@ -1214,22 +1214,22 @@ has 'name' => (
    required => 1,
 );
 
-has 'alias' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
-);
-
-has 'schedule' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
-);
-
 has 'runs' => (
    is       => 'ro',
    isa      => 'ArrayRef[Percona::WebAPI::Resource::Run]',
    required => 1,
+);
+
+has 'run_schedule' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
+has 'spool_schedule' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 0,
 );
 
 sub BUILDARGS {
@@ -1281,6 +1281,13 @@ has 'options' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',
    required => 0,
+);
+
+has 'queries' => (
+   is       => 'ro',
+   isa      => 'Maybe[ArrayRef]',
+   required => 0,
+   default  => undef,
 );
 
 has 'output' => (
@@ -4425,9 +4432,9 @@ sub main {
    }
 
    my $agent_id = $o->get('agent-id');
-   if ( ($o->get('check-spool') || $o->get('run-service')) && !$agent_id ) {
-      _err("No agent ID was found or specified.  --check-spool and "
-         . "--run-service require an agent ID.  Run pt-agent without these "
+   if ( ($o->get('run-service') || $o->get('send-data')) && !$agent_id ) {
+      _err("No agent ID was found or specified.  --run-service and "
+         . "--send-data require an agent ID.  Run pt-agent without these "
          . "options to create and configure the agent, then try again.");
    }
 
@@ -4454,14 +4461,15 @@ sub main {
    );
   
    # ########################################################################
-   # --check-spool
+   # --send-data
    # ########################################################################
-   if ( $o->get('check-spool') ) {
+   if ( my $service = $o->get('send-data') ) {
       # TODO: rewrite Daemon to have args passed in so we can do
       # a PID file check for spool procs.  Or implement file locking.
-      check_spool(
+      send_data(
          client    => $client,
          agent     => $agent,
+         service   => $service,
          spool_dir => $o->get('spool'),
       );
       _info("Done checking spool, exit $exit_status");
@@ -4543,7 +4551,7 @@ sub main {
 # Percona Web API subs for agent and spool processes #
 # ################################################## #
 
-# Wrapper for code common to main agent and --check-spool process:
+# Wrapper for code common to main agent and --send-data processes:
 # connect to the Percona web API by getting a client and an Agent.
 sub connect_to_percona {
    my (%args) = @_;
@@ -4752,8 +4760,6 @@ sub run_agent {
          _warn($EVAL_ERROR);
       }
 
-      # TODO: need to schedule a pt-agent --check-spool process.
-
       # Get services only if there's a current, running config.
       # Without one, we won't know how to implement services.
       if ( $config ) {
@@ -4782,8 +4788,7 @@ sub run_agent {
 
                $services = $new_services;
                _info('Services updated successfully: '
-                  . join(', ', map { $_->alias . ' (' . $_->name . ')' }
-                               @$services));
+                  . join(', ', map { $_->name } @$services));
             }
             else {
                _info('Services have not changed');
@@ -4893,8 +4898,8 @@ sub write_services {
    return;
 }
 
-# Write Service->schedule lines to crontab, along with any other
-# non-pt-agent lines, and load.
+# Write Service->run_schedule and (optionally) Service->spool_schedule
+# lines to crontab, along with any other non-pt-agent lines, and load.
 sub schedule_services {
    my (%args) = @_;
 
@@ -4928,8 +4933,9 @@ sub schedule_services {
    return;
 }
 
-# Combine Service->schedule lines with non-pt-agent lines,
-# i.e. don't clobber the user's other crontab lines.
+# Combine Service->run_schedule and (optionally) Service->spool_schedule
+# lines with non-pt-agent lines, i.e. don't clobber the user's other
+# crontab lines.
 sub make_new_crontab {
    my (%args) = @_;
 
@@ -4949,7 +4955,15 @@ sub make_new_crontab {
    my @pt_agent_lines;
    foreach my $service ( @$services ) {
       push @pt_agent_lines,
-         $service->schedule . " pt-agent --run-service " . $service->name;
+         $service->run_schedule
+         . " pt-agent --run-service "
+         . $service->name;
+      if ( $service->spool_schedule ) {
+         push @pt_agent_lines,
+            $service->spool_schedule
+            . " pt-agent --send-data "
+            . $service->name;
+      }
    }
 
    my $new_crontab = join("\n", @other_lines, @pt_agent_lines) . "\n";
@@ -5105,16 +5119,18 @@ sub replace_special_vars {
 # Send every file or directory in each service's directory in --spool/.
 # E.g. --spool/query-monitor should contain files with pt-query-digest
 # output.  The per-service dirs are created in run_service(). 
-sub check_spool {
+sub send_data {
    my (%args) = @_;
 
    have_required_args(\%args, qw(
       client
       agent
+      service
       spool_dir
    )) or die;
    my $client    = $args{client};
    my $agent     = $args{agent};
+   my $service   = $args{service};
    my $spool_dir = $args{spool_dir};
 
    # Iterate through the service dirs in --spool/.
@@ -5374,7 +5390,7 @@ TODO
 
 =head1 OPTIONS
 
-L<"--check-spool"> and L<"--run-service"> are mutually exclusive.
+L<"--run-service"> and L<"--send-data"> are mutually exclusive.
 
 =over
 
@@ -5398,13 +5414,9 @@ Prompt for a password when connecting to MySQL.
 
 =item --check-interval
 
-type: time; default: 5m
+type: time; default: 10m
 
 Sleep time between checks.
-
-=item --check-spool
-
-Check for new L<"--spool"> data to send.
 
 =item --config
 
@@ -5478,7 +5490,13 @@ Port number to use for connection.
 
 type: string
 
-Run a Percona Web Service.
+Run the given Percona Web Service.
+
+=item --send-data
+
+type: string
+
+Send data for the given Percona Web Service.
 
 =item --set-vars
 

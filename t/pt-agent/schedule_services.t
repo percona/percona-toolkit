@@ -38,10 +38,10 @@ my $run0 = Percona::WebAPI::Resource::Run->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name     => 'query-monitor',
-   alias    => 'Query Monitor',
-   schedule => '* 8 * * 1,2,3,4,5',
-   runs     => [ $run0 ],
+   name           => 'query-monitor',
+   run_schedule   => '* 8 * * 1,2,3,4,5',
+   spool_schedule => '* 9 * * 1,2,3,4,5',
+   runs           => [ $run0 ],
 );
 
 # First add a fake line so we can know that the real, existing
@@ -84,6 +84,7 @@ is(
    $crontab,
    "* 0  *  *  *  date > /dev/null
 * 8 * * 1,2,3,4,5 pt-agent --run-service query-monitor
+* 9 * * 1,2,3,4,5 pt-agent --send-data query-monitor
 ",
    "schedule_services()"
 );
@@ -118,10 +119,10 @@ is(
 # #############################################################################
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
-   name     => 'query-monitor',
-   alias    => 'Query Monitor',
-   schedule => '* * * * Foo',  # "foo":0: bad day-of-week
-   runs     => [ $run0 ],
+   name           => 'query-monitor',
+   run_schedule   => '* * * * Foo',  # "foo":0: bad day-of-week
+   spool_schedule => '* 8 * * Mon',
+   runs           => [ $run0 ],
 );
 
 eval {
