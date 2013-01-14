@@ -177,6 +177,7 @@ sub Mo::import {
             _set_package_isa($caller, @_);
             _set_inherited_metadata($caller);
         },
+        override => \&override,
         has => sub {
             my $names = shift;
             for my $attribute ( ref $names ? @$names : $names ) {
@@ -509,6 +510,16 @@ BEGIN {
             return \@lin;
          };
       }
+   }
+}
+
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
    }
 }
 
