@@ -11776,6 +11776,8 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Fcntl qw(:seek);
+
 sub new {
    my ( $class, %args ) = @_;
    my $self = {
@@ -11818,6 +11820,9 @@ sub get_file_itr {
          }
          open my $fh, '<', $fn or warn "Cannot open $fn: $OS_ERROR";
          if ( $fh ) {
+            if ( my $pos = $self->{resume}->{$fn} ) {
+               seek $fh, $pos, SEEK_SET;
+            }
             return ( $fh, $fn, -s $fn );
          }
       }
@@ -13473,6 +13478,7 @@ use Time::Local qw(timelocal);
 use Time::HiRes qw(time usleep);
 use List::Util qw(max);
 use POSIX qw(signal_h);
+use File::Spec;
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 $OUTPUT_AUTOFLUSH     = 1;
@@ -13491,6 +13497,10 @@ my $oktorun = 1;
 my $ep_dbh;  # For --explain
 my $ps_dbh;  # For Processlist
 my $aux_dbh; # For --aux-dsn (--since/--until "MySQL expression")
+
+my %resume;
+my $save_resume = undef;
+my $resume_file = File::Spec->catfile(File::Spec->tmpdir(), 'pt-query-digest-resume');
 
 sub main {
    local @ARGV = @_;  # set global ARGV for this package
@@ -13576,6 +13586,8 @@ sub main {
    Pingback::validate_options($o);
    
    $o->usage_or_errors();
+
+   $save_resume = $o->get('resume');
 
    # ########################################################################
    # Common modules.
@@ -13727,6 +13739,16 @@ sub main {
       }
    }
    
+   if ( $o->get('resume') ) {
+      if (open my $resume_fh, q{<}, $resume_file) {
+         while (my $line = <$resume_fh>) {
+            chomp $line;
+            my ($file, $pos) = $line =~ m/\A(.+)\t([0-9]+)\z/;
+            $resume{$file} = $pos;
+         }
+      }
+   }
+
    # ########################################################################
    # Create all the pipeline processes that do all the work: get input,
    # parse events, manage runtime, switch iterations, aggregate, etc.
@@ -13775,7 +13797,7 @@ sub main {
    } # prep
 
    { # input
-      my $fi        = new FileIterator();
+      my $fi        = new FileIterator(resume => \%resume);
       my $next_file = $fi->get_file_itr(@ARGV);
       my $input_fh; # the current input fh
       my $pr;       # Progress obj for ^
@@ -13807,8 +13829,13 @@ sub main {
                   else {
                      $args->{next_event} = sub { return <$fh>; };
                   }
+                  $args->{filename}    = $filename;
                   $args->{input_fh}    = $fh;
-                  $args->{tell}        = sub { return tell $fh; };
+                  $args->{tell}        = sub {
+                     my $pos = tell $fh;
+                     $args->{pos_for}->{$args->{filename}} = $pos;
+                     return $pos;
+                  };
                   $args->{more_events} = 1;
 
                   # Reset in case we read two logs out of order by time.
@@ -14313,6 +14340,10 @@ sub main {
                # we may just be between iters.
                $args->{Runtime}->reset();
                $args->{time_left} = undef;
+
+               if ( $args->{filename} ) {
+                  $resume{$args->{filename}} = $args->{pos_for}->{$args->{filename}};
+               }
             }
 
             # Continue the pipeline even if we reported and went to the next
@@ -14693,6 +14724,8 @@ sub main {
    grep { $_ }
    ($qv_dbh, $qv_dbh2, $ps_dbh, $ep_dbh, $aux_dbh);
 
+   save_resume_data();
+
    return 0;
 } # End main()
 
@@ -14835,9 +14868,23 @@ sub print_reports {
    return;
 }
 
+sub save_resume_data {
+   return unless $save_resume;
+   return unless %resume;
+   if ( open my $resume_fh, q{>}, $resume_file ) {
+      while ( my ($k, $v) = each %resume ) {
+         print { $resume_fh } "$k\t$v\n";
+      }
+      close $resume_fh;
+   }
+}
+
 # Catches signals so we can exit gracefully.
 sub sig_int {
    my ( $signal ) = @_;
+
+   save_resume_data();
+
    if ( $oktorun ) {
       print STDERR "# Caught SIG$signal.\n";
       $oktorun = 0;
@@ -16133,6 +16180,11 @@ like:
   #  10s+
 
 See L<"OUTPUT"> for more information.
+
+=item --resume
+
+If enabled, the tool will save the furthest it got into the log before exiting;
+Future runs on that log with --resume enabled will start from that position.
 
 =item --review
 
