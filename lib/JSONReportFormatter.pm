@@ -3,9 +3,49 @@ package JSONReportFormatter;
 use Mo;
 use JSON;
 
+use Transformers qw(make_checksum);
+
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
 extends qw(QueryReportFormatter);
+
+has history_metrics => (
+   is       => 'ro',
+   isa      => 'HashRef',
+);
+
+sub BUILDARGS {
+   my $class     = shift;
+   my %orig_args = @_;
+   my $args      = $class->SUPER::BUILDARGS(@_);
+
+   my $o         = $orig_args{OptionParser};
+
+   my $sql = $o->read_para_after(
+      __FILE__, qr/MAGIC_create_review_history/);
+
+   my $pat = $o->read_para_after(__FILE__, qr/MAGIC_history_cols/);
+   $pat = qr/\ {3}(\w+?)_($pat)\s+/;
+
+   my %metrics;
+   foreach my $sql_line (split /\n/, $sql) {
+      my ( $attr, $metric ) = $sql_line =~ $pat;
+      next unless $attr && $metric;
+
+      $attr = ucfirst $attr if $attr =~ m/_/;
+      $attr = 'Filesort' if $attr eq 'filesort';
+
+      $attr =~ s/^Qc_hit/QC_Hit/;  # Qc_hit is really QC_Hit
+      $attr =~ s/^Innodb/InnoDB/g; # Innodb is really InnoDB
+      $attr =~ s/_io_/_IO_/g;      # io is really IO
+
+      $metrics{$attr}{$metric} = 1;
+   }
+
+   $args->{history_metrics} = \%metrics;
+
+   return $args;
+}
 
 override [qw(rusage date hostname files header profile prepared)] => sub {
    return;
@@ -21,63 +61,41 @@ override query_report => sub {
    foreach my $arg ( qw(ea worst orderby groupby) ) {
       die "I need a $arg argument" unless defined $arg;
    }
-   my $ea      = $args{ea};
-   my $groupby = $args{groupby};
-   my $worst   = $args{worst};
 
-   my $q   = $self->Quoter;
-   my $qv  = $self->{QueryReview};
-   my $qr  = $self->{QueryRewriter};
+   my $ea    = $args{ea};
+   my $worst = $args{worst};
 
-   my $query_report_vals = $self->query_report_values(%args);
+   my $history_metrics = $self->history_metrics;
+   my @attribs = grep { $history_metrics->{$_} } @{$ea->get_attributes()};
 
-   # Sort the attributes, removing any hidden attributes.
-   my $attribs = $self->sort_attribs(
-      ($args{select} ? $args{select} : $ea->get_attributes()),
-         $ea,
-   );
+   my @queries;
+   foreach my $worst_info ( @$worst ) {
+      my $item        = $worst_info->[0];
+      my $stats       = $ea->results->{classes}->{$item};
+      my $sample      = $ea->results->{samples}->{$item};
 
-   ITEM:
-   foreach my $vals ( @$query_report_vals ) {
-      my $item       = $vals->{item};
-      my $samp_query = $vals->{samp_query};
-      # ###############################################################
-      # Print the standard query analysis report.
-      # ###############################################################
-      $vals->{event_report} = $self->event_report(
-         %args,
-         item    => $item,
-         sample  => $ea->results->{samples}->{$item},
-         rank    => $vals->{rank},
-         reason  => $vals->{reason},
-         attribs => $attribs,
-         db      => $vals->{default_db},
-      );
+      my %metrics;
+      foreach my $attrib ( @attribs ) {
+         $metrics{$attrib} = $ea->metrics(
+            attrib => $attrib,
+            where  => $item,
+         );
 
-      if ( $groupby eq 'fingerprint' ) {
-         if ( $item =~ m/^(?:[\(\s]*select|insert|replace)/ ) {
-            if ( $item !~ m/^(?:insert|replace)/ ) { # No EXPLAIN
-               $vals->{for_explain} = "EXPLAIN /*!50100 PARTITIONS*/\n$samp_query\\G\n";
-               $vals->{explain_report} = $self->explain_report($samp_query, $vals->{default_db});
-            }
-         }
-         else {
-            my $converted = $qr->convert_to_select($samp_query);
-            if ( $converted
-                 && $converted =~ m/^[\(\s]*select/i ) {
-               $vals->{for_explain} = "EXPLAIN /*!50100 PARTITIONS*/\n$converted\\G\n";
-            }
+         my $needed_metrics = $history_metrics->{$attrib};
+         for my $key ( keys %{$metrics{$attrib}} ) {
+            delete $metrics{$attrib}{$key}
+               unless $needed_metrics->{$key};
          }
       }
-      else {
-         if ( $groupby eq 'tables' ) {
-            my ( $db, $tbl ) = $q->split_unquote($item);
-            $vals->{tables_report} = $self->tables_report([$db, $tbl]);
-         }
-      }
+
+      push @queries, {
+         sample   => $sample,
+         checksum => make_checksum($item),
+         %metrics
+      };
    }
 
-   return encode_json($query_report_vals) . "\n";
+   return encode_json(\@queries) . "\n";
 };
 
 1;
