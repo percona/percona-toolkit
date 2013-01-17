@@ -15167,29 +15167,37 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-query-digest - Analyze and report on MySQL queries.
+pt-query-digest - Analyze query execution logs and generate a query report, filter, replay, or transform queries for MySQL, PostgreSQL, memcached, and more.
 
 =head1 SYNOPSIS
 
-Usage: pt-query-digest [OPTIONS] [DSN] [FILES]
+Usage: pt-query-digest [OPTION...] [FILE]
 
-pt-query-digest analyzes MySQL queries from logs, C<SHOW PROCESSLIST>, and
-L<tcpdump>.  By default, queries are grouped by fingerprint and reported
-in descending order of total execution time.  Specifying L<"--review"> and
-a C<DSN> saves query data in a table for later analysis and historical
-trending.  The tool reads C<STDIN> if no C<FILES> are given.
+pt-query-digest parses and analyzes MySQL log files.  With no FILE, or when
+FILE is -, it read standard input.
 
-Analyze and report on queries in C<slow.log>:
+Analyze, aggregate, and report on a slow query log:
 
-  pt-query-digest slow.log
+ pt-query-digest /path/to/slow.log
 
-Save query data in MySQL on host1:
+Review a slow log, saving results to the test.query_review table in a MySQL
+server running on host1.  See L<"--review"> for more on reviewing queries:
 
-  pt-query-digest slow.log h=host1 --review
+ pt-query-digest --review h=host1,D=test,t=query_review /path/to/slow.log
 
-Get queries from C<SHOW FULL PROCESSLIST> on host1:
+Print the structure of events so you can construct a complex L<"--filter">:
 
- pt-query-digest --processlist h=host1
+ pt-query-digest /path/to/slow.log --no-report \
+   --filter 'print Dumper($event)'
+
+Watch SHOW FULL PROCESSLIST and output a log in slow query log format:
+
+ pt-query-digest --processlist h=host1 --print --no-report
+
+The default aggregation and analysis is CPU and memory intensive.  Disable it if
+you don't need the default report:
+
+ pt-query-digest <arguments> --no-report
 
 =head1 RISKS
 
@@ -15492,6 +15500,10 @@ example,
 You can see how useful this meta-data is -- as you analyze your queries, you get
 your comments integrated right into the report.
 
+If you add the L<"--review-history"> option, it will also store information into
+a separate database table, so you can keep historical trending information on
+classes of queries.
+
 =back
 
 =head1 FINGERPRINTS
@@ -15594,6 +15606,9 @@ Collapse multiple identical UNION queries into a single one.
 
 =head1 OPTIONS
 
+DSN values in L<"--review-history"> default to values in L<"--review"> if COPY
+is yes.
+
 This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
 
@@ -15628,6 +15643,19 @@ A sanity limit for attribute values.
 This option deals with bugs in slow-logging functionality that causes large
 values for attributes.  If the attribute's value is bigger than this, the
 last-seen value for that class of query is used instead.
+
+=item --aux-dsn
+
+type: DSN
+
+Auxiliary DSN used for special options.
+
+The following options may require a DSN even when only parsing a slow log file:
+
+  * --since
+  * --until
+
+See each option for why it might require a DSN.
 
 =item --charset
 
@@ -15667,20 +15695,16 @@ default: yes
 
 Continue parsing even if there is an error.
 
-=item --[no]create-history-table
+=item --create-review-history-table
 
-default: yes
+Create the L<"--review-history"> table if it does not exist.
 
-Create the L<"--review"> tables if they do not exist.
+This option causes the table specified by L<"--review-history"> to be created
+with the default structure shown in the documentation for that option.
 
-This option causes the table specified by L<"--review"> to be created with the
-default structure shown in the documentation for that option.
+=item --create-review-table
 
-=item --[no]create-review-table
-
-default: yes
-
-Create the L<"--review"> tables if they do not exist.
+Create the L<"--review"> table if it does not exist.
 
 This option causes the table specified by L<"--review"> to be created with the
 default structure shown in the documentation for that option.
@@ -15901,11 +15925,324 @@ L<"ATTRIBUTES">).
 
 Show help and exit.
 
-=item --history
+=item --host
 
-type: string; default: percona_schema.query_history
+short form: -h; type: string
 
-The table in which to store query data for historical trend analysis.
+Connect to host.
+
+=item --ignore-attributes
+
+type: array; default: arg, cmd, insert_id, ip, port, Thread_id, timestamp, exptime, flags, key, res, val, server_id, offset, end_log_pos, Xid
+
+Do not aggregate these attributes when auto-detecting L<"--select">.
+
+If you do not specify L<"--select"> then pt-query-digest auto-detects and
+aggregates every attribute that it finds in the slow log.  Some attributes,
+however, should not be aggregated.  This option allows you to specify a list
+of attributes to ignore.  This only works when no explicit L<"--select"> is
+given.
+
+=item --inherit-attributes
+
+type: array; default: db,ts
+
+If missing, inherit these attributes from the last event that had them.
+
+This option sets which attributes are inherited or carried forward to events
+which do not have them.  For example, if one event has the db attribute equal
+to "foo", but the next event doesn't have the db attribute, then it inherits
+"foo" for its db attribute.
+
+=item --interval
+
+type: float; default: .1
+
+How frequently to poll the processlist, in seconds.
+
+=item --iterations
+
+type: int; default: 1
+
+How many times to iterate through the collect-and-report cycle.  If 0, iterate
+to infinity.  Each iteration runs for L<"--run-time"> amount of time.  An
+iteration is usually determined by an amount of time and a report is printed
+when that amount of time elapses.  With L<"--run-time-mode"> C<interval>,
+an interval is instead determined by the interval time you specify with
+L<"--run-time">.  See L<"--run-time"> and L<"--run-time-mode"> for more
+information.
+
+=item --limit
+
+type: Array; default: 95%:20
+
+Limit output to the given percentage or count.
+
+If the argument is an integer, report only the top N worst queries.  If the
+argument is an integer followed by the C<%> sign, report that percentage of the
+worst queries.  If the percentage is followed by a colon and another integer,
+report the top percentage or the number specified by that integer, whichever
+comes first.
+
+The value is actually a comma-separated array of values, one for each item in
+L<"--group-by">.  If you don't specify a value for any of those items, the
+default is the top 95%.
+
+See also L<"--outliers">.
+
+=item --log
+
+type: string
+
+Print all output to this file when daemonized.
+
+=item --order-by
+
+type: Array; default: Query_time:sum
+
+Sort events by this attribute and aggregate function.
+
+This is a comma-separated list of order-by expressions, one for each
+L<"--group-by"> attribute.  The default C<Query_time:sum> is used for
+L<"--group-by"> attributes without explicitly given L<"--order-by"> attributes
+(that is, if you specify more L<"--group-by"> attributes than corresponding
+L<"--order-by"> attributes).  The syntax is C<attribute:aggregate>.  See
+L<"ATTRIBUTES"> for valid attributes.  Valid aggregates are:
+
+   Aggregate Meaning
+   ========= ============================
+   sum       Sum/total attribute value
+   min       Minimum attribute value
+   max       Maximum attribute value
+   cnt       Frequency/count of the query
+
+For example, the default C<Query_time:sum> means that queries in the
+query analysis report will be ordered (sorted) by their total query execution
+time ("Exec time").  C<Query_time:max> orders the queries by their
+maximum query execution time, so the query with the single largest
+C<Query_time> will be list first.  C<cnt> refers more to the frequency
+of the query as a whole, how often it appears; "Count" is its corresponding
+line in the query analysis report.  So any attribute and C<cnt> should yield
+the same report wherein queries are sorted by the number of times they
+appear.
+
+When parsing general logs (L<"--type"> C<genlog>), the default L<"--order-by">
+becomes C<Query_time:cnt>.  General logs do not report query times so only
+the C<cnt> aggregate makes sense because all query times are zero.
+
+If you specify an attribute that doesn't exist in the events, then
+pt-query-digest falls back to the default C<Query_time:sum> and prints a notice
+at the beginning of the report for each query class.  You can create attributes
+with L<"--filter"> and order by them; see L<"ATTRIBUTES"> for an example.
+
+=item --outliers
+
+type: array; default: Query_time:1:10
+
+Report outliers by attribute:percentile:count.
+
+The syntax of this option is a comma-separated list of colon-delimited strings.
+The first field is the attribute by which an outlier is defined.  The second is
+a number that is compared to the attribute's 95th percentile.  The third is
+optional, and is compared to the attribute's cnt aggregate.  Queries that pass
+this specification are added to the report, regardless of any limits you
+specified in L<"--limit">.
+
+For example, to report queries whose 95th percentile Query_time is at least 60
+seconds and which are seen at least 5 times, use the following argument:
+
+  --outliers Query_time:60:5
+
+You can specify an --outliers option for each value in L<"--group-by">.
+
+
+=item --output
+
+type: string; default: query
+
+Type of report to use. Accepted values are C<"query"> and C<"json">.
+
+=item --password
+
+short form: -p; type: string
+
+Password to use when connecting.
+
+=item --pid
+
+type: string
+
+Create the given PID file when daemonized.  The file contains the process
+ID of the daemonized instance.  The PID file is removed when the
+daemonized instance exits.  The program checks for the existence of the
+PID file when starting; if it exists and the process with the matching PID
+exists, the program exits.
+
+=item --port
+
+short form: -P; type: int
+
+Port number to use for connection.
+
+=item --print
+
+Print log events to STDOUT in standard slow-query-log format.
+
+=item --print-iterations
+
+Print the start time for each L<"--iterations">.
+
+This option causes a line like the following to be printed at the start
+of each L<"--iterations"> report:
+
+  # Iteration 2 started at 2009-11-24T14:39:48.345780 
+
+This line will print even if C<--no-report> is specified.  If C<--iterations 0>
+is specified, each iteration number will be C<0>.
+
+=item --processlist
+
+type: DSN
+
+Poll this DSN's processlist for queries, with L<"--interval"> sleep between.
+
+If the connection fails, pt-query-digest tries to reopen it once per second.
+
+=item --progress
+
+type: array; default: time,30
+
+Print progress reports to STDERR.  The value is a comma-separated list with two
+parts.  The first part can be percentage, time, or iterations; the second part
+specifies how often an update should be printed, in percentage, seconds, or
+number of iterations.
+
+=item --read-timeout
+
+type: time; default: 0
+
+Wait this long for an event from the input; 0 to wait forever.
+
+This option sets the maximum time to wait for an event from the input.  It
+applies to all types of input except L<"--processlist">.  If an
+event is not received after the specified time, the script stops reading the
+input and prints its reports.  If L<"--iterations"> is 0 or greater than
+1, the next iteration will begin, else the script will exit.
+
+This option requires the Perl POSIX module.
+
+=item --[no]report
+
+default: yes
+
+Print out reports on the aggregate results from L<"--group-by">.
+
+This is the standard slow-log analysis functionality.  See L<"OUTPUT"> for the
+description of what this does and what the results look like.
+
+=item --report-all
+
+Include all queries, even if they have already been reviewed.
+
+=item --report-format
+
+type: Array; default: rusage,date,hostname,files,header,profile,query_report,prepared
+
+Print these sections of the query analysis report.
+
+  SECTION      PRINTS
+  ============ ======================================================
+  rusage       CPU times and memory usage reported by ps
+  date         Current local date and time
+  hostname     Hostname of machine on which pt-query-digest was run
+  files        Input files read/parse
+  header       Summary of the entire analysis run
+  profile      Compact table of queries for an overview of the report
+  query_report Detailed information about each unique query
+  prepared     Prepared statements
+
+The sections are printed in the order specified.  The rusage, date, files and
+header sections are grouped together if specified together; other sections are
+separated by blank lines.
+
+See L<"OUTPUT"> for more information on the various parts of the query report.
+
+=item --report-histogram
+
+type: string; default: Query_time
+
+Chart the distribution of this attribute's values.
+
+The distribution chart is limited to time-based attributes, so charting
+C<Rows_examined>, for example, will produce a useless chart.  Charts look
+like:
+
+  # Query_time distribution
+  #   1us
+  #  10us
+  # 100us
+  #   1ms
+  #  10ms  ################################
+  # 100ms  ################################################################
+  #    1s  ########
+  #  10s+
+
+See L<"OUTPUT"> for more information.
+
+=item --resume
+
+If enabled, the tool will save the furthest it got into the log before exiting;
+Future runs on that log with --resume enabled will start from that position.
+
+=item --review
+
+type: DSN
+
+Store a sample of each class of query in this DSN.
+
+The argument specifies a table to store all unique query fingerprints in.  The
+table must have at least the following columns.  You can add more columns for
+your own special purposes, but they won't be used by pt-query-digest.  The
+following CREATE TABLE definition is also used for L<"--create-review-table">.
+MAGIC_create_review:
+
+  CREATE TABLE query_review (
+     checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+     fingerprint  TEXT NOT NULL,
+     sample       TEXT NOT NULL,
+     first_seen   DATETIME,
+     last_seen    DATETIME,
+     reviewed_by  VARCHAR(20),
+     reviewed_on  DATETIME,
+     comments     TEXT
+  )
+
+The columns are as follows:
+
+  COLUMN       MEANING
+  ===========  ===============
+  checksum     A 64-bit checksum of the query fingerprint
+  fingerprint  The abstracted version of the query; its primary key
+  sample       The query text of a sample of the class of queries
+  first_seen   The smallest timestamp of this class of queries
+  last_seen    The largest timestamp of this class of queries
+  reviewed_by  Initially NULL; if set, query is skipped thereafter
+  reviewed_on  Initially NULL; not assigned any special meaning
+  comments     Initially NULL; not assigned any special meaning
+
+Note that the C<fingerprint> column is the true primary key for a class of
+queries.  The C<checksum> is just a cryptographic hash of this value, which
+provides a shorter value that is very likely to also be unique.
+
+After parsing and aggregating events, your table should contain a row for each
+fingerprint.  This option depends on C<--group-by fingerprint> (which is the
+default).  It will not work otherwise.
+
+=item --review-history
+
+type: DSN
+
+The table in which to store historical values for review trend analysis.
 
 Each time you review queries with L<"--review">, pt-query-digest will save
 information into this table so you can see how classes of queries have changed
@@ -15943,7 +16280,7 @@ you could also just add a ts_min column and make it a DATE type, so you'd get
 one row per class of queries per day.
 
 The default table structure follows.  The following MAGIC_create_review_history
-table definition is used for L<"--create-review-tables">:
+table definition is used for L<"--create-review-history-table">:
 
  CREATE TABLE query_review_history (
    checksum             BIGINT UNSIGNED NOT NULL,
@@ -16049,312 +16386,6 @@ table definition is used for L<"--create-review-tables">:
 Note that we store the count (cnt) for the ts attribute only; it will be
 redundant to store this for other attributes.
 
-=item --host
-
-short form: -h; type: string
-
-Connect to host.
-
-=item --ignore-attributes
-
-type: array; default: arg, cmd, insert_id, ip, port, Thread_id, timestamp, exptime, flags, key, res, val, server_id, offset, end_log_pos, Xid
-
-Do not aggregate these attributes when auto-detecting L<"--select">.
-
-If you do not specify L<"--select"> then pt-query-digest auto-detects and
-aggregates every attribute that it finds in the slow log.  Some attributes,
-however, should not be aggregated.  This option allows you to specify a list
-of attributes to ignore.  This only works when no explicit L<"--select"> is
-given.
-
-=item --inherit-attributes
-
-type: array; default: db,ts
-
-If missing, inherit these attributes from the last event that had them.
-
-This option sets which attributes are inherited or carried forward to events
-which do not have them.  For example, if one event has the db attribute equal
-to "foo", but the next event doesn't have the db attribute, then it inherits
-"foo" for its db attribute.
-
-=item --interval
-
-type: float; default: .1
-
-How frequently to poll the L<"--processlist">, in seconds.
-
-=item --iterations
-
-type: int; default: 1
-
-How many times to iterate through the collect-and-report cycle.  If 0, iterate
-to infinity.  Each iteration runs for L<"--run-time"> amount of time.  An
-iteration is usually determined by an amount of time and a report is printed
-when that amount of time elapses.  With L<"--run-time-mode"> C<interval>,
-an interval is instead determined by the interval time you specify with
-L<"--run-time">.  See L<"--run-time"> and L<"--run-time-mode"> for more
-information.
-
-=item --limit
-
-type: Array; default: 95%:20
-
-Limit output to the given percentage or count.
-
-If the argument is an integer, report only the top N worst queries.  If the
-argument is an integer followed by the C<%> sign, report that percentage of the
-worst queries.  If the percentage is followed by a colon and another integer,
-report the top percentage or the number specified by that integer, whichever
-comes first.
-
-The value is actually a comma-separated array of values, one for each item in
-L<"--group-by">.  If you don't specify a value for any of those items, the
-default is the top 95%.
-
-See also L<"--outliers">.
-
-=item --log
-
-type: string
-
-Print all output to this file when daemonized.
-
-=item --order-by
-
-type: Array; default: Query_time:sum
-
-Sort events by this attribute and aggregate function.
-
-This is a comma-separated list of order-by expressions, one for each
-L<"--group-by"> attribute.  The default C<Query_time:sum> is used for
-L<"--group-by"> attributes without explicitly given L<"--order-by"> attributes
-(that is, if you specify more L<"--group-by"> attributes than corresponding
-L<"--order-by"> attributes).  The syntax is C<attribute:aggregate>.  See
-L<"ATTRIBUTES"> for valid attributes.  Valid aggregates are:
-
-   Aggregate Meaning
-   ========= ============================
-   sum       Sum/total attribute value
-   min       Minimum attribute value
-   max       Maximum attribute value
-   cnt       Frequency/count of the query
-
-For example, the default C<Query_time:sum> means that queries in the
-query analysis report will be ordered (sorted) by their total query execution
-time ("Exec time").  C<Query_time:max> orders the queries by their
-maximum query execution time, so the query with the single largest
-C<Query_time> will be list first.  C<cnt> refers more to the frequency
-of the query as a whole, how often it appears; "Count" is its corresponding
-line in the query analysis report.  So any attribute and C<cnt> should yield
-the same report wherein queries are sorted by the number of times they
-appear.
-
-When parsing general logs (L<"--type"> C<genlog>), the default L<"--order-by">
-becomes C<Query_time:cnt>.  General logs do not report query times so only
-the C<cnt> aggregate makes sense because all query times are zero.
-
-If you specify an attribute that doesn't exist in the events, then
-pt-query-digest falls back to the default C<Query_time:sum> and prints a notice
-at the beginning of the report for each query class.  You can create attributes
-with L<"--filter"> and order by them; see L<"ATTRIBUTES"> for an example.
-
-=item --outliers
-
-type: array; default: Query_time:1:10
-
-Report outliers by attribute:percentile:count.
-
-The syntax of this option is a comma-separated list of colon-delimited strings.
-The first field is the attribute by which an outlier is defined.  The second is
-a number that is compared to the attribute's 95th percentile.  The third is
-optional, and is compared to the attribute's cnt aggregate.  Queries that pass
-this specification are added to the report, regardless of any limits you
-specified in L<"--limit">.
-
-For example, to report queries whose 95th percentile Query_time is at least 60
-seconds and which are seen at least 5 times, use the following argument:
-
-  --outliers Query_time:60:5
-
-You can specify an --outliers option for each value in L<"--group-by">.
-
-=item --output
-
-type: string; default: report
-
-Type of report to print to C<STDOUT>.
-
-Accepted values are C<report>, C<slowlog>, C<json>, and C<none>.
-
-C<none> is useful with L<"--review"> and L<"--history"> when you only want
-to save the query data and not have a printed reported.
-
-=item --password
-
-short form: -p; type: string
-
-Password to use when connecting.
-
-=item --pid
-
-type: string
-
-Create the given PID file when daemonized.  The file contains the process
-ID of the daemonized instance.  The PID file is removed when the
-daemonized instance exits.  The program checks for the existence of the
-PID file when starting; if it exists and the process with the matching PID
-exists, the program exits.
-
-=item --port
-
-short form: -P; type: int
-
-Port number to use for connection.
-
-=item --print-iterations
-
-Print the start time for each L<"--iterations">.
-
-This option causes a line like the following to be printed at the start
-of each L<"--iterations"> report:
-
-  # Iteration 2 started at 2009-11-24T14:39:48.345780 
-
-This line will print even if C<--no-report> is specified.  If C<--iterations 0>
-is specified, each iteration number will be C<0>.
-
-=item --processlist
-
-type: DSN
-
-Poll this DSN's processlist for queries, with L<"--interval"> sleep between.
-
-If the connection fails, pt-query-digest tries to reopen it once per second.
-
-The DSN inherits from the DSN given on the command line, if any.
-
-=item --progress
-
-type: array; default: time,30
-
-Print progress reports to STDERR.  The value is a comma-separated list with two
-parts.  The first part can be percentage, time, or iterations; the second part
-specifies how often an update should be printed, in percentage, seconds, or
-number of iterations.
-
-=item --read-timeout
-
-type: time; default: 0
-
-Wait this long for an event from the input; 0 to wait forever.
-
-This option sets the maximum time to wait for an event from the input.  It
-applies to all types of input except L<"--processlist">.  If an
-event is not received after the specified time, the script stops reading the
-input and prints its reports.  If L<"--iterations"> is 0 or greater than
-1, the next iteration will begin, else the script will exit.
-
-This option requires the Perl POSIX module.
-
-=item --report-all
-
-Include all queries, even if they have already been reviewed.
-
-=item --report-format
-
-type: Array; default: rusage,date,hostname,files,header,profile,query_report,prepared
-
-Print these sections of the query analysis report.
-
-  SECTION      PRINTS
-  ============ ======================================================
-  rusage       CPU times and memory usage reported by ps
-  date         Current local date and time
-  hostname     Hostname of machine on which pt-query-digest was run
-  files        Input files read/parse
-  header       Summary of the entire analysis run
-  profile      Compact table of queries for an overview of the report
-  query_report Detailed information about each unique query
-  prepared     Prepared statements
-
-The sections are printed in the order specified.  The rusage, date, files and
-header sections are grouped together if specified together; other sections are
-separated by blank lines.
-
-See L<"OUTPUT"> for more information on the various parts of the query report.
-
-=item --report-histogram
-
-type: string; default: Query_time
-
-Chart the distribution of this attribute's values.
-
-The distribution chart is limited to time-based attributes, so charting
-C<Rows_examined>, for example, will produce a useless chart.  Charts look
-like:
-
-  # Query_time distribution
-  #   1us
-  #  10us
-  # 100us
-  #   1ms
-  #  10ms  ################################
-  # 100ms  ################################################################
-  #    1s  ########
-  #  10s+
-
-See L<"OUTPUT"> for more information.
-
-=item --resume
-
-If enabled, the tool will save the furthest it got into the log before exiting;
-Future runs on that log with --resume enabled will start from that position.
-
-=item --review
-
-type: string; default: percona_schema.query_review
-
-Store a sample of each class of query in this DSN.
-
-The argument specifies a table to store all unique query fingerprints in.  The
-table must have at least the following columns.  You can add more columns for
-your own special purposes, but they won't be used by pt-query-digest.  The
-following CREATE TABLE definition is also used for L<"--create-review-tables">.
-MAGIC_create_review:
-
-  CREATE TABLE query_review (
-     checksum     BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-     fingerprint  TEXT NOT NULL,
-     sample       TEXT NOT NULL,
-     first_seen   DATETIME,
-     last_seen    DATETIME,
-     reviewed_by  VARCHAR(20),
-     reviewed_on  DATETIME,
-     comments     TEXT
-  )
-
-The columns are as follows:
-
-  COLUMN       MEANING
-  ===========  ===============
-  checksum     A 64-bit checksum of the query fingerprint
-  fingerprint  The abstracted version of the query; its primary key
-  sample       The query text of a sample of the class of queries
-  first_seen   The smallest timestamp of this class of queries
-  last_seen    The largest timestamp of this class of queries
-  reviewed_by  Initially NULL; if set, query is skipped thereafter
-  reviewed_on  Initially NULL; not assigned any special meaning
-  comments     Initially NULL; not assigned any special meaning
-
-Note that the C<fingerprint> column is the true primary key for a class of
-queries.  The C<checksum> is just a cryptographic hash of this value, which
-provides a shorter value that is very likely to also be unique.
-
-After parsing and aggregating events, your table should contain a row for each
-fingerprint.  This option depends on C<--group-by fingerprint> (which is the
-default).  It will not work otherwise.
-
 =item --run-time
 
 type: time
@@ -16457,8 +16488,8 @@ Previously, pt-query-digest only aggregated these attributes:
 
   Query_time,Lock_time,Rows_sent,Rows_examined,user,db:Schema,ts
 
-Attributes specified in the review history table (see L<"--review"> will
-always be selected  even if you do not specify L<"--select">.
+Attributes specified in the L<"--review-history"> table will always be selected 
+even if you do not specify L<"--select">.
 
 See also L<"--ignore-attributes"> and L<"ATTRIBUTES">.
 
@@ -16519,7 +16550,11 @@ several types:
     CURRENT_DATE - INTERVAL 7 DAY
 
 If you give a MySQL time expression, then you must also specify a DSN
-so that pt-query-digest can connect to MySQL to evaluate the expression.
+so that pt-query-digest can connect to MySQL to evaluate the expression.  If you
+specify L<"--explain">, L<"--processlist">, L<"--review">
+or L<"--review-history">, then one of these DSNs will be used automatically.
+Otherwise, you must specify an L<"--aux-dsn"> or pt-query-digest will die
+saying that the value is invalid.
 
 The MySQL time expression is wrapped inside a query like
 "SELECT UNIX_TIMESTAMP(<expression>)", so be sure that the expression is
@@ -16596,6 +16631,52 @@ Parse a MySQL general log file.  General logs lack a lot of L<"ATTRIBUTES">,
 notably C<Query_time>.  The default L<"--order-by"> for general logs
 changes to C<Query_time:cnt>.
 
+=item http
+
+Parse HTTP traffic from tcpdump.
+
+=item pglog
+
+Parse a log file in PostgreSQL format.  The parser will automatically recognize
+logs sent to syslog and transparently parse the syslog format, too.  The
+recommended configuration for logging in your postgresql.conf is as follows.
+
+The log_destination setting can be set to either syslog or stderr.  Syslog has
+the added benefit of not interleaving log messages from several sessions
+concurrently, which the parser cannot handle, so this might be better than
+stderr.  CSV-formatted logs are not supported at this time.
+
+The log_min_duration_statement setting should be set to 0 to capture all
+statements with their durations.  Alternatively, the parser will also recognize
+and handle various combinations of log_duration and log_statement.
+
+You may enable log_connections and log_disconnections, but this is optional.
+
+It is highly recommended to set your log_line_prefix to the following:
+
+  log_line_prefix = '%m c=%c,u=%u,D=%d '
+
+This lets the parser find timestamps with milliseconds, session IDs, users, and
+databases from the log.  If these items are missing, you'll simply get less
+information to analyze.  For compatibility with other log analysis tools such as
+PQA and pgfouine, various log line prefix formats are supported.  The general
+format is as follows: a timestamp can be detected and extracted (the syslog
+timestamp is NOT parsed), and a name=value list of properties can also.
+Although the suggested format is as shown above, any name=value list will be
+captured and interpreted by using the first letter of the 'name' part,
+lowercased, to determine the meaning of the item.  The lowercased first letter
+is interpreted to mean the same thing as PostgreSQL's built-in %-codes for the
+log_line_prefix format string.  For example, u means user, so unicorn=fred
+will be interpreted as user=fred; d means database, so D=john will be
+interpreted as database=john.  The pgfouine-suggested formatting is user=%u and
+db=%d, so it should Just Work regardless of which format you choose.  The main
+thing is to add as much information as possible into the log_line_prefix to
+permit richer analysis.
+
+Currently, only English locale messages are supported, so if your server's
+locale is set to something else, the log won't be parsed properly.  (Log
+messages with "duration:" and "statement:" won't be recognized.)
+
 =item slowlog
 
 Parse a log file in any variation of MySQL slow-log format.
@@ -16660,6 +16741,17 @@ database.
 
 Server-side prepared statements are supported.  SSL-encrypted traffic cannot be
 inspected and decoded.
+
+=item memcached
+
+Similar to tcpdump, but the expected input is memcached packets
+instead of MySQL packets.  For example:
+
+  tcpdump -i any port 11211 -s 65535 -x -nn -q -tttt \
+    > memcached.tcp.txt
+  pt-query-digest --type memcached memcached.tcp.txt
+
+memcached uses port 11211 by default.
 
 =back
 
