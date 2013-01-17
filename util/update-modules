@@ -190,13 +190,13 @@ if [ $pkgs_updated -gt 0 ]; then
    fi
    if [ $EXIT_STATUS -eq 0 ]; then
       cp $tmp_tool_file $tool_file
+      EXIT_STATUS=$((EXIT_STATUS | $?))
       if [ $? -ne 0 ]; then
          warn "Failed to copy $tmp_tool_file to $tool_file"
-      else
-         rm $tmp_tool_file > /dev/null
-         EXIT_STATUS=$((EXIT_STATUS | $?))
       fi
    fi
 fi
+
+[ -f "$tmp_tool_file" ] && rm $tmp_tool_file
 
 exit $EXIT_STATUS
