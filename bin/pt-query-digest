@@ -13841,7 +13841,9 @@ sub main {
                   $args->{input_fh}    = $fh;
                   $args->{tell}        = sub {
                      my $pos = tell $fh;
-                     $args->{pos_for}->{$args->{filename}} = $pos;
+                     if ( $args->{filename} ) {
+                        $args->{pos_for}->{$args->{filename}} = $pos;
+                     }
                      return $pos;
                   };
                   $args->{more_events} = 1;
