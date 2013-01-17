@@ -71,13 +71,18 @@ override query_report => sub {
             $class{ts_max} = $ts->{max};
          }
          elsif ( ($ea->{type_for}->{$attrib} || '') eq 'num' ) {
+            # Avoid scientific notation in the metrics by forcing it to use
+            # six decimal places.
             for my $value ( values %{$metrics{$attrib}} ) {
                next unless $value;
-               $value = sprintf '%.7f', $value;
+               $value = sprintf '%.6f', $value;
+            }
+            # ..except for the percentage, which only needs two
+            if ( my $pct = $metrics{$attrib}->{pct} ) {
+               $metrics{$attrib}->{pct} = sprintf('%.2f', $pct);
             }
          }
       }
-      
       push @queries, {
          class       => \%class,
          attributes  => \%metrics,

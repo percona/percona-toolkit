@@ -8049,11 +8049,13 @@ override query_report => sub {
          elsif ( ($ea->{type_for}->{$attrib} || '') eq 'num' ) {
             for my $value ( values %{$metrics{$attrib}} ) {
                next unless $value;
-               $value = sprintf '%.7f', $value;
+               $value = sprintf '%.6f', $value;
+            }
+            if ( my $pct = $metrics{$attrib}->{pct} ) {
+               $metrics{$attrib}->{pct} = sprintf('%.2f', $pct);
             }
          }
       }
-      
       push @queries, {
          class       => \%class,
          attributes  => \%metrics,
