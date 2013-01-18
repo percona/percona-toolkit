@@ -363,9 +363,9 @@ sub query_report_values {
       my $review_vals;
       if ( $qv ) {
          $review_vals = $qv->get_review_info($item);
-         next ITEM if $review_vals->{reviewed_by} && !$self->{options}->{report_histogram};
+         next ITEM if $review_vals->{reviewed_by} && !$self->{options}->{report_all};
          for my $col ( $qv->review_cols() ) {
-            $item_vals{review_vals}{$col} = $review_vals->{$col};
+            push @{$item_vals{review_vals}}, [$col, $review_vals->{$col}];
          }
       }
 
@@ -452,8 +452,8 @@ sub query_report {
          # Print the review information that is already in the table
          # before putting anything new into the table.
          $report .= "# Review information\n";
-         foreach my $col ( keys %{$vals->{review_vals}} ) {
-            my $val = $vals->{review_vals}->{$col};
+         foreach my $elem ( @{$vals->{review_vals}} ) {
+            my ($col, $val) = @$elem;
             if ( !$val || $val ne '0000-00-00 00:00:00' ) { # issue 202
                $report .= sprintf "# %13s: %-s\n", $col, ($val ? $val : '');
             }
