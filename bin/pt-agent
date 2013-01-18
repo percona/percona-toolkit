@@ -16,6 +16,7 @@ BEGIN {
       Percona::Toolkit
       Lmo::Meta
       Lmo::Object
+      Lmo::Types
       Lmo
       Percona::WebAPI::Representation
       Percona::WebAPI::Client
@@ -279,6 +280,7 @@ sub meta {
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
+package Lmo::Types;
 
 use strict;
 use warnings qw( FATAL all );
@@ -1283,9 +1285,9 @@ has 'options' => (
    required => 0,
 );
 
-has 'queries' => (
+has 'query' => (
    is       => 'ro',
-   isa      => 'Maybe[ArrayRef]',
+   isa      => 'Maybe[Str]',
    required => 0,
    default  => undef,
 );
