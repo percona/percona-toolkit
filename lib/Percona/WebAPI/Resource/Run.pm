@@ -40,9 +40,9 @@ has 'options' => (
    required => 0,
 );
 
-has 'queries' => (
+has 'query' => (
    is       => 'ro',
-   isa      => 'Maybe[ArrayRef]',
+   isa      => 'Maybe[Str]',
    required => 0,
    default  => undef,
 );
