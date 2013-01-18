@@ -12,7 +12,6 @@
 # Rows examine 100  61.48k  61.48k  61.48k  61.48k  61.48k       0  61.48k
 # Merge passes   0       0       0       0       0       0       0       0
 # Query size    25     129     129     129     129     129       0     129
-# InnoDB:
 # Boolean:
 # Full scan    100% yes,   0% no
 # String:
