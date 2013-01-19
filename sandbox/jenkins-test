@@ -21,6 +21,8 @@ util/check-dev-env
 #########################
 # Check the system env. #
 #########################
+df -h
+w
 whoami
 id
 if [ "$(id -u)" = "0" ]; then
