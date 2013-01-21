@@ -9132,7 +9132,7 @@ sub new {
 
 sub set_history_options {
    my ( $self, %args ) = @_;
-   foreach my $arg ( qw(table dbh tbl_struct col_pat) ) {
+   foreach my $arg ( qw(table tbl_struct col_pat) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
@@ -9166,7 +9166,7 @@ sub set_history_options {
         } @cols) . ')';
    PTDEBUG && _d($sql);
 
-   $self->{history_sth}     = $args{dbh}->prepare($sql);
+   $self->{history_sth}     = $self->{dbh}->prepare($sql);
    $self->{history_metrics} = \@metrics;
 
    return;
@@ -13525,6 +13525,8 @@ my $aux_dbh; # For --aux-dsn (--since/--until "MySQL expression")
 my $resume_file;
 my $offset;
 
+(my $tool = __PACKAGE__) =~ tr/_/-/;
+
 sub main {
    # Reset global vars, else tests will fail.
    local @ARGV  = @_;
@@ -13555,11 +13557,6 @@ sub main {
    }
 
    if ( !$o->get('help') ) {
-      if ( $review_dsn
-           && (!defined $review_dsn->{D} || !defined $review_dsn->{t}) ) {
-         $o->save_error('The --review DSN requires a D (database) and t'
-            . ' (table) part specifying the query review table');
-      }
       if ( $o->get('outliers')
          && grep { $_ !~ m/^\w+:[0-9.]+(?::[0-9.]+)?$/ } @{$o->get('outliers')}
       ) {
@@ -13570,6 +13567,20 @@ sub main {
          if ( $EVAL_ERROR ) {
             chomp $EVAL_ERROR;
             $o->save_error("--progress $EVAL_ERROR");
+         }
+      }
+
+      if ( my $review_dsn = $o->get('review') ) {
+         $o->save_error('--review does not accept a t option. Perhaps you meant '
+                      . 'to use --review-table or --history-table?')
+            if defined $review_dsn->{t};
+      }
+
+      for my $tables ('review-table', 'history-table') {
+         my $got = $o->get($tables);
+         if ( grep !defined, Quoter->split_unquote($got) ) {
+            $o->save_error("$tables should be passed a "
+                         . "fully-qualified table name, got $got");
          }
       }
 
@@ -13642,11 +13653,10 @@ sub main {
    }
 
    # ########################################################################
-   # Set up for --review and --review-history.
+   # Set up for --review.
    # ########################################################################
    my $qv;      # QueryReview
    my $qv_dbh;  # For QueryReview
-   my $qv_dbh2; # For QueryReview and --review-history
    if ( $review_dsn ) {
       my $tp  = new TableParser(Quoter => $q);
       $qv_dbh = get_cxn(
@@ -13657,28 +13667,33 @@ sub main {
          opts         => { AutoCommit => 1 },
       );
       $qv_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
-      my @db_tbl = @{$review_dsn}{qw(D t)};
-      my $db_tbl = $q->quote(@db_tbl);
 
-      # Create the review table if desired
-      if ( $o->get('create-review-table') ) {
-         my $sql = $o->read_para_after(
-            __FILE__, qr/MAGIC_create_review/);
-         $sql =~ s/query_review/IF NOT EXISTS $db_tbl/;
-         PTDEBUG && _d($sql);
-         $qv_dbh->do($sql);
-      }
+      my @db_tbl  = Quoter->split_unquote($o->get('review-table'));
+      my @hdb_tbl = Quoter->split_unquote($o->get('history-table'));
 
-      # Check for the existence of the table.
-      if ( !$tp->check_table(
-            dbh => $qv_dbh,
-            db  => $db_tbl[0],
-            tbl => $db_tbl[1]) )
-      {
-         die "The query review table $db_tbl does not exist.  "
-            . "Specify --create-review-table to create it, "
-            . "and ensure that the MySQL user has privileges to create "
-            . "and update the table.\n";
+      my $db_tbl  = $q->quote(@db_tbl);
+      my $hdb_tbl = $q->quote(@hdb_tbl);
+
+      my $create_review_sql = $o->read_para_after(
+         __FILE__, qr/MAGIC_create_review/);
+      $create_review_sql =~ s/query_review/IF NOT EXISTS $db_tbl/;
+
+      my $create_history_sql = $o->read_para_after(
+         __FILE__, qr/MAGIC_create_review_history/);
+      $create_history_sql =~ s/query_review_history/IF NOT EXISTS $hdb_tbl/;
+
+      for my $create (
+         [ $db_tbl,  $create_review_sql  ],
+         [ $hdb_tbl, $create_history_sql ],
+      ) {
+         my ($tbl_name, $sql) = @$create;
+         create_review_tables(
+            dbh              => $qv_dbh,
+            full_table       => $tbl_name,
+            create_table_sql => $sql,
+            create_table     => $o->get('create-review-tables'),
+            TableParser      => $tp,
+         );
       }
 
       # Set up the new QueryReview object.
@@ -13690,77 +13705,41 @@ sub main {
          quoter      => $q,
       );
 
-      # Set up the review-history table
-      if ( my $review_history_dsn = $o->get('review-history') ) {
-         $qv_dbh2 = get_cxn(
-            for          => '--review-history',
-            dsn          => $review_history_dsn,
-            OptionParser => $o,
-            DSNParser    => $dp,
-            opts         => { AutoCommit => 1 },
-         );
-         $qv_dbh2->{InactiveDestroy}  = 1;  # Don't die on fork().
-         my @hdb_tbl = @{$o->get('review-history')}{qw(D t)};
-         my $hdb_tbl = $q->quote(@hdb_tbl);
-
-         # Create the review-history table if desired
-         if ( $o->get('create-review-history-table') ) {
-            my $sql = $o->read_para_after(
-               __FILE__, qr/MAGIC_create_review_history/);
-            $sql =~ s/query_review_history/IF NOT EXISTS $hdb_tbl/;
-            PTDEBUG && _d($sql);
-            $qv_dbh2->do($sql);
-         }
-
-         # Check for the existence of the table.
-         if ( !$tp->check_table(
-               dbh       => $qv_dbh2,
-               db        => $hdb_tbl[0],
-               tbl       => $hdb_tbl[1]) )
-         {
-            die "The query review history table $hdb_tbl does not exist.  "
-               . "Specify --create-review-history-table to create it, "
-               . "and ensure that the MySQL user has privileges to create "
-               . "and update the table.\n";
-         }
-
-         # Inspect for MAGIC_history_cols.  Add them to the --select list
-         # only if an explicit --select list was given.  Otherwise, leave
-         # --select undef which will cause EventAggregator to aggregate every
-         # attribute available which will include the history columns.
-         # If no --select list was given and we make one by adding the history
-         # columsn to it, then EventAggregator will only aggregate the
-         # history columns and nothing else--we don't want this.
-         my $tbl = $tp->parse($tp->get_create_table($qv_dbh2, @hdb_tbl));
-         my $pat = $o->read_para_after(__FILE__, qr/MAGIC_history_cols/);
-         $pat    =~ s/\s+//g;
-         $pat    = qr/^(.*?)_($pat)$/;
-         # Get original --select values.
-         my %select = map { $_ => 1 } @{$o->get('select')};
-         foreach my $col ( @{$tbl->{cols}} ) {
-            my ( $attr, $metric ) = $col =~ m/$pat/;
-            next unless $attr && $metric;
-            $attr = ucfirst $attr if $attr =~ m/_/; # TableParser lowercases
-            # Add history table values to original select values.
-            $select{$attr}++;
-         }
-
-         if ( $o->got('select') ) {
-            # Re-set --select with its original values plus the history
-            # table values.
-            $o->set('select', [keys %select]);
-            PTDEBUG && _d("--select after parsing --review-history table:", 
-               @{$o->get('select')});
-         }
-
-         # And tell the QueryReview that it has more work to do.
-         $qv->set_history_options(
-            table      => $hdb_tbl,
-            dbh        => $qv_dbh2,
-            tbl_struct => $tbl,
-            col_pat    => $pat,
-         );
+      # Inspect for MAGIC_history_cols.  Add them to the --select list
+      # only if an explicit --select list was given.  Otherwise, leave
+      # --select undef which will cause EventAggregator to aggregate every
+      # attribute available which will include the history columns.
+      # If no --select list was given and we make one by adding the history
+      # columsn to it, then EventAggregator will only aggregate the
+      # history columns and nothing else--we don't want this.
+      my $tbl = $tp->parse($tp->get_create_table($qv_dbh, @hdb_tbl));
+      my $pat = $o->read_para_after(__FILE__, qr/MAGIC_history_cols/);
+      $pat    =~ s/\s+//g;
+      $pat    = qr/^(.*?)_($pat)$/;
+      # Get original --select values.
+      my %select = map { $_ => 1 } @{$o->get('select')};
+      foreach my $col ( @{$tbl->{cols}} ) {
+         my ( $attr, $metric ) = $col =~ $pat;
+         next unless $attr && $metric;
+         $attr = ucfirst $attr if $attr =~ m/_/; # TableParser lowercases
+         # Add history table values to original select values.
+         $select{$attr}++;
       }
+
+      if ( $o->got('select') ) {
+         # Re-set --select with its original values plus the history
+         # table values.
+         $o->set('select', [sort keys %select]);
+         PTDEBUG && _d("--select after parsing the history table:", 
+            @{$o->get('select')});
+      }
+
+      # And tell the QueryReview that it has more work to do.
+      $qv->set_history_options(
+         table      => $hdb_tbl,
+         tbl_struct => $tbl,
+         col_pat    => $pat,
+      );
    }
 
    # ########################################################################
@@ -14152,7 +14131,7 @@ sub main {
          );
          $aux_dbh->{InactiveDestroy}  = 1;  # Don't die on fork().
       }
-      $aux_dbh ||= $qv_dbh || $qv_dbh2 || $ps_dbh || $ep_dbh;
+      $aux_dbh ||= $qv_dbh || $ps_dbh || $ep_dbh;
       PTDEBUG && _d('aux dbh:', $aux_dbh);
 
       my $time_callback = sub {
@@ -14768,7 +14747,7 @@ sub main {
       PTDEBUG && _d('Disconnected dbh', $_);
    }
    grep { $_ }
-   ($qv_dbh, $qv_dbh2, $ps_dbh, $ep_dbh, $aux_dbh);
+   ($qv_dbh, $ps_dbh, $ep_dbh, $aux_dbh);
 
    return 0;
 } # End main()
@@ -14776,6 +14755,77 @@ sub main {
 # ############################################################################
 # Subroutines.
 # ############################################################################
+
+sub create_review_tables {
+   my ( %args ) = @_;
+   my @required_args = qw(dbh full_table TableParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $create_table_sql = $args{create_table_sql};
+   my ($dbh, $full_table, $tp) = @args{@required_args};
+
+   PTDEBUG && _d('Checking --review table', $full_table);
+
+   # If the repl db doesn't exit, auto-create it, maybe.
+   my ($db, $tbl)  = Quoter->split_unquote($full_table);
+   my $show_db_sql = qq{SHOW DATABASES LIKE '$db'};
+   PTDEBUG && _d($show_db_sql);
+   my @db_exists = $dbh->selectrow_array($show_db_sql);
+   if ( !@db_exists && !$args{create_table} ) {
+      die "--review database $db does not exist and "
+        . "--no-create-review-tables was specified.  You need "
+        . "to create the database.\n";
+   }
+   else {
+      # Even if the db already exists, do this in case it does not exist
+      # on a slave.
+      my $create_db_sql
+         = "CREATE DATABASE IF NOT EXISTS "
+         . Quoter->quote($db)
+         . " /* $tool */";
+      PTDEBUG && _d($create_db_sql);
+      eval {
+         $dbh->do($create_db_sql);
+      };
+      if ( $EVAL_ERROR && !@db_exists ) {
+         warn $EVAL_ERROR;
+         die "--review database $db does not exist and it cannot be "
+            . "created automatically.  You need to create the database.\n";
+      }
+   }
+   
+   # USE the correct db
+   my $sql = "USE " . Quoter->quote($db);
+   PTDEBUG && _d($sql);
+   $dbh->do($sql);
+
+   # Check if the table exists; if not, create it, maybe.
+   my $tbl_exists = $tp->check_table(
+      dbh => $dbh,
+      db  => $db,
+      tbl => $tbl,
+   );
+
+   PTDEBUG && _d('Table exists: ', $tbl_exists ? 'yes' : 'no');
+
+   if ( !$tbl_exists && !$args{create_table} ) {
+      die "Table $full_table does not exist and "
+        . "--no-create-review-tables was specified.  "
+        . "You need to create the table.\n";
+   }
+   else {
+      PTDEBUG && _d($dbh, $create_table_sql);
+      eval {
+         $dbh->do($create_table_sql);
+      };
+      if ( $EVAL_ERROR && !$args{create_table} ) {
+         warn $EVAL_ERROR;
+         die "--review history table $full_table does not exist and it cannot be "
+           . "created automatically.  You need to create the table.\n"
+      }
+   }
+}
 
 # TODO: This sub is poorly named since it does more than print reports:
 # it aggregates, reports, does QueryReview stuff, etc.
@@ -15086,17 +15136,15 @@ sub update_query_review_tables {
          first_seen  => $stats->{ts}->{min},
          last_seen   => $stats->{ts}->{max}
       );
-      if ( $o->get('review-history') ) {
-         my %history;
-         foreach my $attrib ( @$attribs ) {
-            $history{$attrib} = $ea->metrics(
-               attrib => $attrib,
-               where  => $item,
-            );
-         }
-         $qv->set_review_history(
-            $item, $sample->{arg} || '', %history);
+      my %history;
+      foreach my $attrib ( @$attribs ) {
+         $history{$attrib} = $ea->metrics(
+            attrib => $attrib,
+            where  => $item,
+         );
       }
+      $qv->set_review_history(
+         $item, $sample->{arg} || '', %history);
    }
 
    return;
@@ -15540,9 +15588,9 @@ example,
 You can see how useful this meta-data is -- as you analyze your queries, you get
 your comments integrated right into the report.
 
-If you add the L<"--review-history"> option, it will also store information into
-a separate database table, so you can keep historical trending information on
-classes of queries.
+The tool will also store information into a separate database table specified
+by the L<"--history-table"> option, so you can keep historical trending information
+on classes of queries.
 
 =back
 
@@ -15646,9 +15694,6 @@ Collapse multiple identical UNION queries into a single one.
 
 =head1 OPTIONS
 
-DSN values in L<"--review-history"> default to values in L<"--review"> if COPY
-is yes.
-
 This tool accepts additional command-line arguments.  Refer to the
 L<"SYNOPSIS"> and usage information for details.
 
@@ -15737,19 +15782,13 @@ Continue parsing even if there is an error.  The tool will not continue
 forever: it stops once any process causes 100 errors, in which case there
 is probably a bug in the tool or the input is invalid.
 
-=item --create-review-history-table
+=item --create-review-tables
 
-Create the L<"--review-history"> table if it does not exist.
+Create the L<"--review"> tables if they do not exist.
 
-This option causes the table specified by L<"--review-history"> to be created
-with the default structure shown in the documentation for that option.
-
-=item --create-review-table
-
-Create the L<"--review"> table if it does not exist.
-
-This option causes the table specified by L<"--review"> to be created with the
-default structure shown in the documentation for that option.
+This option causes the tables specified by L<"--review-table"> and
+L<"--history-table"> to be created with the default structures shown
+in the documentation for L<"--review">.
 
 =item --daemonize
 
@@ -15966,6 +16005,12 @@ L<"ATTRIBUTES">).
 =item --help
 
 Show help and exit.
+
+=item --history-table
+
+type: string; default: percona_schema.query_history
+
+Where to save the historical data produced by L<"--review">.
 
 =item --host
 
@@ -16243,12 +16288,15 @@ seeks to that position in the file, and resuming parsing events.
 
 type: DSN
 
-Store a sample of each class of query in this DSN.
+Store a sample of each class of query in this DSN, plus historical values
+for review trend analysis
 
 The argument specifies a table to store all unique query fingerprints in.  The
 table must have at least the following columns.  You can add more columns for
 your own special purposes, but they won't be used by pt-query-digest.  The
 following CREATE TABLE definition is also used for L<"--create-review-table">.
+
+=for comment ignore-pt-internal-value
 MAGIC_create_review:
 
   CREATE TABLE query_review (
@@ -16283,23 +16331,12 @@ After parsing and aggregating events, your table should contain a row for each
 fingerprint.  This option depends on C<--group-by fingerprint> (which is the
 default).  It will not work otherwise.
 
-=item --review-history
 
-type: DSN
+Additionally, pt-query-digest will save information into a review table,
+so you can see how classes of queries have changed over time.  You can
+change the destination table with the L<"--history-table">
 
-The table in which to store historical values for review trend analysis.
-
-Each time you review queries with L<"--review">, pt-query-digest will save
-information into this table so you can see how classes of queries have changed
-over time.
-
-This DSN inherits unspecified values from L<"--review">.  It should mention a
-table in which to store statistics about each class of queries.  pt-query-digest
-verifies the existence of the table, and your privileges to insert, delete and
-update on that table.
-
-pt-query-digest then inspects the columns in the table.  The table must have at
-least the following columns:
+The table must have at least the following columns:
 
   CREATE TABLE query_review_history (
     checksum     BIGINT UNSIGNED NOT NULL,
@@ -16308,7 +16345,10 @@ least the following columns:
 
 Any columns not mentioned above are inspected to see if they follow a certain
 naming convention.  The column is special if the name ends with an underscore
-followed by any of these MAGIC_history_cols values:
+followed by any of these values:
+
+=for comment ignore-pt-internal-value
+MAGIC_history_cols
 
   pct|avt|cnt|sum|min|max|pct_95|stddev|median|rank
 
@@ -16324,8 +16364,11 @@ columns and making them part of the primary key along with the checksum.  But
 you could also just add a ts_min column and make it a DATE type, so you'd get
 one row per class of queries per day.
 
-The default table structure follows.  The following MAGIC_create_review_history
-table definition is used for L<"--create-review-history-table">:
+The default table structure follows.  The following table definition is used
+for L<"--create-review-tables">:
+
+=for comment ignore-pt-internal-value
+MAGIC_create_review_history
 
  CREATE TABLE query_review_history (
    checksum             BIGINT UNSIGNED NOT NULL,
@@ -16431,6 +16474,12 @@ table definition is used for L<"--create-review-history-table">:
 Note that we store the count (cnt) for the ts attribute only; it will be
 redundant to store this for other attributes.
 
+=item --review-table
+
+type: string; default: percona_schema.query_review
+
+Where to save the samples produced by L<"--review">.
+
 =item --run-time
 
 type: time
@@ -16533,7 +16582,7 @@ Previously, pt-query-digest only aggregated these attributes:
 
   Query_time,Lock_time,Rows_sent,Rows_examined,user,db:Schema,ts
 
-Attributes specified in the L<"--review-history"> table will always be selected 
+Attributes in the table specified by L<"--history-table"> will always be selected 
 even if you do not specify L<"--select">.
 
 See also L<"--ignore-attributes"> and L<"ATTRIBUTES">.
@@ -16595,9 +16644,9 @@ several types:
     CURRENT_DATE - INTERVAL 7 DAY
 
 If you give a MySQL time expression, then you must also specify a DSN
-so that pt-query-digest can connect to MySQL to evaluate the expression.  If you
-specify L<"--explain">, L<"--processlist">, L<"--review">
-or L<"--review-history">, then one of these DSNs will be used automatically.
+so that pt-query-digest can connect to MySQL to evaluate the expression.
+If you specify L<"--explain">, L<"--processlist">, L<"--review">, then
+one of these DSNs will be used automatically.
 Otherwise, you must specify an L<"--aux-dsn"> or pt-query-digest will die
 saying that the value is invalid.
 
@@ -16917,7 +16966,8 @@ Default character set.
 
 dsn: database; copy: yes
 
-Database that contains the query review table.
+Default database for the review option. Only useful if there are replication
+filters set up.
 
 =item * F
 
@@ -16951,7 +17001,7 @@ Socket file to use for connection.
 
 =item * t
 
-Table to use as the query review table.
+Not used.
 
 =item * u
 
