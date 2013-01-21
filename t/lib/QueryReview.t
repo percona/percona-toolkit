@@ -161,7 +161,6 @@ my $hist_struct = $tp->parse(
 
 $qv->set_history_options(
    table      => 'test.query_review_history',
-   dbh        => $dbh,
    quoter     => $q,
    tbl_struct => $hist_struct,
    col_pat    => qr/^(.*?)_($pat)$/,
@@ -257,7 +256,6 @@ $hist_struct = $tp->parse(
    $tp->get_create_table($dbh, 'test', 'query_review_history'));
 $qv->set_history_options(
    table      => 'test.query_review_history',
-   dbh        => $dbh,
    quoter     => $q,
    tbl_struct => $hist_struct,
    col_pat    => qr/^(.*?)_($pat)$/,

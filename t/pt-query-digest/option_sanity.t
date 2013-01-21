@@ -13,14 +13,29 @@ use Test::More;
 
 use PerconaTest;
 
+my $cmd  = "$trunk/bin/pt-query-digest";
+my $help = qx{$cmd --help};
+
 # #############################################################################
 # Test cmd line op sanity.
 # #############################################################################
-my $output = `$trunk/bin/pt-query-digest --review h=127.1,P=12345,u=msandbox,p=msandbox`;
-like($output, qr/--review DSN requires a D/, 'Dies if no D part in --review DSN');
+my $output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test`;
+like($output, qr/--review-table requires a fully/, 'Dies if no database part in --review-table');
 
-$output = `$trunk/bin/pt-query-digest --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test`;
-like($output, qr/--review DSN requires a D/, 'Dies if no t part in --review DSN');
+$output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test`;
+like($output, qr/--review does not accept a t option/, 'Dies if t part in --review DSN');
+
+like(
+   $help,
+   qr/review-table\s+\Qpercona_schema.query_review\E/,
+   "--review-table has a sane default"
+);
+
+like(
+   $help,
+   qr/history-table\s+\Qpercona_schema.query_history\E/,
+   "--history-table has a sane default"
+);
 
 # #############################################################################
 # https://bugs.launchpad.net/percona-toolkit/+bug/885382
@@ -34,25 +49,25 @@ my @options = qw(
    --group-by file
 );
 
-$output = `$trunk/bin/pt-query-digest @options --embedded-attributes '-- .*' $sample.slow010.txt`;
+$output = `$cmd @options --embedded-attributes '-- .*' $sample.slow010.txt`;
 
 like $output,
    qr/\Q--embedded-attributes should be passed two comma-separated patterns, got 1/,
    'Bug 885382: --embedded-attributes cardinality';
 
-$output = `$trunk/bin/pt-query-digest @options --embedded-attributes '-- .*,(?{1234})' $sample.slow010.txt`;
+$output = `$cmd @options --embedded-attributes '-- .*,(?{1234})' $sample.slow010.txt`;
 
 like $output,
    qr/\Q--embedded-attributes Eval-group /,
    "Bug 885382: --embedded-attributes rejects invalid patterns early";
 
-$output = `$trunk/bin/pt-query-digest @options --embedded-attributes '-- .*,(?*asdasd' $sample.slow010.txt`;
+$output = `$cmd @options --embedded-attributes '-- .*,(?*asdasd' $sample.slow010.txt`;
 
 like $output,
    qr/\Q--embedded-attributes Sequence (?*...) not recognized/,
    "Bug 885382: --embedded-attributes rejects invalid patterns early";
 
-$output = `$trunk/bin/pt-query-digest @options --embedded-attributes '-- .*,[:alpha:]' $sample.slow010.txt`;
+$output = `$cmd @options --embedded-attributes '-- .*,[:alpha:]' $sample.slow010.txt`;
 
 like $output,
    qr/\Q--embedded-attributes POSIX syntax [: :] belongs inside character/,
@@ -61,7 +76,7 @@ like $output,
 
 # We removed --statistics, but they should still print out if we use PTDEBUG.
 
-$output = qx{PTDEBUG=1 $trunk/bin/pt-query-digest --no-report ${sample}slow002.txt 2>&1};
+$output = qx{PTDEBUG=1 $cmd --no-report ${sample}slow002.txt 2>&1};
 my $stats = slurp_file("t/pt-query-digest/samples/stats-slow002.txt");
 
 like(
@@ -81,10 +96,8 @@ like(
 # https://bugs.launchpad.net/percona-toolkit/+bug/831525
 # #############################################################################
 
-$output = `$trunk/bin/pt-query-digest --help`;
-
 like(
-   $output,
+   $help,
    qr/\Q--report-format=A\E\s*
       \QPrint these sections of the query analysis\E\s*
       \Qreport (default rusage,date,hostname,files,\E\s*
