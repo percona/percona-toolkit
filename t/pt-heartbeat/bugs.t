@@ -89,7 +89,7 @@ PerconaTest::wait_for_table($slave1_dbh, 'test.heartbeat', 'server_id=12345');
 my $slave1_dsn = $sb->dsn_for('slave1');
 # Using full_output here to work around a Perl bug: Only the first explicit
 # tzset works.
-($output) = full_output(sub {
+($output) = output(sub {
    local $ENV{TZ} = '-09:00';
    tzset();
    pt_heartbeat::main($slave1_dsn, qw(--database test --table heartbeat),
@@ -106,6 +106,31 @@ like(
 );
 
 stop_all_instances();
+
+
+# #############################################################################
+# pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
+# https://bugs.launchpad.net/percona-toolkit/+bug/1103221
+# #############################################################################
+
+$master_dbh->do('truncate table test.heartbeat');
+$sb->wait_for_slaves;
+
+my $master_dsn = $sb->dsn_for('master');
+
+($output) = output(
+   sub {
+      pt_heartbeat::main($master_dsn, qw(--database test --update),
+         qw(--run-time 1))
+   },
+);
+
+my ($row) = $master_dbh->selectrow_hashref('select * from test.heartbeat');
+like(
+   $row->{ts},
+   qr/\d{4}-\d\d-\d\dT\d+:\d+:\d+\.\d+/,
+   "Hi-res timestamp (bug 1103221)"
+);
 
 # ############################################################################
 # Done.

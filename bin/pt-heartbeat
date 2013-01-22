@@ -5863,6 +5863,16 @@ short form: -u; type: string
 
 User for login if not current user.
 
+=item --utc
+
+Ignore system time zones and use only UTC.  By default pt-heartbeat does
+not check or adjust for different system or MySQL time zones which can
+cause the tool to compute the lag incorrectly.  Specifying this option is
+a good idea because it ensures that the tool works correctly regardless of
+time zones, but it also makes the tool backwards-incompatible with
+pt-heartbeat 2.1.7 and older (unless the older version of pt-heartbeat
+is running on a system that uses UTC).
+
 =item --version
 
 Show version and exit.
