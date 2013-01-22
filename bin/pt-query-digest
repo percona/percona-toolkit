@@ -13820,9 +13820,8 @@ sub main {
                   push @read_files, $filename || "STDIN";
 
                   # Read the file offset for --resume.
-                  if ( $o->get('resume') && $filename ) {
-                     $resume_file = $filename . '.resume';
-                     if ( -f $resume_file ) {
+                  if ( ($resume_file = $o->get('resume')) && $filename ) {
+                     if ( -s $resume_file ) {
                         open my $resume_fh, '<', $resume_file
                            or die "Error opening $resume_file: $OS_ERROR";
                         chomp(my $resume_offset = <$resume_fh>);
@@ -16278,11 +16277,12 @@ See L<"OUTPUT"> for more information.
 
 =item --resume
 
-Resume parsing from the last file offset.  When specified, the tool
-writes the last file offset to C<FILE.resume> where C<FILE> is the original
-file name given on the command line.  When ran again with the exact same
-file name, the tool reads the last file offset from C<FILE.resume>,
-seeks to that position in the file, and resuming parsing events.
+type: string
+
+If specified, the tool writes the last file offset, if there is one,
+to the given filename. When ran again with the same value for this option,
+the tool reads the last file offset from the file, seeks to that position
+in the log, and resumes parsing events from that point onward.
 
 =item --review
 
