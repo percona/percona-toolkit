@@ -4,6 +4,10 @@ BEGIN {
    die "The PERCONA_TOOLKIT_BRANCH environment variable is not set.\n"
       unless $ENV{PERCONA_TOOLKIT_BRANCH} && -d $ENV{PERCONA_TOOLKIT_BRANCH};
    unshift @INC, "$ENV{PERCONA_TOOLKIT_BRANCH}/lib";
+
+   # Don't add /* trace */ messages to --print queries becuase they
+   # contain non-determinstic info like user, etc.
+   $ENV{PT_TEST_NO_TRACE} = 1;
 };
 
 use strict;

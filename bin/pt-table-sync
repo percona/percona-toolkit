@@ -10582,6 +10582,7 @@ sub sync_a_table {
          trim              => $o->get('trim'),
          wait              => $o->get('wait'),
          function          => $o->get('function'),
+         trace             => !$ENV{PT_TEST_NO_TRACE},
       );
 
       if ( sum(@status{@ChangeHandler::ACTIONS}) ) {
@@ -11281,19 +11282,30 @@ sub diff_where {
       PTDEBUG && _d('Ascend params:', Dumper($asc));
    }
 
-   my $lb_sql = $asc->{boundaries}->{'>='};
-   foreach my $val ( $q->deserialize_list($diff->{lower_boundary}) ) {
-      my $quoted_val = $q->quote_val($val);
-      $lb_sql =~ s/\?/$quoted_val/;
+   my ($lb_sql, $ub_sql);
+
+   if ( defined $diff->{lower_boundary} ) {
+      $lb_sql = $asc->{boundaries}->{'>='};
+      foreach my $val ( $q->deserialize_list($diff->{lower_boundary}) ) {
+         my $quoted_val = $q->quote_val($val);
+         $lb_sql =~ s/\?/$quoted_val/;
+      }
    }
 
-   my $ub_sql = $asc->{boundaries}->{'<='};
-   foreach my $val ( $q->deserialize_list($diff->{upper_boundary}) ) {
-      my $quoted_val = $q->quote_val($val);
-      $ub_sql =~ s/\?/$quoted_val/;
+   if ( defined $diff->{upper_boundary} ) {
+      $ub_sql = $asc->{boundaries}->{'<='};
+      foreach my $val ( $q->deserialize_list($diff->{upper_boundary}) ) {
+         my $quoted_val = $q->quote_val($val);
+         $ub_sql =~ s/\?/$quoted_val/;
+      }
    }
 
-   return "$lb_sql AND $ub_sql";
+   die "Invalid checksum diff: " . Dumper($diff)
+      unless $lb_sql || $ub_sql;
+
+   return   $lb_sql && $ub_sql ? "$lb_sql AND $ub_sql"
+          : $lb_sql            ? $lb_sql
+          :                      $ub_sql;
 }
 }
 
