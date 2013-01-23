@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 1;
+use Test::More;
 
 use PerconaTest;
 use Sandbox;
@@ -57,7 +57,28 @@ test_diff_where(
    where => "((`id` >= '7')) AND ((`id` <= '9'))",
 );
 
+test_diff_where(
+   name => "Lower oob chunk (bug 918056)",
+   file => "$sample/bug-918056-ddl.sql",
+   diff => {
+      chunk          => '3',
+      chunk_index    => 'PRIMARY',
+      cnt_diff       => '49',
+      crc_diff       => '0',
+      db             => 'test',
+      lower_boundary => undef,
+      master_cnt     => '0',
+      master_crc     => '0',
+      table          => 'test.history',
+      tbl            => 'history',
+      this_cnt       => '49',
+      this_crc       => '0',
+      upper_boundary => '21,21,1045'
+   },
+   where => "((`uid` < '21') OR (`uid` = '21' AND `uid` <= '1045'))",
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
