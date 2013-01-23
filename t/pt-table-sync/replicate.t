@@ -66,8 +66,8 @@ ok(
 );
 
 # Test syncing the upper oob chunk.
-$sb->load_file('master', "$sample/upper-oob-master.sql", "upper_oob");
-$sb->load_file('slave1', "$sample/upper-oob-slave.sql",  "upper_oob");
+$sb->load_file('master', "$sample/upper-oob-master.sql");
+$sb->load_file('slave1', "$sample/upper-oob-slave.sql");
 
 ok(
    no_diff(
