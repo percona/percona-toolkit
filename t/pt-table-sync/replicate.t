@@ -47,6 +47,8 @@ my $sample = "t/pt-table-sync/samples";
 # https://bugs.launchpad.net/percona-toolkit/+bug/918056
 # #############################################################################
 
+# The slave has 49 extra rows on the low end, e.g. master has rows 50+
+# but slave has rows 1-49 and 50+.  This tests syncing the lower oob chunk.
 $sb->create_dbs($master_dbh, [qw(bug918056)]);
 $sb->load_file('master', "$sample/bug-918056-master.sql", "bug918056");
 $sb->load_file('slave1', "$sample/bug-918056-slave.sql",  "bug918056");
@@ -61,6 +63,22 @@ ok(
       stderr => 1,
    ),
    "Sync lower oob (bug 918056)"
+);
+
+# Test syncing the upper oob chunk.
+$sb->load_file('master', "$sample/upper-oob-master.sql", "upper_oob");
+$sb->load_file('slave1', "$sample/upper-oob-slave.sql",  "upper_oob");
+
+ok(
+   no_diff(
+      sub {
+         pt_table_sync::main($master_dsn, qw(--replicate percona.checksums),
+            qw(--print))
+      },
+      "$sample/upper-oob-print.txt",
+      stderr => 1,
+   ),
+   "Sync upper oob (bug 918056)"
 );
 
 # #############################################################################
