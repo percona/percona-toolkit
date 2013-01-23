@@ -1,0 +1,10 @@
+DELETE FROM `upper_oob`.`t` WHERE `id`='100' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='101' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='102' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='103' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='104' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='105' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='106' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='107' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='108' LIMIT 1;
+DELETE FROM `upper_oob`.`t` WHERE `id`='109' LIMIT 1;
