@@ -14,6 +14,10 @@ use Test::More;
 use PerconaTest;
 require "$trunk/bin/pt-query-digest";
 
+no warnings 'once';
+local $JSONReportFormatter::sorted_json = 1;
+local $JSONReportFormatter::pretty_json = 1;
+
 my @args    = qw(--output json);
 my $sample  = "$trunk/t/lib/samples";
 my $results = "t/pt-query-digest/samples";
