@@ -21,24 +21,34 @@ set -u
 PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
+OPT_VERBOSE=${OPT_VERBOSE:-3}
 
-log() {
-   TS=$(date +%F-%T | tr ':-' '_');
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-0} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-0} -ge 2 ] && ts "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-0} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
 }
 
 _d () {
-   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################
@@ -1066,9 +1076,7 @@ sleep_ok() {
    local seconds="$1"
    local msg="${2:-""}"
    if oktorun; then
-      if [ -n "$msg" ]; then
-         log "$msg"
-      fi
+      [ "$msg" ] && info "$msg"
       sleep $seconds
    fi
 }
@@ -1126,7 +1134,11 @@ stalk() {
          fi
 
          local msg="Check results: $OPT_VARIABLE=$value, matched=${matched:-no}, cycles_true=$cycles_true"
-         log "$msg"
+         if [ "$matched" ]; then
+            log "$msg"
+         else
+            info "$msg"
+         fi
       elif [ "$OPT_COLLECT" ]; then
          # Make the next if condition true.
          matched=1
@@ -1140,7 +1152,7 @@ stalk() {
          # ##################################################################
          # Start collecting, maybe.
          # ##################################################################
-         log "Collect triggered"
+         log "Collect $ITER triggered"
 
          # Send email to whomever that collect has been triggered.
          if [ "$OPT_NOTIFY_BY_EMAIL" ]; then
@@ -1166,8 +1178,8 @@ stalk() {
                "$margin"
             if [ $? -eq 0 ]; then
                # There should be enough disk space, so collect.
-               log "$msg"                        >> "$OPT_DEST/$prefix-trigger"
-               log "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
+               ts "$msg"                        >> "$OPT_DEST/$prefix-trigger"
+               ts "pt-stalk ran with $RAN_WITH" >> "$OPT_DEST/$prefix-trigger"
                last_prefix="$prefix"
 
                # Plugin hook:
@@ -1181,7 +1193,7 @@ stalk() {
                   collect "$OPT_DEST" "$prefix"
                ) >> "$OPT_DEST/$prefix-output" 2>&1 &
                local collector_pid=$!
-               log "Collector PID $collector_pid"
+               log "Collect $ITER PID $collector_pid"
 
                # Plugin hook:
                after_collect $collector_pid
@@ -1199,6 +1211,7 @@ stalk() {
          # ##################################################################
          # Done collecting.
          # ##################################################################
+         log "Collect $ITER done"
          ITER=$((ITER + 1))
          cycles_true=0
          sleep_ok "$OPT_SLEEP" "Sleeping $OPT_SLEEP seconds after collect"
@@ -1839,6 +1852,22 @@ for details.
 type: string; default: Threads_running
 
 The variable to compare against the threshold. See L<"--function"> for details.
+
+=item --verbose
+
+type: int; default: 2
+
+Print more or less information while running.  Since the tool is designed
+to be a long-running daemon, the default verbosity level only prints the
+most important information.  If you run the tool interactively, you may
+want to use a higher verbosity level.
+
+  LEVEL PRINTS
+  ===== =====================================
+  0     Errors
+  1     Warnings
+  2     Matching triggers and collection info
+  3     Non-matching triggers
 
 =item --version
 

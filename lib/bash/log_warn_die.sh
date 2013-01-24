@@ -29,32 +29,32 @@ PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 OPT_VERBOSE=${OPT_VERBOSE:-3}
 
-_print() {
+ts() {
    TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
 info() {
-   [ ${OPT_VERBOSE:-0} -ge 3 ] && _print "$*"
+   [ ${OPT_VERBOSE:-0} -ge 3 ] && ts "$*"
 }
 
 log() {
-   [ ${OPT_VERBOSE:-0} -ge 2 ] && _print "$*"
+   [ ${OPT_VERBOSE:-0} -ge 2 ] && ts "$*"
 }
 
 warn() {
-   [ ${OPT_VERBOSE:-0} -ge 1 ] && _print "$*" >&2
+   [ ${OPT_VERBOSE:-0} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   _print "$*" >&2
+   ts "$*" >&2
    EXIT_STATUS=1
    exit 1
 }
 
 _d () {
-   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(_print "$*")" >&2
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################
