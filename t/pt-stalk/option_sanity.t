@@ -17,7 +17,7 @@ my $output = `$trunk/bin/pt-stalk --help`;
 
 like(
    $output,
-   qr/^\s+--vebose\s+2/m,
+   qr/^\s+--verbose\s+2/m,
    "Default --verbose=2"
 );
 
