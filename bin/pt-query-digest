@@ -13593,7 +13593,7 @@ sub main {
       for my $tables ('review-table', 'history-table') {
          my $got = $o->get($tables);
          if ( grep !defined, Quoter->split_unquote($got) ) {
-            $o->save_error("$tables should be passed a "
+            $o->save_error("--$tables should be passed a "
                          . "fully-qualified table name, got $got");
          }
       }
