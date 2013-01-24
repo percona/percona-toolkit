@@ -100,6 +100,7 @@ run_test() {
 result() {
    local result=$1
    local test_name=${2:-""}
+   testno=$((testno + 1))
    if [ $result -eq 0 ]; then
       echo "ok $testno - $TEST_FILE $test_name"
    else
@@ -110,7 +111,6 @@ result() {
          cat $TEST_PT_TMPDIR/failed_result | sed -e 's/^/#   /' -e '30q' >&2
       fi
    fi
-   testno=$((testno + 1))
    return $result
 }
 
@@ -119,6 +119,10 @@ plan() {
    if [ "$n_tests" ]; then
       echo "1..$n_tests"
    fi
+}
+
+done_testing() {
+   echo "1..$testno"
 }
 
 #
@@ -260,7 +264,7 @@ diag() {
 # Script starts here
 # ############################################################################
 
-testno=1
+testno=0
 failed_tests=0
 
 if [ $# -eq 0 ]; then

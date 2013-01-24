@@ -26,15 +26,15 @@ ts() {
 }
 
 info() {
-   [ ${OPT_VERBOSE:-0} -ge 3 ] && ts "$*"
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
 }
 
 log() {
-   [ ${OPT_VERBOSE:-0} -ge 2 ] && ts "$*"
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
 }
 
 warn() {
-   [ ${OPT_VERBOSE:-0} -ge 1 ] && ts "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
