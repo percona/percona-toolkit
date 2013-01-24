@@ -27,24 +27,34 @@ set -u
 PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
+OPT_VERBOSE=${OPT_VERBOSE:-3}
 
-log() {
-   TS=$(date +%F-%T | tr ':-' '_');
+_print() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-0} -ge 3 ] && _print "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-0} -ge 2 ] && _print "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-0} -ge 1 ] && _print "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   _print "$*" >&2
+   EXIT_STATUS=1
    exit 1
 }
 
 _d () {
-   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(_print "$*")" >&2
 }
 
 # ###########################################################################
