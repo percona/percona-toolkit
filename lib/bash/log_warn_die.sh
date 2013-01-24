@@ -27,7 +27,6 @@ set -u
 PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
-OPT_VERBOSE=${OPT_VERBOSE:-3}
 
 ts() {
    TS=$(date +%F-%T | tr ':-' '_')

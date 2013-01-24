@@ -21,7 +21,6 @@ set -u
 PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
-OPT_VERBOSE=${OPT_VERBOSE:-3}
 
 ts() {
    TS=$(date +%F-%T | tr ':-' '_')
@@ -972,6 +971,10 @@ after_collect_sleep() {
    :
 }
 
+after_interval_sleep() {
+   :
+}
+
 after_stalk() {
    :
 }
@@ -1221,6 +1224,9 @@ stalk() {
       else
          # Trigger/check/value is ok, sleep until next check.
          sleep_ok "$OPT_INTERVAL"
+
+         # Plugin hook:
+         after_interval_sleep
       fi
    done
 
@@ -1749,6 +1755,10 @@ C<after_collect_sleep>.
 
 Called after sleeping L<"--sleep"> seconds for the collector process to finish.
 This hook is called after C<after_collect>.
+
+=item after_interval_sleep
+
+Called after sleeping L<"--interval"> seconds after each trigger check.
 
 =item after_stalk
 
