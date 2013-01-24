@@ -127,13 +127,11 @@ plan() {
 
 pass() {
    local reason="${1:-""}"
-
    result 0 "$reason"
 }
 
 fail() {
    local reason="${1:-""}"
-
    result 1 "$reason"
 }
 
@@ -175,6 +173,42 @@ is() {
    test_command="\"$got\" == \"$expected\""
    test "$got" = "$expected"
    result $? "$test_name"
+}
+
+file_is_empty() {
+   local file=$1
+   local test_name=${2:-""}
+   test_command="-s $file"
+   if [ ! -f "$file" ]; then
+      echo "$file does not exist" > $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   fi
+   if [ -s "$file" ]; then
+      echo "$file is not empty:" > $TEST_PT_TMPDIR/failed_result
+      cat "$file" >> $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   else
+      result 0 "$test_name"
+   fi
+}
+
+file_contains() {
+   local file="$1"
+   local pat="$2"
+   local test_name=${3:-""}
+   test_command="grep -q '$pat' '$file'"
+   if [ ! -f "$file" ]; then
+      echo "$file does not exist" > $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   fi
+   grep -q "$pat" $file
+   if [ $? -ne 0 ]; then
+      echo "$file does not contain '$pat':" > $TEST_PT_TMPDIR/failed_result
+      cat "$file" >> $TEST_PT_TMPDIR/failed_result
+      result 1 "$test_name"
+   else
+      result 0 "$test_name"
+   fi
 }
 
 cmd_ok() {
