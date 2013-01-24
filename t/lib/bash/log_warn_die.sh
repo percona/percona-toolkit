@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 
-plan 6
-
 source "$LIB_DIR/log_warn_die.sh"
 
-log "Hello world!" > $TEST_PT_TMPDIR/log
+log "Hello world A!" > $TEST_PT_TMPDIR/log
 cmd_ok \
-   "grep -q 'Hello world!' $TEST_PT_TMPDIR/log" \
+   "grep -q 'Hello world A!' $TEST_PT_TMPDIR/log" \
    "log msg"
 
-log "Hello" "world!" > $TEST_PT_TMPDIR/log
+log "Hello" "world B!" > $TEST_PT_TMPDIR/log
 cmd_ok \
-   "grep -q 'Hello world!' $TEST_PT_TMPDIR/log" \
+   "grep -q 'Hello world B!' $TEST_PT_TMPDIR/log" \
    "log msg msg"
 
 is \
@@ -19,14 +17,14 @@ is \
    "0" \
    "Exit status 0"
 
-warn "Hello world!" 2> $TEST_PT_TMPDIR/log
+warn "Hello world C!" 2> $TEST_PT_TMPDIR/log
 cmd_ok \
-   "grep -q 'Hello world!' $TEST_PT_TMPDIR/log" \
+   "grep -q 'Hello world C!' $TEST_PT_TMPDIR/log" \
    "warn msg"
 
-warn "Hello" "world!" 2> $TEST_PT_TMPDIR/log
+warn "Hello" "world D!" 2> $TEST_PT_TMPDIR/log
 cmd_ok \
-   "grep -q 'Hello world!' $TEST_PT_TMPDIR/log" \
+   "grep -q 'Hello world D!' $TEST_PT_TMPDIR/log" \
    "warn msg msg"
 
 is \
@@ -111,3 +109,4 @@ file_is_empty \
 # ###########################################################################
 # Done
 # ###########################################################################
+done_testing
