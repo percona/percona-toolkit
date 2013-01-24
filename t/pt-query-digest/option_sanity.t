@@ -16,11 +16,15 @@ use PerconaTest;
 my $cmd  = "$trunk/bin/pt-query-digest";
 my $help = qx{$cmd --help};
 
+my $output;
+
 # #############################################################################
 # Test cmd line op sanity.
 # #############################################################################
-my $output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test`;
-like($output, qr/--review-table requires a fully/, 'Dies if no database part in --review-table');
+for my $opt (qw(review-table history-table)) {
+   $output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox --$opt test`;
+   like($output, qr/--$opt should be passed a/, "Dies if no database part in --$opt");
+}
 
 $output = `$cmd --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=test`;
 like($output, qr/--review does not accept a t option/, 'Dies if t part in --review DSN');
@@ -100,8 +104,8 @@ like(
    $help,
    qr/\Q--report-format=A\E\s*
       \QPrint these sections of the query analysis\E\s*
-      \Qreport (default rusage,date,hostname,files,\E\s*
-      \Qheader,profile,query_report,prepared)\E/x,
+      \Qreport (default rusage\E,\s*date,\s*hostname,\s*files,\s*
+      header,\s*profile,\s*query_report,\s*prepared\)/x,
    "Bug 831525: pt-query-digest help output mangled"
 );
 
