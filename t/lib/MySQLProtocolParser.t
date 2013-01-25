@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 72;
+use Test::More;
 
 use MySQLProtocolParser;
 use TcpdumpParser;
@@ -1701,6 +1701,53 @@ test_protocol_parser(
 );
 
 # #############################################################################
+# Bug 1103045: pt-query-digest fails to parse non-SQL errors
+# https://bugs.launchpad.net/percona-toolkit/+bug/1103045
+# #############################################################################
+
+$protocol = new MySQLProtocolParser(
+   server => '127.0.0.1',
+   port   => '12345',
+);
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump043.txt",
+   desc     => 'Bad connection',
+   result =>
+   [
+      {
+         Error_msg          => 'Got packets out of order',
+         Error_no           => 1156,
+         No_good_index_used => 'No',
+         No_index_used      => 'No',
+         Query_time         => '3.536306',
+         Rows_affected      => 0,
+         Thread_id          => 27,
+         Warning_count      => 0,
+         arg                => 'administrator command: Connect',
+         bytes              => 30,
+         cmd                => 'Admin',
+         db                 => undef,
+         host               => '127.0.0.1',
+         ip                 => '127.0.0.1',
+         port               => '62160',
+         pos_in_log         => undef,
+         ts                 => '130124 13:03:28.672987',
+         user               => undef,
+      }
+   ],
+);
+
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump042.txt",
+   desc     => 'Client went away during handshake',
+   result   => [],
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;

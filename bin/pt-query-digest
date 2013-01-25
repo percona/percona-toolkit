@@ -3348,7 +3348,8 @@ sub _packet_from_server {
          }
          my $event;
 
-         if ( $session->{state} eq 'client_auth' ) {
+         if (   $session->{state} eq 'client_auth'
+             || $session->{state} eq 'server_handshake' ) {
             PTDEBUG && _d('Connection failed');
             $event = {
                cmd      => 'Admin',
@@ -3727,9 +3728,17 @@ sub parse_error_packet {
    }
    my $errno    = to_num(substr($data, 0, 4));
    my $marker   = to_string(substr($data, 4, 2));
-   return unless $marker eq '#';
-   my $sqlstate = to_string(substr($data, 6, 10));
-   my $message  = to_string(substr($data, 16));
+   my $sqlstate = '';
+   my $message  = '';
+   if ( $marker eq '#' ) {
+      $sqlstate = to_string(substr($data, 6, 10));
+      $message  = to_string(substr($data, 16));
+   }
+   else {
+      $marker  = '';
+      $message = to_string(substr($data, 4));
+   }
+   return unless $message;
    my $pkt = {
       errno    => $errno,
       sqlstate => $marker . $sqlstate,
