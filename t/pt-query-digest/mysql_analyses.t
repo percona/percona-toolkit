@@ -9,7 +9,7 @@ BEGIN {
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
-use Test::More tests => 6;
+use Test::More;
 
 use PerconaTest;
 
@@ -77,6 +77,20 @@ ok(
 );
 
 # #############################################################################
+# Bug 1103045: pt-query-digest fails to parse non-SQL errors
+# https://bugs.launchpad.net/percona-toolkit/+bug/1103045
+# #############################################################################
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'tcpdump043.txt',
+         '--report-format', 'header,query_report,profile',
+         qw(--watch-server 127.0.0.1:12345)) },
+      "t/pt-query-digest/samples/tcpdump043_report.txt"
+   ),
+   'Analysis for tcpdump043 with connection error (bug 1103045)'
+);
+
+# #############################################################################
 # Done.
 # #############################################################################
-exit;
+done_testing;
