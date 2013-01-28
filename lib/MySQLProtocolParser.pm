@@ -340,6 +340,18 @@ sub parse_event {
    if ( $packet->{data_len} == 0 ) {
       PTDEBUG && _d('TCP control:',
          map { uc $_ } grep { $packet->{$_} } qw(syn ack fin rst));
+      if ( $packet->{'fin'}
+           && ($session->{state} || '') eq 'server_handshake' ) {
+         PTDEBUG && _d('Client aborted connection');
+         my $event = {
+            cmd => 'Admin',
+            arg => 'administrator command: Connect aborted',
+            ts  => $packet->{ts},
+         };
+         $event = $self->_make_event($event, $packet, $session);
+         delete $self->{sessions}->{$session->{client}};
+         return $event;
+      }
       return;
    }
 

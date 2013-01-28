@@ -90,6 +90,16 @@ ok(
    'Analysis for tcpdump043 with connection error (bug 1103045)'
 );
 
+ok(
+   no_diff(
+      sub { pt_query_digest::main(@args, $sample.'tcpdump044.txt',
+         '--report-format', 'header,query_report,profile',
+         qw(--watch-server 100.0.0.1)) },
+      "t/pt-query-digest/samples/tcpdump044_report.txt"
+   ),
+   'Analysis for tcpdump044 with connection error (bug 1103045)'
+);
+
 # #############################################################################
 # Done.
 # #############################################################################
