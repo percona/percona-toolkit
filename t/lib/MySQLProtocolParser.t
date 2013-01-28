@@ -1709,6 +1709,7 @@ $protocol = new MySQLProtocolParser(
    server => '127.0.0.1',
    port   => '12345',
 );
+
 test_protocol_parser(
    parser   => $tcpdump,
    protocol => $protocol,
@@ -1744,7 +1745,59 @@ test_protocol_parser(
    protocol => $protocol,
    file     => "$sample/tcpdump042.txt",
    desc     => 'Client went away during handshake',
-   result   => [],
+   result   => [
+      {
+         Error_no          => 'none',
+         No_good_index_used => 'No',
+         No_index_used     => 'No',
+         Query_time        => '9.998411',
+         Rows_affected     => 0,
+         Thread_id         => 24,
+         Warning_count     => 0,
+         arg               => 'administrator command: Connect aborted',
+         bytes             => 38,
+         cmd               => 'Admin',
+         db                => undef,
+         host              => '127.0.0.1',
+         ip                => '127.0.0.1',
+         port              => '62133',
+         pos_in_log        => undef,
+         ts                => '130124 12:55:48.274417',
+         user              => undef,
+      }
+   ],
+);
+
+$protocol = new MySQLProtocolParser(
+   server => '100.0.0.1',
+);
+
+test_protocol_parser(
+   parser   => $tcpdump,
+   protocol => $protocol,
+   file     => "$sample/tcpdump044.txt",
+   desc     => 'Client aborted connection (bug 1103045)',
+   result   => [
+      {
+         Error_no             => 'none',
+         No_good_index_used   => 'No',
+         No_index_used        => 'No',
+         Query_time           => '3.819507',
+         Rows_affected        => 0,
+         Thread_id            => 13,
+         Warning_count        => 0,
+         arg                  => 'administrator command: Connect aborted',
+         bytes                => 38,
+         cmd                  => 'Admin',
+         db                   => undef,
+         host                 => '100.0.0.2',
+         ip                   => '100.0.0.2',
+         port                 => '44432',
+         pos_in_log           => undef,
+         ts                   => '130122 09:55:57.793375',
+         user                 => undef,
+      },
+   ],
 );
 
 # #############################################################################
