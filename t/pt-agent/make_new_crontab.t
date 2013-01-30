@@ -99,8 +99,12 @@ my $crontab = `crontab -l 2>/dev/null`;
 SKIP: {
    skip 'Crontab is not empty', 3 if $crontab;
 
+   # Crontab lines must end with a newline, else an error
+   # like this happens:
+   #   "/tmp/new_crontab_file":1: premature EOF
+   #   errors in crontab file, can't install.
    my ($fh, $file) = tempfile();
-   print {$fh} "* 0  *  *  *  date > /dev/null";
+   print {$fh} "* 0  *  *  *  date > /dev/null\n";
    close $fh or warn "Cannot close $file: $OS_ERROR";
    my $output = `crontab $file 2>&1`;
 
@@ -108,7 +112,7 @@ SKIP: {
 
    is(
       $crontab,
-      "* 0  *  *  *  date > /dev/null",
+      "* 0  *  *  *  date > /dev/null\n",
       "Set other crontab line"
    ) or diag($output);
 
