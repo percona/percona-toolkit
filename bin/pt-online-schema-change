@@ -8370,17 +8370,72 @@ sub main {
    # Find a pk or unique index to use for the delete trigger.  can_nibble()
    # above returns an index, but NibbleIterator will use non-unique indexes,
    # so we have to do this again here.
-   my $indexes = $new_tbl->{tbl_struct}->{keys}; # brevity
-   foreach my $index ( $tp->sort_indexes($new_tbl->{tbl_struct}) ) {
-      if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
-         PTDEBUG && _d('Delete trigger index:', Dumper($index));
-         $new_tbl->{del_index} = $index;
-         last;
+   {
+      my $indexes = $new_tbl->{tbl_struct}->{keys}; # brevity
+      foreach my $index ( $tp->sort_indexes($new_tbl->{tbl_struct}) ) {
+         if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+            PTDEBUG && _d('Delete trigger new index:', Dumper($index));
+            $new_tbl->{del_index} = $index;
+            last;
+         }
       }
+      PTDEBUG && _d('New table delete index:', $new_tbl->{del_index});
    }
+
+   {
+      my $indexes = $orig_tbl->{tbl_struct}->{keys}; # brevity
+      foreach my $index ( $tp->sort_indexes($orig_tbl->{tbl_struct}) ) {
+         if ( $index eq 'PRIMARY' || $indexes->{$index}->{is_unique} ) {
+            PTDEBUG && _d('Delete trigger orig index:', Dumper($index));
+            $orig_tbl->{del_index} = $index;
+            last;
+         }
+      }
+      PTDEBUG && _d('Orig table delete index:', $orig_tbl->{del_index});
+   }
+
    if ( !$new_tbl->{del_index} ) {
       die "The new table $new_tbl->{name} does not have a PRIMARY KEY "
         . "or a unique index which is required for the DELETE trigger.\n";
+   }
+
+   # Determine whether to use the new or orig table delete index.
+   # The new table del index is preferred due to
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1062324
+   # In short, if the chosen del index is re-created with new columns,
+   # its original columns may be dropped, so just use its new columns.
+   # But, due to https://bugs.launchpad.net/percona-toolkit/+bug/1103672,
+   # the chosen del index on the new table may reference columns which
+   # do not/no longer exist in the orig table, so we check for this
+   # and, if it's the case, we fall back to using the del index from
+   # the orig table.
+   my $del_tbl = $new_tbl; # preferred
+   my $new_del_index_cols  # brevity
+      = $new_tbl->{tbl_struct}->{keys}->{ $new_tbl->{del_index} }->{cols};
+   foreach my $new_del_index_col ( @$new_del_index_cols ) {
+      if ( !exists $orig_cols->{$new_del_index_col} ) {
+         if ( !$orig_tbl->{del_index} ) {
+            die "The new table index $new_tbl->{del_index} would be used "
+               . "for the DELETE trigger, but it uses column "
+               . "$new_del_index_col which does not exist in the original "
+               . "table and the original table does not have a PRIMARY KEY "
+               . "or a unique index to use for the DELETE trigger.\n";
+         }
+         print "Using original table index $orig_tbl->{del_index} for the "
+            . "DELETE trigger instead of new table index $new_tbl->{del_index} "
+            . "because the new table index uses column $new_del_index_col "
+            . "which does not exist in the original table.\n";
+         $del_tbl = $orig_tbl;
+         last;
+      }
+   }
+
+   {
+      my $del_cols
+         = $del_tbl->{tbl_struct}->{keys}->{ $del_tbl->{del_index} }->{cols};
+      PTDEBUG && _d('Index for delete trigger: table', $del_tbl->{name},
+         'index', $del_tbl->{del_index},
+         'columns', @$del_cols);
    }
 
    # ########################################################################
@@ -8412,6 +8467,7 @@ sub main {
       create_triggers(
          orig_tbl     => $orig_tbl,
          new_tbl      => $new_tbl,
+         del_tbl      => $del_tbl,
          columns      => \@common_cols,
          Cxn          => $cxn,
          Quoter       => $q,
@@ -9536,11 +9592,11 @@ sub drop_swap {
 
 sub create_triggers {
    my ( %args ) = @_;
-   my @required_args = qw(orig_tbl new_tbl columns Cxn Quoter OptionParser);
+   my @required_args = qw(orig_tbl new_tbl del_tbl columns Cxn Quoter OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($orig_tbl, $new_tbl, $cols, $cxn, $q, $o) = @args{@required_args};
+   my ($orig_tbl, $new_tbl, $del_tbl, $cols, $cxn, $q, $o) = @args{@required_args};
 
    # This sub works for --dry-run and --execute.  With --dry-run it's
    # only interesting if --print is specified, too; then the user can
@@ -9569,8 +9625,8 @@ sub create_triggers {
    # unique indexes can be nullable.  Cols are from the new table and
    # they may have been renamed
    my %old_col_for    = map { $_->{new} => $_->{old} } @$cols;
-   my $tbl_struct     = $new_tbl->{tbl_struct};
-   my $del_index      = $new_tbl->{del_index};
+   my $tbl_struct     = $del_tbl->{tbl_struct};
+   my $del_index      = $del_tbl->{del_index};
    my $del_index_cols = join(" AND ", map {
       my $new_col  = $_;
       my $old_col  = $old_col_for{$new_col} || $new_col;
