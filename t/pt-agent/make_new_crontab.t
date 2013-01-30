@@ -99,10 +99,11 @@ my $crontab = `crontab -l 2>/dev/null`;
 SKIP: {
    skip 'Crontab is not empty', 3 if $crontab;
 
-   # Crontab lines must end with a newline, else an error
-   # like this happens:
+   # On most systems[1], crontab lines must end with a newline,
+   # else an error like this happens:
    #   "/tmp/new_crontab_file":1: premature EOF
    #   errors in crontab file, can't install.
+   # [1] Ubuntu 10 and Mac OS X work without the newline. 
    my ($fh, $file) = tempfile();
    print {$fh} "* 0  *  *  *  date > /dev/null\n";
    close $fh or warn "Cannot close $file: $OS_ERROR";
