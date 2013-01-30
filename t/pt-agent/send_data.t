@@ -127,4 +127,13 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
+
+# pt_agent::send_data() does chdir and since it and this test
+# are the same process, it has chdir'ed us into the temp dir
+# that Perl is going to auto-remove, so we need to chdir back
+# else we'll get this error: "cannot remove path when cwd is
+# /tmp/pt-agent.16588.d1bFVw for /tmp/pt-agent.16588.d1bFVw:
+# at /usr/share/perl5/File/Temp.pm line 902"
+chdir($ENV{PWD} || $trunk);
+
 done_testing;
