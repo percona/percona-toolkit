@@ -143,10 +143,10 @@ my $run0 = Percona::WebAPI::Resource::Run->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name     => 'query-monitor',
-   alias    => 'Query Monitor',
-   schedule => '* * * * *',
-   runs     => [ $run0 ],
+   name           => 'query-monitor',
+   run_schedule   => '1 * * * *',
+   spool_schedule => '2 * * * *',
+   runs           => [ $run0 ],
 );
 
 $ua->{responses}->{get} = [
@@ -245,7 +245,13 @@ $crontab = `crontab -l 2>/dev/null`;
 like(
    $crontab,
    qr/pt-agent --run-service query-monitor$/m,
-   "Scheduled service with crontab"
+   "Scheduled --run-service with crontab"
+);
+
+like(
+   $crontab,
+   qr/pt-agent --send-data query-monitor$/m,
+   "Scheduled --send-data with crontab"
 );
 
 # #############################################################################

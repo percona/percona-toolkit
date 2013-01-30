@@ -78,7 +78,7 @@ is_deeply(
 ) or die;
 
 # #############################################################################
-# Test check_spool()
+# Test send_data()
 # #############################################################################
 
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
@@ -94,10 +94,11 @@ $ua->{responses}->{post} = [
 
 my $output = output(
    sub {
-      pt_agent::check_spool(
+      pt_agent::send_data(
          client    => $client,
          agent     => $agent,
          spool_dir => $tmpdir,
+         service   => 'query-monitor',
       ),
    },
    stderr => 1,

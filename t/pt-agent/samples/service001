@@ -1,1 +1,1 @@
-{"runs":[{"number":"0","options":"--output json","output":"spool","program":"pt-query-digest"}],"name":"query-monitor","alias":"Query Monitor","schedule":"* * * * *"}
+{"spool_schedule":"2 * * * *","runs":[{"number":"0","options":"--output json","output":"spool","program":"pt-query-digest"}],"run_schedule":"1 * * * *","name":"query-monitor"}

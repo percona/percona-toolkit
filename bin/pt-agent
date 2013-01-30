@@ -4951,8 +4951,9 @@ sub make_new_crontab {
                     :                               `crontab -l 2>/dev/null`;
 
    my @other_lines
-      = grep { $_ !~ m/pt-agent --run-service/ }
+      = grep { $_ !~ m/pt-agent (?:--run-service|--send-data)/ }
         split("\n", $crontab_list);
+   PTDEBUG && _d('Other crontab lines:', \@other_lines);
 
    my @pt_agent_lines;
    foreach my $service ( @$services ) {
@@ -4968,6 +4969,7 @@ sub make_new_crontab {
             . $service->name;
       }
    }
+   PTDEBUG && _d('pt-agent crontab lines:', \@pt_agent_lines);
 
    my $new_crontab = join("\n", @other_lines, @pt_agent_lines) . "\n";
 
