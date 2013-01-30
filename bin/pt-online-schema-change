@@ -8991,7 +8991,7 @@ sub check_alter {
    # ########################################################################
    if ( $alter =~ m/DROP\s+PRIMARY\s+KEY/i ) {
       my $msg = "--alter contains 'DROP PRIMARY KEY'.  Dropping and "
-              . "altering the primary key can be very dangerous, "
+              . "altering the primary key can be dangerous, "
               . "especially if the original table does not have other "
               . "unique indexes.\n";
       if ( $dry_run ) {
@@ -10305,18 +10305,19 @@ In previous versions of the tool, renaming a column with
 C<CHANGE COLUMN name new_name> would lead to that column's data being lost.
 The tool now parses the alter statement and tries to catch these cases, so
 the renamed columns should have the same data as the originals. However, the
-code that does this is not a full-blown SQL parser, so we recommend that users
-run the tool with L<"--dry-run"> and check if it's detecting the renames
-correctly.
+code that does this is not a full-blown SQL parser, so you should first
+run the tool with L<"--dry-run"> and L<"--print"> and verify that it detects
+the renamed columns correctly.
 
 =item DROP PRIMARY KEY
 
 If L<"--alter"> contain C<DROP PRIMARY KEY> (case- and space-insensitive),
 a warning is printed and the tool exits unless L<"--dry-run"> is specified.
-Altering the primary key can be very dangerous, but the tool can handle it.
+Altering the primary key can be dangerous, but the tool can handle it.
 The tool's triggers, particularly the DELETE trigger, are most affected by
 altering the primary key because the tool prefers to use the primary key
-for its triggers.
+for its triggers.  You should first run the tool with L<"--dry-run"> and
+L<"--print"> and verify that the triggers are correct.
 
 =back
 
