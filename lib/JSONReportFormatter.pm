@@ -1,13 +1,13 @@
 {
 package JSONReportFormatter;
 use Mo;
-use JSON ();
 
-use List::Util qw(sum);
-
+use List::Util   qw(sum);
 use Transformers qw(make_checksum parse_timestamp);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+my $have_json = eval { require JSON };
 
 our $pretty_json = undef;
 our $sorted_json = undef;
@@ -18,11 +18,23 @@ has _json => (
    is       => 'ro',
    init_arg => undef,
    builder  => '_build_json',
-   handles  => { encode_json => 'encode' },
 );
 
 sub _build_json {
-   return JSON->new->utf8->pretty($pretty_json)->canonical($sorted_json);
+   return unless $have_json;
+   return JSON->new->utf8
+                   ->pretty($pretty_json)
+                   ->canonical($sorted_json);
+}
+
+sub encode_json {
+   my ($self, $encode) = @_;
+   if ( my $json = $self->_json ) {
+      return $json->encode($encode);
+   }
+   else {
+      return Transformers::encode_json($encode);
+   }
 }
 
 override [qw(rusage date hostname files header profile prepared)] => sub {
