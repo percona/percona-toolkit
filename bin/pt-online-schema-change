@@ -9777,6 +9777,9 @@ sub exec_nibble {
       # Ignore this warning because we have purposely set statement-based
       # replication.
       1592 => 1,
+      # Error: 1062 SQLSTATE: 23000 ( ER_DUP_ENTRY )
+      # Message: Duplicate entry '%ld' for key '%s'
+      # MariaDB 5.5.28+ has this as a warning; See https://bugs.launchpad.net/percona-toolkit/+bug/1099836
       1062 => 1,
    );
          

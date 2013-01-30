@@ -27,6 +27,13 @@ debug_sandbox() {
    fi
 }
 
+mysql_upgrade_on() {
+   local cnf_file="$1"
+   local upgrade="$(which mysql_upgrade)"
+
+   $upgrade --defaults-file=$cnf_file --skip-write-binlog
+}
+
 make_sandbox() {
    # Make the sandbox dir and extract the base files.
    rm -rf /tmp/$port || die "Failed to rm /tmp/$port"
@@ -137,6 +144,10 @@ make_sandbox() {
    /tmp/$port/use -e "CREATE DATABASE IF NOT EXISTS percona_test";
    /tmp/$port/use -e "CREATE TABLE IF NOT EXISTS percona_test.sentinel (id INT PRIMARY KEY, ping VARCHAR(64) NOT NULL DEFAULT '')";
    /tmp/$port/use -e "REPLACE INTO percona_test.sentinel (id, ping) VALUES (1, '')";
+
+   if [ -n "${MYSQL_UPGRADE:-""}" ]; then
+      mysql_upgrade_on /tmp/$port/my.sandbox.cnf
+   fi
 
    # If the sandbox is a slave, start the slave.
    if [ "$type" = "slave" ]; then
