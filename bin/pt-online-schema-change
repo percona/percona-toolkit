@@ -3270,7 +3270,7 @@ sub check_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
-   my $q      = $self->{Quoter};
+   my $q      = $self->{Quoter} || 'Quoter';
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -9777,6 +9777,7 @@ sub exec_nibble {
       # Ignore this warning because we have purposely set statement-based
       # replication.
       1592 => 1,
+      1062 => 1,
    );
          
    # Warn once per-table for these error codes if the error message
@@ -9851,6 +9852,7 @@ sub exec_nibble {
                            . "Specify --statistics to see a count of all "
                            . "suppressed warnings and errors.\n";
                   }
+                  warn $err;
                }
             }
             else {
