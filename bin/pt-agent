@@ -4962,7 +4962,6 @@ sub make_new_crontab {
          . " pt-agent --run-service "
          . $service->name;
       if ( $service->spool_schedule ) {
-         # TODO: test
          push @pt_agent_lines,
             $service->spool_schedule
             . " pt-agent --send-data "
@@ -5327,9 +5326,10 @@ sub get_uuid {
    return '123';
 }
 
+# TODO: use VersionCheck::get_versions().
 sub get_versions {
    return {
-      'Perl'                    => "5.10.0",
+      'Perl'                    => sprintf('%vd', $PERL_VERSION),
       'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
    };
 }

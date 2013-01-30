@@ -90,7 +90,7 @@ is_deeply(
       hostname => `hostname`,
       versions => {
          'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
-         'Perl'                    => sprintf '%vd', $PERL_VERSION,
+         'Perl'                    => sprintf('%vd', $PERL_VERSION),
       }
    },
    'Create new Agent'
