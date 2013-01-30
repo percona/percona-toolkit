@@ -61,10 +61,10 @@ my $run0 = Percona::WebAPI::Resource::Run->new(
 );
 
 my $svc0 = Percona::WebAPI::Resource::Service->new(
-   name     => 'query-monitor',
-   alias    => 'Query Monitor',
-   schedule => '* * * * *',
-   runs     => [ $run0 ],
+   name           => 'query-monitor',
+   run_schedule   => '1 * * * *',
+   spool_schedule => '2 * * * *',
+   runs           => [ $run0 ],
 );
 
 write_svc_files(
@@ -130,10 +130,10 @@ my $run1 = Percona::WebAPI::Resource::Run->new(
 );
 
 $svc0 = Percona::WebAPI::Resource::Service->new(
-   name     => 'query-monitor',
-   alias    => 'Query Monitor',
-   schedule => '* * * * *',
-   runs     => [ $run0, $run1 ],
+   name           => 'query-monitor',
+   run_schedule   => '3 * * * *',
+   spool_schedule => '4 * * * *',
+   runs           => [ $run0, $run1 ],
 );
 
 write_svc_files(

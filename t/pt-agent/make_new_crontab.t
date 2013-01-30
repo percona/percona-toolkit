@@ -43,7 +43,7 @@ sub test_make_new_crontab {
          cmd_output => 1,
       ),
       $args{name} || $file,
-   );
+   ) or diag($new_crontab);
 } 
 
 my $run0 = Percona::WebAPI::Resource::Run->new(
@@ -76,6 +76,12 @@ test_make_new_crontab(
 # and add the current service.
 test_make_new_crontab(
    file => "crontab003",
+   services => [ $svc0 ],
+);
+
+# Crontab has old service, remove it and add only new service.
+test_make_new_crontab(
+   file => "crontab004",
    services => [ $svc0 ],
 );
 
