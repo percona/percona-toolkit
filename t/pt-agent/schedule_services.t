@@ -47,7 +47,7 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
 # First add a fake line so we can know that the real, existing
 # crontab is used and not clobbered.
 my ($fh, $file) = tempfile();
-print {$fh} "* 0  *  *  *  date > /dev/null";
+print {$fh} "* 0  *  *  *  date > /dev/null\n";
 close $fh or warn "Cannot close $file: $OS_ERROR";
 my $output = `crontab $file 2>&1`;
 
@@ -55,7 +55,7 @@ $crontab = `crontab -l 2>&1`;
 
 is(
    $crontab,
-   "* 0  *  *  *  date > /dev/null",
+   "* 0  *  *  *  date > /dev/null\n",
    "Set other crontab line"
 ) or diag($output);
 
