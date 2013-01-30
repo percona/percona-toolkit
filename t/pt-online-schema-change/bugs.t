@@ -210,7 +210,7 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       sub { pt_online_schema_change::main(@args,
          "$master_dsn,D=test,t=t1",
          "--alter", "drop key 2bpk, drop key c3, drop primary key, drop c1, add primary key (c2, c3(4)), add key (c3(4))",
-         qw(--execute --no-drop-new-table --no-swap-tables)) },
+         qw(--no-check-alter --execute --no-drop-new-table --no-swap-tables)) },
    );
 
    # Since _t1_new no longer has the c1 column, the bug caused this
@@ -233,6 +233,34 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       undef,
       "Delete trigger works after altering PK (bug 1062324)"
    );
+
+   # Another instance of this bug:
+   # https://bugs.launchpad.net/percona-toolkit/+bug/1103672
+   $sb->load_file('master', "$sample/del-trg-bug-1103672.sql");
+
+   ($output, $exit_status) = full_output(
+      sub { pt_online_schema_change::main(@args,
+         "$master_dsn,D=test,t=t1",
+         "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
+         qw(--no-check-alter --execute --no-drop-new-table --no-swap-tables)) },
+   );
+
+   eval {
+      $master_dbh->do("DELETE FROM test.t1 WHERE id=1");
+   };
+   is(
+      $EVAL_ERROR,
+      "",
+      "No delete trigger error after altering PK (bug 1103672)"
+   ) or diag($output);
+
+   $row = $master_dbh->selectrow_arrayref("SELECT * FROM test._t1_new WHERE id=1");
+   is(
+      $row,
+      undef,
+      "Delete trigger works after altering PK (bug 1103672)"
+   );
+
 }
 
 # #############################################################################
