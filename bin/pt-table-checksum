@@ -8765,12 +8765,13 @@ sub main {
             }
 
             if ( $master_binlog ne $slave_binlog ) {
-               $err .= $master_cxn->name() . " has binlog_format "
-                  . $master_binlog . " but replica " . $slave_cxn->name()
-                  . " has binlog_format $slave_binlog.  This could cause "
-                  . "pt-table-checksum to break replication.  "
-                  . "If you understand the risks, specify "
-                  .  "--no-check-binlog-format to disable this check.\n";
+               $err .= "Replica " . $slave_cxn->name()
+                  . qq{ has binlog_format $slave_binlog which could cause }
+                  . qq{pt-table-checksum to break replication.  Please read }
+                  . qq{"Replicas using row-based replication" in the }
+                  . qq{LIMITATIONS section of the tool's documentation.  }
+                  . qq{If you understand the risks, specify }
+                  . qq{--no-check-binlog-format to disable this check.\n};
             }
          }
          die $err if $err;
