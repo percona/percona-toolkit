@@ -1,7 +1,7 @@
 {
 package JSONReportFormatter;
 use Mo;
-use JSON;
+use JSON ();
 
 use List::Util qw(sum);
 
@@ -9,7 +9,21 @@ use Transformers qw(make_checksum parse_timestamp);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+our $pretty_json = undef;
+our $sorted_json = undef;
+
 extends qw(QueryReportFormatter);
+
+has _json => (
+   is       => 'ro',
+   init_arg => undef,
+   builder  => '_build_json',
+   handles  => { encode_json => 'encode' },
+);
+
+sub _build_json {
+   return JSON->new->utf8->pretty($pretty_json)->canonical($sorted_json);
+}
 
 override [qw(rusage date hostname files header profile prepared)] => sub {
    return;
@@ -89,7 +103,7 @@ override query_report => sub {
       };
    }
 
-   return encode_json(\@queries) . "\n";
+   return $self->encode_json(\@queries) . "\n";
 };
 
 1;
