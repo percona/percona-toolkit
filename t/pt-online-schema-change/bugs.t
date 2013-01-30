@@ -210,7 +210,7 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       sub { pt_online_schema_change::main(@args,
          "$master_dsn,D=test,t=t1",
          "--alter", "drop key 2bpk, drop key c3, drop primary key, drop c1, add primary key (c2, c3(4)), add key (c3(4))",
-         qw(--execute --no-drop-new-table --no-swap-tables)) },
+         qw(--no-check-alter --execute --no-drop-new-table --no-swap-tables)) },
    );
 
    # Since _t1_new no longer has the c1 column, the bug caused this
@@ -242,7 +242,7 @@ $sb->load_file('master', "$sample/del-trg-bug-1062324.sql");
       sub { pt_online_schema_change::main(@args,
          "$master_dsn,D=test,t=t1",
          "--alter", "drop primary key, add column _id int unsigned not null primary key auto_increment FIRST",
-         qw(--execute --no-drop-new-table --no-swap-tables)) },
+         qw(--no-check-alter --execute --no-drop-new-table --no-swap-tables)) },
    );
 
    eval {

@@ -8987,6 +8987,28 @@ sub check_alter {
    my $ok = 1;
 
    # ########################################################################
+   # Check for DROP PRIMARY KEY.
+   # ########################################################################
+   if ( $alter =~ m/DROP\s+PRIMARY\s+KEY/i ) {
+      my $msg = "--alter contains 'DROP PRIMARY KEY'.  Dropping and "
+              . "altering the primary key can be very dangerous, "
+              . "especially if the original table does not have other "
+              . "unique indexes.\n";
+      if ( $dry_run ) {
+         print $msg;
+      }
+      else {
+         $ok = 0;
+         warn $msg
+            . "The tool should handle this correctly, but you should "
+            . "test it first and carefully examine the triggers which "
+            . "rely on the PRIMARY KEY or a unique index.  Specify "
+            . "--no-check-alter to disable this check and perform the "
+            . "--alter.\n";
+      }
+   }
+
+   # ########################################################################
    # Check for renamed columns.
    # https://bugs.launchpad.net/percona-toolkit/+bug/1068562
    # ########################################################################
@@ -9032,6 +9054,7 @@ sub check_alter {
    }
 
    if ( !$ok ) {
+      # check_alter.t relies on this output.
       die "--check-alter failed.\n";
    }
 
@@ -10285,6 +10308,15 @@ the renamed columns should have the same data as the originals. However, the
 code that does this is not a full-blown SQL parser, so we recommend that users
 run the tool with L<"--dry-run"> and check if it's detecting the renames
 correctly.
+
+=item DROP PRIMARY KEY
+
+If L<"--alter"> contain C<DROP PRIMARY KEY> (case- and space-insensitive),
+a warning is printed and the tool exits unless L<"--dry-run"> is specified.
+Altering the primary key can be very dangerous, but the tool can handle it.
+The tool's triggers, particularly the DELETE trigger, are most affected by
+altering the primary key because the tool prefers to use the primary key
+for its triggers.
 
 =back
 
