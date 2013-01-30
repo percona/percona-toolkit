@@ -8076,7 +8076,9 @@ override query_report => sub {
       };
    }
 
-   return $self->encode_json(\@queries) . "\n";
+   my $json = $self->encode_json(\@queries);
+   $json .= "\n" if $json !~ /\n\Z/;
+   return $json . "\n";
 };
 
 1;
