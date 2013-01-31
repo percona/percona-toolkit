@@ -140,6 +140,8 @@ our %metadata_for;
 }
 
 my %export_for;
+%Mo::Internal::Keyword = map { $_ => 1 } qw(has extends override);
+
 sub Mo::import {
     # Set warnings and strict for the caller.
     warnings->import(qw(FATAL all));
@@ -351,7 +353,7 @@ sub _has_handles {
             map   { $_, $_     }
             grep  { $_ =~ $handles }
             grep  { !exists $Mo::Object::{$_} && $target_class->can($_) }
-            grep  { $_ ne 'has' && $_ ne 'extends' }
+            grep  { !$Mo::Internal::Keyword{$_} }
             keys %{ _stash_for $target_class }
          };
    }
