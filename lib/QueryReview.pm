@@ -111,7 +111,7 @@ sub new {
 # table.
 sub set_history_options {
    my ( $self, %args ) = @_;
-   foreach my $arg ( qw(table dbh tbl_struct col_pat) ) {
+   foreach my $arg ( qw(table tbl_struct col_pat) ) {
       die "I need a $arg argument" unless $args{$arg};
    }
 
@@ -157,7 +157,7 @@ sub set_history_options {
         } @cols) . ')';
    PTDEBUG && _d($sql);
 
-   $self->{history_sth}     = $args{dbh}->prepare($sql);
+   $self->{history_sth}     = $self->{dbh}->prepare($sql);
    $self->{history_metrics} = \@metrics;
 
    return;
