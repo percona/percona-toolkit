@@ -874,7 +874,7 @@ sub _report_diff_checksums {
    return unless keys %{$self->{diffs}->{checksums}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Checksum differences');
+   $report->title('Checksum differences');
    $report->set_columns(
       $args{query_id_col},
       @{$args{host_cols}},
@@ -905,7 +905,7 @@ sub _report_diff_col_vals {
    return unless keys %{$self->{diffs}->{col_vals}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Column value differences');
+   $report->title('Column value differences');
    $report->set_columns(
       $args{query_id_col},
       {
@@ -940,7 +940,7 @@ sub _report_diff_row_counts {
    return unless keys %{$self->{diffs}->{row_counts}};
 
    my $report = new ReportFormatter();
-   $report->set_title('Row count differences');
+   $report->title('Row count differences');
    my $hostno = 0;
    $report->set_columns(
       $args{query_id_col},
