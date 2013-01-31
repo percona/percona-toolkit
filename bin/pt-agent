@@ -4649,7 +4649,6 @@ sub init_agent {
 
    _info('Initializing agent');
 
-
    # Do a version-check every time the agent starts.  If versions
    # have changed, this can affect how services are implemented.
    $versions ||= get_versions();
@@ -4698,7 +4697,7 @@ sub init_agent {
 # ################################ #
 
 # Run the agent, i.e. exec the main loop to check/update the config
-# and services.  Doesn't return until service stopped or killed.
+# and services.  Doesn't return until the service is stopped or killed.
 sub run_agent {
    my (%args) = @_;
 

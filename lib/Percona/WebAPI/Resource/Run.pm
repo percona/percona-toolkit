@@ -44,7 +44,6 @@ has 'query' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',
    required => 0,
-   default  => undef,
 );
 
 has 'output' => (

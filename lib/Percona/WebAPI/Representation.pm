@@ -31,14 +31,17 @@ our @EXPORT_OK = qw(
 );
 
 sub as_hashref {
-   my $resource = shift;
+   my ($resource, %args) = @_;
 
    # Copy the object into a new hashref.
    my $as_hashref = { %$resource };
 
    # Delete the links because they're just for client-side use
    # and the caller should be sending this object, not getting it.
-   delete $as_hashref->{links};
+   # But sometimes for testing we want to keep the links.
+   if ( !defined $args{with_links} || !$args{with_links} ) {
+      delete $as_hashref->{links};
+   }
 
    return $as_hashref;
 }

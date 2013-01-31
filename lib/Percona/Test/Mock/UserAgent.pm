@@ -20,11 +20,14 @@
 {
 package Percona::Test::Mock::UserAgent;
 
+use Percona::Toolkit qw(Dumper);
+
 sub new {
    my ($class, %args) = @_;
    my $self = {
       encode    => $args{encode} || sub { return $_[0] },
       decode    => $args{decode} || sub { return $_[0] },
+      requests  => [],
       responses => {
          get  => [],
          post => [],
@@ -41,11 +44,12 @@ sub new {
 sub request {
    my ($self, $req) = @_;
    my $type = lc($req->method);
+   push @{$self->{requests}}, uc($type) . ' ' . $req->uri;
    if ( $type eq 'post' || $type eq 'put' ) {
       push @{$self->{content}->{$type}}, $req->content;
    }
    my $r = shift @{$self->{responses}->{$type}};
-   my $c = $self->{encode}->($r->{content});
+   my $c = $r->{content} ? $self->{encode}->($r->{content}) : '';
    my $h = HTTP::Headers->new;
    $h->header(%{$r->{headers}}) if exists $r->{headers};
    my $res = HTTP::Response->new(
