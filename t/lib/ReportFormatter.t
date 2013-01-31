@@ -88,7 +88,7 @@ is(
 # Basic report.
 # #############################################################################
 $rf = new ReportFormatter();
-$rf->set_title('Checksum differences');
+$rf->title('Checksum differences');
 $rf->set_columns(
    {
       name        => 'Query ID',
@@ -216,7 +216,7 @@ is(
 # Respect line width.
 # #############################################################################
 $rf = new ReportFormatter();
-$rf->set_title('Respect line width');
+$rf->title('Respect line width');
 $rf->set_columns(
    { name => 'col1' },
    { name => 'col2' },
@@ -248,7 +248,7 @@ is(
 # extend_right
 # #############################################################################
 $rf = new ReportFormatter(extend_right=>1);
-$rf->set_title('extend_right');
+$rf->title('extend_right');
 $rf->set_columns(
    { name => 'col1' },
    { name => 'col2' },
@@ -280,7 +280,7 @@ is(
 # Relvative column widths.
 # #############################################################################
 $rf = new ReportFormatter();
-$rf->set_title('Relative col widths');
+$rf->title('Relative col widths');
 $rf->set_columns(
    { name => 'col1', width_pct=>'20', },
    { name => 'col2', width_pct=>'40', },
@@ -309,7 +309,7 @@ is(
 );
 
 $rf = new ReportFormatter();
-$rf->set_title('Relative col widths');
+$rf->title('Relative col widths');
 $rf->set_columns(
    { name => 'col1', width_pct=>'20', },
    { name => 'col2', width_pct=>'40', },
@@ -344,7 +344,7 @@ is(
 );
 
 $rf = new ReportFormatter();
-$rf->set_title('Relative col widths');
+$rf->title('Relative col widths');
 $rf->set_columns(
    { name => 'col1', width    =>'25', },
    { name => 'col2', width_pct=>'33', },
@@ -380,7 +380,7 @@ is(
 
 
 $rf = new ReportFormatter();
-$rf->set_title('Short cols');
+$rf->title('Short cols');
 $rf->set_columns(
    { name => 'I am column1', },
    { name => 'I am column2', },
@@ -403,7 +403,7 @@ is(
 );
 
 $rf = new ReportFormatter();
-$rf->set_title('Short cols');
+$rf->title('Short cols');
 $rf->set_columns(
    { name => 'I am column1', },
    { name => 'I am column2', },
@@ -422,7 +422,7 @@ is(
 );
 
 $rf = new ReportFormatter();
-$rf->set_title('Short cols');
+$rf->title('Short cols');
 $rf->set_columns(
    { name => 'I am column1', },
    { name => 'I am column2', },
