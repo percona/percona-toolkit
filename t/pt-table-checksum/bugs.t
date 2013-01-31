@@ -256,7 +256,7 @@ SKIP: {
 
    $output = output( sub { pt_table_checksum::main(@args) }, stderr => 1 );
 
-   my $re = qr/ has binlog_format .*? has binlog_format (\S+)\./msi;
+   my $re = qr/Replica .+? has binlog_format (\S+)/msi;
    like(
       $output,
       $re,
