@@ -1,5 +1,4 @@
-# This program is copyright 2012-2013 Percona Inc.
-# Feedback and improvements are welcome.
+# This program is copyright 2012 codenode LLC, 2012-2013 Percona Ireland Ltd.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -46,18 +45,11 @@ has 'api_key' => (
    required => 1,
 );
 
-has 'base_url' => (
+has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
    default  => sub { return 'https://api.tools.percona.com' },
    required => 0,
-);
-
-has 'links' => (
-   is      => 'rw',
-   isa     => 'HashRef',
-   lazy    => 1,
-   default => sub { return +{} },
 );
 
 has 'ua' => (
@@ -79,48 +71,24 @@ sub _build_ua {
    my $self = shift;
    my $ua = LWP::UserAgent->new;
    $ua->agent("Percona::WebAPI::Client/$Percona::WebAPI::Client::VERSION");
-   $ua->default_header('application/json');
+   $ua->default_header('Content-Type', 'application/json');
    $ua->default_header('X-Percona-API-Key', $self->api_key);
    return $ua;
-}
-
-sub BUILD {
-   my ($self) = @_;
-
-   eval {
-      $self->get(
-         url => $self->base_url,
-      );
-   };
-   if ( my $e = $EVAL_ERROR ) {
-      if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
-         die $e;
-      }
-      else {
-         die "Unknown error: $e";
-      }
-   }
-
-   return;
 }
 
 sub get {
    my ($self, %args) = @_;
    
    have_required_args(\%args, qw(
-      url
+      link
    )) or die;
-   my ($url) = $args{url};
+   my ($link) = $args{link};
 
-   # Returns:
-   my @resources;
-
-   # Get resource representations from the url.  The server should always
-   # return a list of resource reps, even if there's only one resource.
+   # Get the resources at the link.
    eval {
       $self->_request(
          method => 'GET',
-         url    => $url,
+         link   => $link,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -132,10 +100,8 @@ sub get {
       }
    }
 
-   # Transform the resource representations into an arrayref of hashrefs.
-   # Each hashref contains (hopefully) all the attribs necessary to create
-   # a corresponding resource object.
-   my $res = eval {
+   # The resource should be represented as JSON, decode it.
+   my $resource = eval {
       decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
@@ -145,22 +111,26 @@ sub get {
       return;
    }
 
-   my $objs;
+   # If the server tells us the resource's type, create a new object
+   # of that type.  Else, if there's no type, there's no resource, so
+   # we should have received links.  This usually only happens for the
+   # entry link.  The returned resource objects ref may be scalar or
+   # an arrayref; the caller should know.
+   my $resource_objects;
    if ( my $type = $self->response->headers->{'x-percona-resource-type'} ) {
       eval {
-         my $type = "Percona::WebAPI::Resource::$type";
-
-         # Create resource objects using the server-provided attribs.
-         if ( ref $res eq 'ARRAY' ) {
+         $type = "Percona::WebAPI::Resource::$type";
+         if ( ref $resource eq 'ARRAY' ) {
             PTDEBUG && _d('Got a list of', $type, 'resources');
-            foreach my $attribs ( @$res ) {
+            $resource_objects = [];
+            foreach my $attribs ( @$resource ) {
                my $obj = $type->new(%$attribs);
-               push @$objs, $obj;
+               push @$resource_objects, $obj;
             }
          }
          else {
-            PTDEBUG && _d('Got a', $type, 'resource');
-            $objs = $type->new(%$res);
+            PTDEBUG && _d('Got a', $type, 'resource', Dumper($resource));
+            $resource_objects = $type->new(%$resource);
          }
       };
       if ( $EVAL_ERROR ) {
@@ -168,44 +138,54 @@ sub get {
          return;
       }
    }
-   elsif ( $res ) {
-      $self->update_links($res);
+   elsif ( exists $resource->{links} ) {
+      # Lie to the caller: this isn't an object, but the caller can
+      # treat it like one, e.g. my $links = $api->get(<entry links>);
+      # then access $links->{self}.  A Links object couldn't have
+      # dynamic attribs anyway, so no use having a real Links obj.
+      $resource_objects = $resource->{links};
    }
    else {
-      warn "Did not get X-Percona-Resource-Type or content from $url\n";
+      warn "Did not get X-Percona-Resource-Type or links from $link\n";
    }
 
-   return $objs;
+   return $resource_objects;
 }
 
+# For a successful POST, the server sets the Location header with
+# the URI of the newly created resource.
 sub post {
    my $self = shift;
-   return $self->_set(
+   $self->_set(
       @_,
       method => 'POST',
    );
+   return $self->response->header('Location');
 }
 
+# For a successful PUT, the server returns nothing because the caller
+# already has the resources URI (if not, the caller should POST).
 sub put {
    my $self = shift;
-   return $self->_set(
+   $self->_set(
       @_,
       method => 'PUT',
    );
+   return;
 }
 
 sub delete {
    my ($self, %args) = @_;
 
    have_required_args(\%args, qw(
-      url
+      link 
    )) or die;
-   my ($url) = $args{url};
+   my ($link) = $args{link};
 
    eval {
       $self->_request(
          method  => 'DELETE',
-         url     => $url,
+         link    => $link,
          headers => { 'Content-Length' => 0 },
       ); 
    };
@@ -221,17 +201,18 @@ sub delete {
    return;
 }
 
+# Low-level POST and PUT handler.
 sub _set {
    my ($self, %args) = @_;
 
    have_required_args(\%args, qw(
       method
       resources
-      url
+      link
    )) or die;
    my $method = $args{method};
    my $res    = $args{resources};
-   my $url    = $args{url};
+   my $link   = $args{link};
 
    my $content = '';
    if ( ref($res) eq 'ARRAY' ) {
@@ -262,7 +243,7 @@ sub _set {
    eval {
       $self->_request(
          method  => $method,
-         url     => $url,
+         link    => $link,
          content => $content,
       );
    };
@@ -275,30 +256,21 @@ sub _set {
       }
    }
 
-   my $response = eval {
-      decode_json($self->response->content);
-   };
-   if ( $EVAL_ERROR ) {
-      warn sprintf "Error decoding response to $method $url: %s: %s",
-         $self->response->content,
-         $EVAL_ERROR;
-      return;
-   }
-
-   $self->update_links($response);
-
    return;
 }
 
+# Low-level HTTP request handler for all methods.  Sets $self->response
+# from the request.  Returns nothing on success (HTTP status 2xx-3xx),
+# else throws an Percona::WebAPI::Exception::Request.
 sub _request {
    my ($self, %args) = @_;
 
    have_required_args(\%args, qw(
       method
-      url
+      link 
    )) or die;
    my $method = $args{method};
-   my $url    = $args{url};
+   my $link   = $args{link};
 
    my @optional_args = (
       'content',
@@ -306,12 +278,12 @@ sub _request {
    );
    my ($content, $headers) = @args{@optional_args};
 
-   my $req = HTTP::Request->new($method => $url);
+   my $req = HTTP::Request->new($method => $link);
    $req->content($content) if $content;
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => 0);
    }
-   PTDEBUG && _d('Request', $method, $url, Dumper($req));
+   PTDEBUG && _d('Request', $method, $link, Dumper($req));
 
    my $response = $self->ua->request($req);
    PTDEBUG && _d('Response', Dumper($response));
@@ -323,25 +295,15 @@ sub _request {
    if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(
          method  => $method,
-         url     => $url,
+         link    => $link,
          content => $content,
          status  => $response->code,
-         error   => "Failed to $method $url"
+         error   => "Failed to $method $link",
       );
    }
 
    $self->response($response);
 
-   return;
-}
-
-sub update_links {
-   my ($self, $links) = @_;
-   return unless $links && ref $links && scalar keys %$links;
-   while (my ($rel, $link) = each %$links) {
-      $self->links->{$rel} = $link;
-   }
-   PTDEBUG && _d('Updated links', Dumper($self->links));
    return;
 }
 

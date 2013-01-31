@@ -38,7 +38,13 @@ has 'versions' => (
    is       => 'ro',
    isa      => 'Maybe[HashRef]',
    required => 0,
-   default  => undef,
+);
+
+has 'links' => (
+   is       => 'rw',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => sub { return {} },
 );
 
 no Lmo;

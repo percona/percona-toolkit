@@ -22,10 +22,29 @@ package Percona::WebAPI::Resource::Config;
 
 use Lmo;
 
+has 'id' => (
+   is       => 'r0',
+   isa      => 'Int',
+   required => 1,
+);
+
+has 'name' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'options' => (
    is       => 'ro',
    isa      => 'HashRef',
    required => 1,
+);
+
+has 'links' => (
+   is       => 'rw',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => sub { return {} },
 );
 
 no Lmo;

@@ -46,6 +46,13 @@ has 'spool_schedule' => (
    required => 0,
 );
 
+has 'links' => (
+   is       => 'rw',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => sub { return {} },
+);
+
 sub BUILDARGS {
    my ($class, %args) = @_;
    if ( ref $args{runs} eq 'ARRAY' ) {
