@@ -28,6 +28,7 @@ my @required_modules = qw(
    Test::More
    Time::HiRes
    Time::Local
+   JSON
 );
 
 # CentOS doesn't seem to have this in its repo.
