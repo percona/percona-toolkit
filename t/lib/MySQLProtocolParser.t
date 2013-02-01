@@ -1708,6 +1708,7 @@ test_protocol_parser(
          pos_in_log        => undef,
          ts                => '130124 12:55:48.274417',
          user              => undef,
+         Error_msg         => 'Client closed connection during handshake',
       }
    ],
 );
@@ -1739,6 +1740,7 @@ test_protocol_parser(
          pos_in_log           => undef,
          ts                   => '130122 09:55:57.793375',
          user                 => undef,
+         Error_msg            => 'Client closed connection during handshake',
       },
    ],
 );
