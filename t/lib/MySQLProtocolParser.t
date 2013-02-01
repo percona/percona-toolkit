@@ -177,7 +177,7 @@ test_protocol_parser(
          pos_in_log => 0,
          bytes      => length('select 5 from foo'),
          cmd        => 'Query',
-         Error_no   => "#1046",
+         Error_no   => "1046",
          Error_msg  => 'No database selected',
          Rows_affected => 0,
          Warning_count      => 0,
@@ -1659,7 +1659,7 @@ test_protocol_parser(
    [
       {
          Error_msg          => "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1",
-         Error_no           => '#1064',
+         Error_no           => '1064',
          No_good_index_used => 'No',
          No_index_used      => 'No',
          Query_time         => '0.000316',
@@ -1679,7 +1679,7 @@ test_protocol_parser(
       },
       {
          Error_msg          => 'Unknown system variable \'nono\'',
-         Error_no           => '#1193',
+         Error_no           => '1193',
          No_good_index_used => 'No',
          No_index_used      => 'No',
          Query_time         => '0.000329',

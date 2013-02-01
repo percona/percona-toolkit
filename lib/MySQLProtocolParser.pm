@@ -654,11 +654,14 @@ sub _packet_from_server {
             }
 
             $event = {
-               cmd       => $com,
-               arg       => $arg,
-               ts        => $packet->{ts},
-               Error_no  => $error->{errno} ? "#$error->{errno}" : 'none',
+               cmd => $com,
+               arg => $arg,
+               ts  => $packet->{ts},
             };
+            if ( $error->{errno} ) {
+               # https://bugs.launchpad.net/percona-toolkit/+bug/823411
+               $event->{Error_no} = $error->{errno};
+            }
             $session->{attribs}->{Error_msg} = $error->{message};
             return $self->_make_event($event, $packet, $session);
          }
