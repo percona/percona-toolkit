@@ -13,7 +13,6 @@
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # Databases    mysql
-# Errors       none
 # Hosts        127.0.0.1
 # Users        msandbox
 # Query_time distribution
@@ -41,7 +40,6 @@ administrator command: Connect\G
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # Databases    mysql
-# Errors       none
 # Hosts        127.0.0.1
 # Users        msandbox
 # Query_time distribution
@@ -70,7 +68,6 @@ select @@version_comment limit 1\G
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # Databases    mysql
-# Errors       none
 # Hosts        127.0.0.1
 # Users        msandbox
 # Query_time distribution
@@ -99,7 +96,6 @@ select "paris in the the spring" as trick\G
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
 # Databases    mysql
-# Errors       none
 # Hosts        127.0.0.1
 # Users        msandbox
 # Query_time distribution
