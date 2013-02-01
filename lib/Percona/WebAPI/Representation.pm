@@ -47,14 +47,14 @@ sub as_hashref {
 }
 
 sub as_json {
-   my $resource = shift;
+   my ($resource, %args) = @_;
 
-   my $json = JSON->new;
+   my $json = $args{json} || JSON->new;
    $json->allow_blessed([]);
    $json->convert_blessed([]);
 
    return $json->encode(
-      ref $resource eq 'ARRAY' ? $resource : as_hashref($resource)
+      ref $resource eq 'ARRAY' ? $resource : as_hashref($resource, %args)
    );
 }
 

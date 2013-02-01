@@ -295,7 +295,7 @@ sub _request {
    if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(
          method  => $method,
-         link    => $link,
+         url     => $link,
          content => $content,
          status  => $response->code,
          error   => "Failed to $method $link",

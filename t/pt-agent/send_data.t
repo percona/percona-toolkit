@@ -84,7 +84,11 @@ is_deeply(
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
 mkdir "$tmpdir/query-monitor"
    or die "Cannot mkdir $tmpdir/query-monitor: $OS_ERROR";
-`cp $trunk/$sample/query-monitor/data001 $tmpdir/query-monitor`;
+mkdir "$tmpdir/services"
+   or die "Cannot mkdir $tmpdir/services: $OS_ERROR";
+
+`cp $trunk/$sample/query-monitor/data001 $tmpdir/query-monitor/`;
+`cp $trunk/$sample/service001 $tmpdir/services/query-monitor`;
 
 $ua->{responses}->{post} = [
    {
@@ -97,8 +101,9 @@ my $output = output(
       pt_agent::send_data(
          client    => $client,
          agent     => $agent,
-         spool_dir => $tmpdir,
          service   => 'query-monitor',
+         lib_dir   => $tmpdir,
+         spool_dir => $tmpdir,
       ),
    },
    stderr => 1,
@@ -108,7 +113,15 @@ is(
    scalar @{$client->ua->{content}->{post}},
    1,
    "Only sent 1 resource"
-) or diag(Dumper($client->ua->{content}->{post}));
+) or diag($output, Dumper($client->ua->{content}->{post}));
+
+is_deeply(
+   $ua->{requests},
+   [
+      'POST /query-monitor',
+   ],
+   "POST to Service.links.send_data"
+);
 
 ok(
    no_diff(
@@ -127,13 +140,4 @@ ok(
 # #############################################################################
 # Done.
 # #############################################################################
-
-# pt_agent::send_data() does chdir and since it and this test
-# are the same process, it has chdir'ed us into the temp dir
-# that Perl is going to auto-remove, so we need to chdir back
-# else we'll get this error: "cannot remove path when cwd is
-# /tmp/pt-agent.16588.d1bFVw for /tmp/pt-agent.16588.d1bFVw:
-# at /usr/share/perl5/File/Temp.pm line 902"
-chdir($ENV{PWD} || $trunk);
-
 done_testing;
