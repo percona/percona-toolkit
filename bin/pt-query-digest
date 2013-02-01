@@ -3137,7 +3137,7 @@ sub parse_event {
          PTDEBUG && _d('Client aborted connection');
          my $event = {
             cmd => 'Admin',
-            arg => 'administrator command: Connect aborted',
+            arg => 'administrator command: Connect',
             ts  => $packet->{ts},
          };
          $event = $self->_make_event($event, $packet, $session);
