@@ -7,9 +7,9 @@
    "runs" : [
       {
          "number" : "0",
-         "options" : "--report-format profile /Users/daniel/p/pt-agent/t/lib/samples/slowlogs/slow008.txt",
+         "options" : "--report-format profile slow008.txt",
          "output" : "spool",
-         "program" : "/Users/daniel/p/pt-agent/bin/pt-query-digest"
+         "program" : "pt-query-digest"
       }
    ],
    "spool_schedule" : "2 * * * *"

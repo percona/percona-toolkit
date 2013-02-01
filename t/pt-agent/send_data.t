@@ -29,7 +29,7 @@ my $sample = "t/pt-agent/samples";
 # These aren't the real tests yet: to run_agent(), first we need
 # a client and Agent, so create mock ones.
 
-my $json = JSON->new;
+my $json = JSON->new->canonical([1])->pretty;
 $json->allow_blessed([]);
 $json->convert_blessed([]);
 
@@ -78,7 +78,7 @@ is_deeply(
 ) or die;
 
 # #############################################################################
-# Test send_data()
+# Test send_data
 # #############################################################################
 
 my $tmpdir = tempdir("/tmp/pt-agent.$PID.XXXXXX", CLEANUP => 1);
@@ -104,6 +104,7 @@ my $output = output(
          service   => 'query-monitor',
          lib_dir   => $tmpdir,
          spool_dir => $tmpdir,
+         json      => $json,  # optional, for testing
       ),
    },
    stderr => 1,

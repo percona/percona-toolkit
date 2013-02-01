@@ -1,4 +1,8 @@
-{"id":"123","hostname":"prod1"}
+{
+   "hostname" : "prod1",
+   "id" : "123"
+}
+
 --Ym91bmRhcnk=
 [
   {

@@ -5160,6 +5160,9 @@ sub send_data {
    my $lib_dir   = $args{lib_dir};
    my $spool_dir = $args{spool_dir};
 
+   # Optional args
+   my $json = $args{json};  # for testing
+
    my $service_dir  = $spool_dir . '/' . $service;
    my $service_file = $lib_dir . '/services/' . $service;
 
@@ -5189,6 +5192,7 @@ sub send_data {
             agent  => $agent,
             file   => $file,
             link   => $service->links->{send_data},
+            json   => $json,
          );
       };
       if ( $EVAL_ERROR ) {
@@ -5234,13 +5238,16 @@ sub send_file {
    my $file   = $args{file};
    my $link   = $args{link};
 
+   # Optional args
+   my $json = $args{json};  # for testing
+
    my $file_size = -s $file;
    _info("Sending $file ($file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
    # from whom this data is coming, then the contents of the file as-is.
    # We don't know or care about the file's contents, but Percona will.
-   my $agent_json = as_json($agent);
+   my $agent_json = as_json($agent, json => $json);
    my $data       = slurp($file);
    my $boundary   = '--Ym91bmRhcnk=';  # "boundary" in base64
    my $resource   = <<CONTENT;
