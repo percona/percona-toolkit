@@ -918,13 +918,18 @@ sub _make_event {
       Thread_id  => $session->{thread_id},
       pos_in_log => $session->{pos_in_log},
       Query_time => timestamp_diff($session->{ts}, $packet->{ts}),
-      Error_no   => $event->{Error_no} || 'none',
       Rows_affected      => ($event->{Rows_affected} || 0),
       Warning_count      => ($event->{Warning_count} || 0),
       No_good_index_used => ($event->{No_good_index_used} ? 'Yes' : 'No'),
       No_index_used      => ($event->{No_index_used}      ? 'Yes' : 'No'),
    };
    @{$new_event}{keys %{$session->{attribs}}} = values %{$session->{attribs}};
+   # https://bugs.launchpad.net/percona-toolkit/+bug/823411
+   foreach my $opt_attrib ( qw(Error_no) ) {
+      if ( defined $event->{$opt_attrib} ) {
+         $new_event->{$opt_attrib} = $event->{$opt_attrib};
+      }
+   }
    PTDEBUG && _d('Properties of event:', Dumper($new_event));
 
    # Delete cmd to prevent re-making the same event if the
