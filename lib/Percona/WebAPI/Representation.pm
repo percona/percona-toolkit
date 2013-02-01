@@ -53,9 +53,14 @@ sub as_json {
    $json->allow_blessed([]);
    $json->convert_blessed([]);
 
-   return $json->encode(
+   my $text = $json->encode(
       ref $resource eq 'ARRAY' ? $resource : as_hashref($resource, %args)
    );
+   if ( $args{json} && $text ) {  # for testing
+      chomp($text);
+      $text .= "\n";
+   }
+   return $text;
 }
 
 sub as_config {
