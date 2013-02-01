@@ -3140,6 +3140,7 @@ sub parse_event {
             arg => 'administrator command: Connect',
             ts  => $packet->{ts},
          };
+         $session->{attribs}->{Error_msg} = 'Client closed connection during handshake';
          $event = $self->_make_event($event, $packet, $session);
          delete $self->{sessions}->{$session->{client}};
          return $event;
