@@ -14591,6 +14591,7 @@ sub main {
          Last_errno    => 'string',
          Thread_id     => 'string',
          InnoDB_trx_id => 'string',
+         Error_no      => 'string',
          Killed        => 'bool',
       };
 
