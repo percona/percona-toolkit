@@ -29,7 +29,7 @@
 # which is also in mk-query-digest.
 package QueryReportFormatter;
 
-use Mo;
+use Lmo;
 use English qw(-no_match_vars);
 use POSIX qw(floor);
 
@@ -1343,6 +1343,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
+no Lmo;
 1;
 }
 # ###########################################################################

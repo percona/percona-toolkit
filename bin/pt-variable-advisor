@@ -1420,10 +1420,11 @@ sub import {
 
    my $caller     = scalar caller(); # Caller's package
    my %exports = (
-      extends => \&extends,
-      has     => \&has,
-      with    => \&with,
-      confess => \&Carp::confess,
+      extends  => \&extends,
+      has      => \&has,
+      with     => \&with,
+      override => \&override,
+      confess  => \&Carp::confess,
    );
 
    $export_for{$caller} = \%exports;
@@ -1700,6 +1701,16 @@ BEGIN {
             return \@lin;
          };
       }
+   }
+}
+
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
    }
 }
 

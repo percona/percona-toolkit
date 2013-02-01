@@ -3116,10 +3116,11 @@ sub import {
 
    my $caller     = scalar caller(); # Caller's package
    my %exports = (
-      extends => \&extends,
-      has     => \&has,
-      with    => \&with,
-      confess => \&Carp::confess,
+      extends  => \&extends,
+      has      => \&has,
+      with     => \&with,
+      override => \&override,
+      confess  => \&Carp::confess,
    );
 
    $export_for{$caller} = \%exports;
@@ -3399,6 +3400,16 @@ BEGIN {
    }
 }
 
+sub override {
+   my ($methods, $code) = @_;
+   my $caller          = scalar caller;
+
+   for my $method ( ref($methods) ? @$methods : $methods ) {
+      my $full_method     = "${caller}::${method}";
+      *{_glob_for $full_method} = $code;
+   }
+}
+
 }
 1;
 }
@@ -3568,7 +3579,7 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Mo;
+use Lmo;
 use Data::Dumper;
 
 sub get_cluster_name {
@@ -7397,24 +7408,26 @@ use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
 use B qw();
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   micro_t
-   percentage_of
-   secs_to_time
-   time_to_secs
-   shorten
-   ts
-   parse_timestamp
-   unix_timestamp
-   any_unix_timestamp
-   make_checksum
-   crc32
-   encode_json
-);
+BEGIN {
+   require Exporter;
+   our @ISA         = qw(Exporter);
+   our %EXPORT_TAGS = ();
+   our @EXPORT      = ();
+   our @EXPORT_OK   = qw(
+      micro_t
+      percentage_of
+      secs_to_time
+      time_to_secs
+      shorten
+      ts
+      parse_timestamp
+      unix_timestamp
+      any_unix_timestamp
+      make_checksum
+      crc32
+      encode_json
+   );
+}
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
