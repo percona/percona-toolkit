@@ -65,8 +65,8 @@ sub test_write_services {
 
 my $run0 = Percona::WebAPI::Resource::Run->new(
    number  => '0',
-   program => "$trunk/bin/pt-query-digest",
-   options => "--report-format profile $trunk/t/lib/samples/slowlogs/slow008.txt",
+   program => "pt-query-digest",
+   options => "--report-format profile slow008.txt",
    output  => 'spool',
 );
 
