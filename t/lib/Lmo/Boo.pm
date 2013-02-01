@@ -1,5 +1,5 @@
 package Boo;
-use Mo;
+use Lmo;
 
 has 'buff';
 

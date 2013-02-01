@@ -13,18 +13,18 @@ use Test::More;
 
 #============
 package Foo;
-use Mo;
+use Lmo;
 
 has 'this';
 
 #============
 package main;
 
-ok defined(&Foo::has), 'Mo exports has';
-ok defined(&Foo::extends), 'Mo exports extends';
-ok not(defined(&Foo::new)), 'Mo does not export new';
-ok 'Foo'->isa('Mo::Object'), 'Foo isa Mo::Object';
-is "@Foo::ISA", "Mo::Object", '@Foo::ISA is Mo::Object';
+ok defined(&Foo::has), 'Lmo exports has';
+ok defined(&Foo::extends), 'Lmo exports extends';
+ok not(defined(&Foo::new)), 'Lmo does not export new';
+ok 'Foo'->isa('Lmo::Object'), 'Foo isa Lmo::Object';
+is "@Foo::ISA", "Lmo::Object", '@Foo::ISA is Lmo::Object';
 ok 'Foo'->can('new'), 'Foo can new';
 ok 'Foo'->can('this'), 'Foo can this';
 
@@ -50,7 +50,7 @@ ok not(defined($f->{this})), '{this} is not defined';
 
 #============
 package Bar;
-use Mo 'builder', 'default';
+use Lmo 'builder', 'default';
 extends 'Foo';
 
 has 'that';
@@ -70,7 +70,7 @@ has guess => (
 #============
 package main;
 
-ok 'Bar'->isa('Mo::Object'), 'Bar isa Mo::Object';
+ok 'Bar'->isa('Lmo::Object'), 'Bar isa Lmo::Object';
 ok 'Bar'->isa('Foo'), 'Bar isa Foo';
 is "@Bar::ISA", 'Foo', '@Bar::ISA is Foo';
 ok 'Bar'->can('new'), 'Bar can new';
@@ -85,7 +85,7 @@ my $b = Bar->new(
 
 is ref($b), 'Bar', 'Object created';
 ok $b->isa('Foo'), 'Inheritance works';
-ok $b->isa('Mo::Object'), 'Bar isa Mo::Object since Foo isa Mo::Object';
+ok $b->isa('Lmo::Object'), 'Bar isa Lmo::Object since Foo isa Lmo::Object';
 is $b->this, 'thing', 'Read works in parent class';
 is $b->that, 'thong', 'Read works in current class';
 is ref($b->them), 'ARRAY', 'default works';
@@ -103,7 +103,7 @@ is $b->guess, 'me me me', 'default trumps builder';
 
 #============
 package Baz;
-use Mo 'build';
+use Lmo 'build';
 
 has 'foo';
 
@@ -114,7 +114,7 @@ sub BUILD {
 
 #============
 package Maz;
-use Mo;
+use Lmo;
 extends 'Baz';
 
 has 'bar';

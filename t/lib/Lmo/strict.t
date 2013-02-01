@@ -11,16 +11,9 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-package Foo::is;
-use Mo qw(is);
+eval 'package Foo; use Lmo; $x = 1';
 
-has 'stuff' => (is => 'ro');
-
-package main;
-
-my $f = Foo::is->new(stuff => 'foo');
-is $f->stuff, 'foo', 'values passed to constructor are successfully accepted';
-eval { $f->stuff('barbaz') };
-ok $@, 'setting values after initialization throws an exception';
+like $@, qr/Global symbol "\$x" requires explicit package name/,
+    'Lmo is strict';
 
 done_testing;

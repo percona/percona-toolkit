@@ -1,4 +1,4 @@
 package Bar;
-use Mo;
+use Lmo;
 extends 'Foo';
 1;

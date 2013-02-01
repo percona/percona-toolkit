@@ -1,5 +1,5 @@
 package Foo;
-use Mo;
+use Lmo;
 
 has 'stuff';
 
