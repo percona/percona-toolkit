@@ -33,10 +33,11 @@ if ( $crontab ) {
 # Create mock client and Agent
 # #############################################################################
 
-# These aren't the real tests yet: to run_agent(), first we need
+# These aren't the real tests yet: to run_agent, first we need
 # a client and Agent, so create mock ones.
 
-my $json = JSON->new;
+my $output;
+my $json = JSON->new->canonical([1])->pretty;
 $json->allow_blessed([]);
 $json->convert_blessed([]);
 
@@ -44,39 +45,27 @@ my $ua = Percona::Test::Mock::UserAgent->new(
    encode => sub { my $c = shift; return $json->encode($c || {}) },
 );
 
-# Create cilent, get entry links
-$ua->{responses}->{get} = [
-   {
-      content => {
-         agents  => '/agents',
-      },
-   },
-];
-
-my $links = {
-   agents   => '/agents',
-   config   => '/agents/1/config',
-   services => '/agents/1/services',
-};
-
-# Init agent, put Agent resource, return more links
-$ua->{responses}->{put} = [
-   {
-      content => $links,
-   },
-];
-
 my $client = eval {
    Percona::WebAPI::Client->new(
       api_key => '123',
       ua      => $ua,
    );
 };
+
 is(
    $EVAL_ERROR,
    '',
    'Create mock client'
 ) or die;
+
+my $agent = Percona::WebAPI::Resource::Agent->new(
+   id       => '123',
+   hostname => 'host',
+   links    => {
+      self   => '/agents/123',
+      config => '/agents/123/config',
+   },
+);
 
 my @wait;
 my $interval = sub {
@@ -85,41 +74,8 @@ my $interval = sub {
    print "interval=" . (defined $t ? $t : 'undef') . "\n";
 };
 
-my $agent;
-my $output = output(
-   sub {
-      $agent = pt_agent::init_agent(
-         client   => $client,
-         interval => $interval,
-         agent_id => 1,
-      );
-   },
-   stderr => 1,
-);
-
-my $have_agent = 1;
-
-is_deeply(
-   as_hashref($agent),
-   {
-      id       => '1',
-      hostname => `hostname`,
-      versions => {
-         'Percona::WebAPI::Client' => "$Percona::WebAPI::Client::VERSION",
-         'Perl'                    => sprintf '%vd', $PERL_VERSION,
-      }
-   },
-   'Create mock Agent'
-) or $have_agent = 0;
-
-# Can't run_agent() without and agent.
-if ( !$have_agent ) {
-   diag(Dumper(as_hashref($agent)));
-   die;
-}
-
 # #############################################################################
-# Test run_agent()
+# Test run_agent
 # #############################################################################
 
 # The agent does just basically 2 things: check for new config, and
@@ -130,8 +86,14 @@ if ( !$have_agent ) {
 # same config.
 
 my $config = Percona::WebAPI::Resource::Config->new(
+   id      => '1',
+   name    => 'Default',
    options => {
       'check-interval' => "60",
+   },
+   links   => {
+      self     => '/agents/123/config',
+      services => '/agents/123/services',
    },
 );
 
@@ -147,16 +109,19 @@ my $svc0 = Percona::WebAPI::Resource::Service->new(
    run_schedule   => '1 * * * *',
    spool_schedule => '2 * * * *',
    runs           => [ $run0 ],
+   links          => {
+      send_data => '/query-monitor',
+   },
 );
 
 $ua->{responses}->{get} = [
    {
       headers => { 'X-Percona-Resource-Type' => 'Config' },
-      content => as_hashref($config),
+      content => as_hashref($config, with_links => 1),
    },
    {
       headers => { 'X-Percona-Resource-Type' => 'Service' },
-      content => [ as_hashref($svc0) ],
+      content => [ as_hashref($svc0, with_links => 1) ],
    },
 ];
 
@@ -198,6 +163,7 @@ $output = output(
          config_file => $config_file,
          lib_dir     => $tmpdir,
          oktorun     => $oktorun,  # optional, for testing
+         json        => $json,     # optional, for testing
       );
    },
    stderr => 1,
@@ -224,7 +190,7 @@ is(
 ok(
    -f "$tmpdir/services/query-monitor",
    "Created services/query-monitor"
-);
+) or diag($output);
 
 chomp(my $n_files = `ls -1 $tmpdir/services| wc -l | awk '{print \$1}'`);
 is(
@@ -255,7 +221,7 @@ like(
 );
 
 # #############################################################################
-# Run run_agent() again, like the agent had been stopped and restarted.
+# Run run_agent again, like the agent had been stopped and restarted.
 # #############################################################################
 
 $ua->{responses}->{get} = [
@@ -311,6 +277,7 @@ $output = output(
          config_file => $config_file,
          lib_dir     => $tmpdir,
          oktorun     => $oktorun,  # optional, for testing
+         json        => $json,     # optional, for testing
       );
    },
    stderr => 1,

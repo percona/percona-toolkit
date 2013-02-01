@@ -696,24 +696,26 @@ our @EXPORT_OK = qw(
 );
 
 sub as_hashref {
-   my $resource = shift;
+   my ($resource, %args) = @_;
 
    my $as_hashref = { %$resource };
 
-   delete $as_hashref->{links};
+   if ( !defined $args{with_links} || !$args{with_links} ) {
+      delete $as_hashref->{links};
+   }
 
    return $as_hashref;
 }
 
 sub as_json {
-   my $resource = shift;
+   my ($resource, %args) = @_;
 
-   my $json = JSON->new;
+   my $json = $args{json} || JSON->new;
    $json->allow_blessed([]);
    $json->convert_blessed([]);
 
    return $json->encode(
-      ref $resource eq 'ARRAY' ? $resource : as_hashref($resource)
+      ref $resource eq 'ARRAY' ? $resource : as_hashref($resource, %args)
    );
 }
 
@@ -774,18 +776,11 @@ has 'api_key' => (
    required => 1,
 );
 
-has 'base_url' => (
+has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
    default  => sub { return 'https://api.tools.percona.com' },
    required => 0,
-);
-
-has 'links' => (
-   is      => 'rw',
-   isa     => 'HashRef',
-   lazy    => 1,
-   default => sub { return +{} },
 );
 
 has 'ua' => (
@@ -807,45 +802,23 @@ sub _build_ua {
    my $self = shift;
    my $ua = LWP::UserAgent->new;
    $ua->agent("Percona::WebAPI::Client/$Percona::WebAPI::Client::VERSION");
-   $ua->default_header('application/json');
+   $ua->default_header('Content-Type', 'application/json');
    $ua->default_header('X-Percona-API-Key', $self->api_key);
    return $ua;
-}
-
-sub BUILD {
-   my ($self) = @_;
-
-   eval {
-      $self->get(
-         url => $self->base_url,
-      );
-   };
-   if ( my $e = $EVAL_ERROR ) {
-      if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
-         die $e;
-      }
-      else {
-         die "Unknown error: $e";
-      }
-   }
-
-   return;
 }
 
 sub get {
    my ($self, %args) = @_;
    
    have_required_args(\%args, qw(
-      url
+      link
    )) or die;
-   my ($url) = $args{url};
-
-   my @resources;
+   my ($link) = $args{link};
 
    eval {
       $self->_request(
          method => 'GET',
-         url    => $url,
+         link   => $link,
       );
    };
    if ( my $e = $EVAL_ERROR ) {
@@ -857,7 +830,7 @@ sub get {
       }
    }
 
-   my $res = eval {
+   my $resource = eval {
       decode_json($self->response->content);
    };
    if ( $EVAL_ERROR ) {
@@ -867,21 +840,21 @@ sub get {
       return;
    }
 
-   my $objs;
+   my $resource_objects;
    if ( my $type = $self->response->headers->{'x-percona-resource-type'} ) {
       eval {
-         my $type = "Percona::WebAPI::Resource::$type";
-
-         if ( ref $res eq 'ARRAY' ) {
+         $type = "Percona::WebAPI::Resource::$type";
+         if ( ref $resource eq 'ARRAY' ) {
             PTDEBUG && _d('Got a list of', $type, 'resources');
-            foreach my $attribs ( @$res ) {
+            $resource_objects = [];
+            foreach my $attribs ( @$resource ) {
                my $obj = $type->new(%$attribs);
-               push @$objs, $obj;
+               push @$resource_objects, $obj;
             }
          }
          else {
-            PTDEBUG && _d('Got a', $type, 'resource');
-            $objs = $type->new(%$res);
+            PTDEBUG && _d('Got a', $type, 'resource', Dumper($resource));
+            $resource_objects = $type->new(%$resource);
          }
       };
       if ( $EVAL_ERROR ) {
@@ -889,44 +862,46 @@ sub get {
          return;
       }
    }
-   elsif ( $res ) {
-      $self->update_links($res);
+   elsif ( exists $resource->{links} ) {
+      $resource_objects = $resource->{links};
    }
    else {
-      warn "Did not get X-Percona-Resource-Type or content from $url\n";
+      warn "Did not get X-Percona-Resource-Type or links from $link\n";
    }
 
-   return $objs;
+   return $resource_objects;
 }
 
 sub post {
    my $self = shift;
-   return $self->_set(
+   $self->_set(
       @_,
       method => 'POST',
    );
+   return $self->response->header('Location');
 }
 
 sub put {
    my $self = shift;
-   return $self->_set(
+   $self->_set(
       @_,
       method => 'PUT',
    );
+   return;
 }
 
 sub delete {
    my ($self, %args) = @_;
 
    have_required_args(\%args, qw(
-      url
+      link 
    )) or die;
-   my ($url) = $args{url};
+   my ($link) = $args{link};
 
    eval {
       $self->_request(
          method  => 'DELETE',
-         url     => $url,
+         link    => $link,
          headers => { 'Content-Length' => 0 },
       ); 
    };
@@ -948,11 +923,11 @@ sub _set {
    have_required_args(\%args, qw(
       method
       resources
-      url
+      link
    )) or die;
    my $method = $args{method};
    my $res    = $args{resources};
-   my $url    = $args{url};
+   my $link   = $args{link};
 
    my $content = '';
    if ( ref($res) eq 'ARRAY' ) {
@@ -983,7 +958,7 @@ sub _set {
    eval {
       $self->_request(
          method  => $method,
-         url     => $url,
+         link    => $link,
          content => $content,
       );
    };
@@ -996,18 +971,6 @@ sub _set {
       }
    }
 
-   my $response = eval {
-      decode_json($self->response->content);
-   };
-   if ( $EVAL_ERROR ) {
-      warn sprintf "Error decoding response to $method $url: %s: %s",
-         $self->response->content,
-         $EVAL_ERROR;
-      return;
-   }
-
-   $self->update_links($response);
-
    return;
 }
 
@@ -1016,10 +979,10 @@ sub _request {
 
    have_required_args(\%args, qw(
       method
-      url
+      link 
    )) or die;
    my $method = $args{method};
-   my $url    = $args{url};
+   my $link   = $args{link};
 
    my @optional_args = (
       'content',
@@ -1027,12 +990,12 @@ sub _request {
    );
    my ($content, $headers) = @args{@optional_args};
 
-   my $req = HTTP::Request->new($method => $url);
+   my $req = HTTP::Request->new($method => $link);
    $req->content($content) if $content;
    if ( uc($method) eq 'DELETE' ) {
       $self->ua->default_header('Content-Length' => 0);
    }
-   PTDEBUG && _d('Request', $method, $url, Dumper($req));
+   PTDEBUG && _d('Request', $method, $link, Dumper($req));
 
    my $response = $self->ua->request($req);
    PTDEBUG && _d('Response', Dumper($response));
@@ -1044,25 +1007,15 @@ sub _request {
    if ( !($response->code >= 200 && $response->code < 400) ) {
       die Percona::WebAPI::Exception::Request->new(
          method  => $method,
-         url     => $url,
+         url     => $link,
          content => $content,
          status  => $response->code,
-         error   => "Failed to $method $url"
+         error   => "Failed to $method $link",
       );
    }
 
    $self->response($response);
 
-   return;
-}
-
-sub update_links {
-   my ($self, $links) = @_;
-   return unless $links && ref $links && scalar keys %$links;
-   while (my ($rel, $link) = each %$links) {
-      $self->links->{$rel} = $link;
-   }
-   PTDEBUG && _d('Updated links', Dumper($self->links));
    return;
 }
 
@@ -1161,7 +1114,13 @@ has 'versions' => (
    is       => 'ro',
    isa      => 'Maybe[HashRef]',
    required => 0,
-   default  => undef,
+);
+
+has 'links' => (
+   is       => 'rw',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => sub { return {} },
 );
 
 no Lmo;
@@ -1184,10 +1143,29 @@ package Percona::WebAPI::Resource::Config;
 
 use Lmo;
 
+has 'id' => (
+   is       => 'r0',
+   isa      => 'Int',
+   required => 1,
+);
+
+has 'name' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 1,
+);
+
 has 'options' => (
    is       => 'ro',
    isa      => 'HashRef',
    required => 1,
+);
+
+has 'links' => (
+   is       => 'rw',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => sub { return {} },
 );
 
 no Lmo;
@@ -1232,6 +1210,13 @@ has 'spool_schedule' => (
    is       => 'ro',
    isa      => 'Str',
    required => 0,
+);
+
+has 'links' => (
+   is       => 'rw',
+   isa      => 'Maybe[HashRef]',
+   required => 0,
+   default  => sub { return {} },
 );
 
 sub BUILDARGS {
@@ -1289,7 +1274,6 @@ has 'query' => (
    is       => 'ro',
    isa      => 'Maybe[Str]',
    required => 0,
-   default  => undef,
 );
 
 has 'output' => (
@@ -4028,24 +4012,26 @@ use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
 use B qw();
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   micro_t
-   percentage_of
-   secs_to_time
-   time_to_secs
-   shorten
-   ts
-   parse_timestamp
-   unix_timestamp
-   any_unix_timestamp
-   make_checksum
-   crc32
-   encode_json
-);
+BEGIN {
+   require Exporter;
+   our @ISA         = qw(Exporter);
+   our %EXPORT_TAGS = ();
+   our @EXPORT      = ();
+   our @EXPORT_OK   = qw(
+      micro_t
+      percentage_of
+      secs_to_time
+      time_to_secs
+      shorten
+      ts
+      parse_timestamp
+      unix_timestamp
+      any_unix_timestamp
+      make_checksum
+      crc32
+      encode_json
+   );
+}
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
@@ -4424,20 +4410,13 @@ sub main {
    $o->usage_or_errors();
 
    # ########################################################################
-   # Check the API key and agent ID.
+   # Nothing works without an API key.
    # ########################################################################
    my $api_key = $o->get('api-key');
    if ( !$api_key ) {
       _err("No API key was found or specified.  pt-agent requires a "
          . "Percona Web Services API key.  Put your API key "
          . "in a --config file or specify it with --api-key.");
-   }
-
-   my $agent_id = $o->get('agent-id');
-   if ( ($o->get('run-service') || $o->get('send-data')) && !$agent_id ) {
-      _err("No agent ID was found or specified.  --run-service and "
-         . "--send-data require an agent ID.  Run pt-agent without these "
-         . "options to create and configure the agent, then try again.");
    }
 
    # ########################################################################
@@ -4454,38 +4433,9 @@ sub main {
       exit $exit_status;
    }
 
-   # ########################################################################
-   # Connect to the Percona web API.
-   # ########################################################################
-   my ($client, $agent) = connect_to_percona(
-      api_key  => $api_key,
-      agent_id => $agent_id,  # optional
-   );
-  
-   # ########################################################################
-   # --send-data
-   # ########################################################################
-   if ( my $service = $o->get('send-data') ) {
-      # TODO: rewrite Daemon to have args passed in so we can do
-      # a PID file check for spool procs.  Or implement file locking.
-      send_data(
-         client    => $client,
-         agent     => $agent,
-         service   => $service,
-         spool_dir => $o->get('spool'),
-      );
-      _info("Done checking spool, exit $exit_status");
-      exit $exit_status;
-   }
-
-   # ########################################################################
-   # This is the main pt-agent daemon, a long-running and resilient
-   # process.  Only internal errors should cause it to stop.  Else,
-   # external errors, like Percona web API not responding, should be
-   # retried forever.
-   # ########################################################################
-
+   # ######################################################################## 
    # Daemonize first so all output goes to the --log.
+   # ########################################################################
    my $daemon;
    if ( $o->get('daemonize') ) {
       $daemon = new Daemon(o=>$o);
@@ -4496,6 +4446,45 @@ sub main {
       $daemon = new Daemon(o=>$o);
       $daemon->make_PID_file();
    }
+
+   # ########################################################################
+   # Connect to the Percona web API.
+   # ########################################################################
+   my ($client, $agent);
+   eval {
+      ($client, $agent) = connect_to_percona(
+         api_key  => $api_key,
+         lib_dir => $o->get('lib'),
+      );
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      _err("Failed to connect to the Percona web API: $EVAL_ERROR");
+   }
+
+   # ########################################################################
+   # --send-data and exit.
+   # ########################################################################
+   if ( my $service = $o->get('send-data') ) {
+      # TODO: rewrite Daemon to have args passed in so we can do
+      # a PID file check for spool procs.  Or implement file locking.
+      send_data(
+         client    => $client,
+         agent     => $agent,
+         service   => $service,
+         lib_dir   => $->get('lib'),
+         spool_dir => $o->get('spool'),
+      );
+      _info("Done sending data for the $service service, exit $exit_status");
+      exit $exit_status;
+   }
+
+   # ########################################################################
+   # This is the main pt-agent daemon, a long-running and resilient
+   # process.  Only internal errors should cause it to stop.  Else,
+   # external errors, like Percona web API not responding, should be
+   # retried forever.
+   # ########################################################################
 
    # Check and init the config file.
    my $config_file = get_config_file();
@@ -4560,12 +4549,10 @@ sub connect_to_percona {
 
    have_required_args(\%args, qw(
       api_key
+      lib_dir
    )) or die;
-   my $api_key  = $args{api_key};
-   my $interval = $args{interval};
-
-   # Optional args
-   my $agent_id = $args{agent_id};
+   my $api_key = $args{api_key};
+   my $lib_dir = $args{lib_dir};
 
    # During initial connection and agent init, wait less time
    # than --check-interval between errors.
@@ -4577,18 +4564,21 @@ sub connect_to_percona {
       sleep $init_interval;
    };
 
-   # Get a connected Percona Web API client.
-   my $client = get_api_client(
+   # Connect to https://api.pws.percona.com and get entry links.
+   # Don't return until successful.
+   my ($client, $entry_links) = get_api_client(
       api_key  => $api_key,
       tries    => undef,
       interval => $init_wait,
    );
 
-   # Start or create the agent.
+   # Create a new or update an existing Agent resource.
+   # Don't return until successful.
    my $agent = init_agent(
-      client   => $client,
-      interval => $init_wait,
-      agent_id => $agent_id,  # optional
+      client      => $client,
+      interval    => $init_wait,
+      lib_dir     => $lib_dir,
+      agents_link => $entry_links->{agents},
    );
 
    return $client, $agent;
@@ -4606,16 +4596,18 @@ sub get_api_client {
    my $interval = $args{interval};
 
    # Optional args
-   my $tries   = $args{tries};
-   my $oktorun = $args{oktorun} || sub { return $oktorun };
+   my $tries    = $args{tries};
+   my $_oktorun = $args{oktorun} || sub { return $oktorun };
 
-   my $client;
-   while ( $oktorun->() && !$client && (!defined $tries || $tries--) ) {
+   my $client = Percona::WebAPI::Client->new(
+      api_key  => $api_key,
+   );
+
+   my $entry_links;
+   while ( $_oktorun->() && !$entry_links && (!defined $tries || $tries--) ) {
       _info("Connecting to Percona Web Services");
       eval {
-         $client = Percona::WebAPI::Client->new(
-            api_key  => $api_key,
-         );
+         $entry_links = $client->get(link => $client->entry_link);
       };
       if ( $EVAL_ERROR ) {
          _warn($EVAL_ERROR);
@@ -4626,7 +4618,7 @@ sub get_api_client {
       }
    }
 
-   return $client;
+   return $client, $entry_links;
 }
 
 # Initialize the agent, i.e. create and return an Agent resource.
@@ -4638,14 +4630,17 @@ sub init_agent {
    have_required_args(\%args, qw(
       client
       interval
+      lib_dir
+      agents_link
    )) or die;
-   my $client   = $args{client};
-   my $interval = $args{interval};
+   my $client      = $args{client};
+   my $interval    = $args{interval};
+   my $lib_dir     = $args{lib_dir};
+   my $agents_link = $args{agents_link};
 
    # Optional args
-   my $agent_id = $args{agent_id};
    my $versions = $args{versions};
-   my $oktorun  = $args{oktorun} || sub { return $oktorun };
+   my $_oktorun = $args{oktorun} || sub { return $oktorun };
 
    _info('Initializing agent');
 
@@ -4653,42 +4648,64 @@ sub init_agent {
    # have changed, this can affect how services are implemented.
    $versions ||= get_versions();
 
-   # Make an Agent resource.  If there's an agent_id, the existing Agent
-   # is updated (PUT); else, a new agent is created (POST).
+   # If there's a saved agent, then this is an existing agent being
+   # restarted.  Else this is a new agent.
+   my $agent_file = $lib_dir . "/agent";
+   my $agent;
    my $action;
-   if ( $agent_id ) {
-      $action = 'put';
+   if ( -f $agent_file ) {
+      _info("Reading saved Agent from $agent_file");
+      my $agent_hashref = decode_json(slurp($agent_file));
+      $agent  = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
+      $action = 'put';  # must be lc
    }
    else {
-      $action   = 'post';
-      $agent_id = get_uuid();
+      _info("Creating new Agent");
+      $action = 'post';  # must be lc
+      $agent  = Percona::WebAPI::Resource::Agent->new(
+         id       => 0,  # PWS will change this
+         versions => $versions,
+         hostname => `hostname`,
+      );
    }
 
-   my $agent = Percona::WebAPI::Resource::Agent->new(
-      id       => $agent_id,
-      versions => $versions,
-      hostname => `hostname`,
-   );
-
-   while ( $oktorun->() ) {
-      _info($action eq 'put' ? "Updating agent $agent_id"
-                             : "Creating new agent $agent_id");
+   # Try forever to create/update the Agent.  The tool can't
+   # do anything without an Agent, so we must succeed to proceed.
+   my $new_agent_link;  # Location header in POST response
+   while ( $_oktorun->() ) {
+      _info($action eq 'put' ? "Updating agent " . $agent->id
+                             : "Creating new agent");
       eval {
-         $client->$action(
-            url       => $client->links->{agents},
+         $new_agent_link = $client->$action(
+            link      => $agents_link,
             resources => $agent,
          );
       };
+      last unless $EVAL_ERROR;
+      _warn($EVAL_ERROR);
+      $interval->();
+   }
+
+   # If the Agent was new, POST will have returned a link to
+   # the newly created and updated Agent resource.
+   if ( $new_agent_link ) {
+      $agent = $client->get(
+         link => $new_agent_link,
+      );
+      eval {
+         save_agent(
+            agent => $agent,
+            file  => $agent_file,
+         );
+      };
       if ( $EVAL_ERROR ) {
-         _warn($EVAL_ERROR);
-         $interval->();
-      }
-      else {
-         _info("Initialized");
-         last;
+         _warn("Error saving Agent to $agent_file: $EVAL_ERROR\n"
+            . "pt-agent will continue running and try to save "
+            . "the Agent later.");
       }
    }
 
+   _info("Agent initialized and ready");
    return $agent;
 }
 
@@ -4726,9 +4743,9 @@ sub run_agent {
       eval {
          _info('Getting config');
 
-         # Get the agent's config from Percona.
+         # Get the agent's Config from Percona.
          my $new_config = $client->get(
-            url => $client->links->{config},
+            link => $agent->links->{config},
          );
 
          # If the current and new configs are different,
@@ -4763,13 +4780,13 @@ sub run_agent {
 
       # Get services only if there's a current, running config.
       # Without one, we won't know how to implement services.
-      if ( $config ) {
+      if ( $config && $config->links->{services} ) {
          eval {
             _info('Getting services');
 
             # Get services from Percona.
             my $new_services = $client->get(
-               url => $client->links->{services},
+               link => $config->links->{services},
             );
 
             # If the current and new services are different,
@@ -4780,6 +4797,7 @@ sub run_agent {
                write_services(
                   services => $new_services,
                   lib_dir  => $lib_dir,
+                  json     => $args{json},  # optional, for testing
                );
 
                schedule_services(
@@ -4862,6 +4880,9 @@ sub write_services {
    my $services = $args{services};
    my $lib_dir  = $args{lib_dir};
 
+   # Optional args
+   my $json = $args{json};  # for testing
+
    $lib_dir .= '/services';
 
    _info("Writing services to $lib_dir");
@@ -4873,7 +4894,7 @@ sub write_services {
       my $action = -f $file ? 'Updated' : 'Created';
       open my $fh, '>', $file
          or die "Error opening $file: $OS_ERROR";
-      print { $fh } as_json($service)
+      print { $fh } as_json($service, with_links => 1, json => $json)
          or die "Error writing to $file: $OS_ERROR";
       close $fh
          or die "Error closing $file: $OS_ERROR";
@@ -4974,9 +4995,9 @@ sub make_new_crontab {
    return $new_crontab;
 }
 
-# #################### #
-# Service process subs #
-# #################### #
+# ########################## #
+# --run-service process subs #
+# ########################## #
 
 sub run_service {
    my (%args) = @_;
@@ -5116,9 +5137,9 @@ sub replace_special_vars {
    return $new_cmd;
 }
 
-# ################## #
-# Spool process subs #
-# ################## #
+# ######################## #
+# --send-data process subs #
+# ######################## #
 
 # Send every file or directory in each service's directory in --spool/.
 # E.g. --spool/query-monitor should contain files with pt-query-digest
@@ -5130,89 +5151,70 @@ sub send_data {
       client
       agent
       service
+      lib_dir
       spool_dir
    )) or die;
    my $client    = $args{client};
    my $agent     = $args{agent};
    my $service   = $args{service};
+   my $lib_dir   = $args{lib_dir};
    my $spool_dir = $args{spool_dir};
 
-   # Iterate through the service dirs in --spool/.
-   chdir $spool_dir
-      or die "Error changing dir to $spool_dir: $OS_ERROR";
-   opendir(my $spool_dh, $spool_dir)
-      or die "Error opening $spool_dir: $OS_ERROR";
-   _info("Checking spool directory $spool_dir");
-   SERVICE:
-   while ( my $service_dir = readdir($spool_dh) ) {
-      next unless -d $service_dir && $service_dir !~ m/^\./;
+   my $service_dir  = $spool_dir . '/' . $service;
+   my $service_file = $lib_dir . '/services/' . $service;
 
-      # Need a link for the service to know where to send the data.
-      # TODO: should pt-agent rm the old service dir?
-      if ( !$client->links->{$service_dir} ) {
-         _warn("Ignoring $service_dir because there is no link for "
-            . "the service.  If this agent no longer implements "
-            . "the service, then remove $spool_dir/$service_dir/.");
-         next SERVICE;
-      }
+   # Re-create the Service resource object from the saved service file.   
+   # TODO: test
+   if ( !-f $service_file ) {
+      _err("Cannot send data for the $service service because "
+         . "$service_file does not exist.");
+   }
+   $service = decode_json(slurp($service_file));
+   $service = Percona::WebAPI::Resource::Service->new(%$service);
 
-      # Iterate through the data files or dirs in this service's dir.
-      opendir(my $service_dh, $service_dir);
-      if ( !$service_dh ) {
+   # Iterate through service's spool dir and send the data file therein.
+   # TODO: if the service dir doesn't exist?
+   opendir(my $service_dh, $service_dir)
+      or die "Error opening $service_dir: $OS_ERROR";
+   DATA_FILE:
+   while ( my $file = readdir($service_dh) ) {
+      $file = "$service_dir/$file";
+      next unless -f $file;
+
+      eval {
+         # Send the file as-is.  The --run-service process should
+         # have written the data in a format that's ready to send.
+         send_file(
+            client => $client,
+            agent  => $agent,
+            file   => $file,
+            link   => $service->links->{send_data},
+         );
+      };
+      if ( $EVAL_ERROR ) {
          chomp $EVAL_ERROR;
-         _warn("Error opening $service_dir: $OS_ERROR");
-         next SERVICE;
+         _warn("Failed to send $file: $EVAL_ERROR");
+         next DATA_FILE;
       }
-      DATA:
-      while ( my $file = readdir($service_dh) ) {
-         next unless -f "$service_dir/$file";
-         $file = "$service_dir/$file";
 
-         # Send the data to Percona.
-         eval {
-            if ( -d $file ) {
-               # TODO
-            }
-            else {
-               # The file is a file, yay.  Just send it as-is.
-               send_file(
-                  client => $client,
-                  agent  => $agent,
-                  file   => $file,
-                  url    => $client->links->{$service_dir},
-               );
-               # TODO: url should really be Service->links->self.
-            }
-         };
-         if ( $EVAL_ERROR ) {
-            chomp $EVAL_ERROR;
-            _warn("Failed to send $file: $EVAL_ERROR");
-            next DATA;
-         }
+      # Data file sent successfully; now remove it.  Failure here
+      # is an error, not a warning, because if we can't remove the
+      # file then we risk re-sending it, and currently we have no
+      # way to determine if a file has been sent or not other than
+      # whether it exists or not.
+      eval {
+         unlink $file or die $OS_ERROR;
+      };
+      if ( $EVAL_ERROR ) {
+         chomp $EVAL_ERROR;
+         _warn("Sent $file but failed to remove it: $EVAL_ERROR");
+         last DATA_FILE;
+      }
 
-         # Remove the data if sent successfully.
-         eval {
-            if ( -d $file ) {
-               # TODO: rmtree
-            }
-            else {
-               unlink $file or die $OS_ERROR;
-            }
-         };
-         if ( $EVAL_ERROR ) {
-            chomp $EVAL_ERROR;
-            _warn("Sent $file but failed to remove it: $EVAL_ERROR");
-            last SERVICE;
-         }
-
-         _info("Sent and removed $file");
-      } # DATA
-      closedir $service_dh
-         or warn "Error closing $service_dir: $OS_ERROR";
-   } # SERVICE
-
-   closedir $spool_dh
-      or warn "Error closeing $spool_dir: $OS_ERROR";
+      _info("Sent and removed $file");
+   }
+   closedir $service_dh
+      or warn "Error closing $service_dir: $OS_ERROR";
 
    return;
 }
@@ -5225,14 +5227,15 @@ sub send_file {
       client
       agent
       file
-      url
+      link
    )) or die;
    my $client = $args{client};
    my $agent  = $args{agent};
    my $file   = $args{file};
-   my $url    = $args{url};
+   my $link   = $args{link};
 
-   _info("Sending $file to $url");
+   my $file_size = -s $file;
+   _info("Sending $file ($file_size bytes) to $link");
 
    # Create a multi-part resource: first the Agent, so Percona knows
    # from whom this data is coming, then the contents of the file as-is.
@@ -5249,7 +5252,7 @@ CONTENT
    chomp($resource);  # remove trailing newline
 
    $client->post(
-      url       => $url,
+      link      => $link,
       resources => $resource,
    );
 
@@ -5278,6 +5281,24 @@ sub init_config_file {
    open my $fh, '>', $file
       or die "Error opening $file: $OS_ERROR";
    print { $fh } "api-key=$api_key\n"
+      or die "Error writing to $file: $OS_ERROR";
+   close $fh
+      or die "Error closing $file: $OS_ERROR";
+   return;
+}
+
+sub save_agent {
+   my (%args) = @_;
+   have_required_args(\%args, qw(
+      agent
+      file
+   )) or die;
+   my $agent = $args{agent};
+   my $file  = $args{file};
+   _info("Saving Agent to $file");
+   open my $fh, '>', $file
+      or die "Error opening $file: $OS_ERROR";
+   print { $fh } as_json($agent)
       or die "Error writing to $file: $OS_ERROR";
    close $fh
       or die "Error closing $file: $OS_ERROR";
@@ -5319,10 +5340,6 @@ sub _err {
    _log('ERROR', $msg . '  Please contact Percona if you need help.');
    $exit_status |= 1;
    exit $exit_status;
-}
-
-sub get_uuid {
-   return '123';
 }
 
 # TODO: use VersionCheck::get_versions().
@@ -5399,12 +5416,6 @@ TODO
 L<"--run-service"> and L<"--send-data"> are mutually exclusive.
 
 =over
-
-=item --agent-id
-
-type: string
-
-The agent's unique ID.
 
 =item --api-key
 

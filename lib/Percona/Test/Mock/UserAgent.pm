@@ -20,8 +20,6 @@
 {
 package Percona::Test::Mock::UserAgent;
 
-use Percona::Toolkit qw(Dumper);
-
 sub new {
    my ($class, %args) = @_;
    my $self = {
