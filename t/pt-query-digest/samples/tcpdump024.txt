@@ -12,7 +12,6 @@
 # Query size    45      50      50      50      50      50       0      50
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Statement id 2
 # Query_time distribution
@@ -45,7 +44,6 @@ SELECT * FROM d.t3 WHERE v=? OR c=? OR f=?\G
 # Query size    54      59      59      59      59      59       0      59
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Statement id 2
 # Query_time distribution

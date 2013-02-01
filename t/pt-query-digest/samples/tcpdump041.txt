@@ -21,7 +21,6 @@
 # Query size   100      35      35      35      35      35       0      35
 # Warning coun   0       0       0       0       0       0       0       0
 # String:
-# Errors       none
 # Hosts        127.0.0.1
 # Statement id 2
 # Query_time distribution
