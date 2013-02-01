@@ -29,7 +29,7 @@ sub lives_ok (&;$) {
 }
 
 package Foo::isa;
-use Mo qw(isa);
+use Lmo qw(isa);
 
 my @types = qw(Bool Num Int Str ArrayRef CodeRef HashRef RegexpRef);
 my @refs = ([], sub { }, {}, qr( ));
@@ -191,11 +191,11 @@ my $thisperl = $^X;
 if ($^O ne 'VMS')
    {$thisperl .= $Config{_exe} unless $thisperl =~ m/$Config{_exe}$/i;}
 
-my $pm_test = "$PerconaTest::trunk/t/lib/Mo/isa_subtest.pm";
+my $pm_test = "$PerconaTest::trunk/t/lib/Lmo/isa_subtest.pm";
    
 ok(
    scalar(IPC::Cmd::run(command => [$thisperl, $pm_test])),
-   "Mo types work with Scalar::Util::PP",
+   "Lmo types work with Scalar::Util::PP",
 );
 
 done_testing;

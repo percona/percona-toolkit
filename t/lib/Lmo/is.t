@@ -11,16 +11,16 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
 
-use lib "$ENV{PERCONA_TOOLKIT_BRANCH}/t/lib/Mo";
-use Bar;
+package Foo::is;
+use Lmo qw(is);
 
-my $b = Bar->new;
+has 'stuff' => (is => 'ro');
 
-ok $b->isa('Foo'), 'Bar is a subclass of Foo';
+package main;
 
-is "@Bar::ISA", "Foo", 'Extends with multiple classes not supported';
-
-ok 'Foo'->can('stuff'), 'Foo is loaded';
-ok not('Bar'->can('buff')), 'Boo is not loaded';
+my $f = Foo::is->new(stuff => 'foo');
+is $f->stuff, 'foo', 'values passed to constructor are successfully accepted';
+eval { $f->stuff('barbaz') };
+ok $@, 'setting values after initialization throws an exception';
 
 done_testing;

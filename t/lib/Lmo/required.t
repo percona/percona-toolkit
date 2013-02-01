@@ -13,14 +13,14 @@ use Test::More;
 
 #============
 package Foo::required;
-use Mo qw(required);
+use Lmo qw(required);
 
 has 'stuff' => (required => 1);
 has 'stuff2' => (required => 1);
 has 'foo' => ();
 #============
 package Foo::required_is;
-use Mo qw(required);
+use Lmo qw(required);
 
 has 'stuff' => (required => 1, is => 'ro');
 #============
@@ -28,7 +28,7 @@ has 'stuff' => (required => 1, is => 'ro');
 package main;
 
 my $f0 = eval { Foo::required->new(stuff2 => 'foobar') };
-like $@, qr/^\QAttribute (stuff) is required/, 'Mo dies when a required value is not provided';
+like $@, qr/^\QAttribute (stuff) is required/, 'Lmo dies when a required value is not provided';
 
 my $f = Foo::required->new(stuff => 'fubar', stuff2 => 'foobar');
 is $f->stuff, 'fubar', 'Object is correctly initialized when required values are provided';
