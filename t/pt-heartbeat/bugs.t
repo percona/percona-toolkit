@@ -93,7 +93,7 @@ my $slave1_dsn = $sb->dsn_for('slave1');
    local $ENV{TZ} = '-09:00';
    tzset();
    pt_heartbeat::main($slave1_dsn, qw(--database test --table heartbeat),
-                        qw(--check --master-server-id), $master_port)
+                        qw(--utc --check --master-server-id), $master_port)
 });
 
 # If the servers use UTC then the lag should be 0.00, or at least
@@ -102,10 +102,34 @@ my $slave1_dsn = $sb->dsn_for('slave1');
 like(
    $output,
    qr/\A\d.\d{2}$/,
-   "Bug 886059: pt-heartbeat doesn't get confused with differing timezones"
+   "--utc bypasses time zone differences (bug 886059, bug 1099665)"
 );
 
 stop_all_instances();
+
+# #############################################################################
+# pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
+# https://bugs.launchpad.net/percona-toolkit/+bug/1103221
+# #############################################################################
+
+$master_dbh->do('truncate table test.heartbeat');
+$sb->wait_for_slaves;
+
+my $master_dsn = $sb->dsn_for('master');
+
+($output) = output(
+   sub {
+      pt_heartbeat::main($master_dsn, qw(--database test --update),
+         qw(--run-time 1))
+   },
+);
+
+my ($row) = $master_dbh->selectrow_hashref('select * from test.heartbeat');
+like(
+   $row->{ts},
+   qr/\d{4}-\d\d-\d\dT\d+:\d+:\d+\.\d+/,
+   "Hi-res timestamp (bug 1103221)"
+);
 
 # ############################################################################
 # Done.
