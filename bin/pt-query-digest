@@ -64,7 +64,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.7';
+our $VERSION = '2.1.8';
 
 1;
 }
@@ -7977,13 +7977,13 @@ sub _d {
 {
 package JSONReportFormatter;
 use Mo;
-use JSON ();
 
-use List::Util qw(sum);
-
+use List::Util   qw(sum);
 use Transformers qw(make_checksum parse_timestamp);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+my $have_json = eval { require JSON };
 
 our $pretty_json = undef;
 our $sorted_json = undef;
@@ -7994,11 +7994,23 @@ has _json => (
    is       => 'ro',
    init_arg => undef,
    builder  => '_build_json',
-   handles  => { encode_json => 'encode' },
 );
 
 sub _build_json {
-   return JSON->new->utf8->pretty($pretty_json)->canonical($sorted_json);
+   return unless $have_json;
+   return JSON->new->utf8
+                   ->pretty($pretty_json)
+                   ->canonical($sorted_json);
+}
+
+sub encode_json {
+   my ($self, $encode) = @_;
+   if ( my $json = $self->_json ) {
+      return $json->encode($encode);
+   }
+   else {
+      return Transformers::encode_json($encode);
+   }
 }
 
 override [qw(rusage date hostname files header profile prepared)] => sub {
@@ -8076,7 +8088,9 @@ override query_report => sub {
       };
    }
 
-   return $self->encode_json(\@queries) . "\n";
+   my $json = $self->encode_json(\@queries);
+   $json .= "\n" if $json !~ /\n\Z/;
+   return $json . "\n";
 };
 
 1;
@@ -15284,7 +15298,8 @@ Analyze, aggregate, and report on a slow query log:
 Review a slow log, saving results to the test.query_review table in a MySQL
 server running on host1.  See L<"--review"> for more on reviewing queries:
 
- pt-query-digest --review h=host1,D=test,t=query_review /path/to/slow.log
+ pt-query-digest --review h=host1 --review-table test.query_review
+   --history-table test.query_history /path/to/slow.log
 
 Print the structure of events so you can construct a complex L<"--filter">:
 
@@ -15314,7 +15329,7 @@ is safe to run even on production systems, but you might want to monitor it
 until you are satisfied that the input you give it does not cause undue load.
 
 Various options will cause pt-query-digest to insert data into tables, execute
-SQL queries, and so on.  These include the L<"--review"> options.
+SQL queries, and so on.  These include the L<"--review"> option.
 
 At the time of this release, we know of no bugs that could cause serious harm
 to users.
@@ -15795,7 +15810,9 @@ Continue parsing even if there is an error.  The tool will not continue
 forever: it stops once any process causes 100 errors, in which case there
 is probably a bug in the tool or the input is invalid.
 
-=item --create-review-tables
+=item --[no]create-review-tables
+
+default: yes
 
 Create the L<"--review"> tables if they do not exist.
 
@@ -16305,10 +16322,15 @@ type: DSN
 Store a sample of each class of query in this DSN, plus historical values
 for review trend analysis
 
-The argument specifies a table to store all unique query fingerprints in.  The
-table must have at least the following columns.  You can add more columns for
-your own special purposes, but they won't be used by pt-query-digest.  The
-following CREATE TABLE definition is also used for L<"--create-review-table">.
+The argument specifies a host to store all unique query fingerprints in; the
+databases and tables were this data is stored can be specified with the
+L<"--review-table"> and L<"--history-table"> options.
+By default, if the table doesn't exist the tool mtries creating it; This
+behavior can bhe controlled with the L<"--[no]create-review-tables"> option.
+If the table was created manually, it must have at least the following columns.
+You can add more columns for your own special purposes, but they won't be used
+by pt-query-digest.  The following CREATE TABLE definition is also used by
+L<"--no-create-review-tables">.
 
 =for comment ignore-pt-internal-value
 MAGIC_create_review:
@@ -16346,7 +16368,7 @@ fingerprint.  This option depends on C<--group-by fingerprint> (which is the
 default).  It will not work otherwise.
 
 
-Additionally, pt-query-digest will save information into a review table,
+Additionally, pt-query-digest will save historical information into a review table,
 so you can see how classes of queries have changed over time.  You can
 change the destination table with the L<"--history-table">
 
@@ -16379,7 +16401,7 @@ you could also just add a ts_min column and make it a DATE type, so you'd get
 one row per class of queries per day.
 
 The default table structure follows.  The following table definition is used
-for L<"--create-review-tables">:
+for L<"--[no]create-review-tables">:
 
 =for comment ignore-pt-internal-value
 MAGIC_create_review_history
@@ -17297,8 +17319,7 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2008-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2008-2013 Percona Ireland Ltd.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -17316,6 +17337,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-query-digest 2.1.7
+pt-query-digest 2.1.8
 
 =cut
