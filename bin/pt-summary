@@ -29,23 +29,32 @@ PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
-log() {
-   TS=$(date +%F-%T | tr ':-' '_');
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
 }
 
 _d () {
-   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################
@@ -2280,7 +2289,7 @@ sigtrap() { local PTFUNCNAME=sigtrap;
 # Execute the program if it was not included from another file.  This makes it
 # possible to include without executing, and thus test.
 if    [ "${0##*/}" = "$TOOL" ] \
-   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
+   || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
 
    # Set up temporary dir.
    mk_tmpdir

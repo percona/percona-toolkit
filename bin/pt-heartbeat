@@ -4807,6 +4807,8 @@ sub main {
    # ########################################################################
    # Create the heartbeat table if --create-table was given.
    # ########################################################################
+   my $utc       = $o->get('utc');
+   my $now_func  = $utc ? 'UTC_TIMESTAMP()' : 'NOW()';
    my $db_tbl    = $q->quote($db, $tbl);
    my $server_id = $dbh->selectrow_array('SELECT @@server_id');
    if ( $o->get('create-table') ) {
@@ -4816,7 +4818,7 @@ sub main {
       $dbh->do($sql);
 
       $sql = ($o->get('replace') ? "REPLACE" : "INSERT")
-           . qq/ INTO $db_tbl (ts, server_id) VALUES (UTC_TIMESTAMP(), $server_id)/;
+           . qq/ INTO $db_tbl (ts, server_id) VALUES ($now_func, $server_id)/;
       PTDEBUG && _d($sql);
       # This may fail if the table already existed and already had this row.
       # We eval to ignore this possibility.
@@ -4913,7 +4915,7 @@ sub main {
          PTDEBUG && _d('No heartbeat row in table');
          if ( $o->get('insert-heartbeat-row') ) {
             my $sql = "INSERT INTO $db_tbl ($pk_col, ts) "
-                    . "VALUES ('$pk_val', UTC_TIMESTAMP())";
+                    . "VALUES ('$pk_val', $now_func)";
             PTDEBUG && _d($sql);
             $dbh->do($sql);
          }
@@ -5007,8 +5009,7 @@ sub main {
             tries => 3,
             wait  => sub { sleep 0.25; return; },
             try   => sub {
-               my ($now) = $dbh->selectrow_array(q{SELECT UTC_TIMESTAMP()});
-               $sth->execute($now, @vals);
+               $sth->execute(ts(time, $utc), @vals);
                PTDEBUG && _d($sth->{Statement});
                $sth->finish();
             },
@@ -5039,7 +5040,7 @@ sub main {
       # UNIX_TIMESTAMP(ts) replaces unix_timestamp($ts) -- MySQL is the
       # authority here, so let it calculate everything.
       $heartbeat_sql
-         = "SELECT UNIX_TIMESTAMP(UTC_TIMESTAMP()), UNIX_TIMESTAMP(ts)"
+         = "SELECT " . ($utc ? 'UNIX_TIMESTAMP(ts)' : 'ts')
          . ($dbi_driver eq 'mysql' ? '/*!50038, @@hostname AS host*/' : '')
          . ($id ? "" : ", server_id")
          . " FROM $db_tbl "
@@ -5053,12 +5054,13 @@ sub main {
          my ($sth) = @_;
          $sth->execute();
          PTDEBUG && _d($sth->{Statement});
-         my ($now, $ts, $hostname, $server_id) = $sth->fetchrow_array();
+         my ($ts, $hostname, $server_id) = $sth->fetchrow_array();
+         my $now = time;
          PTDEBUG && _d("Heartbeat from server", $server_id, "\n",
-            " now:", $now, "\n",
+            " now:", ts($now, $utc), "\n",
             "  ts:", $ts, "\n",
             "skew:", $skew);
-         my $delay = $now - $ts - $skew;
+         my $delay = $now - unix_timestamp($ts, $utc) - $skew;
          PTDEBUG && _d('Delay', sprintf('%.6f', $delay), 'on', $hostname);
 
          # Because we adjust for skew, if the ts are less than skew seconds
@@ -5862,6 +5864,16 @@ Update a master's heartbeat.
 short form: -u; type: string
 
 User for login if not current user.
+
+=item --utc
+
+Ignore system time zones and use only UTC.  By default pt-heartbeat does
+not check or adjust for different system or MySQL time zones which can
+cause the tool to compute the lag incorrectly.  Specifying this option is
+a good idea because it ensures that the tool works correctly regardless of
+time zones, but it also makes the tool backwards-incompatible with
+pt-heartbeat 2.1.7 and older (unless the older version of pt-heartbeat
+is running on a system that uses UTC).
 
 =item --version
 
