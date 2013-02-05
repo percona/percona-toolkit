@@ -82,6 +82,7 @@ aggregate_stacktrace() {
             }
             else {
                targ = \$4;
+               tfile= \$NF;
             }
             if ( targ ~ /[<\\(]/ ) {
                targ = substr(\$0, index(\$0, \" in \") + 4);
@@ -126,6 +127,13 @@ aggregate_stacktrace() {
          }
          else {
             fname = targ;
+            if ( tfile ~ /^\// ) {
+               last=split(tfile,filen,/\//); 
+               fname = targ \"(\" filen[last] \")\";
+            }
+            else {
+               fname = targ
+            }
          }
          if ( ${maxlen:-0} == 0 || c < ${maxlen:-0} ) {
             if (s != \"\" ) {

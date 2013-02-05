@@ -1,0 +1,11 @@
+     35 pthread_cond_wait,end_thread,handle_one_connection,start_thread(libpthread.so.0),clone(libc.so.6)
+     20 read(libpthread.so.0),read(unistd.h:35),vio_read(unistd.h:35),my_real_read,my_net_read,handle_one_connection,start_thread(libpthread.so.0),clone(libc.so.6)
+     18 pthread_cond_wait,os_event_wait_low,os_aio_simulated_handle,fil_aio_wait,io_handler_thread,start_thread(libpthread.so.0),clone(libc.so.6)
+      3 pthread_cond_wait,MYSQL_LOG::wait_for_update,mysql_binlog_send,dispatch_command,handle_one_connection,start_thread(libpthread.so.0),clone(libc.so.6)
+      1 select(libc.so.6),os_thread_sleep,srv_master_thread,start_thread(libpthread.so.0),clone(libc.so.6)
+      1 select(libc.so.6),os_thread_sleep,srv_lock_timeout_and_monitor_thread,start_thread(libpthread.so.0),clone(libc.so.6)
+      1 select(libc.so.6),os_thread_sleep,srv_error_monitor_thread,start_thread(libpthread.so.0),clone(libc.so.6)
+      1 select(libc.so.6),handle_connections_sockets,main
+      1 do_sigwait(libpthread.so.0),sigwait(libpthread.so.0),signal_hand,start_thread(libpthread.so.0),clone(libc.so.6)
+      1 btr_search_guess_on_hash(libc.so.6),btr_cur_search_to_nth_level,btr_pcur_open_with_no_init,row_search_for_mysql,ha_innobase::index_read,join_read_always_key,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,evaluate_join_record,sub_select,do_select,JOIN::exec,mysql_select,handle_select,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread(libpthread.so.0),clone(libc.so.6)
+      1 btr_cur_search_to_nth_level,btr_estimate_n_rows_in_range,ha_innobase::records_in_range,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_keys,check_quick_select,get_key_scans_params,SQL_SELECT::test_quick_select,get_quick_record_count,make_join_statistics,JOIN::optimize,mysql_select,handle_select,mysql_execute_command,mysql_parse,dispatch_command,handle_one_connection,start_thread(libpthread.so.0),clone(libc.so.6)
