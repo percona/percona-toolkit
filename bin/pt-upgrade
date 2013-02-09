@@ -3798,244 +3798,6 @@ sub main {
    }
 
    # ########################################################################
-   # Make some common modules.
-   # ########################################################################
-   my $q        = new Quoter();
-   my $qp       = new QueryParser();
-   my $qr       = new QueryRewriter();
-   my $rr       = new Retry();
-   my $tp       = new TableParser(Quoter => $q);
-   my $chunker  = new TableChunker(Quoter => $q, TableParser => $tp );
-   my $nibbler  = new TableNibbler(Quoter => $q, TableParser => $tp );
-   my $checksum = new TableChecksum(Quoter => $q);
-   my $syncer   = new TableSyncer(
-      MasterSlave   => 1,  # I don't think we need this.
-      Quoter        => $q,
-      TableChecksum => $checksum,
-      Retry         => $rr,
-   );
-   my %common_modules  = (
-      DSNParser     => $dp,
-      OptionParser  => $o,
-      QueryParser   => $qp,
-      QueryRewriter => $qr,
-      TableParser   => $tp,
-      Quoter        => $q,
-      TableChunker  => $chunker,
-      TableNibbler  => $nibbler,
-      TableChecksum => $checksum,
-      TableSyncer   => $syncer,
-   );
-
-   # ########################################################################
-   # Make compare modules in order.
-   # ########################################################################
-   my $compare = $o->get('compare');
-   my @compare_modules;
-   if ( $compare->{results} ) {
-      my $method  = lc $o->get('compare-results-method');
-      PTDEBUG && _d('Compare results method:', $method);
-
-      my $plugins = [];
-      if ( $method eq 'rows' ) {
-         push @$plugins, new TableSyncChunk(%common_modules);
-         push @$plugins, new TableSyncNibble(%common_modules);
-         push @$plugins, new TableSyncGroupBy(%common_modules);
-      }
-
-      push @compare_modules, new CompareResults(
-         method     => $method,
-         plugins    => $plugins,
-         get_id     => sub { return make_checksum(@_); },
-         'base-dir' => $o->get('base-dir'),
-         %common_modules,
-      );
-   }
-
-   if ( $compare->{query_times} ) {
-      push @compare_modules, new CompareQueryTimes(
-         get_id     => sub { return make_checksum(@_); },
-         %common_modules,
-      );
-   }
-
-   if ( $compare->{warnings} ) {
-      push @compare_modules, new CompareWarnings(
-         'clear-warnings'       => $o->get('clear-warnings'),
-         'clear-warnings-table' => $o->get('clear-warnings-table'),
-         get_id => sub { return make_checksum(@_); },
-         %common_modules,
-      );
-   }
-
-   # ########################################################################
-   # Make an EventAggregator for each host and a "meta-aggregator" for all.
-   # ########################################################################
-   my $groupby = 'fingerprint';
-   map {
-      my $ea = new EventAggregator(
-         groupby => 'fingerprint',
-         worst   => 'Query_time',
-      );
-      $_->{ea} = $ea;
-   } @$hosts;
-
-   my $meta_ea = new  EventAggregator(
-      groupby => 'fingerprint',
-      worst   => 'differences'
-   );
-
-   # ########################################################################
-   # Create the event pipeline.
-   # ########################################################################
-   my @callbacks;
-   my $stats  = {};
-   my $errors = {};
-   my $current_db;
-   my $tmp_db  = $o->get('temp-database');
-   my $tmp_tbl = $o->get('temp-table');
-
-   if ( my $query = $o->get('query') ) {
-      push @callbacks, sub {
-         my ( $event, %args ) = @_;
-         PTDEBUG && _d('callback: query:', $query);
-         $args{oktorun}->(0) if $args{oktorun};
-         return {
-            cmd        => 'Query',
-            arg        => $query,
-            pos_in_log => 0,  # for compatibility
-         };
-      };
-   }
-   else {
-      my $parser = new SlowLogParser();
-      push @callbacks, sub {
-         my ( $event, %args ) = @_;
-         return $parser->parse_event(%args);
-      };
-   }
-
-   push @callbacks, sub {
-      my ( $event ) = @_;
-      PTDEBUG && _d('callback: check cmd and arg');
-      $stats->{events}++;
-      if ( ($event->{cmd} || '') ne 'Query' ) {
-         PTDEBUG && _d('Skipping non-Query cmd');
-         $stats->{not_query}++;
-         return;
-      }
-      if ( !$event->{arg} ) {
-         PTDEBUG && _d('Skipping empty arg');
-         $stats->{empty_query}++;
-         return;
-      }
-      return $event;
-   };
-
-   # User-defined filter.
-   if ( $o->get('filter') ) {
-      my $filter = $o->get('filter');
-      if ( -f $filter && -r $filter ) {
-         PTDEBUG && _d('Reading file', $filter, 'for --filter code');
-         open my $fh, "<", $filter or die "Cannot open $filter: $OS_ERROR";
-         $filter = do { local $/ = undef; <$fh> };
-         close $fh;
-      }
-      else {
-         $filter = "( $filter )";  # issue 565
-      }
-      my $code   = "sub { PTDEBUG && _d('callback: filter');  my(\$event) = shift; $filter && return \$event; };";
-      PTDEBUG && _d('--filter code:', $code);
-      my $sub = eval $code
-         or die "Error compiling --filter code: $code\n$EVAL_ERROR";
-      push @callbacks, $sub;
-   }
-
-   if ( $o->get('convert-to-select') ) {
-      push @callbacks, sub {
-         my ( $event ) = @_;
-         PTDEBUG && _d('callback: convert to select');
-         return $event if $event->{arg} =~ m/(?:^SELECT|(?:\*\/\s*SELECT))/i;
-         my $new_arg = $qr->convert_to_select($event->{arg});
-         if ( $new_arg =~ m/^SELECT/i ) {
-            $stats->{convert_to_select_ok}++;
-            $event->{original_arg} = $event->{arg};
-            $event->{arg}          = $new_arg;
-            return $event;
-         }
-         PTDEBUG && _d('Convert to SELECT failed:', $event->{arg});
-         $stats->{convert_to_select_failed}++;
-         return;
-      };
-   }
-   else {
-      push @callbacks, sub {
-         my ( $event ) = @_;
-         PTDEBUG && _d('callback: filter non-select');
-         if ( $event->{arg} !~ m/(?:^SELECT|(?:\*\/\s*SELECT))/i ) {
-            PTDEBUG && _d('Skipping non-SELECT query');
-            $stats->{not_select}++;
-            return;
-         }
-         return $event;
-      };
-   }
-
-   # Do this callback before the fingerprint and sampleno attribs are added.
-   my %allowed_attribs = qw(arg 1 db 1 sampleno 1 pos_in_log 1 original_arg 1);
-   push @callbacks, sub {
-      my ( $event ) = @_;
-      PTDEBUG && _d('callback: remove not-allowed attributes');
-      # Events will have a lot of attribs from the log that we want
-      # to remove because 1) we don't need them and 2) we want to avoid
-      # attrib conflicts (e.g. there's probably a Query_time from the
-      # log but the compare modules add a Query_time attrib, too).
-      map { delete $event->{$_} unless $allowed_attribs{$_} } keys %$event;
-      return $event;
-   };
-
-   push @callbacks, sub {
-      my ( $event ) = @_;
-      PTDEBUG && _d('callback: fingerprint');
-      $event->{fingerprint} = $qr->fingerprint($event->{arg});
-      return $event;
-   };
-
-   my %samples;
-   my %samplenos;
-   push @callbacks, sub {
-      my ( $event ) = @_;
-      PTDEBUG && _d('callback: sampleno');
-      $event->{sampleno} = ++$samplenos{$event->{$groupby}};
-      PTDEBUG && _d('Event sampleno', $event->{sampleno});
-      return $event;
-   };
-
-   # Keep the default database update-to-date.  This helps when queries
-   # don't use db-qualified tables.
-   push @callbacks, sub {
-      my ( $event ) = @_;
-      PTDEBUG && _d('callback: current db');
-      my $db = $event->{db} || $event->{Schema} || $hosts->[0]->{dsn}->{D};
-      if ( $db && (!$current_db || $db ne $current_db) ) {
-         my $sql = "USE `$db`";
-         PTDEBUG && _d($sql);
-         eval {
-            map { $_->{dbh}->do($sql); } @$hosts;
-         };
-         if ( $EVAL_ERROR ) {
-            PTDEBUG && _d('Error:', $EVAL_ERROR);
-            $EVAL_ERROR =~ m/Unknown database/ ? $stats->{unknown_database}++
-                        :                        $stats->{use_database_error}++;
-            return;
-         }
-         $event->{db} = $current_db = $db;
-      }
-      $stats->{no_database}++ unless $current_db;
-      return $event;
-   };
-
-   # ########################################################################
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') ne 'off'
@@ -4111,6 +3873,14 @@ sub compare_host_to_host {
 }
 
 sub save_host_results {
+   while (
+      # oktorun
+      # run-time
+      my $query = $query_iter->next() ) {
+      # Exec query on host
+      # Save results to disk
+      # Report progress
+   }
 }
 
 sub compare_results_to_host {
@@ -4282,7 +4052,7 @@ pt-upgrade - Verify that queries produce identical results on different servers.
 
 =head1 SYNOPSIS
 
-Usage: pt-upgrade [OPTIONS] LOG DSN DSN
+Usage: pt-upgrade [OPTIONS] LOG|RESULTS DSN [DSN]
 
 pt-upgrade executes the queries in C<LOG> on each C<DSN>, compares
 the results, and reports any significant differences.  C<LOG> can be
@@ -4296,7 +4066,7 @@ Save results for host1, then compare host2 to them:
 
    pt-upgrade slow.log h=host1 --save-results host1_results/
 
-   pt-upgrade slow.log host1_results1/ h=host2
+   pt-upgrade host1_results1/ h=host2
 
 =head1 RISKS
 
