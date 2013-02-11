@@ -36,7 +36,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.8';
+our $VERSION = '2.1.9';
 
 1;
 }
@@ -4785,6 +4785,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-deadlock-logger 2.1.8
+pt-deadlock-logger 2.1.9
 
 =cut

@@ -1,6 +1,48 @@
 Release Notes
 *************
 
+v2.1.9 released 2013-02-11
+==========================
+
+Percona Toolkit 2.1.9 has been released.  This is the first maintenance release
+of the 2.1 series, and primarily aims to restore backwards-compatibility with
+releases 2.1.7 and older.
+
+* Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
+* Fixed bug 1099665: pt-heartbeat 2.1.8 reports big time drift with UTC_TIMESTAMP
+
+The previous release switched the time authority from Perl to MySQL, and from
+local time to UTC. Unfortunately, these changes caused a loss of precision and,
+if mixing versions of pt-heartbeat, made the tool report a huge amount
+of replication lag.
+This release makes the tool compatible with the 2.1.7 and older releases again,
+but makes the UTC behaviour available through the --utc option.
+
+* Fixed bug 1099933: pt-stalk is too verbose, fills up log
+
+This adds a --verbose option to pt-stalk, which is useful if using the tool as a daemon.
+
+All users are recommended to upgrade, but in particular, users of versions 2.1.7 and
+older are strongly recommended to skip 2.1.8 and go directly for 2.1.9.
+Users of pt-heartbeat in 2.1.8, who prefer the UTC behavior, should keep in mind that they
+will have to use the --utc option after upgrading.
+
+Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+
+Changelog
+---------
+
+* Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
+* Fixed bug 1099665: pt-heartbeat 2.1.8 reports big time drift with UTC_TIMESTAMP
+* Fixed bug 1099836: pt-online-schema-change fails with "Duplicate entry" on MariaDB
+* Fixed bug 1103672: pt-online-schema-change makes bad DELETE trigger if PK is re-created with new columns
+* Fixed bug 1115333: pt-pmp doesn't list the origin lib for each function
+* Fixed bug  823411: pt-query-digest shouldn't print "Error: none" for tcpdump
+* Fixed bug 1103045: pt-query-digest fails to parse non-SQL errors
+* Fixed bug 1105077: pt-table-checksum: Confusing error message with binlog_format ROW or MIXED on slave
+* Fixed bug  918056: pt-table-sync false-positive error "Cannot nibble table because MySQL chose no index instead of the PRIMARY index"
+* Fixed bug 1099933: pt-stalk is too verbose, fills up log
+
 v2.1.8 released 2012-12-21
 ==========================
 
