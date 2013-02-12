@@ -26,7 +26,6 @@ BEGIN {
       TableSyncStream
       TableParser
       RowDiff
-      MySQLDump
       ChangeHandler
       TableChunker
       TableChecksum
@@ -1155,14 +1154,11 @@ package Lmo::Meta;
 use strict;
 use warnings qw( FATAL all );
 
-use Carp ();
-use Scalar::Util qw(looks_like_number blessed);
-
 my %metadata_for;
 
 sub new {
-   shift;
-   return Lmo::Meta::Class->new(@_);
+   my $class = shift;
+   return bless { @_ }, $class
 }
 
 sub metadata_for {
@@ -1171,6 +1167,31 @@ sub metadata_for {
 
    return $metadata_for{$class} ||= {};
 }
+
+sub class { shift->{class} }
+
+sub attributes {
+   my $self = shift;
+   return keys %{$self->metadata_for($self->class)}
+}
+
+sub attributes_for_new {
+   my $self = shift;
+   my @attributes;
+
+   my $class_metadata = $self->metadata_for($self->class);
+   while ( my ($attr, $meta) = each %$class_metadata ) {
+      if ( exists $meta->{init_arg} ) {
+         push @attributes, $meta->{init_arg}
+               if defined $meta->{init_arg};
+      }
+      else {
+         push @attributes, $attr;
+      }
+   }
+   return @attributes;
+}
+
 1;
 }
 # ###########################################################################
@@ -1408,12 +1429,12 @@ sub import {
    strict->import();
 
    my $caller     = scalar caller(); # Caller's package
-   my $caller_pkg = $caller . "::"; # Caller's package with :: at the end
    my %exports = (
-      extends => \&extends,
-      has     => \&has,
-      with    => \&with,
-      confess => \&Carp::confess,
+      extends  => \&extends,
+      has      => \&has,
+      with     => \&with,
+      override => \&override,
+      confess  => \&Carp::confess,
    );
 
    $export_for{$caller} = \%exports;
@@ -1448,6 +1469,7 @@ sub _load_module {
 
 sub with {
    my $package = scalar caller();
+   require Role::Tiny;
    for my $role ( @_ ) {
       _load_module($role);
       _role_attribute_metadata($package, $role);
@@ -2746,7 +2768,7 @@ sub check_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
-   my $q      = $self->{Quoter};
+   my $q      = $self->{Quoter} || 'Quoter';
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -3120,311 +3142,6 @@ sub _d {
 }
 # ###########################################################################
 # End RowDiff package
-# ###########################################################################
-
-# ###########################################################################
-# MySQLDump package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/MySQLDump.pm
-#   t/lib/MySQLDump.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package MySQLDump;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-( our $before = <<'EOF') =~ s/^   //gm;
-   /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-   /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-   /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-   /*!40101 SET NAMES utf8 */;
-   /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-   /*!40103 SET TIME_ZONE='+00:00' */;
-   /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-   /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-   /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-   /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-EOF
-
-( our $after = <<'EOF') =~ s/^   //gm;
-   /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-   /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-   /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-   /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-   /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-   /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-   /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-   /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-EOF
-
-sub new {
-   my ( $class, %args ) = @_;
-   my $self = {
-      cache => 0,  # Afaik no script uses this cache any longer because
-   };
-   return bless $self, $class;
-}
-
-sub dump {
-   my ( $self, $dbh, $quoter, $db, $tbl, $what ) = @_;
-
-   if ( $what eq 'table' ) {
-      my $ddl = $self->get_create_table($dbh, $dbh, $db, $tbl);
-      return unless $ddl;
-      if ( $ddl->[0] eq 'table' ) {
-         return $before
-            . 'DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . ";\n"
-            . $ddl->[1] . ";\n";
-      }
-      else {
-         return 'DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . ";\n"
-            . '/*!50001 DROP VIEW IF EXISTS '
-            . $quoter->quote($tbl) . "*/;\n/*!50001 "
-            . $self->get_tmp_table($dbh, $quoter, $db, $tbl) . "*/;\n";
-      }
-   }
-   elsif ( $what eq 'triggers' ) {
-      my $trgs = $self->get_triggers($dbh, $quoter, $db, $tbl);
-      if ( $trgs && @$trgs ) {
-         my $result = $before . "\nDELIMITER ;;\n";
-         foreach my $trg ( @$trgs ) {
-            if ( $trg->{sql_mode} ) {
-               $result .= qq{/*!50003 SET SESSION SQL_MODE='$trg->{sql_mode}' */;;\n};
-            }
-            $result .= "/*!50003 CREATE */ ";
-            if ( $trg->{definer} ) {
-               my ( $user, $host )
-                  = map { s/'/''/g; "'$_'"; }
-                    split('@', $trg->{definer}, 2);
-               $result .= "/*!50017 DEFINER=$user\@$host */ ";
-            }
-            $result .= sprintf("/*!50003 TRIGGER %s %s %s ON %s\nFOR EACH ROW %s */;;\n\n",
-               $quoter->quote($trg->{trigger}),
-               @{$trg}{qw(timing event)},
-               $quoter->quote($trg->{table}),
-               $trg->{statement});
-         }
-         $result .= "DELIMITER ;\n\n/*!50003 SET SESSION SQL_MODE=\@OLD_SQL_MODE */;\n\n";
-         return $result;
-      }
-      else {
-         return undef;
-      }
-   }
-   elsif ( $what eq 'view' ) {
-      my $ddl = $self->get_create_table($dbh, $dbh, $db, $tbl);
-      return '/*!50001 DROP TABLE IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
-         . '/*!50001 DROP VIEW IF EXISTS ' . $quoter->quote($tbl) . "*/;\n"
-         . '/*!50001 ' . $ddl->[1] . "*/;\n";
-   }
-   else {
-      die "You didn't say what to dump.";
-   }
-}
-
-sub _use_db {
-   my ( $self, $dbh, $quoter, $new ) = @_;
-   if ( !$new ) {
-      PTDEBUG && _d('No new DB to use');
-      return;
-   }
-   my $sql = 'USE ' . $quoter->quote($new);
-   PTDEBUG && _d($dbh, $sql);
-   $dbh->do($sql);
-   return;
-}
-
-sub get_create_table {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   if ( !$self->{cache} || !$self->{tables}->{$db}->{$tbl} ) {
-      my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-         . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-         . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      PTDEBUG && _d($sql);
-      eval { $dbh->do($sql); };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-      $self->_use_db($dbh, $quoter, $db);
-      $sql = "SHOW CREATE TABLE " . $quoter->quote($db, $tbl);
-      PTDEBUG && _d($sql);
-      my $href;
-      eval { $href = $dbh->selectrow_hashref($sql); };
-      if ( $EVAL_ERROR ) {
-         warn "Failed to $sql.  The table may be damaged.\nError: $EVAL_ERROR";
-         return;
-      }
-
-      $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      PTDEBUG && _d($sql);
-      $dbh->do($sql);
-      my ($key) = grep { m/create table/i } keys %$href;
-      if ( $key ) {
-         PTDEBUG && _d('This table is a base table');
-         $self->{tables}->{$db}->{$tbl} = [ 'table', $href->{$key} ];
-      }
-      else {
-         PTDEBUG && _d('This table is a view');
-         ($key) = grep { m/create view/i } keys %$href;
-         $self->{tables}->{$db}->{$tbl} = [ 'view', $href->{$key} ];
-      }
-   }
-   return $self->{tables}->{$db}->{$tbl};
-}
-
-sub get_columns {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   PTDEBUG && _d('Get columns for', $db, $tbl);
-   if ( !$self->{cache} || !$self->{columns}->{$db}->{$tbl} ) {
-      $self->_use_db($dbh, $quoter, $db);
-      my $sql = "SHOW COLUMNS FROM " . $quoter->quote($db, $tbl);
-      PTDEBUG && _d($sql);
-      my $cols = $dbh->selectall_arrayref($sql, { Slice => {} });
-
-      $self->{columns}->{$db}->{$tbl} = [
-         map {
-            my %row;
-            @row{ map { lc $_ } keys %$_ } = values %$_;
-            \%row;
-         } @$cols
-      ];
-   }
-   return $self->{columns}->{$db}->{$tbl};
-}
-
-sub get_tmp_table {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   my $result = 'CREATE TABLE ' . $quoter->quote($tbl) . " (\n";
-   $result .= join(",\n",
-      map { '  ' . $quoter->quote($_->{field}) . ' ' . $_->{type} }
-      @{$self->get_columns($dbh, $quoter, $db, $tbl)});
-   $result .= "\n)";
-   PTDEBUG && _d($result);
-   return $result;
-}
-
-sub get_triggers {
-   my ( $self, $dbh, $quoter, $db, $tbl ) = @_;
-   if ( !$self->{cache} || !$self->{triggers}->{$db} ) {
-      $self->{triggers}->{$db} = {};
-      my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
-         . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
-         . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
-      PTDEBUG && _d($sql);
-      eval { $dbh->do($sql); };
-      PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
-      $sql = "SHOW TRIGGERS FROM " . $quoter->quote($db);
-      PTDEBUG && _d($sql);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute();
-      if ( $sth->rows ) {
-         my $trgs = $sth->fetchall_arrayref({});
-         foreach my $trg (@$trgs) {
-            my %trg;
-            @trg{ map { lc $_ } keys %$trg } = values %$trg;
-            push @{ $self->{triggers}->{$db}->{ $trg{table} } }, \%trg;
-         }
-      }
-      $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
-         . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
-      PTDEBUG && _d($sql);
-      $dbh->do($sql);
-   }
-   if ( $tbl ) {
-      return $self->{triggers}->{$db}->{$tbl};
-   }
-   return values %{$self->{triggers}->{$db}};
-}
-
-sub get_databases {
-   my ( $self, $dbh, $quoter, $like ) = @_;
-   if ( !$self->{cache} || !$self->{databases} || $like ) {
-      my $sql = 'SHOW DATABASES';
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      my $sth = $dbh->prepare($sql);
-      PTDEBUG && _d($sql, @params);
-      $sth->execute( @params );
-      my @dbs = map { $_->[0] } @{$sth->fetchall_arrayref()};
-      $self->{databases} = \@dbs unless $like;
-      return @dbs;
-   }
-   return @{$self->{databases}};
-}
-
-sub get_table_status {
-   my ( $self, $dbh, $quoter, $db, $like ) = @_;
-   if ( !$self->{cache} || !$self->{table_status}->{$db} || $like ) {
-      my $sql = "SHOW TABLE STATUS FROM " . $quoter->quote($db);
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      PTDEBUG && _d($sql, @params);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute(@params);
-      my @tables = @{$sth->fetchall_arrayref({})};
-      @tables = map {
-         my %tbl; # Make a copy with lowercased keys
-         @tbl{ map { lc $_ } keys %$_ } = values %$_;
-         $tbl{engine} ||= $tbl{type} || $tbl{comment};
-         delete $tbl{type};
-         \%tbl;
-      } @tables;
-      $self->{table_status}->{$db} = \@tables unless $like;
-      return @tables;
-   }
-   return @{$self->{table_status}->{$db}};
-}
-
-sub get_table_list {
-   my ( $self, $dbh, $quoter, $db, $like ) = @_;
-   if ( !$self->{cache} || !$self->{table_list}->{$db} || $like ) {
-      my $sql = "SHOW /*!50002 FULL*/ TABLES FROM " . $quoter->quote($db);
-      my @params;
-      if ( $like ) {
-         $sql .= ' LIKE ?';
-         push @params, $like;
-      }
-      PTDEBUG && _d($sql, @params);
-      my $sth = $dbh->prepare($sql);
-      $sth->execute(@params);
-      my @tables = @{$sth->fetchall_arrayref()};
-      @tables = map {
-         my %tbl = (
-            name   => $_->[0],
-            engine => ($_->[1] || '') eq 'VIEW' ? 'VIEW' : '',
-         );
-         \%tbl;
-      } @tables;
-      $self->{table_list}->{$db} = \@tables unless $like;
-      return @tables;
-   }
-   return @{$self->{table_list}->{$db}};
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End MySQLDump package
 # ###########################################################################
 
 # ###########################################################################
@@ -9879,7 +9596,6 @@ sub main {
    # ########################################################################
    my $tp        = new TableParser( Quoter => $q );
    my $ms        = new MasterSlave(OptionParser=>$o,DSNParser=>$dp,Quoter=>$q);
-   my $du        = new MySQLDump( cache => 0 );
    my $rt        = new Retry();
    my $chunker   = new TableChunker( Quoter => $q, TableParser => $tp );
    my $nibbler   = new TableNibbler( Quoter => $q, TableParser => $tp );
@@ -9894,7 +9610,6 @@ sub main {
    my %modules = (
       OptionParser   => $o,
       DSNParser      => $dp,
-      MySQLDump      => $du,
       TableParser    => $tp,
       Quoter         => $q,
       TableChunker   => $chunker,
@@ -10404,14 +10119,13 @@ sub sync_via_replication {
 #   DSNParser     - <DSNParser> object
 #   Quoter        - <Quoter> object
 #   TableParser   - <TableParser> object
-#   MySQLDump     - <MySQLDump> object
 #
 # Returns:
 #   Exit status
 sub sync_all {
    my ( %args ) = @_;
    my @required_args = qw(dsns plugins OptionParser DSNParser Quoter
-                          TableParser MySQLDump);
+                          TableParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
@@ -10589,7 +10303,6 @@ sub unlock_server {
 #   OptionParser  - <OptionParser> object
 #   Quoter        - <Quoter> object
 #   TableParser   - <TableParser> object
-#   MySQLDump     - <MySQLDump> object
 #   TableSyncer   - <TableSyncer> object
 #
 # Returns:
@@ -10597,11 +10310,11 @@ sub unlock_server {
 sub sync_a_table {
    my ( %args ) = @_;
    my @required_args = qw(src dst plugins OptionParser Quoter TableParser
-                          MySQLDump TableSyncer);
+                          TableSyncer);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($src, $dst, undef, $o, $q, $tp, $du, $syncer) = @args{@required_args};
+   my ($src, $dst, undef, $o, $q, $tp, $syncer) = @args{@required_args};
 
    my ($start_ts, $end_ts);
    my $exit_status = 0; 
@@ -10996,7 +10709,6 @@ sub get_cxn {
 #   DSNParser     - <DSNParser> object
 #   Quoter        - <Quoter> object
 #   TableParser   - <TableParser> object
-#   MySQLDump     - <MySQLDump> object
 #   TableSyncer   - <TableSyncer> object
 #   OptionParser  - <OptionParser> object
 #
@@ -11005,11 +10717,11 @@ sub get_cxn {
 sub ok_to_sync {
    my ( %args ) = @_;
    my @required_args = qw(src dst DSNParser Quoter TableParser
-                          MySQLDump TableSyncer OptionParser);
+                          TableSyncer OptionParser);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my ($src, $dst, $dp, $q, $tp, $du, $syncer, $o) = @args{@required_args};
+   my ($src, $dst, $dp, $q, $tp, $syncer, $o) = @args{@required_args};
 
    if ( !$src->{tbl_struct} ) {
       eval {
@@ -11043,7 +10755,7 @@ sub ok_to_sync {
          $dst->{supports_triggers} = VersionParser->new($dst->{dbh}) >= '5.0.2';
       }
       if ( $dst->{supports_triggers}
-           && $du->get_triggers($dst->{dbh}, $q, $dst->{db}, $dst->{tbl}) ) {
+           && get_triggers($dst->{dbh}, $q, $dst->{db}, $dst->{tbl}) ) {
          die "Triggers are defined on the table";
       }
       else {
@@ -11053,6 +10765,46 @@ sub ok_to_sync {
    }
 
    return;
+}
+
+# Sub: get_triggers
+#
+# Originally from MySQLDump. This should perhaps belong in TableParser,
+# but right now it would only be bloat.
+#
+# Returns:
+#   List of triggers
+
+sub get_triggers {
+   my ( $dbh, $quoter, $db, $tbl ) = @_;
+   my $triggers = {};
+   my $sql = '/*!40101 SET @OLD_SQL_MODE := @@SQL_MODE, '
+      . q{@@SQL_MODE := REPLACE(REPLACE(@@SQL_MODE, 'ANSI_QUOTES', ''), ',,', ','), }
+      . '@OLD_QUOTE := @@SQL_QUOTE_SHOW_CREATE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := 1 */';
+   PTDEBUG && _d($sql);
+   eval { $dbh->do($sql); };
+   PTDEBUG && $EVAL_ERROR && _d($EVAL_ERROR);
+   $sql = "SHOW TRIGGERS FROM " . $quoter->quote($db);
+   PTDEBUG && _d($sql);
+   my $sth = $dbh->prepare($sql);
+   $sth->execute();
+   if ( $sth->rows ) {
+      my $trgs = $sth->fetchall_arrayref({});
+      foreach my $trg (@$trgs) {
+         my %trg;
+         @trg{ map { lc $_ } keys %$trg } = values %$trg;
+         push @{ $triggers->{$db}->{ $trg{table} } }, \%trg;
+      }
+   }
+   $sql = '/*!40101 SET @@SQL_MODE := @OLD_SQL_MODE, '
+      . '@@SQL_QUOTE_SHOW_CREATE := @OLD_QUOTE */';
+   PTDEBUG && _d($sql);
+   $dbh->do($sql);
+   if ( $tbl ) {
+      return $triggers->{$db}->{$tbl};
+   }
+   return values %{$triggers->{$db}};
 }
 
 # Sub: filter_diffs
