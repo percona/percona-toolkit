@@ -1,4 +1,4 @@
-# This program is copyright 2009-2011 Percona Inc.
+# This program is copyright 2009-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -58,7 +58,6 @@ our @EXPORT      = qw(
    wait_until
    wait_for
    wait_until_slave_running
-   wait_until_no_lag
    test_log_parser
    test_protocol_parser
    test_packet_parser
@@ -324,6 +323,39 @@ sub wait_for_sh {
       }
    );
 };
+
+sub kill_program {
+   my (%args) = @_;
+
+   my $pid_file = $args{pid_file};
+   my $pid      = $args{pid};
+
+   if ( $pid_file ) {
+      chomp($pid = `cat $pid_file 2>/dev/null`);
+   }
+
+   if ( $pid ) {
+      PTDEVDEBUG && _d('Killing PID', $pid);
+      kill(15, $pid);
+      wait_until(
+         sub { my $is_alive = kill(0, $pid);  return !$is_alive; },
+         1.5,  # sleep between tries
+         15,   # max time to try
+      );
+      if ( kill(0, $pid) ) {
+         warn "PID $pid did not die; using kill -9\n";
+         kill(9, $pid);
+      }
+   }
+   else {
+      PTDEVDEBUG && _d('No PID to kill');
+   }
+
+   if ( $pid_file && -f $pid_file ) {
+      PTDEVDEBUG && _d('Removing PID file', $pid_file);
+      unlink $pid_file;
+   }
+}
 
 sub not_running {
    my ($cmd) = @_;

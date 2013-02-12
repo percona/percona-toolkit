@@ -1,4 +1,4 @@
-# This program is copyright 2010-2011 Percona Inc.
+# This program is copyright 2010-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -215,7 +215,7 @@ sub save_usage_for {
 #   explain - Hashref of normalized EXPLAIN data
 #
 # Returns:
-#   Fingerprint/sparkline string
+#   Fingerprint string
 sub fingerprint {
    my ( $self, %args ) = @_;
    my @required_args = qw(explain);
@@ -223,92 +223,6 @@ sub fingerprint {
       die "I need a $arg argument" unless defined $args{$arg};
    }
    my ($explain) = @args{@required_args};
-}
-
-# Sub: sparkline
-#   Create a sparkline of EXPLAIN data from <normalize()>.  A spark line
-#   is a very compact, terse fingerprint that represents just the following.
-#   See <issue 1141 at http://code.google.com/p/maatkit/issues/detail?id=1141>.
-#
-#   access (for each table):
-#     - a: ALL
-#     - c: const
-#     - e: eq_ref
-#     - f: fulltext
-#     - i: index
-#     - m: index_merge
-#     - n: range
-#     - o: ref_or_null
-#     - r: ref
-#     - s: system
-#     - u: unique_subquery
-#
-#   Extra:
-#     - uppsercaes access code: Using extra
-#     - T: Using temprary
-#     - F: Using filesort
-#
-# Parameters:
-#   %args - Arguments
-#
-# Required Arguments:
-#   explain - Hashref of normalized EXPLAIN data
-#
-# Returns:
-#   Sparkline string like (start code)TF>Ree(end code)
-sub sparkline {
-   my ( $self, %args ) = @_;
-   my @required_args = qw(explain);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg argument" unless defined $args{$arg};
-   }
-   my ($explain) = @args{@required_args};
-   PTDEBUG && _d("Making sparkline for", Dumper($explain));
-
-   my $access_code = {
-      'ALL'             => 'a',
-      'const'           => 'c',
-      'eq_ref'          => 'e',
-      'fulltext'        => 'f',
-      'index'           => 'i',
-      'index_merge'     => 'm',
-      'range'           => 'n',
-      'ref_or_null'     => 'o',
-      'ref'             => 'r',
-      'system'          => 's',
-      'unique_subquery' => 'u',
-   };
-
-   my $sparkline = '';
-   my ($T, $F);  # Using temporary, Using filesort
-
-   foreach my $tbl ( @$explain ) {
-      my $code;
-      if ( defined $tbl->{type} ) {
-         $code = $access_code->{$tbl->{type}} || "?";
-         $code = uc $code if $tbl->{Extra}->{'Using index'};
-      }
-      else {
-         $code = '-'
-      };
-      $sparkline .= $code;
-
-      $T = 1 if $tbl->{Extra}->{'Using temporary'};
-      $F = 1 if $tbl->{Extra}->{'Using filesort'};
-   }
-
-   if ( $T || $F ) {
-      if (    $explain->[-1]->{Extra}->{'Using temporary'}
-           || $explain->[-1]->{Extra}->{'Using filesort'} ) {
-         $sparkline .= ">" . ($T ? "T" : "") . ($F ? "F" : "");
-      }
-      else {
-         $sparkline = ($T ? "T" : "") . ($F ? "F" : "") . ">$sparkline";
-      }
-   }
-
-   PTDEBUG && _d("sparkline:", $sparkline);
-   return $sparkline;
 }
 
 sub _d {

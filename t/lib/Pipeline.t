@@ -261,7 +261,7 @@ $pipeline->add(
 );
 
 $output = output(
-   sub { $pipeline->execute(%args) },
+   sub {$pipeline->execute(%args); },
    stderr => 1,
 );
 
