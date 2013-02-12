@@ -139,6 +139,8 @@ my @latin1_serialize_tests = (
    [ 'a' ],
    [ 'a', 'b', ],
    [ 'a,', 'b', ],  # trailing comma
+   [ ',a', 'b', ],  # leading comma
+   [ 'a', ',b' ],
    [ 0 ],
    [ 0, 0 ],
    [ 1, 2 ],
