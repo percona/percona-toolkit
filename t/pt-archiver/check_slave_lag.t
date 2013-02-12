@@ -52,6 +52,8 @@ is_deeply(
    'Table not purged yet (issue 758)'
 );
 
+# TODO: MySQL 5.6 is no longer tricked by this method.
+
 # Once this goes through repl, the slave will sleep causing
 # seconds behind master to increase > 0.
 system('/tmp/12345/use -e "insert into issue_758.t select sleep(2)"');
