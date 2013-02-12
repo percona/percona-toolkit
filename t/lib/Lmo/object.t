@@ -10,10 +10,11 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use lib "$ENV{PERCONA_TOOLKIT_BRANCH}/t/lib/Lmo";
 
-eval 'package Foo; use Mo; $x = 1';
+{ package Clean; use Foo; }
 
-like $@, qr/Global symbol "\$x" requires explicit package name/,
-    'Mo is strict';
+is_deeply([ @Clean::ISA ], [], "Didn't mess with caller's ISA");
+is(Clean->can('has'), undef, "Didn't export anything");
 
 done_testing;

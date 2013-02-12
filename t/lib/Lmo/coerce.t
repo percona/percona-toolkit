@@ -10,11 +10,18 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
-use lib "$ENV{PERCONA_TOOLKIT_BRANCH}/t/lib/Mo";
 
-{ package Clean; use Foo; }
+package Foo::coerce;
+use Lmo;
 
-is_deeply([ @Clean::ISA ], [], "Didn't mess with caller's ISA");
-is(Clean->can('has'), undef, "Didn't export anything");
+has 'stuff' => (coerce => sub { uc $_[0] });
+
+package main;
+
+my $f = Foo::coerce->new(stuff => 'fubar');
+is $f->stuff, 'FUBAR', 'values passed to constructor are successfully coerced';
+$f->stuff('barbaz');
+is $f->stuff, 'BARBAZ', 'values passed to setters are successfully coerced';
+
 
 done_testing;
