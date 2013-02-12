@@ -1,0 +1,6 @@
+     32 read(libc.so.6),vio_read_buff(libmysqlclient.so.16),libmysqlclient::??(libmysqlclient.so.16),my_net_read(libmysqlclient.so.16),cli_safe_read(libmysqlclient.so.16),libmysqlclient::??(libmysqlclient.so.16),mysql_real_query(libmysqlclient.so.16),Connection::run,Worker::work,thread_proxy(libboost_thread-mt.so.5),start_thread(libpthread.so.0),clone(libc.so.6),??
+      1 pthread_cond_wait,LogReader::work,thread_proxy(libboost_thread-mt.so.5),start_thread(libpthread.so.0),clone(libc.so.6),??
+      1 pthread_cond_wait,boost::thread::join(libboost_thread-mt.so.5),main
+      1 pthread_cond_wait,boost::condition_variable::wait,Worker::work,thread_proxy(libboost_thread-mt.so.5),start_thread(libpthread.so.0),clone(libc.so.6),??
+      1 pthread_cond_wait,boost::condition_variable::wait,Reporter::work,thread_proxy(libboost_thread-mt.so.5),start_thread(libpthread.so.0),clone(libc.so.6),??
+      1 pthread_cond_wait,boost::condition_variable::wait,Queue::push,Parser::work,thread_proxy(libboost_thread-mt.so.5),start_thread(libpthread.so.0),clone(libc.so.6),??

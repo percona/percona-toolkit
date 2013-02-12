@@ -22,7 +22,6 @@ BEGIN {
       TableParser
       Retry
       Transformers
-      VersionCheck
       HTTPMicro
       Pingback
    ));
@@ -38,7 +37,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.7';
+our $VERSION = '2.1.8';
 
 1;
 }
@@ -2731,7 +2730,7 @@ sub check_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
-   my $q      = $self->{Quoter};
+   my $q      = $self->{Quoter} || 'Quoter';
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -3019,24 +3018,26 @@ use Time::Local qw(timegm timelocal);
 use Digest::MD5 qw(md5_hex);
 use B qw();
 
-require Exporter;
-our @ISA         = qw(Exporter);
-our %EXPORT_TAGS = ();
-our @EXPORT      = ();
-our @EXPORT_OK   = qw(
-   micro_t
-   percentage_of
-   secs_to_time
-   time_to_secs
-   shorten
-   ts
-   parse_timestamp
-   unix_timestamp
-   any_unix_timestamp
-   make_checksum
-   crc32
-   encode_json
-);
+BEGIN {
+   require Exporter;
+   our @ISA         = qw(Exporter);
+   our %EXPORT_TAGS = ();
+   our @EXPORT      = ();
+   our @EXPORT_OK   = qw(
+      micro_t
+      percentage_of
+      secs_to_time
+      time_to_secs
+      shorten
+      ts
+      parse_timestamp
+      unix_timestamp
+      any_unix_timestamp
+      make_checksum
+      crc32
+      encode_json
+   );
+}
 
 our $mysql_ts  = qr/(\d\d)(\d\d)(\d\d) +(\d+):(\d+):(\d+)(\.\d+)?/;
 our $proper_ts = qr/(\d\d\d\d)-(\d\d)-(\d\d)[T ](\d\d):(\d\d):(\d\d)(\.\d+)?/;
@@ -3167,6 +3168,9 @@ sub parse_timestamp {
       return sprintf "%d-%02d-%02d %02d:%02d:"
                      . (defined $f ? '%09.6f' : '%02d'),
                      $y + 2000, $m, $d, $h, $i, (defined $f ? $s + $f : $s);
+   }
+   elsif ( $val =~ m/^$proper_ts$/ ) {
+      return $val;
    }
    return $val;
 }
@@ -3345,300 +3349,6 @@ sub _d {
 }
 # ###########################################################################
 # End Transformers package
-# ###########################################################################
-
-# ###########################################################################
-# VersionCheck package
-# This package is a copy without comments from the original.  The original
-# with comments and its test file can be found in the Bazaar repository at,
-#   lib/VersionCheck.pm
-#   t/lib/VersionCheck.t
-# See https://launchpad.net/percona-toolkit for more information.
-# ###########################################################################
-{
-package VersionCheck;
-
-use strict;
-use warnings FATAL => 'all';
-use English qw(-no_match_vars);
-
-use constant PTDEBUG => $ENV{PTDEBUG} || 0;
-
-use File::Basename ();
-use Data::Dumper ();
-
-sub Dumper {
-   local $Data::Dumper::Indent    = 1;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
-
-   Data::Dumper::Dumper(@_);
-}
-
-sub new {
-   my ($class, %args) = @_;
-   my $self = {
-      valid_types => qr/
-         ^(?:
-             os_version
-            |perl_version
-            |perl_module_version
-            |mysql_variable
-            |bin_version
-         )$/x,
-   };
-   return bless $self, $class;
-}
-
-sub parse_server_response {
-   my ($self, %args) = @_;
-   my @required_args = qw(response);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
-   }
-   my ($response) = @args{@required_args};
-
-   my %items = map {
-      my ($item, $type, $vars) = split(";", $_);
-      if ( !defined $args{split_vars} || $args{split_vars} ) {
-         $vars = [ split(",", ($vars || '')) ];
-      }
-      $item => {
-         item => $item,
-         type => $type,
-         vars => $vars,
-      };
-   } split("\n", $response);
-
-   PTDEBUG && _d('Items:', Dumper(\%items));
-
-   return \%items;
-}
-
-sub get_versions {
-   my ($self, %args) = @_;
-   my @required_args = qw(items);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
-   }
-   my ($items) = @args{@required_args};
-
-   my %versions;
-   foreach my $item ( values %$items ) {
-      next unless $self->valid_item($item);
-
-      eval {
-         my $func    = 'get_' . $item->{type};
-         my $version = $self->$func(
-            item      => $item,
-            instances => $args{instances},
-         );
-         if ( $version ) {
-            chomp $version unless ref($version);
-            $versions{$item->{item}} = $version;
-         }
-      };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d('Error getting version for', Dumper($item), $EVAL_ERROR);
-      }
-   }
-
-   return \%versions;
-}
-
-sub valid_item {
-   my ($self, $item) = @_;
-   return unless $item;
-
-   if ( ($item->{type} || '') !~ m/$self->{valid_types}/ ) {
-      PTDEBUG && _d('Invalid type:', $item->{type});
-      return;
-   }
-
-   return 1;
-}
-
-sub get_os_version {
-   my ($self) = @_;
-
-   if ( $OSNAME eq 'MSWin32' ) {
-      require Win32;
-      return Win32::GetOSDisplayName();
-   }
-
-  chomp(my $platform = `uname -s`);
-  PTDEBUG && _d('platform:', $platform);
-  return $OSNAME unless $platform;
-
-   chomp(my $lsb_release
-            = `which lsb_release 2>/dev/null | awk '{print \$1}'` || '');
-   PTDEBUG && _d('lsb_release:', $lsb_release);
-
-   my $release = "";
-
-   if ( $platform eq 'Linux' ) {
-      if ( -f "/etc/fedora-release" ) {
-         $release = `cat /etc/fedora-release`;
-      }
-      elsif ( -f "/etc/redhat-release" ) {
-         $release = `cat /etc/redhat-release`;
-      }
-      elsif ( -f "/etc/system-release" ) {
-         $release = `cat /etc/system-release`;
-      }
-      elsif ( $lsb_release ) {
-         $release = `$lsb_release -ds`;
-      }
-      elsif ( -f "/etc/lsb-release" ) {
-         $release = `grep DISTRIB_DESCRIPTION /etc/lsb-release`;
-         $release =~ s/^\w+="([^"]+)".+/$1/;
-      }
-      elsif ( -f "/etc/debian_version" ) {
-         chomp(my $rel = `cat /etc/debian_version`);
-         $release = "Debian $rel";
-         if ( -f "/etc/apt/sources.list" ) {
-             chomp(my $code_name = `awk '/^deb/ {print \$3}' /etc/apt/sources.list | awk -F/ '{print \$1}'| awk 'BEGIN {FS="|"} {print \$1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print \$2}'`);
-             $release .= " ($code_name)" if $code_name;
-         }
-      }
-      elsif ( -f "/etc/os-release" ) { # openSUSE
-         chomp($release = `grep PRETTY_NAME /etc/os-release`);
-         $release =~ s/^PRETTY_NAME="(.+)"$/$1/;
-      }
-      elsif ( `ls /etc/*release 2>/dev/null` ) {
-         if ( `grep DISTRIB_DESCRIPTION /etc/*release 2>/dev/null` ) {
-            $release = `grep DISTRIB_DESCRIPTION /etc/*release | head -n1`;
-         }
-         else {
-            $release = `cat /etc/*release | head -n1`;
-         }
-      }
-   }
-   elsif ( $platform =~ m/(?:BSD|^Darwin)$/ ) {
-      my $rel = `uname -r`;
-      $release = "$platform $rel";
-   }
-   elsif ( $platform eq "SunOS" ) {
-      my $rel = `head -n1 /etc/release` || `uname -r`;
-      $release = "$platform $rel";
-   }
-
-   if ( !$release ) {
-      PTDEBUG && _d('Failed to get the release, using platform');
-      $release = $platform;
-   }
-   chomp($release);
-
-   $release =~ s/^"|"$//g;
-
-   PTDEBUG && _d('OS version =', $release);
-   return $release;
-}
-
-sub get_perl_version {
-   my ($self, %args) = @_;
-   my $item = $args{item};
-   return unless $item;
-
-   my $version = sprintf '%vd', $PERL_VERSION;
-   PTDEBUG && _d('Perl version', $version);
-   return $version;
-}
-
-sub get_perl_module_version {
-   my ($self, %args) = @_;
-   my $item = $args{item};
-   return unless $item;
-   
-   my $var          = $item->{item} . '::VERSION';
-   my $version      = _get_scalar($var);
-   PTDEBUG && _d('Perl version for', $var, '=', "$version");
-
-   return $version ? "$version" : $version;
-}
-
-sub _get_scalar {
-   no strict;
-   return ${*{shift()}};
-}
-
-sub get_mysql_variable {
-   my $self = shift;
-   return $self->_get_from_mysql(
-      show => 'VARIABLES',
-      @_,
-   );
-}
-
-sub _get_from_mysql {
-   my ($self, %args) = @_;
-   my $show      = $args{show};
-   my $item      = $args{item};
-   my $instances = $args{instances};
-   return unless $show && $item;
-
-   if ( !$instances || !@$instances ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Cannot check', $item, 'because there are no MySQL instances');
-      }
-      return;
-   }
-
-   my @versions;
-   my %version_for;
-   foreach my $instance ( @$instances ) {
-      my $dbh = $instance->{dbh};
-      local $dbh->{FetchHashKeyName} = 'NAME_lc';
-      my $sql = qq/SHOW $show/;
-      PTDEBUG && _d($sql);
-      my $rows = $dbh->selectall_hashref($sql, 'variable_name');
-
-      my @versions;
-      foreach my $var ( @{$item->{vars}} ) {
-         $var = lc($var);
-         my $version = $rows->{$var}->{value};
-         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version,
-            'on', $instance->{name});
-         push @versions, $version;
-      }
-
-      $version_for{ $instance->{id} } = join(' ', @versions);
-   }
-
-   return \%version_for;
-}
-
-sub get_bin_version {
-   my ($self, %args) = @_;
-   my $item = $args{item};
-   my $cmd  = $item->{item};
-   return unless $cmd;
-
-   my $sanitized_command = File::Basename::basename($cmd);
-   PTDEBUG && _d('cmd:', $cmd, 'sanitized:', $sanitized_command);
-   return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
-
-   my $output = `$sanitized_command --version 2>&1`;
-   PTDEBUG && _d('output:', $output);
-
-   my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
-
-   PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
-   return $version;
-}
-
-sub _d {
-   my ($package, undef, $line) = caller 0;
-   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
-        map { defined $_ ? $_ : 'undef' }
-        @_;
-   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
-}
-
-1;
-}
-# ###########################################################################
-# End VersionCheck package
 # ###########################################################################
 
 # ###########################################################################
@@ -4330,7 +4040,6 @@ local $EVAL_ERROR;
 eval {
    require Percona::Toolkit;
    require HTTPMicro;
-   require VersionCheck;
 };
 
 sub version_check {
@@ -4406,10 +4115,9 @@ sub pingback {
    }
    my ($url) = @args{@required_args};
 
-   my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
+   my ($instances, $ua) = @args{qw(instances ua)};
 
    $ua ||= HTTPMicro->new( timeout => 5 );
-   $vc ||= VersionCheck->new();
 
    my $response = $ua->request('GET', $url);
    ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
@@ -4420,13 +4128,13 @@ sub pingback {
    die("GET on $url did not return any programs to check")
       if !$response->{content};
 
-   my $items = $vc->parse_server_response(
+   my $items = __PACKAGE__->parse_server_response(
       response => $response->{content}
    );
    die "Failed to parse server requested programs: $response->{content}"
       if !scalar keys %$items;
       
-   my $versions = $vc->get_versions(
+   my $versions = __PACKAGE__->get_versions(
       items     => $items,
       instances => $instances,
    );
@@ -4456,7 +4164,7 @@ sub pingback {
 
    return unless $response->{content};
 
-   $items = $vc->parse_server_response(
+   $items = __PACKAGE__->parse_server_response(
       response   => $response->{content},
       split_vars => 0,
    );
@@ -4639,6 +4347,250 @@ sub validate_options {
                 . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
 }
 
+sub parse_server_response {
+   my ($self, %args) = @_;
+   my @required_args = qw(response);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($response) = @args{@required_args};
+
+   my %items = map {
+      my ($item, $type, $vars) = split(";", $_);
+      if ( !defined $args{split_vars} || $args{split_vars} ) {
+         $vars = [ split(",", ($vars || '')) ];
+      }
+      $item => {
+         item => $item,
+         type => $type,
+         vars => $vars,
+      };
+   } split("\n", $response);
+
+   PTDEBUG && _d('Items:', Dumper(\%items));
+
+   return \%items;
+}
+
+sub get_versions {
+   my ($self, %args) = @_;
+   my @required_args = qw(items);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my ($items) = @args{@required_args};
+
+   my %versions;
+   foreach my $item ( values %$items ) {
+      next unless $self->valid_item($item);
+
+      eval {
+         my $func    = 'get_' . $item->{type};
+         my $version = $self->$func(
+            item      => $item,
+            instances => $args{instances},
+         );
+         if ( $version ) {
+            chomp $version unless ref($version);
+            $versions{$item->{item}} = $version;
+         }
+      };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d('Error getting version for', Dumper($item), $EVAL_ERROR);
+      }
+   }
+
+   return \%versions;
+}
+
+sub valid_item {
+   my ($self, $item) = @_;
+   return unless $item;
+
+   if ( ($item->{type} || '') !~ m/
+         ^(?:
+             os_version
+            |perl_version
+            |perl_module_version
+            |mysql_variable
+            |bin_version
+         )$/x ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return;
+   }
+
+   return 1;
+}
+
+sub get_os_version {
+   my ($self) = @_;
+
+   if ( $OSNAME eq 'MSWin32' ) {
+      require Win32;
+      return Win32::GetOSDisplayName();
+   }
+
+  chomp(my $platform = `uname -s`);
+  PTDEBUG && _d('platform:', $platform);
+  return $OSNAME unless $platform;
+
+   chomp(my $lsb_release
+            = `which lsb_release 2>/dev/null | awk '{print \$1}'` || '');
+   PTDEBUG && _d('lsb_release:', $lsb_release);
+
+   my $release = "";
+
+   if ( $platform eq 'Linux' ) {
+      if ( -f "/etc/fedora-release" ) {
+         $release = `cat /etc/fedora-release`;
+      }
+      elsif ( -f "/etc/redhat-release" ) {
+         $release = `cat /etc/redhat-release`;
+      }
+      elsif ( -f "/etc/system-release" ) {
+         $release = `cat /etc/system-release`;
+      }
+      elsif ( $lsb_release ) {
+         $release = `$lsb_release -ds`;
+      }
+      elsif ( -f "/etc/lsb-release" ) {
+         $release = `grep DISTRIB_DESCRIPTION /etc/lsb-release`;
+         $release =~ s/^\w+="([^"]+)".+/$1/;
+      }
+      elsif ( -f "/etc/debian_version" ) {
+         chomp(my $rel = `cat /etc/debian_version`);
+         $release = "Debian $rel";
+         if ( -f "/etc/apt/sources.list" ) {
+             chomp(my $code_name = `awk '/^deb/ {print \$3}' /etc/apt/sources.list | awk -F/ '{print \$1}'| awk 'BEGIN {FS="|"} {print \$1}' | sort | uniq -c | sort -rn | head -n1 | awk '{print \$2}'`);
+             $release .= " ($code_name)" if $code_name;
+         }
+      }
+      elsif ( -f "/etc/os-release" ) { # openSUSE
+         chomp($release = `grep PRETTY_NAME /etc/os-release`);
+         $release =~ s/^PRETTY_NAME="(.+)"$/$1/;
+      }
+      elsif ( `ls /etc/*release 2>/dev/null` ) {
+         if ( `grep DISTRIB_DESCRIPTION /etc/*release 2>/dev/null` ) {
+            $release = `grep DISTRIB_DESCRIPTION /etc/*release | head -n1`;
+         }
+         else {
+            $release = `cat /etc/*release | head -n1`;
+         }
+      }
+   }
+   elsif ( $platform =~ m/(?:BSD|^Darwin)$/ ) {
+      my $rel = `uname -r`;
+      $release = "$platform $rel";
+   }
+   elsif ( $platform eq "SunOS" ) {
+      my $rel = `head -n1 /etc/release` || `uname -r`;
+      $release = "$platform $rel";
+   }
+
+   if ( !$release ) {
+      PTDEBUG && _d('Failed to get the release, using platform');
+      $release = $platform;
+   }
+   chomp($release);
+
+   $release =~ s/^"|"$//g;
+
+   PTDEBUG && _d('OS version =', $release);
+   return $release;
+}
+
+sub get_perl_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+
+   my $version = sprintf '%vd', $PERL_VERSION;
+   PTDEBUG && _d('Perl version', $version);
+   return $version;
+}
+
+sub get_perl_module_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   return unless $item;
+
+   my $var          = $item->{item} . '::VERSION';
+   my $version      = _get_scalar($var);
+   PTDEBUG && _d('Perl version for', $var, '=', "$version");
+
+   return $version ? "$version" : $version;
+}
+
+sub _get_scalar {
+   no strict;
+   return ${*{shift()}};
+}
+
+sub get_mysql_variable {
+   my $self = shift;
+   return $self->_get_from_mysql(
+      show => 'VARIABLES',
+      @_,
+   );
+}
+
+sub _get_from_mysql {
+   my ($self, %args) = @_;
+   my $show      = $args{show};
+   my $item      = $args{item};
+   my $instances = $args{instances};
+   return unless $show && $item;
+
+   if ( !$instances || !@$instances ) {
+      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
+         _d('Cannot check', $item, 'because there are no MySQL instances');
+      }
+      return;
+   }
+
+   my @versions;
+   my %version_for;
+   foreach my $instance ( @$instances ) {
+      my $dbh = $instance->{dbh};
+      local $dbh->{FetchHashKeyName} = 'NAME_lc';
+      my $sql = qq/SHOW $show/;
+      PTDEBUG && _d($sql);
+      my $rows = $dbh->selectall_hashref($sql, 'variable_name');
+
+      my @versions;
+      foreach my $var ( @{$item->{vars}} ) {
+         $var = lc($var);
+         my $version = $rows->{$var}->{value};
+         PTDEBUG && _d('MySQL version for', $item->{item}, '=', $version,
+            'on', $instance->{name});
+         push @versions, $version;
+      }
+
+      $version_for{ $instance->{id} } = join(' ', @versions);
+   }
+
+   return \%version_for;
+}
+
+sub get_bin_version {
+   my ($self, %args) = @_;
+   my $item = $args{item};
+   my $cmd  = $item->{item};
+   return unless $cmd;
+
+   my $sanitized_command = File::Basename::basename($cmd);
+   PTDEBUG && _d('cmd:', $cmd, 'sanitized:', $sanitized_command);
+   return if $sanitized_command !~ /\A[a-zA-Z0-9_-]+\z/;
+
+   my $output = `$sanitized_command --version 2>&1`;
+   PTDEBUG && _d('output:', $output);
+
+   my ($version) = $output =~ /v?([0-9]+\.[0-9]+(?:\.[\w-]+)?)/;
+
+   PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
+   return $version;
+}
+
 sub _d {
    my ($package, undef, $line) = caller 0;
    @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
@@ -4804,6 +4756,8 @@ sub main {
    # ########################################################################
    # Create the heartbeat table if --create-table was given.
    # ########################################################################
+   my $utc       = $o->get('utc');
+   my $now_func  = $utc ? 'UTC_TIMESTAMP()' : 'NOW()';
    my $db_tbl    = $q->quote($db, $tbl);
    my $server_id = $dbh->selectrow_array('SELECT @@server_id');
    if ( $o->get('create-table') ) {
@@ -4813,7 +4767,7 @@ sub main {
       $dbh->do($sql);
 
       $sql = ($o->get('replace') ? "REPLACE" : "INSERT")
-           . qq/ INTO $db_tbl (ts, server_id) VALUES (UTC_TIMESTAMP(), $server_id)/;
+           . qq/ INTO $db_tbl (ts, server_id) VALUES ($now_func, $server_id)/;
       PTDEBUG && _d($sql);
       # This may fail if the table already existed and already had this row.
       # We eval to ignore this possibility.
@@ -4910,7 +4864,7 @@ sub main {
          PTDEBUG && _d('No heartbeat row in table');
          if ( $o->get('insert-heartbeat-row') ) {
             my $sql = "INSERT INTO $db_tbl ($pk_col, ts) "
-                    . "VALUES ('$pk_val', UTC_TIMESTAMP())";
+                    . "VALUES ('$pk_val', $now_func)";
             PTDEBUG && _d($sql);
             $dbh->do($sql);
          }
@@ -5004,8 +4958,7 @@ sub main {
             tries => 3,
             wait  => sub { sleep 0.25; return; },
             try   => sub {
-               my ($now) = $dbh->selectrow_array(q{SELECT UTC_TIMESTAMP()});
-               $sth->execute($now, @vals);
+               $sth->execute(ts(time, $utc), @vals);
                PTDEBUG && _d($sth->{Statement});
                $sth->finish();
             },
@@ -5036,7 +4989,7 @@ sub main {
       # UNIX_TIMESTAMP(ts) replaces unix_timestamp($ts) -- MySQL is the
       # authority here, so let it calculate everything.
       $heartbeat_sql
-         = "SELECT UNIX_TIMESTAMP(UTC_TIMESTAMP()), UNIX_TIMESTAMP(ts)"
+         = "SELECT " . ($utc ? 'UNIX_TIMESTAMP(ts)' : 'ts')
          . ($dbi_driver eq 'mysql' ? '/*!50038, @@hostname AS host*/' : '')
          . ($id ? "" : ", server_id")
          . " FROM $db_tbl "
@@ -5050,12 +5003,13 @@ sub main {
          my ($sth) = @_;
          $sth->execute();
          PTDEBUG && _d($sth->{Statement});
-         my ($now, $ts, $hostname, $server_id) = $sth->fetchrow_array();
+         my ($ts, $hostname, $server_id) = $sth->fetchrow_array();
+         my $now = time;
          PTDEBUG && _d("Heartbeat from server", $server_id, "\n",
-            " now:", $now, "\n",
+            " now:", ts($now, $utc), "\n",
             "  ts:", $ts, "\n",
             "skew:", $skew);
-         my $delay = $now - $ts - $skew;
+         my $delay = $now - unix_timestamp($ts, $utc) - $skew;
          PTDEBUG && _d('Delay', sprintf('%.6f', $delay), 'on', $hostname);
 
          # Because we adjust for skew, if the ts are less than skew seconds
@@ -5860,6 +5814,16 @@ short form: -u; type: string
 
 User for login if not current user.
 
+=item --utc
+
+Ignore system time zones and use only UTC.  By default pt-heartbeat does
+not check or adjust for different system or MySQL time zones which can
+cause the tool to compute the lag incorrectly.  Specifying this option is
+a good idea because it ensures that the tool works correctly regardless of
+time zones, but it also makes the tool backwards-incompatible with
+pt-heartbeat 2.1.7 and older (unless the older version of pt-heartbeat
+is running on a system that uses UTC).
+
 =item --version
 
 Show version and exit.
@@ -6023,9 +5987,8 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2006 Proven Scaling LLC and Six Apart Ltd,
-2007-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2007-2013 Percona Ireland Ltd,
+2006 Proven Scaling LLC and Six Apart Ltd.
 
 Feedback and improvements are welcome.
 
@@ -6045,6 +6008,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.1.7
+pt-heartbeat 2.1.8
 
 =cut

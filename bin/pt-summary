@@ -29,23 +29,32 @@ PTFUNCNAME=""
 PTDEBUG="${PTDEBUG:-""}"
 EXIT_STATUS=0
 
-log() {
-   TS=$(date +%F-%T | tr ':-' '_');
+ts() {
+   TS=$(date +%F-%T | tr ':-' '_')
    echo "$TS $*"
 }
 
+info() {
+   [ ${OPT_VERBOSE:-3} -ge 3 ] && ts "$*"
+}
+
+log() {
+   [ ${OPT_VERBOSE:-3} -ge 2 ] && ts "$*"
+}
+
 warn() {
-   log "$*" >&2
+   [ ${OPT_VERBOSE:-3} -ge 1 ] && ts "$*" >&2
    EXIT_STATUS=1
 }
 
 die() {
-   warn "$*"
+   ts "$*" >&2
+   EXIT_STATUS=1
    exit 1
 }
 
 _d () {
-   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(log "$*")" >&2
+   [ "$PTDEBUG" ] && echo "# $PTFUNCNAME: $(ts "$*")" >&2
 }
 
 # ###########################################################################
@@ -78,7 +87,7 @@ PO_DIR=""         # Directory with program option spec files
 usage() {
    local file="$1"
 
-   local usage=$(grep '^Usage: ' "$file")
+   local usage="$(grep '^Usage: ' "$file")"
    echo $usage
    echo
    echo "For more information, 'man $TOOL' or 'perldoc $file'."
@@ -2280,7 +2289,7 @@ sigtrap() { local PTFUNCNAME=sigtrap;
 # Execute the program if it was not included from another file.  This makes it
 # possible to include without executing, and thus test.
 if    [ "${0##*/}" = "$TOOL" ] \
-   || [ "${0##*/}" = "bash" -a "$_" = "$0" ]; then
+   || [ "${0##*/}" = "bash" -a "${_:-""}" = "$0" ]; then
 
    # Set up temporary dir.
    mk_tmpdir
@@ -2654,8 +2663,8 @@ L<http://www.percona.com/software/> for more software developed by Percona.
 
 =head1 COPYRIGHT, LICENSE, AND WARRANTY
 
-This program is copyright 2010-2011 Baron Schwartz, 2011-2012 Percona Inc.
-Feedback and improvements are welcome.
+This program is copyright 2011-2013 Percona Ireland Ltd,
+2010-2011 Baron Schwartz.
 
 THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
@@ -2673,7 +2682,7 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-summary 2.1.7
+pt-summary 2.1.8
 
 =cut
 

@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Percona Inc.
+# This program is copyright 2007-2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -340,6 +340,19 @@ sub parse_event {
    if ( $packet->{data_len} == 0 ) {
       PTDEBUG && _d('TCP control:',
          map { uc $_ } grep { $packet->{$_} } qw(syn ack fin rst));
+      if ( $packet->{'fin'}
+           && ($session->{state} || '') eq 'server_handshake' ) {
+         PTDEBUG && _d('Client aborted connection');
+         my $event = {
+            cmd => 'Admin',
+            arg => 'administrator command: Connect',
+            ts  => $packet->{ts},
+         };
+         $session->{attribs}->{Error_msg} = 'Client closed connection during handshake';
+         $event = $self->_make_event($event, $packet, $session);
+         delete $self->{sessions}->{$session->{client}};
+         return $event;
+      }
       return;
    }
 
@@ -612,7 +625,8 @@ sub _packet_from_server {
          }
          my $event;
 
-         if ( $session->{state} eq 'client_auth' ) {
+         if (   $session->{state} eq 'client_auth'
+             || $session->{state} eq 'server_handshake' ) {
             PTDEBUG && _d('Connection failed');
             $event = {
                cmd      => 'Admin',
@@ -641,11 +655,14 @@ sub _packet_from_server {
             }
 
             $event = {
-               cmd       => $com,
-               arg       => $arg,
-               ts        => $packet->{ts},
-               Error_no  => $error->{errno} ? "#$error->{errno}" : 'none',
+               cmd => $com,
+               arg => $arg,
+               ts  => $packet->{ts},
             };
+            if ( $error->{errno} ) {
+               # https://bugs.launchpad.net/percona-toolkit/+bug/823411
+               $event->{Error_no} = $error->{errno};
+            }
             $session->{attribs}->{Error_msg} = $error->{message};
             return $self->_make_event($event, $packet, $session);
          }
@@ -902,13 +919,18 @@ sub _make_event {
       Thread_id  => $session->{thread_id},
       pos_in_log => $session->{pos_in_log},
       Query_time => timestamp_diff($session->{ts}, $packet->{ts}),
-      Error_no   => $event->{Error_no} || 'none',
       Rows_affected      => ($event->{Rows_affected} || 0),
       Warning_count      => ($event->{Warning_count} || 0),
       No_good_index_used => ($event->{No_good_index_used} ? 'Yes' : 'No'),
       No_index_used      => ($event->{No_index_used}      ? 'Yes' : 'No'),
    };
    @{$new_event}{keys %{$session->{attribs}}} = values %{$session->{attribs}};
+   # https://bugs.launchpad.net/percona-toolkit/+bug/823411
+   foreach my $opt_attrib ( qw(Error_no) ) {
+      if ( defined $event->{$opt_attrib} ) {
+         $new_event->{$opt_attrib} = $event->{$opt_attrib};
+      }
+   }
    PTDEBUG && _d('Properties of event:', Dumper($new_event));
 
    # Delete cmd to prevent re-making the same event if the
@@ -1070,9 +1092,17 @@ sub parse_error_packet {
    }
    my $errno    = to_num(substr($data, 0, 4));
    my $marker   = to_string(substr($data, 4, 2));
-   return unless $marker eq '#';
-   my $sqlstate = to_string(substr($data, 6, 10));
-   my $message  = to_string(substr($data, 16));
+   my $sqlstate = '';
+   my $message  = '';
+   if ( $marker eq '#' ) {
+      $sqlstate = to_string(substr($data, 6, 10));
+      $message  = to_string(substr($data, 16));
+   }
+   else {
+      $marker  = '';
+      $message = to_string(substr($data, 4));
+   }
+   return unless $message;
    my $pkt = {
       errno    => $errno,
       sqlstate => $marker . $sqlstate,

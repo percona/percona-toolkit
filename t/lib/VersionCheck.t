@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More;
 use Data::Dumper;
 
-use VersionCheck;
+use Pingback;
 use DSNParser;
 use Sandbox;
 use PerconaTest;
@@ -23,7 +23,7 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave1_dbh = $sb->get_dbh_for('slave1');
 
-my $vc = VersionCheck->new();
+my $vc = 'Pingback';
 
 sub test_v {
    my (%args) = @_;

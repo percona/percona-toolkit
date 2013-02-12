@@ -22,9 +22,6 @@ my $dbh = $sb->get_dbh_for('master');
 if ( !$dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
-else {
-   plan tests => 18;
-}
 
 sub normalize_numbers {
    use Scalar::Util qw(looks_like_number);
@@ -43,21 +40,21 @@ $sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
 
 # Test --create-review and --create-review-history-table
 $output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow006.txt --create-review-table --review "
-   . "h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review --create-review-history-table "
-   . "--review-history t=query_review_history";
+$cmd = "${run_with}slow006.txt --create-review-tables --review "
+   . "h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review "
+   . "--history-table test.query_review_history";
 $output = `$cmd >/dev/null 2>&1`;
 
 my ($table) = $dbh->selectrow_array(
    "show tables from test like 'query_review'");
-is($table, 'query_review', '--create-review');
+is($table, 'query_review', '--create-review-tables');
 ($table) = $dbh->selectrow_array(
    "show tables from test like 'query_review_history'");
-is($table, 'query_review_history', '--create-review-history-table');
+is($table, 'query_review_history', '--create-review-tables');
 
 $output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow006.txt --review h=127.1,u=msandbox,p=msandbox,P=12345,D=test,t=query_review "
-   . "--review-history t=query_review_history";
+$cmd = "${run_with}slow006.txt --review h=127.1,u=msandbox,p=msandbox,P=12345 --review-table test.query_review "
+   . "--history-table test.query_review_history";
 $output = `$cmd`;
 my $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review',
    { Slice => {} } );
@@ -181,9 +178,13 @@ is_deeply(
 # have been reviewed, the report should include both of them with
 # their respective query review info added to the report.
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review', "t/pt-query-digest/samples/slow006_AR_1.txt"),
+   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review --create-review-tables', "t/pt-query-digest/samples/slow006_AR_1.txt"),
    'Analyze-review pass 1 reports not-reviewed queries'
 );
+
+($table) = $dbh->selectrow_array(
+   "show tables from percona_schema like 'query_history'");
+is($table, 'query_history', '--create-review-tables creates both percona_schema and query_review_history');
 
 # Mark a query as reviewed and run --report again and that query should
 # not be reported.
@@ -191,7 +192,7 @@ $dbh->do('UPDATE test.query_review
    SET reviewed_by="daniel", reviewed_on="2008-12-24 12:00:00", comments="foo_tbl is ok, so are cranberries"
    WHERE checksum=11676753765851784517');
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review', "t/pt-query-digest/samples/slow006_AR_2.txt"),
+   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review', "t/pt-query-digest/samples/slow006_AR_2.txt"),
    'Analyze-review pass 2 does not report the reviewed query'
 );
 
@@ -199,7 +200,7 @@ ok(
 # to re-appear in the report with the reviewed_by, reviewed_on and comments
 # info included.
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review   --report-all', "t/pt-query-digest/samples/slow006_AR_4.txt"),
+   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review   --report-all', "t/pt-query-digest/samples/slow006_AR_4.txt"),
    'Analyze-review pass 4 with --report-all reports reviewed query'
 );
 
@@ -208,7 +209,7 @@ $dbh->do('ALTER TABLE test.query_review ADD COLUMN foo INT');
 $dbh->do('UPDATE test.query_review
    SET foo=42 WHERE checksum=15334040482108055940');
 ok(
-   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review', "t/pt-query-digest/samples/slow006_AR_5.txt"),
+   no_diff($run_with.'slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review', "t/pt-query-digest/samples/slow006_AR_5.txt"),
    'Analyze-review pass 5 reports new review info column'
 );
 
@@ -217,7 +218,7 @@ ok(
 $dbh->do("update test.query_review set first_seen='0000-00-00 00:00:00', "
    . " last_seen='0000-00-00 00:00:00'");
 $output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow022.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review"; 
+$cmd = "${run_with}slow022.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review"; 
 $output = `$cmd`;
 unlike($output, qr/last_seen/, 'no last_seen when 0000 timestamp');
 unlike($output, qr/first_seen/, 'no first_seen when 0000 timestamp');
@@ -231,7 +232,7 @@ unlike($output, qr/0000-00-00 00:00:00/, 'no 0000-00-00 00:00:00 timestamp');
 # Make sure a missing Time property does not cause a crash.  Don't test data
 # in table, because it varies based on when you run the test.
 $output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow021.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review"; 
+$cmd = "${run_with}slow021.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review"; 
 $output = `$cmd`;
 unlike($output, qr/Use of uninitialized value/, 'didnt crash due to undef ts');
 
@@ -239,7 +240,7 @@ unlike($output, qr/Use of uninitialized value/, 'didnt crash due to undef ts');
 # crash.  Don't test data in table, because it varies based on when you run
 # the test.
 $output = 'foo'; # clear previous test results
-$cmd = "${run_with}slow022.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review"; 
+$cmd = "${run_with}slow022.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review"; 
 $output = `$cmd`;
 # Don't test data in table, because it varies based on when you run the test.
 unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing ts');
@@ -248,7 +249,7 @@ unlike($output, qr/Use of uninitialized value/, 'no crash due to totally missing
 # --review --no-report
 # #############################################################################
 $sb->load_file('master', 't/pt-query-digest/samples/query_review.sql');
-$output = `${run_with}slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox,D=test,t=query_review --no-report --create-review-table`;
+$output = `${run_with}slow006.txt --review h=127.1,P=12345,u=msandbox,p=msandbox --review-table test.query_review --no-report --create-review-table`;
 $res = $dbh->selectall_arrayref('SELECT * FROM test.query_review');
 is(
    $res->[0]->[1],
@@ -268,7 +269,7 @@ is(
 $dbh->do('truncate table test.query_review');
 $dbh->do('truncate table test.query_review_history');
 
-`${run_with}slow002.txt --review h=127.1,u=msandbox,p=msandbox,P=12345,D=test,t=query_review --review-history t=query_review_history --no-report --filter '\$event->{arg} =~ m/foo\.bar/' > /dev/null`;
+`${run_with}slow002.txt --review h=127.1,u=msandbox,p=msandbox,P=12345 --review-table test.query_review --history-table test.query_review_history --no-report --filter '\$event->{arg} =~ m/foo\.bar/' > /dev/null`;
 
 $res = $dbh->selectall_arrayref( 'SELECT * FROM test.query_review_history',
    { Slice => {} } );
@@ -396,8 +397,9 @@ $dbh->do($min_tbl);
 
 $output = output(
    sub { pt_query_digest::main(
-      '--review', 'h=127.1,u=msandbox,p=msandbox,P=12345,D=test,t=query_review',
-      '--review-history', 't=query_review_history',
+      '--review', 'h=127.1,u=msandbox,p=msandbox,P=12345',
+      '--review-table',  'test.query_review',
+      '--history-table', 'test.query_review_history',
       qw(--no-report --no-continue-on-error),
       "$trunk/t/lib/samples/slow002.txt")
    },
@@ -415,4 +417,5 @@ unlike(
 # #############################################################################
 $sb->wipe_clean($dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
+done_testing;
 exit;

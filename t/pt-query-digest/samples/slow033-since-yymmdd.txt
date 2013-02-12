@@ -1,8 +1,7 @@
 
 # Query 1: 2 QPS, 0.00x concurrency, ID 0x07AEF8EFAB3FA3CE at byte 509 ___
 # This item is included in the report because it matches --limit.
-# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
-# Query_time sparkline: | ^      |
+# Scores: V/M = 0.00
 # Time range: 2009-07-27 11:19:30 to 11:19:31
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======
@@ -33,8 +32,7 @@ SELECT * FROM bar\G
 
 # Query 2: 0.00 QPS, 0.00x concurrency, ID 0xAC1BF726F2AB10C5 at byte 861
 # This item is included in the report because it matches --limit.
-# Scores: Apdex = 1.00 [1.0]*, V/M = 0.00
-# Query_time sparkline: | ^      |
+# Scores: V/M = 0.00
 # Time range: 2009-07-27 11:30:00 to 2009-07-28 18:00:00
 # Attribute    pct   total     min     max     avg     95%  stddev  median
 # ============ === ======= ======= ======= ======= ======= ======= =======

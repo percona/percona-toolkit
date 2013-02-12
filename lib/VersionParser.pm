@@ -1,4 +1,4 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Inc.
+# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -22,7 +22,7 @@
 # VersionParser parses a MySQL version string.
 package VersionParser;
 
-use Mo;
+use Lmo;
 use Scalar::Util qw(blessed);
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -213,7 +213,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-no Mo;
+no Lmo;
 1;
 }
 # ###########################################################################
