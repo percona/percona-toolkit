@@ -25,7 +25,7 @@ BEGIN {
       Transformers
       Retry
       HTTPMicro
-      Pingback
+      VersionCheck
    ));
 }
 
@@ -3376,15 +3376,15 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 
 # ###########################################################################
-# Pingback package
+# VersionCheck package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/Pingback.pm
-#   t/lib/Pingback.t
+#   lib/VersionCheck.pm
+#   t/lib/VersionCheck.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-package Pingback;
+package VersionCheck;
 
 use strict;
 use warnings FATAL => 'all';
@@ -3977,7 +3977,7 @@ sub _d {
 1;
 }
 # ###########################################################################
-# End Pingback package
+# End VersionCheck package
 # ###########################################################################
 
 # ###########################################################################
@@ -4029,7 +4029,7 @@ sub main {
       $o->set('run-time', max($o->get('run-time'), 1));
    }
 
-   Pingback::validate_options($o);
+   VersionCheck::validate_options($o);
    
    $o->usage_or_errors();
 
@@ -4088,7 +4088,7 @@ sub main {
       my $tmp_master_dsn = $master_dsn
                          ? $master_dsn
                          : { h => $status->{master_host}, P => $status->{master_port} };
-      Pingback::version_check(
+      VersionCheck::version_check(
          instances => [
             { dbh => $slave_dbh,  dsn => $slave_dsn      },
             { dbh => $master_dbh, dsn => $tmp_master_dsn }

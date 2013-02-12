@@ -12,7 +12,7 @@ use English qw(-no_match_vars);
 use Test::More;
 use Data::Dumper;
 
-use Pingback;
+use VersionCheck;
 use DSNParser;
 use Sandbox;
 use PerconaTest;
@@ -23,7 +23,7 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave1_dbh = $sb->get_dbh_for('slave1');
 
-my $vc = 'Pingback';
+my $vc = 'VersionCheck';
 
 sub test_v {
    my (%args) = @_;
@@ -52,7 +52,7 @@ sub test_v {
          },
       ],
    );
-   diag(Dumper($versions));
+
    is_deeply(
       $versions,
       $args{versions},
@@ -168,7 +168,6 @@ SKIP: {
 # at least know that an OS should have these two things: a word
 # and version with at least major and minor numbers.
 my $os = $vc->get_os_version;
-diag($os);
 
 like(
    $os,
@@ -216,4 +215,3 @@ is_deeply(
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox")
    if $master_dbh;
 done_testing;
-exit;
