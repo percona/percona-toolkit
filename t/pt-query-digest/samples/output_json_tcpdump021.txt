@@ -2,17 +2,6 @@
 [
    {
       "attributes" : {
-         "Error_no" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "none",
-            "median" : 0,
-            "min" : "none",
-            "pct" : 0.333333333333333,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
-         },
          "No_good_index_used" : {
             "avg" : 0,
             "cnt" : 1,
@@ -124,17 +113,6 @@
    },
    {
       "attributes" : {
-         "Error_no" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "none",
-            "median" : 0,
-            "min" : "none",
-            "pct" : 0.333333333333333,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
-         },
          "No_good_index_used" : {
             "avg" : 0,
             "cnt" : 1,
@@ -246,17 +224,6 @@
    },
    {
       "attributes" : {
-         "Error_no" : {
-            "avg" : 0,
-            "cnt" : 1,
-            "max" : "none",
-            "median" : 0,
-            "min" : "none",
-            "pct" : 0.333333333333333,
-            "pct_95" : 0,
-            "stddev" : 0,
-            "sum" : null
-         },
          "No_good_index_used" : {
             "avg" : 0,
             "cnt" : 1,
