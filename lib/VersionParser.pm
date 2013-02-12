@@ -22,7 +22,7 @@
 # VersionParser parses a MySQL version string.
 package VersionParser;
 
-use Mo;
+use Lmo;
 use Scalar::Util qw(blessed);
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -213,7 +213,7 @@ sub _d {
    print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
-no Mo;
+no Lmo;
 1;
 }
 # ###########################################################################

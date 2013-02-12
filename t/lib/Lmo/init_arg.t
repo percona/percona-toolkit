@@ -15,7 +15,7 @@ use Test::More;
 
 {
     package Foo;
-    use Mo qw( is init_arg );
+    use Lmo qw( is init_arg );
 
     eval {
         has 'foo' => (
@@ -64,7 +64,7 @@ use Test::More;
 
 {
     package Foo2;
-    use Mo qw( is init_arg clearer default );
+    use Lmo qw( is init_arg clearer default );
 
     my $counter;
     eval {

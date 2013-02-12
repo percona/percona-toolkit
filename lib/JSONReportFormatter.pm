@@ -1,6 +1,6 @@
 {
 package JSONReportFormatter;
-use Mo;
+use Lmo;
 
 use List::Util   qw(sum);
 use Transformers qw(make_checksum parse_timestamp);
@@ -120,5 +120,6 @@ override query_report => sub {
    return $json . "\n";
 };
 
+no Lmo;
 1;
 }

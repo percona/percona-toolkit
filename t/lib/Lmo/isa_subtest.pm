@@ -16,7 +16,7 @@ use warnings;
 
 {
    package isa_subtest;
-   use Mo;
+   use Lmo;
 
    has attr => (
       is  => 'rw',

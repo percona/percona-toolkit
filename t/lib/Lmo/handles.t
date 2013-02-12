@@ -21,14 +21,14 @@ use Test::More;
 
 {
     package Foo;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'bar' => (is => 'rw', default => sub { 10 });
 
     sub baz { 42 }
 
     package Bar;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'foo' => (
         is      => 'rw',
@@ -99,13 +99,13 @@ is($bar->foo_bar, 20, '... correctly curried a single argument');
 
 {
     package Engine;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     sub go   { 'Engine::go'   }
     sub stop { 'Engine::stop' }
 
     package Car;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'engine' => (
         is      => 'rw',
@@ -137,14 +137,14 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
 
 {
     package Baz;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     sub foo { 'Baz::foo' }
     sub bar { 'Baz::bar' }
     sub boo { 'Baz::boo' }
 
     package Baz::Proxy1;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'baz' => (
         is      => 'ro',
@@ -154,7 +154,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     );
 
     package Baz::Proxy2;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'baz' => (
         is      => 'ro',
@@ -164,7 +164,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     );
 
     package Baz::Proxy3;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'baz' => (
         is      => 'ro',
@@ -228,14 +228,14 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     requires 'bar';
 
     package Foo::Baz;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     sub foo { 'Foo::Baz::FOO' }
     sub bar { 'Foo::Baz::BAR' }
     sub baz { 'Foo::Baz::BAZ' }
 
     package Foo::Thing;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'thing' => (
         is      => 'rw',
@@ -244,7 +244,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     );
 
     package Foo::OtherThing;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
     use Moose::Util::TypeConstraints;
 
     has 'other_thing' => (
@@ -288,7 +288,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
 
 {
     package Foo::Autoloaded;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
     
     sub AUTOLOAD {
         my $self = shift;
@@ -304,7 +304,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     }
 
     package Bar::Autoloaded;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'foo' => (
         is      => 'rw',
@@ -313,7 +313,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     );
 
     package Baz::Autoloaded;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     has 'foo' => (
         is      => 'rw',
@@ -322,7 +322,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
     );
 
     package Goorch::Autoloaded;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     eval {
         has 'foo' => (
@@ -447,7 +447,7 @@ is($car->stop, 'Engine::stop', '... got the right value from ->stop');
 
 {
     package Delegator;
-    use Mo qw(is required handles default builder);
+    use Lmo qw(is required handles default builder);
 
     sub full { 1 }
     sub stub;
