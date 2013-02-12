@@ -36,7 +36,7 @@ BEGIN {
       TableParser
       ReportFormatter
       HTTPMicro
-      Pingback
+      VersionCheck
    ));
 }
 
@@ -7431,15 +7431,15 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 
 # ###########################################################################
-# Pingback package
+# VersionCheck package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/Pingback.pm
-#   t/lib/Pingback.t
+#   lib/VersionCheck.pm
+#   t/lib/VersionCheck.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-package Pingback;
+package VersionCheck;
 
 use strict;
 use warnings FATAL => 'all';
@@ -8032,7 +8032,7 @@ sub _d {
 1;
 }
 # ###########################################################################
-# End Pingback package
+# End VersionCheck package
 # ###########################################################################
 
 # ###########################################################################
@@ -8099,7 +8099,7 @@ sub main {
             . "rule_id, query_id, none");
       }
 
-      Pingback::validate_options($o);
+      VersionCheck::validate_options($o);
    }
 
    $o->usage_or_errors();
@@ -8430,7 +8430,7 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check(
+      VersionCheck::version_check(
          instances => [
             ($review_dbh ? { dbh => $review_dbh, dsn => $review_dsn } : ()),
             ($dbh        ? { dbh => $dbh,        dsn => $dsn        } : ()),
