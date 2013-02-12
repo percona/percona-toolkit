@@ -10,9 +10,15 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use Test::More;
+use Data::Dumper;
 
 use Quoter;
 use PerconaTest;
+use DSNParser;
+use Sandbox;
+my $dp  = new DSNParser(opts=>$dsn_opts);
+my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $dbh = $sb->get_dbh_for('master');
 
 my $q = new Quoter;
 
@@ -119,129 +125,126 @@ is( $q->join_quote('`db`', '`foo`.`tbl`'), '`foo`.`tbl`', 'join_merge(`db`, `foo
 # ###########################################################################
 # (de)serialize_list
 # ###########################################################################
+   
+binmode(STDOUT, ':utf8')
+   or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
+binmode(STDERR, ':utf8')
+   or die "Can't binmode(STDERR, ':utf8'): $OS_ERROR";
 
-is(
-   $q->serialize_list(),
-   undef,
-   "Serialize empty list"
-);
+# Prevent "Wide character in print at Test/Builder.pm" warnings.
+binmode Test::More->builder->$_(), ':encoding(UTF-8)'
+   for qw(output failure_output);
 
-is(
-   $q->serialize_list(''),
-   '',
-   "Serialize 1 empty string",
-);
-
-is(
-   $q->serialize_list('', '', ''),
-   ',,',
-   "Serialize 3 empty strings",
-);
-
-is(
-   $q->serialize_list(undef),
-   undef,
-   "Serialize undef string",
-);
-
-is(
-   $q->deserialize_list(undef),
-   undef,
-   "Deserialize undef string",
-);
-
-is(
-   $q->serialize_list(undef, undef),
-   '\\N,\\N',
-   "Serialize two undefs",
-);
-
-my @serialize_tests = (
+my @latin1_serialize_tests = (
+   [ 'a' ],
    [ 'a', 'b', ],
-   [ 'a,', 'b', ],
-   [ "a,\\\nc\nas", 'b', ],
-   [ 'a\\\,a', 'c', ],
-   [ 'a\\\\,a', 'c', ],
-   [ 'a\\\\\,aa', 'c', ],
-   [ 'a\\\\\\,aa', 'c', ],
-   [ 'a\\\,a,a', 'c,d,e,d,', ],
-   [ "\\\,\x{e8},a", '!!!!__!*`,`\\', ], # Latin-1
-   [ "\x{30cb}\\\,\x{e8},a", '!!!!__!*`,`\\', ], # UTF-8
-   [ ",,,,,,,,,,,,,,", ",", ],
-   [ "\\,\\,\\,\\,\\,\\,\\,\\,\\,\\,\\,,,,\\", ":(", ],
-   [ "asdfa", "\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\,a", ],
+   [ 'a,', 'b', ],  # trailing comma
+   [ 0 ],
+   [ 0, 0 ],
    [ 1, 2 ],
-   [ 7, 9 ],
+   [ '' ],  # emptry string
    [ '', '', '', ],
-   [ '' ],
-   [ undef ],
-   [ undef, undef, '', undef ],
-   [ '\\N', '\\\\N', undef ],
+   [ undef ],  # NULL
+   [ undef, undef ],
+   [ undef, '' ],
+   [ '\N' ],  # literal \N
+   [ "un caf\x{e9} na\x{ef}ve" ],  # Latin-1
 );
 
-use DSNParser;
-use Sandbox;
-my $dp  = new DSNParser(opts=>$dsn_opts);
-my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $dbh = $sb->get_dbh_for('master');
-SKIP: {
-   skip 'Cannot connect to sandbox master', scalar @serialize_tests unless $dbh;
+my @utf8_serialize_tests = (
+   [ "\x{30cb} \x{e8}" ],  # UTF-8
+);
 
-   # Prevent "Wide character in print at Test/Builder.pm" warnings.
-   binmode Test::More->builder->$_(), ':encoding(UTF-8)'
-      for qw(output failure_output);
+SKIP: {
+   skip 'Cannot connect to sandbox master', scalar @latin1_serialize_tests
+      unless $dbh;
 
    $dbh->do('CREATE DATABASE IF NOT EXISTS serialize_test');
    $dbh->do('DROP TABLE IF EXISTS serialize_test.serialize');
-   $dbh->do('CREATE TABLE serialize_test.serialize (id INT, foo TEXT)');
+   $dbh->do('CREATE TABLE serialize_test.serialize (id INT, textval TEXT, blobval BLOB)');
 
-   my $sth    = $dbh->prepare(
-      "INSERT INTO serialize_test.serialize (id, foo) VALUES (?, ?)"
-   );
-   my $selsth = $dbh->prepare(
-      "SELECT foo FROM serialize_test.serialize WHERE id=? LIMIT 1"
+   my $sth = $dbh->prepare(
+      "INSERT INTO serialize_test.serialize VALUES (?, ?, ?)"
    );
 
-   for my $test_index ( 0..$#serialize_tests ) {
-      my $ser = $q->serialize_list( @{$serialize_tests[$test_index]} );
+   for my $test_index ( 0..$#latin1_serialize_tests ) {
 
-      # Bit of a hack, but we want to test both of Perl's internal encodings
-      # for correctness.
-      local $dbh->{'mysql_enable_utf8'} = 1 if utf8::is_utf8($ser);
-      $sth->execute($test_index, $ser);
-      $selsth->execute($test_index);
-
-      my $flat_string =  "["
-	                  . join( "][",
-					           map { defined($_) ? $_ : '<undef>' } @{$serialize_tests[$test_index]}
-							)
-					  . "]";
+      # Flat, friendly name for the test string
+      my $flat_string
+         =  "["
+         . join( "][",
+               map { defined($_) ? $_ : 'undef' }
+               @{$latin1_serialize_tests[$test_index]})
+         . "]";
       $flat_string =~ s/\n/\\n/g;
 
-      # diag($test_index);
-      SKIP: {
-         skip "DBD::mysql version $DBD::mysql::VERSION has utf8 bugs. "
-	    . "See https://bugs.launchpad.net/percona-toolkit/+bug/932327",
-            1 if $DBD::mysql::VERSION lt '4' && $test_index == 9;
-         is_deeply(
-            [ $q->deserialize_list($selsth->fetchrow_array()) ],
-            $serialize_tests[$test_index],
-            "Serialize $flat_string"
-         );
-      }
+      # INSERT the serialized list of values.
+      my $ser = $q->serialize_list( @{$latin1_serialize_tests[$test_index]} );
+      $sth->execute($test_index, $ser, $ser);
+
+      # SELECT back the values and deserialize them. 
+      my ($text_string) = $dbh->selectrow_array(
+         "SELECT textval FROM serialize_test.serialize WHERE id=$test_index");
+      my @text_parts = $q->deserialize_list($text_string);
+
+      is_deeply(
+         \@text_parts,
+         $latin1_serialize_tests[$test_index],
+         "Serialize TEXT $flat_string"
+      ) or diag(Dumper($text_string, \@text_parts));
+   }
+};
+
+my $utf8_dbh = $sb->get_dbh_for('master');
+$utf8_dbh->{mysql_enable_utf8} = 1;
+$utf8_dbh->do("SET NAMES 'utf8'");
+SKIP: {
+   skip 'Cannot connect to sandbox master', scalar @utf8_serialize_tests
+      unless $utf8_dbh;
+
+   $utf8_dbh->do("DROP TABLE serialize_test.serialize");
+   $utf8_dbh->do("CREATE TABLE serialize_test.serialize (id INT, textval TEXT, blobval BLOB) CHARSET='utf8'");
+
+   my $sth = $utf8_dbh->prepare(
+      "INSERT INTO serialize_test.serialize VALUES (?, ?, ?)"
+   );
+
+   for my $test_index ( 0..$#utf8_serialize_tests ) {
+
+      # Flat, friendly name for the test string
+      my $flat_string
+         =  "["
+         . join( "][",
+               map { defined($_) ? $_ : 'undef' }
+               @{$utf8_serialize_tests[$test_index]})
+         . "]";
+      $flat_string =~ s/\n/\\n/g;
+
+      # INSERT the serialized list of values.
+      my $ser = $q->serialize_list( @{$utf8_serialize_tests[$test_index]} );
+      $sth->execute($test_index, $ser, $ser);
+
+      # SELECT back the values and deserialize them. 
+      my ($text_string) = $utf8_dbh->selectrow_array(
+         "SELECT textval FROM serialize_test.serialize WHERE id=$test_index");
+      my @text_parts = $q->deserialize_list($text_string);
+
+      is_deeply(
+         \@text_parts,
+         $utf8_serialize_tests[$test_index],
+         "Serialize TEXT $flat_string"
+      ) or diag(Dumper($text_string, \@text_parts));
    }
 
-   $sth->finish();
-   $selsth->finish();
-
-   $dbh->do("DROP DATABASE serialize_test");
-   $sb->wipe_clean($dbh);
-   $dbh->disconnect();
+   $utf8_dbh->disconnect();
 };
 
 # ###########################################################################
 # Done.
 # ###########################################################################
+if ( $dbh ) {
+   $sb->wipe_clean($dbh);
+   $dbh->disconnect();
+}
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-
 done_testing;
