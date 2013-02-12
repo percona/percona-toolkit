@@ -15,7 +15,7 @@ BEGIN {
    $INC{$_} = __FILE__ for map { (my $pkg = "$_.pm") =~ s!::!/!g; $pkg } (qw(
       Percona::Toolkit
       HTTPMicro
-      Pingback
+      VersionCheck
       DSNParser
       OptionParser
       Lmo::Utils
@@ -714,15 +714,15 @@ if ( $INC{"IO/Socket/SSL.pm"} ) {
 # ###########################################################################
 
 # ###########################################################################
-# Pingback package
+# VersionCheck package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
-#   lib/Pingback.pm
-#   t/lib/Pingback.t
+#   lib/VersionCheck.pm
+#   t/lib/VersionCheck.t
 # See https://launchpad.net/percona-toolkit for more information.
 # ###########################################################################
 {
-package Pingback;
+package VersionCheck;
 
 use strict;
 use warnings FATAL => 'all';
@@ -1315,7 +1315,7 @@ sub _d {
 1;
 }
 # ###########################################################################
-# End Pingback package
+# End VersionCheck package
 # ###########################################################################
 
 # ###########################################################################
@@ -8648,7 +8648,7 @@ sub main {
       $o->save_error("Invalid --recursion-method: $EVAL_ERROR")
    }
 
-   Pingback::validate_options($o);
+   VersionCheck::validate_options($o);
    
    $o->usage_or_errors();
  
@@ -9237,7 +9237,7 @@ sub main {
    # Do the version-check
    # ########################################################################
    if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
-      Pingback::version_check(
+      VersionCheck::version_check(
          instances => [
             { dbh => $master_dbh, dsn => $master_dsn },
             map({ +{ dbh => $_->dbh(), dsn => $_->dsn() } } @$slaves)

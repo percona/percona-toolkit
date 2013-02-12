@@ -1,4 +1,4 @@
-# This program is copyright 2012 Percona Ireland Ltd.
+# This program is copyright 2012-2013 Percona Ireland Ltd.
 # Feedback and improvements are welcome.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
@@ -15,12 +15,10 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 # Place, Suite 330, Boston, MA  02111-1307  USA.
 # ###########################################################################
-# Pingback package
+# VersionCheck package
 # ###########################################################################
 {
-# Package: Pingback
-# Pingback gets and reports program versions to Percona.
-package Pingback;
+package VersionCheck;
 
 use strict;
 use warnings FATAL => 'all';
@@ -683,5 +681,5 @@ sub _d {
 1;
 }
 # ###########################################################################
-# End Pingback package
+# End VersionCheck package
 # ###########################################################################
