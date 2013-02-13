@@ -58,7 +58,8 @@ sub new {
       die "I need a $arg argument" unless $args{$arg};
    }
    my $self = {
-      opts => {}  # h, P, u, etc.  Should come from DSN OPTIONS section in POD.
+      opts => {},  # h, P, u, etc.  Should come from DSN OPTIONS section in POD.
+      warn_broken_utf8 => 0,
    };
    foreach my $opt ( @{$args{opts}} ) {
       if ( !$opt->{key} || !$opt->{desc} ) {
@@ -280,6 +281,22 @@ sub get_dbh {
    @{$defaults}{ keys %$opts } = values %$opts;
    if (delete $defaults->{L}) { # L for LOAD DATA LOCAL INFILE, our own extension
       $defaults->{mysql_local_infile} = 1;
+   }
+
+   # Check for broken DBD::mysql UTF-8.
+   eval {
+      require DBD::mysql;
+   };
+   if ( !$EVAL_ERROR ) {
+      if ( $defaults->{mysql_enable_utf8}
+           && $DBD::mysql::VERSION lt '3.0008'
+           && !$self->{warn_broken_utf8}++ )
+      {
+         warn "WARNING: UTF-8 support is enabled but DBD::mysql "
+            . "v$DBD::mysql::VERSION is installed which does not work "
+            . "correctly with UTF-8.  You should install a newer version "
+            . "of DBD::mysql, else data will be displayed incorrectly.\n";
+      }
    }
 
    # Only add this if explicitly set because we're not sure if
