@@ -7968,8 +7968,6 @@ sub main {
       $o->save_error("Invalid --recursion-method: $EVAL_ERROR")
    }
 
-   VersionCheck::validate_options($o);
-   
    $o->usage_or_errors(); 
 
    if ( $o->get('quiet') ) {
@@ -8257,11 +8255,14 @@ sub main {
    # ########################################################################
    # Do the version-check
    # ########################################################################
-   if ( $o->get('version-check') ne 'off' && (!$o->has('quiet') || !$o->get('quiet')) ) {
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
       VersionCheck::version_check(
-         instances => [ map({ +{ dbh => $_->dbh(), dsn => $_->dsn() } }
-            $cxn, ($slaves ? @$slaves : ())) ],
-         protocol  => $o->get('version-check'),
+         instances => [
+            map (
+               { +{ dbh => $_->dbh(), dsn => $_->dsn() } }
+               $cxn, ($slaves ? @$slaves : ())
+            )
+         ],
       );
    }
    
@@ -10965,30 +10966,25 @@ User for login if not current user.
 
 Show version and exit.
 
-=item --version-check
+=item --[no]version-check
 
-type: string; default: off
+default: yes
 
-Send program versions to Percona and print suggested upgrades and problems.
-Possible values for --version-check:
+Check for the latest version of Percona Toolkit, MySQL, and other programs.
 
-=for comment ignore-pt-internal-value
-MAGIC_version_check
+This is a standard "check for updates automatically" feature, with two
+additional features.  First, the tool checks the version of other programs
+on the local system in addition to its own version.  For example, it checks
+the version of every MySQL server it connects to, Perl, and the Perl module
+DBD::mysql.  Second, it checks for and warns about versions with known
+problems.  For example, MySQL 5.5.25 had a critical bug and was re-released
+as 5.5.25a.
 
-https, http, auto, off
+Any updates or known problems are printed to STDOUT before the tool's normal
+output.  This feature should never interfere with the normal operation of the
+tool.  
 
-C<auto> first tries using C<https>, and resorts to C<http> if that fails.
-Keep in mind that C<https> might not be available if
-C<IO::Socket::SSL> is not installed on your system, although
-C<--version-check http> should work everywhere.
-
-The version check feature causes the tool to send and receive data from
-Percona over the web.  The data contains program versions from the local
-machine.  Percona uses the data to focus development on the most widely
-used versions of programs, and to suggest to customers possible upgrades
-and known bad versions of programs.
-
-For more information, visit L<http://www.percona.com/version-check>.
+For more information, visit L<https://www.percona.com/version-check>.
 
 =back
 
