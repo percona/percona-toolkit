@@ -784,15 +784,15 @@ has 'api_key' => (
 has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
-   default  => sub { return 'https://api.tools.percona.com' },
    required => 0,
+   default  => sub { return 'https://api.tools.percona.com' },
 );
 
 has 'ua' => (
    is       => 'rw',
    isa      => 'Object',
    lazy     => 1,
-   required => 1,
+   required => 0,
    builder  => '_build_ua',
 );
 
@@ -887,12 +887,12 @@ sub post {
 }
 
 sub put {
-   my $self = shift;
+   my ($self, %args) = @_;
    $self->_set(
-      @_,
+      %args,
       method => 'PUT',
    );
-   return;
+   return $args{link};
 }
 
 sub delete {
@@ -1103,16 +1103,22 @@ package Percona::WebAPI::Resource::Agent;
 
 use Lmo;
 
-has 'id' => (
-   is       => 'ro',
+has 'uuid' => (
+   is       => 'r0',
    isa      => 'Str',
-   required => 1,
+   required => 0,
 );
 
 has 'hostname' => (
    is       => 'ro',
    isa      => 'Str',
    required => 1,
+);
+
+has 'alias' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 0,
 );
 
 has 'versions' => (
@@ -1127,6 +1133,11 @@ has 'links' => (
    required => 0,
    default  => sub { return {} },
 );
+
+sub name {
+   my ($self) = @_;
+   return $self->alias || $self->hostname || $self->uuid || 'Unknown';
+}
 
 no Lmo;
 1;
@@ -1148,8 +1159,8 @@ package Percona::WebAPI::Resource::Config;
 
 use Lmo;
 
-has 'id' => (
-   is       => 'r0',
+has 'config_id' => (
+   is       => 'ro',
    isa      => 'Int',
    required => 1,
 );
@@ -1344,40 +1355,17 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
-use File::Basename qw();
-use Data::Dumper   qw();
-use Data::Dumper   qw();
-use Digest::MD5    qw(md5_hex);
-use Sys::Hostname  qw(hostname);
-use Fcntl          qw(:DEFAULT);
-use File::Basename qw();
-use File::Spec;
-
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-local $EVAL_ERROR;
-eval {
-   require Percona::Toolkit;
-   require HTTP::Micro;
-};
+use File::Basename ();
+use Data::Dumper ();
 
-my $dir              = File::Spec->tmpdir();
-my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
-my $check_time_limit = 60 * 60 * 24;  # one day
+sub Dumper {
+   local $Data::Dumper::Indent    = 1;
+   local $Data::Dumper::Sortkeys  = 1;
+   local $Data::Dumper::Quotekeys = 0;
 
-sub validate_options {
-   my ($o) = @_;
-
-   return if !$o->got('version-check');
-
-   my $value  = $o->get('version-check');
-   my @values = split /, /,
-                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
-   chomp(@values);
-                
-   return if grep { $value eq $_ } @values;
-   $o->save_error("--version-check invalid value $value.  Accepted values are "
-                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
+   Data::Dumper::Dumper(@_);
 }
 
 sub new {
@@ -1393,297 +1381,6 @@ sub new {
          )$/x,
    };
    return bless $self, $class;
-}
-
-sub version_check {
-   my %args      = @_;
-   my @instances = $args{instances} ? @{ $args{instances} } : ();
-
-   if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
-                   "environment variable.\n\n";
-      return;
-   }
-
-   $args{protocol} ||= 'https';
-   my @protocols = $args{protocol} eq 'auto'
-                 ? qw(https http)
-                 : $args{protocol};
-   
-   my $instances_to_check = [];
-   my $time               = int(time());
-   eval {
-      foreach my $instance ( @instances ) {
-         my ($name, $id) = _generate_identifier($instance);
-         $instance->{name} = $name;
-         $instance->{id}   = $id;
-      }
-
-      my $time_to_check;
-      ($time_to_check, $instances_to_check)
-         = time_to_check($check_time_file, \@instances, $time);
-      if ( !$time_to_check ) {
-         warn 'It is not time to --version-check again; ',
-                      "only 1 check per day.\n\n";
-         return;
-      }
-
-      my $advice;
-      my $e;
-      for my $protocol ( @protocols ) {
-         $advice = eval { pingback(
-            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
-            instances => $instances_to_check,
-            protocol  => $protocol,
-         ) };
-         last if !$advice && !$EVAL_ERROR;
-         $e ||= $EVAL_ERROR;
-      }
-      if ( $advice ) {
-         print "# Percona suggests these upgrades:\n";
-         print join("\n", map { "#   * $_" } @$advice), "\n\n";
-      }
-      else {
-         die $e if $e;
-         print "# No suggestions at this time.\n\n";
-         ($ENV{PTVCDEBUG} || PTDEBUG )
-            && _d('--version-check worked, but there were no suggestions');
-      }
-   };
-   if ( $EVAL_ERROR ) {
-      warn "Error doing --version-check: $EVAL_ERROR";
-   }
-   else {
-      update_checks_file($check_time_file, $instances_to_check, $time);
-   }
-   
-   return;
-}
-
-sub pingback {
-   my (%args) = @_;
-   my @required_args = qw(url);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
-   }
-   my ($url) = @args{@required_args};
-
-   my ($instances, $ua, $vc) = @args{qw(instances ua VersionCheck)};
-
-   $ua ||= HTTP::Micro->new( timeout => 5 );
-   $vc ||= VersionCheck->new();
-
-   my $response = $ua->request('GET', $url);
-   ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
-   die "No response from GET $url"
-      if !$response;
-   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
-       ($response->{content} || '')) if $response->{status} != 200;
-   die("GET on $url did not return any programs to check")
-      if !$response->{content};
-
-   my $items = $vc->parse_server_response(
-      response => $response->{content}
-   );
-   die "Failed to parse server requested programs: $response->{content}"
-      if !scalar keys %$items;
-      
-   my $versions = $vc->get_versions(
-      items     => $items,
-      instances => $instances,
-   );
-   die "Failed to get any program versions; should have at least gotten Perl"
-      if !scalar keys %$versions;
-
-   my $client_content = encode_client_response(
-      items      => $items,
-      versions   => $versions,
-      general_id => md5_hex( hostname() ),
-   );
-
-   my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
-      content => $client_content,
-   };
-   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('Client response:', Dumper($client_response));
-   }
-
-   $response = $ua->request('POST', $url, $client_response);
-   PTDEBUG && _d('Server suggestions:', Dumper($response));
-   die "No response from POST $url $client_response"
-      if !$response;
-   die "POST $url returned HTTP status $response->{status}; expected 200"
-      if $response->{status} != 200;
-
-   return unless $response->{content};
-
-   $items = $vc->parse_server_response(
-      response   => $response->{content},
-      split_vars => 0,
-   );
-   die "Failed to parse server suggestions: $response->{content}"
-      if !scalar keys %$items;
-   my @suggestions = map { $_->{vars} }
-                     sort { $a->{item} cmp $b->{item} }
-                     values %$items;
-
-   return \@suggestions;
-}
-
-sub time_to_check {
-   my ($file, $instances, $time) = @_;
-   die "I need a file argument" unless $file;
-   $time ||= int(time());  # current time
-
-   if ( @$instances ) {
-      my $instances_to_check = instances_to_check($file, $instances, $time);
-      return scalar @$instances_to_check, $instances_to_check;
-   }
-
-   return 1 if !-f $file;
-   
-   my $mtime  = (stat $file)[9];
-   if ( !defined $mtime ) {
-      PTDEBUG && _d('Error getting modified time of', $file);
-      return 1;
-   }
-   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
-   if ( ($time - $mtime) > $check_time_limit ) {
-      return 1;
-   }
-
-   return 0;
-}
-
-sub instances_to_check {
-   my ($file, $instances, $time, %args) = @_;
-
-   my $file_contents = '';
-   if (open my $fh, '<', $file) {
-      chomp($file_contents = do { local $/ = undef; <$fh> });
-      close $fh;
-   }
-   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
-
-   my @instances_to_check;
-   foreach my $instance ( @$instances ) {
-      my $mtime = $cached_instances{ $instance->{id} };
-      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('Time to check MySQL instance', $instance->{name});
-         }
-         push @instances_to_check, $instance;
-         $cached_instances{ $instance->{id} } = $time;
-      }
-   }
-
-   if ( $args{update_file} ) {
-      open my $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
-      while ( my ($id, $time) = each %cached_instances ) {
-         print { $fh } "$id,$time\n";
-      }
-      close $fh or die "Cannot close $file: $OS_ERROR";
-   }
-
-   return \@instances_to_check;
-}
-
-sub update_checks_file {
-   my ($file, $instances, $time) = @_;
-
-   if ( !-f $file ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Creating time limit file', $file);
-      }
-      _touch($file);
-   }
-
-   if ( $instances && @$instances ) {
-      instances_to_check($file, $instances, $time, update_file => 1);
-      return;
-   }
-
-   my $mtime  = (stat $file)[9];
-   if ( !defined $mtime ) {
-      _touch($file);
-      return;
-   }
-   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
-   if ( ($time - $mtime) > $check_time_limit ) {
-      _touch($file);
-      return;
-   }
-
-   return;
-}
-
-sub _touch {
-   my ($file) = @_;
-   sysopen my $fh, $file, O_WRONLY|O_CREAT
-      or die "Cannot create $file : $!";
-   close $fh or die "Cannot close $file : $!";
-   utime(undef, undef, $file);
-}
-
-sub _generate_identifier {
-   my $instance = shift;
-   my $dbh      = $instance->{dbh};
-   my $dsn      = $instance->{dsn};
-
-   my $sql = q{SELECT CONCAT(@@hostname, @@port)};
-   PTDEBUG && _d($sql);
-   my ($name) = eval { $dbh->selectrow_array($sql) };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
-      $sql = q{SELECT @@hostname};
-      PTDEBUG && _d($sql);
-      ($name) = eval { $dbh->selectrow_array($sql) };
-      if ( $EVAL_ERROR ) {
-         PTDEBUG && _d($EVAL_ERROR);
-         $name = ($dsn->{h} || 'localhost') . ($dsn->{P} || 3306);
-      }
-      else {
-         $sql = q{SHOW VARIABLES LIKE 'port'};
-         PTDEBUG && _d($sql);
-         my (undef, $port) = eval { $dbh->selectrow_array($sql) };
-         PTDEBUG && _d('port:', $port);
-         $name .= $port || '';
-      }
-   }
-   my $id = md5_hex($name);
-
-   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('MySQL instance', $name, 'is', $id);
-   }
-
-   return $name, $id;
-}
-
-sub encode_client_response {
-   my (%args) = @_;
-   my @required_args = qw(items versions general_id);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
-   }
-   my ($items, $versions, $general_id) = @args{@required_args};
-
-   my @lines;
-   foreach my $item ( sort keys %$items ) {
-      next unless exists $versions->{$item};
-      if ( ref($versions->{$item}) eq 'HASH' ) {
-         my $mysql_versions = $versions->{$item};
-         for my $id ( sort keys %$mysql_versions ) {
-            push @lines, join(';', $id, $item, $mysql_versions->{$id});
-         }
-      }
-      else {
-         push @lines, join(';', $general_id, $item, $versions->{$item});
-      }
-   }
-
-   my $client_response = join("\n", @lines) . "\n";
-   return $client_response;
 }
 
 sub parse_server_response {
@@ -1921,6 +1618,14 @@ sub get_bin_version {
 
    PTDEBUG && _d('Version for', $sanitized_command, '=', $version);
    return $version;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;
@@ -4365,10 +4070,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use POSIX       qw(signal_h);
-use Time::HiRes qw(sleep time);
-use JSON        qw(decode_json);
-use File::Temp  qw(tempfile);
+use Scalar::Util qw(blessed);
+use POSIX        qw(signal_h);
+use Time::HiRes  qw(sleep time);
+use JSON         qw(decode_json);
+use File::Temp   qw(tempfile);
 use File::Path;
 
 use Percona::Toolkit; 
@@ -4512,6 +4218,13 @@ sub main {
       }
    }
 
+   # Check and init the --lib dir.  This dir is used to save
+   # the Agent resource (/agent), Service resources (/services/),
+   # and crontab for services (/conrtab, /crontab.err).
+   init_lib_dir(
+      lib_dir => $o->get('lib'),
+   );
+
    # Wait time between checking for new config and services.
    # Use the tool's built-in default until a config is gotten,
    # then config->{check-interval} will be pass in.
@@ -4527,11 +4240,10 @@ sub main {
    # Run the agent's main loop which doesn't return until the service
    # is stopped, killed, or has an internal bug.
    run_agent(
-      agent       => $agent,
-      client      => $client,
-      interval    => $check_wait,
-      config_file => $config_file,
-      lib_dir     => $o->get('lib'),
+      agent    => $agent,
+      client   => $client,
+      interval => $check_wait,
+      lib_dir  => $o->get('lib'),
    );
 
    _info("pt-agent exit $exit_status, oktorun $oktorun");
@@ -4605,7 +4317,8 @@ sub get_api_client {
    my $_oktorun = $args{oktorun} || sub { return $oktorun };
 
    my $client = Percona::WebAPI::Client->new(
-      api_key  => $api_key,
+      api_key    => $api_key,
+      entry_link => $args{entry_link} || $ENV{PWS_ENTRY_LINK},
    );
 
    my $entry_links;
@@ -4658,31 +4371,38 @@ sub init_agent {
    my $agent_file = $lib_dir . "/agent";
    my $agent;
    my $action;
+   my $link;
    if ( -f $agent_file ) {
       _info("Reading saved Agent from $agent_file");
       my $agent_hashref = decode_json(slurp($agent_file));
       $agent  = Percona::WebAPI::Resource::Agent->new(%$agent_hashref);
-      $action = 'put';  # must be lc
+      if ( !$agent->uuid ) {
+         _err("No UUID for Agent in $agent_file.");
+      }
+      $action    = 'put';  # must be lc
+      $link      = $agents_link . '/' . $agent->uuid;
+      $agent_uri = $link;
    }
    else {
       _info("Creating new Agent");
-      $action = 'post';  # must be lc
-      $agent  = Percona::WebAPI::Resource::Agent->new(
-         id       => 0,  # PWS will change this
+      chomp(my $hostname = `hostname`);
+      $agent = Percona::WebAPI::Resource::Agent->new(
+         hostname => $hostname,
          versions => $versions,
-         hostname => `hostname`,
       );
+      $action = 'post';  # must be lc
+      $link   = $agents_link;
    }
 
    # Try forever to create/update the Agent.  The tool can't
    # do anything without an Agent, so we must succeed to proceed.
-   my $new_agent_link;  # Location header in POST response
+   my $agent_uri;
    while ( $_oktorun->() ) {
-      _info($action eq 'put' ? "Updating agent " . $agent->id
+      _info($action eq 'put' ? "Updating agent " . $agent->name
                              : "Creating new agent");
       eval {
-         $new_agent_link = $client->$action(
-            link      => $agents_link,
+         $agent_uri = $client->$action(
+            link      => $link,
             resources => $agent,
          );
       };
@@ -4691,26 +4411,28 @@ sub init_agent {
       $interval->();
    }
 
-   # If the Agent was new, POST will have returned a link to
-   # the newly created and updated Agent resource.
-   if ( $new_agent_link ) {
-      $agent = $client->get(
-         link => $new_agent_link,
+   # The Agent URI will have been returned in the Location header
+   # of the POST or PUT response.  GET the Agent (even after PUT)
+   # to get a link to the agent's config.
+   if ( !$agent_uri ) {
+      _err("No URI for Agent " . $agent->name);
+   }
+   $agent = $client->get(
+      link => $agent_uri,
+   );
+   eval {
+      save_agent(
+         agent   => $agent,
+         lib_dir => $lib_dir,
       );
-      eval {
-         save_agent(
-            agent => $agent,
-            file  => $agent_file,
-         );
-      };
-      if ( $EVAL_ERROR ) {
-         _warn("Error saving Agent to $agent_file: $EVAL_ERROR\n"
-            . "pt-agent will continue running and try to save "
-            . "the Agent later.");
-      }
+   };
+   if ( $EVAL_ERROR ) {
+      _warn("Error saving Agent to $agent_file: $EVAL_ERROR\n"
+         . "pt-agent will continue running and try to save "
+         . "the Agent later.");
    }
 
-   _info("Agent initialized and ready");
+   _info("Agent " . $agent->name . " initialized and ready");
    return $agent;
 }
 
@@ -4727,60 +4449,60 @@ sub run_agent {
       agent
       client
       interval
-      config_file
       lib_dir
    )) or die;
-   my $agent       = $args{agent};
-   my $client      = $args{client};
-   my $interval    = $args{interval};
-   my $config_file = $args{config_file};
-   my $lib_dir     = $args{lib_dir};
+   my $agent    = $args{agent};
+   my $client   = $args{client};
+   my $interval = $args{interval};
+   my $lib_dir  = $args{lib_dir};
 
    # Optional args
    my $oktorun = $args{oktorun} || sub { return $oktorun };
 
-   _info('Running agent ' . $agent->id);
+   _info('Running agent ' . $agent->name);
 
    my $config;
    my $services;
    AGENT_LOOP:
    while ( $oktorun->() ) {
-      eval {
-         _info('Getting config');
 
-         # Get the agent's Config from Percona.
-         my $new_config = $client->get(
+      _info('Getting config');
+      my $new_config = eval {
+         $client->get(
             link => $agent->links->{config},
          );
-
-         # If the current and new configs are different,
-         # write the new one to disk, then apply it.
-         if ( resource_diff($config, $new_config) ) {
-            _info('New config');
-
-            write_config(
-               config => $new_config,
-               file   => $config_file,
-            );
-
-            # Whatever --lib dir the new config has, use it.
-            # Services are written to --lib/services
-            if ( my $new_lib_dir = $new_config->options->{lib} ) {
-               # TODO: what if new lib dir doesn't have /services?
-               $lib_dir = $new_lib_dir;
-               _info("New --lib direcotry: $lib_dir");
+      };
+      if ( my $e = $EVAL_ERROR ) {
+         if (blessed($e) && $e->isa('Percona::WebAPI::Exception::Request')) {
+            if ( $e->status == 404 ) {
+               _info('Agent ' . $agent->name. ' is not configured.');
             }
-
-            # Apply new config, i.e. update the current, running config.
-            $config = $new_config;
-            _info('Config updated successfully');
+            else {
+               _info("$e");  # PWS API error?
+            }
          }
          else {
-            _info('Config has not changed');
+            _err("$e");  # internal error
          }
-      };
-      if ( $EVAL_ERROR ) {
-         _warn($EVAL_ERROR);
+      }
+      else {
+         eval {
+            if ( !$config || $new_config->config_id != $config->config_id ) {
+               $lib_dir = apply_config(
+                  agent   => $agent,
+                  config  => $new_config,
+                  lib_dir => $lib_dir,
+               );
+               $config = $new_config;
+               _info('Config ' . $config->config_id . ' applied successfully');
+            }
+            else {
+               _info('Config has not changed');
+            }
+         };
+         if ( $EVAL_ERROR ) {
+            _warn($EVAL_ERROR);
+         }
       }
 
       # Get services only if there's a current, running config.
@@ -4822,9 +4544,6 @@ sub run_agent {
             _warn($EVAL_ERROR);
          }
       }
-      else {
-         _info('Agent ' . $agent->id . ' is not configured');
-      }
 
       # If no config yet, the tool's built-in default for
       # --check-interval is used instead.
@@ -4833,7 +4552,7 @@ sub run_agent {
    } # AGENT_LOOP
 
    # This shouldn't happen until the service is stopped/killed.
-   _info('Agent ' . $agent->id . ' has stopped');
+   _info('Agent ' . $agent->name . ' has stopped');
    return;
 }
 
@@ -4844,12 +4563,11 @@ sub write_config {
 
    have_required_args(\%args, qw(
       config
-      file
    )) or die;
    my $config = $args{config};
-   my $file   = $args{file};
 
-   _info("Writing new config to $file");
+   my $file = get_config_file();
+   _info("Writing config to $file");
 
    # Get the api-key line if any; we don't want to/can't clobber this.
    open my $fh, "<", $file
@@ -4871,6 +4589,69 @@ sub write_config {
       or die "Error closing $file: $OS_ERROR";
 
    return;
+}
+
+sub init_lib_dir {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      lib_dir
+   )) or die;
+   my $lib_dir = $args{lib_dir};
+
+   if ( ! -d $lib_dir ) {
+      mkdir $lib_dir or die "Cannot mkdir $lib_dir: $OS_ERROR";
+   }
+   elsif ( ! -w $lib_dir ) {
+      die "--lib $lib_dir is not writable.\n";
+   }
+
+   my $services_dir = "$lib_dir/services";  # keep in sync with write_services()
+   if ( ! -d $services_dir ) {
+      mkdir $services_dir or die "Cannot mkdir $services_dir: $OS_ERROR";
+   }
+   elsif ( ! -w $services_dir ) {
+      die "$services_dir is not writable.\n";
+   }
+
+   return;
+}
+
+sub apply_config {
+   my (%args) = @_;
+
+   have_required_args(\%args, qw(
+      agent
+      config
+      lib_dir
+   )) or die;
+   my $agent   = $args{agent};
+   my $config  = $args{config};
+   my $lib_dir = $args{lib_dir};
+
+   _info('Applying config ' . $config->config_id);
+
+   # Save config in $HOME/.pt-agent.conf
+   write_config(
+      config => $config,
+   );
+
+   # If the --lib dir has changed, init the new one and re-write
+   # the Agent resource in it.
+   my $new_lib_dir = $config->options->{lib};
+   if ( $new_lib_dir && $new_lib_dir ne $lib_dir ) {
+      _info("New --lib direcotry: $new_lib_dir");
+      init_lib_dir(
+         lib_dir => $new_lib_dir,
+      );
+      save_agent(
+         agent   => $agent,
+         lib_dir => $new_lib_dir,
+      );
+      # TODO: copy old-lib/services/* to new-lib/services/ ?
+   }
+
+   return $new_lib_dir || $lib_dir;
 }
 
 # Write each service to its own file in --lib/.  Remove services
@@ -5303,10 +5084,11 @@ sub save_agent {
    my (%args) = @_;
    have_required_args(\%args, qw(
       agent
-      file
+      lib_dir
    )) or die;
-   my $agent = $args{agent};
-   my $file  = $args{file};
+   my $agent   = $args{agent};
+   my $lib_dir = $args{lib_dir};
+   my $file    = $lib_dir . '/agent';
    _info("Saving Agent to $file");
    open my $fh, '>', $file
       or die "Error opening $file: $OS_ERROR";

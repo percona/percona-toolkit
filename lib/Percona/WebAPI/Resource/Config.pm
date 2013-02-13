@@ -22,8 +22,8 @@ package Percona::WebAPI::Resource::Config;
 
 use Lmo;
 
-has 'id' => (
-   is       => 'r0',
+has 'config_id' => (
+   is       => 'ro',
    isa      => 'Int',
    required => 1,
 );

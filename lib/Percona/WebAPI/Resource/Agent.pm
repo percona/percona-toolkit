@@ -22,16 +22,22 @@ package Percona::WebAPI::Resource::Agent;
 
 use Lmo;
 
-has 'id' => (
-   is       => 'ro',
+has 'uuid' => (
+   is       => 'r0',
    isa      => 'Str',
-   required => 1,
+   required => 0,
 );
 
 has 'hostname' => (
    is       => 'ro',
    isa      => 'Str',
    required => 1,
+);
+
+has 'alias' => (
+   is       => 'ro',
+   isa      => 'Str',
+   required => 0,
 );
 
 has 'versions' => (
@@ -46,6 +52,11 @@ has 'links' => (
    required => 0,
    default  => sub { return {} },
 );
+
+sub name {
+   my ($self) = @_;
+   return $self->alias || $self->hostname || $self->uuid || 'Unknown';
+}
 
 no Lmo;
 1;

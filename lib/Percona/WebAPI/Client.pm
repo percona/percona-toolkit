@@ -48,15 +48,15 @@ has 'api_key' => (
 has 'entry_link' => (
    is       => 'rw',
    isa      => 'Str',
-   default  => sub { return 'https://api.tools.percona.com' },
    required => 0,
+   default  => sub { return 'https://api.tools.percona.com' },
 );
 
 has 'ua' => (
    is       => 'rw',
    isa      => 'Object',
    lazy     => 1,
-   required => 1,
+   required => 0,
    builder  => '_build_ua',
 );
 
@@ -166,12 +166,12 @@ sub post {
 # For a successful PUT, the server returns nothing because the caller
 # already has the resources URI (if not, the caller should POST).
 sub put {
-   my $self = shift;
+   my ($self, %args) = @_;
    $self->_set(
-      @_,
+      %args,
       method => 'PUT',
    );
-   return;
+   return $self->response->header('Location');
 }
 
 sub delete {
