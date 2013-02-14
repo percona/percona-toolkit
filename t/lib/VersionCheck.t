@@ -162,6 +162,10 @@ SKIP: {
    );
 }
 
+# #############################################################################
+# Version getters
+# #############################################################################
+
 # I can't think of a way to make these 2 OS tests more specific
 # since the test env doesn't know what OS its running on.  We
 # at least know that an OS should have these two things: a word
@@ -186,6 +190,19 @@ like(
 ok(
    $os !~ m/\n$/,
    "Newline stripped from OS"
+);
+
+is(
+   VersionCheck::get_perl_module_version(
+      item => {
+         item => 'DBD::mysql',
+         type => 'perl_module_version',
+         vars => [],
+      },
+      instances => [],
+   ),
+   $DBD::mysql::VERSION,
+   "get_perl_module_version(): DBD::mysql"
 );
 
 # #############################################################################

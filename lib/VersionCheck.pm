@@ -187,7 +187,10 @@ sub get_instances_to_check {
    foreach my $instance ( @$instances ) {
       my $last_check_time = $last_check_time_for{ $instance->{id} };
       PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
-         $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0));
+         $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0),
+         'hours until next check',
+         sprintf '%.2f',
+            ($check_time_limit - ($now - ($last_check_time || 0))) / 3600);
       if ( !defined $last_check_time
            || ($now - $last_check_time) >= $check_time_limit ) {
          PTDEBUG && _d('Time to check', Dumper($instance));
@@ -455,7 +458,6 @@ sub get_versions {
    return \%versions;
 }
 
-
 # #############################################################################
 # Version getters
 # #############################################################################
@@ -554,18 +556,10 @@ sub get_perl_module_version {
    # If there's a var, then its an explicit Perl variable name to get,
    # else the item name is an implicity Perl module name to which we
    # append ::VERSION to get the module's version.
-   my $var          = $item->{item} . '::VERSION';
-   my $version      = get_scalar($var);
-   PTDEBUG && _d('Perl version for', $var, '=', "$version");
-
-   # Explicitly stringify this else $PERL_VERSION will return
-   # as a version object.
-   return $version ? "$version" : $version;
-}
-
-sub get_scalar {
-   no strict;
-   return ${*{shift()}};
+   my $var     = '$' . $item->{item} . '::VERSION';
+   my $version = eval "use $item->{item}; $var;";
+   PTDEBUG && _d('Perl version for', $var, '=', $version);
+   return $version;
 }
 
 sub get_mysql_variable {
