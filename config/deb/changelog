@@ -11,7 +11,7 @@ percona-toolkit (2.1.9) unstable; urgency=low
   * Fixed bug  918056: pt-table-sync false-positive error "Cannot nibble table because MySQL chose no index instead of the PRIMARY index"
   * Fixed bug 1099933: pt-stalk is too verbose, fills up log
 
- -- Percona Toolkit Developers <toolkit-dev@percona.com>  Mon, 11 Feb 2013 17:25:44 +0000
+ -- Percona Toolkit Developers <toolkit-dev@percona.com>  Thu, 14 Feb 2013 17:25:44 +0000
 
 percona-toolkit (2.1.8) unstable; urgency=low
 

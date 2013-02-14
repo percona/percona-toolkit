@@ -1,33 +1,61 @@
 Release Notes
 *************
 
-v2.1.9 released 2013-02-11
+v2.1.9 released 2013-02-14
 ==========================
 
-Percona Toolkit 2.1.9 has been released.  This is the first maintenance release
-of the 2.1 series, and primarily aims to restore backwards-compatibility with
-releases 2.1.7 and older.
+Percona Toolkit 2.1.9 has been released.  This release primarily aims to
+restore backwards-compatibility with pt-heartbeat 2.1.7 and older, but it
+also has important bug fixes for other tools.
 
 * Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
 * Fixed bug 1099665: pt-heartbeat 2.1.8 reports big time drift with UTC_TIMESTAMP
 
 The previous release switched the time authority from Perl to MySQL, and from
 local time to UTC. Unfortunately, these changes caused a loss of precision and,
-if mixing versions of pt-heartbeat, made the tool report a huge amount
-of replication lag.
-This release makes the tool compatible with the 2.1.7 and older releases again,
-but makes the UTC behaviour available through the --utc option.
+if mixing versions of pt-heartbeat, made the tool report a huge amount of
+replication lag.  This release makes the tool compatible with pt-heartbeat
+2.1.7 and older again, but the UTC behavior introduced in 2.1.8 is now only
+available by specifying the new --utc option.
+
+* Fixed bug  918056: pt-table-sync false-positive error "Cannot nibble table because MySQL chose no index instead of the PRIMARY index"
+
+This is an important bug fix for pt-table-sync: certain chunks from
+pt-table-checksum resulted in an impossible WHERE, causing the false-positive
+"Cannot nibble" error, if those chunks had diffs.
+
+* Fixed bug 1099836: pt-online-schema-change fails with "Duplicate entry" on MariaDB
+
+MariaDB 5.5.28 (https://kb.askmonty.org/en/mariadb-5528-changelog/) fixed
+a bug: "Added warnings for duplicate key errors when using INSERT IGNORE".
+However, standard MySQL does not warn in this case, despite the docs saying
+that it should.  Since pt-online-schema-change has always intended to ignore
+duplicate entry errors by using "INSERT IGNORE", it now handles the MariaDB
+case by also ignoring duplicate entry errors in the code.
+
+* Fixed bug 1103672: pt-online-schema-change makes bad DELETE trigger if PK is re-created with new columns
+
+pt-online-schema-change 2.1.9 handles another case of changing the primary key.
+However, since changing the primary key is tricky, the tool stops if --alter
+contains "DROP PRIMARY KEY", and you have to specify --no-check-alter to
+acknowledge this case.
 
 * Fixed bug 1099933: pt-stalk is too verbose, fills up log
 
-This adds a --verbose option to pt-stalk, which is useful if using the tool as a daemon.
+Previously, pt-stalk printed a line for every check.  Since the tool is
+designed to be a long-running daemon, this could result in huge log files
+with "matched=no" lines. The tool has a new --verbose option which makes it
+quieter by default.
 
-All users are recommended to upgrade, but in particular, users of versions 2.1.7 and
-older are strongly recommended to skip 2.1.8 and go directly for 2.1.9.
-Users of pt-heartbeat in 2.1.8, who prefer the UTC behavior, should keep in mind that they
-will have to use the --utc option after upgrading.
+All users should upgrade, but in particular, users of versions 2.1.7 and
+older are strongly recommended to skip 2.1.8 and go directly to 2.1.9.
 
-Percona Toolkit packages can be downloaded from http://www.percona.com/downloads/percona-toolkit/ or the Percona Software Repositories (http://www.percona.com/software/repositories/).
+Users of pt-heartbeat in 2.1.8 who prefer the UTC behavior should keep in
+mind that they will have to use the --utc option after upgrading.
+
+Percona Toolkit packages can be downloaded from
+http://www.percona.com/downloads/percona-toolkit/ or the Percona Software
+Repositories (http://www.percona.com/software/repositories/).
 
 Changelog
 ---------
