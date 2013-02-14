@@ -48,12 +48,30 @@ eval {
 };
 
 # Return the version check file used to keep track of
-# MySQL instance that have been checked and when.
-sub version_check_file {
-   return File::Spec->catfile(
-      File::Spec->tmpdir(),
-      'percona-version-check-2.2'
+# MySQL instance that have been checked and when.  Some
+# systems use random tmp dirs; we don't want that else
+# every user will have their own vc file.  One vc file
+# per system is the goal, so prefer global sys dirs first.
+{
+   my $file    = 'percona-version-check';
+   my $home    = $ENV{HOME} || $ENV{HOMEPATH} || $ENV{USERPROFILE} || '.';
+   my @vc_dirs = (
+      '/etc/percona',
+      '/etc/percona-toolkit',
+      '/tmp',
+      "$home",
    );
+
+   sub version_check_file {
+      foreach my $dir ( @vc_dirs ) {
+         if ( -d $dir && -w $dir ) {
+            PTDEBUG && _d('Version check file', $file, 'in', $dir);
+            return $dir . '/' . $file;
+         }
+      }
+      PTDEBUG && _d('Version check file', $file, 'in', $ENV{PWD});
+      return $file;  # in the CWD
+   } 
 }
 
 # Return time limit between checks.
