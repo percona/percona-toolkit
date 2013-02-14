@@ -107,6 +107,31 @@ checkconfig() {
       fi
    fi
 
+   if [ ! -f "/etc/percona-toolkit/percona-toolkit.conf" ]; then
+      conf_err=1
+      stat="DOES NOT EXIST"
+   else
+      stat="ok"
+   fi
+   if [ $print_conf ]; then
+      echo "/etc/percona-toolkit/percona-toolkit.conf - $stat"
+   fi
+
+   if [ -f "/etc/percona-toolkit/percona-toolkit.conf" ]; then
+      grep "no-version-check" "/etc/percona-toolkit/percona-toolkit.conf"
+      if [ $? -ne 0 ]; then
+         conf_err=1
+         stat="DOES NOT HAVE no-version-check"
+      else
+         stat="ok"
+      fi
+      if [ $print_conf ]; then
+         echo "/etc/percona-toolkit/percona-toolkit.conf - $stat"
+      fi
+   else
+      echo "/etc/percona-toolkit/percona-toolkit.conf - DOES NOT HAVE no-version-check"
+   fi
+
    return $conf_err
 }
 
