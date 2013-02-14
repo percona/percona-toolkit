@@ -96,9 +96,11 @@ sub version_check_time_limit {
 # e.g. https://stage.v.percona.com for testing.
 sub version_check {
    my (%args) = @_;
-   eval {
-      my $instances = $args{instances} || [];
 
+   my $instances = $args{instances} || [];
+   my $instances_to_check;
+
+   eval {
       if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
          PTDEBUG && _d('--version-check disabled by PERCONA_VERSION_CHECK=0');
          return;
@@ -116,7 +118,7 @@ sub version_check {
       push @$instances, { name => 'system', id => 0 };
 
       # Get the instances which haven't been checked in the 24 hours.
-      my $instances_to_check = get_instances_to_check(
+      $instances_to_check = get_instances_to_check(
          instances => $instances,
          vc_file   => $args{vc_file},  # testing
          now       => $args{now},      # testing
@@ -127,22 +129,21 @@ sub version_check {
       # Get the list of program to check from Percona.  Try using
       # https first; fallback to http if that fails (probably because
       # IO::Socket::SSL isn't installed).
-      my $advice;
-      PROTOCOL:
-      foreach my $protocol ( qw(https http) ) {
-         $advice = eval {
-            pingback(
-               instances => $instances_to_check,
-               protocol  => $protocol,
-               url       =>    $args{url}                       # testing
-                            || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
-                            || "$protocol://v.percona.com",
-            );
-         };
-         last PROTOCOL unless $EVAL_ERROR;
-         PTDEBUG && _d('--version-check error:', $EVAL_ERROR);
+      my $protocol = 'https';  # optimistic, but...
+      eval { require IO::Socket::SSL; };
+      if ( $EVAL_ERROR ) {
+         PTDEBUG && _d($EVAL_ERROR);
+         $protocol = 'http';
       }
+      PTDEBUG && _d('Using', $protocol);
 
+      my $advice = pingback(
+         instances => $instances_to_check,
+         protocol  => $protocol,
+         url       => $args{url}                       # testing
+                   || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                   || "$protocol://v.percona.com",
+      );
       if ( $advice ) {
          PTDEBUG && _d('Advice:', Dumper($advice));
          if ( scalar @$advice > 1) {
@@ -154,7 +155,13 @@ sub version_check {
          }
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d('Version check failed:', $EVAL_ERROR);
+   }
 
+   # Always update the vc file, even if the version check fails.
+   eval {
       # Update the check time for things we checked.  I.e. if we
       # didn't check it, do _not_ update its time.
       update_check_times(
@@ -164,7 +171,7 @@ sub version_check {
       );
    };
    if ( $EVAL_ERROR ) {
-      PTDEBUG && _d('--version-check failed:', $EVAL_ERROR);
+      PTDEBUG && _d('Error updating version check file:', $EVAL_ERROR);
    }
 
    if ( $ENV{PTDEBUG_VERSION_CHECK} ) {
@@ -184,7 +191,8 @@ sub get_instances_to_check {
    my $vc_file   = $args{vc_file} || version_check_file();
 
    if ( !-f $vc_file ) {
-      PTDEBUG && _d($vc_file, 'does not exist; version checking all instances');
+      PTDEBUG && _d('Version check file', $vc_file, 'does not exist;',
+         'version checking all instances');
       return $instances;
    }
 
@@ -194,7 +202,7 @@ sub get_instances_to_check {
    # all and check only the instances for the current tool.
    open my $fh, '<', $vc_file or die "Cannot open $vc_file: $OS_ERROR";
    chomp(my $file_contents = do { local $/ = undef; <$fh> });
-   PTDEBUG && _d($vc_file, 'contents:', $file_contents);
+   PTDEBUG && _d('Version check file', $vc_file, 'contents:', $file_contents);
    close $fh;
    my %last_check_time_for = $file_contents =~ /^([^,]+),(.+)$/mg;
 
@@ -228,7 +236,7 @@ sub update_check_times {
    PTDEBUG && _d('Updating last check time:', $now);
 
    open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
-   foreach my $instance ( sort { $a->{id} <=> $b->{id} } @$instances ) {
+   foreach my $instance ( sort { $a->{id} cmp $b->{id} } @$instances ) {
       PTDEBUG && _d('Updated:', Dumper($instance));
       print { $fh } $instance->{id} . ',' . $now . "\n";
    }
@@ -271,7 +279,7 @@ sub get_instance_id {
    }
    my $id = md5_hex($name);
 
-   PTDEBUG && _d('MySQL instance', $name, 'is', $id);
+   PTDEBUG && _d('MySQL instance:', $id, $name, $dsn);
 
    return $name, $id;
 }
@@ -290,7 +298,7 @@ sub pingback {
    my $instances = $args{instances};
 
    # Optional args
-   my $ua = $args{ua} || HTTPMicro->new( timeout => 5 );
+   my $ua = $args{ua} || HTTPMicro->new( timeout => 3 );
 
    # GET https://upgrade.percona.com, the server will return
    # a plaintext list of items/programs it wants the tool
@@ -618,7 +626,6 @@ sub get_from_mysql {
             'on', $instance->{name});
          push @versions, $version;
       }
-
       $version_for{ $instance->{id} } = join(' ', @versions);
    }
 

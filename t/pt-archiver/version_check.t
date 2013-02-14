@@ -32,19 +32,17 @@ my $cnf  = "/tmp/12345/my.sandbox.cnf";
 my $cmd  = "$trunk/bin/pt-archiver";
 my @args = qw(--dry-run --where 1=1);
 
-# Pingback.pm does this too.
-my $dir = File::Spec->tmpdir();
-my $check_time_file = File::Spec->catfile($dir,'percona-toolkit-version-check');
-unlink $check_time_file if -f $check_time_file;
+my $vc_file = VersionCheck::version_check_file();
+unlink $vc_file if -f $vc_file;
 
 $sb->create_dbs($master_dbh, ['test']);
 $sb->load_file('master', 't/pt-archiver/samples/tables1-4.sql');
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
+$output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 like(
    $output,
-   qr/(?:VersionCheck|Pingback|Percona suggests)/,
+   qr/VersionCheck/,
    "Looks like the version-check happened"
 ) or diag($output);
 
@@ -56,23 +54,33 @@ is_deeply(
 ) or diag(Dumper($rows));
 
 ok(
-   -f $check_time_file,
-   "Created percona-toolkit-version-check file"
+   -f $vc_file,
+   "Created version check file"
 );
+
+my $orig_vc_file = `cat $vc_file 2>/dev/null`;
 
 # ###########################################################################
 # v-c file should limit checks to 1 per 24 hours
 # ###########################################################################
 
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
+$output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 like(
    $output,
-   qr/It is not time to --version-check again/,
-   "Doesn't always check because of time limit"
+   qr/0 instances to check/,
+   "No instances to check because of time limit"
 );
 
-unlink $check_time_file if -f $check_time_file;
+my $new_vc_file = `cat $vc_file 2>/dev/null`;
+
+is(
+   $new_vc_file,
+   $orig_vc_file,
+   "Version check file not changed"
+);
+
+unlink $vc_file if -f $vc_file;
 
 # ###########################################################################
 # Fake v.percona.com not responding by using a different, non-existent URL.
@@ -80,17 +88,17 @@ unlink $check_time_file if -f $check_time_file;
 
 my $t0 = time;
 
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
+$output = `PTDEBUG=1 PERCONA_VERSION_CHECK_URL='http://x.percona.com' $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 my $t = time - $t0;
 
 like(
    $output,
-   qr/Error.+?(?:GET on http:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
+   qr/Error.+?(?:GET on https?:\/\/x\.percona\.com.+?HTTP status 5\d+|Failed to get any program versions; should have at least gotten Perl)/,
    "The Percona server didn't respond"
 );
 
-# In actuality it should only wait 2s, but on slow boxes all the other
+# In actuality it should only wait 3s, but on slow boxes all the other
 # stuff the tool does may cause the time to be much greater than 2.
 # If nothing else, this tests that the timeout isn't something crazy
 # like 30s.
@@ -101,40 +109,38 @@ cmp_ok(
    "Tool waited a short while for the Percona server to respond"
 );
 
+unlink $vc_file if -f $vc_file;
+
 # ###########################################################################
-# Disable the v-c (for now it's disabled by default, so by "disable" here
-# we just mean "don't pass --version-check").
+# Disable the v-c.  It's already disabled, actually: test-env requires
+# no-version-check in /etc/percona-toolkit/percona-toolkit.conf (to keep
+# every test everywhere from version-checking).
 # ###########################################################################
 
-unlink $check_time_file if -f $check_time_file;
-
-$output = `PTVCDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
+$output = `PTDEBUG=1 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge 2>&1`;
 
 unlike(
    $output,
-   qr/(?:VersionCheck|Pingback|Percona suggests)/,
+   qr/VersionCheck/,
    "Looks like no --version-check disabled the version-check"
 ) or diag($output);
 
 ok(
-   !-f $check_time_file,
+   !-f $vc_file,
    "percona-toolkit-version-check file not created with --no-version-check"
 );
 
-# PERCONA_VERSION_CHECK=0 is handled in Pingback, so it will print a line
-# for PTVCDEBUG saying why it didn't run.  So we just check that it doesn't
-# create the file which also signifies that it didn't run.
-$output = `PTVCDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check http 2>&1`;
+$output = `PTDEBUG=1 PERCONA_VERSION_CHECK=0 $cmd --source F=$cnf,D=test,t=table_1 --where 1=1 --purge --version-check 2>&1`;
 
 ok(
-   !-f $check_time_file,
+   !-f $vc_file,
    "Looks like PERCONA_VERSION_CHECK=0 disabled the version-check"
 );
 
 # #############################################################################
 # Done.
 # #############################################################################
-unlink $check_time_file if -f $check_time_file;
+unlink $vc_file if -f $vc_file;
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
