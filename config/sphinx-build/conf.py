@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Percona Toolkit'
-copyright = u'2011, Percona Inc'
+copyright = u'2013, Percona Ireland Ltd'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -179,7 +179,7 @@ htmlhelp_basename = 'PerconaToolkitdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'PerconaToolkit.tex', u'Percona Toolkit Documentation',
-   u'Percona Inc', 'manual'),
+   u'Percona Ireland Ltd', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -212,5 +212,5 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'perconatoolkit', u'Percona Toolkit Documentation',
-     [u'Percona Inc'], 1)
+     [u'Percona Ireland Ltd'], 1)
 ]
