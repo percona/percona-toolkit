@@ -20,323 +20,207 @@
 {
 package VersionCheck;
 
+# NOTE: VersionCheck 2.2 is not compatible with 2.1.
+# In 2.1, the vc file did not have a special system
+# instance with ID 0, and it used the file's mtime.
+# In 2.2, the system and MySQL instances are all saved
+# in the vc file, and the file's mtime doesn't matter.
+
 use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
-use Data::Dumper   qw();
+use Data::Dumper;
+local $Data::Dumper::Indent    = 1;
+local $Data::Dumper::Sortkeys  = 1;
+local $Data::Dumper::Quotekeys = 0;
+
 use Digest::MD5    qw(md5_hex);
 use Sys::Hostname  qw(hostname);
-use Fcntl          qw(:DEFAULT);
 use File::Basename qw();
 use File::Spec;
 
-my $dir              = File::Spec->tmpdir();
-my $check_time_file  = File::Spec->catfile($dir,'percona-toolkit-version-check');
-my $check_time_limit = 60 * 60 * 24;  # one day
-
-sub Dumper {
-   local $Data::Dumper::Indent    = 1;
-   local $Data::Dumper::Sortkeys  = 1;
-   local $Data::Dumper::Quotekeys = 0;
-
-   Data::Dumper::Dumper(@_);
-}
-
-local $EVAL_ERROR;
 eval {
    require Percona::Toolkit;
    require HTTPMicro;
 };
 
+# Return the version check file used to keep track of
+# MySQL instance that have been checked and when.
+sub version_check_file {
+   return File::Spec->catfile(
+      File::Spec->tmpdir(),
+      'percona-version-check-2.2'
+   );
+}
+
+# Return time limit between checks.
+sub version_check_time_limit {
+   return 60 * 60 * 24;  # one day
+}
+
+# #############################################################################
+# Version check handlers
+# #############################################################################
+
+# Do a version check.  This is only sub a caller/tool needs to call.
+# Pass in an arrayref of hashrefs for each MySQL instance to check.
+# Each hashref should have a dbh and a dsn.
+#
+# This sub fails silently, so you must use PTDEBUG to diagnose.  Use
+# PTDEBUG_VERSION_CHECK=1 and this sub will exit 255 when it's done
+# (helpful in combination with PTDEBUG=1 so you don't get the tool's
+# full debug output).
+#
+# Use PERCONA_VERSION_CHECK_URL to set the version check API url,
+# e.g. https://stage.v.percona.com for testing.
 sub version_check {
-   my %args      = @_;
-   my @instances = $args{instances} ? @{ $args{instances} } : ();
-   # If this blows up, oh well, don't bother the user about it.
-   # This feature is a "best effort" only; we don't want it to
-   # get in the way of the tool's real work.
-
-   if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
-      warn '--version-check is disabled by the PERCONA_VERSION_CHECK ',
-                   "environment variable.\n\n";
-      return;
-   }
-
-   # we got here if the protocol wasn't "off", and the values
-   # were validated earlier, so just handle auto
-   # This line is mostly here for the test suite:
-   $args{protocol} ||= 'https';
-   my @protocols = $args{protocol} eq 'auto'
-                 ? qw(https http)
-                 : $args{protocol};
-   
-   my $instances_to_check = [];
-   my $time               = int(time());
+   my (%args) = @_;
    eval {
-      # Name and ID the instances.  The name is for debugging; the ID is
-      # what the code uses.
-      foreach my $instance ( @instances ) {
-         my ($name, $id) = _generate_identifier($instance);
+      my $instances = $args{instances} || [];
+
+      if (exists $ENV{PERCONA_VERSION_CHECK} && !$ENV{PERCONA_VERSION_CHECK}) {
+         PTDEBUG && _d('--version-check disabled by PERCONA_VERSION_CHECK=0');
+         return;
+      }
+
+      # Name and ID the instances.  The name is for debugging,
+      # and the ID is what the code uses to prevent double-checking.
+      foreach my $instance ( @$instances ) {
+         my ($name, $id) = get_instance_id($instance);
          $instance->{name} = $name;
          $instance->{id}   = $id;
       }
 
-      my $time_to_check;
-      ($time_to_check, $instances_to_check)
-         = time_to_check($check_time_file, \@instances, $time);
-      if ( !$time_to_check ) {
-         warn 'It is not time to --version-check again; ',
-                      "only 1 check per day.\n\n";
-         return;
+      # Push a special instance for the system itself.
+      push @$instances, { name => 'system', id => 0 };
+
+      # Get the instances which haven't been checked in the 24 hours.
+      my $instances_to_check = get_instances_to_check(
+         instances => $instances,
+         vc_file   => $args{vc_file},  # testing
+         now       => $args{now},      # testing
+      );
+      PTDEBUG && _d(scalar @$instances_to_check, 'instances to check');
+      return unless @$instances_to_check;
+
+      # Get the list of program to check from Percona.  Try using
+      # https first; fallback to http if that fails (probably because
+      # IO::Socket::SSL isn't installed).
+      my $advice;
+      PROTOCOL:
+      foreach my $protocol ( qw(https http) ) {
+         $advice = eval {
+            pingback(
+               instances => $instances_to_check,
+               protocol  => $protocol,
+               url       =>    $args{url}                       # testing
+                            || $ENV{PERCONA_VERSION_CHECK_URL}  # testing
+                            || "$protocol://v.percona.com",
+            );
+         };
+         last PROTOCOL unless $EVAL_ERROR;
+         PTDEBUG && _d('--version-check error:', $EVAL_ERROR);
       }
 
-      my $advice;
-      my $e;
-      for my $protocol ( @protocols ) {
-         $advice = eval { pingback(
-            url       => $ENV{PERCONA_VERSION_CHECK_URL} || "$protocol://v.percona.com",
-            instances => $instances_to_check,
-            protocol  => $protocol,
-         ) };
-         # No advice, and no error, so no reason to keep trying.
-         last if !$advice && !$EVAL_ERROR;
-         $e ||= $EVAL_ERROR;
-      }
       if ( $advice ) {
-         print "# Percona suggests these upgrades:\n";
+         PTDEBUG && _d('Advice:', Dumper($advice));
+         if ( scalar @$advice > 1) {
+            print "\n# " . scalar @$advice . " software updates are "
+               . "available:\n";
+         }
+         else {
+            print "\n# A software update is available:\n";
+         }
          print join("\n", map { "#   * $_" } @$advice), "\n\n";
       }
-      else {
-         die $e if $e;
-         print "# No suggestions at this time.\n\n";
-         ($ENV{PTVCDEBUG} || PTDEBUG )
-            && _d('--version-check worked, but there were no suggestions');
-      }
+
+      # Update the check time for things we checked.  I.e. if we
+      # didn't check it, do _not_ update its time.
+      update_check_times(
+         instances => $instances_to_check,
+         vc_file   => $args{vc_file},  # testing
+         now       => $args{now},      # testing
+      );
    };
    if ( $EVAL_ERROR ) {
-      warn "Error doing --version-check: $EVAL_ERROR";
+      PTDEBUG && _d('--version-check failed:', $EVAL_ERROR);
    }
-   else {
-      update_checks_file($check_time_file, $instances_to_check, $time);
+
+   if ( $ENV{PTDEBUG_VERSION_CHECK} ) {
+      warn "Exiting because the PTDEBUG_VERSION_CHECK "
+         . "environment variable is defined.\n";
+      exit 255;
    }
-   
+
    return;
 }
 
-sub pingback {
+sub get_instances_to_check {
    my (%args) = @_;
-   my @required_args = qw(url);
-   foreach my $arg ( @required_args ) {
-      die "I need a $arg arugment" unless $args{$arg};
-   }
-   my ($url) = @args{@required_args};
 
-   # Optional args
-   my ($instances, $ua) = @args{qw(instances ua)};
+   my $instances = $args{instances};
+   my $now       = $args{now}     || int(time);
+   my $vc_file   = $args{vc_file} || version_check_file();
 
-   $ua ||= HTTPMicro->new( timeout => 5 );
-
-   # GET https://upgrade.percona.com, the server will return
-   # a plaintext list of items/programs it wants the tool
-   # to get, one item per line with the format ITEM;TYPE[;VARS]
-   # ITEM is the pretty name of the item/program; TYPE is
-   # the type of ITEM that helps the tool determine how to
-   # get the item's version; and VARS is optional for certain
-   # items/types that need extra hints.
-   my $response = $ua->request('GET', $url);
-   ($ENV{PTVCDEBUG} || PTDEBUG) && _d('Server response:', Dumper($response));
-   die "No response from GET $url"
-      if !$response;
-   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
-       ($response->{content} || '')) if $response->{status} != 200;
-   die("GET on $url did not return any programs to check")
-      if !$response->{content};
-
-   # Parse the plaintext server response into a hashref keyed on
-   # the items like:
-   #    "MySQL" => {
-   #      item => "MySQL",
-   #      type => "mysql_variables",
-   #      vars => ["version", "version_comment"],
-   #    }
-   my $items = __PACKAGE__->parse_server_response(
-      response => $response->{content}
-   );
-   die "Failed to parse server requested programs: $response->{content}"
-      if !scalar keys %$items;
-      
-   # Get the versions for those items in another hashref also keyed on
-   # the items like:
-   #    "MySQL" => "MySQL Community Server 5.1.49-log",
-   my $versions = __PACKAGE__->get_versions(
-      items     => $items,
-      instances => $instances,
-   );
-   die "Failed to get any program versions; should have at least gotten Perl"
-      if !scalar keys %$versions;
-
-   # Join the items and whatever versions are available and re-encode
-   # them in same simple plaintext item-per-line protocol, and send
-   # it back to Percona.
-   my $client_content = encode_client_response(
-      items      => $items,
-      versions   => $versions,
-      general_id => md5_hex( hostname() ),
-   );
-
-   my $client_response = {
-      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
-      content => $client_content,
-   };
-   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('Client response:', Dumper($client_response));
+   if ( !-f $vc_file ) {
+      PTDEBUG && _d($vc_file, 'does not exist; version checking all instances');
+      return $instances;
    }
 
-   $response = $ua->request('POST', $url, $client_response);
-   PTDEBUG && _d('Server suggestions:', Dumper($response));
-   die "No response from POST $url $client_response"
-      if !$response;
-   die "POST $url returned HTTP status $response->{status}; expected 200"
-      if $response->{status} != 200;
+   # The version check file contains "ID,time" lines for each MySQL instance
+   # and a special "0,time" instance for the system.  Another tool may have
+   # seen fewer or more instances than the current tool, but we'll read them
+   # all and check only the instances for the current tool.
+   open my $fh, '<', $vc_file or die "Cannot open $vc_file: $OS_ERROR";
+   chomp(my $file_contents = do { local $/ = undef; <$fh> });
+   PTDEBUG && _d($vc_file, 'contents:', $file_contents);
+   close $fh;
+   my %last_check_time_for = $file_contents =~ /^([^,]+),(.+)$/mg;
 
-   # If the server does not have any suggestions,
-   # there will not be any content.
-   return unless $response->{content};
-
-   # If the server has suggestions for items, it sends them back in
-   # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
-   # debugging; the tool just repports the suggestions.
-   $items = __PACKAGE__->parse_server_response(
-      response   => $response->{content},
-      split_vars => 0,
-   );
-   die "Failed to parse server suggestions: $response->{content}"
-      if !scalar keys %$items;
-   my @suggestions = map { $_->{vars} }
-                     sort { $a->{item} cmp $b->{item} }
-                     values %$items;
-
-   return \@suggestions;
-}
-
-sub time_to_check {
-   my ($file, $instances, $time) = @_;
-   die "I need a file argument" unless $file;
-   $time ||= int(time());  # current time
-
-   # If we have MySQL instances, check only the ones that haven't been
-   # seen/checked before or were check > 24 hours ago.
-   if ( @$instances ) {
-      my $instances_to_check = instances_to_check($file, $instances, $time);
-      return scalar @$instances_to_check, $instances_to_check;
-   }
-
-   return 1 if !-f $file;
-   
-   # No MySQL instances (happens with tools like pt-diskstats), so just
-   # check the file's mtime and check if it was updated > 24 hours ago.
-   my $mtime  = (stat $file)[9];
-   if ( !defined $mtime ) {
-      PTDEBUG && _d('Error getting modified time of', $file);
-      return 1;
-   }
-   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
-   if ( ($time - $mtime) > $check_time_limit ) {
-      return 1;
-   }
-
-   # File was updated less than a day ago; don't check yet.
-   return 0;
-}
-
-sub instances_to_check {
-   my ($file, $instances, $time, %args) = @_;
-
-   # The time limit file contains "ID,time" lines for each MySQL instance
-   # that the last tool connected to.  The last tool may have seen fewer
-   # or more MySQL instances than the current tool, but we'll read them
-   # all and check only the MySQL instances for the current tool.
-   my $file_contents = '';
-   if (open my $fh, '<', $file) {
-      chomp($file_contents = do { local $/ = undef; <$fh> });
-      close $fh;
-   }
-   my %cached_instances = $file_contents =~ /^([^,]+),(.+)$/mg;
-
-   # Check the MySQL instances that have either 1) never been checked
-   # (or seen) before, or 2) were check > 24 hours ago.
+   # Check the instances that have either 1) never been checked
+   # (or seen) before, or 2) were checked > check time limit ago.
+   my $check_time_limit = version_check_time_limit();
    my @instances_to_check;
    foreach my $instance ( @$instances ) {
-      my $mtime = $cached_instances{ $instance->{id} };
-      if ( !$mtime || (($time - $mtime) > $check_time_limit) ) {
-         if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-            _d('Time to check MySQL instance', $instance->{name});
-         }
+      my $last_check_time = $last_check_time_for{ $instance->{id} };
+      PTDEBUG && _d('Intsance', $instance->{id}, 'last checked',
+         $last_check_time, 'now', $now, 'diff', $now - ($last_check_time || 0));
+      if ( !defined $last_check_time
+           || ($now - $last_check_time) >= $check_time_limit ) {
+         PTDEBUG && _d('Time to check', Dumper($instance));
          push @instances_to_check, $instance;
-         $cached_instances{ $instance->{id} } = $time;
       }
-   }
-
-   if ( $args{update_file} ) {
-      # Overwrite the time limit file with the check times for instances
-      # we're going to check or with the original check time for instances
-      # that we're still waiting on.
-      open my $fh, '>', $file or die "Cannot open $file for writing: $OS_ERROR";
-      while ( my ($id, $time) = each %cached_instances ) {
-         print { $fh } "$id,$time\n";
-      }
-      close $fh or die "Cannot close $file: $OS_ERROR";
    }
 
    return \@instances_to_check;
 }
 
-sub update_checks_file {
-   my ($file, $instances, $time) = @_;
+sub update_check_times {
+   my (%args) = @_;
 
-   # If there's no time limit file, then create it, but
-   # don't return yet, let _time_to_check_by_instances() write any MySQL
-   # instances to the file, then return.
-   if ( !-f $file ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Creating time limit file', $file);
-      }
-      _touch($file);
-   }
+   my $instances = $args{instances};
+   my $now       = $args{now}     || int(time);
+   my $vc_file   = $args{vc_file} || version_check_file();
+   PTDEBUG && _d('Updating last check time:', $now);
 
-   if ( $instances && @$instances ) {
-      instances_to_check($file, $instances, $time, update_file => 1);
-      return;
+   open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
+   foreach my $instance ( sort { $a->{id} <=> $b->{id} } @$instances ) {
+      PTDEBUG && _d('Updated:', Dumper($instance));
+      print { $fh } $instance->{id} . ',' . $now . "\n";
    }
-
-   my $mtime  = (stat $file)[9];
-   if ( !defined $mtime ) {
-      _touch($file);
-      return;
-   }
-   PTDEBUG && _d('time=', $time, 'mtime=', $mtime);
-   if ( ($time - $mtime) > $check_time_limit ) {
-      _touch($file);
-      return;
-   }
+   close $fh;
 
    return;
 }
 
-sub _touch {
-   my ($file) = @_;
-   sysopen my $fh, $file, O_WRONLY|O_CREAT
-      or die "Cannot create $file : $!";
-   close $fh or die "Cannot close $file : $!";
-   utime(undef, undef, $file);
-}
+sub get_instance_id {
+   my ($instance) = @_;
 
-sub _generate_identifier {
-   my $instance = shift;
-   my $dbh      = $instance->{dbh};
-   my $dsn      = $instance->{dsn};
+   my $dbh = $instance->{dbh};
+   my $dsn = $instance->{dsn};
 
    # MySQL 5.1+ has @@hostname and @@port
    # MySQL 5.0  has @@hostname but port only in SHOW VARS
@@ -366,11 +250,105 @@ sub _generate_identifier {
    }
    my $id = md5_hex($name);
 
-   if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-      _d('MySQL instance', $name, 'is', $id);
-   }
+   PTDEBUG && _d('MySQL instance', $name, 'is', $id);
 
    return $name, $id;
+}
+
+# #############################################################################
+# Protocol handlers
+# #############################################################################
+
+sub pingback {
+   my (%args) = @_;
+   my @required_args = qw(url instances);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg arugment" unless $args{$arg};
+   }
+   my $url       = $args{url};
+   my $instances = $args{instances};
+
+   # Optional args
+   my $ua = $args{ua} || HTTPMicro->new( timeout => 5 );
+
+   # GET https://upgrade.percona.com, the server will return
+   # a plaintext list of items/programs it wants the tool
+   # to get, one item per line with the format ITEM;TYPE[;VARS]
+   # ITEM is the pretty name of the item/program; TYPE is
+   # the type of ITEM that helps the tool determine how to
+   # get the item's version; and VARS is optional for certain
+   # items/types that need extra hints.
+   my $response = $ua->request('GET', $url);
+   PTDEBUG && _d('Server response:', Dumper($response));
+   die "No response from GET $url"
+      if !$response;
+   die("GET on $url returned HTTP status $response->{status}; expected 200\n",
+       ($response->{content} || '')) if $response->{status} != 200;
+   die("GET on $url did not return any programs to check")
+      if !$response->{content};
+
+   # Parse the plaintext server response into a hashref keyed on
+   # the items like:
+   #    "MySQL" => {
+   #      item => "MySQL",
+   #      type => "mysql_variables",
+   #      vars => ["version", "version_comment"],
+   #    }
+   my $items = parse_server_response(
+      response => $response->{content}
+   );
+   die "Failed to parse server requested programs: $response->{content}"
+      if !scalar keys %$items;
+      
+   # Get the versions for those items in another hashref also keyed on
+   # the items like:
+   #    "MySQL" => "MySQL Community Server 5.1.49-log",
+   my $versions = get_versions(
+      items     => $items,
+      instances => $instances,
+   );
+   die "Failed to get any program versions; should have at least gotten Perl"
+      if !scalar keys %$versions;
+
+   # Join the items and whatever versions are available and re-encode
+   # them in same simple plaintext item-per-line protocol, and send
+   # it back to Percona.
+   my $client_content = encode_client_response(
+      items      => $items,
+      versions   => $versions,
+      general_id => md5_hex( hostname() ),
+   );
+
+   my $client_response = {
+      headers => { "X-Percona-Toolkit-Tool" => File::Basename::basename($0) },
+      content => $client_content,
+   };
+   PTDEBUG && _d('Client response:', Dumper($client_response));
+
+   $response = $ua->request('POST', $url, $client_response);
+   PTDEBUG && _d('Server suggestions:', Dumper($response));
+   die "No response from POST $url $client_response"
+      if !$response;
+   die "POST $url returned HTTP status $response->{status}; expected 200"
+      if $response->{status} != 200;
+
+   # Response contents is empty if the server doesn't have any suggestions.
+   return unless $response->{content};
+
+   # If the server has suggestions for items, it sends them back in
+   # the same format: ITEM:TYPE:SUGGESTION\n.  ITEM:TYPE is mostly for
+   # debugging; the tool just repports the suggestions.
+   $items = parse_server_response(
+      response   => $response->{content},
+      split_vars => 0,
+   );
+   die "Failed to parse server suggestions: $response->{content}"
+      if !scalar keys %$items;
+   my @suggestions = map { $_->{vars} }
+                     sort { $a->{item} cmp $b->{item} }
+                     values %$items;
+
+   return \@suggestions;
 }
 
 sub encode_client_response {
@@ -404,24 +382,8 @@ sub encode_client_response {
    return $client_response;
 }
 
-sub validate_options {
-   my ($o) = @_;
-
-   # No need to validate anything if we didn't get an explicit v-c
-   return if !$o->got('version-check');
-
-   my $value  = $o->get('version-check');
-   my @values = split /, /,
-                $o->read_para_after(__FILE__, qr/MAGIC_version_check/);
-   chomp(@values);
-                
-   return if grep { $value eq $_ } @values;
-   $o->save_error("--version-check invalid value $value.  Accepted values are "
-                . join(", ", @values[0..$#values-1]) . " and $values[-1]" );
-}
-
 sub parse_server_response {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my @required_args = qw(response);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
@@ -445,8 +407,27 @@ sub parse_server_response {
    return \%items;
 }
 
+# Safety check: only these types of items are valid/official.
+my %sub_for_type = (
+   os_version          => \&get_os_version,
+   perl_version        => \&get_perl_version,
+   perl_module_version => \&get_perl_module_version,
+   mysql_variable      => \&get_mysql_variable,
+   bin_version         => \&get_bin_version,
+);
+
+sub valid_item {
+   my ($item) = @_;
+   return unless $item;
+   if ( !exists $sub_for_type{ $item->{type} } ) {
+      PTDEBUG && _d('Invalid type:', $item->{type});
+      return 0;
+   }
+   return 1;
+}
+
 sub get_versions {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my @required_args = qw(items);
    foreach my $arg ( @required_args ) {
       die "I need a $arg arugment" unless $args{$arg};
@@ -455,11 +436,9 @@ sub get_versions {
 
    my %versions;
    foreach my $item ( values %$items ) {
-      next unless $self->valid_item($item);
-
+      next unless valid_item($item);
       eval {
-         my $func    = 'get_' . $item->{type};
-         my $version = $self->$func(
+         my $version = $sub_for_type{ $item->{type} }->(
             item      => $item,
             instances => $args{instances},
          );
@@ -476,28 +455,12 @@ sub get_versions {
    return \%versions;
 }
 
-sub valid_item {
-   my ($self, $item) = @_;
-   return unless $item;
 
-   if ( ($item->{type} || '') !~ m/
-         ^(?:
-             os_version
-            |perl_version
-            |perl_module_version
-            |mysql_variable
-            |bin_version
-         )$/x ) {
-      PTDEBUG && _d('Invalid type:', $item->{type});
-      return;
-   }
-
-   return 1;
-}
+# #############################################################################
+# Version getters
+# #############################################################################
 
 sub get_os_version {
-   my ($self) = @_;
-
    if ( $OSNAME eq 'MSWin32' ) {
       require Win32;
       return Win32::GetOSDisplayName();
@@ -574,7 +537,7 @@ sub get_os_version {
 }
 
 sub get_perl_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    return unless $item;
 
@@ -584,7 +547,7 @@ sub get_perl_version {
 }
 
 sub get_perl_module_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    return unless $item;
 
@@ -592,7 +555,7 @@ sub get_perl_module_version {
    # else the item name is an implicity Perl module name to which we
    # append ::VERSION to get the module's version.
    my $var          = $item->{item} . '::VERSION';
-   my $version      = _get_scalar($var);
+   my $version      = get_scalar($var);
    PTDEBUG && _d('Perl version for', $var, '=', "$version");
 
    # Explicitly stringify this else $PERL_VERSION will return
@@ -600,36 +563,35 @@ sub get_perl_module_version {
    return $version ? "$version" : $version;
 }
 
-sub _get_scalar {
+sub get_scalar {
    no strict;
    return ${*{shift()}};
 }
 
 sub get_mysql_variable {
-   my $self = shift;
-   return $self->_get_from_mysql(
+   return get_from_mysql(
       show => 'VARIABLES',
       @_,
    );
 }
 
-sub _get_from_mysql {
-   my ($self, %args) = @_;
+sub get_from_mysql {
+   my (%args) = @_;
    my $show      = $args{show};
    my $item      = $args{item};
    my $instances = $args{instances};
    return unless $show && $item;
 
    if ( !$instances || !@$instances ) {
-      if ( $ENV{PTVCDEBUG} || PTDEBUG ) {
-         _d('Cannot check', $item, 'because there are no MySQL instances');
-      }
+      PTDEBUG && _d('Cannot check', $item,
+         'because there are no MySQL instances');
       return;
    }
 
    my @versions;
    my %version_for;
    foreach my $instance ( @$instances ) {
+      next unless $instance->{id};  # special system instance has id=0
       my $dbh = $instance->{dbh};
       local $dbh->{FetchHashKeyName} = 'NAME_lc';
       my $sql = qq/SHOW $show/;
@@ -652,7 +614,7 @@ sub _get_from_mysql {
 }
 
 sub get_bin_version {
-   my ($self, %args) = @_;
+   my (%args) = @_;
    my $item = $args{item};
    my $cmd  = $item->{item};
    return unless $cmd;

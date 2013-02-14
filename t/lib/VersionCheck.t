@@ -25,12 +25,10 @@ my $sb  = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master');
 my $slave1_dbh = $sb->get_dbh_for('slave1');
 
-my $vc = 'VersionCheck';
-
 sub test_v {
    my (%args) = @_;
 
-   my $items = $vc->parse_server_response(
+   my $items = VersionCheck::parse_server_response(
       response => $args{response},
    );
    is_deeply(
@@ -39,7 +37,7 @@ sub test_v {
       "$args{name} items"
    );
 
-   my $versions = $vc->get_versions(
+   my $versions = VersionCheck::get_versions(
       items     => $items,
       instances => [
          {
@@ -119,9 +117,8 @@ test_v(
    },
 );
 
-use File::Spec;
 {
-   local $ENV{PATH} = File::Spec->catfile($ENV{PERCONA_TOOLKIT_BRANCH}, "bin") . ":$ENV{PATH}";
+   local $ENV{PATH} = "$ENV{PATH}:$trunk/bin";
    test_v(
       name     => "bin_version",
       response => "pt-archiver;bin_version\n",
@@ -169,7 +166,7 @@ SKIP: {
 # since the test env doesn't know what OS its running on.  We
 # at least know that an OS should have these two things: a word
 # and version with at least major and minor numbers.
-my $os = $vc->get_os_version;
+my $os = VersionCheck::get_os_version();
 
 like(
    $os,
@@ -195,7 +192,7 @@ ok(
 # Validate items
 # #############################################################################
    
-my $versions = $vc->get_versions(
+my $versions = VersionCheck::get_versions(
    items => {
       'Foo' => {
          item => 'Foo',
@@ -226,9 +223,9 @@ if ( $master_dbh ) {
    (undef, $mysql_distro)
       = $master_dbh->selectrow_array("SHOW VARIABLES LIKE 'version_comment'");
 
-   (undef, $master_id) = VersionCheck::_generate_identifier(
+   (undef, $master_id) = VersionCheck::get_instance_id(
       { dbh => $master_dbh, dsn => { h => '127.1', P => 12345 }});
-   (undef, $slave1_id) = VersionCheck::_generate_identifier(
+   (undef, $slave1_id) = VersionCheck::get_instance_id(
       { dbh => $slave1_dbh, dsn => { h => '127.1', P => 12346 }});
 
    $master_inst = {
@@ -281,7 +278,7 @@ sub test_pingback {
       eval {
          $sug = VersionCheck::pingback(
             url       => $url,
-            instances => $args{instances},
+            instances => $args{instances} || [],
             ua        => $fake_ua,
          );
       };
@@ -290,7 +287,7 @@ sub test_pingback {
       eval {
          $sug = VersionCheck::pingback(
             url       => $url,
-            instances => $args{instances},
+            instances => $args{instances} || [],
             ua        => $fake_ua,
          );
       };
@@ -463,86 +460,104 @@ SKIP: {
 }
 
 # #############################################################################
-# Testing time_to_check
+# get_instances_to_check()
 # #############################################################################
 
-my $dir   = File::Spec->tmpdir();
-my $file  = File::Spec->catfile($dir, 'percona-toolkit-version-check-test');
+my $vc_file = VersionCheck::version_check_file();
+unlink $vc_file if -f $vc_file;
+PerconaTest::wait_until( sub { !-f $vc_file } );
 
-unlink $file if -f $file;
+my $now = 100000;  # a fake Unix ts works
 
-my $time = int(time());
+my $instances = [];
 
-ok(
-   VersionCheck::time_to_check($file, [], $time),
-   "time_to_check returns true if the file doesn't exist",
-);
+sub get_check {
+   my (%args) = @_;
+   return VersionCheck::get_instances_to_check(
+      instances => $instances,
+      vc_file   => $vc_file,
+      now       => $args{now} || $now,
+   );
+}
 
-ok(
-   !-f $file,
-   "time_to_check doesn't create the checks file"   
-);
+my $check = get_check();
 
-VersionCheck::update_checks_file($file, [], $time);
-
-ok(
-   -f $file,
-   "update_checks_file creates the checks file"
-);
-
-ok(
-   !VersionCheck::time_to_check($file, [], $time),
-   "time_to_check is false if file exists and it's been less than 24 hours"
-);
-
-my $one_day = 60 * 60 * 24;
-my ($orig_atime, $orig_mtime) = (stat($file))[8,9];
-
-my $mod_atime = $orig_atime - $one_day * 2;
-my $mod_mtime = $orig_mtime - $one_day * 2;
-
-utime($mod_atime, $mod_mtime, $file);
-
-cmp_ok(
-   (stat($file))[9],
-   q{<},
-   time() - $one_day,
-   "The file's mtime is at least one day behind time()",
-);
+is_deeply(
+   $check,
+   [],
+   "get_instances_to_check(): no instances"
+) or diag(Dumper($check));
 
 ok(
-   VersionCheck::time_to_check($file, [], $time),
-   "time_to_check true if file exists and mtime < one day"
+   !-f $vc_file,
+   "Version check file not created"
 );
 
-my ($atime, $mtime) = (stat($file))[8,9];
+# Add default system instance.  version_check() does this.
+push @$instances, { id => 0, name => "system" };
 
-is($mod_atime, $atime, "time_to_check doesn't update the atime");
-is($mod_mtime, $mtime, "time_to_check doesn't update the mtime");
+eval {
+   VersionCheck::update_check_times(
+      instances => $instances,
+      vc_file   => $vc_file,
+      now       => $now,
+   );
+};
 
-VersionCheck::update_checks_file($file, [], $time);
-
-($atime, $mtime) = (stat($file))[8,9];
-
-ok(
-      $orig_atime == $atime
-   && $orig_mtime == $mtime,
-   "...but update_checks_file does"
+is(
+   $EVAL_ERROR,
+   "",
+   "update_check_times(): no error"
 );
 
 ok(
-   !VersionCheck::time_to_check($file, [], $time),
-   "...and time_to_check fails after update_checks_file"
+   -f $vc_file,
+   "update_check_times() created version check file"
 );
+
+my $output = `cat $vc_file`;
+
+is(
+   $output,
+   "0,$now\n",
+   "Version check file contents"
+);
+
+$check = get_check();
+
+is_deeply(
+   $check,
+   [],
+   "get_instances_to_check(): no instances to check"
+) or diag(Dumper($check));
+
+my $check_time_limit = VersionCheck::version_check_time_limit();
+
+open my $fh, '>', $vc_file
+   or die "Cannot write to $vc_file: $OS_ERROR";
+print { $fh } "0,$now\n";
+close $fh;
+
+# You can verify this test by adding - 1 to this line,
+# making it seem like the instance hasn't been checked
+# in 1 second less than the limit.
+$check = get_check(now => $now + $check_time_limit);
+
+is_deeply(
+   $check,
+   $instances,
+   "get_instances_to_check(): time to check instance"
+) or diag(Dumper($check));
 
 # #############################################################################
-# _generate_identifier
+# get_instance_id
 # #############################################################################
 
 is(
-   VersionCheck::_generate_identifier( { dbh => undef, dsn => { h => "localhost", P => 12345 } } ),
+   VersionCheck::get_instance_id(
+      { dbh => undef, dsn => { h => "localhost", P => 12345 } } ),
    md5_hex("localhost", 12345),
-   "_generate_identifier() works as expected for 4.1",
+   "get_instance_id() works as expected for 4.1",
 );
 
 SKIP: {
@@ -564,91 +579,49 @@ SKIP: {
    else {
       $expect_master_id = md5_hex("localhost", 12345);
    }
-   
+
    is(
       $master_id,
       $expect_master_id,
-      "_generate_identifier() for MySQL $sandbox_version"
+      "get_instance_id() for MySQL $sandbox_version"
    );
 
    # The time limit file already exists (see previous tests), but this is
    # a new MySQL instance, so it should be time to check it.
-   my ($is_time, $check_inst) = VersionCheck::time_to_check(
-      $file,
-      [ $master_inst ],
-   );
-   VersionCheck::update_checks_file($file, $check_inst, int(time()));
-   
-   ok(
-      $is_time,
-      "Time to check a new MySQL instance ID",
-   );
+   push @$instances, $master_inst;
+   $check = get_check();
 
    is_deeply(
-      $check_inst,
+      $check,
       [ $master_inst ],
-      "Check just the new instance"
-   );
+      "get_instances_to_check(): check new MySQL instance"
+   ) or diag(Dumper($check));
 
-   
-   ($is_time, $check_inst) = VersionCheck::time_to_check(
-      $file,
-      [ $master_inst ],
-   );
-
-   VersionCheck::update_checks_file($file, $check_inst, int(time()));
-   
-   ok(
-      !$is_time,
-      "...but not the second time around",
-   );
-
-   open my $fh, q{>}, $file or die $!;
-   print { $fh } "$master_id," . (time() - $one_day * 2) . "\n";
+   # Write vc file as if the system was checked now, but the MySQL
+   # instance was checked 10 hours ago.  So it won't need to checked
+   # for another 14 hours.
+   my $ten_hours      = 60 * 60 * 10;
+   my $fourteen_hours = 60 * 60 * 14;
+   open my $fh, '>', $vc_file or die "Cannot write to $vc_file: $OS_ERROR";
+   print { $fh } "0,$now\n$master_id," . ($now - $ten_hours) . "\n";
    close $fh;
 
-   ($is_time, $check_inst) = VersionCheck::time_to_check(
-      $file,
-      [ $master_inst ],
-   );
+   $check = get_check();
 
-   VersionCheck::update_checks_file($file, $check_inst, int(time()));
-   
    is_deeply(
-      $check_inst,
-      [ $master_inst ],
-      "...unless more than a day has gone past",
-   );
+      $check,
+      [],
+      "get_instances_to_check(): not time to check either instance"
+   ) or diag(Dumper($check));
 
-   ($is_time, $check_inst) = VersionCheck::time_to_check(
-      $file,
-      [ $master_inst, $slave1_inst ],
-   );
+   # Pretend like those 14 hours have passed now.
+   $check = get_check(now => $now + $fourteen_hours);
 
-   VersionCheck::update_checks_file($file, $check_inst, int(time()));
-   
    is_deeply(
-      $check_inst,
-      [ $slave1_inst ],
-      "With multiple ids, time_to_check() returns only those that need checking",
-   );
-
-   ok(
-      $is_time,
-      "...and is time to check"
-   );
-
-   ($is_time, $check_inst) = VersionCheck::time_to_check(
-      $file,
-      [ $master_inst, $slave1_inst ],
-   );
-
-   VersionCheck::update_checks_file($file, $check_inst, int(time()));
-   
-   ok(
-      !$is_time,
-      "...and false if there isn't anything to check",
-   );
+      $check,
+      [ $master_inst ],
+      "get_instances_to_check(): time to check one of two instances"
+   ) or diag(Dumper($check));
 }
 
 # ############################################################################
@@ -656,8 +629,8 @@ SKIP: {
 # if the file doesn't exist.
 # #############################################################################
 
-unlink $file if -f $file;
-PerconaTest::wait_until( sub { !-f $file } );
+unlink $vc_file if -f $vc_file;
+PerconaTest::wait_until( sub { !-f $vc_file } );
 
 SKIP: {
    skip 'Cannot connect to sandbox master', 2 unless $master_dbh;
@@ -708,11 +681,11 @@ my @vc_tools = grep { chomp; basename($_) =~ /\A[a-z-]+\z/ }
 
 foreach my $tool ( @vc_tools ) {
    my $tool_name = basename($tool);
-   my $output = `$tool --version-check ftp`;
+   my $output = `$tool --help`;
    like(
       $output,
-      qr/\Q* --version-check invalid value ftp.  Accepted values are https, http, auto and off/,
-      "$tool_name validates --version-check"
+      qr/^\s+--version-check\s+TRUE$/m,
+      "--version-check is on in $tool_name"
    );
 }
 
