@@ -1,5 +1,7 @@
 Changelog for Percona Toolkit
 
+v2.1.9 released 2013-02-14
+
   * Fixed bug 1103221: pt-heartbeat 2.1.8 doesn't use precision/sub-second timestamps
   * Fixed bug 1099665: pt-heartbeat 2.1.8 reports big time drift with UTC_TIMESTAMP
   * Fixed bug 1099836: pt-online-schema-change fails with "Duplicate entry" on MariaDB

@@ -38,7 +38,7 @@ BEGIN {
 # ###########################################################################
 {
 package Percona::Toolkit;
-our $VERSION = '2.1.8';
+our $VERSION = '2.1.9';
 
 1;
 }
@@ -2731,7 +2731,7 @@ sub check_table {
       die "I need a $arg argument" unless $args{$arg};
    }
    my ($dbh, $db, $tbl) = @args{@required_args};
-   my $q      = $self->{Quoter};
+   my $q      = $self->{Quoter} || 'Quoter';
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
@@ -5872,7 +5872,7 @@ not check or adjust for different system or MySQL time zones which can
 cause the tool to compute the lag incorrectly.  Specifying this option is
 a good idea because it ensures that the tool works correctly regardless of
 time zones, but it also makes the tool backwards-incompatible with
-pt-heartbeat 2.1.7 and older (unless the older version of pt-heartbeat
+pt-heartbeat 2.1.9 and older (unless the older version of pt-heartbeat
 is running on a system that uses UTC).
 
 =item --version
@@ -6059,6 +6059,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-heartbeat 2.1.8
+pt-heartbeat 2.1.9
 
 =cut
