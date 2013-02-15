@@ -22,6 +22,7 @@ BEGIN {
       DSNParser
       Quoter
       OptionParser
+      Cxn
       Transformers
       SlowLogParser
       Daemon
@@ -29,6 +30,10 @@ BEGIN {
       Retry
       HTTPMicro
       VersionCheck
+      QueryRewriter
+      FileIterator
+      QueryIterator
+      UpgradeResults
    ));
 }
 
@@ -2223,6 +2228,152 @@ if ( PTDEBUG ) {
 # ###########################################################################
 
 # ###########################################################################
+# Cxn package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/Cxn.pm
+#   t/lib/Cxn.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package Cxn;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use Scalar::Util qw(blessed);
+use constant {
+   PTDEBUG => $ENV{PTDEBUG} || 0,
+   PERCONA_TOOLKIT_TEST_USE_DSN_NAMES => $ENV{PERCONA_TOOLKIT_TEST_USE_DSN_NAMES} || 0,
+};
+
+sub new {
+   my ( $class, %args ) = @_;
+   my @required_args = qw(DSNParser OptionParser);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   };
+   my ($dp, $o) = @args{@required_args};
+
+   my $dsn_defaults = $dp->parse_options($o);
+   my $prev_dsn     = $args{prev_dsn};
+   my $dsn          = $args{dsn};
+   if ( !$dsn ) {
+      $args{dsn_string} ||= 'h=' . ($dsn_defaults->{h} || 'localhost');
+
+      $dsn = $dp->parse(
+         $args{dsn_string}, $prev_dsn, $dsn_defaults);
+   }
+   elsif ( $prev_dsn ) {
+      $dsn = $dp->copy($prev_dsn, $dsn);
+   }
+
+   my $self = {
+      dsn          => $dsn,
+      dbh          => $args{dbh},
+      dsn_name     => $dp->as_string($dsn, [qw(h P S)]),
+      hostname     => '',
+      set          => $args{set},
+      NAME_lc      => defined($args{NAME_lc}) ? $args{NAME_lc} : 1,
+      dbh_set      => 0,
+      OptionParser => $o,
+      DSNParser    => $dp,
+      is_cluster_node => undef,
+   };
+
+   return bless $self, $class;
+}
+
+sub connect {
+   my ( $self ) = @_;
+   my $dsn = $self->{dsn};
+   my $dp  = $self->{DSNParser};
+   my $o   = $self->{OptionParser};
+
+   my $dbh = $self->{dbh};
+   if ( !$dbh || !$dbh->ping() ) {
+      if ( $o->get('ask-pass') && !$self->{asked_for_pass} ) {
+         $dsn->{p} = OptionParser::prompt_noecho("Enter MySQL password: ");
+         $self->{asked_for_pass} = 1;
+      }
+      $dbh = $dp->get_dbh($dp->get_cxn_params($dsn),  { AutoCommit => 1 });
+   }
+   PTDEBUG && _d($dbh, 'Connected dbh to', $self->{name});
+
+   return $self->set_dbh($dbh);
+}
+
+sub set_dbh {
+   my ($self, $dbh) = @_;
+
+   if ( $self->{dbh} && $self->{dbh} == $dbh && $self->{dbh_set} ) {
+      PTDEBUG && _d($dbh, 'Already set dbh');
+      return $dbh;
+   }
+
+   PTDEBUG && _d($dbh, 'Setting dbh');
+
+   $dbh->{FetchHashKeyName} = 'NAME_lc' if $self->{NAME_lc};
+
+   my $sql = 'SELECT @@hostname, @@server_id';
+   PTDEBUG && _d($dbh, $sql);
+   my ($hostname, $server_id) = $dbh->selectrow_array($sql);
+   PTDEBUG && _d($dbh, 'hostname:', $hostname, $server_id);
+   if ( $hostname ) {
+      $self->{hostname} = $hostname;
+   }
+
+   if ( my $set = $self->{set}) {
+      $set->($dbh);
+   }
+
+   $self->{dbh}     = $dbh;
+   $self->{dbh_set} = 1;
+   return $dbh;
+}
+
+sub dbh {
+   my ($self) = @_;
+   return $self->{dbh};
+}
+
+sub dsn {
+   my ($self) = @_;
+   return $self->{dsn};
+}
+
+sub name {
+   my ($self) = @_;
+   return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
+   return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub DESTROY {
+   my ($self) = @_;
+   if ( $self->{dbh}
+         && blessed($self->{dbh})
+         && $self->{dbh}->can("disconnect") ) {
+      PTDEBUG && _d('Disconnecting dbh', $self->{dbh}, $self->{name});
+      $self->{dbh}->disconnect();
+   }
+   return;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End Cxn package
+# ###########################################################################
+
+# ###########################################################################
 # Transformers package
 # This package is a copy without comments from the original.  The original
 # with comments and its test file can be found in the Bazaar repository at,
@@ -4375,6 +4526,927 @@ sub _d {
 # ###########################################################################
 
 # ###########################################################################
+# QueryRewriter package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/QueryRewriter.pm
+#   t/lib/QueryRewriter.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package QueryRewriter;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+our $verbs   = qr{^SHOW|^FLUSH|^COMMIT|^ROLLBACK|^BEGIN|SELECT|INSERT
+                  |UPDATE|DELETE|REPLACE|^SET|UNION|^START|^LOCK}xi;
+my $quote_re = qr/"(?:(?!(?<!\\)").)*"|'(?:(?!(?<!\\)').)*'/; # Costly!
+my $bal;
+$bal         = qr/
+                  \(
+                  (?:
+                     (?> [^()]+ )    # Non-parens without backtracking
+                     |
+                     (??{ $bal })    # Group with matching parens
+                  )*
+                  \)
+                 /x;
+
+my $olc_re = qr/(?:--|#)[^'"\r\n]*(?=[\r\n]|\Z)/;  # One-line comments
+my $mlc_re = qr#/\*[^!].*?\*/#sm;                  # But not /*!version */
+my $vlc_re = qr#/\*.*?[0-9+].*?\*/#sm;             # For SHOW + /*!version */
+my $vlc_rf = qr#^(SHOW).*?/\*![0-9+].*?\*/#sm;     # Variation for SHOW
+
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = { %args };
+   return bless $self, $class;
+}
+
+sub strip_comments {
+   my ( $self, $query ) = @_;
+   return unless $query;
+   $query =~ s/$olc_re//go;
+   $query =~ s/$mlc_re//go;
+   if ( $query =~ m/$vlc_rf/i ) { # contains show + version
+      $query =~ s/$vlc_re//go;
+   }
+   return $query;
+}
+
+sub shorten {
+   my ( $self, $query, $length ) = @_;
+   $query =~ s{
+      \A(
+         (?:INSERT|REPLACE)
+         (?:\s+LOW_PRIORITY|DELAYED|HIGH_PRIORITY|IGNORE)?
+         (?:\s\w+)*\s+\S+\s+VALUES\s*\(.*?\)
+      )
+      \s*,\s*\(.*?(ON\s+DUPLICATE|\Z)}
+      {$1 /*... omitted ...*/$2}xsi;
+
+   return $query unless $query =~ m/IN\s*\(\s*(?!select)/i;
+
+   my $last_length  = 0;
+   my $query_length = length($query);
+   while (
+      $length          > 0
+      && $query_length > $length
+      && $query_length < ( $last_length || $query_length + 1 )
+   ) {
+      $last_length = $query_length;
+      $query =~ s{
+         (\bIN\s*\()    # The opening of an IN list
+         ([^\)]+)       # Contents of the list, assuming no item contains paren
+         (?=\))           # Close of the list
+      }
+      {
+         $1 . __shorten($2)
+      }gexsi;
+   }
+
+   return $query;
+}
+
+sub __shorten {
+   my ( $snippet ) = @_;
+   my @vals = split(/,/, $snippet);
+   return $snippet unless @vals > 20;
+   my @keep = splice(@vals, 0, 20);  # Remove and save the first 20 items
+   return
+      join(',', @keep)
+      . "/*... omitted "
+      . scalar(@vals)
+      . " items ...*/";
+}
+
+sub fingerprint {
+   my ( $self, $query ) = @_;
+
+   $query =~ m#\ASELECT /\*!40001 SQL_NO_CACHE \*/ \* FROM `# # mysqldump query
+      && return 'mysqldump';
+   $query =~ m#/\*\w+\.\w+:[0-9]/[0-9]\*/#     # pt-table-checksum, etc query
+      && return 'percona-toolkit';
+   $query =~ m/\Aadministrator command: /
+      && return $query;
+   $query =~ m/\A\s*(call\s+\S+)\(/i
+      && return lc($1); # Warning! $1 used, be careful.
+   if ( my ($beginning) = $query =~ m/\A((?:INSERT|REPLACE)(?: IGNORE)?\s+INTO.+?VALUES\s*\(.*?\))\s*,\s*\(/is ) {
+      $query = $beginning; # Shorten multi-value INSERT statements ASAP
+   }
+  
+   $query =~ s/$olc_re//go;
+   $query =~ s/$mlc_re//go;
+   $query =~ s/\Ause \S+\Z/use ?/i       # Abstract the DB in USE
+      && return $query;
+
+   $query =~ s/\\["']//g;                # quoted strings
+   $query =~ s/".*?"/?/sg;               # quoted strings
+   $query =~ s/'.*?'/?/sg;               # quoted strings
+
+   if ( $self->{match_md5_checksums} ) { 
+      $query =~ s/([._-])[a-f0-9]{32}/$1?/g;
+   }
+
+   if ( !$self->{match_embedded_numbers} ) {
+      $query =~ s/[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+   else {
+      $query =~ s/\b[0-9+-][0-9a-f.xb+-]*/?/g;
+   }
+
+   if ( $self->{match_md5_checksums} ) {
+      $query =~ s/[xb+-]\?/?/g;                
+   }
+   else {
+      $query =~ s/[xb.+-]\?/?/g;
+   }
+
+   $query =~ s/\A\s+//;                  # Chop off leading whitespace
+   chomp $query;                         # Kill trailing whitespace
+   $query =~ tr[ \n\t\r\f][ ]s;          # Collapse whitespace
+   $query = lc $query;
+   $query =~ s/\bnull\b/?/g;             # Get rid of NULLs
+   $query =~ s{                          # Collapse IN and VALUES lists
+               \b(in|values?)(?:[\s,]*\([\s?,]*\))+
+              }
+              {$1(?+)}gx;
+   $query =~ s{                          # Collapse UNION
+               \b(select\s.*?)(?:(\sunion(?:\sall)?)\s\1)+
+              }
+              {$1 /*repeat$2*/}xg;
+   $query =~ s/\blimit \?(?:, ?\?| offset \?)?/limit ?/; # LIMIT
+
+   if ( $query =~ m/\bORDER BY /gi ) {  # Find, anchor on ORDER BY clause
+      1 while $query =~ s/\G(.+?)\s+ASC/$1/gi && pos $query;
+   }
+
+   return $query;
+}
+
+sub distill_verbs {
+   my ( $self, $query ) = @_;
+
+   $query =~ m/\A\s*call\s+(\S+)\(/i && return "CALL $1";
+   $query =~ m/\A\s*use\s+/          && return "USE";
+   $query =~ m/\A\s*UNLOCK TABLES/i  && return "UNLOCK";
+   $query =~ m/\A\s*xa\s+(\S+)/i     && return "XA_$1";
+
+   if ( $query =~ m/\Aadministrator command:/ ) {
+      $query =~ s/administrator command:/ADMIN/;
+      $query = uc $query;
+      return $query;
+   }
+
+   $query = $self->strip_comments($query);
+
+   if ( $query =~ m/\A\s*SHOW\s+/i ) {
+      PTDEBUG && _d($query);
+
+      $query = uc $query;
+      $query =~ s/\s+(?:GLOBAL|SESSION|FULL|STORAGE|ENGINE)\b/ /g;
+      $query =~ s/\s+COUNT[^)]+\)//g;
+
+      $query =~ s/\s+(?:FOR|FROM|LIKE|WHERE|LIMIT|IN)\b.+//ms;
+
+      $query =~ s/\A(SHOW(?:\s+\S+){1,2}).*\Z/$1/s;
+      $query =~ s/\s+/ /g;
+      PTDEBUG && _d($query);
+      return $query;
+   }
+
+   eval $QueryParser::data_def_stmts;
+   eval $QueryParser::tbl_ident;
+   my ( $dds ) = $query =~ /^\s*($QueryParser::data_def_stmts)\b/i;
+   if ( $dds) {
+      my ( $obj ) = $query =~ m/$dds.+(DATABASE|TABLE)\b/i;
+      $obj = uc $obj if $obj;
+      PTDEBUG && _d('Data def statment:', $dds, 'obj:', $obj);
+      my ($db_or_tbl)
+         = $query =~ m/(?:TABLE|DATABASE)\s+($QueryParser::tbl_ident)(\s+.*)?/i;
+      PTDEBUG && _d('Matches db or table:', $db_or_tbl);
+      return uc($dds . ($obj ? " $obj" : '')), $db_or_tbl;
+   }
+
+   my @verbs = $query =~ m/\b($verbs)\b/gio;
+   @verbs    = do {
+      my $last = '';
+      grep { my $pass = $_ ne $last; $last = $_; $pass } map { uc } @verbs;
+   };
+
+   if ( ($verbs[0] || '') eq 'SELECT' && @verbs > 1 ) {
+      PTDEBUG && _d("False-positive verbs after SELECT:", @verbs[1..$#verbs]);
+      my $union = grep { $_ eq 'UNION' } @verbs;
+      @verbs    = $union ? qw(SELECT UNION) : qw(SELECT);
+   }
+
+   my $verb_str = join(q{ }, @verbs);
+   return $verb_str;
+}
+
+sub __distill_tables {
+   my ( $self, $query, $table, %args ) = @_;
+   my $qp = $args{QueryParser} || $self->{QueryParser};
+   die "I need a QueryParser argument" unless $qp;
+
+   my @tables = map {
+      $_ =~ s/`//g;
+      $_ =~ s/(_?)[0-9]+/$1?/g;
+      $_;
+   } grep { defined $_ } $qp->get_tables($query);
+
+   push @tables, $table if $table;
+
+   @tables = do {
+      my $last = '';
+      grep { my $pass = $_ ne $last; $last = $_; $pass } @tables;
+   };
+
+   return @tables;
+}
+
+sub distill {
+   my ( $self, $query, %args ) = @_;
+
+   if ( $args{generic} ) {
+      my ($cmd, $arg) = $query =~ m/^(\S+)\s+(\S+)/;
+      return '' unless $cmd;
+      $query = (uc $cmd) . ($arg ? " $arg" : '');
+   }
+   else {
+      my ($verbs, $table)  = $self->distill_verbs($query, %args);
+
+      if ( $verbs && $verbs =~ m/^SHOW/ ) {
+         my %alias_for = qw(
+            SCHEMA   DATABASE
+            KEYS     INDEX
+            INDEXES  INDEX
+         );
+         map { $verbs =~ s/$_/$alias_for{$_}/ } keys %alias_for;
+         $query = $verbs;
+      }
+      else {
+         my @tables = $self->__distill_tables($query, $table, %args);
+         $query     = join(q{ }, $verbs, @tables); 
+      } 
+   }
+
+   if ( $args{trf} ) {
+      $query = $args{trf}->($query, %args);
+   }
+
+   return $query;
+}
+
+sub convert_to_select {
+   my ( $self, $query ) = @_;
+   return unless $query;
+
+   return if $query =~ m/=\s*\(\s*SELECT /i;
+
+   $query =~ s{
+                 \A.*?
+                 update(?:\s+(?:low_priority|ignore))?\s+(.*?)
+                 \s+set\b(.*?)
+                 (?:\s*where\b(.*?))?
+                 (limit\s*[0-9]+(?:\s*,\s*[0-9]+)?)?
+                 \Z
+              }
+              {__update_to_select($1, $2, $3, $4)}exsi
+      || $query =~ s{
+                    \A.*?
+                    (?:insert(?:\s+ignore)?|replace)\s+
+                    .*?\binto\b(.*?)\(([^\)]+)\)\s*
+                    values?\s*(\(.*?\))\s*
+                    (?:\blimit\b|on\s+duplicate\s+key.*)?\s*
+                    \Z
+                 }
+                 {__insert_to_select($1, $2, $3)}exsi
+      || $query =~ s{
+                    \A.*?
+                    (?:insert(?:\s+ignore)?|replace)\s+
+                    (?:.*?\binto)\b(.*?)\s*
+                    set\s+(.*?)\s*
+                    (?:\blimit\b|on\s+duplicate\s+key.*)?\s*
+                    \Z
+                 }
+                 {__insert_to_select_with_set($1, $2)}exsi
+      || $query =~ s{
+                    \A.*?
+                    delete\s+(.*?)
+                    \bfrom\b(.*)
+                    \Z
+                 }
+                 {__delete_to_select($1, $2)}exsi;
+   $query =~ s/\s*on\s+duplicate\s+key\s+update.*\Z//si;
+   $query =~ s/\A.*?(?=\bSELECT\s*\b)//ism;
+   return $query;
+}
+
+sub convert_select_list {
+   my ( $self, $query ) = @_;
+   $query =~ s{
+               \A\s*select(.*?)\bfrom\b
+              }
+              {$1 =~ m/\*/ ? "select 1 from" : "select isnull(coalesce($1)) from"}exi;
+   return $query;
+}
+
+sub __delete_to_select {
+   my ( $delete, $join ) = @_;
+   if ( $join =~ m/\bjoin\b/ ) {
+      return "select 1 from $join";
+   }
+   return "select * from $join";
+}
+
+sub __insert_to_select {
+   my ( $tbl, $cols, $vals ) = @_;
+   PTDEBUG && _d('Args:', @_);
+   my @cols = split(/,/, $cols);
+   PTDEBUG && _d('Cols:', @cols);
+   $vals =~ s/^\(|\)$//g; # Strip leading/trailing parens
+   my @vals = $vals =~ m/($quote_re|[^,]*${bal}[^,]*|[^,]+)/g;
+   PTDEBUG && _d('Vals:', @vals);
+   if ( @cols == @vals ) {
+      return "select * from $tbl where "
+         . join(' and ', map { "$cols[$_]=$vals[$_]" } (0..$#cols));
+   }
+   else {
+      return "select * from $tbl limit 1";
+   }
+}
+
+sub __insert_to_select_with_set {
+   my ( $from, $set ) = @_;
+   $set =~ s/,/ and /g;
+   return "select * from $from where $set ";
+}
+
+sub __update_to_select {
+   my ( $from, $set, $where, $limit ) = @_;
+   return "select $set from $from "
+      . ( $where ? "where $where" : '' )
+      . ( $limit ? " $limit "      : '' );
+}
+
+sub wrap_in_derived {
+   my ( $self, $query ) = @_;
+   return unless $query;
+   return $query =~ m/\A\s*select/i
+      ? "select 1 from ($query) as x limit 1"
+      : $query;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End QueryRewriter package
+# ###########################################################################
+
+# ###########################################################################
+# FileIterator package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/FileIterator.pm
+#   t/lib/FileIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package FileIterator;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+sub new {
+   my ( $class, %args ) = @_;
+   my $self = {
+      %args,
+   };
+   return bless $self, $class;
+}
+
+sub get_file_itr {
+   my ( $self, @filenames ) = @_;
+
+   my @final_filenames;
+   FILENAME:
+   foreach my $fn ( @filenames ) {
+      if ( !defined $fn ) {
+         warn "Skipping undefined filename";
+         next FILENAME;
+      }
+      if ( $fn ne '-' ) {
+         if ( !-e $fn || !-r $fn ) {
+            warn "$fn does not exist or is not readable";
+            next FILENAME;
+         }
+      }
+      push @final_filenames, $fn;
+   }
+
+   if ( !@filenames ) {
+      push @final_filenames, '-';
+      PTDEBUG && _d('Auto-adding "-" to the list of filenames');
+   }
+
+   PTDEBUG && _d('Final filenames:', @final_filenames);
+   return sub {
+      while ( @final_filenames ) {
+         my $fn = shift @final_filenames;
+         PTDEBUG && _d('Filename:', $fn);
+         if ( $fn eq '-' ) { # Magical STDIN filename.
+            return (*STDIN, undef, undef);
+         }
+         open my $fh, '<', $fn or warn "Cannot open $fn: $OS_ERROR";
+         if ( $fh ) {
+            return ( $fh, $fn, -s $fn );
+         }
+      }
+      return (); # Avoids $f being set to 0 in list context.
+   };
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+1;
+}
+# ###########################################################################
+# End FileIterator package
+# ###########################################################################
+
+# ###########################################################################
+# QueryIterator package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/QueryIterator.pm
+#   t/lib/QueryIterator.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package QueryIterator;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use POSIX qw(signal_h);
+use Data::Dumper;
+
+use Lmo;
+
+
+has 'file_iter' => (
+   is       => 'ro',
+   isa      => 'CodeRef',
+   required => 1,
+);
+
+has 'parser' => (
+   is       => 'ro',
+   isa      => 'Object',
+   required => 1,
+);
+
+has 'fingerprint' => (
+   is       => 'ro',
+   isa      => 'CodeRef',
+   required => 1,
+);
+
+has 'oktorun' => (
+   is       => 'ro',
+   isa      => 'CodeRef',
+   required => 1,
+);
+
+
+has 'default_database' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has 'filter' => (
+   is       => 'ro',
+   isa      => 'CodeRef',
+   required => 0,
+);
+
+has 'read_only' => (
+   is       => 'ro',
+   isa      => 'Bool',
+   required => 0,
+   default  => 0,
+);
+
+has 'read_timeout' => (
+   is       => 'ro',
+   isa      => 'Int',
+   required => 0,
+   default  => 0,
+);
+
+
+has 'stats' => (
+   is       => 'ro',
+   isa      => 'HashRef',
+   required => 0,
+   default  => sub { return {} },
+);
+
+has 'database' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has '_fh' => (
+   is       => 'rw',
+   isa      => 'Maybe[FileHandle]',
+   required => 0,
+);
+
+has '_file_name' => (
+   is       => 'rw',
+   isa      => 'Maybe[Str]',
+   required => 0,
+);
+
+has '_file_size' => (
+   is       => 'rw',
+   isa      => 'Maybe[Int]',
+   required => 0,
+);
+
+has '_offset' => (
+   is       => 'rw',
+   isa      => 'Maybe[Int]',
+   required => 0,
+);
+
+has '_parser_args' => (
+   is       => 'rw',
+   isa      => 'HashRef',
+   required => 0,
+);
+
+sub BUILDARGS {
+   my $class = shift;
+   my $args  = $class->SUPER::BUILDARGS(@_);
+
+   my $filter_code;
+   if ( my $filter = $args->{filter} ) {
+      if ( -f $filter && -r $filter ) {
+         PTDEBUG && _d('Reading file', $filter, 'for --filter code');
+         open my $fh, "<", $filter or die "Cannot open $filter: $OS_ERROR";
+         $filter = do { local $/ = undef; <$fh> };
+         close $fh;
+      }
+      else {
+         $filter = "( $filter )";  # issue 565
+      }
+      my $code = "sub {
+         PTDEBUG && _d('callback: filter');
+         my(\$event) = shift;
+         $filter && return \$event;
+      };";
+      PTDEBUG && _d('--filter code:', $code);
+      $filter_code = eval $code
+         or die "Error compiling --filter code: $code\n$EVAL_ERROR";
+   }
+   else {
+      $filter_code = sub { return 1 };
+   }
+
+   my $self = {
+      %$args,
+      filter => $filter_code,
+   };
+
+   return $self;
+}
+
+sub next {
+   my ($self) = @_;
+
+   if ( !$self->_fh ) {
+      my ($fh, $file_name, $file_size) = $self->file_iter->();
+      return unless $fh;
+
+      PTDEBUG && _d('Reading', $file_name);
+      $self->_fh($fh);
+      $self->_file_name($file_name);
+      $self->_file_size($file_size);
+
+      my $parser_args = {};
+
+      if ( my $read_timeout = $self->read_timeout ) {
+         $parser_args->{next_event}
+            = sub { return _read_timeout($fh, $read_timeout); };
+      }
+      else {
+         $parser_args->{next_event} = sub { return <$fh>; };
+      }
+
+      $parser_args->{tell} = sub {
+         my $offset = tell $fh;  # update global $offset
+         $self->_offset($offset);
+         return $offset;  # legacy: return global $offset
+      };
+
+      $self->_parser_args($parser_args);
+   }
+
+   EVENT:
+   while (
+      $self->oktorun
+      &&  (my $event = $self->parser->parse_event(%{ $self->_parser_args }) )
+   ) {
+      $self->stats->{queries_read}++;
+
+      if ( ($event->{cmd} || '') ne 'Query' ) {
+         PTDEBUG && _d('Skipping non-Query cmd');
+         $self->stats->{not_query}++;
+         next EVENT;
+      }
+
+      if ( !$event->{arg} ) {
+         PTDEBUG && _d('Skipping empty arg');
+         $self->stats->{empty_query}++;
+         next EVENT;
+      }
+
+      if ( !$self->filter->($event) ) {
+         $self->stats->{queries_filtered}++;
+         next EVENT;
+      }
+
+      if ( $self->read_only ) {
+         if ( $event->{arg} !~ m/(?:^SELECT|(?:\*\/\s*SELECT))/i ) {
+            PTDEBUG && _d('Skipping non-SELECT query');
+            $self->stats->{not_select}++;
+            next EVENT;
+         }
+      }
+
+      $event->{fingerprint} = $self->fingerprint->($event->{arg});
+
+      my $current_db = $self->database;
+      my $db = $event->{db} || $event->{Schema} || $self->default_database;
+      if ( $db && (!$current_db || $current_db ne $db) ) {
+         $self->database($db);
+      }
+      else {
+         $self->database(undef);
+      }
+
+      return $event;
+   }
+
+   PTDEBUG && _d('Done reading', $self->_file_name);
+   close $self->_fh if $self->_fh;
+   $self->_fh(undef);
+   $self->_file_name(undef);
+   $self->_file_size(undef);
+
+   return;
+}
+
+sub _read_timeout {
+   my ( $fh, $t ) = @_;
+   return unless $fh;
+   $t ||= 0;  # will reset alarm and cause read to wait forever
+
+   my $mask   = POSIX::SigSet->new(&POSIX::SIGALRM);
+   my $action = POSIX::SigAction->new(
+      sub {
+         die 'read timeout';
+      },
+      $mask,
+   );
+   my $oldaction = POSIX::SigAction->new();
+   sigaction(&POSIX::SIGALRM, $action, $oldaction);
+
+   my $res;
+   eval {
+      alarm $t;
+      $res = <$fh>;
+      alarm 0;
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d('Read error:', $EVAL_ERROR);
+      die $EVAL_ERROR unless $EVAL_ERROR =~ m/read timeout/;
+      $res = undef;  # res is a blank string after a timeout
+   }
+   return $res;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End QueryIterator package
+# ###########################################################################
+
+# ###########################################################################
+# UpgradeResults package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/UpgradeResults.pm
+#   t/lib/UpgradeResults.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{
+package UpgradeResults;
+
+use strict;
+use warnings FATAL => 'all';
+use English qw(-no_match_vars);
+use constant PTDEBUG => $ENV{PTDEBUG} || 0;
+
+use Digest::MD5 qw(md5_hex);
+
+use Lmo;
+
+has 'max_class_size' => (
+    is       => 'ro',
+    isa      => 'Int',
+    required => 1,
+);
+
+has 'max_examples' => (
+    is       => 'ro',
+    isa      => 'Int',
+    required => 1,
+);
+
+has 'classes' => (
+    is       => 'rw',
+    isa      => 'HashRef',
+    required => 0,
+    default  => sub { return {} },
+);
+
+sub save_diffs {
+   my ($self, %args) = @_;
+
+   my $event           = $args{event};
+   my $query_time_diff = $args{query_time_diff};
+   my $warning_diffs   = $args{warning_diffs};
+   my $row_diffs       = $args{row_diffs};
+
+   my $class = $self->class(event => $event);
+
+   if ( my $query = $self->_can_save(event => $event, class => $class) ) {
+
+      if ( $query_time_diff
+           && scalar @{$class->{query_time_diffs}} < $self->max_examples ) {
+         push @{$class->{query_time_diffs}}, [
+            $query,
+            $query_time_diff,
+         ];
+      }
+
+      if ( @$warning_diffs
+           && scalar @{$class->{warning_diffs}} < $self->max_examples ) {
+         push @{$class->{warnings_diffs}}, [
+            $query,
+            $warning_diffs,
+         ];
+      }
+
+      if ( @$row_diffs
+           && scalar @{$class->{row_diffs}} < $self->max_examples ) {
+         push @{$class->{row_diffs}}, [
+            $query,
+            $row_diffs,
+         ];
+      }
+   }
+
+   return;
+}
+
+sub save_error {
+   my ($self, %args) = @_;
+
+   my $event  = $args{event};
+   my $error1 = $args{error1};
+   my $error2 = $args{error2};
+
+   my $class = $self->class(event => $event);
+
+   if ( my $query = $self->_can_save(event => $event, class => $class) ) {
+      if ( scalar @{$class->{errors}} < $self->max_examples ) {
+         push @{$class->{errors}}, [
+            $query,
+            $error1,
+            $error2,
+         ];
+      }
+   }
+
+   return;
+}
+
+sub _can_save {
+   my ($self, %args) = @_;
+   my $event = $args{event};
+   my $class = $args{class};
+   my $query = $event->{arg};
+   if ( exists $class->{unique_queries}->{$query}
+        || scalar keys %{$class->{unique_queries}} < $self->max_class_size ) {
+      $class->{unique_queries}->{$query}++;
+      return $query;
+   }
+   PTDEBUG && _d('Too many queries in class, discarding', $query);
+   $class->{discarded}++;
+   return;
+}
+
+sub class {
+   my ($self, %args) = @_;
+   my $event = $args{event};
+
+   my $id      = uc(substr(md5_hex($event->{fingerprint}), -16));
+   my $classes = $self->classes;
+   my $class   = $classes->{$id};
+   if ( !$class ) {
+      PTDEBUG && _d('New query class:', $id, $event->{fingerprint});
+      $class = $self->_new_class(
+         id    => $id,
+         event => $event,
+      );
+      $classes->{$id} = $class;
+   }
+   return $class;
+}
+
+sub _new_class {
+   my ($self, %args) = @_;
+   my $id    = $args{id};
+   my $event = $args{event};
+   PTDEBUG && _d('New query class:', $id, $event->{fingerprint});
+   my $class = {
+      id               => $id,
+      fingerprint      => $event->{fingerprint},
+      discarded        => 0,
+      unique_queries   => {
+         $event->{arg} => 0,
+      },
+      query_time_diffs => [], 
+      warning_diffs    => [],
+      row_diffs        => [],
+   };
+   return $class;
+}
+
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
+}
+
+no Lmo;
+1;
+}
+# ###########################################################################
+# End UpgradeResults package
+# ###########################################################################
+
+# ###########################################################################
 # This is a combination of modules and programs in one -- a runnable module.
 # http://www.perl.com/pub/a/2006/07/13/lightning-articles.html?page=last
 # Or, look it up in the Camel book on pages 642 and 643 in the 3rd edition.
@@ -4388,12 +5460,11 @@ use strict;
 use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 
+use Time::HiRes qw(time);
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
 $Data::Dumper::Sortkeys  = 1;
 $Data::Dumper::Quotekeys = 0;
-
-Transformers->import(qw(make_checksum));
 
 use Percona::Toolkit;
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
@@ -4421,77 +5492,99 @@ sub main {
    my $dp = $o->DSNParser();
    $dp->prop('set-vars', $o->get('set-vars'));
 
-   if ( !$o->get('help') ) {
-      if ( @ARGV < 1 ) {
-         $o->save_error('Specify at least one host DSN');
-      }
-      if ( my $compare_method = $o->get('compare-results-method') ) {
-         my %valid_method = qw(checksum 1 rows 1);
-         $o->save_error("Invalid --compare-results-method: $compare_method")
-            unless $valid_method{lc $compare_method};
-      }
-   }
+   my $host1_dsn_string;
+   my $host2_dsn_string;
+   my $results_dir;
+   my $file;
 
-   my @files;
-   my $hosts        = [];
-   my $dsn_defaults = $dp->parse_options($o);
-   while ( my $arg = shift @ARGV ) {
-      if ( !-f $arg ) {
-         PTDEBUG && _d($arg, 'is a DSN');
-         my $dsn = $dp->parse(
-            $arg,
-            ($hosts->[-1] ? $hosts->[-1]->{dsn} : undef),
-            $dsn_defaults
-         );
-         push @$hosts, { dsn  => $dsn, };
+   if ( @ARGV > 3 ) {
+      $o->save_error('Too many command line arguments.  '
+         . 'Please see the SYNOPSIS in the tool\'s documentation.');
+   }
+   else {
+      if ( -f $ARGV[0]
+           && ($ARGV[1] && !-f $ARGV[1] && !-d $ARGV[1])
+           && ($ARGV[2] && !-f $ARGV[2] && !-d $ARGV[2])
+           && !$o->got('save-results') )
+      {
+         PTDEBUG && _d('Use case: FILE HOST HOST');
+         ($file, $host1_dsn_string, $host2_dsn_string) = @ARGV;
       }
+      elsif ( -f $ARGV[0]
+              && ($ARGV[1] && !-f $ARGV[1] && !-d $ARGV[1])
+              && !$ARGV[2]
+              && $o->got('save-results') )
+      {
+         PTDEBUG && _d('Use case: FILE HOST --save-results');
+         ($file, $host1_dsn_string) = @ARGV;
+         $results_dir = $o->get('save-results');
+      } 
+      elsif ( -d $ARGV[0]
+              && ($ARGV[1] && !-f $ARGV[1] && !-d $ARGV[1])
+              && !$ARGV[2]
+              && !$o->got('save-results') )
+      {
+         PTDEBUG && _d('Use case: DIR HOST');
+         ($results_dir, $host1_dsn_string) = @ARGV;
+      } 
       else {
-         PTDEBUG && _d($arg, 'is a file');
-         push @files, $arg;
+         $o->save_error('Invalid combination of command line arguments.  '
+            . 'Please see the SYNOPSIS in the tool\'s documentation.');
       }
    }
-   if ( @files == 0 ) {
-      push @files, '-'; # Magical STDIN filename.
-   }
 
-   if ( @$hosts == 0 ) {
-      $o->save_error('Specify at least one host DSN');
-   }
-
-   VersionCheck::validate_options($o);
-   
    $o->usage_or_errors();
 
    # ########################################################################
    # Connect to the hosts.
    # ########################################################################
-   foreach my $host ( @$hosts ) {
-      $host->{dbh} = get_cxn($dp, $o, $host->{dsn});
-      $dp->fill_in_dsn($host->{dbh}, $host->{dsn});
-      my $name       = $host->{dsn}->{h} || $host->{dsn}->{F};
-      $name         .= ":$host->{dsn}->{P}" if $host && $host->{dsn}->{P};
-      $host->{name}  = $name || 'unknown host';
+   my ($host1, $host2);
+
+   my $set_on_connect = sub {
+      my ($dbh) = @_;
+      if ( $o->get('disable-query-cache') ) {
+         disable_query_cache($dbh);
+      }
+      return;
+   };
+
+   my $make_cxn = sub {
+      my (%args) = @_;
+      my $cxn = new Cxn(
+         %args,
+         DSNParser    => $dp,
+         OptionParser => $o,
+         set          => $set_on_connect,
+      );
+      eval { $cxn->connect() };  # connect or die trying
+      if ( $EVAL_ERROR ) {
+         die $EVAL_ERROR;
+      }
+      return $cxn;
+   };
+
+   if ( $host1_dsn_string ) {
+      $host1 = $make_cxn->(
+         dsn_string => $host1_dsn_string,
+      );
+   }
+   if ( $host2_dsn_string ) {
+      $host2 = $make_cxn->(
+         dsn_string => $host2_dsn_string,
+         prev_dsn   => $host1->dsn,
+      );
    }
 
    # ########################################################################
    # Do the version-check
    # ########################################################################
-#   if ( $o->get('version-check') ne 'off'
-#        && (!$o->has('quiet') || !$o->get('quiet')) ) {
-#         instances => [
-#            map({ +{ dbh => $_->{dbh}, dsn => $_->{dsn} } } @$hosts)
-#         ],
-#         protocol  => $o->get('version-check'),
-#      );
-#   }
-
-   # ########################################################################
-   # Disable the query cache.
-   # ########################################################################
-   if ( $o->get('disable-query-cache') ) {
-      foreach my $host ( @$hosts ) {
-         disable_query_cache($host);
-      }
+   if ( $o->get('version-check') && (!$o->has('quiet') || !$o->get('quiet')) ) {
+      VersionCheck::version_check(
+         instances => [
+            ($host1 ? { dbh => $host1->dbh, dsn => $host1->dsn } : ()),
+            ($host2 ? { dbh => $host2->dbh, dsn => $host2->dsn } : ()),
+         ],
+      );
    }
 
    # ########################################################################
@@ -4510,17 +5603,25 @@ sub main {
    }
 
    # ##########################################################################
-   # Parse the input.
+   # Execute and compare the queries.
    # ##########################################################################
-   my ($host1, $host2, $results_dir);
    if ( $host1 && $host2 ) {
       compare_host_to_host(
-         host1 => $host1,
-         host2 => $host2,
+         file            => $file,
+         host1           => $host1,
+         host2           => $host2,
+         max_class_size  => $o->get('max-class-size'),
+         max_examples    => $o->get('max-examples'),
+         # Optional
+         filter          => $o->get('filter'),
+         ignore_warnings => $o->get('ignore-warnings'),
+         read_only       => $o->get('read-only') ?  1 : 0,
+         read_timeout    => $o->get('read-timeout'),
       );
    }
    elsif ( $host1 && $results_dir ) {
       save_host_results(
+         file        => $file,
          host        => $host1,
          results_dir => $results_dir,
       );
@@ -4547,54 +5648,190 @@ sub main {
 # ############################################################################
 
 sub compare_host_to_host {
+   my (%args) = @_;
+
+#   have_required_args(\%args, qw(
+#      host1
+#      host2
+#   )) or die;
+   my $file           = $args{file};
+   my $host1          = $args{host1};
+   my $host2          = $args{host2};
+   my $max_class_size = $args{max_class_size};
+   my $max_examples   = $args{max_examples}; 
+   PTDEBUG && _d('Compare', $host1->name, 'to', $host2->name);
+
+   # Optional args
+   my $filter          = $args{filter};
+   my $ignore_warnings = $args{ignore_warnings};
+   my $read_only       = $args{read_only};
+   my $read_timeout    = $args{read_timeout};
+
+   my $stats = {
+      queries_read        => 0,
+      queries_filtered    => 0,
+      queries_with_diffs  => 0,
+      queries_no_diffs    => 0,
+      queries_with_errors => 0,
+      failed_queries      => 0,
+   };
+
+   my $results = UpgradeResults->new(
+      max_class_size => $max_class_size,
+      max_examples   => $max_examples,
+   );
+
+   my $qr = QueryRewriter->new();  # fingerprint
+
+   my $file_iter = FileIterator->new();
+   my $files = $file_iter->get_file_itr($file);
+
+   my $query_iter = QueryIterator->new(
+      file_iter        => $files,
+      parser           => SlowLogParser->new(),
+      fingerprint      => sub { return $qr->fingerprint(@_) },
+      oktorun          => sub { return $oktorun },
+      stats            => $stats,
+      default_database => $host1->dsn->{D},
+      ($filter       ? (filter       => $filter)       : ()),
+      ($read_only    ? (read_only    => $read_only)    : ()),
+      ($read_timeout ? (read_timeout => $read_timeout) : ()),
+   );
+
+   while ( my $event = $query_iter->next() ) {
+      my $results1 = exec_event(
+         event => $event,
+         host  => $host1,
+      );
+
+      my $results2 = exec_event(
+         event => $event,
+         host  => $host2,
+      );
+
+      if ( $results1->{error} && $results2->{error} ) {
+         PTDEBUG && _d('Failed query:', $event->{arg});
+         $stats->{failed_queries}++;
+      }
+      elsif (   ($results1->{error} && !$results2->{error})
+             || ($results2->{error} && !$results1->{error}) ) {
+         $stats->{queries_wit_errors}++;
+         $results->save_error(
+            event    => $event,
+            results1 => $results1,
+            results2 => $results2,
+         );
+      }
+      else {
+         my $query_time_diff = diff_query_times(
+            query_time1 => $results1->{query_time},
+            query_time2 => $results2->{query_time},
+         );
+
+         my $warning_diffs = diff_warnings(
+            warnings1 => $results1->{warnings},
+            warnings2 => $results2->{warnings},
+         );
+
+         my $row_diffs = diff_rows(
+            sth1 => $results1->{sth},
+            sth2 => $results2->{sth},
+         );
+
+         if ( $query_time_diff
+              || scalar @$warning_diffs
+              || scalar @$row_diffs )
+         {
+            PTDEBUG && _d('Query has diffs');
+            $stats->{queries_with_diffs}++;
+            $results->save_diffs(
+               event           => $event,
+               query_time_diff => $query_time_diff,
+               warning_diffs   => $warning_diffs,
+               row_diffs       => $row_diffs,
+            );
+         }
+         else {
+            $stats->{queries_no_diffs}++;
+         }
+      }
+   }
+
+   warn Dumper($results);
+   warn Dumper($stats);
+
+   return;
 }
 
 sub save_host_results {
-   while (
       # oktorun
       # run-time
-      my $query = $query_iter->next() ) {
+      # my $query = $query_iter->next() ) {
       # Exec query on host
       # Save results to disk
       # Report progress
-   }
+   return;
 }
 
 sub compare_results_to_host {
-}
-
-sub get_cxn {
-   my ( $dp, $o, $dsn ) = @_;
-   if ( $o->get('ask-pass') ) {
-      $dsn->{p} = OptionParser::prompt_noecho("Enter password: ");
-   }
-   my $dbh = $dp->get_dbh($dp->get_cxn_params($dsn), {AutoCommit => 1});
-   return $dbh;
+   return;
 }
 
 sub disable_query_cache {
-   my ($host) = @_;
-   die "I need a host argument" unless $host;
-   my ($dbh, $host_name) = @{$host}{qw(dbh name)};
+   my ($dbh) = @_;
+   die "I need a dbh argument" unless $dbh;
 
    my $sql = 'SELECT @@query_cache_type';
-   PTDEBUG && _d($host_name, $sql);
+   PTDEBUG && _d($sql);
    my ($query_cache_type) = $dbh->selectrow_array($sql);
-   PTDEBUG && _d($host_name, $query_cache_type);
+   PTDEBUG && _d($query_cache_type);
    return if ($query_cache_type || '') =~ m/OFF|0/;
 
    $sql = q/SET SESSION query_cache_type = OFF/;
    eval {
-      PTDEBUG && _d($host_name, $sql);
+      PTDEBUG && _d($sql);
       $dbh->do($sql);
    };
    if ( $EVAL_ERROR ) {
       warn $EVAL_ERROR;
-      die "Failed to $sql on $host_name.  Disable the query cache "
+      die "Failed to $sql.  Disable the query cache "
          . "manually, or specify --no-disable-query-cache.\n";
    }
 
    return;
+}
+
+sub exec_event {
+   my (%args) = @_;
+   my @required_args = qw(host event);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless $args{$arg};
+   }
+   my $host  = $args{host};
+   my $event = $args{event};
+
+   my $results = {
+      query_time => undef,
+      sth        => undef,
+      warnings   => undef,
+      error      => undef,
+   };
+
+   eval {
+      my $sth = $host->dbh->prepare($event->{arg});
+      my $t0 = time;
+      $sth->execute();
+      my $t1 = time - $t0;
+      $results->{query_time} = sprintf('%.6f', $t1);
+      $results->{sth}        = $sth;
+      $results->{warnings}   = get_warnings(dbh => $host->dbh);
+   };
+   if ( $EVAL_ERROR ) {
+      PTDEBUG && _d($EVAL_ERROR);
+      $results->{error} = $EVAL_ERROR;
+   }
+   PTDEBUG && _d('Result on', $host->name, Dumper($results));
+   return $results;
 }
 
 sub get_warnings {
@@ -4608,21 +5845,31 @@ sub get_warnings {
    return $warnings;
 }
 
+sub diff_query_times {
+   my (%args) = @_;
+   my @required_args = qw(query_time1 query_time2);
+   foreach my $arg ( @required_args ) {
+      die "I need a $arg argument" unless defined $args{$arg};
+   }
+   PTDEBUG && _d('Diff query times');
+   my $query_time1 = $args{query_time1};
+   my $query_time2 = $args{query_time2};
+   return;
+}
+
 sub diff_warnings {
    my (%args) = @_;
-   my @required_args = qw(host1_warnings host2_warnings);
+   my @required_args = qw(warnings1 warnings2);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my $host1_warns = $args{host1_warnings};
-   my $host2_warns = $args{host2_warnings};
+   my $host1_warns = $args{warnings1};
+   my $host2_warns = $args{warnings2};
 
    # Optional args
    my $ignore_warnings = $args{ignore_warnings};
 
-#   map {
-#      $_->{Message} =~ s/Out of range value adjusted/Out of range value/;
-#   } values %$warnings;
+   PTDEBUG && _d('Diff warnings');
 
    my %codes = map  { $_ => 1 }
                grep { !$ignore_warnings->{$_} }
@@ -4631,6 +5878,7 @@ sub diff_warnings {
    foreach my $code ( sort keys %codes ) {
       next if exists $host1_warns->{$code} && exists $host2_warns->{$code};
       push @diffs, {
+         code  => $code,
          host1 => $host1_warns->{$code},
          host2 => $host2_warns->{$code},
       };
@@ -4651,6 +5899,8 @@ sub diff_rows {
    # Optional args
    my $max_diffs = $args{max_diffs} || 3;
 
+   PTDEBUG && _d('Diff rows');
+
    my $rowno = 0;
    my @diffs;
    while ( scalar(@diffs) < $max_diffs ) {
@@ -4662,14 +5912,15 @@ sub diff_rows {
       $rowno++;
 
       if ( !identical_rows($row1, $row2) ) {
+         PTDEBUG && _d('Row diff:', Dumper($row1), Dumper($row2));
          # "Note that the same array reference is returned for each fetch,
          # so don't store the reference and then use it after a later fetch."
          my @copy_row1 = $row1 ? @$row1 : ();
          my @copy_row2 = $row2 ? @$row2 : ();
          push @diffs, {
             row_number => $rowno,
-            sth1_rows  => \@copy_row1,
-            sth2_rows  => \@copy_row2,
+            host1      => \@copy_row1,
+            host2      => \@copy_row2,
          };
       }
    }
@@ -4682,7 +5933,10 @@ sub identical_rows {
 
    my $size_array1 = scalar @$array1;
    my $size_array2 = scalar @$array2;
-   return 0 if $size_array1 != $size_array2;
+   if ( $size_array1 != $size_array2 ) {
+      PTDEBUG && _d('Different number of columns:', $size_array1, $size_array2);
+      return 0;
+   }
 
    my $n_vals = $size_array1 - 1;  # arrays are zero-indexed
    for my $i ( 0..$n_vals ) {
@@ -4734,7 +5988,7 @@ if ( !caller ) { exit main(@ARGV); }
 
 =head1 NAME
 
-pt-upgrade - Verify that queries produce identical results on different servers.
+pt-upgrade - Verify that queries results are identical on different servers.
 
 =head1 SYNOPSIS
 
@@ -4753,6 +6007,16 @@ Save results for host1, then compare host2 to them:
    pt-upgrade slow.log h=host1 --save-results host1_results/
 
    pt-upgrade host1_results1/ h=host2
+
+These examples demonstrate the three valid combinations of command line
+arguments:
+
+   LOG DSN DSN
+   LOG DSN --save-results
+   DIR DSN
+
+The error "Invalid combination of command line arguments" indicates that
+the command line arguments do not match one of these combinations.
 
 =head1 RISKS
 
@@ -5210,6 +6474,12 @@ short form: -h; type: string
 
 MySQL hostname or IP.
 
+=item --ignore-warnings
+
+type: Hash
+
+Ignore these MySQL warning codes when comparing warnings.
+
 =item --log
 
 type: string
@@ -5269,6 +6539,20 @@ Execute only SELECT and SET statements.  If C<--no-read-only> is specified,
 I<all> queries are exeucted: C<DROP>, C<DELETE>, C<UPDATE>, etc.  Even when
 running in default read-only mode, you should use a MySQL user with only
 C<SELECT> privileges to insure against bugs in the tool.
+
+=item --read-timeout
+
+type: time; default: 0
+
+Wait this long for an event from the input; 0 to wait forever.
+
+This option sets the maximum time to wait for an event from the input.  It
+applies to all types of input except L<"--processlist">.  If an
+event is not received after the specified time, the script stops reading the
+input and prints its reports.  If L<"--iterations"> is 0 or greater than
+1, the next iteration will begin, else the script will exit.
+
+This option requires the Perl POSIX module.
 
 =item --resume
 
@@ -5359,28 +6643,12 @@ MySQL user if not the current system user.
 
 Show version and exit.
 
-=item --version-check
+=item --[no]version-check
 
-type: string; default: off
+default: yes
 
 Send program versions to Percona and print suggested upgrades and problems.
 Possible values for --version-check:
-
-=for comment ignore-pt-internal-value
-MAGIC_version_check
-
-https, http, auto, off
-
-C<auto> first tries using C<https>, and resorts to C<http> if that fails.
-Keep in mind that C<https> might not be available if
-C<IO::Socket::SSL> is not installed on your system, although
-C<--version-check http> should work everywhere.
-
-The version check feature causes the tool to send and receive data from
-Percona over the web.  The data contains program versions from the local
-machine.  Percona uses the data to focus development on the most widely
-used versions of programs, and to suggest to customers possible upgrades
-and known bad versions of programs.
 
 For more information, visit L<http://www.percona.com/version-check>.
 
