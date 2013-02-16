@@ -62,12 +62,6 @@ has 'oktorun' => (
 # Optional
 ##
 
-has 'default_database' => (
-   is       => 'rw',
-   isa      => 'Maybe[Str]',
-   required => 0,
-);
-
 has 'filter' => (
    is       => 'ro',
    isa      => 'CodeRef',
@@ -97,12 +91,6 @@ has 'stats' => (
    isa      => 'HashRef',
    required => 0,
    default  => sub { return {} },
-);
-
-has 'database' => (
-   is       => 'rw',
-   isa      => 'Maybe[Str]',
-   required => 0,
 );
 
 has '_fh' => (
@@ -235,15 +223,6 @@ sub next {
       }
 
       $event->{fingerprint} = $self->fingerprint->($event->{arg});
-
-      my $current_db = $self->database;
-      my $db = $event->{db} || $event->{Schema} || $self->default_database;
-      if ( $db && (!$current_db || $current_db ne $db) ) {
-         $self->database($db);
-      }
-      else {
-         $self->database(undef);
-      }
 
       return $event;
    }
