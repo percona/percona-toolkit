@@ -59,24 +59,23 @@ sub save_diffs {
    my $class = $self->class(event => $event);
 
    if ( my $query = $self->_can_save(event => $event, class => $class) ) {
-
       if ( $query_time_diff
            && scalar @{$class->{query_time_diffs}} < $self->max_examples ) {
          push @{$class->{query_time_diffs}}, [
             $query,
-            $query_time_diff,
+            @$query_time_diff,
          ];
       }
 
-      if ( @$warning_diffs
+      if ( $warning_diffs && @$warning_diffs
            && scalar @{$class->{warning_diffs}} < $self->max_examples ) {
-         push @{$class->{warnings_diffs}}, [
+         push @{$class->{warning_diffs}}, [
             $query,
             $warning_diffs,
          ];
       }
 
-      if ( @$row_diffs
+      if ( $row_diffs && @$row_diffs
            && scalar @{$class->{row_diffs}} < $self->max_examples ) {
          push @{$class->{row_diffs}}, [
             $query,
@@ -84,6 +83,8 @@ sub save_diffs {
          ];
       }
    }
+
+   $self->report_if_ready(class => $class);
 
    return;
 }
@@ -107,6 +108,32 @@ sub save_error {
       }
    }
 
+   $self->report_if_ready(class => $class);
+
+   return;
+}
+
+sub save_failed_query {
+   my ($self, %args) = @_;
+
+   my $event  = $args{event};
+   my $error1 = $args{error1};
+   my $error2 = $args{error2};
+
+   my $class = $self->class(event => $event);
+
+   if ( my $query = $self->_can_save(event => $event, class => $class) ) {
+      if ( scalar @{$class->{failures}} < $self->max_examples ) {
+         push @{$class->{failures}}, [
+            $query,
+            $error1,
+            $error2,
+         ];
+      }
+   }
+
+   $self->report_if_ready(class => $class);
+
    return;
 }
 
@@ -115,6 +142,11 @@ sub _can_save {
    my $event = $args{event};
    my $class = $args{class};
    my $query = $event->{arg};
+   if ( $class->{reported} ) {
+      PTDEBUG && _d('Class already reported');
+      return;
+   }
+   $class->{total_queries}++;
    if ( exists $class->{unique_queries}->{$query}
         || scalar keys %{$class->{unique_queries}} < $self->max_class_size ) {
       $class->{unique_queries}->{$query}++;
@@ -133,7 +165,6 @@ sub class {
    my $classes = $self->classes;
    my $class   = $classes->{$id};
    if ( !$class ) {
-      PTDEBUG && _d('New query class:', $id, $event->{fingerprint});
       $class = $self->_new_class(
          id    => $id,
          event => $event,
@@ -155,11 +186,325 @@ sub _new_class {
       unique_queries   => {
          $event->{arg} => 0,
       },
-      query_time_diffs => [], 
+      failures         => [],  # error on both hosts
+      errors           => [],  # error on one host
+      query_time_diffs => [],
       warning_diffs    => [],
       row_diffs        => [],
    };
    return $class;
+}
+
+sub report_unreported_classes {
+   my ($self) = @_;
+   my $classes = $self->classes;
+   foreach my $id ( sort keys %$classes ) {
+      my $class = $classes->{$id};
+      my $reason;
+      if ( !scalar @{$class->{failures}} ) {
+         $reason = 'it has diffs';
+      }
+      elsif (    scalar @{$class->{errors}}
+              || scalar @{$class->{query_time_diffs}}
+              || scalar @{$class->{warning_diffs}}
+              || scalar @{$class->{row_diffs}} ) {
+         $reason = 'it has SQL errors and diffs';
+      }
+      else {
+         $reason = 'it has SQL errors'
+      }
+      $self->report_class(
+         class   => $class,
+         reasons => ["$reason, but hasn't been reported yet"],
+      );
+      $class = { reported => 1 };
+   }
+   return;
+}
+
+sub report_if_ready {
+   my ($self, %args) = @_;
+   my $class = $args{class};
+
+   my $max_examples = $self->max_class_size;
+   my @report_reasons;
+
+   if ( scalar keys %{$class->{unique_queries}} >= $self->max_class_size ) {
+      push @report_reasons, "it's full (--max-class-size)";
+   }
+
+   if ( scalar @{$class->{query_time_diffs}} >= $max_examples ) {
+      push @report_reasons, "there are $max_examples query diffs";
+   }
+
+   if ( scalar @{$class->{warning_diffs}} >= $max_examples ) {
+      push @report_reasons, "there are $max_examples warning diffs";
+   }
+
+   if ( scalar @{$class->{row_diffs}} >= $self->max_examples ) {
+      push @report_reasons, "there are $max_examples row diffs";
+   }
+
+   if ( scalar @{$class->{errors}} >= $self->max_examples ) {
+      push @report_reasons, "there are $max_examples query errors";
+   }
+
+   if ( scalar @{$class->{failures}} >= $self->max_examples ) {
+      push @report_reasons, "there are $max_examples failed queries";
+   }
+
+   if ( scalar @report_reasons ) {
+      PTDEBUG && _d('Reporting class because', @report_reasons);
+      $self->report_class(
+         class   => $class,
+         reasons => \@report_reasons,
+      );
+      $class = { reported => 1 };
+   }
+
+   return;
+}
+
+sub report_class {
+   my ($self, %args) = @_;
+   my $class   = $args{class};
+   my $reasons = $args{reasons};
+
+   PTDEBUG && _d('Reporting class', $class->{id}, $class->{fingerprint});
+
+   $self->_print_class_header(
+      class   => $class,
+      reasons => $reasons,
+   );
+
+   if ( scalar @{$class->{failures}} ) {
+      $self->_print_failures(
+         failures => $class->{failures},
+      );
+   }
+
+   if ( scalar @{$class->{errors}} ) {
+      $self->_print_diffs(
+         diffs         => $class->{errors},
+         name          => 'Query error',
+         inline        => 0,
+         default_value => 'No error',
+      );
+   }
+
+   if ( scalar @{$class->{query_time_diffs}} ) {
+      $self->_print_diffs(
+         diffs  => $class->{query_time_diffs},
+         name   => 'Query time',
+         inline => 1,
+      );
+   }
+
+   if ( scalar @{$class->{warning_diffs}} ) {
+      $self->_print_multiple_diffs(
+         diffs     => $class->{warning_diffs},
+         name      => 'Warning',
+         formatter => \&_format_warnings,
+      );
+   }
+
+   if ( scalar @{$class->{row_diffs}} ) {
+      $self->_print_multiple_diffs(
+         diffs     => $class->{row_diffs},
+         name      => 'Row',
+         formatter => \&_format_rows,
+      );
+   }
+
+   return;
+}
+
+# This is a terrible hack due to two things: 1) our own util/update-modules
+# things lines starting with multiple # are package headers; 2) the same
+# util strips all comment lines start with #.  So if we use the literal #
+# for this header, util/update-modules will remove them from the code.
+# *facepalm*
+my $class_header_format = <<'EOF';
+%s
+%s
+%s
+
+Reporting class because %s.
+
+Total queries      %s
+Unique queries     %s
+Discarded queries  %s
+
+%s
+EOF
+
+sub _print_class_header {
+   my ($self, %args) = @_;
+   my $class   = $args{class};
+   my @reasons = @{ $args{reasons} };
+
+   my $unique_queries = do {
+      my $i = 0;
+      map { $i += $_ } values %{$class->{unique_queries}};
+      $i;
+   };
+   PTDEBUG && _d('Unique queries:', $unique_queries);
+
+   my $reasons;
+   if ( scalar @reasons > 1 ) {
+      $reasons = join(', ', @reasons[0..($#reasons - 1)])
+               . ', and ' . $reasons[-1];
+   }
+   else {
+      $reasons = $reasons[0];
+   }
+   PTDEBUG && _d('Reasons:', $reasons);
+
+   printf $class_header_format,
+      ('#' x 72),
+      ('# Query class ' . ($class->{id} || '?')),
+      ('#' x 72),
+      ($reasons                || '?'),
+      (defined $class->{total_queries} ? $class->{total_queries} : '?'),
+      (defined $unique_queries         ? $unique_queries         : '?'),
+      (defined $class->{discarded}     ? $class->{discarded}     : '?'),
+      ($class->{fingerprint}   || '?');
+
+   return;
+}
+
+sub _print_diff_header {
+   my ($self, %args) = @_;
+   my $name  = $args{name}  || '?';
+   my $count = $args{count} || '?';
+   print "\n##\n## $name diffs: $count\n##\n";
+   return;
+}
+
+sub _print_diffs {
+   my ($self, %args) = @_;
+   my $diffs         = $args{diffs};
+   my $name          = $args{name};
+   my $inline        = $args{inline};
+   my $default_value = $args{default_value} || '?';
+
+   $self->_print_diff_header(
+      name  => $name,
+      count => scalar @$diffs,
+   );
+
+   my $fmt = $inline ? "\n%s vs. %s\n" : "\n%s\n\nvs.\n\n%s\n";
+
+   my $diffno = 1;
+   foreach my $diff ( @$diffs ) {
+      print "\n-- $diffno.\n";
+      printf $fmt,
+         ($diff->[1] || $default_value), 
+         ($diff->[2] || $default_value);
+      print "\n" . ($diff->[0] || '?') . "\n";
+      $diffno++;
+   }
+
+   return;
+}
+
+sub _print_multiple_diffs {
+   my ($self, %args) = @_;
+   my $diffs     = $args{diffs};
+   my $name      = $args{name};
+   my $formatter = $args{formatter};
+
+   $self->_print_diff_header(
+      name  => $name,
+      count => scalar @$diffs,
+   );
+
+   my $diffno = 1;
+   foreach my $diff ( @$diffs ) {
+      print "\n-- $diffno.\n";
+      my $formatted_diff = $formatter->($diff->[1]);
+      print $formatted_diff || '?';
+      print "\n" . ($diff->[0] || '?') . "\n";
+      $diffno++;
+   }
+
+   return;
+}
+
+sub _print_failures {
+   my ($self, %args) = @_;
+   my $failures = $args{failures};
+
+   my $n_failures = scalar @$failures;
+
+   print "\n##\n## SQL errors: $n_failures\n##\n";
+
+   my $failno = 1;
+   foreach my $failure ( @$failures ) {
+      print "\n-- $failno.\n";
+      if ( ($failure->[1] || '') eq ($failure->[2] || '') ) {
+         printf "\nOn both hosts:\n\n" . ($failure->[1] || '') . "\n";
+      }
+      else {
+         printf "\n%s\n\nvs.\n\n%s\n",
+            ($failure->[1] || ''),
+            ($failure->[2] || '');
+      }
+      print "\n" . ($failure->[0] || '?') . "\n";
+      $failno++;
+   }
+
+   return;
+}
+
+my $warning_format = <<'EOL';
+   Code: %s
+  Level: %s
+Message: %s
+EOL
+
+sub _format_warnings {
+   my ($warnings) = @_;
+   return unless $warnings && @$warnings;
+   my @warnings;
+   foreach my $warn ( @$warnings ) {
+      my $code  = $warn->[0];
+      my $warn1 = $warn->[1];
+      my $warn2 = $warn->[2];
+      my $host1_warn
+         = $warn1 ? sprintf $warning_format, 
+                       ($warn1->{Code}    || $warn1->{code}    || '?'),
+                       ($warn1->{Level}   || $warn1->{level}   || '?'),
+                       ($warn1->{Message} || $warn1->{message} || '?')
+         :          "No warning $code\n";
+      my $host2_warn
+         = $warn2 ? sprintf $warning_format, 
+                       ($warn2->{Code}    || $warn2->{code}    || '?'),
+                       ($warn2->{Level}   || $warn2->{level}   || '?'),
+                       ($warn2->{Message} || $warn2->{message} || '?')
+         :          "No warning $code\n";
+
+      my $warning = sprintf "\n%s\nvs.\n\n%s", $host1_warn, $host2_warn;
+      push @warnings, $warning;
+   }
+   return join("\n\n", @warnings);
+}
+
+sub _format_rows {
+   my ($rows) = @_;
+   return unless $rows && @$rows;
+   my @diffs;
+   foreach my $row ( @$rows ) {
+      my $rowno = $row->[0];
+      my $cols1 = $row->[1];
+      my $cols2 = $row->[2];
+      my $diff
+         = "@ row " . ($rowno || '?') . "\n"
+         . '< ' . join(',', map {defined $_ ? $_ : 'NULL'} @$cols1) . "\n"
+         . '> ' . join(',', map {defined $_ ? $_ : 'NULL'} @$cols2) . "\n";
+      push @diffs, $diff;
+   }
+   return "\n" . join("\n", @diffs);
 }
 
 sub _d {

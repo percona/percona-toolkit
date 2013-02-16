@@ -4,7 +4,7 @@ USE test;
 DROP TABLE IF EXISTS t;
 CREATE TABLE `t` (
   `id` int(10) NOT NULL,
-  `name` varchar(255) default NULL,
+  `username` varchar(32) default NULL,
   `last_login` datetime default NULL,
   PRIMARY KEY  (`id`)
 );
