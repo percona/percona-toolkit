@@ -101,14 +101,14 @@ is_deeply(
    'splits with a quoted db.tbl ad embedded quotes',
 );
 
-TODO: {
-   local $::TODO = "Embedded periods not yet supported";
-   is_deeply(
-      [$q->split_unquote("`d.b`.`tbl`")],
-      [qw(d.b tbl)],
-      'splits with embedded periods: `d.b`.`tbl`',
-   );
-}
+#TODO: {
+#   local $::TODO = "Embedded periods not yet supported";
+#   is_deeply(
+#      [$q->split_unquote("`d.b`.`tbl`")],
+#      [qw(d.b tbl)],
+#      'splits with embedded periods: `d.b`.`tbl`',
+#   );
+#}
 
 is( $q->literal_like('foo'), "'foo'", 'LIKE foo');
 is( $q->literal_like('foo_bar'), "'foo\\_bar'", 'LIKE foo_bar');
@@ -151,6 +151,9 @@ my @latin1_serialize_tests = (
    [ undef, '' ],
    [ '\N' ],  # literal \N
    [ "un caf\x{e9} na\x{ef}ve" ],  # Latin-1
+   [ "\\," ],
+   [ '\\' ],
+   [ q/"abc\\", 'def'/ ],  # Brian's pathalogical case
 );
 
 my @utf8_serialize_tests = (
@@ -192,7 +195,7 @@ SKIP: {
       is_deeply(
          \@text_parts,
          $latin1_serialize_tests[$test_index],
-         "Serialize TEXT $flat_string"
+         "Serialize $flat_string"
       ) or diag(Dumper($text_string, \@text_parts));
    }
 };
@@ -203,6 +206,8 @@ $utf8_dbh->do("SET NAMES 'utf8'");
 SKIP: {
    skip 'Cannot connect to sandbox master', scalar @utf8_serialize_tests
       unless $utf8_dbh;
+   skip 'DBD::mysql 3.0007 has UTF-8 bug', scalar @utf8_serialize_tests
+      if $DBD::mysql::VERSION le '3.0007';
 
    $utf8_dbh->do("DROP TABLE serialize_test.serialize");
    $utf8_dbh->do("CREATE TABLE serialize_test.serialize (id INT, textval TEXT, blobval BLOB) CHARSET='utf8'");
@@ -234,7 +239,7 @@ SKIP: {
       is_deeply(
          \@text_parts,
          $utf8_serialize_tests[$test_index],
-         "Serialize TEXT $flat_string"
+         "Serialize UTF-8 $flat_string"
       ) or diag(Dumper($text_string, \@text_parts));
    }
 
