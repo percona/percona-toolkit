@@ -535,7 +535,7 @@ sub join_quote {
 sub serialize_list {
    my ( $self, @args ) = @_;
    PTDEBUG && _d('Serializing', Dumper(\@args));
-   die "Cannot serialize an empty array" unless scalar @args;
+   return unless @args;
 
    my @parts;
    foreach my $arg  ( @args ) {
