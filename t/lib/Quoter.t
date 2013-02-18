@@ -125,6 +125,12 @@ is( $q->join_quote('`db`', '`foo`.`tbl`'), '`foo`.`tbl`', 'join_merge(`db`, `foo
 # ###########################################################################
 # (de)serialize_list
 # ###########################################################################
+
+is(
+   $q->serialize_list( () ),
+   undef,
+   'Serialize empty list returns undef'
+);
    
 binmode(STDOUT, ':utf8')
    or die "Can't binmode(STDOUT, ':utf8'): $OS_ERROR";
