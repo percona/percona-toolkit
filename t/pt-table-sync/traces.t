@@ -63,10 +63,11 @@ output(
 # dst_db:test dst_tbl:t2 dst_dsn:P=12346,h=127.0.0.1,p=...,u=msandbox
 # lock:1 transaction:0 changing_src:1 replicate:0 bidirectional:0 pid:0
 # user:$ENV{USER} host:-*/
+my $user   = $ENV{USER} || '';
 my $output = `$mysqlbinlog /tmp/12345/data/$pos->{file} --start-position=$pos->{position} | grep 'percona-toolkit'`;
 like(
    $output,
-   qr/DELETE FROM.*test`.`t2.*percona-toolkit src_db:test.*user:$ENV{USER}/,
+   qr/DELETE FROM.*test`.`t2.*percona-toolkit src_db:test.*user:$user/,
    "Trace message appended to change SQL"
 );
 
