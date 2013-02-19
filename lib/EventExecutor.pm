@@ -82,7 +82,7 @@ sub exec_event {
       my $t1 = time - $t0;
       $results->{query_time} = sprintf('%.6f', $t1);
       $results->{sth}        = $sth;
-      $results->{warnings}   = $self->get_warnings(host => $host);
+      $results->{warnings}   = $self->get_warnings(dbh => $host->dbh);
    };
    if ( $EVAL_ERROR ) {
       PTDEBUG && _d($EVAL_ERROR);
@@ -95,12 +95,12 @@ sub exec_event {
 
 sub get_warnings {
    my ($self, %args) = @_;
-   my @required_args = qw(host);
+   my @required_args = qw(dbh);
    foreach my $arg ( @required_args ) {
       die "I need a $arg argument" unless $args{$arg};
    }
-   my $host = $args{host};
-   my $warnings = $host->dbh->selectall_hashref('SHOW WARNINGS', 'code');
+   my $dbh = $args{dbh};
+   my $warnings = $dbh->selectall_hashref('SHOW WARNINGS', 'code');
    return $warnings;
 }
 
