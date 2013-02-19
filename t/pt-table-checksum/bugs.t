@@ -195,7 +195,7 @@ is(
 # #############################################################################
 
 ($output) = output(
-   sub { pt_table_checksum::main(@args, '--tables', 'mysql.user,mysql.host',
+   sub { pt_table_checksum::main(@args, '--tables', 'mysql.user,mysql.db',
                                  '--columns', 'some_fale_column') },
    stderr => 1,
 );
@@ -269,7 +269,7 @@ SKIP: {
       "...and warns for both level 1 and level 2 slaves"
    ) or diag($output);
 
-   diag(`$trunk/sandbox/stop-sandbox 12348 12349`);
+   diag(`$trunk/sandbox/stop-sandbox 12349 12348`);
 }
 
 # #############################################################################
@@ -278,4 +278,3 @@ SKIP: {
 $sb->wipe_clean($master_dbh);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;
-exit;

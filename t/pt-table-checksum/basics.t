@@ -104,7 +104,8 @@ ok(
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   (  $sandbox_version gt "5.1" ? 90
+   (  $sandbox_version ge "5.6" ? 89
+    : $sandbox_version gt "5.1" ? 90
     : $sandbox_version gt "5.0" ? 89
     :                             85),
    'Expected checksums on master'
@@ -113,7 +114,8 @@ is(
 $row = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
    $row->[0],
-   (  $sandbox_version gt "5.1" ? 90
+   (  $sandbox_version ge "5.6" ? 89
+    : $sandbox_version gt "5.1" ? 90
     : $sandbox_version gt "5.0" ? 89
     :                             85),
    'Expected checksums on slave'
