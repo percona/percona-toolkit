@@ -15,18 +15,19 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-online-schema-change";
 
-diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
-diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+if ( $sandbox_version ge '5.6' ) {
+   plan skip_all => 'Cannot disable InnoDB in MySQL 5.6';
+}
 
 my $dp = new DSNParser(opts=>$dsn_opts);
 my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
 my $master_dbh = $sb->get_dbh_for('master1');
 
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
+diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master 12348';
-}
-else {
-   plan tests => 3;
 }
 
 my $master_dsn = 'h=127.1,P=12348,u=msandbox,p=msandbox';
@@ -55,4 +56,4 @@ is(
 # #############################################################################
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
-exit;
+done_testing;
