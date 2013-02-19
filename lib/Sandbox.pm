@@ -357,7 +357,8 @@ sub verify_test_data {
          'SELECT * FROM percona_test.checksums',
          'db_tbl');
    $self->{checksum_ref} = $ref unless $self->{checksum_ref};
-   my @tables_in_mysql  = grep { !/^innodb_(?:table|index)_stats$/ }
+   my @tables_in_mysql  = grep { !/^(?:innodb|slave)_/ }
+                          grep { !/_log$/ }
                           @{$master->selectcol_arrayref('SHOW TABLES FROM mysql')};
    my @tables_in_sakila = qw(actor address category city country customer
                              film film_actor film_category film_text inventory
