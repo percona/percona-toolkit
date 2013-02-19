@@ -19,17 +19,17 @@ if ( $sandbox_version ge '5.6' ) {
    plan skip_all => 'Cannot disable InnoDB in MySQL 5.6';
 }
 
-my $dp = new DSNParser(opts=>$dsn_opts);
-my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
-my $master_dbh = $sb->get_dbh_for('master1');
-my $slave_dbh  = $sb->get_dbh_for('master2');
-
 diag("Stopping/reconfiguring/restarting sandboxes 12348 and 12349");
 diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
 
 diag(`$trunk/sandbox/stop-sandbox 12349 >/dev/null`);
 diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox slave 12349 12348 >/dev/null`);
+
+my $dp = new DSNParser(opts=>$dsn_opts);
+my $sb = new Sandbox(basedir => '/tmp', DSNParser => $dp);
+my $master_dbh = $sb->get_dbh_for('master1');
+my $slave_dbh  = $sb->get_dbh_for('master2');
 
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master 12348';
