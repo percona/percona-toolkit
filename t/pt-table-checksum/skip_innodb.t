@@ -15,12 +15,15 @@ use PerconaTest;
 use Sandbox;
 require "$trunk/bin/pt-table-checksum";
 
-if ( $sandbox_version eq '5.6' ) {
-   plan skip_all => 'http://bugs.mysql.com/67798';
+if ( $sandbox_version ge '5.6' ) {
+   plan skip_all => 'Cannot disable InnoDB in MySQL 5.6';
 }
 
-diag(`$trunk/sandbox/stop-sandbox 12348 12349 >/dev/null`);
+diag("Stopping/reconfiguring/restarting sandboxes 12348 and 12349");
+diag(`$trunk/sandbox/stop-sandbox 12348 >/dev/null`);
 diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox master 12348 >/dev/null`);
+
+diag(`$trunk/sandbox/stop-sandbox 12349 >/dev/null`);
 diag(`SKIP_INNODB=1 $trunk/sandbox/start-sandbox slave 12349 12348 >/dev/null`);
 
 my $dp = new DSNParser(opts=>$dsn_opts);
@@ -43,26 +46,6 @@ my @args       = ($master_dsn, qw(--lock-wait-timeout 3), '--max-load', '');
 my $output;
 my $retval;
 
-if ( $sandbox_version ge '5.6' ) {
-   # Before MySQL 5.6, even with the InnoDB engine off, creating an InnoDB
-   # table would simply result in:
-   #
-   # mysql> create table t (i int) engine=innodb;
-   # Query OK, 0 rows affected, 2 warnings (0.01 sec)
-   #
-   # mysql> show warnings;
-   # +---------+------+-------------------------------------------+
-   # | Level   | Code | Message                                   |
-   # +---------+------+-------------------------------------------+
-   # | Warning | 1286 | Unknown table engine 'innodb'             |
-   # | Warning | 1266 | Using storage engine MyISAM for table 't' |
-   # +---------+------+-------------------------------------------+
-   #
-   # But 5.6 throws an error.  So we have to create the table manually.
-   $sb->load_file('master1', "t/pt-table-checksum/samples/repl-table-myisam.sql");
-   $sb->wait_for_slaves(master => 'master1', slave => 'master2');
-}
-
 $output = output(
    sub { $retval = pt_table_checksum::main(@args) },
    stderr => 1,
@@ -78,12 +61,11 @@ is(
    $retval,
    0,
    "0 exit status (bug 996110)"
-) or diag($output);
+);
 
 # #############################################################################
 # Done.
 # #############################################################################
-$sb->wipe_clean($master_dbh);
 diag(`$trunk/sandbox/stop-sandbox 12349 12348 >/dev/null`);
 ok($sb->ok(), "Sandbox servers") or BAIL_OUT(__FILE__ . " broke the sandbox");
 done_testing;

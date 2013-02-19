@@ -2399,6 +2399,11 @@ use warnings FATAL => 'all';
 use English qw(-no_match_vars);
 use constant PTDEBUG => $ENV{PTDEBUG} || 0;
 
+use Data::Dumper;
+$Data::Dumper::Indent    = 1;
+$Data::Dumper::Sortkeys  = 1;
+$Data::Dumper::Quotekeys = 0;
+
 sub new {
    my ( $class, %args ) = @_;
    return bless {}, $class;
@@ -2463,44 +2468,64 @@ sub join_quote {
 
 sub serialize_list {
    my ( $self, @args ) = @_;
+   PTDEBUG && _d('Serializing', Dumper(\@args));
    return unless @args;
 
-   return $args[0] if @args == 1 && !defined $args[0];
+   my @parts;
+   foreach my $arg  ( @args ) {
+      if ( defined $arg ) {
+         $arg =~ s/,/\\,/g;      # escape commas
+         $arg =~ s/\\N/\\\\N/g;  # escape literal \N
+         push @parts, $arg;
+      }
+      else {
+         push @parts, '\N';
+      }
+   }
 
-   die "Cannot serialize multiple values with undef/NULL"
-      if grep { !defined $_ } @args;
-
-   return join ',', map { quotemeta } @args;
+   my $string = join(',', @parts);
+   PTDEBUG && _d('Serialized: <', $string, '>');
+   return $string;
 }
 
 sub deserialize_list {
    my ( $self, $string ) = @_;
-   return $string unless defined $string;
-   my @escaped_parts = $string =~ /
-         \G             # Start of string, or end of previous match.
-         (              # Each of these is an element in the original list.
-            [^\\,]*     # Anything not a backslash or a comma
-            (?:         # When we get here, we found one of the above.
-               \\.      # A backslash followed by something so we can continue
-               [^\\,]*  # Same as above.
-            )*          # Repeat zero of more times.
-         )
-         ,              # Comma dividing elements
-      /sxgc;
+   PTDEBUG && _d('Deserializing <', $string, '>');
+   die "Cannot deserialize an undefined string" unless defined $string;
 
-   push @escaped_parts, pos($string) ? substr( $string, pos($string) ) : $string;
+   my @parts;
+   foreach my $arg ( split(/(?<!\\),/, $string) ) {
+      if ( $arg eq '\N' ) {
+         $arg = undef;
+      }
+      else {
+         $arg =~ s/\\,/,/g;
+         $arg =~ s/\\\\N/\\N/g;
+      }
+      push @parts, $arg;
+   }
 
-   my @unescaped_parts = map {
-      my $part = $_;
+   if ( !@parts ) {
+      my $n_empty_strings = $string =~ tr/,//;
+      $n_empty_strings++;
+      PTDEBUG && _d($n_empty_strings, 'empty strings');
+      map { push @parts, '' } 1..$n_empty_strings;
+   }
+   elsif ( $string =~ m/(?<!\\),$/ ) {
+      PTDEBUG && _d('Last value is an empty string');
+      push @parts, '';
+   }
 
-      my $char_class = utf8::is_utf8($part)  # If it's a UTF-8 string,
-                     ? qr/(?=\p{ASCII})\W/   # We only care about non-word
-                     : qr/(?=\p{ASCII})\W|[\x{80}-\x{FF}]/; # Otherwise,
-      $part =~ s/\\($char_class)/$1/g;
-      $part;
-   } @escaped_parts;
+   PTDEBUG && _d('Deserialized', Dumper(\@parts));
+   return @parts;
+}
 
-   return @unescaped_parts;
+sub _d {
+   my ($package, undef, $line) = caller 0;
+   @_ = map { (my $temp = $_) =~ s/\n/\n# /g; $temp; }
+        map { defined $_ ? $_ : 'undef' }
+        @_;
+   print STDERR "# $package:$line $PID ", join(' ', @_), "\n";
 }
 
 1;

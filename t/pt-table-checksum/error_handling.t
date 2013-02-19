@@ -178,8 +178,8 @@ is(
 # Use the --replicate table created by the previous ^ tests.
 
 # Create a user that can't create the --replicate table.
-diag(`/tmp/12345/use -uroot < $trunk/t/lib/samples/ro-checksum-user.sql`);
-diag(`/tmp/12345/use -uroot -e "GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ro_checksum_user\@'%'"`);
+diag(`/tmp/12345/use -uroot -pmsandbox < $trunk/t/lib/samples/ro-checksum-user.sql 2>&1`);
+diag(`/tmp/12345/use -uroot -pmsandbox -e "GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ro_checksum_user\@'%'" 2>&1`);
 
 # Remove the --replicate table from slave1 and slave2,
 # so it's only on the master...
@@ -199,7 +199,7 @@ like(
    "CREATE DATABASE error and db is missing on slaves (bug 1039569)"
 );
 
-diag(`/tmp/12345/use -uroot -e "DROP USER ro_checksum_user\@'%'"`);
+diag(`/tmp/12345/use -uroot -pmsandbox -e "DROP USER ro_checksum_user\@'%'" 2>&1`);
 
 # #############################################################################
 # Done.

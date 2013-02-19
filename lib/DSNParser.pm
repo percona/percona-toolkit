@@ -1,5 +1,5 @@
-# This program is copyright 2007-2011 Baron Schwartz, 2011 Percona Ireland Ltd.
-# Feedback and improvements are welcome.
+# This program is copyright 2007-2011 Baron Schwartz,
+# 2011-2013 Percona Ireland Ltd.
 #
 # THIS PROGRAM IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
