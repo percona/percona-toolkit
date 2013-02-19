@@ -68,9 +68,7 @@ sub reset_repl_db {
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args) },
-        $sandbox_version gt "5.1 " ? "$sample/default-results-5.5.txt"
-      : $sandbox_version gt "5.0 " ? "$sample/default-results-5.1.txt"
-      :                              "$sample/default-results-5.0.txt",
+      "$sample/default-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $6 " " $8}\'',
    ),
    "Default checksum"
@@ -81,10 +79,10 @@ ok(
 # Since this varies by default, there's no use checking the checksums
 # other than to ensure that there's at one for each table.
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
-cmp_ok(
-   $row->[0], '>=', ($sandbox_version gt "5.0" ? 37 : 33),
-   'At least 37 checksums'
-);
+ok(
+   $row->[0] > 30 && $row->[0] < 50,
+   'Between 30 and 50 chunks'
+) or diag($row->[0]);
 
 # ############################################################################
 # Static chunk size (disable --chunk-time)
@@ -93,33 +91,24 @@ cmp_ok(
 ok(
    no_diff(
       sub { pt_table_checksum::main(@args, qw(--chunk-time 0)) },
-        $sandbox_version gt "5.1" ? "$sample/static-chunk-size-results-5.5.txt"
-      : $sandbox_version gt "5.0" ? "$sample/static-chunk-size-results-5.1.txt"
-      :                             "$sample/static-chunk-size-results-5.0.txt",
+      "$sample/static-chunk-size-results-$sandbox_version.txt",
       post_pipe => 'awk \'{print $2 " " $3 " " $4 " " $5 " " $6 " " $8}\'',
    ),
    "Static chunk size (--chunk-time 0)"
 );
 
 $row = $master_dbh->selectrow_arrayref("select count(*) from percona.checksums");
-is(
-   $row->[0],
-   (  $sandbox_version ge "5.6" ? 89
-    : $sandbox_version gt "5.1" ? 90
-    : $sandbox_version gt "5.0" ? 89
-    :                             85),
-   'Expected checksums on master'
-);
+ok(
+   $row->[0] >= 85 && $row->[0] <= 90,
+   'Between 85 and 90 chunks on master'
+) or diag($row->[0]);
 
-$row = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
+my $row2 = $slave1_dbh->selectrow_arrayref("select count(*) from percona.checksums");
 is(
+   $row2->[0],
    $row->[0],
-   (  $sandbox_version ge "5.6" ? 89
-    : $sandbox_version gt "5.1" ? 90
-    : $sandbox_version gt "5.0" ? 89
-    :                             85),
-   'Expected checksums on slave'
-);
+   '... same number of chunks on slave'
+) or diag($row->[0], ' ', $row2->[0]);
 
 # ############################################################################
 # --[no]replicate-check and, implicitly, the tool's exit status.
